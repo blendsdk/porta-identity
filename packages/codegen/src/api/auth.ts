@@ -1,0 +1,225 @@
+import { ApiBuilder } from "@blendsdk/codegen";
+import { eParameterLocation } from "@blendsdk/jsonschema";
+
+/**
+ * Creates authentication API
+ *
+ * @export
+ * @param {ApiBuilder} builder
+ */
+export function defineAuthenticationAPI(builder: ApiBuilder) {
+    // oauth authorization request
+    builder.defineApi({
+        id: "authorize",
+        // generate: "backend-only",
+        url: "/:tenant/oauth2/authorize",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("response_type", { location: eParameterLocation.query, optional: true })
+                .addString("client_id", { location: eParameterLocation.query })
+                .addString("redirect_uri", { location: eParameterLocation.query })
+                .addString("scope", { location: eParameterLocation.query })
+                .addString("nonce", { location: eParameterLocation.query, optional: true }) // only for OIDC scope
+                .addString("response_mode", { location: eParameterLocation.query, optional: true })
+                .addString("state", { location: eParameterLocation.query, optional: true })
+                .addString("code_challenge", { location: eParameterLocation.query, optional: true })
+                .addString("code_challenge_method", { location: eParameterLocation.query, optional: true })
+                .addString("ui_locales", { location: eParameterLocation.query, optional: true })
+                .addString("request", { location: eParameterLocation.query, optional: true })
+                .addString("acr_values", { location: eParameterLocation.query, optional: true })
+                // Don't validate and pass it as it is. The validation will be done in the Claims class
+                .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
+                .addString("prompt", { location: eParameterLocation.query, optional: true })
+                .addNumber("max_age", { location: eParameterLocation.query, optional: true })
+                .addString("display", { location: eParameterLocation.query, optional: true });
+
+            typeSchema.createAppendType(payload_type); //
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
+        id: "token",
+        // generate: "backend-only",
+        url: "/:tenant/oauth2/token",
+        group: "authorization",
+        method: "post",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("client_id", { location: eParameterLocation.body, optional: true }) // set to optional for oidc certification
+                .addString("redirect_uri", { location: eParameterLocation.body, optional: true })
+                .addString("grant_type", { location: eParameterLocation.body })
+                .addString("code", { location: eParameterLocation.body, optional: true })
+                .addString("code_verifier", { location: eParameterLocation.body, optional: true })
+                .addString("client_secret", { location: eParameterLocation.body, optional: true })
+                .addString("state", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
+                .addString("nonce", { location: eParameterLocation.body, optional: true }); // was added for client credentials / confidential clients
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("access_token")
+                .addString("token_type")
+                .addNumber("expires_in")
+                .addString("id_token");
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
+        id: "signin",
+        // generate: "backend-only",
+        url: "/af/signin",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false
+    });
+
+    builder.defineApi({
+        id: "redirect",
+        // generate: "backend-only",
+        url: "/af/redirect",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("flow", { location: eParameterLocation.query });
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    /**
+     * Gets the flow information for the webclient
+     */
+    builder.defineApi({
+        id: "flow_info",
+        url: "/af/flow_info",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema.createAppendType(request_type);
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("client_id")
+                .addString("application_name")
+                .addString("organization")
+                .addBoolean("allow_reset_password")
+                .addBoolean("allow_registration");
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    /**
+     * Check the account for its state and status
+     */
+    builder.defineApi({
+        id: "check_flow",
+        url: "/af/check_flow",
+        group: "authorization",
+        method: "post",
+        public: true,
+        payload_type: "#/definitions/authentication_flow_state",
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type)
+                .addString("state") //
+                .addString("options", { optional: true });
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    /**
+     * Check the account for its state and status
+     */
+    builder.defineApi({
+        id: "oidc_discovery",
+        url: "/:tenant/oauth2/.well-known/openid-configuration",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    /**
+     * Check the account for its state and status
+     */
+    builder.defineApi({
+        id: "oidc_discovery_keys",
+        url: "/:tenant/oauth2/discovery/keys",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
+        id: "user_info_get",
+        url: "/:tenant/oauth2/me",
+        group: "authorization",
+        method: "get",
+        public: false,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
+        id: "user_info_post",
+        url: "/:tenant/oauth2/me",
+        group: "authorization",
+        method: "post",
+        public: false,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineTokenAuthenticationAPI();
+}

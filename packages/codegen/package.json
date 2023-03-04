@@ -1,0 +1,31 @@
+{
+  "name": "@porta/codegen",
+  "version": "1.0.117",
+  "description": "Code generation package for porta",
+  "main": "dist/index.js",
+  "author": "TrueSoftware <info@truesoftware.nl>",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "lint": "tslint -p ./tsconfig.json --fix",
+    "build": "rm -fR ./dist ./temp && tsc",
+    "watch": "rm -fR ./dist && tsc -w",
+    "test": "jest --detectOpenHandles --passWithNoTests",
+    "generate": "yarn build && LOG_LEVEL=INFO node ./dist/index.js start",
+    "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.2.0",
+    "@types/node": "^18.7.13",
+    "glob": "^8.0.3",
+    "tslib": "^2.4.0"
+  },
+  "dependencies": {
+    "@blendsdk/codegen": "3.2.207",
+    "@blendsdk/datakit": "3.2.207",
+    "@blendsdk/jsonschema": "3.2.207",
+    "@blendsdk/logger": "3.2.207",
+    "@blendsdk/postgresql": "3.2.207",
+    "@blendsdk/stdlib": "3.2.207",
+    "jose": "^4.9.0"
+  }
+}
