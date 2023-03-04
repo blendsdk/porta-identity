@@ -1,0 +1,46 @@
+{
+  "name": "root",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=10.15.0",
+    "yarn": ">=1.5.1"
+  },
+  "scripts": {
+    "tag-version-auto": "lerna version --no-changelog --conventional-commits --yes",
+    "publish-packages": "lerna publish from-package",
+    "postinstall": "rm -fR ./node_modules/@types/eslint-scope &&  rm -fR node_modules/@types/cacheable-request",
+    "bootstrap": "lerna bootstrap --use-workspaces",
+    "build": "lerna clean -y && lerna run build",
+    "test": "jest jest --clearCache &&  lerna run db:restart --scope=@porta/webapi && lerna run db:reset --scope=@porta/webapi && lerna run cache:restart --scope=@porta/webapi && lerna run test",
+    "ncu": "ncu -u -x '@types/react*',chalk,react,react-dom,react-scripts,nanoid,\"@blendsdk*\",\"@porta*\" && lerna exec \"ncu -u -x '@types/react*',chalk,react,react-dom,react-scripts,nanoid,'@blendsdk*','@porta*' \" && rm -fR node_modules yarn.lock && yarn install && yarn bootstrap && yarn build && yarn test",
+    "generate": "lerna run generate --scope=@porta/codegen && lerna run build --scope=@porta/shared",
+    "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "blend:stable": "`pwd`/scripts/blend-update.js stable > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "blend:develop": "`pwd`/scripts/blend-update.js develop > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "dev": "nodemon --verbose --delay 2.5 --watch ./packages/codegen/src --watch ./scripts --ext ts `pwd`/scripts/dev.sh"
+  },
+  "devDependencies": {
+    "@jest/core": "^29.4.3",
+    "@jest/reporters": "^29.4.3",
+    "@types/jest": "^29.4.0",
+    "@types/node": "^18.14.5",
+    "concurrently": "^7.6.0",
+    "jest": "^29.4.3",
+    "jest-cli": "^29.4.3",
+    "jest-watch-typeahead": "^2.2.2",
+    "lerna": "^6.5.1",
+    "nodemon": "^2.0.21",
+    "npm-check-updates": "^16.7.10",
+    "ts-jest": "^29.0.5",
+    "typescript": "^4.9.5",
+    "react-dropzone": "^14.2.3",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "zustand": "^4.3.5"
+  }
+}
