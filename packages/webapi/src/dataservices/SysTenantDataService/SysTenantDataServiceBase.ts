@@ -1,5 +1,5 @@
 import {
-	ISysTenantDataServiceFindByNameOrDomainOrIdParams,
+	ISysTenantDataServiceFindByNameOrIdParams,
 	ISysTenantDataServiceFindSysTenantByIdParams,
 	ISysTenantDataServiceDeleteSysTenantByIdFilter,
 	ISysTenantDataServiceUpdateSysTenantByIdFilter,
@@ -18,14 +18,14 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  */
 export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExecutionContext> {
 	/**
-	 * @param {ISysTenantDataServiceFindByNameOrDomainOrIdParams}
+	 * @param {ISysTenantDataServiceFindByNameOrIdParams}
 	 * @returns {ISysTenant}
 	 * @memberof SysTenantDataServiceBase
 	 */
-	public async findByNameOrDomainOrId(params: ISysTenantDataServiceFindByNameOrDomainOrIdParams): Promise<ISysTenant> {
+	public async findByNameOrId(params: ISysTenantDataServiceFindByNameOrIdParams): Promise<ISysTenant> {
 		const ctx = await this.getContext();
-		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindByNameOrDomainOrIdParams>(
-			`SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR UPPER(domain) = UPPER(:name) OR id::text = :name`,
+		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindByNameOrIdParams>(
+			`SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name`,
 			params,
 			{ single: true }
 		);

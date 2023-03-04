@@ -1,13 +1,15 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { ApplicationModule, IDatabaseAppSettings } from "@blendsdk/webafx";
+import { PORTA_NAME } from "../../utils";
 
 export class DatabaseModule extends ApplicationModule {
     onInitialize(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
                 dataSourceManager.registerDataSource(() => {
-                    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE } = this.application.getSettings<IDatabaseAppSettings>();
+                    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE } =
+                        this.application.getSettings<IDatabaseAppSettings>();
                     return new PostgreSQLDataSource({
                         host: DB_HOST,
                         port: DB_PORT,

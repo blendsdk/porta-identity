@@ -22,6 +22,8 @@ import {
     IUserInfoPostResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
+import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
+import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
 
 /**
  * @export
@@ -30,6 +32,21 @@ import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    /**
+     * Creates a sub-controller config
+     *
+     * @protected
+     * @returns
+     * @memberof AuthorizationController
+     */
+    protected createSubControllerConfig() {
+        return {
+            request: this.request,
+            response: this.response,
+            ...this.request.context.services
+        };
+    }
+
     public authorize(_params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
         throw new Error("Method not implemented.");
     }
@@ -48,11 +65,13 @@ export class AuthorizationController extends AuthorizationControllerBase {
     public checkFlow(_params: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
         throw new Error("Method not implemented.");
     }
-    public oidcDiscovery(_params: IOidcDiscoveryRequest): Promise<Response<IOidcDiscoveryResponse>> {
-        throw new Error("Method not implemented.");
+    public oidcDiscovery(params: IOidcDiscoveryRequest): Promise<Response<IOidcDiscoveryResponse>> {
+        const subController = new OIDCDiscoveryEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public oidcDiscoveryKeys(_params: IOidcDiscoveryKeysRequest): Promise<Response<IOidcDiscoveryKeysResponse>> {
-        throw new Error("Method not implemented.");
+    public oidcDiscoveryKeys(params: IOidcDiscoveryKeysRequest): Promise<Response<IOidcDiscoveryKeysResponse>> {
+        const subController = new JWKSEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
     public userInfoGet(_params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
         throw new Error("Method not implemented.");

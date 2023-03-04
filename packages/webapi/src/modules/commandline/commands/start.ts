@@ -1,7 +1,11 @@
 import { sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
+import { asyncForEach } from "@blendsdk/stdlib";
+import { ISysClientType } from "@porta/shared";
 import { CommandBuilder } from "yargs";
+import { SysClientDataService } from "../../../dataservices/SysClientDataService";
+import { SysClientTypeDataService } from "../../../dataservices/SysClientTypeDataService";
 import { SysGroupDataService } from "../../../dataservices/SysGroupDataService";
 import { SysGroupPermissionDataService } from "../../../dataservices/SysGroupPermissionDataService";
 import { SysKeyDataService } from "../../../dataservices/SysKeyDataService";
@@ -11,7 +15,7 @@ import { SysUserDataService } from "../../../dataservices/SysUserDataService";
 import { SysUserGroupDataService } from "../../../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../../../dataservices/SysUserProfileDataService";
 import { IPortaApplicationSetting } from "../../../types";
-import { generateKeyPareAndCertificate } from "../../../utils";
+import { generateKeyPareAndCertificate, getUUID } from "../../../utils";
 import { application } from "../../application";
 
 /**
@@ -53,10 +57,42 @@ export function checkAndInitialize() {
             const userGroupDs = new SysUserGroupDataService({ sharedContext });
             const permissionDs = new SysPermissionDataService({ sharedContext });
             const groupPermissionDs = new SysGroupPermissionDataService({ sharedContext });
+            const clientTypeDs = new SysClientTypeDataService({ sharedContext });
+            const clientDs = new SysClientDataService({ sharedContext });
 
             let adminUser = await userDs.findByUsernameNonService({ username: PORTA_ADMIN });
 
             if (!adminUser) {
+                const clientTypeData: Partial<ISysClientType>[] = [
+                    {
+                        client_type: "web_app",
+                        description: "OIDC client that is a web application"
+                    },
+                    {
+                        client_type: "mobile_app",
+                        description: "OIDC client that is a mobile application"
+                    },
+                    {
+                        client_type: "confidential",
+                        description: "OIDC client that is a server side API"
+                    }
+                ];
+
+                let client_type_id: string = undefined;
+
+                await asyncForEach(clientTypeData, async ({ client_type, description }: any) => {
+                    const result = await clientTypeDs.insertIntoSysClientType({ client_type, description });
+                    if (client_type === "web_app") {
+                        client_type_id = result.id;
+                    }
+                });
+
+                await clientDs.insertIntoSysClient({
+                    client_id: getUUID(),
+                    client_type_id,
+                    description: "Porta WebApp Client"
+                });
+
                 adminUser = await userDs.insertIntoSysUser({
                     username: PORTA_ADMIN,
                     password: PORTA_PASSWORD,

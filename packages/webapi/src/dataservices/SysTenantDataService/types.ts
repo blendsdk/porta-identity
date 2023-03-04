@@ -5,12 +5,12 @@
 
 /**
  * @export
- * @interface ISysTenantDataServiceFindByNameOrDomainOrIdParams
+ * @interface ISysTenantDataServiceFindByNameOrIdParams
  */
-export interface ISysTenantDataServiceFindByNameOrDomainOrIdParams {
+export interface ISysTenantDataServiceFindByNameOrIdParams {
 	/**
 	 * @type string
-	 * @memberOf ISysTenantDataServiceFindByNameOrDomainOrIdParams
+	 * @memberOf ISysTenantDataServiceFindByNameOrIdParams
 	 */
 	name: string;
 }

@@ -58,8 +58,8 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         if (table.getName() === "sys_tenant") {
             svc.defineMethod({
-                name: "find_by_name_or_domain_or_id",
-                query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR UPPER(domain) = UPPER(:name) OR id::text = :name",
+                name: "find_by_name_or_id",
+                query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -171,8 +171,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                 },
                 returnType: "sys_user"
             });
-        } else if(table.getName() === "sys_scope") {
-
+        } else if (table.getName() === "sys_scope") {
             svc.defineMethod({
                 name: "get_sources_by_scope",
                 query: "select * from sys_scope where scope = :scope",

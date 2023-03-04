@@ -1,0 +1,16 @@
+{
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "cSpell.words": [
+        "datakit",
+        "firstname",
+        "jose",
+        "lastname",
+        "pkce",
+        "porta",
+        "Porta",
+        "postgresql",
+        "signin",
+        "Signin",
+        "webafx"
+    ]
+}

@@ -8,8 +8,10 @@ import { eOAuthPKCECodeChallengeMethod } from "./types";
 //const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
 
+export const PORTA_NAME = "porta";
+
 export function getTenantDataSourceID(tentant: ISysTenant) {
-    return tentant.name === "default" ? "default" : tentant.id;
+    return tentant.name === PORTA_NAME ? "default" : tentant.id;
 }
 
 /**
@@ -90,9 +92,14 @@ export function parseSeparatedTokens(strTokens: string, caseSensitive?: boolean)
     return data;
 }
 
-export function errorDescription(desc:string,meta?:IDictionaryOf<any>) {
+export function errorDescription(desc: string, meta?: IDictionaryOf<any>) {
     return {
-        description:desc,
+        description: desc,
         ...(meta || {})
-    }
+    };
+}
+
+export function getUUID() {
+    // random bytes length is arbitrary
+    return crypto.createHash("md5").update(crypto.randomBytes(32).toString("hex")).digest("hex");
 }
