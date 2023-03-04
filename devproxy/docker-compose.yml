@@ -1,0 +1,15 @@
+version: "3"
+services:
+  porta_nginx:
+    image: nginx:latest
+    ports:
+      - 8080:80
+      - 443:443
+    volumes:
+      - ./logs:/var/logs/porta
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/nginx.conf://etc/nginx/nginx.conf
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled
+      - ./nginx/site-config:/etc/nginx/site-config

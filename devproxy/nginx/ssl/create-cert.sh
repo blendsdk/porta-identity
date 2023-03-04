@@ -1,0 +1,2 @@
+mkdir -p private certs
+openssl req -x509 -nodes -days 9365 -subj "/C=CA/ST=QC/O=TrueSoftware, Inc./CN=porta.local" -addext "subjectAltName=DNS:*.porta.local" -newkey rsa:2048 -keyout ./private/nginx-selfsigned.key -out ./certs/nginx-selfsigned.crt;
