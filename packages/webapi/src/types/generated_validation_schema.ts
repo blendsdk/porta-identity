@@ -42,6 +42,63 @@ export const validationSchema = {
 		sys_mfa_settings: {
 			type: eJsonSchemaType.object
 		},
+		sys_authorization_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				confidential_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_secret: {
+					type: eJsonSchemaType.string
+				},
+				session_length: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				logout_uri: {
+					type: eJsonSchemaType.string
+				},
+				ios_bundle_id: {
+					type: eJsonSchemaType.string
+				},
+				android_package_name: {
+					type: eJsonSchemaType.string
+				},
+				android_signature_hash: {
+					type: eJsonSchemaType.string
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				fallback_uri: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: [
+				"confidential_user_id",
+				"client_id",
+				"client_secret",
+				"session_length",
+				"client_type",
+				"redirect_uri",
+				"logout_uri",
+				"ios_bundle_id",
+				"android_package_name",
+				"android_signature_hash",
+				"logo",
+				"fallback_uri"
+			]
+		},
 		sys_user_mfa_view: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -62,6 +119,49 @@ export const validationSchema = {
 				}
 			},
 			required: ["user_id", "mfa_id", "mfa_name", "mfa_settings"]
+		},
+		sys_groups_by_user_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				name: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["id", "name", "description", "is_active", "user_id"]
+		},
+		sys_user_permission_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				code: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["user_id", "permission_id", "code", "is_active"]
 		},
 		sys_tenant: {
 			type: eJsonSchemaType.object,
@@ -141,6 +241,184 @@ export const validationSchema = {
 				}
 			},
 			required: ["firstname", "lastname", "user_id"]
+		},
+		sys_group: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				name: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["name", "description"]
+		},
+		sys_user_group: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				group_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["user_id", "group_id"]
+		},
+		sys_permission: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				code: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["code", "description"]
+		},
+		sys_group_permission: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				group_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["group_id", "permission_id"]
+		},
+		sys_client: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_type_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				fallback_uri: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				secret: {
+					type: eJsonSchemaType.string
+				},
+				session_length: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				valid_from: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				valid_until: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				}
+			},
+			required: ["client_id", "client_type_id", "description"]
+		},
+		sys_client_type: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["client_type"]
+		},
+		sys_redirect: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				logout_uri: {
+					type: eJsonSchemaType.string
+				},
+				ios_bundle_id: {
+					type: eJsonSchemaType.string
+				},
+				android_package_name: {
+					type: eJsonSchemaType.string
+				},
+				android_signature_hash: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["client_id"]
+		},
+		sys_confidential_client: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["client_id", "user_id"]
 		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,

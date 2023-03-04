@@ -1,0 +1,13 @@
+{
+    "name": "@porta/shared",
+    "version": "1.0.117",
+    "main": "dist/index.js",
+    "scripts": {
+        "ls": "docker container ls",
+        "mkpack": "rm -fR *.tgz && yarn pack",
+        "build": "rm -fR ./dist && tsc",
+        "test": "DEBUG=true jest --detectOpenHandles --runInBand --passWithNoTests --forceExit $TEST_FILTER",
+        "watch": "tsc -w"
+    },
+    "types": "./dist/index.d.ts"
+}

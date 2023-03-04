@@ -1,0 +1,60 @@
+{
+    "name": "@porta/webapi",
+    "version": "1.0.118",
+    "main": "dist/index.js",
+    "bin": {
+        "porta-ctrl": "./dist/index.js"
+    },
+    "author": "TrueSoftware <info@truesoftware.nl>",
+    "scripts": {
+        "build": "rm -fR ./dist ./temp && tsc",
+        "watch:ts": "rm -fR ./dist && tsc -w",
+        "watch:node": "BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config/ --inspect ./dist/index.js start --config=`pwd`/config/*.config.js --config=`pwd`/config/.*.config.js --migrate=${MIGRATE:-false}",
+        "watch:node-oidc": "BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config-oidc/ --inspect ./dist/index.js start --config=`pwd`/config-oidc/*.config.js --config=`pwd`/config-oidc/.*.config.js --migrate=${MIGRATE:-false}",
+        "db:start": "docker-compose -f ./docker/docker-compose.yml up -d db && ./wait-for 127.0.0.1:5010",
+        "db:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv db && docker container prune --force",
+        "db:restart": "yarn db:stop && yarn db:start",
+        "db:reset": "docker exec -u postgres porta_db psql -U porta -d porta -f /resources/schema.sql",
+        "db:seed": "docker exec -u postgres porta_db psql -U porta -d porta -f /resources/seed.sql",
+        "test": "BYPASS=true yarn cache:restart && yarn db:stop && yarn db:start && seep 60 && yarn db:reset && yarn db:seed && TEST=true jest --detectOpenHandles --passWithNoTests && yarn db:stop",
+        "test:fast": "BYPASS=true TEST=true jest --passWithNoTests --detectOpenHandles",
+        "cache:start": "docker-compose -f ./docker/docker-compose.yml up -d redis",
+        "cache:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv redis && docker container prune --force",
+        "cache:restart": "yarn cache:stop && sleep 5 && yarn cache:start"
+    },
+    "dependencies": {
+        "@blendsdk/clientkit": "3.2.207",
+        "@blendsdk/crypto": "3.2.207",
+        "@blendsdk/datakit": "3.2.207",
+        "@blendsdk/expression": "3.2.207",
+        "@blendsdk/jsonschema": "3.2.207",
+        "@blendsdk/postgresql": "3.2.207",
+        "@blendsdk/stdlib": "3.2.207",
+        "@blendsdk/webafx": "3.2.207",
+        "@blendsdk/webafx-auth": "3.2.207",
+        "@blendsdk/webafx-auth-linkedin": "3.2.207",
+        "@blendsdk/webafx-cache": "3.2.207",
+        "@blendsdk/webafx-common": "3.2.207",
+        "@blendsdk/webafx-i18n": "3.2.207",
+        "@peculiar/webcrypto": "^1.4.0",
+        "@peculiar/x509": "^1.8.2",
+        "@porta/shared": "^1.0.117",
+        "@types/jsonwebtoken": "^8.5.9",
+        "dayjs": "^1.11.5",
+        "jose": "^4.9.0",
+        "jsonwebtoken": "^8.5.1",
+        "tslib": "^2.4.0",
+        "yargs": "^17.5.1"
+    },
+    "devDependencies": {
+        "@blendsdk/codegen": "3.2.69",
+        "@types/jsonwebtoken": "^8.5.9"
+    },
+    "pkg": {
+        "scripts": "dist/**/*.js",
+        "targets": [
+            "node18-linux-x64"
+        ],
+        "outputPath": "./pkg_dist"
+    }
+}
