@@ -106,7 +106,6 @@ async function generate() {
         path.join(WebClientAdminRoot, "src", "system", "api", "generated_api.ts"),
         path.join(WebClientAccountRoot, "src", "system", "api", "generated_api.ts")
     ].forEach((outFile) => {
-
         writeFileSync(
             outFile,
             [

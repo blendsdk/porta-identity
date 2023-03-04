@@ -1,10 +1,19 @@
 import path from "path";
-import { Database } from "@blendsdk/codegen";
+import { Database, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
+import { asyncForEach } from "@blendsdk/stdlib";
+import { dataSourceConfig } from "./config";
+import { typeSchema, consoleLogger } from "./lib";
 
 export async function createDatabaseSchema(database: Database, resourcesRoot: string) {
     resourcesRoot = path.join(resourcesRoot, "database");
 
     const tenant = database.addTable("sys_tenant");
+    const user = database.addTable("sys_user");
+    const user_profile = database.addTable("sys_user_profile");
+    const mfa = database.addTable("sys_mfa");
+    const user_mfa = database.addTable("sys_user_mfa");
+    const key = database.addTable("sys_key");
+
     tenant //
         .primaryKeyColumn("id", true)
         .stringColumn("name", { unique: true })
@@ -12,6 +21,62 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("allow_reset_password", { default: "false" })
         .booleanColumn("allow_registration", { default: "false" })
         .stringColumn("organization");
+
+    user.primaryKeyColumn("id", true) //
+        .stringColumn("username", { unique: true })
+        .stringColumn("password")
+        .booleanColumn("is_active", { default: "true" })
+        .dateTimeColumn("date_created", { default: "now()" });
+
+    user_profile //
+        .primaryKeyColumn("id", true)
+        .stringColumn("firstname")
+        .stringColumn("lastname")
+        .stringColumn("avatar", { required: false })
+        .referenceColumn("user_id", user, "id")
+        .dateColumn("date_created", { default: "now()" })
+        .dateColumn("date_changed", { default: "now()" }); //	Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from 1970-01-01T0:0:0Z as measured in UTC until the date/time.
+
+    mfa.primaryKeyColumn("id", true) //
+        .stringColumn("name")
+        .jsonColumn(
+            "settings",
+            ({ mainSchema, suggestedTypeName }) => {
+                mainSchema.createAppendType(suggestedTypeName);
+                return suggestedTypeName;
+            },
+            { required: false }
+        );
+
+    user_mfa //
+        .primaryKeyColumn("id", true)
+        .referenceColumn("user_id", user, "id")
+        .referenceColumn("mfa_id", mfa, "id");
+
+    key.primaryKeyColumn("id", true) //
+        .stringColumn("key_type")
+        .stringColumn("key_id", { unique: true })
+        .stringColumn("data");
+
+    database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);
+
+    // Create a view to type builder
+    const view2Type = new PostgreSQLTypeFromQuery({
+        dataSourceConfig,
+        databaseSchema: database,
+        typeSchema,
+        logger: consoleLogger
+    });
+
+    // Create the types for the views
+    await asyncForEach(database.getViews(), async (view) => {
+        await view2Type.typeFromQuery({
+            name: view.getName(),
+            query: `SELECT * FROM ${view.getName()} LIMIT 1`
+        });
+    });
+
+    await view2Type.cleanupAndClose();
 }
 
 // import { Database, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
@@ -69,11 +134,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
 //         .stringColumn("password")
 //         .booleanColumn("is_active", { default: "true" })
 //         .dateTimeColumn("date_created", { default: "now()" });
-
-//     user_mfa //
-//         .primaryKeyColumn("id", true)
-//         .referenceColumn("user_id", user, "id")
-//         .referenceColumn("mfa_id", mfa, "id");
 
 //     user_profile //
 //         .primaryKeyColumn("id", true)
