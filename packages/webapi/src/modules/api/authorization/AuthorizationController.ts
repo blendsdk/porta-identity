@@ -22,6 +22,7 @@ import {
     IUserInfoPostResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
+import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
 
@@ -47,8 +48,9 @@ export class AuthorizationController extends AuthorizationControllerBase {
         };
     }
 
-    public authorize(_params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
-        throw new Error("Method not implemented.");
+    public authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
+        const subController = new AuthorizeEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
     public token(_params: ITokenRequest): Promise<Response<ITokenResponse>> {
         throw new Error("Method not implemented.");

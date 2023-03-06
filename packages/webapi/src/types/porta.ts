@@ -1,5 +1,8 @@
 import { IDictionaryOf } from "@blendsdk/stdlib";
 import { ISessionInfo, ISessionStorage } from "@blendsdk/webafx-auth";
+
+export const PORTA_REGISTRY = "porta";
+
 import {
     IAuthorizeRequest,
     ISysAuthorizationView,

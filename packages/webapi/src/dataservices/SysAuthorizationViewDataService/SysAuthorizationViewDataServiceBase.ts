@@ -1,6 +1,6 @@
 import {
-	ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams,
-	ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams
+	ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams,
+	ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
 } from "./types";
 import { ISysAuthorizationView } from "@porta/shared";
 import { DataService } from "@blendsdk/datakit";
@@ -15,17 +15,17 @@ import { PostgreSQLExecutionContext } from "@blendsdk/postgresql";
  */
 export abstract class SysAuthorizationViewDataServiceBase extends DataService<PostgreSQLExecutionContext> {
 	/**
-	 * @param {ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams}
+	 * @param {ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams}
 	 * @returns {ISysAuthorizationView}
 	 * @memberof SysAuthorizationViewDataServiceBase
 	 */
-	public async findApplicationByClientIdAndRedirectUri(
-		params: ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams
+	public async findByClientIdAndRedirectUri(
+		params: ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 	): Promise<ISysAuthorizationView> {
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<
 			ISysAuthorizationView,
-			ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams
+			ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 		>(`select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri`, params, {
 			single: true
 		});
@@ -33,17 +33,17 @@ export abstract class SysAuthorizationViewDataServiceBase extends DataService<Po
 	}
 
 	/**
-	 * @param {ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams}
+	 * @param {ISysAuthorizationViewDataServiceFindByClientIdOnlyParams}
 	 * @returns {ISysAuthorizationView}
 	 * @memberof SysAuthorizationViewDataServiceBase
 	 */
-	public async findApplicationByClientIdOnly(
-		params: ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams
+	public async findByClientIdOnly(
+		params: ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
 	): Promise<ISysAuthorizationView> {
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<
 			ISysAuthorizationView,
-			ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams
+			ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
 		>(`select * from sys_authorization_view where client_id = :client_id and redirect_uri is null`, params, {
 			single: true
 		});

@@ -17,7 +17,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         if (view.getName() === "sys_authorization_view") {
             svc.defineMethod({
-                name: "find_application_by_client_id_and_redirect_uri",
+                name: "find_by_client_id_and_redirect_uri",
                 query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
@@ -33,7 +33,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             });
 
             svc.defineMethod({
-                name: "find_application_by_client_id_only",
+                name: "find_by_client_id_only",
                 query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,

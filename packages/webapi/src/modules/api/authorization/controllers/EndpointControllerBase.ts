@@ -13,8 +13,9 @@ import { IAuthenticationFlowState, ISysAuthorizationView, ISysTenant } from "@po
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { URLSearchParams } from "url";
 import util from "util";
+import { URLSearchParams } from "url";
+
 import { SysAuthorizationViewDataService } from "../../../../dataservices/SysAuthorizationViewDataService";
 import { SysPermissionDataService } from "../../../../dataservices/SysPermissionDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
@@ -29,9 +30,9 @@ import {
     IPortaSessionInfo,
     IPortaSessionStorage
 } from "../../../../types";
-import { getTenantDataSourceID } from "../../../../utils";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
+import { commonUtils, databaseUtils } from "../../../../utils";
 
 /**
  * Enum describing flow parts
@@ -170,7 +171,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof AuthenticationModule
      */
     protected createTokenKey(keyName: string) {
-        const token = this.getUUID();
+        const token = commonUtils.getUUID();
         return `${token}${TOKEN_KEY_SPLIT}${keyName}`;
     }
     /**
@@ -193,7 +194,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         claims: string
     ) {
         const { session_length } = authRecord;
-        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(getTenantDataSourceID(tenant));
+        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(databaseUtils.getTenantDataSourceID(tenant));
 
         const sharedContext = ds.createSharedContext();
 
@@ -318,25 +319,16 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns
      * @memberof EndpointController
      */
-    protected getAuthorizationRecord(tenant_id: string, client_id: string, redirect_uri: string) {
-        const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(tenant_id);
+    protected getAuthorizationRecord(tenant: ISysTenant, client_id: string, redirect_uri: string) {
+        const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(
+            databaseUtils.getTenantDataSourceID(tenant)
+        );
         const authViewDs = new SysAuthorizationViewDataService({ dataSource });
         if (redirect_uri === "m2m") {
-            return authViewDs.findApplicationByClientIdOnly({ client_id });
+            return authViewDs.findByClientIdOnly({ client_id });
         } else {
-            return authViewDs.findApplicationByClientIdAndRedirectUri({ client_id, redirect_uri });
+            return authViewDs.findByClientIdAndRedirectUri({ client_id, redirect_uri });
         }
-    }
-    /**
-     * Creates a random UUID value
-     *
-     * @protected
-     * @returns
-     * @memberof EndPointController
-     */
-    protected getUUID() {
-        // random bytes length is arbitrary
-        return crypto.createHash("md5").update(crypto.randomBytes(32).toString("hex")).digest("hex");
     }
 
     /**
@@ -349,7 +341,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     protected createFlowUrl(action: string, flow?: string) {
         const { protocol, hostname, socket } = this.request;
         return `${protocol}://${hostname}${this.isLocalEnv() ? `:${socket.localPort}` : ""}/af/${action}?flow=${
-            flow || this.getUUID()
+            flow || commonUtils.getUUID()
         }`;
     }
 
@@ -386,10 +378,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndPointController
      */
     protected async initializeTenantDataSource(tenant: ISysTenant) {
-        const tenantDatabase = tenant.name.replace(/\./gi, "_");
+        const tenantDatabase = tenant.name.trim().replace(/_+/gi, "_").split("_").join(" ").trim().replace(/\ /gi, "_");
         const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = this.context.getSettings<IDatabaseAppSettings>();
 
-        let dataSource: PostgreSQLDataSource = dataSourceManager.getDataSource(getTenantDataSourceID(tenant));
+        let dataSource: PostgreSQLDataSource = dataSourceManager.getDataSource(
+            databaseUtils.getTenantDataSourceID(tenant)
+        );
 
         //  Register the data source if needed
         if (!dataSource) {

@@ -1,7 +1,6 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { ApplicationModule, IDatabaseAppSettings } from "@blendsdk/webafx";
-import { PORTA_NAME } from "../../utils";
 
 export class DatabaseModule extends ApplicationModule {
     onInitialize(): Promise<void> {

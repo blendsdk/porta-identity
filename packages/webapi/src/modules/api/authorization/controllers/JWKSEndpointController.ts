@@ -5,7 +5,7 @@ import { IOidcDiscoveryKeysRequest, IOidcDiscoveryKeysResponse, ISysKey } from "
 import * as jose from "jose";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
-import { getTenantDataSourceID } from "../../../../utils";
+import { databaseUtils } from "../../../../utils";
 import { EndpointController } from "./EndpointControllerBase";
 interface IJwkKey {
     privateKey: string;
@@ -35,7 +35,7 @@ export class JWKSEndpointController extends EndpointController {
             let jwks = (await this.getCache().getValue(cacheKey)) || undefined;
             jwks = null;
             if (!jwks) {
-                const dataSource = dataSourceManager.getDataSource(getTenantDataSourceID(tenantRecord));
+                const dataSource = dataSourceManager.getDataSource(databaseUtils.getTenantDataSourceID(tenantRecord));
                 const keysDs = new SysKeyDataService({ dataSource });
                 const sysKeys = await keysDs.findJwkKeys();
                 jwks = [];

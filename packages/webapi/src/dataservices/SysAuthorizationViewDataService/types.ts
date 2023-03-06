@@ -5,29 +5,29 @@
 
 /**
  * @export
- * @interface ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams
+ * @interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
  */
-export interface ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams {
+export interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams {
 	/**
 	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams
+	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 	 */
 	client_id: string;
 	/**
 	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindApplicationByClientIdAndRedirectUriParams
+	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 	 */
 	redirect_uri: string;
 }
 
 /**
  * @export
- * @interface ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams
+ * @interface ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
  */
-export interface ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams {
+export interface ISysAuthorizationViewDataServiceFindByClientIdOnlyParams {
 	/**
 	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindApplicationByClientIdOnlyParams
+	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
 	 */
 	client_id: string;
 }

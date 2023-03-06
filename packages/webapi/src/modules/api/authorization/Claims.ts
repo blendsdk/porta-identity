@@ -1,6 +1,6 @@
 import { IDictionaryOf, isNullOrUndef, isObject } from "@blendsdk/stdlib";
 import { IPortaSessionInfo } from "../../../types";
-import { parseSeparatedTokens } from "../../../utils";
+import { commonUtils } from "../../../utils";
 
 /**
  * Interface describing a claim
@@ -277,7 +277,7 @@ export class Claims {
         const scopeList = [scope, Object.keys(claimsObj)].filter(Boolean).join(" ");
 
         // find all handler by scope
-        Object.keys(parseSeparatedTokens(scopeList)).forEach((scopeName) => {
+        Object.keys(commonUtils.parseSeparatedTokens(scopeList)).forEach((scopeName) => {
             this.handlers
                 .filter((item) => {
                     return item.scope === scopeName;
