@@ -24,6 +24,12 @@ export const builder: CommandBuilder = {
     }
 };
 
+/**
+ * Check and initialize the registry database
+ *
+ * @export
+ * @returns
+ */
 export function checkAndInitialize() {
     return new Promise<void>(async (resolve, reject) => {
         try {
@@ -43,7 +49,15 @@ export function checkAndInitialize() {
     });
 }
 
-const isInitSequence = () => {
+/**
+ * Check if this is a promoted "container" instance
+ *
+ * @returns
+ */
+function isInitSequence() {
+    /**
+     * Wait method
+     */
     const wait = (ms?: number) => {
         const getRandomInt = (min: number, max: number) => {
             min = Math.ceil(min);
@@ -60,39 +74,47 @@ const isInitSequence = () => {
 
     return new Promise<boolean>(async (resolve, reject) => {
         try {
+            // Get the redis credentials
             const { REDIS_HOST, REDIS_PASSWORD, REDIS_PORT } = application.getSettings<any>();
+
+            // Connect to redis
             const cache = new RedisCache({
                 host: REDIS_HOST,
                 password: REDIS_PASSWORD,
                 port: REDIS_PORT,
                 uniqueId: "startup"
             });
-            const id = commonUtils.getUUID();
             await cache.connect();
+
+            // Create an ID and write/overwrite it to redis cache immediately
+            const id = commonUtils.getUUID();
             await cache.setValue("rank", id);
+
             let count = 0;
             let last = false;
-            const counts = process.env.BYPASS ? 2 : 10;
+            const counts = process.env.BYPASS ? 2 : 10; //
+
+            // Start waiting and counting for `counts` random seconds
+            // to make the last "container" instance to surface!
             while (count !== counts) {
-                process.stdout.write(".");
                 await wait();
                 last = id === (await cache.getValue("rank"));
                 count += 1;
             }
+            // return if this is the last container
             resolve(last);
         } catch (err) {
             reject(err);
         }
     });
-};
+}
 
 export const handler = async (argv: any) => {
     try {
         application.loadFileConfig(argv.config);
         try {
-            const promoted = await isInitSequence();
             await application.run();
-            if (promoted) {
+            if (await isInitSequence()) {
                 await checkAndInitialize();
             }
         } catch (err) {
