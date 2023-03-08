@@ -46,10 +46,7 @@ class CommonUtils {
     ) {
         switch (code_challenge_method) {
             case eOAuthPKCECodeChallengeMethod.S256:
-                return new Promise(async (resolve) => {
-                    resolve(await sha256Verify(code_verifier, code_challenge, "base64url"));
-                });
-                break;
+                return sha256Verify(code_verifier, code_challenge, "base64url");
             default:
                 return new Promise((resolve) => {
                     errors.push("code_challenge_method");
