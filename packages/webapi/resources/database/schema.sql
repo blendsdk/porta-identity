@@ -17,12 +17,14 @@ DROP TABLE IF EXISTS sys_key CASCADE;
 CREATE TABLE sys_tenant();
 ALTER TABLE sys_tenant ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_tenant ADD COLUMN name varchar NOT NULL;
+ALTER TABLE sys_tenant ADD COLUMN database varchar NOT NULL;
 ALTER TABLE sys_tenant ADD COLUMN is_active boolean  DEFAULT true;
 ALTER TABLE sys_tenant ADD COLUMN allow_reset_password boolean  DEFAULT false;
 ALTER TABLE sys_tenant ADD COLUMN allow_registration boolean  DEFAULT false;
 ALTER TABLE sys_tenant ADD COLUMN organization varchar NOT NULL;
 ALTER TABLE sys_tenant ADD PRIMARY KEY (id);
 ALTER TABLE sys_tenant ADD UNIQUE (name);
+ALTER TABLE sys_tenant ADD UNIQUE (database);
 CREATE TABLE sys_user();
 ALTER TABLE sys_user ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_user ADD COLUMN username varchar NOT NULL;
@@ -71,6 +73,7 @@ ALTER TABLE sys_client ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_client ADD COLUMN client_id varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN client_type_id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_client ADD COLUMN logo varchar;
+ALTER TABLE sys_client ADD COLUMN application_name varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN fallback_uri varchar;
 ALTER TABLE sys_client ADD COLUMN description varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN secret varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
@@ -129,7 +132,8 @@ ALTER TABLE sys_user_mfa ADD FOREIGN KEY (mfa_id) REFERENCES sys_mfa (id) ON UPD
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
     scc.user_id confidential_user_id,
-    sc.client_id as client_id,
+    sc.client_id,
+    sc.application_name,
     sc.secret as client_secret,
     sc.session_length,
     ct.client_type,
@@ -190,12 +194,14 @@ DROP TABLE IF EXISTS sys_key CASCADE;
 CREATE TABLE sys_tenant();
 ALTER TABLE sys_tenant ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_tenant ADD COLUMN name varchar NOT NULL;
+ALTER TABLE sys_tenant ADD COLUMN database varchar NOT NULL;
 ALTER TABLE sys_tenant ADD COLUMN is_active boolean  DEFAULT true;
 ALTER TABLE sys_tenant ADD COLUMN allow_reset_password boolean  DEFAULT false;
 ALTER TABLE sys_tenant ADD COLUMN allow_registration boolean  DEFAULT false;
 ALTER TABLE sys_tenant ADD COLUMN organization varchar NOT NULL;
 ALTER TABLE sys_tenant ADD PRIMARY KEY (id);
 ALTER TABLE sys_tenant ADD UNIQUE (name);
+ALTER TABLE sys_tenant ADD UNIQUE (database);
 CREATE TABLE sys_user();
 ALTER TABLE sys_user ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_user ADD COLUMN username varchar NOT NULL;
@@ -244,6 +250,7 @@ ALTER TABLE sys_client ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_client ADD COLUMN client_id varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN client_type_id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_client ADD COLUMN logo varchar;
+ALTER TABLE sys_client ADD COLUMN application_name varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN fallback_uri varchar;
 ALTER TABLE sys_client ADD COLUMN description varchar NOT NULL;
 ALTER TABLE sys_client ADD COLUMN secret varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
@@ -302,7 +309,8 @@ ALTER TABLE sys_user_mfa ADD FOREIGN KEY (mfa_id) REFERENCES sys_mfa (id) ON UPD
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
     scc.user_id confidential_user_id,
-    sc.client_id as client_id,
+    sc.client_id,
+    sc.application_name,
     sc.secret as client_secret,
     sc.session_length,
     ct.client_type,

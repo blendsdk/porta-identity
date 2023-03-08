@@ -62,3 +62,15 @@ export interface ISysTenantDataServiceFindSysTenantByNameParams {
 	 */
 	name: string;
 }
+
+/**
+ * @export
+ * @interface ISysTenantDataServiceFindSysTenantByDatabaseParams
+ */
+export interface ISysTenantDataServiceFindSysTenantByDatabaseParams {
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindSysTenantByDatabaseParams
+	 */
+	database: string;
+}

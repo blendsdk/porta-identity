@@ -24,6 +24,11 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
 	client_secret: string;
 	/**
 	 * @type number
@@ -173,6 +178,11 @@ export interface ISysTenant {
 	 * @memberOf ISysTenant
 	 */
 	name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenant
+	 */
+	database: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysTenant
@@ -392,6 +402,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	logo?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClient
+	 */
+	application_name: string;
 	/**
 	 * @type string
 	 * @memberOf ISysClient

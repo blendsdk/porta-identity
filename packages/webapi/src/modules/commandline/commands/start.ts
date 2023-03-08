@@ -36,6 +36,7 @@ export function checkAndInitialize() {
             const { PORTA_ADMIN, PORTA_PASSWORD } = application.getSettings<IPortaApplicationSetting>();
             await databaseUtils.initializeTenant(
                 PORTA_REGISTRY,
+                PORTA_REGISTRY,
                 "Porta Registry",
                 false,
                 true,
@@ -101,6 +102,7 @@ function isInitSequence() {
                 last = id === (await cache.getValue("rank"));
                 count += 1;
             }
+
             // return if this is the last container
             resolve(last);
         } catch (err) {

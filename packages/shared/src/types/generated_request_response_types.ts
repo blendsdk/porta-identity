@@ -293,13 +293,31 @@ export interface ITokenResponse {
  * @export
  * @interface ISigninRequest
  */
-export interface ISigninRequest {}
+export interface ISigninRequest {
+	/**
+	 * @type string
+	 * @memberOf ISigninRequest
+	 */
+	af?: string;
+}
+
+/**
+ * @export
+ * @interface ISignin
+ */
+export interface ISignin {}
 
 /**
  * @export
  * @interface ISigninResponse
  */
-export interface ISigninResponse {}
+export interface ISigninResponse {
+	/**
+	 * @type ISignin
+	 * @memberOf ISigninResponse
+	 */
+	data: ISignin;
+}
 
 /**
  * @export
@@ -310,7 +328,7 @@ export interface IRedirectRequest {
 	 * @type string
 	 * @memberOf IRedirectRequest
 	 */
-	flow: string;
+	af: string;
 }
 
 /**
@@ -335,7 +353,13 @@ export interface IRedirectResponse {
  * @export
  * @interface IFlowInfoRequest
  */
-export interface IFlowInfoRequest {}
+export interface IFlowInfoRequest {
+	/**
+	 * @type string
+	 * @memberOf IFlowInfoRequest
+	 */
+	af?: string;
+}
 
 /**
  * @export
@@ -396,6 +420,11 @@ export interface ICheckFlowRequest {
 	 * @memberOf ICheckFlowRequest
 	 */
 	state: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckFlowRequest
+	 */
+	af?: string;
 	/**
 	 * @type string
 	 * @memberOf ICheckFlowRequest

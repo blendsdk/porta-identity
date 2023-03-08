@@ -84,7 +84,14 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("af", { optional: true, location: eParameterLocation.query });
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createResponseType(response_type, payload_type);
+        }
     });
 
     builder.defineApi({
@@ -98,7 +105,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
-                .addString("flow", { location: eParameterLocation.query });
+                .addString("af", { location: eParameterLocation.query });
             typeSchema.createAppendType(payload_type);
             typeSchema.createResponseType(response_type, payload_type);
         }
@@ -114,7 +121,10 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         method: "post",
         public: true,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
-            typeSchema.createAppendType(request_type);
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("af", { optional: true });
+
             typeSchema
                 .createAppendType(payload_type) //
                 .addString("logo")
@@ -141,6 +151,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
             typeSchema
                 .createAppendType(request_type)
                 .addString("state") //
+                .addString("af", { optional: true })
                 .addString("options", { optional: true });
 
             typeSchema.createResponseType(response_type, payload_type);

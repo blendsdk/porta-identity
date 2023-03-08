@@ -52,6 +52,9 @@ export const validationSchema = {
 				client_id: {
 					type: eJsonSchemaType.string
 				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
 				client_secret: {
 					type: eJsonSchemaType.string
 				},
@@ -87,6 +90,7 @@ export const validationSchema = {
 			required: [
 				"confidential_user_id",
 				"client_id",
+				"application_name",
 				"client_secret",
 				"session_length",
 				"client_type",
@@ -173,6 +177,9 @@ export const validationSchema = {
 				name: {
 					type: eJsonSchemaType.string
 				},
+				database: {
+					type: eJsonSchemaType.string
+				},
 				is_active: {
 					type: eJsonSchemaType.boolean
 				},
@@ -186,7 +193,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["name", "organization"]
+			required: ["name", "database", "organization"]
 		},
 		sys_user: {
 			type: eJsonSchemaType.object,
@@ -333,6 +340,9 @@ export const validationSchema = {
 				logo: {
 					type: eJsonSchemaType.string
 				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
 				fallback_uri: {
 					type: eJsonSchemaType.string
 				},
@@ -355,7 +365,7 @@ export const validationSchema = {
 					format: "datetime"
 				}
 			},
-			required: ["client_id", "client_type_id", "description"]
+			required: ["client_id", "client_type_id", "application_name", "description"]
 		},
 		sys_client_type: {
 			type: eJsonSchemaType.object,
@@ -673,23 +683,37 @@ export const validationSchema = {
 			required: ["access_token", "token_type", "expires_in", "id_token"]
 		},
 		signin_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				af: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				}
+			}
+		},
+		signin: {
 			type: eJsonSchemaType.object
 		},
 		redirect_request: {
 			type: eJsonSchemaType.object,
 			properties: {
-				flow: {
+				af: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.query
 				}
 			},
-			required: ["flow"]
+			required: ["af"]
 		},
 		redirect: {
 			type: eJsonSchemaType.object
 		},
 		flow_info_request: {
-			type: eJsonSchemaType.object
+			type: eJsonSchemaType.object,
+			properties: {
+				af: {
+					type: eJsonSchemaType.string
+				}
+			}
 		},
 		flow_info: {
 			type: eJsonSchemaType.object,
@@ -719,6 +743,9 @@ export const validationSchema = {
 			type: eJsonSchemaType.object,
 			properties: {
 				state: {
+					type: eJsonSchemaType.string
+				},
+				af: {
 					type: eJsonSchemaType.string
 				},
 				options: {

@@ -143,3 +143,9 @@ export interface IErrorResponseParams {
     error_uri?: string;
     response_mode: string;
 }
+
+export enum eClientType {
+    web_app = "18cc1ad1-f93a-41bb-a547-ffda33b638c9",
+    mobile_app = "8a59a08a-c721-4736-9bff-751c408b3c43",
+    confidential = "0a2bff25-89ed-4c99-9c3f-dd79d5a2d075"
+}

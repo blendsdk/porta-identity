@@ -50,9 +50,9 @@ export interface IPortaApi {
 	authorization: {
 		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
 		token: THttpRequest<ITokenRequest, ITokenResponse>;
-		signin: THttpRequest<ISigninRequest | void, ISigninResponse>;
+		signin: THttpRequest<ISigninRequest, ISigninResponse>;
 		redirect: THttpRequest<IRedirectRequest, IRedirectResponse>;
-		flowInfo: THttpRequest<IFlowInfoRequest | void, IFlowInfoResponse>;
+		flowInfo: THttpRequest<IFlowInfoRequest, IFlowInfoResponse>;
 		checkFlow: THttpRequest<ICheckFlowRequest, ICheckFlowResponse>;
 		oidcDiscovery: THttpRequest<IOidcDiscoveryRequest, IOidcDiscoveryResponse>;
 		oidcDiscoveryKeys: THttpRequest<IOidcDiscoveryKeysRequest, IOidcDiscoveryKeysResponse>;

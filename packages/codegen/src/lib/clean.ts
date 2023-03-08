@@ -10,7 +10,7 @@ import { consoleLogger, projectRoot } from "./lib";
  */
 export function clean_generated() {
     const folder = path.resolve(projectRoot, "**", "generated_*");
-    const files = glob.sync(folder);
+    const files = glob.globSync(folder);
     files.forEach((f) => {
         consoleLogger.info(`Deleting ${f.replace(projectRoot, "")}`);
         fs.unlinkSync(f);

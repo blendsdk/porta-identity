@@ -3,7 +3,8 @@ import {
 	ISysTenantDataServiceFindSysTenantByIdParams,
 	ISysTenantDataServiceDeleteSysTenantByIdFilter,
 	ISysTenantDataServiceUpdateSysTenantByIdFilter,
-	ISysTenantDataServiceFindSysTenantByNameParams
+	ISysTenantDataServiceFindSysTenantByNameParams,
+	ISysTenantDataServiceFindSysTenantByDatabaseParams
 } from "./types";
 import { ISysTenant } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -105,6 +106,24 @@ export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExe
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindSysTenantByNameParams>(
 			`SELECT * FROM sys_tenant WHERE name = :name`,
+			params,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_tenant record by
+	 * @param {ISysTenantDataServiceFindSysTenantByDatabaseParams}
+	 * @returns {ISysTenant}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async findSysTenantByDatabase(
+		params: ISysTenantDataServiceFindSysTenantByDatabaseParams
+	): Promise<ISysTenant> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindSysTenantByDatabaseParams>(
+			`SELECT * FROM sys_tenant WHERE database = :database`,
 			params,
 			{ single: true }
 		);

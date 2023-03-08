@@ -1,13 +1,13 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { ISysClientType, ISysTenant } from "@porta/shared";
-import { IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
+import { ISysClient, ISysClientType, ISysRedirect, ISysTenant } from "@porta/shared";
+import { eClientType, IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
 import fs from "fs";
 import path from "path";
 import util from "util";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { application } from "../modules/application";
-import { asyncForEach, ucFirst } from "@blendsdk/stdlib";
+import { asyncForEach, isString, ucFirst } from "@blendsdk/stdlib";
 import { SysClientTypeDataService } from "../dataservices/SysClientTypeDataService";
 import { sha256Hash } from "@blendsdk/crypto";
 import { SysGroupDataService } from "../dataservices/SysGroupDataService";
@@ -19,6 +19,8 @@ import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService
 import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { commonUtils } from "./CommonUtils";
+import { SysClientDataService } from "../dataservices/SysClientDataService";
+import { SysRedirectDataService } from "../dataservices/SysRedirectDataService";
 
 class DatabaseUtils {
     /**
@@ -32,13 +34,106 @@ class DatabaseUtils {
         return tenant.name === PORTA_REGISTRY ? "default" : tenant.id;
     }
 
-    public dropTenantDatabase(dbName: string) {
+    public findTenant(tenant: string) {
+        const tenantDs = new SysTenantDataService();
+        return tenantDs.findByNameOrId({ name: tenant.toString() });
+    }
+
+    /**
+     * Creates a client with a redirect record for a given tenant
+     *
+     * @param {ISysClient} client
+     * @param {ISysRedirect} redirect
+     * @param {ISysTenant} tenant
+     * @returns
+     * @memberof DatabaseUtils
+     */
+    public async createClient(client: ISysClient, redirect: ISysRedirect, tenant: ISysTenant) {
+        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(this.getTenantDataSourceID(tenant));
+
+        let clientRecord: ISysClient = undefined;
+        let redirectRecord: ISysRedirect = undefined;
+
+        await ds.withContext(async (sharedContext) => {
+            const clientDs = new SysClientDataService({ sharedContext });
+            const redirectDs = new SysRedirectDataService({ sharedContext });
+
+            client = client || ({} as any);
+            client.application_name = client.application_name || tenant.organization;
+            client.client_id = commonUtils.getUUID();
+            client.secret = commonUtils.getUUID();
+            client.client_type_id = client.client_type_id || eClientType.web_app;
+            client.description = client.description || `${tenant.name} webapp client`;
+
+            clientRecord = await clientDs.insertIntoSysClient(client);
+            redirect.client_id = clientRecord.id;
+            redirectRecord = await redirectDs.insertIntoSysRedirect(redirect);
+        });
+
+        return {
+            client: clientRecord,
+            redirect: redirectRecord
+        };
+    }
+
+    /**
+     * Initializes a DataSource for a tenant
+     *
+     * @param {ISysTenant} tenant
+     * @memberof DatabaseUtils
+     */
+    public async initializeTenantDataSource(tenant: ISysTenant | string) {
+        const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = application.getSettings<IDatabaseAppSettings>();
+        let tenantRecord: ISysTenant = undefined;
+
+        if (isString(tenant)) {
+            tenantRecord = await this.findTenant(tenant.toString());
+        } else {
+            tenantRecord = tenant as ISysTenant;
+        }
+
+        let dataSource: PostgreSQLDataSource = dataSourceManager.getDataSource(
+            this.getTenantDataSourceID(tenantRecord)
+        );
+
+        //  Register the data source if needed
+        if (!dataSource) {
+            dataSourceManager.registerDataSource(() => {
+                return new PostgreSQLDataSource({
+                    host: DB_HOST,
+                    port: DB_PORT,
+                    user: DB_USER,
+                    password: DB_PASSWORD,
+                    database: tenantRecord.database
+                });
+            }, tenantRecord.id);
+
+            // test the connection. Will break if there is something with with the database
+            dataSource = dataSourceManager.getDataSource(tenantRecord.id);
+            const ctx = await dataSource.createContext();
+            await ctx.disposeContext();
+        }
+    }
+
+    /**
+     * Delete the tenant by removing the database name
+     *
+     * @param {string} name
+     * @returns
+     * @memberof DatabaseUtils
+     */
+    public deleteTenant(name: string) {
         return new Promise<boolean>(async (resolve, reject) => {
             try {
                 const defaultDataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>();
                 await defaultDataSource.withContext(async (asyncContext) => {
-                    const ctx = await asyncContext;
-                    await ctx.executeQuery(`DROP DATABASE IF EXISTS porta_${dbName}`);
+                    const tenantDs = new SysTenantDataService({ sharedContext: asyncContext });
+                    const tenantRecord = await tenantDs.findByNameOrId({ name });
+                    if (tenantRecord) {
+                        const ctx = await asyncContext;
+                        await ctx.executeQuery(`DROP DATABASE IF EXISTS ${tenantRecord.database}`);
+                        await tenantDs.deleteSysTenantById({ id: tenantRecord.id });
+                    }
                 });
                 resolve(true);
             } catch (err) {
@@ -129,21 +224,25 @@ class DatabaseUtils {
 
             const clientTypeData: Partial<ISysClientType>[] = [
                 {
+                    id: eClientType.web_app,
+
                     client_type: "web_app",
                     description: "OIDC client that is a web application"
                 },
                 {
+                    id: eClientType.mobile_app,
                     client_type: "mobile_app",
                     description: "OIDC client that is a mobile application"
                 },
                 {
+                    id: eClientType.confidential,
                     client_type: "confidential",
                     description: "OIDC client that is a server side API"
                 }
             ];
 
-            await asyncForEach(clientTypeData, async ({ client_type, description }: any) => {
-                await clientTypeDs.insertIntoSysClientType({ client_type, description });
+            await asyncForEach(clientTypeData, async ({ id, client_type, description }: any) => {
+                await clientTypeDs.insertIntoSysClientType({ id, client_type, description });
             });
 
             const adminUser = await userDs.insertIntoSysUser({
@@ -214,6 +313,7 @@ class DatabaseUtils {
      */
     public initializeTenant(
         tenantName: string,
+        databaseName: string,
         organization: string,
         allow_registration: boolean,
         allow_reset_password: boolean,
@@ -244,11 +344,12 @@ class DatabaseUtils {
                         await dbConn.withContext(async (sharedContext) => {
                             const tenantDs = new SysTenantDataService({ sharedContext });
                             tenantDs.insertIntoSysTenant({
-                                name: PORTA_REGISTRY.toLocaleLowerCase(),
+                                name: tenantName,
                                 organization: "Porta Registry Tenant",
                                 allow_registration: false,
                                 allow_reset_password: true,
-                                is_active: true
+                                is_active: true,
+                                database: databaseName
                             });
                         });
                     }
@@ -260,15 +361,17 @@ class DatabaseUtils {
                     const tenantRecord = await tenantDs.findByNameOrId({ name: tenantName });
                     // create a tenant record and initialize the tenant database
                     if (!tenantRecord) {
+                        databaseName = `porta_${databaseName}`;
                         application.getLogger().info(`Initializing ${tenantName} tenant.`);
-                        const dbConn = await this.initializeDatabaseSchema(`${PORTA_REGISTRY}_${tenantName}`);
+                        const dbConn = await this.initializeDatabaseSchema(databaseName);
                         await this.seedDatabase(dbConn, admin_user, admin_password, tenantName);
-                        tenantDs.insertIntoSysTenant({
+                        await tenantDs.insertIntoSysTenant({
                             name: tenantName,
                             organization,
                             allow_registration,
                             allow_reset_password,
-                            is_active: true
+                            is_active: true,
+                            database: databaseName
                         });
                         await dbConn.closeConnection();
                     }

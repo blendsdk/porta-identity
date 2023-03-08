@@ -2,8 +2,7 @@ import axios from "axios";
 import express from "express";
 import { Server } from "http";
 import { PortaApi } from "./api";
-import { flows } from "./flows";
-import { BASE_URL } from "./lib";
+import { BASE_URL, parseState } from "./lib";
 
 let previousCookie = undefined;
 
@@ -38,16 +37,15 @@ export const stop_local_server = (callback: () => void) => {
 };
 
 local_test_express.get("/callback", async (_req, res) => {
-    const token_params = flows[_req.query.state.toString()]?.token_params || {};
-    const data = {
-        ...token_params
+    const data: any = {
+        ...parseState(_req.query?.state)
     };
     if (!data.code) {
-        data.code = _req.query.code.toString();
+        data.code = _req.query.code?.toString();
     }
     previousCookie = undefined;
     await axios
-        .post(`${BASE_URL}/default/oauth2/token`, data)
+        .post(`${BASE_URL}/${data.tenant}/oauth2/token`, data)
         .then((_res) => {
             previousCookie = undefined;
             res.status(_res.status).send(_res.data);
@@ -55,20 +53,18 @@ local_test_express.get("/callback", async (_req, res) => {
         .catch((_err) => {
             previousCookie = undefined;
             res.status(_err.response.status).send(_err.response?.data);
-        })
+        });
 });
 
 local_test_express.get("/fe/auth/signin", (req, res, _next) => {
     previousCookie = req.headers.cookie;
-    let { signin } = req.headers || {};
-    const { username, password } = signin
-        ? JSON.parse(Buffer.from(signin as string, "base64").toString())
-        : { username: undefined, password: undefined };
+    const { username, password } = parseState(req.query?.state);
     PortaApi.authorization
-        .flowInfo({})
+        .flowInfo({ af: req.query.af.toString() })
         .then(() => {
             PortaApi.authorization
                 .checkFlow({
+                    af: req.query.af.toString(),
                     state: "check_account",
                     options: username
                 })
@@ -83,6 +79,7 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                     } else {
                         PortaApi.authorization
                             .checkFlow({
+                                af: req.query.af.toString(),
                                 state: "check_pwd",
                                 options: password
                             })
@@ -96,7 +93,7 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                                         .then((_res) => {
                                             res.status(_res.status).send(_res.data);
                                         })
-                                        .catch(({response}) => {
+                                        .catch(({ response }) => {
                                             res.status(response.status).send(response.data);
                                         });
                                 } else {

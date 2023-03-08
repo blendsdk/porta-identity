@@ -26,6 +26,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     tenant //
         .primaryKeyColumn("id", true)
         .stringColumn("name", { unique: true })
+        .stringColumn("database", { unique: true })
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("allow_reset_password", { default: "false" })
         .booleanColumn("allow_registration", { default: "false" })
@@ -101,6 +102,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("client_id", { unique: true })
         .referenceColumn("client_type_id", client_type, "id")
         .stringColumn("logo", { required: false }) // base64 encoded image data
+        .stringColumn("application_name")
         .stringColumn("fallback_uri", { required: false }) // should be required
         .stringColumn("description")
         .stringColumn("secret", { default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')" })

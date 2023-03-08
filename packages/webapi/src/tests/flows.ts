@@ -10,7 +10,7 @@ export interface IFlow {
 export const flows: IDictionaryOf<IFlow> = {
     invalid_grant_type: {
         request: {
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback",
             response_type: "code",
             response_mode: "query",
@@ -28,13 +28,13 @@ export const flows: IDictionaryOf<IFlow> = {
             code_verifier: "hello",
             grant_type: "invalid",
             client_secret: "pkce",
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback"
         }
     },
     invalid_code_challenge_method: {
         request: {
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback",
             response_type: "code",
             response_mode: "query",
@@ -52,13 +52,13 @@ export const flows: IDictionaryOf<IFlow> = {
             code_verifier: "hello",
             grant_type: "authorization_code",
             client_secret: "pkce",
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback"
         }
     },
     happy_flow_with_pkce: {
         request: {
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback",
             response_type: "code",
             response_mode: "query",
@@ -76,13 +76,13 @@ export const flows: IDictionaryOf<IFlow> = {
             code_verifier: "hello",
             grant_type: "authorization_code",
             client_secret: "pkce",
-            client_id: "webapp-with-pkce-client",
+            // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback"
         }
     },
     invalid_token_code: {
         request: {
-            client_id: "webapp-client",
+            // client_id: "webapp-client",
             redirect_uri: "http://localhost:4020/callback",
             response_type: "code",
             response_mode: "query",
@@ -97,14 +97,14 @@ export const flows: IDictionaryOf<IFlow> = {
         token_params: {
             grant_type: "authorization_code",
             client_secret: "secret",
-            client_id: "webapp-client",
+            // client_id: "webapp-client",
             redirect_uri: "http://localhost:4020/callback",
             code: Date.now().toString()
         }
     },
     happy_flow: {
         request: {
-            client_id: "webapp-client",
+            // client_id: "webapp-client",
             redirect_uri: "http://localhost:4020/callback",
             response_type: "code",
             response_mode: "query",
@@ -119,7 +119,7 @@ export const flows: IDictionaryOf<IFlow> = {
         token_params: {
             grant_type: "authorization_code",
             client_secret: "secret",
-            client_id: "webapp-client",
+            // client_id: "webapp-client",
             redirect_uri: "http://localhost:4020/callback"
         }
     }

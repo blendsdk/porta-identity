@@ -1,6 +1,7 @@
 select
     scc.user_id confidential_user_id,
-    sc.client_id as client_id,
+    sc.client_id,
+    sc.application_name,
     sc.secret as client_secret,
     sc.session_length,
     ct.client_type,

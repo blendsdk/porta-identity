@@ -116,12 +116,11 @@ export class AuthorizeEndpointController extends EndpointController {
             if (errors.length === 0) {
                 const { PORTA_SIGNIN_URI } = this.context.getSettings<IPortaApplicationSetting>();
                 let requireLoginDueMaxAge = false;
+                let signinUrl = undefined;
 
                 // here we need to check the prompt parameter and
                 if (prompt_type === eOAuthPrompt.none) {
-                    return new RedirectResponse({
-                        url: this.createFlowUrl("signin")
-                    });
+                    signinUrl = this.createFlowUrl("signin");
                 } else {
                     if (max_age && returningAuthorization) {
                         const { sessionInfo } = await this.getCache().getValue<IPortaSessionStorage>(
@@ -133,13 +132,27 @@ export class AuthorizeEndpointController extends EndpointController {
 
                     // here we skip the UI flow if we already have a user (currentUser) that is signed in
                     // and the prompt is not explicitly set
-                    return new RedirectResponse({
-                        url:
-                            returningAuthorization && isNullOrUndef(authRequest.prompt) && !requireLoginDueMaxAge
-                                ? this.createFlowUrl("signin")
-                                : PORTA_SIGNIN_URI || `${this.request.baseUrl}/fe/auth/signin`
-                    });
+                    signinUrl =
+                        returningAuthorization && isNullOrUndef(authRequest.prompt) && !requireLoginDueMaxAge
+                            ? this.createFlowUrl("signin")
+                            : PORTA_SIGNIN_URI || `${this.request.baseUrl}/fe/auth/signin`;
                 }
+
+                const params = new URLSearchParams();
+
+                if (!isNullOrUndef(this.request.headers["x-blend-no-browser"])) {
+                    params.append("af", flowId);
+                }
+
+                if (state) {
+                    params.append("state", state);
+                }
+
+                signinUrl = [signinUrl, params.toString()].filter(Boolean).join("?");
+
+                return new RedirectResponse({
+                    url: signinUrl
+                });
             } else {
                 this.clearAuthenticationFlow(flowId);
                 this.clearAuthenticationFlow();

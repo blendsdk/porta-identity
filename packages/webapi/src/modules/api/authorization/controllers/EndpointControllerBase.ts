@@ -1,7 +1,7 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { deepCopy, isObject } from "@blendsdk/stdlib";
-import { IDatabaseAppSettings, TOKEN_KEY_SPLIT } from "@blendsdk/webafx";
+import { TOKEN_KEY_SPLIT } from "@blendsdk/webafx";
 import {
     Controller,
     IRequestContext,
@@ -261,6 +261,17 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
+     * Find the flow id either based on a cookie or request parameter
+     *
+     * @protected
+     * @returns {string}
+     * @memberof EndpointController
+     */
+    protected findFlowID(): string {
+        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string }>().af || undefined;
+    }
+
+    /**
      * Gets the current authentication flow either from the cookie or the `flow` which is also
      * the ota code
      *
@@ -269,13 +280,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns {Promise<ICachedFlowInformation>}
      * @memberof EndPointController
      */
-    protected async getCurrentAuthenticationFlow(flow: string | null): Promise<ICachedFlowInformation> {
-        const flowId = flow === null ? this.getCookie("_af", true) : flow;
-        if (flowId) {
-            return this.getFlow<ICachedFlowInformation>(eFlow.info, flowId);
-        } else {
-            return undefined;
-        }
+    protected async getCurrentAuthenticationFlow(flowId?: string): Promise<ICachedFlowInformation> {
+        return this.getFlow<ICachedFlowInformation>(eFlow.info, flowId || this.findFlowID());
     }
 
     /**
@@ -303,9 +309,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns {Promise<IAuthenticationFlowState>}
      * @memberof AuthorizationController
      */
-    protected async getCurrentFlowState(): Promise<IAuthenticationFlowState> {
-        const flowId = this.getCookie("_af", true);
-        return this.getFlow<IAuthenticationFlowState>(eFlow.state, flowId);
+    protected async getCurrentFlowState(flowId?: string): Promise<IAuthenticationFlowState> {
+        return this.getFlow<IAuthenticationFlowState>(eFlow.state, flowId || this.findFlowID());
     }
 
     /**
@@ -340,8 +345,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     protected createFlowUrl(action: string, flow?: string) {
         const { protocol, hostname, socket } = this.request;
-        return `${protocol}://${hostname}${this.isLocalEnv() ? `:${socket.localPort}` : ""}/af/${action}?flow=${
-            flow || commonUtils.getUUID()
+        return `${protocol}://${hostname}${this.isLocalEnv() ? `:${socket.localPort}` : ""}/af/${action}?af=${
+            flow || this.findFlowID()
         }`;
     }
 
@@ -377,37 +382,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {ISysTenant} tenant
      * @memberof EndPointController
      */
-    protected async initializeTenantDataSource(tenant: ISysTenant) {
-        const tenantDatabase = tenant.name.trim().replace(/_+/gi, "_").split("_").join(" ").trim().replace(/\ /gi, "_");
-        const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = this.context.getSettings<IDatabaseAppSettings>();
-
-        let dataSource: PostgreSQLDataSource = dataSourceManager.getDataSource(
-            databaseUtils.getTenantDataSourceID(tenant)
-        );
-
-        //  Register the data source if needed
-        if (!dataSource) {
-            dataSourceManager.registerDataSource(() => {
-                return new PostgreSQLDataSource({
-                    host: DB_HOST,
-                    port: DB_PORT,
-                    user: DB_USER,
-                    password: DB_PASSWORD,
-                    database: tenantDatabase
-                });
-            }, tenant.id);
-
-            try {
-                // test the connection
-                dataSource = dataSourceManager.getDataSource(tenant.id);
-                const ctx = await dataSource.createContext();
-                await ctx.disposeContext();
-            } catch (err) {
-                // if failed then create the database and retry
-                await this.createTenantDatabase(tenantDatabase, DB_USER, tenant);
-                await this.initializeTenantDatabase(tenant);
-            }
-        }
+    protected initializeTenantDataSource(tenant: ISysTenant) {
+        return databaseUtils.initializeTenantDataSource(tenant);
     }
 
     /**

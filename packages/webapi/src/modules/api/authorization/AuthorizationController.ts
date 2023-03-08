@@ -23,8 +23,13 @@ import {
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
+import { CheckFlowEndpointController } from "./controllers/CheckFlowEndpointController";
+import { FlowInfoEndpointController } from "./controllers/FlowInfoEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
+import { RedirectEndpointController } from "./controllers/RedirectEndpointController";
+import { SigninEndpointController } from "./controllers/SigninEndpointController";
+import { TokenEndpointController } from "./controllers/TokenEndpointController";
 
 /**
  * @export
@@ -52,20 +57,25 @@ export class AuthorizationController extends AuthorizationControllerBase {
         const subController = new AuthorizeEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
-    public token(_params: ITokenRequest): Promise<Response<ITokenResponse>> {
-        throw new Error("Method not implemented.");
+    public token(params: ITokenRequest): Promise<Response<ITokenResponse>> {
+        const subController = new TokenEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public signin(_params: ISigninRequest): Promise<Response<ISigninResponse>> {
-        throw new Error("Method not implemented.");
+    public signin(params: ISigninRequest): Promise<Response<ISigninResponse>> {
+        const subController = new SigninEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public redirect(_params: IRedirectRequest): Promise<Response<IRedirectResponse>> {
-        throw new Error("Method not implemented.");
+    public redirect(params: IRedirectRequest): Promise<Response<IRedirectResponse>> {
+        const subController = new RedirectEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public flowInfo(_params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>> {
-        throw new Error("Method not implemented.");
+    public flowInfo(params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>> {
+        const subController = new FlowInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public checkFlow(_params: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
-        throw new Error("Method not implemented.");
+    public checkFlow(params: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
+        const subController = new CheckFlowEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
     public oidcDiscovery(params: IOidcDiscoveryRequest): Promise<Response<IOidcDiscoveryResponse>> {
         const subController = new OIDCDiscoveryEndpointController(this.createSubControllerConfig());
