@@ -49,6 +49,28 @@ describe("Default Flow Tests", () => {
         }
     });
 
+    test("Incomplete PKCE parameters", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            code_challenge_method: "S256",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("invalid_grant");
+    });
+
     test("Invalid PKCE code_challenge_method", async () => {
         const { client, redirect } = await createClient(test_set);
         const code_verifier = createCodeVerifier("hello");

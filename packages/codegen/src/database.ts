@@ -117,7 +117,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("logout_uri", { required: false })
         .stringColumn("ios_bundle_id", { required: false })
         .stringColumn("android_package_name", { required: false })
-        .stringColumn("android_signature_hash", { required: false });
+        .stringColumn("android_signature_hash", { required: false })
+        .stringColumn("type");
 
     confidential_client //
         .primaryKeyColumn("id", true)

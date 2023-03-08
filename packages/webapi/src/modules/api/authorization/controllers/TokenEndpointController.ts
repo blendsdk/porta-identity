@@ -391,14 +391,23 @@ export class TokenEndpointController extends EndpointController {
         authRequest: IAuthorizeRequest
     ) {
         const { client_type } = authRecord || {};
-        const { code_verifier } = tokenRequest || {};
-        const { code_challenge, code_challenge_method } = authRequest || {};
+        const { code_verifier = undefined } = tokenRequest || {};
+        const { code_challenge = undefined, code_challenge_method = undefined } = authRequest || {};
         const errors: string[] = [];
+
+        //TODO: test this, a SPA/mobile should not use a client_secret auth flow!
+        // this is where we need to determine the type of client based on its redirect URL!
+        // perhaps this way we could et rid of sys_client_type
+
+        /**
+         * T
+         */
 
         if (client_type === eOAuthClientType.spa && tokenRequest.client_secret) {
             errors.push("client_secret_provided_for_spa");
         }
 
+        // TODO: test client_secret flow
         if (client_type === eOAuthClientType.webapp || client_type === eOAuthClientType.webapp_pkce) {
             const isSecretValid =
                 authRecord.client_secret === tokenRequest.client_secret && !isNullOrUndef(tokenRequest.client_secret);
@@ -407,11 +416,17 @@ export class TokenEndpointController extends EndpointController {
             }
         }
 
-        if (
-            (isNullOrUndef(authRecord.confidential_user_id) && client_type === eOAuthClientType.webapp_pkce) ||
-            client_type === eOAuthClientType.spa ||
-            code_verifier
-        ) {
+        /**
+         * if any of the "code_verifier" or "code_challenge" or "code_challenge_method" exists
+         * then check the PKCE value! Except for confidential client since there cannot do challenge by nature
+         */
+        const shouldCheckPKCE =
+            (!isNullOrUndef(code_challenge) ||
+                !isNullOrUndef(code_verifier) ||
+                !isNullOrUndef(code_challenge_method)) &&
+            isNullOrUndef(authRecord.confidential_user_id);
+
+        if (shouldCheckPKCE) {
             const isValidPKCE = await commonUtils.verifyPkce(
                 code_challenge_method,
                 code_challenge,

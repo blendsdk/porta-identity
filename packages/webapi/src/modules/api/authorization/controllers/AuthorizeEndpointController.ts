@@ -345,6 +345,7 @@ export class AuthorizeEndpointController extends EndpointController {
             // none is provided
             return true;
         } else {
+            debugger;
             // only one is provided
             return false;
         }
