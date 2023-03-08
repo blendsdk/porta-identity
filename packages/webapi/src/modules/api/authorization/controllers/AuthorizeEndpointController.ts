@@ -34,7 +34,6 @@ export class AuthorizeEndpointController extends EndpointController {
      */
     public async handleRequest(authRequest: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
         // normalize to the defaults
-        debugger;
         authRequest.response_mode = authRequest.response_mode || eOAuthResponseMode.query;
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];
@@ -339,7 +338,7 @@ export class AuthorizeEndpointController extends EndpointController {
     protected isValidPKCERequest(authRequest: IAuthorizeRequest) {
         const { code_challenge, code_challenge_method } = authRequest || {};
 
-        // if both provided the when for the supported method
+        // if both provided then check for the supported method
         if (code_challenge && code_challenge_method) {
             return eOAuthPKCECodeChallengeMethod[code_challenge_method] !== undefined;
         } else if (!code_challenge && !code_challenge_method) {

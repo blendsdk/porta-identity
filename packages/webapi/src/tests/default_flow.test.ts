@@ -3,7 +3,16 @@ import { application } from "../modules/application";
 import { checkAndInitialize } from "../modules/commandline/commands/start";
 import { databaseUtils } from "../utils";
 import { PortaApi } from "./api";
-import { adminUser, BASE_URL, cleanTestTenant, createClient, initTestTenant, makeState } from "./lib";
+import {
+    adminUser,
+    BASE_URL,
+    cleanTestTenant,
+    createClient,
+    createCodeChallenge,
+    createCodeVerifier,
+    initTestTenant,
+    makeState
+} from "./lib";
 import { start_local_server, stop_local_server } from "./local_test_client";
 
 const test_set = "default_flow_tests";
@@ -38,6 +47,106 @@ describe("Default Flow Tests", () => {
         } catch (err) {
             console.error({ err });
         }
+    });
+
+    test("Invalid PKCE code_challenge_method", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const code_verifier = createCodeVerifier("hello");
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            code_challenge: await createCodeChallenge(code_verifier),
+            code_challenge_method: "plain",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser,
+                code_verifier
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("invalid_grant");
+    });
+
+    test("Invalid PKCE code_verifier", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const code_verifier = createCodeVerifier("hello");
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            code_challenge: await createCodeChallenge(code_verifier),
+            code_challenge_method: "S256",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser,
+                code_verifier: "?????"
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("invalid_grant");
+    });
+
+    test("Invalid PKCE code_challenge", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const code_verifier = createCodeVerifier("hello");
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            code_challenge: "?????",
+            code_challenge_method: "S256",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser,
+                code_verifier
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("invalid_grant");
+    });
+
+    test("Happy Flow PKCE", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const code_verifier = createCodeVerifier("hello");
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            code_challenge: await createCodeChallenge(code_verifier),
+            code_challenge_method: "S256",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser,
+                code_verifier
+            })
+        };
+        const result: any = await PortaApi.authorization.authorize(authRequest);
+        expect(result?.access_token).toBeTruthy();
     });
 
     test("Invalid Credentials", async () => {

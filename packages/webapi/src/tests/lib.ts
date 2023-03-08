@@ -1,3 +1,4 @@
+import { sha256Hash } from "@blendsdk/crypto";
 import { base64Decode, base64Encode } from "@blendsdk/stdlib";
 import { databaseUtils } from "../utils";
 
@@ -40,4 +41,12 @@ export function initTestTenant(tenantName: string) {
 
 export function cleanTestTenant(tenantName: string) {
     return databaseUtils.deleteTenant(tenantName);
+}
+
+export function createCodeVerifier(str: string) {
+    return base64Encode(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+export function createCodeChallenge(verifier: string) {
+    return sha256Hash(verifier, "base64url");
 }
