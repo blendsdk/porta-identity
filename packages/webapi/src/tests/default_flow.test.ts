@@ -3,7 +3,7 @@ import { application } from "../modules/application";
 import { checkAndInitialize } from "../modules/commandline/commands/start";
 import { databaseUtils } from "../utils";
 import { PortaApi } from "./api";
-import { adminUser, BASE_URL, cleanTestTenant, constCreateClient, initTestTenant, makeState } from "./lib";
+import { adminUser, BASE_URL, cleanTestTenant, createClient, initTestTenant, makeState } from "./lib";
 import { start_local_server, stop_local_server } from "./local_test_client";
 
 const test_set = "default_flow_tests";
@@ -40,9 +40,157 @@ describe("Default Flow Tests", () => {
         }
     });
 
-    test("basic flow", async () => {
-        const { client, redirect } = await constCreateClient(test_set);
+    test("Invalid Credentials", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                username: "hello",
+                password: "world"
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("INVALID_OR_MISSING_USERNAME");
+    });
 
+    test("Invalid Redirect URI", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: "?????????????????????",
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+        await expect(PortaApi.authorization.authorize(authRequest)).rejects.toThrow("invalid_request");
+    });
+
+    test("Invalid Response Type", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "??????",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+        const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
+        expect(message).toEqual("invalid_grant");
+    });
+
+    test("Invalid Client", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: "???????????????",
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+        await expect(PortaApi.authorization.authorize(authRequest)).rejects.toThrow("invalid_request");
+    });
+
+    test("Invalid tenant", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: "INVALID_TENANT",
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+
+        await expect(PortaApi.authorization.authorize(authRequest)).rejects.toThrow("invalid_request");
+    });
+
+    test("Invalid Token Code", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser,
+                code: "????????????????????????"
+            })
+        };
+        const result: any = await PortaApi.authorization.authorize(authRequest);
+        expect(result.error).toEqual(400);
+        expect(result.message).toEqual("invalid_grant");
+    });
+
+    test("Invalid grant type", async () => {
+        const { client, redirect } = await createClient(test_set);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: redirect.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "INVALID",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: redirect.redirect_uri,
+                ...adminUser
+            })
+        };
+        const result: any = await PortaApi.authorization.authorize(authRequest);
+        expect(result.error).toEqual(400);
+        expect(result.message).toEqual("invalid_grant");
+    });
+
+    test("Basic flow", async () => {
+        const { client, redirect } = await createClient(test_set);
         const authRequest: IAuthorizeRequest = {
             tenant: test_set,
             client_id: client.client_id,
@@ -62,48 +210,7 @@ describe("Default Flow Tests", () => {
         expect(result?.access_token).toBeTruthy();
     });
 
-    // test("sign in happy flow", async () => {
-    //     expect.assertions(1);
-    //     try {
-    //         const tenant = await databaseUtils.findTenant(test_set);
-
-    //         const { client } = await databaseUtils.createClient(
-    //             null,
-    //             {
-    //                 client_id: undefined,
-    //                 redirect_uri: flows.happy_flow.request.redirect_uri
-    //             },
-    //             tenant
-    //         );
-    //         flows.happy_flow.request.client_id = client.client_id;
-
-    //         const { data } = await axios.get(getAuthEndpoint(test_set), {
-    //             withCredentials: true,
-    //             beforeRedirect: authenticateUser(flows.happy_flow.auth),
-    //             params: flows.happy_flow.request
-    //         });
-    //         expect(data.access_token).toBeTruthy();
-    //     } catch ({ response }) {
-    //         expect(response).toBeFalsy();
-    //     }
-    // });
-
     /*
-
-    test("invalid grant type", async () => {
-        expect.assertions(1);
-        try {
-            const { data } = await axios.get(getAuthEndpoint(), {
-                withCredentials: true,
-                beforeRedirect: authenticateUser(flows.invalid_grant_type.auth),
-                params: flows.invalid_grant_type.request
-            });
-            expect(data.access_token).toBeFalsy();
-        } catch ({ response }) {
-            expect(response.data.context.errors[0].grant_type).toEqual("invalid");
-        }
-    });
-
     test("invalid pkce code challenge method", async () => {
         expect.assertions(1);
         try {

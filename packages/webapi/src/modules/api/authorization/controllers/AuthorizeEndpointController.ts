@@ -34,6 +34,7 @@ export class AuthorizeEndpointController extends EndpointController {
      */
     public async handleRequest(authRequest: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
         // normalize to the defaults
+        debugger;
         authRequest.response_mode = authRequest.response_mode || eOAuthResponseMode.query;
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];

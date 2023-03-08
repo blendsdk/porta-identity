@@ -79,48 +79,48 @@ export const flows: IDictionaryOf<IFlow> = {
             // client_id: "webapp-with-pkce-client",
             redirect_uri: "http://localhost:4020/callback"
         }
-    },
-    invalid_token_code: {
-        request: {
-            // client_id: "webapp-client",
-            redirect_uri: "http://localhost:4020/callback",
-            response_type: "code",
-            response_mode: "query",
-            nonce: encodeURIComponent(new Date().toString()),
-            scope: "something",
-            state: "invalid_token_code"
-        },
-        auth: {
-            username: "admin@blendsdk.net",
-            password: "secret"
-        },
-        token_params: {
-            grant_type: "authorization_code",
-            client_secret: "secret",
-            // client_id: "webapp-client",
-            redirect_uri: "http://localhost:4020/callback",
-            code: Date.now().toString()
-        }
-    },
-    happy_flow: {
-        request: {
-            // client_id: "webapp-client",
-            redirect_uri: "http://localhost:4020/callback",
-            response_type: "code",
-            response_mode: "query",
-            nonce: encodeURIComponent(new Date().toString()),
-            scope: "something",
-            state: "happy_flow"
-        },
-        auth: {
-            username: "admin@blendsdk.net",
-            password: "secret"
-        },
-        token_params: {
-            grant_type: "authorization_code",
-            client_secret: "secret",
-            // client_id: "webapp-client",
-            redirect_uri: "http://localhost:4020/callback"
-        }
     }
+    // invalid_token_code: {
+    //     request: {
+    //         // client_id: "webapp-client",
+    //         redirect_uri: "http://localhost:4020/callback",
+    //         response_type: "code",
+    //         response_mode: "query",
+    //         nonce: encodeURIComponent(new Date().toString()),
+    //         scope: "something",
+    //         state: "invalid_token_code"
+    //     },
+    //     auth: {
+    //         username: "admin@blendsdk.net",
+    //         password: "secret"
+    //     },
+    //     token_params: {
+    //         grant_type: "authorization_code",
+    //         client_secret: "secret",
+    //         // client_id: "webapp-client",
+    //         redirect_uri: "http://localhost:4020/callback",
+    //         code: Date.now().toString()
+    //     }
+    // }
+    // happy_flow: {
+    //     request: {
+    //         // client_id: "webapp-client",
+    //         redirect_uri: "http://localhost:4020/callback",
+    //         response_type: "code",
+    //         response_mode: "query",
+    //         nonce: encodeURIComponent(new Date().toString()),
+    //         scope: "something",
+    //         state: "happy_flow"
+    //     },
+    //     auth: {
+    //         username: "admin@blendsdk.net",
+    //         password: "secret"
+    //     },
+    //     token_params: {
+    //         grant_type: "authorization_code",
+    //         client_secret: "secret",
+    //         // client_id: "webapp-client",
+    //         redirect_uri: "http://localhost:4020/callback"
+    //     }
+    // }
 };

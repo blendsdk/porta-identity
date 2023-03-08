@@ -1,26 +1,9 @@
+import { createErrorObject, errorObjectInfo } from "@blendsdk/stdlib";
 import axios from "axios";
 import express from "express";
 import { Server } from "http";
 import { PortaApi } from "./api";
 import { BASE_URL, parseState } from "./lib";
-
-let previousCookie = undefined;
-
-axios.interceptors.request.use((config) => {
-    if (previousCookie !== undefined) {
-        config.withCredentials = true;
-        config.headers["Cookie"] = previousCookie;
-    }
-    return config;
-});
-
-axios.interceptors.response.use((config) => {
-    const cookies = config.headers["set-cookie"] || [];
-    if (cookies && cookies.length !== 0) {
-        previousCookie = cookies.join(";");
-    }
-    return config;
-});
 
 const local_test_express = express();
 let local_test_server: Server = null;
@@ -43,21 +26,21 @@ local_test_express.get("/callback", async (_req, res) => {
     if (!data.code) {
         data.code = _req.query.code?.toString();
     }
-    previousCookie = undefined;
     await axios
         .post(`${BASE_URL}/${data.tenant}/oauth2/token`, data)
         .then((_res) => {
-            previousCookie = undefined;
+            debugger;
             res.status(_res.status).send(_res.data);
         })
         .catch((_err) => {
-            previousCookie = undefined;
-            res.status(_err.response.status).send(_err.response?.data);
+            res.status(200).json({
+                error: _err.response.status,
+                ..._err.response?.data
+            });
         });
 });
 
 local_test_express.get("/fe/auth/signin", (req, res, _next) => {
-    previousCookie = req.headers.cookie;
     const { username, password } = parseState(req.query?.state);
     PortaApi.authorization
         .flowInfo({ af: req.query.af.toString() })
@@ -91,25 +74,34 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                                             withCredentials: true
                                         })
                                         .then((_res) => {
+                                            debugger;
                                             res.status(_res.status).send(_res.data);
                                         })
-                                        .catch(({ response }) => {
-                                            res.status(response.status).send(response.data);
+                                        .catch((err) => {
+                                            debugger;
+                                            res.status(200).send(errorObjectInfo(err));
                                         });
                                 } else {
-                                    res.status(400).send("password_state");
+                                    debugger;
+                                    res.status(200).send(
+                                        createErrorObject({
+                                            message: "password_state"
+                                        })
+                                    );
                                 }
                             })
                             .catch((err) => {
-                                res.status(err.code).send(err.message);
+                                res.status(200).send(errorObjectInfo(err));
                             });
                     }
                 })
                 .catch((err: any) => {
-                    res.status(500).send(err.message);
+                    debugger;
+                    res.status(200).send(errorObjectInfo(err));
                 });
         })
         .catch((err: any) => {
-            res.status(500).send(err.message);
+            debugger;
+            res.status(200).send(errorObjectInfo(err));
         });
 });
