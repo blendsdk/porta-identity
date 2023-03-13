@@ -23,7 +23,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("tenant", { location: eParameterLocation.params })
                 .addString("response_type", { location: eParameterLocation.query, optional: true })
                 .addString("client_id", { location: eParameterLocation.query })
-                .addString("redirect_uri", { location: eParameterLocation.query })
+                .addString("redirect_uri", { location: eParameterLocation.query, acceptNullValue: true })
                 .addString("scope", { location: eParameterLocation.query })
                 .addString("nonce", { location: eParameterLocation.query, optional: true }) // only for OIDC scope
                 .addString("response_mode", { location: eParameterLocation.query, optional: true })

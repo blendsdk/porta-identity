@@ -1,5 +1,5 @@
-import { createErrorObject, isNullOrUndef } from "@blendsdk/stdlib";
-import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { isNullOrUndef } from "@blendsdk/stdlib";
+import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
     ISysAuthorizationView,
@@ -11,7 +11,8 @@ import {
 import * as jose from "jose";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
-    eOAuthClientType,
+    eClientType,
+    eErrorType,
     eOAuthGrantType,
     eOAuthScope,
     ICachedFlowInformation,
@@ -30,6 +31,28 @@ import { eFlow, EndpointController } from "./EndpointControllerBase";
  */
 export class TokenEndpointController extends EndpointController {
     /**
+     * Gets the floeID by OTA code
+     *
+     * @protected
+     * @param {string} ota
+     * @returns
+     * @memberof TokenEndpointController
+     */
+    protected async getFlowIdByOTACode(ota: string) {
+        const otaKey = `ota:${ota}`;
+        const flowId = await this.getCache().getValue<string>(otaKey);
+
+        try {
+            // just try to remove the ota
+            await this.getCache().deleteValue(otaKey);
+        } catch (err) {
+            await this.getLogger().warn("Trying to remove non-existing OTA", { ota });
+        }
+
+        return flowId || undefined;
+    }
+
+    /**
      * Token endpoint handler
      *
      * @param {ITokenRequest} tokenRequest
@@ -37,48 +60,96 @@ export class TokenEndpointController extends EndpointController {
      * @memberof AuthorizationController
      */
     public async handleRequest(tokenRequest: ITokenRequest): Promise<Response<ITokenResponse>> {
-        const { grant_type, state, code } = tokenRequest; // state is for client_credentials
-        const allErrors: any = [];
+        const { grant_type, state, code = undefined } = tokenRequest; // state is for client_credentials
         let token: IToken = undefined;
 
         if (eOAuthGrantType[grant_type] !== undefined) {
-            if (grant_type === eOAuthGrantType.authorization_code) {
+            // Only when the requested grant type is authorization_code and we have a OTA
+            if (grant_type === eOAuthGrantType.authorization_code && !isNullOrUndef(code)) {
                 // for this grant type we need the cachedFlow information that would be
                 // available from the OTA
-                const cachedFlow = (await this.getCurrentAuthenticationFlow(code)) || ({} as any);
-                const { flowId } = cachedFlow || {};
-                if (!flowId) {
-                    allErrors.push("invalid_grant");
-                } else {
+                const flowIdByOTA = await this.getFlowIdByOTACode(code);
+
+                // Pass a random time to the flowIdByOTA that does not exist
+                // This way the getCurrentAuthenticationFlow will no default
+                // to looking a flowId by _af
+
+                const cachedFlow =
+                    (await this.getCurrentAuthenticationFlow(flowIdByOTA || Date.now().toString())) || ({} as any);
+
+                const { flowId = undefined, redirect_uri, response_mode } = cachedFlow || {};
+
+                if (flowId) {
                     const { errors, token: localToken } = await this.getTokenByAuthorizationCode({
                         cachedFlow,
                         tokenRequest
                     });
                     token = localToken;
-                    errors.forEach((e) => allErrors.push(e));
-                    this.clearAuthenticationFlow(flowId);
+
+                    await this.clearAuthenticationFlow(flowId);
+
+                    if (errors.length !== 0) {
+                        return this.responseWithError(
+                            {
+                                error: eErrorType.invalid_request,
+                                error_description: errors[0],
+                                redirect_uri,
+                                response_mode,
+                                state
+                            },
+                            true
+                        );
+                    }
+                } else {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request,
+                            error_description: "invalid_authorization_code"
+                        },
+                        true
+                    );
                 }
-            } else if (grant_type === eOAuthGrantType.client_credentials) {
-                // for this grant type we will find the service user bound to the the confidential client
-                // and try to login with that user
-                const { errors, token: localToken } = await this.getTokenByConfidentialClient(tokenRequest);
+            } else if (grant_type === eOAuthGrantType.client_credentials && isNullOrUndef(code)) {
+                /**
+                 * Only when the grant type is client_credentials and we don't have a code
+                 *
+                 * for this grant type we will find the service user bound to the the confidential client
+                 * and try to login with that user
+                 */
+                const { errors, token: localToken } = await this.getTokenByClientCredentials(tokenRequest);
                 token = localToken;
-                errors.forEach((e) => allErrors.push(e));
+
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
+            } else {
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: "invalid_grant_type_combination",
+                        state
+                    },
+                    true
+                );
             }
         } else {
-            allErrors.push({ grant_type });
-        }
-
-        if (allErrors.length === 0) {
-            return new SuccessResponse({ ...token, state });
-        } else {
-            return new BadRequestResponse(
-                createErrorObject(`invalid_grant`, {
-                    // small caps for conformance test
-                    errors: allErrors
-                })
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_grant,
+                    error_description: grant_type,
+                    state
+                },
+                true
             );
         }
+
+        return new SuccessResponse({ ...token, state });
     }
 
     /**
@@ -89,23 +160,31 @@ export class TokenEndpointController extends EndpointController {
      * @returns
      * @memberof TokenEndpointController
      */
-    protected async getTokenByConfidentialClient(tokenRequest: ITokenRequest) {
-        const { client_id, redirect_uri, tenant, nonce } = tokenRequest || {};
+    protected async getTokenByClientCredentials(tokenRequest: ITokenRequest) {
+        const { client_id, tenant, nonce } = tokenRequest || {};
         const tenantRecord = await this.getTenant(tenant);
         let token: IToken = undefined;
         const errors: string[] = [];
         if (this.checkTenantValidity(tenant, tenantRecord)) {
-            const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, "m2m");
+            const authRecord = await this.getAuthorizationRecord(
+                tenantRecord,
+                client_id,
+                eOAuthGrantType.client_credentials
+            );
 
             if (authRecord) {
-                if (!isNullOrUndef(authRecord.confidential_user_id)) {
-                    if (this.checkOTACodeValidity(authRecord, client_id, redirect_uri || null, null, null)) {
+                if (!isNullOrUndef(authRecord.client_credentials_user_id)) {
+                    /**
+                     * The redirect_uri should already be null from the
+                     * database query `getAuthorizationRecord`
+                     */
+                    if (this.checkOTACodeValidity(authRecord, client_id, /* redirect_uri -->*/ null)) {
                         const err = await this.checkAccessSecret(tokenRequest, authRecord, undefined);
                         if (err.length === 0) {
                             const { tokenKey, sessionStorage } = await this.createSessionStorageForUser(
                                 tenantRecord,
                                 authRecord,
-                                authRecord.confidential_user_id,
+                                authRecord.client_credentials_user_id,
                                 undefined,
                                 eOAuthScope.openid, //TODO: porta specific claims should be added here!
                                 ""
@@ -129,7 +208,7 @@ export class TokenEndpointController extends EndpointController {
                     errors.push("not_a_confidential_client");
                 }
             } else {
-                errors.push("invalid_request");
+                errors.push("invalid_request!!");
             }
         } else {
             errors.push("invalid_tenant");
@@ -290,7 +369,7 @@ export class TokenEndpointController extends EndpointController {
 
         const { authRecord, flowId, tenantRecord: cachedTenantRecord, authRequest } = cachedFlow;
 
-        const { code, client_id, tenant, redirect_uri } = tokenRequest || {};
+        const { client_id, tenant, redirect_uri } = tokenRequest || {};
 
         const tenantRecord = await this.checkTenantValidity(tenant, cachedTenantRecord);
 
@@ -298,12 +377,9 @@ export class TokenEndpointController extends EndpointController {
             errors.push("tenant");
             // Here we set the client_id to authRecord.client_id to be able to pass the OIDC cert-test
             // It looks like the authorization_code flow does not require the client_id
-        } else if (
-            !this.checkOTACodeValidity(authRecord, client_id || authRecord.client_id, redirect_uri, code, flowId)
-        ) {
+        } else if (!this.checkOTACodeValidity(authRecord, client_id || authRecord.client_id, redirect_uri)) {
             errors.push("ota");
         } else {
-            tokenRequest.client_secret = authRecord.client_secret; // OIDC test
             (await this.checkAccessSecret(tokenRequest, authRecord, authRequest)).forEach((e) => errors.push(e));
         }
 
@@ -339,24 +415,11 @@ export class TokenEndpointController extends EndpointController {
      * @param {ISysAuthorizationView} authRecord
      * @param {string} client_id
      * @param {string} redirect_uri
-     * @param {string} code
-     * @param {string} flowId
      * @returns
-     * @memberof AuthorizationController
+     * @memberof TokenEndpointController
      */
-    protected checkOTACodeValidity(
-        authRecord: ISysAuthorizationView,
-        client_id: string,
-        redirect_uri: string,
-        code: string,
-        flowId: string
-    ) {
-        return (
-            authRecord &&
-            client_id === authRecord.client_id &&
-            redirect_uri === authRecord.redirect_uri &&
-            code == flowId
-        );
+    protected checkOTACodeValidity(authRecord: ISysAuthorizationView, client_id: string, redirect_uri: string) {
+        return authRecord && client_id === authRecord.client_id && redirect_uri === authRecord.redirect_uri;
     }
 
     /**
@@ -395,47 +458,52 @@ export class TokenEndpointController extends EndpointController {
         const { code_challenge = undefined, code_challenge_method = undefined } = authRequest || {};
         const errors: string[] = [];
 
-        //TODO: test this, a SPA/mobile should not use a client_secret auth flow!
-        // this is where we need to determine the type of client based on its redirect URL!
-        // perhaps this way we could et rid of sys_client_type
+        const isPublicClient = client_type == eClientType.public;
+        const isConfidentialClient = client_type === eClientType.confidential;
+        const isServiceClient = client_type === eClientType.service;
 
         /**
-         * T
+         * If the client_type is confidential or a service account then
+         * we can check the secret validity
          */
+        if (isConfidentialClient || isServiceClient) {
+            const isValidSecret =
+                authRecord.secret == tokenRequest.client_secret && !isNullOrUndef(tokenRequest.client_secret);
 
-        if (client_type === eOAuthClientType.spa && tokenRequest.client_secret) {
-            errors.push("client_secret_provided_for_spa");
-        }
-
-        // TODO: test client_secret flow
-        if (client_type === eOAuthClientType.webapp || client_type === eOAuthClientType.webapp_pkce) {
-            const isSecretValid =
-                authRecord.client_secret === tokenRequest.client_secret && !isNullOrUndef(tokenRequest.client_secret);
-            if (!isSecretValid) {
-                errors.push("client_secret");
+            if (!isValidSecret) {
+                errors.push("invalid_client_secret");
             }
         }
 
         /**
-         * if any of the "code_verifier" or "code_challenge" or "code_challenge_method" exists
-         * then check the PKCE value! Except for confidential client since there cannot do challenge by nature
+         * Check for the PKCE for public and confidential clients
          */
-        const shouldCheckPKCE =
-            (!isNullOrUndef(code_challenge) ||
-                !isNullOrUndef(code_verifier) ||
-                !isNullOrUndef(code_challenge_method)) &&
-            isNullOrUndef(authRecord.confidential_user_id);
-
-        if (shouldCheckPKCE) {
-            const isValidPKCE = await commonUtils.verifyPkce(
-                code_challenge_method,
-                code_challenge,
-                code_verifier || "",
-                errors
-            );
-            if (!isValidPKCE) {
-                errors.push("client_verifier_pkce");
+        if (isConfidentialClient || isPublicClient) {
+            const has_pkce = !isNullOrUndef(code_challenge || code_verifier || code_challenge_method);
+            /**
+             * Check if a PKCE is provided.
+             * This check is for bypassing FORCE_PKCE for OIDC tests and development only
+             * when the client is NOT public
+             *
+             */
+            if (has_pkce || isPublicClient) {
+                const isValidPKCE = await commonUtils.verifyPkce(
+                    code_challenge_method,
+                    code_challenge,
+                    code_verifier || "",
+                    errors
+                );
+                if (!isValidPKCE) {
+                    errors.push("invalid_pkce_combination");
+                }
             }
+        }
+
+        /**
+         * Public client with a client_secret is not acceptable!
+         */
+        if (isPublicClient && !isNullOrUndef(tokenRequest.client_secret)) {
+            errors.push("public_client_provided_client_secret");
         }
 
         return errors;

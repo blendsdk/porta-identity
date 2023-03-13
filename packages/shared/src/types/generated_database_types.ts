@@ -14,7 +14,7 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
-	confidential_user_id: string;
+	id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -24,47 +24,7 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
-	application_name: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	client_secret: string;
-	/**
-	 * @type number
-	 * @memberOf ISysAuthorizationView
-	 */
-	session_length: number;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
 	client_type: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	redirect_uri: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	logout_uri: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	ios_bundle_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	android_package_name: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	android_signature_hash: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -74,7 +34,47 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
-	fallback_uri: string;
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	secret: string;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	session_length: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	valid_from: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	valid_until: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_credentials_user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	post_logout_redirect_uri: string;
 }
 
 /**
@@ -251,6 +251,11 @@ export interface ISysUserProfile {
 	 * @type string
 	 * @memberOf ISysUserProfile
 	 */
+	email?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserProfile
+	 */
 	firstname: string;
 	/**
 	 * @type string
@@ -396,7 +401,7 @@ export interface ISysClient {
 	 * @type string
 	 * @memberOf ISysClient
 	 */
-	client_type_id: string;
+	client_type: string;
 	/**
 	 * @type string
 	 * @memberOf ISysClient
@@ -411,12 +416,7 @@ export interface ISysClient {
 	 * @type string
 	 * @memberOf ISysClient
 	 */
-	fallback_uri?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysClient
-	 */
-	description: string;
+	description?: string;
 	/**
 	 * @type string
 	 * @memberOf ISysClient
@@ -437,92 +437,21 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	valid_until?: string;
-}
-
-/**
- * @export
- * @interface ISysClientType
- */
-export interface ISysClientType {
 	/**
 	 * @type string
-	 * @memberOf ISysClientType
-	 */
-	id?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysClientType
-	 */
-	client_type: string;
-	/**
-	 * @type string
-	 * @memberOf ISysClientType
-	 */
-	description?: string;
-}
-
-/**
- * @export
- * @interface ISysRedirect
- */
-export interface ISysRedirect {
-	/**
-	 * @type string
-	 * @memberOf ISysRedirect
-	 */
-	id?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysRedirect
-	 */
-	client_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysRedirect
+	 * @memberOf ISysClient
 	 */
 	redirect_uri?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysRedirect
+	 * @memberOf ISysClient
 	 */
-	logout_uri?: string;
+	client_credentials_user_id?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysRedirect
+	 * @memberOf ISysClient
 	 */
-	ios_bundle_id?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysRedirect
-	 */
-	android_package_name?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysRedirect
-	 */
-	android_signature_hash?: string;
-}
-
-/**
- * @export
- * @interface ISysConfidentialClient
- */
-export interface ISysConfidentialClient {
-	/**
-	 * @type string
-	 * @memberOf ISysConfidentialClient
-	 */
-	id?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysConfidentialClient
-	 */
-	client_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysConfidentialClient
-	 */
-	user_id: string;
+	post_logout_redirect_uri?: string;
 }
 
 /**

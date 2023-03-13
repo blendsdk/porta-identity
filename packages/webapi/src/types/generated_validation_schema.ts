@@ -45,62 +45,65 @@ export const validationSchema = {
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
 			properties: {
-				confidential_user_id: {
+				id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
 				client_id: {
 					type: eJsonSchemaType.string
 				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
 				application_name: {
 					type: eJsonSchemaType.string
 				},
-				client_secret: {
+				description: {
+					type: eJsonSchemaType.string
+				},
+				secret: {
 					type: eJsonSchemaType.string
 				},
 				session_length: {
 					type: eJsonSchemaType.number,
 					format: "integer"
 				},
-				client_type: {
-					type: eJsonSchemaType.string
+				valid_from: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				valid_until: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
 				},
 				redirect_uri: {
 					type: eJsonSchemaType.string
 				},
-				logout_uri: {
-					type: eJsonSchemaType.string
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				},
-				ios_bundle_id: {
-					type: eJsonSchemaType.string
-				},
-				android_package_name: {
-					type: eJsonSchemaType.string
-				},
-				android_signature_hash: {
-					type: eJsonSchemaType.string
-				},
-				logo: {
-					type: eJsonSchemaType.string
-				},
-				fallback_uri: {
+				post_logout_redirect_uri: {
 					type: eJsonSchemaType.string
 				}
 			},
 			required: [
-				"confidential_user_id",
+				"id",
 				"client_id",
-				"application_name",
-				"client_secret",
-				"session_length",
 				"client_type",
-				"redirect_uri",
-				"logout_uri",
-				"ios_bundle_id",
-				"android_package_name",
-				"android_signature_hash",
 				"logo",
-				"fallback_uri"
+				"application_name",
+				"description",
+				"secret",
+				"session_length",
+				"valid_from",
+				"valid_until",
+				"redirect_uri",
+				"client_credentials_user_id",
+				"post_logout_redirect_uri"
 			]
 		},
 		sys_user_mfa_view: {
@@ -225,6 +228,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				email: {
+					type: eJsonSchemaType.string
+				},
 				firstname: {
 					type: eJsonSchemaType.string
 				},
@@ -333,17 +339,13 @@ export const validationSchema = {
 				client_id: {
 					type: eJsonSchemaType.string
 				},
-				client_type_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
+				client_type: {
+					type: eJsonSchemaType.string
 				},
 				logo: {
 					type: eJsonSchemaType.string
 				},
 				application_name: {
-					type: eJsonSchemaType.string
-				},
-				fallback_uri: {
 					type: eJsonSchemaType.string
 				},
 				description: {
@@ -363,72 +365,19 @@ export const validationSchema = {
 				valid_until: {
 					type: eJsonSchemaType.string,
 					format: "datetime"
-				}
-			},
-			required: ["client_id", "client_type_id", "application_name", "description"]
-		},
-		sys_client_type: {
-			type: eJsonSchemaType.object,
-			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				client_type: {
-					type: eJsonSchemaType.string
-				},
-				description: {
-					type: eJsonSchemaType.string
-				}
-			},
-			required: ["client_type"]
-		},
-		sys_redirect: {
-			type: eJsonSchemaType.object,
-			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				client_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
 				},
 				redirect_uri: {
 					type: eJsonSchemaType.string
 				},
-				logout_uri: {
-					type: eJsonSchemaType.string
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				},
-				ios_bundle_id: {
-					type: eJsonSchemaType.string
-				},
-				android_package_name: {
-					type: eJsonSchemaType.string
-				},
-				android_signature_hash: {
+				post_logout_redirect_uri: {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["client_id"]
-		},
-		sys_confidential_client: {
-			type: eJsonSchemaType.object,
-			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				client_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				user_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				}
-			},
-			required: ["client_id", "user_id"]
+			required: ["client_id", "client_type", "application_name"]
 		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,
@@ -561,6 +510,7 @@ export const validationSchema = {
 				},
 				redirect_uri: {
 					type: eJsonSchemaType.string,
+					acceptNullValue: true,
 					location: eParameterLocation.query
 				},
 				scope: {

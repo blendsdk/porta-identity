@@ -70,12 +70,6 @@ export enum eOAuthResponseMode {
     form_post = "form_post"
 }
 
-export enum eOAuthClientType {
-    webapp = "webapp",
-    webapp_pkce = "webapp_pkce",
-    spa = "spa"
-}
-
 export enum eOAuthPKCECodeChallengeMethod {
     S256 = "S256"
 }
@@ -129,6 +123,7 @@ export enum eErrorType {
     consent_required = "consent_required",
     invalid_request_uri = "invalid_request_uri",
     invalid_request = "invalid_request",
+    invalid_grant = "invalid_grant",
     invalid_request_object = "invalid_request_object",
     request_not_supported = "request_not_supported",
     request_uri_not_supported = "request_uri_not_supported",
@@ -138,14 +133,15 @@ export enum eErrorType {
 export interface IErrorResponseParams {
     error: eErrorType;
     error_description: string;
-    redirect_uri: string;
-    state: any;
+    redirect_uri?: string;
+    state?: any;
     error_uri?: string;
-    response_mode: string;
+    response_mode?: string;
 }
 
 export enum eClientType {
-    web_app = "18cc1ad1-f93a-41bb-a547-ffda33b638c9",
-    mobile_app = "8a59a08a-c721-4736-9bff-751c408b3c43",
-    confidential = "0a2bff25-89ed-4c99-9c3f-dd79d5a2d075"
+    public = "P",
+    confidential = "C",
+    service = "S",
+    device = "D"
 }

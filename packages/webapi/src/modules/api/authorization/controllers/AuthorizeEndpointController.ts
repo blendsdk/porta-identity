@@ -1,6 +1,6 @@
 import { sha256Hash } from "@blendsdk/crypto";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
-import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
+import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant } from "@porta/shared";
 import crypto from "crypto";
 import * as jwt from "jsonwebtoken";
@@ -72,7 +72,19 @@ export class AuthorizeEndpointController extends EndpointController {
         // check the nonce
         const nonceValid = await this.isValidNonce(authRequest, response_types);
 
-        if (!this.isValidPKCERequest(authRequest)) {
+        if (!redirect_uri) {
+            // When no redirect URI then we cannot even continue
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_request,
+                    redirect_uri,
+                    state,
+                    error_description: "not_redirect_uri",
+                    response_mode
+                },
+                true
+            );
+        } else if (!this.isValidPKCERequest(authRequest)) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 redirect_uri,
@@ -94,7 +106,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_response_type",
-                response_mode: eOAuthResponseMode[response_mode]
+                response_mode
             });
         } else if (!eOAuthResponseMode[response_mode]) {
             return this.responseWithError({
@@ -154,17 +166,19 @@ export class AuthorizeEndpointController extends EndpointController {
                     url: signinUrl
                 });
             } else {
-                this.clearAuthenticationFlow(flowId);
-                this.clearAuthenticationFlow();
+                await this.clearAuthenticationFlow(flowId);
+                await this.clearAuthenticationFlow();
 
-                return new ServerErrorResponse({
-                    message: eErrorType.invalid_request,
-                    cause: {
-                        redirect_uri,
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: errors.join(","),
                         state,
-                        error_description: errors.join(",")
-                    }
-                });
+                        redirect_uri,
+                        response_mode
+                    },
+                    true
+                );
             }
         }
     }
@@ -342,10 +356,10 @@ export class AuthorizeEndpointController extends EndpointController {
         if (code_challenge && code_challenge_method) {
             return eOAuthPKCECodeChallengeMethod[code_challenge_method] !== undefined;
         } else if (!code_challenge && !code_challenge_method) {
-            // none is provided
-            return true;
+            // none is provided then check if the PKCE needs to be enforced!
+            const { ENFORCE_PKCE = true } = this.request.context.getSettings<{ ENFORCE_PKCE: boolean }>();
+            return !ENFORCE_PKCE;
         } else {
-            debugger;
             // only one is provided
             return false;
         }

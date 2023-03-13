@@ -26,9 +26,11 @@ export abstract class SysAuthorizationViewDataServiceBase extends DataService<Po
 		const result = await ctx.executeQuery<
 			ISysAuthorizationView,
 			ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
-		>(`select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri`, params, {
-			single: true
-		});
+		>(
+			`select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S'`,
+			params,
+			{ single: true }
+		);
 		return result.data;
 	}
 
@@ -44,9 +46,11 @@ export abstract class SysAuthorizationViewDataServiceBase extends DataService<Po
 		const result = await ctx.executeQuery<
 			ISysAuthorizationView,
 			ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
-		>(`select * from sys_authorization_view where client_id = :client_id and redirect_uri is null`, params, {
-			single: true
-		});
+		>(
+			`select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'`,
+			params,
+			{ single: true }
+		);
 		return result.data;
 	}
 }

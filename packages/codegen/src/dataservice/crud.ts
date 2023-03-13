@@ -18,7 +18,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         if (view.getName() === "sys_authorization_view") {
             svc.defineMethod({
                 name: "find_by_client_id_and_redirect_uri",
-                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri",
+                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S'",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -34,7 +34,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
             svc.defineMethod({
                 name: "find_by_client_id_only",
-                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null",
+                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -159,7 +159,19 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
             svc.defineMethod({
                 name: "find_by_username_non_service",
-                query: "select su.* from sys_user su left join sys_confidential_client scc on su.id = scc.user_id where scc.id is null and UPPER(su.username) = UPPER(:username)",
+                query: `select
+                            su.*
+                        from
+                            sys_user su
+                            inner join sys_user_profile up on su.id = up.user_id
+                            left join sys_client sc on su.id = sc.client_credentials_user_id
+                        where
+                            sc.id is null and
+                            (
+                                UPPER(su.username) = UPPER(:username) or
+                                UPPER(up.email) = UPPER(:username)
+                            )
+                `,
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -170,21 +182,6 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                     return suggestedTypeName;
                 },
                 returnType: "sys_user"
-            });
-        } else if (table.getName() === "sys_scope") {
-            svc.defineMethod({
-                name: "get_sources_by_scope",
-                query: "select * from sys_scope where scope = :scope",
-                recordSet: true,
-                returnValue: eReturnValue.dataOnly,
-                type: "query",
-                inputType: ({ suggestedTypeName, typeSchema }) => {
-                    typeSchema
-                        .createAppendType(suggestedTypeName) //
-                        .addString("scope");
-                    return suggestedTypeName;
-                },
-                returnType: table.getName()
             });
         } else {
             // create CRUD

@@ -3,6 +3,7 @@ import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { deepCopy, isObject } from "@blendsdk/stdlib";
 import { TOKEN_KEY_SPLIT } from "@blendsdk/webafx";
 import {
+    BadRequestResponse,
     Controller,
     IRequestContext,
     ISetValueOptions,
@@ -23,6 +24,7 @@ import { SysUserDataService } from "../../../../dataservices/SysUserDataService"
 import { SysUserGroupDataService } from "../../../../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 import {
+    eOAuthGrantType,
     eOAuthResponseMode,
     ICachedFlowInformation,
     IErrorResponseParams,
@@ -65,14 +67,10 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns
      * @memberof EndpointController
      */
-    protected responseWithError({
-        error,
-        error_description,
-        state,
-        redirect_uri,
-        error_uri,
-        response_mode
-    }: IErrorResponseParams) {
+    protected responseWithError(
+        { error, error_description, state, redirect_uri, error_uri, response_mode }: IErrorResponseParams,
+        toUserAgent?: boolean
+    ) {
         const params = deepCopy({
             error,
             error_description: isObject(error_description)
@@ -81,7 +79,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             error_uri,
             state
         });
-        if (response_mode === eOAuthResponseMode.form_post) {
+
+        if (toUserAgent) {
+            return new BadRequestResponse({
+                message: error,
+                cause: params
+            });
+        } else if (response_mode === eOAuthResponseMode.form_post) {
             return new SuccessResponse(formPostTemplate({ redirect_uri, data: params }));
         } else {
             return new RedirectResponse({
@@ -329,7 +333,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             databaseUtils.getTenantDataSourceID(tenant)
         );
         const authViewDs = new SysAuthorizationViewDataService({ dataSource });
-        if (redirect_uri === "m2m") {
+        if (redirect_uri === eOAuthGrantType.client_credentials) {
             return authViewDs.findByClientIdOnly({ client_id });
         } else {
             return authViewDs.findByClientIdAndRedirectUri({ client_id, redirect_uri });

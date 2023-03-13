@@ -15,9 +15,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const permission = database.addTable("sys_permission");
     const group_permission = database.addTable("sys_group_permission");
     const client = database.addTable("sys_client");
-    const client_type = database.addTable("sys_client_type");
-    const redirect = database.addTable("sys_redirect");
-    const confidential_client = database.addTable("sys_confidential_client");
 
     const mfa = database.addTable("sys_mfa");
     const user_mfa = database.addTable("sys_user_mfa");
@@ -40,6 +37,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
 
     user_profile //
         .primaryKeyColumn("id", true)
+        .stringColumn("email", { required: false })
         .stringColumn("firstname")
         .stringColumn("lastname")
         .stringColumn("avatar", { required: false })
@@ -92,38 +90,20 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("key_id", { unique: true })
         .stringColumn("data");
 
-    client_type //
-        .primaryKeyColumn("id", true)
-        .stringColumn("client_type")
-        .stringColumn("description", { required: false });
-
     client //
         .primaryKeyColumn("id", true) //
         .stringColumn("client_id", { unique: true })
-        .referenceColumn("client_type_id", client_type, "id")
+        .stringColumn("client_type") // Public = SPA/Native/Desktop, Confidential = WebApp / API, Service = MachineToMachine
         .stringColumn("logo", { required: false }) // base64 encoded image data
         .stringColumn("application_name")
-        .stringColumn("fallback_uri", { required: false }) // should be required
-        .stringColumn("description")
+        .stringColumn("description", { required: false })
         .stringColumn("secret", { default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')" })
         .integerColumn("session_length", { required: false })
         .dateTimeColumn("valid_from", { required: false })
-        .dateTimeColumn("valid_until", { required: false });
-
-    redirect //
-        .primaryKeyColumn("id", true)
-        .referenceColumn("client_id", client, "id")
+        .dateTimeColumn("valid_until", { required: false })
         .stringColumn("redirect_uri", { required: false })
-        .stringColumn("logout_uri", { required: false })
-        .stringColumn("ios_bundle_id", { required: false })
-        .stringColumn("android_package_name", { required: false })
-        .stringColumn("android_signature_hash", { required: false })
-        .stringColumn("type");
-
-    confidential_client //
-        .primaryKeyColumn("id", true)
-        .referenceColumn("client_id", client, "id")
-        .referenceColumn("user_id", user, "id");
+        .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
+        .stringColumn("post_logout_redirect_uri", { required: false });
 
     database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
     database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);

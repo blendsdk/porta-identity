@@ -1,9 +1,14 @@
 {
   "name": "root",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "nohoist": [
+      "**/glob/**"
+    ]
+  },
   "engines": {
     "node": ">=10.15.0",
     "yarn": ">=1.5.1"
@@ -17,7 +22,7 @@
     "test": "jest jest --clearCache &&  lerna run db:restart --scope=@porta/webapi && lerna run db:reset --scope=@porta/webapi && lerna run cache:restart --scope=@porta/webapi && lerna run test",
     "ncu": "ncu -u -x '@types/react*',chalk,react,react-dom,react-scripts,nanoid,\"@blendsdk*\",\"@porta*\" && lerna exec \"ncu -u -x '@types/react*',chalk,react,react-dom,react-scripts,nanoid,'@blendsdk*','@porta*' \" && rm -fR node_modules yarn.lock && yarn install && yarn bootstrap && yarn build && yarn test",
     "generate": "lerna run generate --scope=@porta/codegen && lerna run build --scope=@porta/shared",
-    "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh && yarn remove -W glob && yarn -W add glob",
     "blend:stable": "`pwd`/scripts/blend-update.js stable > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
     "blend:develop": "`pwd`/scripts/blend-update.js develop > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
     "dev": "nodemon --verbose --delay 2.5 --watch ./packages/codegen/src --watch ./scripts --ext ts `pwd`/scripts/dev.sh"
@@ -44,6 +49,7 @@
     "zustand": "^4.3.6"
   },
   "dependencies": {
-    "glob": "^9.2.1"
+    "glob": "^9.2.1",
+    "remove": "^0.1.5"
   }
 }

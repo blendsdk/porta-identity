@@ -1,14 +1,13 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { ISysClient, ISysClientType, ISysRedirect, ISysTenant } from "@porta/shared";
-import { eClientType, IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
+import { ISysClient, ISysTenant } from "@porta/shared";
+import { IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
 import fs from "fs";
 import path from "path";
 import util from "util";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { application } from "../modules/application";
-import { asyncForEach, isString, ucFirst } from "@blendsdk/stdlib";
-import { SysClientTypeDataService } from "../dataservices/SysClientTypeDataService";
+import { isString, ucFirst } from "@blendsdk/stdlib";
 import { sha256Hash } from "@blendsdk/crypto";
 import { SysGroupDataService } from "../dataservices/SysGroupDataService";
 import { SysGroupPermissionDataService } from "../dataservices/SysGroupPermissionDataService";
@@ -20,7 +19,6 @@ import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataSer
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { commonUtils } from "./CommonUtils";
 import { SysClientDataService } from "../dataservices/SysClientDataService";
-import { SysRedirectDataService } from "../dataservices/SysRedirectDataService";
 
 class DatabaseUtils {
     /**
@@ -48,32 +46,22 @@ class DatabaseUtils {
      * @returns
      * @memberof DatabaseUtils
      */
-    public async createClient(client: ISysClient, redirect: ISysRedirect, tenant: ISysTenant) {
-        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(this.getTenantDataSourceID(tenant));
-
-        let clientRecord: ISysClient = undefined;
-        let redirectRecord: ISysRedirect = undefined;
-
-        await ds.withContext(async (sharedContext) => {
-            const clientDs = new SysClientDataService({ sharedContext });
-            const redirectDs = new SysRedirectDataService({ sharedContext });
-
-            client = client || ({} as any);
-            client.application_name = client.application_name || tenant.organization;
-            client.client_id = commonUtils.getUUID();
-            client.secret = commonUtils.getUUID();
-            client.client_type_id = client.client_type_id || eClientType.web_app;
-            client.description = client.description || `${tenant.name} webapp client`;
-
-            clientRecord = await clientDs.insertIntoSysClient(client);
-            redirect.client_id = clientRecord.id;
-            redirectRecord = await redirectDs.insertIntoSysRedirect(redirect);
+    public createClient(client: ISysClient, tenant: ISysTenant) {
+        const clientDs = new SysClientDataService({ tenantId: tenant.id });
+        return clientDs.insertIntoSysClient({
+            application_name: client.application_name || tenant.organization,
+            client_id: commonUtils.getUUID(),
+            client_type: client.client_type,
+            client_credentials_user_id: client.client_credentials_user_id || null,
+            description: client.description || `${tenant.name} webapp client`,
+            logo: client.logo || null,
+            post_logout_redirect_uri: client.post_logout_redirect_uri,
+            redirect_uri: client.redirect_uri,
+            secret: commonUtils.getUUID(),
+            session_length: client.session_length,
+            valid_from: client.valid_from,
+            valid_until: client.valid_until
         });
-
-        return {
-            client: clientRecord,
-            redirect: redirectRecord
-        };
     }
 
     /**
@@ -213,7 +201,6 @@ class DatabaseUtils {
         tenantName: string
     ) {
         return dbConn.withContext(async (sharedContext) => {
-            const clientTypeDs = new SysClientTypeDataService({ sharedContext });
             const userDs = new SysUserDataService({ sharedContext });
             const profileDs = new SysUserProfileDataService({ sharedContext });
             const keysDs = new SysKeyDataService({ sharedContext });
@@ -221,29 +208,6 @@ class DatabaseUtils {
             const userGroupDs = new SysUserGroupDataService({ sharedContext });
             const permissionDs = new SysPermissionDataService({ sharedContext });
             const groupPermissionDs = new SysGroupPermissionDataService({ sharedContext });
-
-            const clientTypeData: Partial<ISysClientType>[] = [
-                {
-                    id: eClientType.web_app,
-
-                    client_type: "web_app",
-                    description: "OIDC client that is a web application"
-                },
-                {
-                    id: eClientType.mobile_app,
-                    client_type: "mobile_app",
-                    description: "OIDC client that is a mobile application"
-                },
-                {
-                    id: eClientType.confidential,
-                    client_type: "confidential",
-                    description: "OIDC client that is a server side API"
-                }
-            ];
-
-            await asyncForEach(clientTypeData, async ({ id, client_type, description }: any) => {
-                await clientTypeDs.insertIntoSysClientType({ id, client_type, description });
-            });
 
             const adminUser = await userDs.insertIntoSysUser({
                 username: admin_user,

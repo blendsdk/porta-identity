@@ -38,19 +38,19 @@ export type eSysMfaSettings = (typeof eSysMfaSettings)[keyof typeof eSysMfaSetti
  */
 export const eSysAuthorizationView = {
 	$name: "sys_authorization_view",
-	CONFIDENTIAL_USER_ID: "confidential_user_id",
+	ID: "id",
 	CLIENT_ID: "client_id",
-	APPLICATION_NAME: "application_name",
-	CLIENT_SECRET: "client_secret",
-	SESSION_LENGTH: "session_length",
 	CLIENT_TYPE: "client_type",
-	REDIRECT_URI: "redirect_uri",
-	LOGOUT_URI: "logout_uri",
-	IOS_BUNDLE_ID: "ios_bundle_id",
-	ANDROID_PACKAGE_NAME: "android_package_name",
-	ANDROID_SIGNATURE_HASH: "android_signature_hash",
 	LOGO: "logo",
-	FALLBACK_URI: "fallback_uri"
+	APPLICATION_NAME: "application_name",
+	DESCRIPTION: "description",
+	SECRET: "secret",
+	SESSION_LENGTH: "session_length",
+	VALID_FROM: "valid_from",
+	VALID_UNTIL: "valid_until",
+	REDIRECT_URI: "redirect_uri",
+	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri"
 } as const;
 export type eSysAuthorizationView = (typeof eSysAuthorizationView)[keyof typeof eSysAuthorizationView];
 
@@ -137,6 +137,7 @@ export type eSysUser = (typeof eSysUser)[keyof typeof eSysUser];
 export const eSysUserProfile = {
 	$name: "sys_user_profile",
 	ID: "id",
+	EMAIL: "email",
 	FIRSTNAME: "firstname",
 	LASTNAME: "lastname",
 	AVATAR: "avatar",
@@ -209,60 +210,19 @@ export const eSysClient = {
 	$name: "sys_client",
 	ID: "id",
 	CLIENT_ID: "client_id",
-	CLIENT_TYPE_ID: "client_type_id",
+	CLIENT_TYPE: "client_type",
 	LOGO: "logo",
 	APPLICATION_NAME: "application_name",
-	FALLBACK_URI: "fallback_uri",
 	DESCRIPTION: "description",
 	SECRET: "secret",
 	SESSION_LENGTH: "session_length",
 	VALID_FROM: "valid_from",
-	VALID_UNTIL: "valid_until"
+	VALID_UNTIL: "valid_until",
+	REDIRECT_URI: "redirect_uri",
+	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri"
 } as const;
 export type eSysClient = (typeof eSysClient)[keyof typeof eSysClient];
-
-/**
- * Enum of the type sys_client_type
- * @export
- * @enum
- */
-export const eSysClientType = {
-	$name: "sys_client_type",
-	ID: "id",
-	CLIENT_TYPE: "client_type",
-	DESCRIPTION: "description"
-} as const;
-export type eSysClientType = (typeof eSysClientType)[keyof typeof eSysClientType];
-
-/**
- * Enum of the type sys_redirect
- * @export
- * @enum
- */
-export const eSysRedirect = {
-	$name: "sys_redirect",
-	ID: "id",
-	CLIENT_ID: "client_id",
-	REDIRECT_URI: "redirect_uri",
-	LOGOUT_URI: "logout_uri",
-	IOS_BUNDLE_ID: "ios_bundle_id",
-	ANDROID_PACKAGE_NAME: "android_package_name",
-	ANDROID_SIGNATURE_HASH: "android_signature_hash"
-} as const;
-export type eSysRedirect = (typeof eSysRedirect)[keyof typeof eSysRedirect];
-
-/**
- * Enum of the type sys_confidential_client
- * @export
- * @enum
- */
-export const eSysConfidentialClient = {
-	$name: "sys_confidential_client",
-	ID: "id",
-	CLIENT_ID: "client_id",
-	USER_ID: "user_id"
-} as const;
-export type eSysConfidentialClient = (typeof eSysConfidentialClient)[keyof typeof eSysConfidentialClient];
 
 /**
  * Enum of the type sys_mfa

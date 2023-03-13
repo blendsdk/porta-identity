@@ -20,24 +20,29 @@ export const stop_local_server = (callback: () => void) => {
 };
 
 local_test_express.get("/callback", async (_req, res) => {
-    const data: any = {
-        ...parseState(_req.query?.state)
-    };
-    if (!data.code) {
-        data.code = _req.query.code?.toString();
-    }
-    await axios
-        .post(`${BASE_URL}/${data.tenant}/oauth2/token`, data)
-        .then((_res) => {
-            debugger;
-            res.status(_res.status).send(_res.data);
-        })
-        .catch((_err) => {
-            res.status(200).json({
-                error: _err.response.status,
-                ..._err.response?.data
+    if (_req.query.error) {
+        res.status(200).json(_req.query);
+    } else {
+        const data: any = {
+            ...parseState(_req.query?.state)
+        };
+        if (!data.code) {
+            data.code = _req.query.code?.toString();
+        }
+        await axios
+            .post(`${BASE_URL}/${data.tenant}/oauth2/token`, data)
+            .then((_res) => {
+                debugger;
+                res.status(_res.status).send(_res.data);
+            })
+            .catch((_err) => {
+                debugger;
+                res.status(200).json({
+                    error: _err.response.status,
+                    ..._err.response?.data
+                });
             });
-        });
+    }
 });
 
 local_test_express.get("/fe/auth/signin", (req, res, _next) => {
@@ -91,6 +96,7 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                                 }
                             })
                             .catch((err) => {
+                                debugger;
                                 res.status(200).send(errorObjectInfo(err));
                             });
                     }

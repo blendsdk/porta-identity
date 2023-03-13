@@ -23,3 +23,7 @@ ios/android or redirect_uri columns.
 We need something like this to automatically determine PKCE for mobile and HTML5 clients (TokenEndpointController) We
 also have the Confidential Client to handle. the CC do not need PKCE We also need to take care of the logout mechanism.
 We also need to take care of session refresh and extension. (this is going to be a challenge)
+
+[security] the OTA should not be the same as the flowId
+
+READ! https://datatracker.ietf.org/doc/html/draft-sakimura-oauth-wmrm-00

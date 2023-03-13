@@ -1,9 +1,9 @@
-import { IDictionaryOf } from "@blendsdk/stdlib";
+import { asyncForEach, IDictionaryOf } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISigninRequest, ISigninResponse, ISysAuthorizationView } from "@porta/shared";
 import { eErrorType, eOAuthResponseType, ICachedUser, IFlowRedirect } from "../../../../types";
 import { commonUtils } from "../../../../utils";
-import { MAX_AGE_REDIRECT } from "./constants";
+import { MAX_AGE_CODE, MAX_AGE_REDIRECT } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 
 /**
@@ -62,10 +62,17 @@ export class SigninEndpointController extends EndpointController {
 
             // build response ?
             if (response_types.indexOf(eOAuthResponseType.none) === -1) {
-                response_types.forEach((type) => {
+                await asyncForEach(response_types, async (type) => {
                     switch (type) {
                         case eOAuthResponseType.code:
-                            response[type] = flowId;
+                            /**
+                             * Create a new OTA
+                             */
+                            const ota_code = commonUtils.getUUID();
+                            await this.getCache().setValue<string>(`ota:${ota_code}`, flowId, {
+                                expire: Date.now() + MAX_AGE_CODE
+                            });
+                            response[type] = ota_code;
                             break;
                         default:
                             return this.responseWithError({
@@ -155,7 +162,7 @@ export class SigninEndpointController extends EndpointController {
             user.id,
             authRequest.ui_locales,
             authRequest.scope,
-            authRequest.claims as any //THIS will be parsed to JSON in Claims class
+            authRequest.claims as any // This will be parsed to JSON in Claims class
         );
 
         if (!confidentialClient) {

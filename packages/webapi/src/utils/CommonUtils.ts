@@ -1,13 +1,23 @@
-import { IDictionaryOf } from "@blendsdk/stdlib";
+import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
 import { sha256Verify } from "@blendsdk/crypto";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
-import { eOAuthPKCECodeChallengeMethod } from "../types";
+import { eOAuthPKCECodeChallengeMethod, IErrorResponseParams } from "../types";
 
 //const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
 
 export const PORTA_REGISTRY = "porta";
+
+errorParserRegistry.push((data: IErrorResponseParams) => {
+    const { error, error_description } = data || {};
+    return error
+        ? {
+              message: error,
+              cause: error_description
+          }
+        : undefined;
+});
 
 class CommonUtils {
     public parseSeparatedTokens(strTokens: string, caseSensitive?: boolean): IDictionaryOf<boolean> {
@@ -25,7 +35,7 @@ class CommonUtils {
 
     public getUUID() {
         // random bytes length is arbitrary
-        return crypto.createHash("md5").update(crypto.randomBytes(32).toString("hex")).digest("hex");
+        return crypto.createHash("sha256").update(crypto.randomBytes(32).toString("hex")).digest("hex");
     }
 
     /**

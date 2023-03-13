@@ -165,7 +165,19 @@ export abstract class SysUserDataServiceBase extends DataService<PostgreSQLExecu
 	public async findByUsernameNonService(params: ISysUserDataServiceFindByUsernameNonServiceParams): Promise<ISysUser> {
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<ISysUser, ISysUserDataServiceFindByUsernameNonServiceParams>(
-			`select su.* from sys_user su left join sys_confidential_client scc on su.id = scc.user_id where scc.id is null and UPPER(su.username) = UPPER(:username)`,
+			`select
+                            su.*
+                        from
+                            sys_user su
+                            inner join sys_user_profile up on su.id = up.user_id
+                            left join sys_client sc on su.id = sc.client_credentials_user_id
+                        where
+                            sc.id is null and
+                            (
+                                UPPER(su.username) = UPPER(:username) or
+                                UPPER(up.email) = UPPER(:username)
+                            )
+                `,
 			params,
 			{ single: true }
 		);
