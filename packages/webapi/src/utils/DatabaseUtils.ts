@@ -50,14 +50,14 @@ class DatabaseUtils {
         const clientDs = new SysClientDataService({ tenantId: tenant.id });
         return clientDs.insertIntoSysClient({
             application_name: client.application_name || tenant.organization,
-            client_id: commonUtils.getUUID(),
+            client_id: client.client_id || commonUtils.getUUID(),
             client_type: client.client_type,
             client_credentials_user_id: client.client_credentials_user_id || null,
             description: client.description || `${tenant.name} webapp client`,
             logo: client.logo || null,
             post_logout_redirect_uri: client.post_logout_redirect_uri,
             redirect_uri: client.redirect_uri,
-            secret: commonUtils.getUUID(),
+            secret: client.secret || commonUtils.getUUID(),
             session_length: client.session_length,
             valid_from: client.valid_from,
             valid_until: client.valid_until
@@ -100,6 +100,7 @@ class DatabaseUtils {
             dataSource = dataSourceManager.getDataSource(tenantRecord.id);
             const ctx = await dataSource.createContext();
             await ctx.disposeContext();
+            return tenantRecord;
         }
     }
 

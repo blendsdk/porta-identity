@@ -1,0 +1,72 @@
+{
+    "clients": [
+        {
+            "id": "87528cd2-2f52-470a-b81d-5e0d669a3d16",
+            "client_id": "service-client",
+            "client_type": "C",
+            "logo": null,
+            "application_name": "oidc client credentials",
+            "description": "oidc_suite webapp client",
+            "secret": "secret",
+            "session_length": null,
+            "valid_from": null,
+            "valid_until": null,
+            "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
+            "client_credentials_user_id": "7cc5a546-7c65-4662-abad-4b2711918d9e",
+            "post_logout_redirect_uri": null
+        },
+        {
+            "id": "657384f3-3e18-4602-8ad5-df18262e6159",
+            "client_id": "client1",
+            "client_type": "C",
+            "logo": null,
+            "application_name": "oidc client 1",
+            "description": "oidc_suite webapp client",
+            "secret": "secret",
+            "session_length": null,
+            "valid_from": null,
+            "valid_until": null,
+            "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
+            "client_credentials_user_id": null,
+            "post_logout_redirect_uri": null
+        },
+        {
+            "id": "9e80f183-04f8-4464-b6d1-c86723073824",
+            "client_id": "client2",
+            "client_type": "C",
+            "logo": null,
+            "application_name": "oidc client 2",
+            "description": "oidc_suite webapp client",
+            "secret": "secret",
+            "session_length": null,
+            "valid_from": null,
+            "valid_until": null,
+            "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
+            "client_credentials_user_id": null,
+            "post_logout_redirect_uri": null
+        }
+    ],
+    "users": [
+        {
+            "id": "8612db5e-f71a-4c35-82d5-811490e060fe",
+            "username": "user1@example.com",
+            "password": "secret",
+            "is_active": true,
+            "date_created": "2023-03-14T09:09:01.448Z"
+        },
+        {
+            "id": "f6c8fb4e-a96a-4f06-a90d-e48cab54f25f",
+            "username": "user2@example.com",
+            "password": "secret",
+            "is_active": true,
+            "date_created": "2023-03-14T09:09:01.591Z"
+        },
+        {
+            "id": "7cc5a546-7c65-4662-abad-4b2711918d9e",
+            "username": "app1@example.com",
+            "password": "secret",
+            "is_active": true,
+            "date_created": "2023-03-14T09:09:01.724Z"
+        }
+    ]
+}

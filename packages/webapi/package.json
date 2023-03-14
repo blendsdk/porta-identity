@@ -10,7 +10,7 @@
         "build": "rm -fR ./dist ./temp && tsc",
         "watch:ts": "rm -fR ./dist && tsc -w",
         "watch:node": "BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config/ --inspect ./dist/index.js start --config=`pwd`/config/*.config.js --config=`pwd`/config/.*.config.js --migrate=${MIGRATE:-false}",
-        "watch:node-oidc": "BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config-oidc/ --inspect ./dist/index.js start --config=`pwd`/config-oidc/*.config.js --config=`pwd`/config-oidc/.*.config.js --migrate=${MIGRATE:-false}",
+        "watch:node:oidc": "BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config-oidc/ --inspect ./dist/index.js start --config=`pwd`/config-oidc/*.config.js --config=`pwd`/config-oidc/.*.config.js --oidcRedirectUri=\"https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback\"",
         "db:start": "docker-compose -f ./docker/docker-compose.yml up -d db && ./wait-for 127.0.0.1:5010",
         "db:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv db && docker container prune --force",
         "db:restart": "yarn db:stop && yarn db:start",
