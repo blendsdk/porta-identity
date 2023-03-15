@@ -202,6 +202,7 @@ export const AuthenticationView = () => {
                         <div className={styles.footer}>
                             {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && (
                                 <Button
+                                    className={styles.button}
                                     appearance="primary"
                                     disabled={checkFlow.fetching}
                                     onClick={() => {
@@ -213,6 +214,7 @@ export const AuthenticationView = () => {
                             )}
                             {flowState === eFlowState.REQUIRE_PASSWORD && (
                                 <Button
+                                    className={styles.button}
                                     appearance="outline"
                                     onClick={() => {
                                         setFlowState(eFlowState.SELECT_ACCOUNT);
@@ -224,6 +226,7 @@ export const AuthenticationView = () => {
                             {flowState === eFlowState.REQUIRE_PASSWORD && <div className={styles.spacer} />}
                             {flowState === eFlowState.REQUIRE_PASSWORD && (
                                 <Button
+                                    className={styles.button}
                                     appearance="primary"
                                     onClick={() => {
                                         form.submitForm();
