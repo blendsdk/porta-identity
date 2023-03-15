@@ -14,7 +14,7 @@
     "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
   },
   "devDependencies": {
-    "@types/node": "^18.14.6",
+    "@types/node": "^18.15.3",
     "tslib": "^2.5.0"
   },
   "dependencies": {
@@ -24,7 +24,7 @@
     "@blendsdk/logger": "3.2.218",
     "@blendsdk/postgresql": "3.2.218",
     "@blendsdk/stdlib": "3.2.218",
-    "glob": "^9.2.1",
+    "glob": "^9.3.0",
     "jose": "^4.13.1"
   }
 }

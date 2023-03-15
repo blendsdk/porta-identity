@@ -13,6 +13,12 @@ import {
     ISysUserProfile
 } from "@porta/shared";
 
+export interface IOTACache {
+    flowId: string;
+    used: boolean;
+    tokenRef: string;
+}
+
 export interface IPortaUserMetaData {
     ui_locales: string;
     tenant: string;

@@ -1,0 +1,14 @@
+body,
+html,
+#root,
+.fui-FluentProvider {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+}
+iframe {
+    z-index: -99999999 !important;
+}

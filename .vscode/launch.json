@@ -9,9 +9,7 @@
             "port": 9229,
             "sourceMaps": true,
             "request": "attach",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
+            "skipFiles": ["<node_internals>/**"],
             "type": "node"
         },
         {
@@ -55,6 +53,24 @@
             "name": "WebApi Debug",
             "program": "${workspaceFolder}/packages/webapi/dist/index.js",
             "args": ["start", "--config", "./config/*.config.js"],
+            "env": { "BYPASS": true },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${workspaceFolder}/packages/webapi",
+            "windows": {
+                "program": "--config ${workspaceFolder}/packages/webapu/config/*.config.js"
+            },
+            "timeout": 5000
+        },
+        {
+            "type": "node",
+            "port": 9229,
+            "sourceMaps": true,
+            "request": "launch",
+            "smartStep": true,
+            "name": "WebApi OIDC Debug",
+            "program": "${workspaceFolder}/packages/webapi/dist/index.js",
+            "args": ["start", "--config", "./config-oidc/*.config.js"],
             "env": { "BYPASS": true },
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen",

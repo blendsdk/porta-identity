@@ -1,0 +1,119 @@
+import { Body1, makeStyles, mergeClasses, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
+import Cookies from "js-cookie";
+import React, { Fragment, useMemo } from "react";
+import { useTranslator } from "../../system/i18n";
+import { IExistingAccount } from "./types";
+import { ContactCard32Regular, PersonAccounts24Regular } from "@fluentui/react-icons";
+
+// paddingTop: 24,
+// paddingLeft: 16,
+// paddingRight: 16,
+// paddingBottom: 24,
+// marginLeft: "-1rem",
+// marginRight: "-1rem",
+// height: 64,
+// borderTopStyle: "dotted",
+// borderTopWidth: 1,
+// borderTopColor: index === 0 ? theme.palette.themeSecondary : "transparent",
+// borderBottomStyle: "dotted",
+// borderBottomWidth: 1,
+// borderBottomColor: theme.palette.themeSecondary,
+// backgroundColor:
+//     item.account === lastUsed ? theme.palette.themeLighterAlt : "transparent"
+
+const useStyles = makeStyles({
+    root: {
+        display: "flex",
+        flexDirection: "column",
+        ...shorthands.margin(tokens.spacingVerticalL, 0),
+        ...shorthands.gap("-1px")
+    },
+    button: {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "transparent",
+        cursor: "pointer",
+        ...shorthands.borderColor(tokens.colorBrandBackground),
+        ...shorthands.borderWidth("1px"),
+        ...shorthands.gap("1rem"),
+        ...shorthands.padding(tokens.spacingHorizontalM),
+        ...shorthands.outline("none"),
+        ...shorthands.borderStyle("dotted", "none", "none", "none"),
+        ":nth-last-child(1)": {
+            ...shorthands.borderStyle("dotted", "none", "dotted", "none")
+        },
+        ":hover": {
+            backgroundColor: tokens.colorNeutralBackground1Hover
+        }
+    },
+    icon: {
+        width: "32px",
+        height: "32px",
+        color: tokens.colorBrandBackground
+    },
+    caption: {}
+});
+
+/**
+ * Interface for configuring the PickAccount component
+ *
+ * @export
+ * @interface IPickAccounts
+ */
+export interface IPickAccounts {
+    accounts: IExistingAccount[];
+    onSelect: (item: IExistingAccount) => void;
+}
+
+/**
+ * PickAccount component
+ */
+export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) => {
+    const { translate } = useTranslator();
+    const styles = useStyles();
+
+    const list = useMemo<IExistingAccount[]>(() => {
+        return [
+            ...accounts,
+            {
+                account: translate("use_another_account"),
+                tenant: null
+            }
+        ];
+    }, [accounts, translate]);
+
+    const lastUsed = useMemo(() => {
+        return Cookies.get("_l");
+    }, []);
+
+    const lastTenant = useMemo(() => {
+        return Cookies.get("_at");
+    }, []);
+
+    return (
+        <Fragment>
+            <Subtitle1>{translate("signin_caption")}</Subtitle1>
+            <div className={styles.root}>
+                {list
+                    .filter((i) => i.tenant === lastTenant || i.tenant === "default" || i.tenant === null)
+                    .map((item, index) => {
+                        return (
+                            <button
+                                className={mergeClasses(styles.button)}
+                                key={item.account}
+                                onClick={() => onSelect(item)}
+                            >
+                                {item.tenant ? (
+                                    <PersonAccounts24Regular className={styles.icon} />
+                                ) : (
+                                    <ContactCard32Regular className={styles.icon} />
+                                )}
+                                <Body1 className={styles.caption}>{item.account}</Body1>
+                            </button>
+                        );
+                    })}
+            </div>
+        </Fragment>
+    );
+};

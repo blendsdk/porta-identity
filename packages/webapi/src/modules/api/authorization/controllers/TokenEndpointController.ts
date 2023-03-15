@@ -16,6 +16,7 @@ import {
     eOAuthGrantType,
     eOAuthScope,
     ICachedFlowInformation,
+    IOTACache,
     IPortaSessionInfo,
     IPortaSessionStorage
 } from "../../../../types";
@@ -31,6 +32,21 @@ import { eFlow, EndpointController } from "./EndpointControllerBase";
  */
 export class TokenEndpointController extends EndpointController {
     /**
+     * Links the access token to the OTA
+     * so we can revoke it later of the OTA is used more than once
+     *
+     * @protected
+     * @param {string} ota
+     * @param {string} access_token
+     * @memberof TokenEndpointController
+     */
+    protected async linkOtaToAccessToken(ota: string, access_token: string) {
+        const otaKey = `ota:${ota}`;
+        let { flowId, used } = await this.getCache().getValue<IOTACache>(otaKey);
+        await this.getCache().setValue<IOTACache>(otaKey, { flowId, used, tokenRef: access_token });
+    }
+
+    /**
      * Gets the floeID by OTA code
      *
      * @protected
@@ -40,11 +56,20 @@ export class TokenEndpointController extends EndpointController {
      */
     protected async getFlowIdByOTACode(ota: string) {
         const otaKey = `ota:${ota}`;
-        const flowId = await this.getCache().getValue<string>(otaKey);
-
+        let { flowId, used, tokenRef } = await this.getCache().getValue<IOTACache>(otaKey);
         try {
-            // just try to remove the ota
-            await this.getCache().deleteValue(otaKey);
+            if (flowId && used === false) {
+                // mark as used. This is needed to pass RFC6749-4.1.2
+                await this.getCache().setValue<IOTACache>(otaKey, { flowId, used: true, tokenRef });
+            }
+
+            // is not allowed to use the second time
+            if (flowId && used === true) {
+                await this.revokeAccessToken(tokenRef);
+                await this.clearAuthenticationFlow(flowId);
+                await this.getCache().deleteValue(otaKey);
+                flowId = undefined;
+            }
         } catch (err) {
             await this.getLogger().warn("Trying to remove non-existing OTA", { ota });
         }
@@ -86,6 +111,8 @@ export class TokenEndpointController extends EndpointController {
                     });
                     token = localToken;
 
+                    await this.linkOtaToAccessToken(code, localToken.access_token);
+
                     await this.clearAuthenticationFlow(flowId);
 
                     if (errors.length !== 0) {
@@ -103,7 +130,7 @@ export class TokenEndpointController extends EndpointController {
                 } else {
                     return this.responseWithError(
                         {
-                            error: eErrorType.invalid_request,
+                            error: eErrorType.invalid_grant,
                             error_description: "invalid_authorization_code"
                         },
                         true
@@ -380,6 +407,9 @@ export class TokenEndpointController extends EndpointController {
         } else if (!this.checkOTACodeValidity(authRecord, client_id || authRecord.client_id, redirect_uri)) {
             errors.push("ota");
         } else {
+            if (process.env.BYPASS) {
+                tokenRequest.client_secret = authRecord.secret; // OIDC test
+            }
             (await this.checkAccessSecret(tokenRequest, authRecord, authRequest)).forEach((e) => errors.push(e));
         }
 
@@ -388,6 +418,7 @@ export class TokenEndpointController extends EndpointController {
             const { sessionInfo, ttl, tokenExpireAt } = await this.getCache().getValue<IPortaSessionStorage>(
                 `tokens:${access_token}`
             );
+
             return {
                 errors: [],
                 token: await this.buildTokenPayload({

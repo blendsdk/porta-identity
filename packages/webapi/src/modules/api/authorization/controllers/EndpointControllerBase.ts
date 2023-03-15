@@ -178,6 +178,18 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const token = commonUtils.getUUID();
         return `${token}${TOKEN_KEY_SPLIT}${keyName}`;
     }
+
+    /**
+     * Revokes a given access token
+     *
+     * @protected
+     * @param {string} accessToken
+     * @memberof EndpointController
+     */
+    protected async revokeAccessToken(accessToken: string) {
+        await this.getCache().deleteValue(`tokens:${accessToken}`);
+    }
+
     /**
      * Creates session storage for a given user
      *

@@ -23,7 +23,7 @@ export class FlowInfoEndpointController extends EndpointController {
                 authRecord = undefined,
                 tenantRecord = undefined,
                 authRequest = undefined
-            } = await this.getCurrentAuthenticationFlow();
+            } = (await this.getCurrentAuthenticationFlow()) || {};
             if (authRecord && tenantRecord && authRequest) {
                 return new SuccessResponse<IFlowInfoResponse>({
                     data: {

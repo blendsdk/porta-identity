@@ -1,9 +1,12 @@
 import { sha256Hash } from "@blendsdk/crypto";
+import { dataSourceManager } from "@blendsdk/datakit";
+import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant } from "@porta/shared";
 import crypto from "crypto";
 import * as jwt from "jsonwebtoken";
+import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
     eErrorType,
     eOAuthDisplayModes,
@@ -14,7 +17,7 @@ import {
     IPortaApplicationSetting,
     IPortaSessionStorage
 } from "../../../../types";
-import { commonUtils } from "../../../../utils";
+import { commonUtils, databaseUtils } from "../../../../utils";
 import { MAX_AGE_AUTH_FLOW, MAX_AGE_NONCE_LIFE_TIME } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 /**
@@ -54,11 +57,30 @@ export class AuthorizeEndpointController extends EndpointController {
         // It is not clear whether we need to do something with the alg parameter in jwt
         if (request) {
             try {
-                const { payload } = jwt.decode(request, { complete: true });
-                apply(authRequest, payload, { overwrite: true, mergeArrays: true });
+                const tenantRecord = await databaseUtils.findTenant(tenant);
+                if (tenantRecord && tenantRecord.is_active) {
+                    await this.initializeTenantDataSource(tenantRecord);
+                    const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(tenantRecord.id);
+                    const keyDs = new SysKeyDataService({ dataSource });
+                    const { data } = (await keyDs.findJwkKeys())[0];
+                    const { publicKey } = JSON.parse(data);
+                    const payload = jwt.verify(request, publicKey);
+                    apply(authRequest, payload, { overwrite: true, mergeArrays: true });
+                } else {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request_object,
+                            redirect_uri,
+                            state,
+                            error_description: "invalid_authorization_record",
+                            response_mode
+                        },
+                        true
+                    );
+                }
             } catch (err: any) {
                 return this.responseWithError({
-                    error: eErrorType.invalid_request_object,
+                    error: eErrorType.request_not_supported,
                     redirect_uri,
                     state,
                     error_description: err.message,
@@ -338,7 +360,12 @@ export class AuthorizeEndpointController extends EndpointController {
             .createHash("md5")
             .update(Buffer.from(`${PORTA_SSO_COMMON_NAME}_token`))
             .digest("hex");
-        return this.getCookie(key, true) || undefined;
+
+        // we first get the token from the cookie
+        const tokenFromCookie = this.getCookie(key, true) || undefined;
+        // now we check if this token actually exists and was not revoked before
+        const assignedToken = await this.getCache().getValue(`token:${tokenFromCookie}`);
+        return assignedToken ? tokenFromCookie : undefined;
     }
 
     /**

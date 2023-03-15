@@ -41,6 +41,7 @@ export class OIDCDiscoveryEndpointController extends EndpointController {
                 scopes_supported: Object.keys(eOAuthScope),
                 claims_supported: Object.keys(eOAuthClaims),
                 token_endpoint_auth_methods_supported: Object.keys(eOAuthTokenEndpointAuthMethods),
+                request_object_signing_alg_values_supported: Object.keys(eOAuthSigningAlg),
                 request_parameter_supported: true
             } as any);
         } else {

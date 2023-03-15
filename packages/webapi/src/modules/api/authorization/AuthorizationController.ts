@@ -30,6 +30,7 @@ import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndp
 import { RedirectEndpointController } from "./controllers/RedirectEndpointController";
 import { SigninEndpointController } from "./controllers/SigninEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
+import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
 
 /**
  * @export
@@ -85,10 +86,14 @@ export class AuthorizationController extends AuthorizationControllerBase {
         const subController = new JWKSEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
-    public userInfoGet(_params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
-        throw new Error("Method not implemented.");
+
+    public userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
-    public userInfoPost(_params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>> {
-        throw new Error("Method not implemented.");
+
+    public userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
 }

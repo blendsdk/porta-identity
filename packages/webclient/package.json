@@ -1,0 +1,34 @@
+{
+  "name": "@porta/webclient",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000 --strictPort --cors --base /fe",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@blendsdk/crypto": "^3.2.218",
+    "@blendsdk/fluentrc": "^3.2.218",
+    "@blendsdk/react": "^3.2.218",
+    "@blendsdk/stdlib": "^3.2.218",
+    "@fluentui/react-components": "^9.18.0",
+    "@fluentui/react-icons": "^2.0.196",
+    "@porta/shared": "^1.0.117",
+    "@types/js-cookie": "^3.0.3",
+    "formik": "^2.2.9",
+    "js-cookie": "^3.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "yup": "^1.0.2",
+    "zustand": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-react": "^3.1.0",
+    "typescript": "^4.9.5",
+    "vite": "^4.1.4"
+  }
+}

@@ -1,7 +1,7 @@
 import { asyncForEach, IDictionaryOf } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISigninRequest, ISigninResponse, ISysAuthorizationView } from "@porta/shared";
-import { eErrorType, eOAuthResponseType, ICachedUser, IFlowRedirect } from "../../../../types";
+import { eErrorType, eOAuthResponseType, ICachedUser, IFlowRedirect, IOTACache } from "../../../../types";
 import { commonUtils } from "../../../../utils";
 import { MAX_AGE_CODE, MAX_AGE_REDIRECT } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
@@ -66,12 +66,18 @@ export class SigninEndpointController extends EndpointController {
                     switch (type) {
                         case eOAuthResponseType.code:
                             /**
-                             * Create a new OTA
+                             * Create a new OTA and mark it as NOT used.
+                             * We will use this flag to revoke token access
+                             * if the OTA is used more than once
                              */
                             const ota_code = commonUtils.getUUID();
-                            await this.getCache().setValue<string>(`ota:${ota_code}`, flowId, {
-                                expire: Date.now() + MAX_AGE_CODE
-                            });
+                            await this.getCache().setValue<IOTACache>(
+                                `ota:${ota_code}`,
+                                { flowId, used: false, tokenRef: undefined },
+                                {
+                                    expire: Date.now() + MAX_AGE_CODE
+                                }
+                            );
                             response[type] = ota_code;
                             break;
                         default:

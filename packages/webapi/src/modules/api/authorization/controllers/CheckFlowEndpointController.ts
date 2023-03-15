@@ -55,20 +55,29 @@ export class CheckFlowEndpointController extends EndpointController {
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
         const userRecord = await userDs.findByUsernameNonService({ username: username?.toLocaleLowerCase() });
 
-        if (userRecord) {
-            return new SuccessResponse<ICheckFlowResponse>({
-                data: await this.updateCurrentFlowState({
-                    account: userRecord !== null ? userRecord.username : null,
-                    account_status: userRecord !== null,
-                    account_state: tenantRecord.is_active ? userRecord?.is_active || false : false,
-                    signin_url: this.createFlowUrl("signin")
-                })
-            });
-        } else {
-            return new ServerErrorResponse({
-                message: "INVALID_OR_MISSING_USERNAME"
-            });
-        }
+        return new SuccessResponse<ICheckFlowResponse>({
+            data: await this.updateCurrentFlowState({
+                account: userRecord !== null ? userRecord.username : null,
+                account_status: userRecord !== null,
+                account_state: tenantRecord.is_active ? userRecord?.is_active || false : false,
+                signin_url: this.createFlowUrl("signin")
+            })
+        });
+
+        // if (userRecord) {
+        //     return new SuccessResponse<ICheckFlowResponse>({
+        //         data: await this.updateCurrentFlowState({
+        //             account: userRecord !== null ? userRecord.username : null,
+        //             account_status: userRecord !== null,
+        //             account_state: tenantRecord.is_active ? userRecord?.is_active || false : false,
+        //             signin_url: this.createFlowUrl("signin")
+        //         })
+        //     });
+        // } else {
+        //     return new ServerErrorResponse({
+        //         message: "INVALID_OR_MISSING_USERNAME"
+        //     });
+        // }
     }
 
     /**
