@@ -4,12 +4,12 @@ export interface IExistingAccountStorage {
 
 export interface IExistingAccount {
     account: string;
-    tenant:string;
+    tenant: string;
 }
 
 export interface IAuthenticationDialogModel {
-    username:string;
-    password:string;
+    username: string;
+    password: string;
 }
 
 /**
@@ -19,5 +19,6 @@ export const eFlowState = {
     SELECT_ACCOUNT: 1,
     REQUIRE_PASSWORD: 2,
     START_MFA: 3,
+    COMPLETE: 4,
     INVALID_SESSION: 99
 };

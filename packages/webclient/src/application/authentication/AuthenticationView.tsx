@@ -1,8 +1,8 @@
-import { catchSystemError, clearAllCookies, createApiStore, TRouterComponent } from "@blendsdk/react";
-import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse, IFlowInfo } from "@porta/shared";
+import { catchSystemError } from "@blendsdk/react";
+import { IFlowInfo } from "@porta/shared";
 import { useFormik } from "formik";
 import Cookies from "js-cookie";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslator } from "../../system/i18n";
 import { PortaApi } from "../api";
 import { eFlowState, IAuthenticationDialogModel, IExistingAccount } from "./types";
@@ -10,7 +10,7 @@ import * as yup from "yup";
 import { isEmptyObject } from "@blendsdk/stdlib";
 import { updateUserSelectList, useCheckFlow, validateData } from "./lib";
 import { useStyles } from "./styles";
-import { Button, mergeClasses } from "@fluentui/react-components";
+import { Button, mergeClasses, Spinner } from "@fluentui/react-components";
 import { InvalidSession } from "./InvalidSession";
 import { GetAccount } from "./GetAccount";
 import LogoImage from "../../resources/logo.svg";
@@ -104,7 +104,10 @@ export const AuthenticationView = () => {
                                         setFlowState(eFlowState.START_MFA);
                                     } else {
                                         updateUserSelectList(values.username);
-                                        window.location.href = checkResult.signin_url;
+                                        setFlowState(eFlowState.COMPLETE);
+                                        setTimeout(() => {
+                                            window.location.href = checkResult.signin_url;
+                                        }, 1000);
                                     }
                                 }
                             });
@@ -188,43 +191,53 @@ export const AuthenticationView = () => {
                     )}
                     {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && <GetAccount form={form} />}
                     {flowState === eFlowState.REQUIRE_PASSWORD && <GetPassword form={form} />}
-                    <div className={styles.footer}>
-                        {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && (
-                            <Button
-                                appearance="primary"
-                                disabled={checkFlow.fetching}
-                                onClick={() => {
-                                    form.submitForm();
-                                }}
-                            >
-                                {translate("btn_next")}
-                            </Button>
-                        )}
-                        {flowState === eFlowState.REQUIRE_PASSWORD && (
-                            <Button
-                                appearance="outline"
-                                onClick={() => {
-                                    debugger;
-                                    setFlowState(eFlowState.SELECT_ACCOUNT);
-                                }}
-                            >
-                                {translate("btn_back")}
-                            </Button>
-                        )}
-                        {flowState === eFlowState.REQUIRE_PASSWORD && <div className={styles.spacer} />}
-                        {flowState === eFlowState.REQUIRE_PASSWORD && (
-                            <Button
-                                appearance="primary"
-                                onClick={() => {
-                                    form.submitForm();
-                                }}
-                            >
-                                {translate(
-                                    checkFlow.data && checkFlow.data.mfa_list.length !== 0 ? "btn_next" : "btn_signin"
-                                )}
-                            </Button>
-                        )}
-                    </div>
+                    {flowState === eFlowState.COMPLETE && (
+                        <Spinner
+                            className={styles.spinner}
+                            size="small"
+                            label={translate("please_wait_while_redirecting")}
+                        />
+                    )}
+                    {flowState !== eFlowState.COMPLETE && flowState !== eFlowState.INVALID_SESSION && (
+                        <div className={styles.footer}>
+                            {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && (
+                                <Button
+                                    appearance="primary"
+                                    disabled={checkFlow.fetching}
+                                    onClick={() => {
+                                        form.submitForm();
+                                    }}
+                                >
+                                    {translate("btn_next")}
+                                </Button>
+                            )}
+                            {flowState === eFlowState.REQUIRE_PASSWORD && (
+                                <Button
+                                    appearance="outline"
+                                    onClick={() => {
+                                        setFlowState(eFlowState.SELECT_ACCOUNT);
+                                    }}
+                                >
+                                    {translate("btn_back")}
+                                </Button>
+                            )}
+                            {flowState === eFlowState.REQUIRE_PASSWORD && <div className={styles.spacer} />}
+                            {flowState === eFlowState.REQUIRE_PASSWORD && (
+                                <Button
+                                    appearance="primary"
+                                    onClick={() => {
+                                        form.submitForm();
+                                    }}
+                                >
+                                    {translate(
+                                        checkFlow.data && checkFlow.data.mfa_list.length !== 0
+                                            ? "btn_next"
+                                            : "btn_signin"
+                                    )}
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </form>
         </div>

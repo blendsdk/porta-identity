@@ -70,5 +70,9 @@
     "invalid_auth_session_text": {
         "en": "It took too long to complete your authentication. Please return to your application's login screen and start over again.",
         "nl": "Het duurde te lang om uw authenticatie te voltooien. Ga terug naar het inlogscherm van uw applicatie en begin opnieuw."
+    },
+    "please_wait_while_redirecting": {
+        "en": "Please wait while being redirected...",
+        "nl": "U wordt omgeleid. Even geduld aub..."
     }
 }

@@ -43,5 +43,11 @@ export const useStyles = makeStyles({
     },
     spacer: {
         width: "1rem"
+    },
+    redirect: {
+        textAlign: "center"
+    },
+    spinner: {
+        ...shorthands.padding("1rem")
     }
 });
