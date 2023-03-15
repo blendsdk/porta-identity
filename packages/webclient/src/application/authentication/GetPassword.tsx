@@ -23,7 +23,7 @@ export const GetPassword: React.FC<IGetPassword> = ({ form }) => {
             <Subtitle1>{translate("password_caption")}</Subtitle1>
             <Input
                 size={FIELD_SIZE}
-                id="passwprd"
+                id="password"
                 name="password"
                 autoFocus
                 onChange={form.handleChange}
