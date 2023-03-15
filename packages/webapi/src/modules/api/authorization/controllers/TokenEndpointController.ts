@@ -56,7 +56,11 @@ export class TokenEndpointController extends EndpointController {
      */
     protected async getFlowIdByOTACode(ota: string) {
         const otaKey = `ota:${ota}`;
-        let { flowId, used, tokenRef } = await this.getCache().getValue<IOTACache>(otaKey);
+        let {
+            flowId = undefined,
+            used = undefined,
+            tokenRef = undefined
+        } = (await this.getCache().getValue<IOTACache>(otaKey)) || {};
         try {
             if (flowId && used === false) {
                 // mark as used. This is needed to pass RFC6749-4.1.2
@@ -111,7 +115,10 @@ export class TokenEndpointController extends EndpointController {
                     });
                     token = localToken;
 
-                    await this.linkOtaToAccessToken(code, localToken.access_token);
+                    // link only if we have an access token
+                    if (localToken && localToken.access_token) {
+                        await this.linkOtaToAccessToken(code, localToken.access_token);
+                    }
 
                     await this.clearAuthenticationFlow(flowId);
 

@@ -32,11 +32,11 @@ local_test_express.get("/callback", async (_req, res) => {
         await axios
             .post(`${BASE_URL}/${data.tenant}/oauth2/token`, data)
             .then((_res) => {
-                debugger;
+                //debugger;
                 res.status(_res.status).send(_res.data);
             })
             .catch((_err) => {
-                debugger;
+                //debugger;
                 res.status(200).json({
                     error: _err.response.status,
                     ..._err.response?.data
@@ -59,11 +59,11 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                 .then(({ data }) => {
                     const { account, account_status, account_state } = data;
                     if (account !== username) {
-                        res.status(401).send("account_error");
+                        res.status(200).send(errorObjectInfo({ message: "account_error" }));
                     } else if (!account_status) {
-                        res.status(401).send("account_status");
+                        res.status(200).send(errorObjectInfo({ message: "account_status" }));
                     } else if (!account_state) {
-                        res.status(401).send("account_state");
+                        res.status(200).send(errorObjectInfo({ message: "account_state" }));
                     } else {
                         PortaApi.authorization
                             .checkFlow({
@@ -79,15 +79,15 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                                             withCredentials: true
                                         })
                                         .then((_res) => {
-                                            debugger;
+                                            //debugger;
                                             res.status(_res.status).send(_res.data);
                                         })
                                         .catch((err) => {
-                                            debugger;
+                                            //debugger;
                                             res.status(200).send(errorObjectInfo(err));
                                         });
                                 } else {
-                                    debugger;
+                                    //debugger;
                                     res.status(200).send(
                                         createErrorObject({
                                             message: "password_state"
@@ -96,7 +96,7 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                                 }
                             })
                             .catch((err) => {
-                                debugger;
+                                //debugger;
                                 res.status(200).send(errorObjectInfo(err));
                             });
                     }
@@ -107,7 +107,7 @@ local_test_express.get("/fe/auth/signin", (req, res, _next) => {
                 });
         })
         .catch((err: any) => {
-            debugger;
+            //debugger;
             res.status(200).send(errorObjectInfo(err));
         });
 });

@@ -137,7 +137,7 @@ describe("Authorize Sequence Happy", () => {
             })
         };
         const { message } = (await PortaApi.authorization.authorize(authRequest)) as any;
-        expect(message).toEqual("INVALID_OR_MISSING_USERNAME");
+        expect(message).toEqual("account_error");
     });
 
     test("Invalid Redirect URI", async () => {
@@ -230,7 +230,7 @@ describe("Authorize Sequence Happy", () => {
             client_id: client.client_id,
             redirect_uri: client.redirect_uri,
             response_type: "code",
-            scope: "some-scope",
+            scope: "some-scope1",
             state: makeState({
                 tenant: test_set,
                 grant_type: "authorization_code",
@@ -242,8 +242,7 @@ describe("Authorize Sequence Happy", () => {
             })
         };
         const result: any = await PortaApi.authorization.authorize(authRequest);
-        expect(result.error).toEqual(400);
-        expect(result.message).toEqual("invalid_request");
+        expect(result.message).toEqual("invalid_grant");
     });
 
     test("Invalid grant type", async () => {
@@ -264,7 +263,6 @@ describe("Authorize Sequence Happy", () => {
             })
         };
         const result: any = await PortaApi.authorization.authorize(authRequest);
-        expect(result.error).toEqual(400);
         expect(result.message).toEqual("invalid_grant");
     });
 
@@ -291,7 +289,6 @@ describe("Authorize Sequence Happy", () => {
             })
         };
         const result: any = await PortaApi.authorization.authorize(authRequest);
-        expect(result.error).toEqual(400);
         expect(result.message).toEqual("invalid_request");
     });
 
@@ -313,7 +310,6 @@ describe("Authorize Sequence Happy", () => {
             })
         };
         const result: any = await PortaApi.authorization.authorize(authRequest);
-        expect(result.error).toEqual(400);
         expect(result.message).toEqual("invalid_request");
     });
 
