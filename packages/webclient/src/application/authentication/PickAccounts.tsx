@@ -1,25 +1,9 @@
-import { Body1, makeStyles, mergeClasses, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
+import { Body2, makeStyles, mergeClasses, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
 import Cookies from "js-cookie";
 import React, { Fragment, useMemo } from "react";
 import { useTranslator } from "../../system/i18n";
 import { IExistingAccount } from "./types";
 import { ContactCard32Regular, PersonAccounts24Regular } from "@fluentui/react-icons";
-
-// paddingTop: 24,
-// paddingLeft: 16,
-// paddingRight: 16,
-// paddingBottom: 24,
-// marginLeft: "-1rem",
-// marginRight: "-1rem",
-// height: 64,
-// borderTopStyle: "dotted",
-// borderTopWidth: 1,
-// borderTopColor: index === 0 ? theme.palette.themeSecondary : "transparent",
-// borderBottomStyle: "dotted",
-// borderBottomWidth: 1,
-// borderBottomColor: theme.palette.themeSecondary,
-// backgroundColor:
-//     item.account === lastUsed ? theme.palette.themeLighterAlt : "transparent"
 
 const useStyles = makeStyles({
     root: {
@@ -109,7 +93,7 @@ export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) =>
                                 ) : (
                                     <ContactCard32Regular className={styles.icon} />
                                 )}
-                                <Body1 className={styles.caption}>{item.account}</Body1>
+                                <Body2 className={styles.caption}>{item.account}</Body2>
                             </button>
                         );
                     })}

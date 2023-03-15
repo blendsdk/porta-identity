@@ -2,7 +2,7 @@ import { Body1, Input, makeStyles, Subtitle1, tokens } from "@fluentui/react-com
 import { FormikProps } from "formik";
 import React, { Fragment } from "react";
 import { useTranslator } from "../../system/i18n";
-import { IAuthenticationDialogModel } from "./types";
+import { FIELD_SIZE, IAuthenticationDialogModel } from "./types";
 
 export interface IGetAccount {
     form: FormikProps<IAuthenticationDialogModel>;
@@ -22,6 +22,7 @@ export const GetAccount: React.FC<IGetAccount> = ({ form }) => {
         <Fragment>
             <Subtitle1>{translate("signin_caption")}</Subtitle1>
             <Input
+                size={FIELD_SIZE}
                 id="username"
                 name="username"
                 autoFocus

@@ -10,7 +10,11 @@ export const useStyles = makeStyles({
         right: 0,
         width: "100%",
         height: "100%",
-        boxSizing: "border-box"
+        boxSizing: "border-box",
+        "& form": {
+            position: "relative",
+            height: "100%"
+        }
     },
     authView: {
         backgroundColor: tokens.colorNeutralBackground1,
@@ -28,6 +32,10 @@ export const useStyles = makeStyles({
             left: "50%",
             boxShadow: tokens.shadow4,
             ...shorthands.borderRadius(tokens.borderRadiusSmall)
+        },
+        "@media only screen and (max-width: 600px)": {
+            height: "100%",
+            position: "relative"
         }
     },
     logo: {

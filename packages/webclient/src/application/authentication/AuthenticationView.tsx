@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslator } from "../../system/i18n";
 import { PortaApi } from "../api";
-import { eFlowState, IAuthenticationDialogModel, IExistingAccount } from "./types";
+import { eFlowState, FIELD_SIZE, IAuthenticationDialogModel, IExistingAccount } from "./types";
 import * as yup from "yup";
 import { isEmptyObject } from "@blendsdk/stdlib";
 import { updateUserSelectList, useCheckFlow, validateData } from "./lib";
@@ -202,6 +202,7 @@ export const AuthenticationView = () => {
                         <div className={styles.footer}>
                             {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && (
                                 <Button
+                                    size={FIELD_SIZE}
                                     className={styles.button}
                                     appearance="primary"
                                     disabled={checkFlow.fetching}
@@ -214,6 +215,7 @@ export const AuthenticationView = () => {
                             )}
                             {flowState === eFlowState.REQUIRE_PASSWORD && (
                                 <Button
+                                    size={FIELD_SIZE}
                                     className={styles.button}
                                     appearance="outline"
                                     onClick={() => {
@@ -226,6 +228,7 @@ export const AuthenticationView = () => {
                             {flowState === eFlowState.REQUIRE_PASSWORD && <div className={styles.spacer} />}
                             {flowState === eFlowState.REQUIRE_PASSWORD && (
                                 <Button
+                                    size={FIELD_SIZE}
                                     className={styles.button}
                                     appearance="primary"
                                     onClick={() => {

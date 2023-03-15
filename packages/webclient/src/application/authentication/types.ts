@@ -1,3 +1,5 @@
+export const FIELD_SIZE = "large";
+
 export interface IExistingAccountStorage {
     [client_id: string]: IExistingAccount[];
 }
