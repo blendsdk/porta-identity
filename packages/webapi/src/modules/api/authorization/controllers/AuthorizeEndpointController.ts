@@ -364,7 +364,7 @@ export class AuthorizeEndpointController extends EndpointController {
         // we first get the token from the cookie
         const tokenFromCookie = this.getCookie(key, true) || undefined;
         // now we check if this token actually exists and was not revoked before
-        const assignedToken = await this.getCache().getValue(`token:${tokenFromCookie}`);
+        const assignedToken = await this.getCache().getValue(`tokens:${tokenFromCookie}`);
         return assignedToken ? tokenFromCookie : undefined;
     }
 
