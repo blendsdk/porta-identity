@@ -1,7 +1,7 @@
 {
   "name": "@porta/webclient",
   "private": true,
-  "version": "1.0.123",
+  "version": "1.0.124",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000 --strictPort --cors --base /fe",
@@ -15,7 +15,7 @@
     "@blendsdk/stdlib": "^3.2.218",
     "@fluentui/react-components": "^9.18.0",
     "@fluentui/react-icons": "^2.0.196",
-    "@porta/shared": "^1.0.123",
+    "@porta/shared": "^1.0.124",
     "@types/js-cookie": "^3.0.3",
     "formik": "^2.2.9",
     "js-cookie": "^3.0.1",
