@@ -1,6 +1,6 @@
 {
     "name": "@porta/shared",
-    "version": "1.0.120",
+    "version": "1.0.121",
     "main": "dist/index.js",
     "scripts": {
         "ls": "docker container ls",
