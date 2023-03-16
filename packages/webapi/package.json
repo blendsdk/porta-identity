@@ -14,7 +14,7 @@
         "db:start": "docker-compose -f ./docker/docker-compose.yml up -d db && ./wait-for 127.0.0.1:5010",
         "db:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv db && docker container prune --force",
         "db:restart": "yarn db:stop && yarn db:start",
-        "test": "BYPASS=true yarn cache:restart && yarn db:stop && yarn db:start && seep 60 && TEST=true jest --detectOpenHandles --passWithNoTests && yarn db:stop",
+        "test": "BYPASS=true yarn cache:restart && yarn db:stop && yarn db:start && sleep 60 && TEST=true jest --detectOpenHandles --passWithNoTests && yarn db:stop",
         "test:fast": "BYPASS=true TEST=true jest --passWithNoTests --detectOpenHandles",
         "cache:start": "docker-compose -f ./docker/docker-compose.yml up -d redis",
         "cache:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv redis && docker container prune --force",
