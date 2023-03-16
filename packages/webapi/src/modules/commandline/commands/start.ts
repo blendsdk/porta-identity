@@ -11,6 +11,7 @@ import { commonUtils, databaseUtils } from "../../../utils";
 import { application } from "../../application";
 import * as fs from "fs";
 import * as path from "path";
+import { IDatabaseAppSettings } from "@blendsdk/webafx";
 
 /**
  * Interface describing the commandline args
@@ -70,10 +71,12 @@ export const builder: CommandBuilder = {
 export function checkAndInitialize() {
     return new Promise<void>(async (resolve, reject) => {
         try {
-            const { PORTA_ADMIN, PORTA_PASSWORD } = application.getSettings<IPortaApplicationSetting>();
+            const { PORTA_ADMIN, PORTA_PASSWORD, DB_DATABASE } = application.getSettings<
+                IPortaApplicationSetting & IDatabaseAppSettings
+            >();
             await databaseUtils.initializeTenant(
                 PORTA_REGISTRY,
-                PORTA_REGISTRY,
+                DB_DATABASE,
                 "Porta Registry",
                 false,
                 true,
