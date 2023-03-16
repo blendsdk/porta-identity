@@ -6,7 +6,7 @@ import { ApplicationApi, IApplicationI18NKeys } from "../api/generated_api";
  *
  */
 export const useTranslator = createTranslator<IApplicationI18NKeys>({
-    loader: (locale:string) => {
+    loader: (locale: string) => {
         return new Promise((resolve, reject) => {
             ApplicationApi.blend
                 .getTranslations({

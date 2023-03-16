@@ -17,7 +17,7 @@ module.exports = {
     PORTA_SESSION_LENGTH: 3 * 24 * 60 * 60, // 3 days
     PORTA_ADMIN: "admin@blendsdk.net",
     PORTA_PASSWORD: "secret",
-    PORTA_SIGNIN_URI: "http://localhost:3000/fe/auth/signin",
+    PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",
     PORTA_SSO_COMMON_NAME: "porta_development",
     ENFORCE_PKCE: false
 };
