@@ -19,7 +19,7 @@
     "postinstall": "rm -fR ./node_modules/@types/eslint-scope &&  rm -fR node_modules/@types/cacheable-request",
     "bootstrap": "lerna bootstrap --use-workspaces",
     "build": "lerna clean -y && lerna run build",
-    "test": "jest jest --clearCache &&  lerna run db:restart --scope=@porta/webapi && lerna run db:reset --scope=@porta/webapi && lerna run cache:restart --scope=@porta/webapi && lerna run test",
+    "test": "jest jest --clearCache && lerna run --scope=@porta/webapi test",
     "ncu": "ncu -u -x chalk,nanoid,\"@blendsdk*\",\"@porta*\" && lerna exec \"ncu -u -x chalk,nanoid,'@blendsdk*','@porta*' \" && rm -fR node_modules yarn.lock && yarn install && yarn bootstrap && yarn build && yarn test",
     "generate": "lerna run generate --scope=@porta/codegen && lerna run build --scope=@porta/shared",
     "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh && yarn remove -W glob && yarn -W add glob",

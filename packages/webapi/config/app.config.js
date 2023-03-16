@@ -1,7 +1,7 @@
 const path = require("path");
 
 module.exports = {
-    DEBUG: false,
+    DEBUG: true,
     PORT: 4000,
     HELMET_OPTIONS: {
         contentSecurityPolicy: false
