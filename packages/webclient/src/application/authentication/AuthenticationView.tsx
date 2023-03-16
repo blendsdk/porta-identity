@@ -173,6 +173,7 @@ export const AuthenticationView = () => {
                     {flowInfo && flowState !== eFlowState.INVALID_SESSION && (
                         <img className={styles.logo} src={flowInfo.logo || LogoImage} alt="logo" />
                     )}
+                    {!flowState && <Spinner className={styles.spinner} size="small" label={translate("please_wait")} />}
                     {flowState === eFlowState.INVALID_SESSION && <InvalidSession />}
                     {flowState === eFlowState.SELECT_ACCOUNT && showPickAccount && (
                         <PickAccounts

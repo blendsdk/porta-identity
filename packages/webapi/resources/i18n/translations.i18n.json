@@ -74,5 +74,9 @@
     "please_wait_while_redirecting": {
         "en": "Please wait while being redirected...",
         "nl": "U wordt omgeleid. Even geduld aub..."
+    },
+    "please_wait": {
+        "en": "Please wait...",
+        "nl": "Even geduld aub..."
     }
 }
