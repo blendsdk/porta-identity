@@ -40,13 +40,9 @@ jobs:
                   yarn tag-version-auto --yes
                   yarn publish-packages --yes
 
-            - name: Deployment
+            - name: Deploy to ${BRANCH_NAME}
               run: |
-                  echo THIS IS ${BRANCH_NAME}
-
-            # - name: Deployment
-            #   run: |
-            #       ssh porta@docker1 "mkdir -p ~/containers/${BRANCH_NAME} && cd ~/containers/${BRANCH_NAME} && ./build-app-image.sh porta ${BRANCH_NAME} && ./swap.sh porta ${BRANCH_NAME}"
+                  ssh porta@docker1 "mkdir -p ~/containers/${BRANCH_NAME} && cd ~/containers/${BRANCH_NAME} && ./build-app-image.sh porta ${BRANCH_NAME} && ./swap.sh porta ${BRANCH_NAME}"
 
             - name: Unlocking The Build Queue
               if: always()
