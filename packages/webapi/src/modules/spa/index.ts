@@ -42,7 +42,7 @@ export const SPARoutes = (): IRouter => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
                         const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.view.html")).toString();
+                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
                         res.send(indexFile.replace("_csr_", createAndSetSigningKeyCookie(req, res)));

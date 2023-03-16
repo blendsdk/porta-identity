@@ -13,7 +13,6 @@ services:
             - PGTZ=Europe/Amsterdam
         volumes:
             - ./postgres:/docker-entrypoint-initdb.d
-            - ../resources/database/schema.sql:/schema.sql
     redis:
         image: redis:alpine
         container_name: porta_cache

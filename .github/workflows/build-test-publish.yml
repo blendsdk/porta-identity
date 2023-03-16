@@ -1,0 +1,53 @@
+name: BuildTestDeploy
+on:
+    push:
+        branches:
+            - "master" # matches every branch that doesn't contain a '/'
+            - "develop" # matches every branch containing a single '/'
+            - "beta" # matches every branch
+env:
+    BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+    BuildTestDeploy:
+        runs-on: self-hosted
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  fetch-depth: 0
+
+            - name: Locking the build queue
+              run: workflow_queue queue blendsdk
+
+            - name: Installing Packages
+              run: |
+                  yarn install
+                  yarn bootstrap
+
+            - name: Building the Project
+              run: |
+                  yarn build
+                  mv ./packages/webclient/dist ./packages/webapi/public
+
+            - name: Testing the project
+              run: |
+                  mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
+                  yarn test
+
+            - name: Publish packages
+              run: |
+                  git reset --hard
+                  yarn tag-version-auto --yes
+                  yarn publish-packages --yes
+
+            - name: Deployment
+              run: |
+                  echo THIS IS ${BRANCH_NAME}
+
+            # - name: Deployment
+            #   run: |
+            #       ssh porta@docker1 "mkdir -p ~/containers/${BRANCH_NAME} && cd ~/containers/${BRANCH_NAME} && ./build-app-image.sh porta ${BRANCH_NAME} && ./swap.sh porta ${BRANCH_NAME}"
+
+            - name: Unlocking The Build Queue
+              if: always()
+              run: workflow_queue clear blendsdk
