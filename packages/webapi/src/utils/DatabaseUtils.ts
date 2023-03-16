@@ -297,15 +297,17 @@ class DatabaseUtils {
                         "select * from information_schema.tables where table_name = :table_name and table_catalog = :table_catalog",
                         {
                             table_name: "sys_tenant",
-                            table_catalog: PORTA_REGISTRY
+                            table_catalog: databaseName
                         },
                         { single: true }
                     );
                     // initialize the schema
                     if (!initialized) {
-                        application.getLogger().info(`Initializing ${PORTA_REGISTRY} tenant.`);
-                        const dbConn = await this.initializeDatabaseSchema(PORTA_REGISTRY, true);
-                        await this.seedDatabase(dbConn, admin_user, admin_password, PORTA_REGISTRY);
+                        application
+                            .getLogger()
+                            .info(`Initializing ${tenantName} tenant with database ${databaseName}.`);
+                        const dbConn = await this.initializeDatabaseSchema(databaseName, true);
+                        await this.seedDatabase(dbConn, admin_user, admin_password, tenantName);
                         await dbConn.withContext(async (sharedContext) => {
                             const tenantDs = new SysTenantDataService({ sharedContext });
                             tenantDs.insertIntoSysTenant({
