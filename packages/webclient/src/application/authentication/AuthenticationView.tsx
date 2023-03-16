@@ -199,7 +199,7 @@ export const AuthenticationView = () => {
                             label={translate("please_wait_while_redirecting")}
                         />
                     )}
-                    {flowState !== eFlowState.COMPLETE && flowState !== eFlowState.INVALID_SESSION && (
+                    {flowState && flowState !== eFlowState.COMPLETE && flowState !== eFlowState.INVALID_SESSION && (
                         <div className={styles.footer}>
                             {flowState === eFlowState.SELECT_ACCOUNT && !showPickAccount && (
                                 <Button
