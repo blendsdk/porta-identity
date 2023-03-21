@@ -3,7 +3,7 @@ import { CacheModule } from "@blendsdk/webafx-cache";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import * as path from "path";
 import { AuthorizationModule } from "../api/authorization";
-import { PortaAuthenticationModule } from "../auth/local";
+import { PortaAuthenticationModule } from "../auth/porta";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
@@ -42,7 +42,7 @@ const application = new Application({
         return new DatabaseModule({ ...config });
     },
     (config) => {
-        return new PortaAuthenticationModule(config);
+        return new PortaAuthenticationModule({ ...config });
     }
 ]);
 

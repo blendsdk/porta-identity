@@ -746,6 +746,10 @@ export const validationSchema = {
 		user_info_post_request: {
 			type: eJsonSchemaType.object,
 			properties: {
+				access_token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
 				tenant: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.params

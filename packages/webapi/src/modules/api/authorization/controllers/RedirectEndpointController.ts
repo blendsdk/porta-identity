@@ -8,6 +8,7 @@ import {
 } from "@blendsdk/webafx-common";
 import { IRedirectRequest } from "@porta/shared";
 import { eOAuthResponseMode, IFlowRedirect } from "../../../../types";
+import { expireSecondsFromNow } from "../../../auth/utils";
 import { formPostTemplate } from "../FormPostTemplate";
 import { EndpointController } from "./EndpointControllerBase";
 
@@ -19,6 +20,25 @@ import { EndpointController } from "./EndpointControllerBase";
  * @extends {EndpointController}
  */
 export class RedirectEndpointController extends EndpointController {
+    /**
+     * Removes the authentication flow cookies
+     *
+     * @protected
+     * @memberof RedirectEndpointController
+     */
+    protected removeAuthSessionCookies() {
+        // auth tenant
+        this.setCookie("_at", "", {
+            expires: new Date(expireSecondsFromNow(-1)),
+            sameSite: "lax"
+        });
+        // auth session
+        this.setCookie("_as", "", {
+            expires: new Date(expireSecondsFromNow(-1)),
+            sameSite: "lax"
+        });
+    }
+
     /**
      * The redirection endpoint for handling redirecting to the redirect_uri
      *
@@ -36,6 +56,8 @@ export class RedirectEndpointController extends EndpointController {
                     (await this.getCache().getValue<IFlowRedirect>(`redirect:${af}`)) || {};
 
                 if (redirect_uri && response && response_mode) {
+                    this.removeAuthSessionCookies();
+
                     // redirect for the query mode
                     if (response_mode === eOAuthResponseMode.query) {
                         const query = new URLSearchParams(response).toString();

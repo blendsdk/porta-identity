@@ -1,11 +1,11 @@
 // How long a redirect cache will exist
-export const MAX_AGE_REDIRECT = 1000 * 30; // seconds
+export const REDIRECT_TTL = 30;
 
 // How log an authentication flow will exist
-export const MAX_AGE_AUTH_FLOW = 1000 * 60 * 16; // minutes
+export const AUTH_FLOW_TTL = 60 * 3;
 
-// How long an OTA will exist. This is always a bit lower than MAX_AGE_AUTH_FLOW
-export const MAX_AGE_CODE = 1000 * 60 * 15; // minutes
+// How long an OTA will exist. This is always a bit lower than AUTH_FLOW_TTL
+export const OTA_TTL = 2.5 * 60;
 
 // How log a nonce is locked before it can be reused
-export const MAX_AGE_NONCE_LIFE_TIME = 1000 * 60 * 60 * 24 * 1; // days
+export const NONCE_TTL = 86400 * 1; // 1 day

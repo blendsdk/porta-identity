@@ -1,3 +1,4 @@
+import { encodeBase64Key } from "@blendsdk/crypto";
 import { createApiStore } from "@blendsdk/react";
 import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse } from "@porta/shared";
 import Cookies from "js-cookie";
@@ -39,8 +40,9 @@ export const getAuthenticatingTenant = () => {
  * @param user
  * @returns
  */
-export const updateUserSelectList = (user?: string) => {
-    const list = JSON.parse(Cookies.get("_ac") || "[]") as any[];
+export const updateUserSelectList = (tenant: string, user?: string) => {
+    const listKey = encodeBase64Key({ type: "user_list", tenant });
+    const list = JSON.parse(Cookies.get(listKey) || "[]") as any[];
     if (user) {
         const tenant = getAuthenticatingTenant();
         const get = (user: string) => list.filter((i) => i.account === user)[0];
@@ -50,7 +52,7 @@ export const updateUserSelectList = (user?: string) => {
                 tenant
             });
         }
-        Cookies.set("_ac", JSON.stringify(list));
+        Cookies.set(listKey, JSON.stringify(list));
     }
     return list;
 };

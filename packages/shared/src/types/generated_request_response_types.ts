@@ -525,6 +525,11 @@ export interface IUserInfoPostRequest {
 	 * @type string
 	 * @memberOf IUserInfoPostRequest
 	 */
+	access_token?: string;
+	/**
+	 * @type string
+	 * @memberOf IUserInfoPostRequest
+	 */
 	tenant: string;
 }
 

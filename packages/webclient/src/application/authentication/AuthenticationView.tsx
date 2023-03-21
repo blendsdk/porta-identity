@@ -27,6 +27,10 @@ export const AuthenticationView = () => {
 
     const checkFlow = useCheckFlow();
 
+    const lastTenant = useMemo(() => {
+        return Cookies.get("_at");
+    }, []);
+
     const [useAnotherAccount, setUseAnotherAccount] = useState(false);
 
     const showPickAccount = useMemo(() => {
@@ -84,7 +88,6 @@ export const AuthenticationView = () => {
                         .fetch({ state: "check_account", options: values.username })
                         .then(() => {
                             validateForm().then((valResult) => {
-                                Cookies.set("_l", values.username);
                                 checkFlow.reset(false, null);
                                 if (isEmptyObject(valResult)) {
                                     setFlowState(eFlowState.REQUIRE_PASSWORD);
@@ -103,7 +106,7 @@ export const AuthenticationView = () => {
                                     if (checkResult.mfa_list && checkResult.mfa_list.length !== 0) {
                                         setFlowState(eFlowState.START_MFA);
                                     } else {
-                                        updateUserSelectList(values.username);
+                                        updateUserSelectList(lastTenant, values.username);
                                         setFlowState(eFlowState.COMPLETE);
                                         setTimeout(() => {
                                             window.location.href = checkResult.signin_url;
@@ -144,7 +147,7 @@ export const AuthenticationView = () => {
                 PortaApi.authorization
                     .flowInfo({})
                     .then(({ data }) => {
-                        const accounts = updateUserSelectList();
+                        const accounts = updateUserSelectList(lastTenant);
                         setFlowInfo(data);
                         setAccounts(accounts);
                         setFlowState(eFlowState.SELECT_ACCOUNT);

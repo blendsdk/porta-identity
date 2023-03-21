@@ -20,9 +20,10 @@ export class UserInfoEndpointController extends EndpointController {
     public async handleRequest(
         _params: IUserInfoGet | IUserInfoPost
     ): Promise<Response<IUserInfoGetResponse | IUserInfoPostRequest>> {
-        const { sessionInfo } = this.getContext().getUser<IPortaSessionStorage>();
+        const sessionStorage = this.getContext().getSessionStorage<IPortaSessionStorage>();
+        const { tenant } = sessionStorage || {};
         const tenantDs = new SysTenantDataService();
-        const tenantRecord = await tenantDs.findSysTenantById({ id: sessionInfo.metaData.tenant });
-        return new SuccessResponse(this.getClaimsByScope(sessionInfo, tenantRecord.name));
+        const tenantRecord = await tenantDs.findSysTenantById({ id: tenant.id });
+        return new SuccessResponse(this.getClaimsByScope(sessionStorage, tenantRecord.name));
     }
 }

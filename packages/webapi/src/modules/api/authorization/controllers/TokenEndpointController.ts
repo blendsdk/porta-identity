@@ -17,10 +17,11 @@ import {
     eOAuthScope,
     ICachedFlowInformation,
     IOTACache,
-    IPortaSessionInfo,
+    IPortaApplicationSetting,
     IPortaSessionStorage
 } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
+import { portaAuthUtils } from "../../../auth/utils";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 
 /**
@@ -215,7 +216,7 @@ export class TokenEndpointController extends EndpointController {
                     if (this.checkOTACodeValidity(authRecord, client_id, /* redirect_uri -->*/ null)) {
                         const err = await this.checkAccessSecret(tokenRequest, authRecord, undefined);
                         if (err.length === 0) {
-                            const { tokenKey, sessionStorage } = await this.createSessionStorageForUser(
+                            const { accessToken, sessionStorage } = await this.createSessionStorageForUser(
                                 tenantRecord,
                                 authRecord,
                                 authRecord.client_credentials_user_id,
@@ -224,13 +225,13 @@ export class TokenEndpointController extends EndpointController {
                                 ""
                             );
                             token = await this.buildTokenPayload({
-                                access_token: tokenKey,
+                                access_token: accessToken,
                                 ttl: sessionStorage.ttl,
                                 tokenExpireAt: sessionStorage.tokenExpireAt,
                                 tenant: tenantRecord,
                                 authRecord,
                                 authRequest: { nonce } as any,
-                                sessionInfo: sessionStorage.sessionInfo
+                                sessionStorage
                             });
                         } else {
                             err.forEach((e) => errors.push(e));
@@ -299,7 +300,7 @@ export class TokenEndpointController extends EndpointController {
         tenant,
         authRecord,
         authRequest,
-        sessionInfo
+        sessionStorage
     }: {
         access_token: string;
         ttl: number;
@@ -307,14 +308,14 @@ export class TokenEndpointController extends EndpointController {
         tenant: ISysTenant;
         authRecord: ISysAuthorizationView;
         authRequest: IAuthorizeRequest;
-        sessionInfo: IPortaSessionInfo;
+        sessionStorage: IPortaSessionStorage;
     }): Promise<IToken> {
         const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
         const { data } = (await keyDs.findJwkKeys())[0];
         const { privateKey } = JSON.parse(data);
         const { client_id } = authRecord;
 
-        const { metaData, accountId } = sessionInfo || {};
+        const { metaData, user } = sessionStorage || {};
         const { auth_time, roles, permissions } = metaData || {};
 
         const pKey = await jose.importPKCS8(privateKey, "RS256");
@@ -356,7 +357,7 @@ export class TokenEndpointController extends EndpointController {
             .setIssuer(this.getIssuer(tenant.name))
             .setAudience(client_id)
             .setExpirationTime(tokenExpireAt)
-            .setSubject(accountId)
+            .setSubject(user.id)
             .sign(pKey);
 
         return {
@@ -397,7 +398,7 @@ export class TokenEndpointController extends EndpointController {
         cachedFlow: ICachedFlowInformation;
         tokenRequest: ITokenRequest;
     }): Promise<{ token: IToken; errors: any[] }> {
-        // get the current auth flow
+        const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
 
         const errors: string[] = [];
 
@@ -422,9 +423,13 @@ export class TokenEndpointController extends EndpointController {
 
         if (errors.length === 0) {
             const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
-            const { sessionInfo, ttl, tokenExpireAt } = await this.getCache().getValue<IPortaSessionStorage>(
-                `tokens:${access_token}`
-            );
+            const cacheKey = [
+                "tokens",
+                portaAuthUtils.getKeySignature(tenantRecord, PORTA_SSO_COMMON_NAME),
+                access_token
+            ].join(":");
+            const sessionStorage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
+            const { ttl, tokenExpireAt } = sessionStorage || {};
 
             return {
                 errors: [],
@@ -435,7 +440,7 @@ export class TokenEndpointController extends EndpointController {
                     tenant: tenantRecord,
                     authRecord,
                     authRequest,
-                    sessionInfo
+                    sessionStorage
                 })
             };
         } else {

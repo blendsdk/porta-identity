@@ -1,7 +1,6 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { deepCopy, isObject } from "@blendsdk/stdlib";
-import { TOKEN_KEY_SPLIT } from "@blendsdk/webafx";
 import {
     BadRequestResponse,
     Controller,
@@ -11,7 +10,6 @@ import {
     SuccessResponse
 } from "@blendsdk/webafx-common";
 import { IAuthenticationFlowState, ISysAuthorizationView, ISysTenant } from "@porta/shared";
-import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -29,12 +27,12 @@ import {
     ICachedFlowInformation,
     IErrorResponseParams,
     IPortaApplicationSetting,
-    IPortaSessionInfo,
     IPortaSessionStorage
 } from "../../../../types";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
-import { commonUtils, databaseUtils } from "../../../../utils";
+import { databaseUtils } from "../../../../utils";
+import { portaAuthUtils } from "../../../auth/utils";
 
 /**
  * Enum describing flow parts
@@ -98,13 +96,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * Gets the oidc claims by scope
      *
      * @protected
-     * @param {IPortaSessionInfo} sessionInfo
+     * @param {IPortaSessionInfo} sessionStorage
      * @returns
      * @memberof EndpointController
      */
-    protected getClaimsByScope(sessionInfo: IPortaSessionInfo, tenantName: string) {
-        const { metaData } = sessionInfo || {};
-        const claims = new Claims(sessionInfo, this.getServerUrl(), tenantName);
+    protected getClaimsByScope(sessionStorage: IPortaSessionStorage, tenantName: string) {
+        const { metaData } = (sessionStorage || {}) as any;
+        const claims = new Claims(sessionStorage, this.getServerUrl(), tenantName);
         return claims.getClaims(metaData || {});
     }
 
@@ -144,39 +142,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     protected getIssuer(tenant: string) {
         return `${this.getServerUrl()}/${tenant}/oauth2`;
-    }
-
-    /**
-     * Hashes a string with the name of this module
-     *
-     * This method is a duplicate of the auth.ts in webafx auth
-     * since we don't use the local.ts login anymore because of the
-     * express.js problem of calling a route internally
-     *
-     * @protected
-     * @param {string} key
-     * @returns
-     * @memberof AuthenticationModule
-     */
-    protected hashKeyWithName(key: string) {
-        const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-        return crypto.createHash("md5").update(`${PORTA_SSO_COMMON_NAME}_${key}`).digest("hex");
-    }
-
-    /**
-     * Creates a random token key based on the module name.
-     *
-     * This method is a duplicate of the auth.ts in webafx auth
-     * since we don't use the local.ts login anymore because of the
-     * express.js problem of calling a route internally
-     *
-     * @protected
-     * @returns
-     * @memberof AuthenticationModule
-     */
-    protected createTokenKey(keyName: string) {
-        const token = commonUtils.getUUID();
-        return `${token}${TOKEN_KEY_SPLIT}${keyName}`;
     }
 
     /**
@@ -224,56 +189,44 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const permissionDs = new SysPermissionDataService({ sharedContext });
 
         const userRecord = await userDs.findSysUserById({ id: user_id });
-
         const profile = await profileDs.findUserProfileByUserId({
             user_id: userRecord.id
         });
-
         const userPerms = await permissionDs.findPermissionsByUserId({ user_id: userRecord.id });
-
         const userGroups = await userGroupDs.findGroupsByUserId({
             user_id: userRecord.id
         });
-
         await closeContext();
-        const { PORTA_SESSION_LENGTH } = this.getSettings<IPortaApplicationSetting>();
+
+        const { PORTA_SESSION_LENGTH, PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
         const session_ttl = (session_length || PORTA_SESSION_LENGTH) * 1000;
 
-        const keyName = this.hashKeyWithName("token");
-        const tokenKey = this.createTokenKey(keyName);
+        const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
+        const accessToken = portaAuthUtils.newAccessToken();
 
         const NOW = Date.now();
-        const cacheKey = `tokens:${tokenKey}`;
+        const cacheKey = ["tokens", keySignature, accessToken].join(":");
         const tokenExpireAt = NOW + session_ttl;
 
         const sessionStorage: IPortaSessionStorage = {
             ttl: session_ttl,
             tokenExpireAt,
-            sessionInfo: {
-                accountId: userRecord.id,
-                user: userRecord,
-                rbacRoles: userGroups
-                    .filter((r) => {
-                        return r.is_active === true;
-                    })
-                    .map((r) => {
-                        return r.name;
-                    }),
-                profile,
-                metaData: {
-                    ui_locales,
-                    tenant: tenant.id,
-                    scope,
-                    claims,
-                    auth_time: NOW,
-                    roles: userGroups,
-                    permissions: userPerms
-                }
+            user: userRecord,
+            userProfile: profile,
+            metaData: {
+                ui_locales,
+                tenant: tenant.id,
+                scope,
+                claims,
+                auth_time: NOW,
+                roles: userGroups,
+                permissions: userPerms
             },
-            cacheKey
+            cacheKey,
+            tenant
         };
         await this.getCache().setValue(cacheKey, sessionStorage, { expire: tokenExpireAt });
-        return { keyName, tokenKey, tokenExpireAt, session_ttl, sessionStorage };
+        return { keySignature, accessToken, tokenExpireAt, session_ttl, sessionStorage };
     }
 
     /**

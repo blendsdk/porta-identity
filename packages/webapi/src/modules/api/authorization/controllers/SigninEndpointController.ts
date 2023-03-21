@@ -1,9 +1,11 @@
+import { encodeBase64Key } from "@blendsdk/crypto";
 import { asyncForEach, IDictionaryOf } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISigninRequest, ISigninResponse, ISysAuthorizationView } from "@porta/shared";
 import { eErrorType, eOAuthResponseType, ICachedUser, IFlowRedirect, IOTACache } from "../../../../types";
 import { commonUtils } from "../../../../utils";
-import { MAX_AGE_CODE, MAX_AGE_REDIRECT } from "./constants";
+import { expireSecondsFromNow } from "../../../auth/utils";
+import { OTA_TTL, REDIRECT_TTL } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 
 /**
@@ -75,7 +77,7 @@ export class SigninEndpointController extends EndpointController {
                                 `ota:${ota_code}`,
                                 { flowId, used: false, tokenRef: undefined },
                                 {
-                                    expire: Date.now() + MAX_AGE_CODE
+                                    expire: expireSecondsFromNow(OTA_TTL)
                                 }
                             );
                             response[type] = ota_code;
@@ -111,7 +113,7 @@ export class SigninEndpointController extends EndpointController {
                     response,
                     redirect_uri
                 },
-                { expire: Date.now() + MAX_AGE_REDIRECT }
+                { expire: expireSecondsFromNow(REDIRECT_TTL) }
             );
 
             // save in the flow for the token endpoint
@@ -162,7 +164,7 @@ export class SigninEndpointController extends EndpointController {
     }): Promise<string> {
         const { tenant, user } = await this.getAuthenticatedUser(flowId);
 
-        const { keyName, tokenKey, tokenExpireAt } = await this.createSessionStorageForUser(
+        const { keySignature, accessToken, tokenExpireAt } = await this.createSessionStorageForUser(
             tenant,
             authRecord,
             user.id,
@@ -173,7 +175,7 @@ export class SigninEndpointController extends EndpointController {
 
         if (!confidentialClient) {
             // set the token cookie
-            this.setCookie(keyName, tokenKey, {
+            this.setCookie(keySignature, accessToken, {
                 expires: new Date(tokenExpireAt),
                 signed: true,
                 secure: this.request.protocol !== "http",
@@ -182,12 +184,12 @@ export class SigninEndpointController extends EndpointController {
             });
 
             // session length info for the ui
-            this.setCookie("_session", tokenExpireAt, {
+            this.setCookie(encodeBase64Key({ type: "session", tenant: tenant.id }), tokenExpireAt, {
                 expires: new Date(tokenExpireAt)
             });
         }
 
-        return tokenKey;
+        return accessToken;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { IDictionaryOf, isNullOrUndef, isObject } from "@blendsdk/stdlib";
-import { IPortaSessionInfo } from "../../../types";
+import { IPortaSessionStorage } from "../../../types";
 import { commonUtils } from "../../../utils";
 
 /**
@@ -44,15 +44,15 @@ export class Claims {
 
     /**
      * Creates an instance of Claims.
-     * @param {IPortaSessionInfo} sessionInfo
+     * @param {IPortaSessionInfo} sessionStorage
      * @param {string} serverUrl
      * @param {string} tenantName
      * @memberof Claims
      */
-    public constructor(sessionInfo: IPortaSessionInfo, serverUrl: string, tenantName: string) {
-        const { user, profile, metaData } = sessionInfo || {};
+    public constructor(sessionStorage: IPortaSessionStorage, serverUrl: string, tenantName: string) {
+        const { user, userProfile, metaData } = sessionStorage || {};
         const { permissions, roles } = metaData || {};
-        if (user && profile) {
+        if (user && userProfile) {
             const fq_email = user.username;
 
             this.handlers = [
@@ -60,21 +60,21 @@ export class Claims {
                     scope: "profile",
                     claim: "name",
                     handler: this.handleClaim(() => {
-                        return `${profile.firstname} ${profile.lastname}`;
+                        return `${userProfile.firstname} ${userProfile.lastname}`;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "given_name",
                     handler: this.handleClaim(() => {
-                        return profile.firstname;
+                        return userProfile.firstname;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "family_name",
                     handler: this.handleClaim(() => {
-                        return profile.lastname;
+                        return userProfile.lastname;
                     })
                 },
                 {
@@ -88,7 +88,7 @@ export class Claims {
                     scope: "profile",
                     claim: "nickname",
                     handler: this.handleClaim(() => {
-                        return profile.firstname;
+                        return userProfile.firstname;
                     })
                 },
                 {
@@ -109,7 +109,7 @@ export class Claims {
                     scope: "profile",
                     claim: "picture",
                     handler: this.handleClaim(() => {
-                        return profile.avatar ? profile.avatar : "n/a";
+                        return userProfile.avatar ? userProfile.avatar : "n/a";
                     })
                 },
                 {

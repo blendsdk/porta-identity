@@ -1,7 +1,5 @@
 import { IDictionaryOf } from "@blendsdk/stdlib";
-import { ISessionInfo, ISessionStorage } from "@blendsdk/webafx-auth";
-
-export const PORTA_REGISTRY = "porta";
+import { ISessionStorage } from "@blendsdk/webafx-auth";
 
 import {
     IAuthorizeRequest,
@@ -13,13 +11,47 @@ import {
     ISysUserProfile
 } from "@porta/shared";
 
+//TODO: make dynamic from the config!
+export const PORTA_REGISTRY = "porta";
+
+/**
+ * Interface describing the One Time Access Code cache
+ *
+ * @export
+ * @interface IOTACache
+ */
 export interface IOTACache {
+    /**
+     * The auth flow id
+     *
+     * @type {string}
+     * @memberof IOTACache
+     */
     flowId: string;
+    /**
+     * Indicated whether the OTA is already used.
+     *
+     * @type {boolean}
+     * @memberof IOTACache
+     */
     used: boolean;
+    /**
+     * The token that the OTA refers to
+     *
+     * @type {string}
+     * @memberof IOTACache
+     */
     tokenRef: string;
 }
 
+/**
+ * Meta data accompanying the signed-in user
+ *
+ * @export
+ * @interface IPortaUserMetaData
+ */
 export interface IPortaUserMetaData {
+    //TODO: wrote code doc
     ui_locales: string;
     tenant: string;
     scope: string;
@@ -29,10 +61,17 @@ export interface IPortaUserMetaData {
     permissions: ISysUserPermissionView[];
 }
 
-export interface IPortaSessionInfo
-    extends ISessionInfo<ISysUser, ISysUserProfile & IDictionaryOf<any>, IPortaUserMetaData> {}
-
-export interface IPortaSessionStorage extends ISessionStorage<IPortaSessionInfo> {
+/**
+ * Wrote code doc
+ *
+ * @export
+ * @interface IPortaSessionStorage
+ * @extends {ISessionStorage<ISysUser>}
+ */
+export interface IPortaSessionStorage extends ISessionStorage<ISysUser> {
+    userProfile: ISysUserProfile;
+    metaData: IPortaUserMetaData;
+    tenant: ISysTenant;
     tokenExpireAt: number;
 }
 

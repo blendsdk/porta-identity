@@ -3,35 +3,6 @@ import { consoleLogger } from "../lib";
 import { defineAuthenticationAPI } from "./auth";
 import { defineCustomApi } from "./custom";
 
-//TODO: Remove this if not needed
-// export interface IApiCollectionEndpoint
-//     extends Omit<IApiOptions, "group" | "request_type" | "response_type" | "dispatch" | "method" | "url"> {}
-// export interface IApiCollection {
-//     [controller: string]: {
-//         [url: string]: {
-//             get?: IApiCollectionEndpoint;
-//             post?: IApiCollectionEndpoint;
-//             patch?: IApiCollectionEndpoint;
-//             delete?: IApiCollectionEndpoint;
-//         };
-//     };
-// }
-// export function buildApiCollection(collection: IApiCollection, builder: ApiBuilder) {
-//     Object.entries(collection || {}).forEach(([controllerName, endPoints]) => {
-//         Object.entries(endPoints || {}).forEach(([url, epCollection]) => {
-//             Object.entries(epCollection || {}).forEach(([method, endPoint]) => {
-//                 builder.defineApi({
-//                     group: controllerName,
-//                     url,
-//                     dispatch:"greepPerson",
-//                     method: method as any,
-//                     ...endPoint
-//                 });
-//             });
-//         });
-//     });
-// }
-
 export function createAPISchema(typeSchema: TypeSchema, typeBuilder: TypeBuilder) {
     const builder = new ApiBuilder({
         typeSchema,

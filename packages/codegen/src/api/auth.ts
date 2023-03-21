@@ -225,6 +225,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
+                .addString("access_token", { location: eParameterLocation.body, optional: true })
                 .addString("tenant", { location: eParameterLocation.params });
 
             typeSchema.createAppendType(payload_type);

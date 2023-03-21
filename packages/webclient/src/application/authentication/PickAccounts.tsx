@@ -67,10 +67,6 @@ export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) =>
         ];
     }, [accounts, translate]);
 
-    const lastUsed = useMemo(() => {
-        return Cookies.get("_l");
-    }, []);
-
     const lastTenant = useMemo(() => {
         return Cookies.get("_at");
     }, []);
@@ -81,7 +77,7 @@ export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) =>
             <div className={styles.root}>
                 {list
                     .filter((i) => i.tenant === lastTenant || i.tenant === "default" || i.tenant === null)
-                    .map((item, index) => {
+                    .map((item) => {
                         return (
                             <button
                                 className={mergeClasses(styles.button)}

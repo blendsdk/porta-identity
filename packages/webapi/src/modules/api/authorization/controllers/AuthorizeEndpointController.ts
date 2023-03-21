@@ -4,7 +4,6 @@ import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant } from "@porta/shared";
-import crypto from "crypto";
 import * as jwt from "jsonwebtoken";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
@@ -17,8 +16,9 @@ import {
     IPortaApplicationSetting,
     IPortaSessionStorage
 } from "../../../../types";
-import { commonUtils, databaseUtils } from "../../../../utils";
-import { MAX_AGE_AUTH_FLOW, MAX_AGE_NONCE_LIFE_TIME } from "./constants";
+import { databaseUtils } from "../../../../utils";
+import { expireSecondsFromNow, portaAuthUtils } from "../../../auth/utils";
+import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 /**
  * Handles the authorize endpoint
@@ -139,7 +139,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 response_mode
             });
         } else {
-            const { errors, returningAuthorization, flowId, currentUserToken } = await this.prepareAuthorization({
+            const { errors, returningAuthorization, flowId, currentUserCacheKey } = await this.prepareAuthorization({
                 authRequest,
                 client_id,
                 confidentialClient: false,
@@ -156,11 +156,9 @@ export class AuthorizeEndpointController extends EndpointController {
                 if (prompt_type === eOAuthPrompt.none) {
                     signinUrl = this.createFlowUrl("signin");
                 } else {
-                    if (max_age && returningAuthorization) {
-                        const { sessionInfo } = await this.getCache().getValue<IPortaSessionStorage>(
-                            `tokens:${currentUserToken}`
-                        );
-                        const auth_time = sessionInfo?.metaData?.auth_time;
+                    if (max_age && returningAuthorization && currentUserCacheKey) {
+                        const { metaData } = await this.getCache().getValue<IPortaSessionStorage>(currentUserCacheKey);
+                        const { auth_time = 0 } = metaData || {};
                         requireLoginDueMaxAge = Math.trunc((Date.now() - auth_time) / 1000) > max_age;
                     }
 
@@ -245,6 +243,7 @@ export class AuthorizeEndpointController extends EndpointController {
         const tenantRecord = await this.getTenant(tenant);
         const errors: any[] = [];
         let currentUserToken: string = undefined;
+        let currentUserCacheKey: string = undefined;
         let flowId: string = undefined;
 
         if (tenantRecord && tenantRecord.is_active) {
@@ -254,7 +253,17 @@ export class AuthorizeEndpointController extends EndpointController {
             const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
             if (authRecord) {
                 // get the current user if possible
-                currentUserToken = await this.getCurrentlyAuthenticatedUserToken();
+                const { token, storage, cacheKey } = await this.getCurrentlyAuthenticatedUserToken(tenantRecord);
+
+                // check if the previous token is of the current tenant
+                if (token && storage) {
+                    const { tenant: previousTenant } = storage;
+                    if (tenantRecord.id === previousTenant.id) {
+                        currentUserToken = token;
+                        currentUserCacheKey = cacheKey;
+                    }
+                }
+
                 // create a flow (anyway)
                 flowId = await this.createAuthenticationFlow(
                     response_types,
@@ -270,7 +279,13 @@ export class AuthorizeEndpointController extends EndpointController {
         } else {
             errors.push("invalid_or_inactive_tenant");
         }
-        return { errors, returningAuthorization: currentUserToken !== undefined, flowId, currentUserToken };
+        return {
+            errors,
+            returningAuthorization: currentUserToken !== undefined,
+            flowId,
+            currentUserToken,
+            currentUserCacheKey
+        };
     }
 
     /**
@@ -294,8 +309,10 @@ export class AuthorizeEndpointController extends EndpointController {
         currentUserToken: string,
         confidentialClient: boolean
     ): Promise<string> {
-        const flowId = `${commonUtils.getUUID()}${Date.now()}`;
-        const expire = Date.now() + MAX_AGE_AUTH_FLOW;
+        const flowId = portaAuthUtils.randomSHA256();
+
+        const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
+        const expireAt = new Date(expire);
 
         // create and save an empty state
         await this.setFlow(eFlow.state, flowId, {}, { expire });
@@ -319,7 +336,7 @@ export class AuthorizeEndpointController extends EndpointController {
         if (!confidentialClient) {
             // send the authentication flow cookie
             this.setCookie("_af", flowId, {
-                expires: new Date(expire),
+                expires: expireAt,
                 signed: true,
                 secure: this.request.protocol !== "http",
                 sameSite: "lax", // only send to this endpoint
@@ -327,19 +344,19 @@ export class AuthorizeEndpointController extends EndpointController {
             });
 
             this.setCookie("_at", authRequest.tenant, {
-                expires: new Date(expire),
+                expires: expireAt,
                 sameSite: "lax"
             });
 
             this.setCookie("_as", expire, {
-                expires: new Date(expire),
+                expires: expireAt,
                 sameSite: "lax"
             });
 
             // set the ui locale
             if (authRequest.ui_locales) {
                 this.setCookie("ui_locales", authRequest.ui_locales, {
-                    expires: new Date(expire),
+                    expires: expireAt,
                     sameSite: "lax"
                 });
             }
@@ -354,18 +371,22 @@ export class AuthorizeEndpointController extends EndpointController {
      * @returns {Promise<string>}
      * @memberof AuthorizeEndpointController
      */
-    protected async getCurrentlyAuthenticatedUserToken(): Promise<string> {
+    protected async getCurrentlyAuthenticatedUserToken(
+        tenant: ISysTenant
+    ): Promise<{ token: string; storage: IPortaSessionStorage; cacheKey: string }> {
         const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-        const key = crypto
-            .createHash("md5")
-            .update(Buffer.from(`${PORTA_SSO_COMMON_NAME}_token`))
-            .digest("hex");
-
+        const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
         // we first get the token from the cookie
-        const tokenFromCookie = this.getCookie(key, true) || undefined;
+        const accessTokenFromCookie = this.getCookie(keySignature, true) || undefined;
+
         // now we check if this token actually exists and was not revoked before
-        const assignedToken = await this.getCache().getValue(`tokens:${tokenFromCookie}`);
-        return assignedToken ? tokenFromCookie : undefined;
+        const cacheKey = ["tokens", keySignature, accessTokenFromCookie].join(":");
+        const storage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
+        return {
+            token: storage ? accessTokenFromCookie : undefined,
+            storage,
+            cacheKey: storage ? cacheKey : undefined
+        };
     }
 
     /**
@@ -414,7 +435,7 @@ export class AuthorizeEndpointController extends EndpointController {
             const result = await this.getCache().getValue(key);
             if (!result) {
                 await this.getCache().setValue(key, true, {
-                    expire: Date.now() + MAX_AGE_NONCE_LIFE_TIME
+                    expire: expireSecondsFromNow(NONCE_TTL)
                 });
                 return true;
             } else {

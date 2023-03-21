@@ -45,7 +45,7 @@
     "zustand": "^4.3.6"
   },
   "dependencies": {
-    "glob": "^9.3.0",
+    "glob": "^9.3.1",
     "remove": "^0.1.5"
   }
 }
