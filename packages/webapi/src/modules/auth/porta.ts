@@ -12,7 +12,14 @@ export class IPortaAuthenticationModule {
 }
 
 export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAuthenticationModule> {
-    protected tenantKeySignatures: IDictionaryOf<{ id: string; sig: string }>;
+    /**
+     * KeySignature cache (safe for multiple docker instances)
+     *
+     * @protected
+     * @type {IDictionaryOf<{ tenant: string; sig: string; id: string }>}
+     * @memberof PortaAuthenticationModule
+     */
+    protected tenantKeySignatures: IDictionaryOf<{ tenant: string; sig: string; id: string }>;
 
     /**
      * Creates an instance of PortaAuthenticationModule.
@@ -24,6 +31,14 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         this.tenantKeySignatures = {};
     }
 
+    /**
+     * Create and cache signature to find the access_tokens from Cookies
+     *
+     * @protected
+     * @param {HttpRequest} req
+     * @returns
+     * @memberof PortaAuthenticationModule
+     */
     protected async getKeySignature(req: HttpRequest) {
         const { tenant } = req.context.getParameters<{ tenant: string }>();
         if (!this.tenantKeySignatures[tenant]) {
@@ -31,6 +46,7 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
             if (tenantRecord) {
                 this.tenantKeySignatures[tenant] = {
                     id: tenantRecord.id,
+                    tenant: tenantRecord.name,
                     sig: portaAuthUtils.getKeySignature(tenantRecord, this.config.PORTA_SSO_COMMON_NAME)
                 };
             }
@@ -38,16 +54,34 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         return this.tenantKeySignatures[tenant];
     }
 
+    /**
+     * Gets/finds a session from cookie, body or header
+     *
+     * @protected
+     * @param {HttpRequest} req
+     * @returns {Promise<string>}
+     * @memberof PortaAuthenticationModule
+     */
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const { sig = undefined } = await this.getKeySignature(req);
         const { access_token = undefined } = req.context.getParameters<{ access_token: string }>();
         return access_token || (sig ? this.getCookieToken(sig, req) : undefined) || this.getBearerToken(req);
     }
 
+    /**
+     * Find a user given an access token
+     *
+     * @protected
+     * @template UserType
+     * @param {string} token
+     * @param {HttpRequest} req
+     * @returns {Promise<UserType>}
+     * @memberof PortaAuthenticationModule
+     */
     protected async findUserByToken<UserType = any>(token: string, req: HttpRequest): Promise<UserType> {
-        const { sig = undefined, id = undefined } = await this.getKeySignature(req);
-        if (sig && id && token) {
-            const cacheKey = ["tokens", sig, token].join(":");
+        const { sig = undefined, tenant = undefined, id = undefined } = await this.getKeySignature(req);
+        if (sig && tenant && token && id) {
+            const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant, token);
             const storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
             return storage.tenant.id === id ? (storage as any) : undefined;
         } else {

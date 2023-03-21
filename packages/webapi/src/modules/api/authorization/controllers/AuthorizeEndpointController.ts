@@ -380,7 +380,7 @@ export class AuthorizeEndpointController extends EndpointController {
         const accessTokenFromCookie = this.getCookie(keySignature, true) || undefined;
 
         // now we check if this token actually exists and was not revoked before
-        const cacheKey = ["tokens", keySignature, accessTokenFromCookie].join(":");
+        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessTokenFromCookie);
         const storage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
         return {
             token: storage ? accessTokenFromCookie : undefined,

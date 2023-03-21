@@ -32,7 +32,7 @@ import {
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
 import { databaseUtils } from "../../../../utils";
-import { portaAuthUtils } from "../../../auth/utils";
+import { portaAuthUtils, secondsToMilliseconds } from "../../../auth/utils";
 
 /**
  * Enum describing flow parts
@@ -199,13 +199,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         await closeContext();
 
         const { PORTA_SESSION_LENGTH, PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-        const session_ttl = (session_length || PORTA_SESSION_LENGTH) * 1000;
+        const session_ttl = secondsToMilliseconds(session_length || PORTA_SESSION_LENGTH);
 
         const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
         const accessToken = portaAuthUtils.newAccessToken();
 
         const NOW = Date.now();
-        const cacheKey = ["tokens", keySignature, accessToken].join(":");
+        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessToken);
         const tokenExpireAt = NOW + session_ttl;
 
         const sessionStorage: IPortaSessionStorage = {

@@ -17,7 +17,6 @@ import {
     eOAuthScope,
     ICachedFlowInformation,
     IOTACache,
-    IPortaApplicationSetting,
     IPortaSessionStorage
 } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
@@ -398,8 +397,6 @@ export class TokenEndpointController extends EndpointController {
         cachedFlow: ICachedFlowInformation;
         tokenRequest: ITokenRequest;
     }): Promise<{ token: IToken; errors: any[] }> {
-        const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-
         const errors: string[] = [];
 
         const { authRecord, flowId, tenantRecord: cachedTenantRecord, authRequest } = cachedFlow;
@@ -423,11 +420,7 @@ export class TokenEndpointController extends EndpointController {
 
         if (errors.length === 0) {
             const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
-            const cacheKey = [
-                "tokens",
-                portaAuthUtils.getKeySignature(tenantRecord, PORTA_SSO_COMMON_NAME),
-                access_token
-            ].join(":");
+            const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenantRecord.name, access_token);
             const sessionStorage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
             const { ttl, tokenExpireAt } = sessionStorage || {};
 
