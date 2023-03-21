@@ -50,7 +50,7 @@ export class Claims {
      * @memberof Claims
      */
     public constructor(sessionStorage: IPortaSessionStorage, serverUrl: string, tenantName: string) {
-        const { user, userProfile, metaData } = sessionStorage || {};
+        const { user, userProfile, metaData, tenant } = sessionStorage || {};
         const { permissions, roles } = metaData || {};
         if (user && userProfile) {
             const fq_email = user.username;
@@ -196,6 +196,17 @@ export class Claims {
                     claim: "phone_number_verified",
                     handler: this.handleClaim(() => {
                         return false;
+                    })
+                },
+                {
+                    scope: "acl",
+                    claim: "tenant",
+                    handler: this.handleClaim(() => {
+                        return {
+                            id: tenant.id,
+                            name: tenant.name,
+                            organization: tenant.organization
+                        };
                     })
                 },
                 {
