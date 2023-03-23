@@ -47,3 +47,6 @@ jobs:
             - name: Unlocking The Build Queue
               if: always()
               run: workflow_queue clear blendsdk
+
+            - uses: colpal/actions-clean@v1
+              if: ${{ always() }} # To ensure this step runs even when earlier steps fail
