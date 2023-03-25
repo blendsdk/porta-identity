@@ -151,8 +151,9 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {string} accessToken
      * @memberof EndpointController
      */
-    protected async revokeAccessToken(accessToken: string) {
-        await this.getCache().deleteValue(`tokens:${accessToken}`);
+    protected revokeAccessToken(tenantRecord: ISysTenant, accessToken: string) {
+        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenantRecord.name, accessToken);
+        return this.getCache().deleteValue(cacheKey);
     }
 
     /**

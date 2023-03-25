@@ -42,6 +42,13 @@ export interface IOTACache {
      * @memberof IOTACache
      */
     tokenRef: string;
+    /**
+     * Reference to the tenant
+     *
+     * @type {ISysTenant}
+     * @memberof IOTACache
+     */
+    tenantRecord: ISysTenant;
 }
 
 /**
@@ -125,7 +132,8 @@ export enum eOAuthSigningAlg {
 
 export enum eOAuthGrantType {
     authorization_code = "authorization_code",
-    client_credentials = "client_credentials"
+    client_credentials = "client_credentials",
+    refresh_token = "refresh_token"
 }
 
 export enum eOAuthScope {

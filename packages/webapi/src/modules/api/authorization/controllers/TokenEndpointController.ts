@@ -42,8 +42,13 @@ export class TokenEndpointController extends EndpointController {
      */
     protected async linkOtaToAccessToken(ota: string, access_token: string) {
         const otaKey = `ota:${ota}`;
-        let { flowId, used } = await this.getCache().getValue<IOTACache>(otaKey);
-        await this.getCache().setValue<IOTACache>(otaKey, { flowId, used, tokenRef: access_token });
+        let { flowId, used, tenantRecord } = await this.getCache().getValue<IOTACache>(otaKey);
+        await this.getCache().setValue<IOTACache>(otaKey, {
+            flowId,
+            used,
+            tokenRef: access_token,
+            tenantRecord
+        });
     }
 
     /**
@@ -54,22 +59,28 @@ export class TokenEndpointController extends EndpointController {
      * @returns
      * @memberof TokenEndpointController
      */
-    protected async getFlowIdByOTACode(ota: string) {
+    protected async getFlowIdByOTACode(ota: string): Promise<string> {
         const otaKey = `ota:${ota}`;
         let {
             flowId = undefined,
             used = undefined,
-            tokenRef = undefined
+            tokenRef = undefined,
+            tenantRecord = undefined
         } = (await this.getCache().getValue<IOTACache>(otaKey)) || {};
         try {
             if (flowId && used === false) {
-                // mark as used. This is needed to pass RFC6749-4.1.2
-                await this.getCache().setValue<IOTACache>(otaKey, { flowId, used: true, tokenRef });
+                /**
+                 * Mark as used. This is needed to pass RFC6749-4.1.2
+                 * We also will need the tenant in order to revoke the access_token, should this ota be called
+                 * The second time
+                 */
+                const { tenantRecord } = await this.getFlow<ICachedFlowInformation>(eFlow.info, flowId);
+                await this.getCache().setValue<IOTACache>(otaKey, { flowId, used: true, tokenRef, tenantRecord });
             }
 
             // is not allowed to use the second time
-            if (flowId && used === true) {
-                await this.revokeAccessToken(tokenRef);
+            if (flowId && used === true && tenantRecord) {
+                await this.revokeAccessToken(tenantRecord, tokenRef);
                 await this.clearAuthenticationFlow(flowId);
                 await this.getCache().deleteValue(otaKey);
                 flowId = undefined;
@@ -104,9 +115,10 @@ export class TokenEndpointController extends EndpointController {
                 // to looking a flowId by _af
 
                 const cachedFlow =
-                    (await this.getCurrentAuthenticationFlow(flowIdByOTA || Date.now().toString())) || ({} as any);
+                    (await this.getCurrentAuthenticationFlow(flowIdByOTA || Date.now().toString())) ||
+                    ({} as any as ICachedFlowInformation);
 
-                const { flowId = undefined, redirect_uri, response_mode } = cachedFlow || {};
+                const { flowId = undefined, authRequest } = cachedFlow;
 
                 if (flowId) {
                     const { errors, token: localToken } = await this.getTokenByAuthorizationCode({
@@ -127,8 +139,8 @@ export class TokenEndpointController extends EndpointController {
                             {
                                 error: eErrorType.invalid_request,
                                 error_description: errors[0],
-                                redirect_uri,
-                                response_mode,
+                                redirect_uri: authRequest?.redirect_uri,
+                                response_mode: authRequest?.response_mode,
                                 state
                             },
                             true

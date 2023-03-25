@@ -75,7 +75,7 @@ export class SigninEndpointController extends EndpointController {
                             const ota_code = commonUtils.getUUID();
                             await this.getCache().setValue<IOTACache>(
                                 `ota:${ota_code}`,
-                                { flowId, used: false, tokenRef: undefined },
+                                { flowId, used: false, tokenRef: undefined, tenantRecord: undefined },
                                 {
                                     expire: expireSecondsFromNow(OTA_TTL)
                                 }

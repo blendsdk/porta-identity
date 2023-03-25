@@ -65,7 +65,7 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const { sig = undefined } = (await this.getKeySignature(req)) || {};
         const { access_token = undefined } = req.context.getParameters<{ access_token: string }>();
-        return access_token || (sig ? this.getCookieToken(sig, req) : undefined) || this.getBearerToken(req);
+        return access_token || this.getBearerToken(req) || (sig ? this.getCookieToken(sig, req) : undefined);
     }
 
     /**
@@ -83,7 +83,7 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         if (sig && tenant && token && id) {
             const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant, token);
             const storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
-            return storage.tenant.id === id ? (storage as any) : undefined;
+            return storage ? (storage.tenant.id === id ? (storage as any) : undefined) : undefined;
         } else {
             return undefined;
         }

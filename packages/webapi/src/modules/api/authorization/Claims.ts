@@ -1,4 +1,4 @@
-import { IDictionaryOf, isNullOrUndef, isObject } from "@blendsdk/stdlib";
+import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/stdlib";
 import { IPortaSessionStorage } from "../../../types";
 import { commonUtils } from "../../../utils";
 
@@ -21,7 +21,7 @@ export class IClaim {
  * @interface IClaimHandlerRecord
  */
 export interface IClaimHandlerRecord {
-    scope: string;
+    scope: string | string[];
     claim: string;
     handler: (claim?: IClaim) => any;
 }
@@ -57,7 +57,7 @@ export class Claims {
 
             this.handlers = [
                 {
-                    scope: "profile",
+                    scope: ["userinfo", "profile"],
                     claim: "name",
                     handler: this.handleClaim(() => {
                         return `${userProfile.firstname} ${userProfile.lastname}`;
@@ -71,7 +71,7 @@ export class Claims {
                     })
                 },
                 {
-                    scope: "profile",
+                    scope: ["userinfo", "profile"],
                     claim: "family_name",
                     handler: this.handleClaim(() => {
                         return userProfile.lastname;
@@ -276,7 +276,9 @@ export class Claims {
                         return handler.claim === key;
                     })
                     .forEach((handler) => {
-                        additionalHandlers.push({ ...handler, scope: scopeName });
+                        wrapInArray<string>(scopeName).forEach((sName) => {
+                            additionalHandlers.push({ ...handler, scope: sName });
+                        });
                     });
             });
         });
@@ -291,7 +293,7 @@ export class Claims {
         Object.keys(commonUtils.parseSeparatedTokens(scopeList)).forEach((scopeName) => {
             this.handlers
                 .filter((item) => {
-                    return item.scope === scopeName;
+                    return wrapInArray<string>(item.scope).includes(scopeName);
                 })
                 .forEach((handler) => {
                     result[handler.claim] = handler.handler({});
