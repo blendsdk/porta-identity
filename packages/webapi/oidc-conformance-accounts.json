@@ -1,7 +1,7 @@
 {
     "clients": [
         {
-            "id": "a35ad859-51ca-44a8-a8cc-f9379d4bfdc9",
+            "id": "6fcb0a76-8ec4-4497-be12-49fda89fad9c",
             "client_id": "service-client",
             "client_type": "C",
             "logo": null,
@@ -12,11 +12,11 @@
             "valid_from": null,
             "valid_until": null,
             "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
-            "client_credentials_user_id": "1cf0ea9b-ee5c-40f5-a321-246d2fcfb9d6",
+            "client_credentials_user_id": "97feb538-4113-4114-9a5e-a089b67f2f6e",
             "post_logout_redirect_uri": null
         },
         {
-            "id": "3aeb3064-513c-4e9d-ad2e-4a065ab06a42",
+            "id": "64a3632f-9779-47cf-964e-a7ae58fcebe9",
             "client_id": "client1",
             "client_type": "C",
             "logo": null,
@@ -31,7 +31,7 @@
             "post_logout_redirect_uri": null
         },
         {
-            "id": "f1c3b589-8029-45eb-becb-e743efee8c2c",
+            "id": "c110b72b-e05c-4a4e-982d-031d83e29eaf",
             "client_id": "client2",
             "client_type": "C",
             "logo": null,
@@ -48,25 +48,25 @@
     ],
     "users": [
         {
-            "id": "2ad00a23-8737-4796-aac1-d9b9a42b2690",
+            "id": "7d970fa9-f5b6-46c1-8785-9cb27f008e5c",
             "username": "user1@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-15T10:41:34.763Z"
+            "date_created": "2023-03-25T14:27:50.888Z"
         },
         {
-            "id": "c3eef66a-0642-4ebf-9a96-adca36d4c9d1",
+            "id": "8aaf6f9d-90fc-4d2f-9412-fd5625b9c858",
             "username": "user2@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-15T10:41:34.898Z"
+            "date_created": "2023-03-25T14:27:51.073Z"
         },
         {
-            "id": "1cf0ea9b-ee5c-40f5-a321-246d2fcfb9d6",
+            "id": "97feb538-4113-4114-9a5e-a089b67f2f6e",
             "username": "app1@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-15T10:41:35.024Z"
+            "date_created": "2023-03-25T14:27:51.235Z"
         }
     ]
 }
