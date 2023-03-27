@@ -17,7 +17,7 @@ import {
     IPortaSessionStorage
 } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
-import { expireSecondsFromNow, portaAuthUtils } from "../../../auth/utils";
+import { eKeySignatureType, expireSecondsFromNow, portaAuthUtils } from "../../../auth/utils";
 import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 /**
@@ -375,9 +375,13 @@ export class AuthorizeEndpointController extends EndpointController {
         tenant: ISysTenant
     ): Promise<{ token: string; storage: IPortaSessionStorage; cacheKey: string }> {
         const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-        const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
+        const accessTokenKeySignature = portaAuthUtils.getKeySignature(
+            tenant,
+            PORTA_SSO_COMMON_NAME,
+            eKeySignatureType.access_token
+        );
         // we first get the token from the cookie
-        const accessTokenFromCookie = this.getCookie(keySignature, true) || undefined;
+        const accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
 
         // now we check if this token actually exists and was not revoked before
         const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessTokenFromCookie);

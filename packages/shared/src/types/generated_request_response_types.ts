@@ -248,6 +248,11 @@ export interface ITokenRequest {
 	 * @memberOf ITokenRequest
 	 */
 	nonce?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	refresh_token?: string;
 }
 
 /**
@@ -275,6 +280,16 @@ export interface IToken {
 	 * @memberOf IToken
 	 */
 	id_token: string;
+	/**
+	 * @type string
+	 * @memberOf IToken
+	 */
+	refresh_token?: string;
+	/**
+	 * @type number
+	 * @memberOf IToken
+	 */
+	refresh_token_expires_in?: number;
 }
 
 /**

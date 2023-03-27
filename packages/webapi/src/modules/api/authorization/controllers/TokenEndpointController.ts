@@ -174,6 +174,7 @@ export class TokenEndpointController extends EndpointController {
                         true
                     );
                 }
+            } else if (grant_type === eOAuthGrantType.refresh_token) {
             } else {
                 return this.responseWithError(
                     {
@@ -320,7 +321,8 @@ export class TokenEndpointController extends EndpointController {
         const { privateKey } = JSON.parse(data);
         const { client_id } = authRecord;
 
-        const { metaData, user, accessTokenExpireAt } = sessionStorage || {};
+        const { metaData, user, accessTokenExpireAt, refresh_token, refreshTokenTTL, accessTokenTTL } =
+            sessionStorage || {};
         const { auth_time, roles, permissions } = metaData || {};
 
         const pKey = await jose.importPKCS8(privateKey, "RS256");
@@ -367,9 +369,11 @@ export class TokenEndpointController extends EndpointController {
 
         return {
             access_token,
-            expires_in: accessTokenExpireAt,
+            expires_in: accessTokenTTL,
             id_token,
-            token_type: "Bearer" // OIDC
+            token_type: "Bearer", // OIDC
+            refresh_token,
+            refresh_token_expires_in: refreshTokenTTL
         };
     }
 

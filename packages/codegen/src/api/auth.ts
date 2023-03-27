@@ -64,14 +64,17 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("code_verifier", { location: eParameterLocation.body, optional: true })
                 .addString("client_secret", { location: eParameterLocation.body, optional: true })
                 .addString("state", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
-                .addString("nonce", { location: eParameterLocation.body, optional: true }); // was added for client credentials / confidential clients
+                .addString("nonce", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
+                .addString("refresh_token", { location: eParameterLocation.body, optional: true });
 
             typeSchema
                 .createAppendType(payload_type) //
                 .addString("access_token")
                 .addString("token_type")
                 .addNumber("expires_in")
-                .addString("id_token");
+                .addString("id_token")
+                .addString("refresh_token", { optional: true })
+                .addNumber("refresh_token_expires_in", { optional: true });
 
             typeSchema.createResponseType(response_type, payload_type);
         }

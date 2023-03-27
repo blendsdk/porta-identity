@@ -619,6 +619,10 @@ export const validationSchema = {
 				nonce: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.body
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
 				}
 			},
 			required: ["tenant", "grant_type"]
@@ -637,6 +641,12 @@ export const validationSchema = {
 				},
 				id_token: {
 					type: eJsonSchemaType.string
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string
+				},
+				refresh_token_expires_in: {
+					type: eJsonSchemaType.number
 				}
 			},
 			required: ["access_token", "token_type", "expires_in", "id_token"]

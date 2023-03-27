@@ -164,20 +164,21 @@ export class SigninEndpointController extends EndpointController {
     }): Promise<string> {
         const { tenant, user } = await this.getAuthenticatedUser(flowId);
 
-        const { keySignature, accessToken, sessionStorage } = await this.createSessionStorageForUser(
-            tenant,
-            authRecord,
-            user.id,
-            authRequest.ui_locales,
-            authRequest.scope,
-            authRequest.claims as any // This will be parsed to JSON in Claims class
-        );
+        const { accessTokenKeySignature, accessToken, sessionStorage, refreshTokenKeySignature } =
+            await this.createSessionStorageForUser(
+                tenant,
+                authRecord,
+                user.id,
+                authRequest.ui_locales,
+                authRequest.scope,
+                authRequest.claims as any // This will be parsed to JSON in Claims class
+            );
 
-        const { accessTokenExpireAt } = sessionStorage;
+        const { accessTokenExpireAt, refresh_token = undefined, refreshTokenExpireAt } = sessionStorage;
 
         if (!confidentialClient) {
             // set the token cookie
-            this.setCookie(keySignature, accessToken, {
+            this.setCookie(accessTokenKeySignature, accessToken, {
                 expires: new Date(accessTokenExpireAt),
                 signed: true,
                 secure: this.request.protocol !== "http",
@@ -189,6 +190,19 @@ export class SigninEndpointController extends EndpointController {
             this.setCookie(encodeBase64Key({ type: "session", tenant: tenant.id }), accessTokenExpireAt, {
                 expires: new Date(accessTokenExpireAt)
             });
+
+            if (refreshTokenKeySignature && refresh_token) {
+                this.setCookie(refreshTokenKeySignature, refresh_token, {
+                    expires: new Date(refreshTokenExpireAt),
+                    signed: true,
+                    secure: this.request.protocol !== "http",
+                    sameSite: "lax", // only send to this endpoint
+                    httpOnly: true
+                });
+                this.setCookie(encodeBase64Key({ type: "refresh_session", tenant: tenant.id }), refreshTokenExpireAt, {
+                    expires: new Date(refreshTokenExpireAt)
+                });
+            }
         }
 
         return accessToken;

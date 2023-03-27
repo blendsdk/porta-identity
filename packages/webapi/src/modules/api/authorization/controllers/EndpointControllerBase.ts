@@ -31,8 +31,8 @@ import {
 } from "../../../../types";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
-import { databaseUtils } from "../../../../utils";
-import { portaAuthUtils, secondsToMilliseconds } from "../../../auth/utils";
+import { commonUtils, databaseUtils } from "../../../../utils";
+import { eKeySignatureType, portaAuthUtils, secondsToMilliseconds } from "../../../auth/utils";
 
 /**
  * Enum describing flow parts
@@ -202,7 +202,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, PORTA_SSO_COMMON_NAME } =
             this.getSettings<IPortaApplicationSetting>();
 
-        const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
+        const accessTokenKeySignature = portaAuthUtils.getKeySignature(
+            tenant,
+            PORTA_SSO_COMMON_NAME,
+            eKeySignatureType.access_token
+        );
         const accessToken = portaAuthUtils.newAccessToken();
 
         const NOW = Date.now();
@@ -212,7 +216,30 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
 
         const accessTokenExpireAt = NOW + secondsToMilliseconds(access_token_ttl);
-        const refreshTokenExpireAt = NOW + secondsToMilliseconds(refresh_token_ttl);
+
+        // empty variables for refresh token
+        let refreshTokenExpireAt: number = undefined;
+        let refresh_token: string = undefined;
+        let refreshTokenCacheKey = undefined;
+        let refreshTokenTTL = undefined;
+        let refreshTokenKeySignature = undefined;
+
+        // checking the offline access grant
+        const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
+
+        // creating the refresh tokens
+        if (offline_access) {
+            refresh_token = portaAuthUtils.newAccessToken();
+            refreshTokenCacheKey = portaAuthUtils.getRefreshTokenCacheKey(tenant.name, refresh_token);
+            refreshTokenExpireAt = NOW + secondsToMilliseconds(refresh_token_ttl);
+            refreshTokenTTL = refresh_token_ttl;
+            refreshTokenKeySignature = portaAuthUtils.getKeySignature(
+                tenant,
+                PORTA_SSO_COMMON_NAME,
+                eKeySignatureType.refresh_token
+            );
+            await this.getCache().setValue(refreshTokenCacheKey, cacheKey, { expire: refreshTokenExpireAt });
+        }
 
         const sessionStorage: IPortaSessionStorage = {
             // not used
@@ -221,8 +248,10 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             accessTokenTTL: access_token_ttl,
             accessTokenExpireAt,
 
-            refreshTokenTTL: refresh_token_ttl,
+            refresh_token,
+            refreshTokenTTL,
             refreshTokenExpireAt,
+            refreshTokenCacheKey,
 
             user: userRecord,
             userProfile: profile,
@@ -238,9 +267,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             cacheKey,
             tenant
         };
+
         await this.getCache().setValue(cacheKey, sessionStorage, { expire: refreshTokenExpireAt });
+
         return {
-            keySignature,
+            accessTokenKeySignature,
+            refreshTokenKeySignature,
             accessToken,
             sessionStorage
         };

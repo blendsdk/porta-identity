@@ -2,6 +2,11 @@ import { encodeBase64Key } from "@blendsdk/crypto";
 import { ISysTenant } from "@porta/shared";
 import * as crypto from "crypto";
 
+export enum eKeySignatureType {
+    access_token = "access_token",
+    refresh_token = "refresh_token"
+}
+
 export class PortaAuthUtils {
     /**
      * Creates a per tenant access token key signature
@@ -11,8 +16,8 @@ export class PortaAuthUtils {
      * @returns
      * @memberof PortaAuthUtils
      */
-    public getKeySignature(tenant: ISysTenant, PORTA_SSO_COMMON_NAME: string) {
-        return encodeBase64Key({ type: "access_token", tenant: tenant.id, system: PORTA_SSO_COMMON_NAME });
+    public getKeySignature(tenant: ISysTenant, PORTA_SSO_COMMON_NAME: string, type: eKeySignatureType) {
+        return encodeBase64Key({ type, tenant: tenant.id, system: PORTA_SSO_COMMON_NAME });
     }
 
     /**
@@ -38,6 +43,18 @@ export class PortaAuthUtils {
      */
     public getAccessTokenCacheKey(tenant: string, accessToken: string) {
         return [tenant, "access_tokens", accessToken].join(":");
+    }
+
+    /**
+     * Create an refresh token cache key
+     *
+     * @param {string} tenant
+     * @param {string} refreshToken
+     * @returns
+     * @memberof PortaAuthUtils
+     */
+    public getRefreshTokenCacheKey(tenant: string, refreshToken: string) {
+        return [tenant, "refresh_tokens", refreshToken].join(":");
     }
 
     /**

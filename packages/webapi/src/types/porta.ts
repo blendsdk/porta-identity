@@ -83,6 +83,8 @@ export interface IPortaSessionStorage extends ISessionStorage<ISysUser> {
     accessTokenExpireAt: number;
     refreshTokenTTL: number;
     refreshTokenExpireAt: number;
+    refresh_token: string;
+    refreshTokenCacheKey: string;
 }
 
 export interface IPortaApplicationSetting {

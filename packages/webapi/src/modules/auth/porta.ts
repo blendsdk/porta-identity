@@ -4,7 +4,7 @@ import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webaf
 import { HttpRequest } from "@blendsdk/webafx-common";
 import { IPortaSessionStorage } from "../../types";
 import { databaseUtils } from "../../utils";
-import { portaAuthUtils } from "./utils";
+import { eKeySignatureType, portaAuthUtils } from "./utils";
 
 export class IPortaAuthenticationModule {
     PORTA_SSO_COMMON_NAME?: string;
@@ -47,7 +47,11 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
                 this.tenantKeySignatures[tenant] = {
                     id: tenantRecord.id,
                     tenant: tenantRecord.name,
-                    sig: portaAuthUtils.getKeySignature(tenantRecord, this.config.PORTA_SSO_COMMON_NAME)
+                    sig: portaAuthUtils.getKeySignature(
+                        tenantRecord,
+                        this.config.PORTA_SSO_COMMON_NAME,
+                        eKeySignatureType.access_token
+                    )
                 };
             }
         }
@@ -84,6 +88,7 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
             const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant, token);
             let storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
 
+            // check if the access token has expired
             if (storage) {
                 const { accessTokenExpireAt } = storage;
                 storage = portaAuthUtils.isTimeExpired(accessTokenExpireAt) ? undefined : storage;

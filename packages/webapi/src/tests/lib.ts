@@ -21,6 +21,10 @@ export const getAuthEndpoint = (tenant?: string) => {
     return `${BASE_URL}/${tenant}/oauth2/authorize`;
 };
 
+export function wait(seconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+}
+
 export async function createClient(
     tenantName: string,
     clientType?: eClientType,

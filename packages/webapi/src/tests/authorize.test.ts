@@ -8,7 +8,8 @@ import {
     createCodeVerifier,
     create_after_all,
     create_before_all,
-    makeState
+    makeState,
+    wait
 } from "./lib";
 
 const test_set = "default_flow_tests";
@@ -17,7 +18,75 @@ describe("Authorize Sequence Happy", () => {
     beforeAll(create_before_all(test_set));
     afterAll(create_after_all());
 
-    test("Invalid valid_ultil", async () => {
+    test("Expire Access Token", async () => {
+        const client = await createClient(test_set, eClientType.confidential, undefined, {
+            access_token_ttl: 5
+        });
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: client.redirect_uri,
+            response_type: "code",
+            scope: "offline_access",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: client.redirect_uri,
+                ...adminUser
+            })
+        };
+        const { access_token }: any = await PortaApi.authorization.authorize(authRequest);
+        await wait(7);
+        await expect(
+            PortaApi.authorization.userInfoPost({ access_token, tenant: "default_flow_tests" })
+        ).rejects.toThrow("UNAUTHORIZED_ACCESS_TO_ENDPOINT");
+    });
+
+    test("Happy Flow With Refresh Token", async () => {
+        const client = await createClient(test_set, eClientType.confidential);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: client.redirect_uri,
+            response_type: "code",
+            scope: "offline_access",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: client.redirect_uri,
+                ...adminUser
+            })
+        };
+        const result: any = await PortaApi.authorization.authorize(authRequest);
+        expect(result?.refresh_token).toBeTruthy();
+    });
+
+    test("Happy Flow No Refresh Token", async () => {
+        const client = await createClient(test_set, eClientType.confidential);
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: client.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: client.redirect_uri,
+                ...adminUser
+            })
+        };
+        const result: any = await PortaApi.authorization.authorize(authRequest);
+        expect(result?.refresh_token).toBeFalsy();
+    });
+
+    test("Invalid valid_until", async () => {
         const client = await createClient(test_set, undefined, undefined, {
             valid_until: new Date(Date.now() - 100000).toISOString()
         });
