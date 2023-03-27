@@ -82,7 +82,13 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         const { sig = undefined, tenant = undefined, id = undefined } = (await this.getKeySignature(req)) || {};
         if (sig && tenant && token && id) {
             const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant, token);
-            const storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
+            let storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
+
+            if (storage) {
+                const { accessTokenExpireAt } = storage;
+                storage = portaAuthUtils.isTimeExpired(accessTokenExpireAt) ? undefined : storage;
+            }
+
             return storage ? (storage.tenant.id === id ? (storage as any) : undefined) : undefined;
         } else {
             return undefined;

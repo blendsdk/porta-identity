@@ -39,6 +39,17 @@ export class PortaAuthUtils {
     public getAccessTokenCacheKey(tenant: string, accessToken: string) {
         return [tenant, "access_tokens", accessToken].join(":");
     }
+
+    /**
+     * Check if a given time has expired
+     *
+     * @param {Number} timeStamp
+     * @returns
+     * @memberof EndpointController
+     */
+    public isTimeExpired(timeStamp: Number) {
+        return Date.now() > timeStamp;
+    }
 }
 
 /**

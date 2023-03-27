@@ -250,7 +250,6 @@ export class AuthorizeEndpointController extends EndpointController {
             // make sure we have a database for this tenant
             await this.initializeTenantDataSource(tenantRecord);
             // check if we have a authorization record using the request combination
-            debugger;
             const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
             if (authRecord) {
                 // get the current user if possible
@@ -382,7 +381,14 @@ export class AuthorizeEndpointController extends EndpointController {
 
         // now we check if this token actually exists and was not revoked before
         const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessTokenFromCookie);
-        const storage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
+        let storage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
+
+        // Here we check if the previous access_token has/was expired
+        if (storage) {
+            const { accessTokenExpireAt } = storage;
+            storage = portaAuthUtils.isTimeExpired(accessTokenExpireAt) ? undefined : storage;
+        }
+
         return {
             token: storage ? accessTokenFromCookie : undefined,
             storage,
