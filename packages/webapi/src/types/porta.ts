@@ -79,14 +79,18 @@ export interface IPortaSessionStorage extends ISessionStorage<ISysUser> {
     userProfile: ISysUserProfile;
     metaData: IPortaUserMetaData;
     tenant: ISysTenant;
-    tokenExpireAt: number;
+    accessTokenTTL: number;
+    accessTokenExpireAt: number;
+    refreshTokenTTL: number;
+    refreshTokenExpireAt: number;
 }
 
 export interface IPortaApplicationSetting {
     PORTA_SIGNIN_URI: string;
     PORTA_ADMIN: string;
     PORTA_PASSWORD: string;
-    PORTA_SESSION_LENGTH: number;
+    ACCESS_TOKEN_TTL: number;
+    REFRESH_TOKEN_TTL: number;
     PORTA_SSO_COMMON_NAME: string;
 }
 

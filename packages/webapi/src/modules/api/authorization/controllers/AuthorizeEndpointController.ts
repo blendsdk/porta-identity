@@ -250,6 +250,7 @@ export class AuthorizeEndpointController extends EndpointController {
             // make sure we have a database for this tenant
             await this.initializeTenantDataSource(tenantRecord);
             // check if we have a authorization record using the request combination
+            debugger;
             const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
             if (authRecord) {
                 // get the current user if possible

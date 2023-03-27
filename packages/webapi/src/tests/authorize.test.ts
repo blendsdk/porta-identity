@@ -17,6 +17,50 @@ describe("Authorize Sequence Happy", () => {
     beforeAll(create_before_all(test_set));
     afterAll(create_after_all());
 
+    test("Invalid valid_ultil", async () => {
+        const client = await createClient(test_set, undefined, undefined, {
+            valid_until: new Date(Date.now() - 100000).toISOString()
+        });
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: client.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: client.redirect_uri,
+                ...adminUser
+            })
+        };
+        await expect(PortaApi.authorization.authorize(authRequest)).rejects.toThrow("invalid_request");
+    });
+
+    test("Invalid valid_from", async () => {
+        const client = await createClient(test_set, undefined, undefined, {
+            valid_from: new Date(Date.now() * 1.5).toISOString()
+        });
+        const authRequest: IAuthorizeRequest = {
+            tenant: test_set,
+            client_id: client.client_id,
+            redirect_uri: client.redirect_uri,
+            response_type: "code",
+            scope: "some-scope",
+            state: makeState({
+                tenant: test_set,
+                grant_type: "authorization_code",
+                client_secret: client.secret,
+                client_id: client.client_id,
+                redirect_uri: client.redirect_uri,
+                ...adminUser
+            })
+        };
+        await expect(PortaApi.authorization.authorize(authRequest)).rejects.toThrow("invalid_request");
+    });
+
     test("Invalid PKCE code_challenge_method", async () => {
         const client = await createClient(test_set);
         const code_verifier = createCodeVerifier("hello");

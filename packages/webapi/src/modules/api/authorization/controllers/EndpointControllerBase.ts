@@ -175,7 +175,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         scope: string,
         claims: string
     ) {
-        const { session_length } = authRecord;
+        let { access_token_ttl, refresh_token_ttl } = authRecord;
         const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(databaseUtils.getTenantDataSourceID(tenant));
 
         const sharedContext = ds.createSharedContext();
@@ -199,19 +199,31 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         });
         await closeContext();
 
-        const { PORTA_SESSION_LENGTH, PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
-        const session_ttl = secondsToMilliseconds(session_length || PORTA_SESSION_LENGTH);
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, PORTA_SSO_COMMON_NAME } =
+            this.getSettings<IPortaApplicationSetting>();
 
         const keySignature = portaAuthUtils.getKeySignature(tenant, PORTA_SSO_COMMON_NAME);
         const accessToken = portaAuthUtils.newAccessToken();
 
         const NOW = Date.now();
         const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessToken);
-        const tokenExpireAt = NOW + session_ttl;
+
+        access_token_ttl = access_token_ttl || ACCESS_TOKEN_TTL;
+        refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
+
+        const accessTokenExpireAt = NOW + secondsToMilliseconds(access_token_ttl);
+        const refreshTokenExpireAt = NOW + secondsToMilliseconds(refresh_token_ttl);
 
         const sessionStorage: IPortaSessionStorage = {
-            ttl: session_ttl,
-            tokenExpireAt,
+            // not used
+            ttl: undefined,
+
+            accessTokenTTL: access_token_ttl,
+            accessTokenExpireAt,
+
+            refreshTokenTTL: refresh_token_ttl,
+            refreshTokenExpireAt,
+
             user: userRecord,
             userProfile: profile,
             metaData: {
@@ -226,8 +238,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             cacheKey,
             tenant
         };
-        await this.getCache().setValue(cacheKey, sessionStorage, { expire: tokenExpireAt });
-        return { keySignature, accessToken, tokenExpireAt, session_ttl, sessionStorage };
+        await this.getCache().setValue(cacheKey, sessionStorage, { expire: refreshTokenExpireAt });
+        return {
+            keySignature,
+            accessToken,
+            sessionStorage
+        };
     }
 
     /**

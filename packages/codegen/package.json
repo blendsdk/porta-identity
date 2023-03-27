@@ -18,12 +18,12 @@
     "tslib": "^2.5.0"
   },
   "dependencies": {
-    "@blendsdk/codegen": "3.2.227",
-    "@blendsdk/datakit": "3.2.227",
-    "@blendsdk/jsonschema": "3.2.227",
-    "@blendsdk/logger": "3.2.227",
-    "@blendsdk/postgresql": "3.2.227",
-    "@blendsdk/stdlib": "3.2.227",
+    "@blendsdk/codegen": "3.2.230",
+    "@blendsdk/datakit": "3.2.230",
+    "@blendsdk/jsonschema": "3.2.230",
+    "@blendsdk/logger": "3.2.230",
+    "@blendsdk/postgresql": "3.2.230",
+    "@blendsdk/stdlib": "3.2.230",
     "glob": "^9.3.0",
     "jose": "^4.13.1"
   }

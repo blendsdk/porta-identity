@@ -164,7 +164,7 @@ export class SigninEndpointController extends EndpointController {
     }): Promise<string> {
         const { tenant, user } = await this.getAuthenticatedUser(flowId);
 
-        const { keySignature, accessToken, tokenExpireAt } = await this.createSessionStorageForUser(
+        const { keySignature, accessToken, sessionStorage } = await this.createSessionStorageForUser(
             tenant,
             authRecord,
             user.id,
@@ -173,10 +173,12 @@ export class SigninEndpointController extends EndpointController {
             authRequest.claims as any // This will be parsed to JSON in Claims class
         );
 
+        const { accessTokenExpireAt } = sessionStorage;
+
         if (!confidentialClient) {
             // set the token cookie
             this.setCookie(keySignature, accessToken, {
-                expires: new Date(tokenExpireAt),
+                expires: new Date(accessTokenExpireAt),
                 signed: true,
                 secure: this.request.protocol !== "http",
                 sameSite: "lax", // only send to this endpoint
@@ -184,8 +186,8 @@ export class SigninEndpointController extends EndpointController {
             });
 
             // session length info for the ui
-            this.setCookie(encodeBase64Key({ type: "session", tenant: tenant.id }), tokenExpireAt, {
-                expires: new Date(tokenExpireAt)
+            this.setCookie(encodeBase64Key({ type: "session", tenant: tenant.id }), accessTokenExpireAt, {
+                expires: new Date(accessTokenExpireAt)
             });
         }
 

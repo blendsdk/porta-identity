@@ -67,7 +67,11 @@ export const validationSchema = {
 				secret: {
 					type: eJsonSchemaType.string
 				},
-				session_length: {
+				access_token_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_token_ttl: {
 					type: eJsonSchemaType.number,
 					format: "integer"
 				},
@@ -98,7 +102,8 @@ export const validationSchema = {
 				"application_name",
 				"description",
 				"secret",
-				"session_length",
+				"access_token_ttl",
+				"refresh_token_ttl",
 				"valid_from",
 				"valid_until",
 				"redirect_uri",
@@ -354,7 +359,11 @@ export const validationSchema = {
 				secret: {
 					type: eJsonSchemaType.string
 				},
-				session_length: {
+				access_token_ttl: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				refresh_token_ttl: {
 					type: eJsonSchemaType.integer,
 					format: "int32"
 				},

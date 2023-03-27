@@ -15,7 +15,8 @@ module.exports = {
     DB_USER: "porta",
     DB_PASSWORD: "secret",
     DB_DATABASE: "porta",
-    PORTA_SESSION_LENGTH: 3 * 24 * 60 * 60, // 3 days
+    ACCESS_TOKEN_TTL: 60 * 60 * 4, // 4 hours
+    REFRESH_TOKEN_TTL: 60 * 60 * 24 * 7, // one week,
     PORTA_ADMIN: "admin@blendsdk.net",
     PORTA_PASSWORD: "secret",
     PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",

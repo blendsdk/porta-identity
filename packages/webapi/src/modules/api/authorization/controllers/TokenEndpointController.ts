@@ -237,8 +237,6 @@ export class TokenEndpointController extends EndpointController {
                             );
                             token = await this.buildTokenPayload({
                                 access_token: accessToken,
-                                ttl: sessionStorage.ttl,
-                                tokenExpireAt: sessionStorage.tokenExpireAt,
                                 tenant: tenantRecord,
                                 authRecord,
                                 authRequest: { nonce } as any,
@@ -306,16 +304,12 @@ export class TokenEndpointController extends EndpointController {
      */
     protected async buildTokenPayload({
         access_token,
-        ttl,
-        tokenExpireAt,
         tenant,
         authRecord,
         authRequest,
         sessionStorage
     }: {
         access_token: string;
-        ttl: number;
-        tokenExpireAt: number;
         tenant: ISysTenant;
         authRecord: ISysAuthorizationView;
         authRequest: IAuthorizeRequest;
@@ -326,7 +320,7 @@ export class TokenEndpointController extends EndpointController {
         const { privateKey } = JSON.parse(data);
         const { client_id } = authRecord;
 
-        const { metaData, user } = sessionStorage || {};
+        const { metaData, user, accessTokenExpireAt } = sessionStorage || {};
         const { auth_time, roles, permissions } = metaData || {};
 
         const pKey = await jose.importPKCS8(privateKey, "RS256");
@@ -367,13 +361,13 @@ export class TokenEndpointController extends EndpointController {
             .setIssuedAt()
             .setIssuer(this.getIssuer(tenant.name))
             .setAudience(client_id)
-            .setExpirationTime(tokenExpireAt)
+            .setExpirationTime(accessTokenExpireAt)
             .setSubject(user.id)
             .sign(pKey);
 
         return {
             access_token,
-            expires_in: ttl,
+            expires_in: accessTokenExpireAt,
             id_token,
             token_type: "Bearer" // OIDC
         };
@@ -434,14 +428,11 @@ export class TokenEndpointController extends EndpointController {
             const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
             const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenantRecord.name, access_token);
             const sessionStorage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
-            const { ttl, tokenExpireAt } = sessionStorage || {};
 
             return {
                 errors: [],
                 token: await this.buildTokenPayload({
                     access_token,
-                    ttl,
-                    tokenExpireAt,
                     tenant: tenantRecord,
                     authRecord,
                     authRequest,

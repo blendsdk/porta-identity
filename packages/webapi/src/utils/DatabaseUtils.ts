@@ -41,7 +41,6 @@ class DatabaseUtils {
      * Creates a client with a redirect record for a given tenant
      *
      * @param {ISysClient} client
-     * @param {ISysRedirect} redirect
      * @param {ISysTenant} tenant
      * @returns
      * @memberof DatabaseUtils
@@ -58,7 +57,8 @@ class DatabaseUtils {
             post_logout_redirect_uri: client.post_logout_redirect_uri,
             redirect_uri: client.redirect_uri,
             secret: client.secret || commonUtils.getUUID(),
-            session_length: client.session_length,
+            access_token_ttl: client.access_token_ttl,
+            refresh_token_ttl: client.refresh_token_ttl,
             valid_from: client.valid_from,
             valid_until: client.valid_until
         });

@@ -49,7 +49,12 @@ export interface ISysAuthorizationView {
 	 * @type number
 	 * @memberOf ISysAuthorizationView
 	 */
-	session_length: number;
+	access_token_ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	refresh_token_ttl: number;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -426,7 +431,12 @@ export interface ISysClient {
 	 * @type number
 	 * @memberOf ISysClient
 	 */
-	session_length?: number;
+	access_token_ttl?: number;
+	/**
+	 * @type number
+	 * @memberOf ISysClient
+	 */
+	refresh_token_ttl?: number;
 	/**
 	 * @type string
 	 * @memberOf ISysClient

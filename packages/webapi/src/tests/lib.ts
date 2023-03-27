@@ -1,5 +1,6 @@
 import { sha256Hash } from "@blendsdk/crypto";
 import { base64Decode, base64Encode } from "@blendsdk/stdlib";
+import { ISysClient } from "@porta/shared";
 import { application } from "../modules/application";
 import { checkAndInitialize } from "../modules/commandline/commands/start";
 import { eClientType } from "../types";
@@ -20,10 +21,16 @@ export const getAuthEndpoint = (tenant?: string) => {
     return `${BASE_URL}/${tenant}/oauth2/authorize`;
 };
 
-export async function createClient(tenantName: string, clientType?: eClientType, redirect_uri?: string) {
+export async function createClient(
+    tenantName: string,
+    clientType?: eClientType,
+    redirect_uri?: string,
+    options?: Partial<ISysClient>
+) {
     const tenant = await databaseUtils.findTenant(tenantName);
     return databaseUtils.createClient(
         {
+            ...options,
             redirect_uri: redirect_uri === null ? undefined : "http://localhost:4020/callback",
             client_type: clientType || eClientType.confidential,
             application_name: "Jest",
