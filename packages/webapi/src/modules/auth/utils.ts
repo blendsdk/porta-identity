@@ -20,52 +20,8 @@ export class PortaAuthUtils {
         return encodeBase64Key({ type, tenant: tenant.id, system: PORTA_SSO_COMMON_NAME });
     }
 
-    /**
-     * Create a new access token
-     *
-     * @returns
-     * @memberof PortaAuthUtils
-     */
-    public newAccessToken() {
-        return crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
-    }
     public randomSHA256() {
-        return this.newAccessToken();
-    }
-
-    /**
-     * Create an access token cache key
-     *
-     * @param {string} tenant
-     * @param {string} accessToken
-     * @returns
-     * @memberof PortaAuthUtils
-     */
-    public getAccessTokenCacheKey(tenant: string, accessToken: string) {
-        return [tenant, "access_tokens", accessToken].join(":");
-    }
-
-    /**
-     * Create an refresh token cache key
-     *
-     * @param {string} tenant
-     * @param {string} refreshToken
-     * @returns
-     * @memberof PortaAuthUtils
-     */
-    public getRefreshTokenCacheKey(tenant: string, refreshToken: string) {
-        return [tenant, "refresh_tokens", refreshToken].join(":");
-    }
-
-    /**
-     * Check if a given time has expired
-     *
-     * @param {Number} timeStamp
-     * @returns
-     * @memberof EndpointController
-     */
-    public isTimeExpired(timeStamp: Number) {
-        return Date.now() > timeStamp;
+        return crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
     }
 }
 

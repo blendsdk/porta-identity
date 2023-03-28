@@ -1,7 +1,7 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { ISysClient, ISysTenant } from "@porta/shared";
-import { IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
+import { ISysClient, ISysRefreshTokenView, ISysTenant } from "@porta/shared";
+import { IAccessToken, IAuthRequestParams, IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -19,6 +19,10 @@ import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataSer
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { commonUtils } from "./CommonUtils";
 import { SysClientDataService } from "../dataservices/SysClientDataService";
+import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
+import { SysAccessTokenViewDataService } from "../dataservices/SysAccessTokenViewDataService";
+import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
+import { SysRefreshTokenViewDataService } from "../dataservices/SysRefreshTokenViewDataService";
 
 class DatabaseUtils {
     /**
@@ -140,7 +144,7 @@ class DatabaseUtils {
      * @returns
      * @memberof DatabaseUtils
      */
-    protected initializeDatabaseSchema(dbName: string, registry?: boolean) {
+    protected initializeDatabaseSchema(dbName: string, registry?: boolean, tenant?: ISysTenant) {
         return new Promise<PostgreSQLDataSource>(async (resolve, reject) => {
             try {
                 const defaultDataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>();
@@ -173,8 +177,11 @@ class DatabaseUtils {
 
                     const ctx = await asyncContext;
                     await ctx.executeQuery(dbSchema);
-                    if (!registry) {
-                        await ctx.executeQuery("DROP TABLE sys_tenant CASCADE;");
+
+                    // copy the tenant record from the registry to the (sub) database
+                    if (!registry && tenant) {
+                        const tenantDs = new SysTenantDataService({ sharedContext: asyncContext });
+                        await tenantDs.insertIntoSysTenant(tenant);
                     }
                     resolve(tenantDs);
                 });
@@ -330,9 +337,7 @@ class DatabaseUtils {
                     if (!tenantRecord) {
                         databaseName = `porta_${databaseName}`;
                         application.getLogger().info(`Initializing ${tenantName} tenant.`);
-                        const dbConn = await this.initializeDatabaseSchema(databaseName);
-                        await this.seedDatabase(dbConn, admin_user, admin_password, tenantName);
-                        await tenantDs.insertIntoSysTenant({
+                        const newTenantRecord = await tenantDs.insertIntoSysTenant({
                             name: tenantName,
                             organization,
                             allow_registration,
@@ -340,6 +345,8 @@ class DatabaseUtils {
                             is_active: true,
                             database: databaseName
                         });
+                        const dbConn = await this.initializeDatabaseSchema(databaseName, false, newTenantRecord);
+                        await this.seedDatabase(dbConn, admin_user, admin_password, tenantName);
                         await dbConn.closeConnection();
                     }
                     (await sharedContext).disposeContext();
@@ -349,6 +356,114 @@ class DatabaseUtils {
                 reject(err);
             }
         });
+    }
+
+    public async newRefreshToken(tenant_id: string, access_token_id: string, ttl: number) {
+        const { dataSource } = (await this.getTenantDataSource(tenant_id)) || {};
+        const refreshTokenDs = new SysRefreshTokenDataService({ dataSource });
+        const result = await refreshTokenDs.insertIntoSysRefreshToken({
+            access_token_id,
+            ttl
+        });
+        return this.findRefreshTokenByTenant(tenant_id, result.refresh_token);
+    }
+
+    public async findRefreshTokenByTenant(tenant: string, refresh_token: string): Promise<ISysRefreshTokenView> {
+        const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
+        const refreshTokenDs = new SysRefreshTokenViewDataService({ dataSource });
+        return await refreshTokenDs.findRefreshToken({ refresh_token });
+    }
+
+    public async findRefreshTokenByTenantAndAccessToken(
+        tenant: string,
+        access_token: string
+    ): Promise<ISysRefreshTokenView> {
+        const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
+        const refreshTokenDs = new SysRefreshTokenViewDataService({ dataSource });
+        return await refreshTokenDs.findRefreshTokenByAccessToken({ access_token });
+    }
+
+    public async newAccessToken(
+        tenant_id: string,
+        client_id: string,
+        user_id: string,
+        ttl: number,
+        refresh_ttl: number,
+        auth_request_params: IAuthRequestParams
+    ) {
+        const { dataSource } = (await this.getTenantDataSource(tenant_id)) || {};
+        const accessTokenDs = new SysAccessTokenDataService({ dataSource });
+        const result = await accessTokenDs.insertIntoSysAccessToken({
+            tenant_id,
+            client_id,
+            user_id,
+            ttl,
+            refresh_ttl,
+            auth_request_params
+        });
+        return this.findAccessTokenByTenant(tenant_id, result.access_token);
+    }
+
+    /**
+     * TODO: doc
+     *
+     * @param {string} tenant
+     * @param {string} access_token
+     * @returns
+     * @memberof EndpointController
+     */
+    public async findAccessTokenByTenant(tenant: string, access_token: string): Promise<IAccessToken> {
+        const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
+        const accessTokenDs = new SysAccessTokenViewDataService({ dataSource });
+        const result = await accessTokenDs.findAccessToken({ access_token });
+
+        // const userGroupDs = new SysUserGroupDataService({ sharedContext });
+        // const permissionDs = new SysPermissionDataService({ sharedContext });
+
+        // const userPerms = await permissionDs.findPermissionsByUserId({ user_id: userRecord.id });
+        // const userGroups = await userGroupDs.findGroupsByUserId({
+        //     user_id: userRecord.id
+        // });
+
+        return result
+            ? ({
+                  ...(result as any),
+                  roles: [],
+                  permissions: []
+              } as IAccessToken)
+            : undefined;
+    }
+
+    /**
+     * TODO: doc
+     *
+     * @param {string} tenant
+     * @returns
+     * @memberof EndpointController
+     */
+    public async getTenantDataSource(tenant: string) {
+        const tenantRecord = await this.getTenant(tenant);
+        if (tenant) {
+            await this.initializeTenantDataSource(tenantRecord);
+            return {
+                tenantRecord,
+                dataSource: dataSourceManager.getDataSource<PostgreSQLDataSource>(tenantRecord.id)
+            };
+        } else {
+            return undefined;
+        }
+    }
+
+    /**
+     * Gets a tenant from the registered tenants list
+     *
+     * @param {string} tenant
+     * @returns {Promise<ISysTenant>}
+     * @memberof EndPointController
+     */
+    public async getTenant(tenant: string): Promise<ISysTenant> {
+        const tenantDs = new SysTenantDataService();
+        return await tenantDs.findByNameOrId({ name: tenant });
     }
 }
 

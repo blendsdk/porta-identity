@@ -1,5 +1,5 @@
 import path from "path";
-import { Database, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
+import { Database, eDBForeignKeyAction, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
 import { dataSourceConfig } from "./config";
 import { typeSchema, consoleLogger } from "./lib";
@@ -15,6 +15,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const permission = database.addTable("sys_permission");
     const group_permission = database.addTable("sys_group_permission");
     const client = database.addTable("sys_client");
+    const access_token = database.addTable("sys_access_token");
+    const refresh_token = database.addTable("sys_refresh_token");
 
     const mfa = database.addTable("sys_mfa");
     const user_mfa = database.addTable("sys_user_mfa");
@@ -96,6 +98,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("client_type") // Public = SPA/Native/Desktop, Confidential = WebApp / API, Service = MachineToMachine
         .stringColumn("logo", { required: false }) // base64 encoded image data
         .stringColumn("application_name")
+        .booleanColumn("is_active", { default: "true" })
         .stringColumn("description", { required: false })
         .stringColumn("secret", { default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')" })
         .integerColumn("access_token_ttl", { required: false })
@@ -106,10 +109,63 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
         .stringColumn("post_logout_redirect_uri", { required: false });
 
+    access_token
+        //
+        .primaryKeyColumn("id", true)
+        .integerColumn("ttl")
+        .integerColumn("refresh_ttl")
+        .dateTimeColumn("auth_time", { default: "now()" })
+        .jsonColumn(
+            "auth_request_params",
+            ({ suggestedTypeName, mainSchema }) => {
+                mainSchema
+                    .createAppendType(suggestedTypeName)
+                    .addString("ui_locales")
+                    .addString("claims")
+                    .addString("acr_values")
+                    .addString("scope");
+
+                return suggestedTypeName;
+            },
+            { required: false }
+        )
+        .stringColumn("access_token", {
+            unique: true,
+            default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
+        })
+        .referenceColumn("user_id", user, "id", {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumn("client_id", client, "id", {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumn("tenant_id", tenant, "id", {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        });
+
+    refresh_token
+        //
+        .primaryKeyColumn("id", true)
+        .integerColumn("ttl")
+        .dateTimeColumn("date_created", { default: "now()" })
+        .stringColumn("refresh_token", {
+            unique: true,
+            default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
+        })
+        .referenceColumn("access_token_id", access_token, "id", {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        });
+
     database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
     database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);
     database.addView("sys_groups_by_user_view", path.join(resourcesRoot, "groups_by_user_view.sql"), 102);
     database.addView("sys_user_permission_view", path.join(resourcesRoot, "user_permission_view.sql"), 102);
+    database.addView("sys_access_token_view", path.join(resourcesRoot, "access_token_view.sql"), 103);
+    database.addView("sys_refresh_token_view", path.join(resourcesRoot, "refresh_token_view.sql"), 103);
 
     // Create a view to type builder
     const view2Type = new PostgreSQLTypeFromQuery({

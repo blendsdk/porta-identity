@@ -2,7 +2,6 @@ import { IDictionaryOf } from "@blendsdk/stdlib";
 import { IApplicationModule } from "@blendsdk/webafx";
 import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webafx-auth";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IPortaSessionStorage } from "../../types";
 import { databaseUtils } from "../../utils";
 import { eKeySignatureType, portaAuthUtils } from "./utils";
 
@@ -85,16 +84,19 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     protected async findUserByToken<UserType = any>(token: string, req: HttpRequest): Promise<UserType> {
         const { sig = undefined, tenant = undefined, id = undefined } = (await this.getKeySignature(req)) || {};
         if (sig && tenant && token && id) {
-            const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant, token);
-            let storage = await req.context.getCache().getValue<IPortaSessionStorage>(cacheKey);
+            let accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
 
             // check if the access token has expired
-            if (storage) {
-                const { accessTokenExpireAt } = storage;
-                storage = portaAuthUtils.isTimeExpired(accessTokenExpireAt) ? undefined : storage;
+            if (accessTokenStorage && accessTokenStorage.is_expired) {
+                accessTokenStorage = undefined;
+                this.getLogger().warn("AccessToken was expired", accessTokenStorage);
             }
 
-            return storage ? (storage.tenant.id === id ? (storage as any) : undefined) : undefined;
+            return accessTokenStorage
+                ? accessTokenStorage.tenant.id === id
+                    ? (accessTokenStorage as any)
+                    : undefined
+                : undefined;
         } else {
             return undefined;
         }

@@ -27,7 +27,7 @@ export abstract class SysAuthorizationViewDataServiceBase extends DataService<Po
 			ISysAuthorizationView,
 			ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 		>(
-			`select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S' and (valid_from is null or now() >= valid_from) and (valid_until is null or now() < valid_until)`,
+			`select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S'`,
 			params,
 			{ single: true }
 		);
@@ -47,7 +47,7 @@ export abstract class SysAuthorizationViewDataServiceBase extends DataService<Po
 			ISysAuthorizationView,
 			ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
 		>(
-			`select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S' and (valid_from is null or now() >= valid_from) and (valid_until is null or now() < valid_until)`,
+			`select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'`,
 			params,
 			{ single: true }
 		);

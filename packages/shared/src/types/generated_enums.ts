@@ -32,6 +32,21 @@ export const eSysMfaSettings = {
 export type eSysMfaSettings = (typeof eSysMfaSettings)[keyof typeof eSysMfaSettings];
 
 /**
+ * Enum of the type sys_access_token_auth_request_params
+ * @export
+ * @enum
+ */
+export const eSysAccessTokenAuthRequestParams = {
+	$name: "sys_access_token_auth_request_params",
+	UI_LOCALES: "ui_locales",
+	CLAIMS: "claims",
+	ACR_VALUES: "acr_values",
+	SCOPE: "scope"
+} as const;
+export type eSysAccessTokenAuthRequestParams =
+	(typeof eSysAccessTokenAuthRequestParams)[keyof typeof eSysAccessTokenAuthRequestParams];
+
+/**
  * Enum of the type sys_authorization_view
  * @export
  * @enum
@@ -43,6 +58,7 @@ export const eSysAuthorizationView = {
 	CLIENT_TYPE: "client_type",
 	LOGO: "logo",
 	APPLICATION_NAME: "application_name",
+	IS_ACTIVE: "is_active",
 	DESCRIPTION: "description",
 	SECRET: "secret",
 	ACCESS_TOKEN_TTL: "access_token_ttl",
@@ -51,7 +67,8 @@ export const eSysAuthorizationView = {
 	VALID_UNTIL: "valid_until",
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
-	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri"
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
+	CLIENT_CREDENTIALS_USER: "client_credentials_user"
 } as const;
 export type eSysAuthorizationView = (typeof eSysAuthorizationView)[keyof typeof eSysAuthorizationView];
 
@@ -97,6 +114,49 @@ export const eSysUserPermissionView = {
 	IS_ACTIVE: "is_active"
 } as const;
 export type eSysUserPermissionView = (typeof eSysUserPermissionView)[keyof typeof eSysUserPermissionView];
+
+/**
+ * Enum of the type sys_access_token_view
+ * @export
+ * @enum
+ */
+export const eSysAccessTokenView = {
+	$name: "sys_access_token_view",
+	ID: "id",
+	TTL: "ttl",
+	REFRESH_TTL: "refresh_ttl",
+	AUTH_TIME: "auth_time",
+	AUTH_REQUEST_PARAMS: "auth_request_params",
+	ACCESS_TOKEN: "access_token",
+	USER_ID: "user_id",
+	CLIENT_ID: "client_id",
+	TENANT_ID: "tenant_id",
+	IS_EXPIRED: "is_expired",
+	IS_REVOKE: "is_revoke",
+	EXPIRE_AT: "expire_at",
+	REVOKE_AT: "revoke_at",
+	USER: "user",
+	PROFILE: "profile",
+	CLIENT: "client",
+	TENANT: "tenant"
+} as const;
+export type eSysAccessTokenView = (typeof eSysAccessTokenView)[keyof typeof eSysAccessTokenView];
+
+/**
+ * Enum of the type sys_refresh_token_view
+ * @export
+ * @enum
+ */
+export const eSysRefreshTokenView = {
+	$name: "sys_refresh_token_view",
+	ID: "id",
+	TTL: "ttl",
+	REFRESH_TOKEN: "refresh_token",
+	ACCESS_TOKEN: "access_token",
+	IS_EXPIRE: "is_expire",
+	EXPIRE_AT: "expire_at"
+} as const;
+export type eSysRefreshTokenView = (typeof eSysRefreshTokenView)[keyof typeof eSysRefreshTokenView];
 
 /**
  * Enum of the type sys_tenant
@@ -214,6 +274,7 @@ export const eSysClient = {
 	CLIENT_TYPE: "client_type",
 	LOGO: "logo",
 	APPLICATION_NAME: "application_name",
+	IS_ACTIVE: "is_active",
 	DESCRIPTION: "description",
 	SECRET: "secret",
 	ACCESS_TOKEN_TTL: "access_token_ttl",
@@ -225,6 +286,40 @@ export const eSysClient = {
 	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri"
 } as const;
 export type eSysClient = (typeof eSysClient)[keyof typeof eSysClient];
+
+/**
+ * Enum of the type sys_access_token
+ * @export
+ * @enum
+ */
+export const eSysAccessToken = {
+	$name: "sys_access_token",
+	ID: "id",
+	TTL: "ttl",
+	REFRESH_TTL: "refresh_ttl",
+	AUTH_TIME: "auth_time",
+	AUTH_REQUEST_PARAMS: "auth_request_params",
+	ACCESS_TOKEN: "access_token",
+	USER_ID: "user_id",
+	CLIENT_ID: "client_id",
+	TENANT_ID: "tenant_id"
+} as const;
+export type eSysAccessToken = (typeof eSysAccessToken)[keyof typeof eSysAccessToken];
+
+/**
+ * Enum of the type sys_refresh_token
+ * @export
+ * @enum
+ */
+export const eSysRefreshToken = {
+	$name: "sys_refresh_token",
+	ID: "id",
+	TTL: "ttl",
+	DATE_CREATED: "date_created",
+	REFRESH_TOKEN: "refresh_token",
+	ACCESS_TOKEN_ID: "access_token_id"
+} as const;
+export type eSysRefreshToken = (typeof eSysRefreshToken)[keyof typeof eSysRefreshToken];
 
 /**
  * Enum of the type sys_mfa

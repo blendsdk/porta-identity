@@ -15,10 +15,59 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             `Provides functionality to get data from ${view.getName()} view`
         );
 
+        if (view.getName() === "sys_access_token_view") {
+            svc.defineMethod({
+                name: "find_access_token",
+                query: "select * from sys_access_token_view where access_token = :access_token",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("access_token");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+        }
+
+        if (view.getName() === "sys_refresh_token_view") {
+            svc.defineMethod({
+                name: "find_refresh_token",
+                query: "select * from sys_refresh_token_view where refresh_token = :refresh_token",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("refresh_token");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+
+            svc.defineMethod({
+                name: "find_refresh_token_by_access_token",
+                query: "select * from sys_refresh_token_view where access_token = :access_token",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("access_token");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+        }
+
         if (view.getName() === "sys_authorization_view") {
             svc.defineMethod({
                 name: "find_by_client_id_and_redirect_uri",
-                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S' and (valid_from is null or now() >= valid_from) and (valid_until is null or now() < valid_until)",
+                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri = :redirect_uri and client_type <> 'S'",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -34,7 +83,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
             svc.defineMethod({
                 name: "find_by_client_id_only",
-                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S' and (valid_from is null or now() >= valid_from) and (valid_until is null or now() < valid_until)",
+                query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
@@ -55,6 +104,28 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             serviceName,
             `Provides functionality to manipulate the ${table.getName()} table`
         );
+
+        if (table.getName() === "sys_refresh_token") {
+            svc.defineDeleteByColumnMethod(
+                {
+                    table: table.getName()
+                },
+                table.getColumns().filter((c) => {
+                    return c.getName() === "refresh_token";
+                })
+            );
+        }
+
+        if (table.getName() === "sys_access_token") {
+            svc.defineDeleteByColumnMethod(
+                {
+                    table: table.getName()
+                },
+                table.getColumns().filter((c) => {
+                    return c.getName() === "access_token";
+                })
+            );
+        }
 
         if (table.getName() === "sys_tenant") {
             svc.defineMethod({

@@ -60,6 +60,33 @@ export interface ISysMfaSettings {}
 
 /**
  * @export
+ * @interface ISysAccessTokenAuthRequestParams
+ */
+export interface ISysAccessTokenAuthRequestParams {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenAuthRequestParams
+	 */
+	ui_locales: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenAuthRequestParams
+	 */
+	claims: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenAuthRequestParams
+	 */
+	acr_values: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenAuthRequestParams
+	 */
+	scope: string;
+}
+
+/**
+ * @export
  * @interface IPortaAccount
  */
 export interface IPortaAccount {

@@ -1,7 +1,7 @@
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IUserInfoGet, IUserInfoGetResponse, IUserInfoPost, IUserInfoPostRequest } from "@porta/shared";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
-import { IPortaSessionStorage } from "../../../../types";
+import { IAccessToken } from "../../../../types";
 import { EndpointController } from "./EndpointControllerBase";
 
 /**
@@ -20,7 +20,7 @@ export class UserInfoEndpointController extends EndpointController {
     public async handleRequest(
         _params: IUserInfoGet | IUserInfoPost
     ): Promise<Response<IUserInfoGetResponse | IUserInfoPostRequest>> {
-        const sessionStorage = this.getContext().getSessionStorage<IPortaSessionStorage>();
+        const sessionStorage = this.getContext().getSessionStorage<IAccessToken>();
         const { tenant } = sessionStorage || {};
         const tenantDs = new SysTenantDataService();
         const tenantRecord = await tenantDs.findSysTenantById({ id: tenant.id });

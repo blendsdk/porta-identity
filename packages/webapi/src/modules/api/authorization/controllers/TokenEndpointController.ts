@@ -3,6 +3,7 @@ import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
     ISysAuthorizationView,
+    ISysRefreshTokenView,
     ISysTenant,
     IToken,
     ITokenRequest,
@@ -14,13 +15,12 @@ import {
     eClientType,
     eErrorType,
     eOAuthGrantType,
-    eOAuthScope,
+    IAccessToken,
+    IAuthRequestParams,
     ICachedFlowInformation,
-    IOTACache,
-    IPortaSessionStorage
+    IOTACache
 } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
-import { portaAuthUtils } from "../../../auth/utils";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 
 /**
@@ -113,7 +113,6 @@ export class TokenEndpointController extends EndpointController {
                 // Pass a random time to the flowIdByOTA that does not exist
                 // This way the getCurrentAuthenticationFlow will no default
                 // to looking a flowId by _af
-
                 const cachedFlow =
                     (await this.getCurrentAuthenticationFlow(flowIdByOTA || Date.now().toString())) ||
                     ({} as any as ICachedFlowInformation);
@@ -175,6 +174,18 @@ export class TokenEndpointController extends EndpointController {
                     );
                 }
             } else if (grant_type === eOAuthGrantType.refresh_token) {
+                const { errors, token: localToken } = await this.getTokenByRefreshToken(tokenRequest);
+                token = localToken;
+
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
             } else {
                 return this.responseWithError(
                     {
@@ -199,6 +210,83 @@ export class TokenEndpointController extends EndpointController {
         return new SuccessResponse({ ...token, state });
     }
 
+    protected async getTokenByRefreshToken(tokenRequest: ITokenRequest) {
+        const { refresh_token, tenant } = tokenRequest || {};
+        const errors: string[] = [];
+        let token: IToken = undefined;
+
+        const tenantRecord = await this.getTenant(tenant);
+
+        if (!tenantRecord) {
+            errors.push("invalid_tenant");
+        } else if (!refresh_token) {
+            errors.push(eErrorType.invalid_request);
+        } else {
+            let refreshTokenStorage = await databaseUtils.findRefreshTokenByTenant(tenantRecord.id, refresh_token);
+            if (!refreshTokenStorage) {
+                errors.push(eErrorType.invalid_request);
+            } else if (refreshTokenStorage && refreshTokenStorage.is_expire) {
+                // delete the access_token and the refresh_token
+                await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
+                errors.push("refresh_token_expired");
+            } else {
+                // get the access_token
+                const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(
+                    tenantRecord.id,
+                    refreshTokenStorage.access_token
+                );
+                if (accessTokenStorage) {
+                    // create a new access token based on the previous access token
+                    const { user_id, tenant_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
+
+                    const auth_req_params: IAuthRequestParams = {
+                        claims: tokenRequest.claims || auth_request_params.claims,
+                        scope: tokenRequest.scope || auth_request_params.scope,
+                        ui_locales: auth_request_params.ui_locales,
+                        acr_values: auth_request_params.acr_values
+                    };
+
+                    const {
+                        accessTokenKeySignature,
+                        refreshTokenKeySignature,
+                        accessTokenStorage: newAccessTokenStorage,
+                        refreshTokenStorage: newRefreshTokenStorage
+                    } = await this.createSessionStorageForUser({
+                        tenant: tenantRecord,
+                        user_id,
+                        authRecord: { access_token_ttl: ttl, refresh_token_ttl: refresh_ttl, id: client.id } as any,
+                        auth_request_params: auth_req_params
+                    });
+                    // revoke the previous refresh_token and access_token
+                    await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
+
+                    this.installLocalCookies(
+                        tenant_id,
+                        newAccessTokenStorage,
+                        accessTokenKeySignature,
+                        newRefreshTokenStorage,
+                        refreshTokenKeySignature
+                    );
+
+                    token = await this.buildTokenPayload({
+                        tenant: tenantRecord,
+                        client_id: client.client_id,
+                        accessTokenStorage,
+                        refreshTokenStorage,
+                        authRequest: {
+                            acr_values: auth_req_params.acr_values,
+                            nonce: undefined,
+                            state: tokenRequest.state
+                        }
+                    });
+                } else {
+                    errors.push("invalid_refresh_token");
+                }
+            }
+        }
+        return { errors, token };
+    }
+
     /**
      * Creates a token by client credentials for confidential clients
      *
@@ -208,7 +296,7 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected async getTokenByClientCredentials(tokenRequest: ITokenRequest) {
-        const { client_id, tenant, nonce } = tokenRequest || {};
+        const { client_id, tenant, nonce, state } = tokenRequest || {};
         const tenantRecord = await this.getTenant(tenant);
         let token: IToken = undefined;
         const errors: string[] = [];
@@ -228,20 +316,27 @@ export class TokenEndpointController extends EndpointController {
                     if (this.checkOTACodeValidity(authRecord, client_id, /* redirect_uri -->*/ null)) {
                         const err = await this.checkAccessSecret(tokenRequest, authRecord, undefined);
                         if (err.length === 0) {
-                            const { accessToken, sessionStorage } = await this.createSessionStorageForUser(
-                                tenantRecord,
-                                authRecord,
-                                authRecord.client_credentials_user_id,
-                                undefined,
-                                eOAuthScope.openid, //TODO: porta specific claims should be added here!
-                                ""
-                            );
-                            token = await this.buildTokenPayload({
-                                access_token: accessToken,
+                            const { accessTokenStorage, refreshTokenStorage } = await this.createSessionStorageForUser({
                                 tenant: tenantRecord,
                                 authRecord,
-                                authRequest: { nonce } as any,
-                                sessionStorage
+                                user_id: authRecord.client_credentials_user_id,
+                                auth_request_params: {
+                                    claims: tokenRequest.claims,
+                                    scope: tokenRequest.scope,
+                                    ui_locales: undefined,
+                                    acr_values: undefined
+                                }
+                            });
+                            token = await this.buildTokenPayload({
+                                tenant: tenantRecord,
+                                client_id: authRecord.client_id,
+                                authRequest: {
+                                    nonce,
+                                    state,
+                                    acr_values: accessTokenStorage.auth_request_params.acr_values
+                                },
+                                accessTokenStorage,
+                                refreshTokenStorage
                             });
                         } else {
                             err.forEach((e) => errors.push(e));
@@ -304,31 +399,30 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected async buildTokenPayload({
-        access_token,
         tenant,
-        authRecord,
+        client_id,
         authRequest,
-        sessionStorage
+        accessTokenStorage,
+        refreshTokenStorage
     }: {
-        access_token: string;
         tenant: ISysTenant;
-        authRecord: ISysAuthorizationView;
-        authRequest: IAuthorizeRequest;
-        sessionStorage: IPortaSessionStorage;
+        client_id: string;
+        authRequest: Required<Pick<IAuthorizeRequest, "nonce" | "state" | "acr_values">>;
+        accessTokenStorage: IAccessToken;
+        refreshTokenStorage: ISysRefreshTokenView;
     }): Promise<IToken> {
         const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
         const { data } = (await keyDs.findJwkKeys())[0];
         const { privateKey } = JSON.parse(data);
-        const { client_id } = authRecord;
 
-        const { metaData, user, accessTokenExpireAt, refresh_token, refreshTokenTTL, accessTokenTTL } =
-            sessionStorage || {};
-        const { auth_time, roles, permissions } = metaData || {};
+        const { auth_time, roles, permissions, expire_at, user, access_token, ttl } = accessTokenStorage;
+        const { refresh_token, ttl: refresh_token_expires_in } = refreshTokenStorage || {};
 
         const pKey = await jose.importPKCS8(privateKey, "RS256");
 
         const { nonce, state } = authRequest || {};
 
+        debugger;
         const auth_time_calculated = parseInt((auth_time / 1000) as any);
 
         const acr = this.handleAcrClaims(authRequest.acr_values);
@@ -363,17 +457,17 @@ export class TokenEndpointController extends EndpointController {
             .setIssuedAt()
             .setIssuer(this.getIssuer(tenant.name))
             .setAudience(client_id)
-            .setExpirationTime(accessTokenExpireAt)
+            .setExpirationTime(new Date(expire_at).getTime())
             .setSubject(user.id)
             .sign(pKey);
 
         return {
             access_token,
-            expires_in: accessTokenTTL,
+            expires_in: ttl,
             id_token,
             token_type: "Bearer", // OIDC
             refresh_token,
-            refresh_token_expires_in: refreshTokenTTL
+            refresh_token_expires_in
         };
     }
 
@@ -430,17 +524,25 @@ export class TokenEndpointController extends EndpointController {
 
         if (errors.length === 0) {
             const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
-            const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenantRecord.name, access_token);
-            const sessionStorage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
+
+            const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenantRecord.id, access_token);
+            const refreshTokenStorage = await databaseUtils.findRefreshTokenByTenantAndAccessToken(
+                tenantRecord.id,
+                access_token
+            );
 
             return {
                 errors: [],
                 token: await this.buildTokenPayload({
-                    access_token,
                     tenant: tenantRecord,
-                    authRecord,
-                    authRequest,
-                    sessionStorage
+                    client_id: authRecord.client_id,
+                    authRequest: {
+                        acr_values: authRequest.acr_values,
+                        nonce: authRequest.nonce,
+                        state: authRequest.state
+                    },
+                    accessTokenStorage,
+                    refreshTokenStorage
                 })
             };
         } else {

@@ -13,8 +13,8 @@ import {
     eOAuthPrompt,
     eOAuthResponseMode,
     eOAuthResponseType,
-    IPortaApplicationSetting,
-    IPortaSessionStorage
+    IAccessToken,
+    IPortaApplicationSetting
 } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
 import { eKeySignatureType, expireSecondsFromNow, portaAuthUtils } from "../../../auth/utils";
@@ -139,7 +139,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 response_mode
             });
         } else {
-            const { errors, returningAuthorization, flowId, currentUserCacheKey } = await this.prepareAuthorization({
+            const { errors, returningAuthorization, flowId, accessTokenStorage } = await this.prepareAuthorization({
                 authRequest,
                 client_id,
                 confidentialClient: false,
@@ -156,9 +156,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 if (prompt_type === eOAuthPrompt.none) {
                     signinUrl = this.createFlowUrl("signin");
                 } else {
-                    if (max_age && returningAuthorization && currentUserCacheKey) {
-                        const { metaData } = await this.getCache().getValue<IPortaSessionStorage>(currentUserCacheKey);
-                        const { auth_time = 0 } = metaData || {};
+                    if (max_age && returningAuthorization && accessTokenStorage) {
+                        const { auth_time } = accessTokenStorage;
                         requireLoginDueMaxAge = Math.trunc((Date.now() - auth_time) / 1000) > max_age;
                     }
 
@@ -243,8 +242,9 @@ export class AuthorizeEndpointController extends EndpointController {
         const tenantRecord = await this.getTenant(tenant);
         const errors: any[] = [];
         let currentUserToken: string = undefined;
-        let currentUserCacheKey: string = undefined;
         let flowId: string = undefined;
+
+        let accessTokenStorage: IAccessToken = undefined;
 
         if (tenantRecord && tenantRecord.is_active) {
             // make sure we have a database for this tenant
@@ -253,16 +253,16 @@ export class AuthorizeEndpointController extends EndpointController {
             const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
             if (authRecord) {
                 // get the current user if possible
-                const { token, storage, cacheKey } = await this.getCurrentlyAuthenticatedUserToken(tenantRecord);
+                const { token, accessTokenStorage: storage } = await this.getCurrentlyAuthenticatedUserToken(
+                    tenantRecord
+                );
 
                 // check if the previous token is of the current tenant
                 if (token && storage) {
-                    const { tenant: previousTenant } = storage;
-                    if (tenantRecord.id === previousTenant.id) {
-                        currentUserToken = token;
-                        currentUserCacheKey = cacheKey;
-                    }
+                    currentUserToken = token;
                 }
+
+                accessTokenStorage = storage;
 
                 // create a flow (anyway)
                 flowId = await this.createAuthenticationFlow(
@@ -284,7 +284,7 @@ export class AuthorizeEndpointController extends EndpointController {
             returningAuthorization: currentUserToken !== undefined,
             flowId,
             currentUserToken,
-            currentUserCacheKey
+            accessTokenStorage
         };
     }
 
@@ -373,7 +373,7 @@ export class AuthorizeEndpointController extends EndpointController {
      */
     protected async getCurrentlyAuthenticatedUserToken(
         tenant: ISysTenant
-    ): Promise<{ token: string; storage: IPortaSessionStorage; cacheKey: string }> {
+    ): Promise<{ token: string; accessTokenStorage: IAccessToken }> {
         const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
         const accessTokenKeySignature = portaAuthUtils.getKeySignature(
             tenant,
@@ -384,19 +384,13 @@ export class AuthorizeEndpointController extends EndpointController {
         const accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
 
         // now we check if this token actually exists and was not revoked before
-        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessTokenFromCookie);
-        let storage = await this.getCache().getValue<IPortaSessionStorage>(cacheKey);
 
-        // Here we check if the previous access_token has/was expired
-        if (storage) {
-            const { accessTokenExpireAt } = storage;
-            storage = portaAuthUtils.isTimeExpired(accessTokenExpireAt) ? undefined : storage;
-        }
+        let accessTokenRecord = await databaseUtils.findAccessTokenByTenant(tenant.id, accessTokenFromCookie);
+        const isValid = accessTokenRecord && !accessTokenRecord.is_expired;
 
         return {
-            token: storage ? accessTokenFromCookie : undefined,
-            storage,
-            cacheKey: storage ? cacheKey : undefined
+            token: isValid ? accessTokenFromCookie : undefined,
+            accessTokenStorage: isValid ? accessTokenRecord : undefined
         };
     }
 

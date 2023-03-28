@@ -1,4 +1,3 @@
-import { encodeBase64Key } from "@blendsdk/crypto";
 import { asyncForEach, IDictionaryOf } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISigninRequest, ISigninResponse, ISysAuthorizationView } from "@porta/shared";
@@ -48,8 +47,7 @@ export class SigninEndpointController extends EndpointController {
                 newToken = await this.performLocalLogin({
                     flowId,
                     authRecord,
-                    authRequest,
-                    confidentialClient: false
+                    authRequest
                 });
             } else if (!currentUserToken) {
                 // return error when we also don't have a current user.
@@ -154,58 +152,36 @@ export class SigninEndpointController extends EndpointController {
     protected async performLocalLogin({
         flowId,
         authRecord,
-        authRequest,
-        confidentialClient
+        authRequest
     }: {
         flowId: string;
         authRequest: IAuthorizeRequest;
         authRecord: ISysAuthorizationView;
-        confidentialClient: boolean;
     }): Promise<string> {
         const { tenant, user } = await this.getAuthenticatedUser(flowId);
 
-        const { accessTokenKeySignature, accessToken, sessionStorage, refreshTokenKeySignature } =
-            await this.createSessionStorageForUser(
+        const { accessTokenKeySignature, refreshTokenKeySignature, accessTokenStorage, refreshTokenStorage } =
+            await this.createSessionStorageForUser({
                 tenant,
                 authRecord,
-                user.id,
-                authRequest.ui_locales,
-                authRequest.scope,
-                authRequest.claims as any // This will be parsed to JSON in Claims class
-            );
-
-        const { accessTokenExpireAt, refresh_token = undefined, refreshTokenExpireAt } = sessionStorage;
-
-        if (!confidentialClient) {
-            // set the token cookie
-            this.setCookie(accessTokenKeySignature, accessToken, {
-                expires: new Date(accessTokenExpireAt),
-                signed: true,
-                secure: this.request.protocol !== "http",
-                sameSite: "lax", // only send to this endpoint
-                httpOnly: true
+                user_id: user.id,
+                auth_request_params: {
+                    claims: authRequest.claims,
+                    scope: authRequest.scope,
+                    ui_locales: authRequest.ui_locales,
+                    acr_values: authRequest.acr_values
+                }
             });
 
-            // session length info for the ui
-            this.setCookie(encodeBase64Key({ type: "session", tenant: tenant.id }), accessTokenExpireAt, {
-                expires: new Date(accessTokenExpireAt)
-            });
+        this.installLocalCookies(
+            tenant.id,
+            accessTokenStorage,
+            accessTokenKeySignature,
+            refreshTokenStorage,
+            refreshTokenKeySignature
+        );
 
-            if (refreshTokenKeySignature && refresh_token) {
-                this.setCookie(refreshTokenKeySignature, refresh_token, {
-                    expires: new Date(refreshTokenExpireAt),
-                    signed: true,
-                    secure: this.request.protocol !== "http",
-                    sameSite: "lax", // only send to this endpoint
-                    httpOnly: true
-                });
-                this.setCookie(encodeBase64Key({ type: "refresh_session", tenant: tenant.id }), refreshTokenExpireAt, {
-                    expires: new Date(refreshTokenExpireAt)
-                });
-            }
-        }
-
-        return accessToken;
+        return accessTokenStorage.access_token;
     }
 
     /**

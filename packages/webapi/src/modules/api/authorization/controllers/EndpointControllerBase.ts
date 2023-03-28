@@ -9,30 +9,31 @@ import {
     RedirectResponse,
     SuccessResponse
 } from "@blendsdk/webafx-common";
-import { IAuthenticationFlowState, ISysAuthorizationView, ISysTenant } from "@porta/shared";
+import { IAuthenticationFlowState, ISysAuthorizationView, ISysRefreshTokenView, ISysTenant } from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
 import { URLSearchParams } from "url";
 
 import { SysAuthorizationViewDataService } from "../../../../dataservices/SysAuthorizationViewDataService";
-import { SysPermissionDataService } from "../../../../dataservices/SysPermissionDataService";
-import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { SysUserGroupDataService } from "../../../../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 import {
     eOAuthGrantType,
     eOAuthResponseMode,
+    IAccessToken,
+    IAuthRequestParams,
     ICachedFlowInformation,
     IErrorResponseParams,
-    IPortaApplicationSetting,
-    IPortaSessionStorage
+    IPortaApplicationSetting
 } from "../../../../types";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
 import { commonUtils, databaseUtils } from "../../../../utils";
-import { eKeySignatureType, portaAuthUtils, secondsToMilliseconds } from "../../../auth/utils";
+import { eKeySignatureType, portaAuthUtils } from "../../../auth/utils";
+import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
+import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
+import { encodeBase64Key } from "@blendsdk/crypto";
 
 /**
  * Enum describing flow parts
@@ -93,17 +94,17 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
-     * Gets the oidc claims by scope
+     * Gets the OIDC claims by scope
      *
      * @protected
-     * @param {IPortaSessionInfo} sessionStorage
+     * @param {IAccessToken} accessTokenStorage
+     * @param {string} tenantName
      * @returns
      * @memberof EndpointController
      */
-    protected getClaimsByScope(sessionStorage: IPortaSessionStorage, tenantName: string) {
-        const { metaData } = (sessionStorage || {}) as any;
-        const claims = new Claims(sessionStorage, this.getServerUrl(), tenantName);
-        return claims.getClaims(metaData || {});
+    protected getClaimsByScope(accessTokenStorage: IAccessToken, tenantName: string) {
+        const claims = new Claims(accessTokenStorage, this.getServerUrl(), tenantName);
+        return claims.getClaims();
     }
 
     /**
@@ -151,9 +152,64 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {string} accessToken
      * @memberof EndpointController
      */
-    protected revokeAccessToken(tenantRecord: ISysTenant, accessToken: string) {
-        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenantRecord.name, accessToken);
-        return this.getCache().deleteValue(cacheKey);
+    protected async revokeAccessToken(tenantRecord: ISysTenant, access_token: string) {
+        const { dataSource } = await databaseUtils.getTenantDataSource(tenantRecord.id);
+        if (dataSource) {
+            const accessTokenDs = new SysAccessTokenDataService({ dataSource });
+            await accessTokenDs.deleteSysAccessTokenByAccessToken({ access_token });
+        }
+    }
+
+    protected async revokeRefreshToken(tenantRecord: ISysTenant, refreshTokenStorage: ISysRefreshTokenView) {
+        const { dataSource } = await databaseUtils.getTenantDataSource(tenantRecord.id);
+        this.revokeAccessToken(tenantRecord, refreshTokenStorage.access_token);
+        if (dataSource) {
+            const refreshTokenDs = new SysRefreshTokenDataService({ dataSource });
+            await refreshTokenDs.deleteSysRefreshTokenById({ id: refreshTokenStorage.id });
+        }
+    }
+
+    protected installLocalCookies(
+        tenant_id: string,
+        accessTokenStorage: IAccessToken,
+        accessTokenKeySignature: string,
+        refreshTokenStorage: ISysRefreshTokenView,
+        refreshTokenKeySignature: string
+    ) {
+        const { access_token, expire_at } = accessTokenStorage;
+
+        // set the token cookie
+        this.setCookie(accessTokenKeySignature, access_token, {
+            expires: new Date(expire_at),
+            signed: true,
+            secure: this.request.protocol !== "http",
+            sameSite: "lax", // only send to this endpoint
+            httpOnly: true
+        });
+
+        // session length info for the ui
+        this.setCookie(encodeBase64Key({ type: "session", tenant: tenant_id }), new Date(expire_at).getTime(), {
+            expires: new Date(expire_at)
+        });
+
+        if (refreshTokenKeySignature && refreshTokenStorage) {
+            const { refresh_token, expire_at } = refreshTokenStorage || {};
+
+            this.setCookie(refreshTokenKeySignature, refresh_token, {
+                expires: new Date(expire_at),
+                signed: true,
+                secure: this.request.protocol !== "http",
+                sameSite: "lax", // only send to this endpoint
+                httpOnly: true
+            });
+            this.setCookie(
+                encodeBase64Key({ type: "refresh_session", tenant: tenant_id }),
+                new Date(expire_at).getTime(),
+                {
+                    expires: new Date(expire_at)
+                }
+            );
+        }
     }
 
     /**
@@ -163,41 +219,25 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {ISysTenant} tenant
      * @param {ISysAuthorizationView} authRecord
      * @param {string} user_id
-     * @param {string} ui_locales
+     * @param {*} ui_locales
+     * @param {string} scope
+     * @param {string} claims
      * @returns
-     * @memberof SigninEndpointController
+     * @memberof EndpointController
      */
-    protected async createSessionStorageForUser(
-        tenant: ISysTenant,
-        authRecord: ISysAuthorizationView,
-        user_id: string,
-        ui_locales: string,
-        scope: string,
-        claims: string
-    ) {
+    protected async createSessionStorageForUser({
+        tenant,
+        authRecord,
+        user_id,
+        auth_request_params
+    }: {
+        tenant: ISysTenant;
+        authRecord: ISysAuthorizationView;
+        user_id: string;
+        auth_request_params: IAuthRequestParams;
+    }) {
         let { access_token_ttl, refresh_token_ttl } = authRecord;
-        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>(databaseUtils.getTenantDataSourceID(tenant));
-
-        const sharedContext = ds.createSharedContext();
-
-        const closeContext = async () => {
-            return (await sharedContext).disposeContext();
-        };
-
-        const userDs = new SysUserDataService({ sharedContext });
-        const profileDs = new SysUserProfileDataService({ sharedContext });
-        const userGroupDs = new SysUserGroupDataService({ sharedContext });
-        const permissionDs = new SysPermissionDataService({ sharedContext });
-
-        const userRecord = await userDs.findSysUserById({ id: user_id });
-        const profile = await profileDs.findUserProfileByUserId({
-            user_id: userRecord.id
-        });
-        const userPerms = await permissionDs.findPermissionsByUserId({ user_id: userRecord.id });
-        const userGroups = await userGroupDs.findGroupsByUserId({
-            user_id: userRecord.id
-        });
-        await closeContext();
+        const { scope } = auth_request_params;
 
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, PORTA_SSO_COMMON_NAME } =
             this.getSettings<IPortaApplicationSetting>();
@@ -207,74 +247,46 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             PORTA_SSO_COMMON_NAME,
             eKeySignatureType.access_token
         );
-        const accessToken = portaAuthUtils.newAccessToken();
-
-        const NOW = Date.now();
-        const cacheKey = portaAuthUtils.getAccessTokenCacheKey(tenant.name, accessToken);
-
-        access_token_ttl = access_token_ttl || ACCESS_TOKEN_TTL;
-        refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
-
-        const accessTokenExpireAt = NOW + secondsToMilliseconds(access_token_ttl);
-
-        // empty variables for refresh token
-        let refreshTokenExpireAt: number = undefined;
-        let refresh_token: string = undefined;
-        let refreshTokenCacheKey = undefined;
-        let refreshTokenTTL = undefined;
-        let refreshTokenKeySignature = undefined;
 
         // checking the offline access grant
         const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
 
+        access_token_ttl = access_token_ttl || ACCESS_TOKEN_TTL;
+        refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
+
+        const accessTokenStorage = await databaseUtils.newAccessToken(
+            tenant.id,
+            authRecord.id,
+            user_id,
+            access_token_ttl,
+            offline_access === true ? refresh_token_ttl : access_token_ttl, // if there is no offline_access then this token will be revoked at access_token_ttl,
+            auth_request_params
+        );
+
+        // empty variables for refresh token
+        let refreshTokenStorage: ISysRefreshTokenView = undefined;
+
+        let refreshTokenKeySignature = undefined;
+
         // creating the refresh tokens
         if (offline_access) {
-            refresh_token = portaAuthUtils.newAccessToken();
-            refreshTokenCacheKey = portaAuthUtils.getRefreshTokenCacheKey(tenant.name, refresh_token);
-            refreshTokenExpireAt = NOW + secondsToMilliseconds(refresh_token_ttl);
-            refreshTokenTTL = refresh_token_ttl;
+            refreshTokenStorage = await databaseUtils.newRefreshToken(
+                tenant.id,
+                accessTokenStorage.id,
+                refresh_token_ttl
+            );
             refreshTokenKeySignature = portaAuthUtils.getKeySignature(
                 tenant,
                 PORTA_SSO_COMMON_NAME,
                 eKeySignatureType.refresh_token
             );
-            await this.getCache().setValue(refreshTokenCacheKey, cacheKey, { expire: refreshTokenExpireAt });
         }
-
-        const sessionStorage: IPortaSessionStorage = {
-            // not used
-            ttl: undefined,
-
-            accessTokenTTL: access_token_ttl,
-            accessTokenExpireAt,
-
-            refresh_token,
-            refreshTokenTTL,
-            refreshTokenExpireAt,
-            refreshTokenCacheKey,
-
-            user: userRecord,
-            userProfile: profile,
-            metaData: {
-                ui_locales,
-                tenant: tenant.id,
-                scope,
-                claims,
-                auth_time: NOW,
-                roles: userGroups,
-                permissions: userPerms
-            },
-            cacheKey,
-            tenant
-        };
-
-        await this.getCache().setValue(cacheKey, sessionStorage, { expire: refreshTokenExpireAt });
 
         return {
             accessTokenKeySignature,
             refreshTokenKeySignature,
-            accessToken,
-            sessionStorage
+            accessTokenStorage,
+            refreshTokenStorage
         };
     }
 
@@ -387,9 +399,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns {Promise<ISysTenant>}
      * @memberof EndPointController
      */
-    protected async getTenant(tenant: string): Promise<ISysTenant> {
-        const tenantDs = new SysTenantDataService();
-        return await tenantDs.findByNameOrId({ name: tenant });
+    protected getTenant(tenant: string): Promise<ISysTenant> {
+        return databaseUtils.getTenant(tenant);
     }
 
     /**

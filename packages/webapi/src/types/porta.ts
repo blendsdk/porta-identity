@@ -1,9 +1,12 @@
 import { IDictionaryOf } from "@blendsdk/stdlib";
-import { ISessionStorage } from "@blendsdk/webafx-auth";
 
 import {
     IAuthorizeRequest,
+    ISysAccessTokenAuthRequestParams,
+    ISysAccessTokenView,
     ISysAuthorizationView,
+    ISysClient,
+    ISysGroup,
     ISysGroupsByUserView,
     ISysTenant,
     ISysUser,
@@ -68,23 +71,21 @@ export interface IPortaUserMetaData {
     permissions: ISysUserPermissionView[];
 }
 
-/**
- * Wrote code doc
- *
- * @export
- * @interface IPortaSessionStorage
- * @extends {ISessionStorage<ISysUser>}
- */
-export interface IPortaSessionStorage extends ISessionStorage<ISysUser> {
-    userProfile: ISysUserProfile;
-    metaData: IPortaUserMetaData;
+export interface IAuthRequestParams extends ISysAccessTokenAuthRequestParams {}
+
+export interface IAccessToken
+    extends Omit<
+        ISysAccessTokenView,
+        "user" | "profile" | "client" | "tenant" | "auth_time" | "auth_request" | "auth_request_params"
+    > {
+    auth_time: number;
+    user: ISysUser;
+    profile: ISysUserProfile;
+    client: ISysClient;
     tenant: ISysTenant;
-    accessTokenTTL: number;
-    accessTokenExpireAt: number;
-    refreshTokenTTL: number;
-    refreshTokenExpireAt: number;
-    refresh_token: string;
-    refreshTokenCacheKey: string;
+    permissions: ISysUserPermissionView[];
+    roles: ISysGroup[];
+    auth_request_params: IAuthRequestParams;
 }
 
 export interface IPortaApplicationSetting {

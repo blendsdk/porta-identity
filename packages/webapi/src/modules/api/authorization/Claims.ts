@@ -1,5 +1,5 @@
 import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/stdlib";
-import { IPortaSessionStorage } from "../../../types";
+import { IAccessToken } from "../../../types";
 import { commonUtils } from "../../../utils";
 
 /**
@@ -42,6 +42,8 @@ export class Claims {
      */
     protected handlers: IClaimHandlerRecord[];
 
+    protected accessTokenStorage: IAccessToken;
+
     /**
      * Creates an instance of Claims.
      * @param {IPortaSessionInfo} sessionStorage
@@ -49,10 +51,12 @@ export class Claims {
      * @param {string} tenantName
      * @memberof Claims
      */
-    public constructor(sessionStorage: IPortaSessionStorage, serverUrl: string, tenantName: string) {
-        const { user, userProfile, metaData, tenant } = sessionStorage || {};
-        const { permissions, roles } = metaData || {};
-        if (user && userProfile) {
+    public constructor(accessTokenStorage: IAccessToken, serverUrl: string, tenantName: string) {
+        const { user, profile, tenant, permissions, roles } = accessTokenStorage || {};
+
+        this.accessTokenStorage = accessTokenStorage;
+
+        if (user && profile) {
             const fq_email = user.username;
 
             this.handlers = [
@@ -60,21 +64,21 @@ export class Claims {
                     scope: ["userinfo", "profile"],
                     claim: "name",
                     handler: this.handleClaim(() => {
-                        return `${userProfile.firstname} ${userProfile.lastname}`;
+                        return `${profile.firstname} ${profile.lastname}`;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "given_name",
                     handler: this.handleClaim(() => {
-                        return userProfile.firstname;
+                        return profile.firstname;
                     })
                 },
                 {
                     scope: ["userinfo", "profile"],
                     claim: "family_name",
                     handler: this.handleClaim(() => {
-                        return userProfile.lastname;
+                        return profile.lastname;
                     })
                 },
                 {
@@ -88,7 +92,7 @@ export class Claims {
                     scope: "profile",
                     claim: "nickname",
                     handler: this.handleClaim(() => {
-                        return userProfile.firstname;
+                        return profile.firstname;
                     })
                 },
                 {
@@ -109,7 +113,7 @@ export class Claims {
                     scope: "profile",
                     claim: "picture",
                     handler: this.handleClaim(() => {
-                        return userProfile.avatar ? userProfile.avatar : "n/a";
+                        return profile.avatar ? profile.avatar : "n/a";
                     })
                 },
                 {
@@ -254,9 +258,11 @@ export class Claims {
      * @returns
      * @memberof Claims
      */
-    public getClaims({ scope, claims }: { scope?: string; claims?: string }) {
-        const result: IDictionaryOf<any> = {};
+    public getClaims() {
+        const { auth_request_params } = this.accessTokenStorage || {};
+        const { claims, scope } = auth_request_params || {};
 
+        const result: IDictionaryOf<any> = {};
         let claimsObj: IDictionaryOf<IClaim> = {};
 
         try {

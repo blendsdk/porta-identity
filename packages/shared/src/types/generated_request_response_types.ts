@@ -252,6 +252,16 @@ export interface ITokenRequest {
 	 * @type string
 	 * @memberOf ITokenRequest
 	 */
+	scope?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	claims?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
 	refresh_token?: string;
 }
 

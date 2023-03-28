@@ -3,6 +3,7 @@
  * THIS FILE IS AUTO GENERATED
  */
 
+import { ISysAccessTokenAuthRequestParams } from "./generated_types";
 import { ISysMfaSettings } from "./generated_types";
 
 /**
@@ -35,6 +36,11 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	application_name: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	is_active: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -80,6 +86,11 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	post_logout_redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_credentials_user: string;
 }
 
 /**
@@ -166,6 +177,135 @@ export interface ISysUserPermissionView {
 	 * @memberOf ISysUserPermissionView
 	 */
 	is_active: boolean;
+}
+
+/**
+ * @export
+ * @interface ISysAccessTokenView
+ */
+export interface ISysAccessTokenView {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	id: string;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessTokenView
+	 */
+	ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessTokenView
+	 */
+	refresh_ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	auth_time: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	auth_request_params: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	access_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	tenant_id: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAccessTokenView
+	 */
+	is_expired: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAccessTokenView
+	 */
+	is_revoke: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	expire_at: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	revoke_at: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	user: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	profile: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	client: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface ISysRefreshTokenView
+ */
+export interface ISysRefreshTokenView {
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	id: string;
+	/**
+	 * @type number
+	 * @memberOf ISysRefreshTokenView
+	 */
+	ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	refresh_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	access_token: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysRefreshTokenView
+	 */
+	is_expire: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	expire_at: string;
 }
 
 /**
@@ -418,6 +558,11 @@ export interface ISysClient {
 	 */
 	application_name: string;
 	/**
+	 * @type boolean
+	 * @memberOf ISysClient
+	 */
+	is_active?: boolean;
+	/**
 	 * @type string
 	 * @memberOf ISysClient
 	 */
@@ -462,6 +607,90 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	post_logout_redirect_uri?: string;
+}
+
+/**
+ * @export
+ * @interface ISysAccessToken
+ */
+export interface ISysAccessToken {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	id?: string;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessToken
+	 */
+	ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessToken
+	 */
+	refresh_ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	auth_time?: string;
+	/**
+	 * @type ISysAccessTokenAuthRequestParams
+	 * @memberOf ISysAccessToken
+	 */
+	auth_request_params?: ISysAccessTokenAuthRequestParams;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	access_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	tenant_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysRefreshToken
+ */
+export interface ISysRefreshToken {
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	id?: string;
+	/**
+	 * @type number
+	 * @memberOf ISysRefreshToken
+	 */
+	ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	date_created?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	refresh_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	access_token_id: string;
 }
 
 /**

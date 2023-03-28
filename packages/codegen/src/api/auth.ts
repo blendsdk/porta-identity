@@ -65,6 +65,8 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("client_secret", { location: eParameterLocation.body, optional: true })
                 .addString("state", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
                 .addString("nonce", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
+                .addString("scope", { location: eParameterLocation.query, optional: true })
+                .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
                 .addString("refresh_token", { location: eParameterLocation.body, optional: true });
 
             typeSchema

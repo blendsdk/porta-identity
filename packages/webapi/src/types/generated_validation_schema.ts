@@ -42,6 +42,24 @@ export const validationSchema = {
 		sys_mfa_settings: {
 			type: eJsonSchemaType.object
 		},
+		sys_access_token_auth_request_params: {
+			type: eJsonSchemaType.object,
+			properties: {
+				ui_locales: {
+					type: eJsonSchemaType.string
+				},
+				claims: {
+					type: eJsonSchemaType.string
+				},
+				acr_values: {
+					type: eJsonSchemaType.string
+				},
+				scope: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["ui_locales", "claims", "acr_values", "scope"]
+		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -60,6 +78,9 @@ export const validationSchema = {
 				},
 				application_name: {
 					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
 				},
 				description: {
 					type: eJsonSchemaType.string
@@ -92,6 +113,10 @@ export const validationSchema = {
 				},
 				post_logout_redirect_uri: {
 					type: eJsonSchemaType.string
+				},
+				client_credentials_user: {
+					type: eJsonSchemaType.string,
+					format: "json"
 				}
 			},
 			required: [
@@ -100,6 +125,7 @@ export const validationSchema = {
 				"client_type",
 				"logo",
 				"application_name",
+				"is_active",
 				"description",
 				"secret",
 				"access_token_ttl",
@@ -108,7 +134,8 @@ export const validationSchema = {
 				"valid_until",
 				"redirect_uri",
 				"client_credentials_user_id",
-				"post_logout_redirect_uri"
+				"post_logout_redirect_uri",
+				"client_credentials_user"
 			]
 		},
 		sys_user_mfa_view: {
@@ -174,6 +201,122 @@ export const validationSchema = {
 				}
 			},
 			required: ["user_id", "permission_id", "code", "is_active"]
+		},
+		sys_access_token_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				auth_time: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				auth_request_params: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				access_token: {
+					type: eJsonSchemaType.string
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				is_expired: {
+					type: eJsonSchemaType.boolean
+				},
+				is_revoke: {
+					type: eJsonSchemaType.boolean
+				},
+				expire_at: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				revoke_at: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				user: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				profile: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				client: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				tenant: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				}
+			},
+			required: [
+				"id",
+				"ttl",
+				"refresh_ttl",
+				"auth_time",
+				"auth_request_params",
+				"access_token",
+				"user_id",
+				"client_id",
+				"tenant_id",
+				"is_expired",
+				"is_revoke",
+				"expire_at",
+				"revoke_at",
+				"user",
+				"profile",
+				"client",
+				"tenant"
+			]
+		},
+		sys_refresh_token_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string
+				},
+				access_token: {
+					type: eJsonSchemaType.string
+				},
+				is_expire: {
+					type: eJsonSchemaType.boolean
+				},
+				expire_at: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				}
+			},
+			required: ["id", "ttl", "refresh_token", "access_token", "is_expire", "expire_at"]
 		},
 		sys_tenant: {
 			type: eJsonSchemaType.object,
@@ -353,6 +496,9 @@ export const validationSchema = {
 				application_name: {
 					type: eJsonSchemaType.string
 				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				},
 				description: {
 					type: eJsonSchemaType.string
 				},
@@ -387,6 +533,72 @@ export const validationSchema = {
 				}
 			},
 			required: ["client_id", "client_type", "application_name"]
+		},
+		sys_access_token: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				ttl: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				refresh_ttl: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				auth_time: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				auth_request_params: {
+					type: eJsonSchemaType.object,
+					$ref: "#/definitions/sys_access_token_auth_request_params"
+				},
+				access_token: {
+					type: eJsonSchemaType.string
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["ttl", "refresh_ttl", "user_id", "client_id", "tenant_id"]
+		},
+		sys_refresh_token: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				ttl: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime"
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string
+				},
+				access_token_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["ttl", "access_token_id"]
 		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,
@@ -619,6 +831,15 @@ export const validationSchema = {
 				nonce: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.body
+				},
+				scope: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				claims: {
+					type: eJsonSchemaType.string,
+					validate: false,
+					location: eParameterLocation.query
 				},
 				refresh_token: {
 					type: eJsonSchemaType.string,
