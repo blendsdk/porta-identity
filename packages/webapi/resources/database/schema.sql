@@ -90,7 +90,8 @@ CREATE TABLE sys_access_token();
 ALTER TABLE sys_access_token ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_access_token ADD COLUMN ttl integer NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN refresh_ttl integer NOT NULL;
-ALTER TABLE sys_access_token ADD COLUMN auth_time timestamp without time zone  DEFAULT now();
+ALTER TABLE sys_access_token ADD COLUMN auth_time integer NOT NULL;
+ALTER TABLE sys_access_token ADD COLUMN date_created timestamp without time zone  DEFAULT now();
 ALTER TABLE sys_access_token ADD COLUMN auth_request_params jsonb;
 ALTER TABLE sys_access_token ADD COLUMN access_token varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
 ALTER TABLE sys_access_token ADD COLUMN user_id uuid NOT NULL;
@@ -193,10 +194,10 @@ from
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
 	sat.*,
-	auth_time + ( ttl || ' seconds')::interval < now() as is_expired,
-	auth_time + ( refresh_ttl || ' seconds')::interval < now() as is_revoke,
-	auth_time + ( ttl || ' seconds')::interval as expire_at,
-	auth_time + ( refresh_ttl || ' seconds')::interval as revoke_at,
+	sat.date_created + (ttl || ' seconds') :: interval < now() as is_expired,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval < now() as is_revoke,
+	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
 	row_to_json(sup) as profile,
 	row_to_json(sc) as client,
@@ -301,7 +302,8 @@ CREATE TABLE sys_access_token();
 ALTER TABLE sys_access_token ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_access_token ADD COLUMN ttl integer NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN refresh_ttl integer NOT NULL;
-ALTER TABLE sys_access_token ADD COLUMN auth_time timestamp without time zone  DEFAULT now();
+ALTER TABLE sys_access_token ADD COLUMN auth_time integer NOT NULL;
+ALTER TABLE sys_access_token ADD COLUMN date_created timestamp without time zone  DEFAULT now();
 ALTER TABLE sys_access_token ADD COLUMN auth_request_params jsonb;
 ALTER TABLE sys_access_token ADD COLUMN access_token varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
 ALTER TABLE sys_access_token ADD COLUMN user_id uuid NOT NULL;
@@ -393,10 +395,10 @@ from
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
 	sat.*,
-	auth_time + ( ttl || ' seconds')::interval < now() as is_expired,
-	auth_time + ( refresh_ttl || ' seconds')::interval < now() as is_revoke,
-	auth_time + ( ttl || ' seconds')::interval as expire_at,
-	auth_time + ( refresh_ttl || ' seconds')::interval as revoke_at,
+	sat.date_created + (ttl || ' seconds') :: interval < now() as is_expired,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval < now() as is_revoke,
+	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
 	row_to_json(sup) as profile,
 	row_to_json(sc) as client,

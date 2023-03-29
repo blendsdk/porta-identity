@@ -218,6 +218,10 @@ export const validationSchema = {
 					format: "integer"
 				},
 				auth_time: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				date_created: {
 					type: eJsonSchemaType.string,
 					format: "datetime"
 				},
@@ -276,6 +280,7 @@ export const validationSchema = {
 				"ttl",
 				"refresh_ttl",
 				"auth_time",
+				"date_created",
 				"auth_request_params",
 				"access_token",
 				"user_id",
@@ -550,6 +555,10 @@ export const validationSchema = {
 					format: "int32"
 				},
 				auth_time: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				date_created: {
 					type: eJsonSchemaType.string,
 					format: "datetime"
 				},
@@ -573,7 +582,7 @@ export const validationSchema = {
 					format: "uuid"
 				}
 			},
-			required: ["ttl", "refresh_ttl", "user_id", "client_id", "tenant_id"]
+			required: ["ttl", "refresh_ttl", "auth_time", "user_id", "client_id", "tenant_id"]
 		},
 		sys_refresh_token: {
 			type: eJsonSchemaType.object,

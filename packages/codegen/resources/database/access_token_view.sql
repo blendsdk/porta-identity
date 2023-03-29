@@ -1,9 +1,9 @@
 select
 	sat.*,
-	auth_time + ( ttl || ' seconds')::interval < now() as is_expired,
-	auth_time + ( refresh_ttl || ' seconds')::interval < now() as is_revoke,
-	auth_time + ( ttl || ' seconds')::interval as expire_at,
-	auth_time + ( refresh_ttl || ' seconds')::interval as revoke_at,
+	sat.date_created + (ttl || ' seconds') :: interval < now() as is_expired,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval < now() as is_revoke,
+	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
+	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
 	row_to_json(sup) as profile,
 	row_to_json(sc) as client,

@@ -114,7 +114,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .integerColumn("ttl")
         .integerColumn("refresh_ttl")
-        .dateTimeColumn("auth_time", { default: "now()" })
+        .integerColumn("auth_time")
+        .dateTimeColumn("date_created", { default: "now()" })
         .jsonColumn(
             "auth_request_params",
             ({ suggestedTypeName, mainSchema }) => {

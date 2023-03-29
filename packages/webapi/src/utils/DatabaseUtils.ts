@@ -399,7 +399,8 @@ class DatabaseUtils {
             user_id,
             ttl,
             refresh_ttl,
-            auth_request_params
+            auth_request_params,
+            auth_time: auth_request_params.auth_time || Math.trunc(new Date().getTime() / 1000)
         });
         return this.findAccessTokenByTenant(tenant_id, result.access_token);
     }

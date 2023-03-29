@@ -180,7 +180,7 @@ export class TokenEndpointController extends EndpointController {
                 if (errors.length !== 0) {
                     return this.responseWithError(
                         {
-                            error: eErrorType.invalid_request,
+                            error: eErrorType.invalid_grant,
                             error_description: errors[0]
                         },
                         true
@@ -235,50 +235,58 @@ export class TokenEndpointController extends EndpointController {
                     tenantRecord.id,
                     refreshTokenStorage.access_token
                 );
+
                 if (accessTokenStorage) {
                     // create a new access token based on the previous access token
                     const { user_id, tenant_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
 
-                    const auth_req_params: IAuthRequestParams = {
-                        claims: tokenRequest.claims || auth_request_params.claims,
-                        scope: tokenRequest.scope || auth_request_params.scope,
-                        ui_locales: auth_request_params.ui_locales,
-                        acr_values: auth_request_params.acr_values
-                    };
+                    // check if the refresh_token has requested for the same client
+                    const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+                    if (client.client_id === client_id && client.secret === client_secret) {
+                        const auth_req_params: IAuthRequestParams = {
+                            claims: tokenRequest.claims || auth_request_params.claims,
+                            scope: tokenRequest.scope || auth_request_params.scope,
+                            ui_locales: auth_request_params.ui_locales,
+                            acr_values: auth_request_params.acr_values,
+                            auth_time: accessTokenStorage.auth_time
+                        };
 
-                    const {
-                        accessTokenKeySignature,
-                        refreshTokenKeySignature,
-                        accessTokenStorage: newAccessTokenStorage,
-                        refreshTokenStorage: newRefreshTokenStorage
-                    } = await this.createSessionStorageForUser({
-                        tenant: tenantRecord,
-                        user_id,
-                        authRecord: { access_token_ttl: ttl, refresh_token_ttl: refresh_ttl, id: client.id } as any,
-                        auth_request_params: auth_req_params
-                    });
-                    // revoke the previous refresh_token and access_token
-                    await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
+                        const {
+                            accessTokenKeySignature,
+                            refreshTokenKeySignature,
+                            accessTokenStorage: newAccessTokenStorage,
+                            refreshTokenStorage: newRefreshTokenStorage
+                        } = await this.createSessionStorageForUser({
+                            tenant: tenantRecord,
+                            user_id,
+                            authRecord: { access_token_ttl: ttl, refresh_token_ttl: refresh_ttl, id: client.id } as any,
+                            auth_request_params: auth_req_params
+                        });
+                        // revoke the previous refresh_token and access_token
+                        await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
 
-                    this.installLocalCookies(
-                        tenant_id,
-                        newAccessTokenStorage,
-                        accessTokenKeySignature,
-                        newRefreshTokenStorage,
-                        refreshTokenKeySignature
-                    );
+                        this.installLocalCookies(
+                            tenant_id,
+                            newAccessTokenStorage,
+                            accessTokenKeySignature,
+                            newRefreshTokenStorage,
+                            refreshTokenKeySignature
+                        );
 
-                    token = await this.buildTokenPayload({
-                        tenant: tenantRecord,
-                        client_id: client.client_id,
-                        accessTokenStorage,
-                        refreshTokenStorage,
-                        authRequest: {
-                            acr_values: auth_req_params.acr_values,
-                            nonce: undefined,
-                            state: tokenRequest.state
-                        }
-                    });
+                        token = await this.buildTokenPayload({
+                            tenant: tenantRecord,
+                            client_id: client.client_id,
+                            accessTokenStorage: newAccessTokenStorage,
+                            refreshTokenStorage: newRefreshTokenStorage,
+                            authRequest: {
+                                acr_values: auth_req_params.acr_values,
+                                nonce: undefined,
+                                state: tokenRequest.state
+                            }
+                        });
+                    } else {
+                        errors.push("invalid_bound_client");
+                    }
                 } else {
                     errors.push("invalid_refresh_token");
                 }
@@ -422,9 +430,6 @@ export class TokenEndpointController extends EndpointController {
 
         const { nonce, state } = authRequest || {};
 
-        debugger;
-        const auth_time_calculated = parseInt((auth_time / 1000) as any);
-
         const acr = this.handleAcrClaims(authRequest.acr_values);
 
         const id_token = await new jose.SignJWT({
@@ -450,7 +455,7 @@ export class TokenEndpointController extends EndpointController {
                 }),
             nonce,
             state,
-            auth_time: auth_time_calculated,
+            auth_time,
             acr
         })
             .setProtectedHeader({ alg: "RS256" })

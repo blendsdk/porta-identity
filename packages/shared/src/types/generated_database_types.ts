@@ -200,10 +200,15 @@ export interface ISysAccessTokenView {
 	 */
 	refresh_ttl: number;
 	/**
+	 * @type number
+	 * @memberOf ISysAccessTokenView
+	 */
+	auth_time: number;
+	/**
 	 * @type string
 	 * @memberOf ISysAccessTokenView
 	 */
-	auth_time: string;
+	date_created: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAccessTokenView
@@ -630,10 +635,15 @@ export interface ISysAccessToken {
 	 */
 	refresh_ttl: number;
 	/**
+	 * @type number
+	 * @memberOf ISysAccessToken
+	 */
+	auth_time: number;
+	/**
 	 * @type string
 	 * @memberOf ISysAccessToken
 	 */
-	auth_time?: string;
+	date_created?: string;
 	/**
 	 * @type ISysAccessTokenAuthRequestParams
 	 * @memberOf ISysAccessToken

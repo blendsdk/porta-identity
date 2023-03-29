@@ -71,7 +71,9 @@ export interface IPortaUserMetaData {
     permissions: ISysUserPermissionView[];
 }
 
-export interface IAuthRequestParams extends ISysAccessTokenAuthRequestParams {}
+export interface IAuthRequestParams extends ISysAccessTokenAuthRequestParams {
+    auth_time?: number;
+}
 
 export interface IAccessToken
     extends Omit<

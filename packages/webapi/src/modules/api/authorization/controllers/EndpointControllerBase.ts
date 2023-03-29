@@ -1,6 +1,6 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { deepCopy, isObject } from "@blendsdk/stdlib";
+import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
 import {
     BadRequestResponse,
     Controller,
@@ -470,5 +470,20 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 lastname: "Administrator"
             });
         });
+    }
+
+    protected getBasicAuthCredentialsFromRequestHeader() {
+        const [type, data] = (this.request.headers.authorization || "").split(" ");
+        if (data && type && type.toLocaleLowerCase() === "basic") {
+            const [client_id, client_secret] = base64Decode(data).split(":");
+            return {
+                client_id,
+                client_secret
+            };
+        }
+        return {
+            client_id: undefined,
+            client_secret: undefined
+        };
     }
 }

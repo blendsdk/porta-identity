@@ -158,7 +158,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 } else {
                     if (max_age && returningAuthorization && accessTokenStorage) {
                         const { auth_time } = accessTokenStorage;
-                        requireLoginDueMaxAge = Math.trunc((Date.now() - auth_time) / 1000) > max_age;
+                        requireLoginDueMaxAge = Math.trunc(Date.now() / 1000) - auth_time > max_age;
                     }
 
                     // here we skip the UI flow if we already have a user (currentUser) that is signed in
