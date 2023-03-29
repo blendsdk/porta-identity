@@ -1,6 +1,6 @@
 {
     "name": "@porta/webapi",
-    "version": "1.0.133",
+    "version": "1.0.134",
     "main": "dist/index.js",
     "bin": {
         "porta-ctrl": "./dist/index.js"
