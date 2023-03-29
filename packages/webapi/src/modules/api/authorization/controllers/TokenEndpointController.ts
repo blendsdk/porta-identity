@@ -240,8 +240,9 @@ export class TokenEndpointController extends EndpointController {
                     // create a new access token based on the previous access token
                     const { user_id, tenant_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
 
-                    // check if the refresh_token has requested for the same client
                     const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+
+                    // check if the refresh_token has requested for the same client
                     if (client.client_id === client_id && client.secret === client_secret) {
                         const auth_req_params: IAuthRequestParams = {
                             claims: tokenRequest.claims || auth_request_params.claims,

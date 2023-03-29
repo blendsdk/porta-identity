@@ -1,7 +1,7 @@
 {
     "clients": [
         {
-            "id": "0be479ac-8706-4a7e-909d-3a8a000f0025",
+            "id": "77e69e24-11f8-4d0e-ab4d-2781d65fd42f",
             "client_id": "service-client",
             "client_type": "C",
             "logo": null,
@@ -11,14 +11,14 @@
             "secret": "secret",
             "access_token_ttl": null,
             "refresh_token_ttl": null,
-            "valid_from": "2023-03-29T08:29:34.573Z",
+            "valid_from": "2023-03-29T08:41:17.870Z",
             "valid_until": null,
             "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
-            "client_credentials_user_id": "0117bce2-f2c5-487e-92e9-bde681d53615",
+            "client_credentials_user_id": "b0915f87-7473-4e2c-8f41-ff102635e8ce",
             "post_logout_redirect_uri": null
         },
         {
-            "id": "e9027410-285c-4525-9264-fd3a99ae75bb",
+            "id": "813cced5-22be-4f82-9e12-e95c96357ff9",
             "client_id": "client1",
             "client_type": "C",
             "logo": null,
@@ -28,14 +28,14 @@
             "secret": "secret",
             "access_token_ttl": null,
             "refresh_token_ttl": null,
-            "valid_from": "2023-03-29T08:29:34.598Z",
+            "valid_from": "2023-03-29T08:41:17.895Z",
             "valid_until": null,
             "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
             "client_credentials_user_id": null,
             "post_logout_redirect_uri": null
         },
         {
-            "id": "5c916fd5-431e-463a-b8a1-e65111c44f27",
+            "id": "92b05840-0b85-4b71-bb4e-f9824d68221a",
             "client_id": "client2",
             "client_type": "C",
             "logo": null,
@@ -45,7 +45,7 @@
             "secret": "secret",
             "access_token_ttl": null,
             "refresh_token_ttl": null,
-            "valid_from": "2023-03-29T08:29:34.604Z",
+            "valid_from": "2023-03-29T08:41:17.899Z",
             "valid_until": null,
             "redirect_uri": "https://localhost.emobix.co.uk:8443/test/a/oidc_suite/callback",
             "client_credentials_user_id": null,
@@ -54,25 +54,25 @@
     ],
     "users": [
         {
-            "id": "aec0a655-f5a4-4752-9567-5a38effdf801",
+            "id": "849250f0-800a-4b7f-beb9-1b98a13be2d9",
             "username": "user1@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-29T08:29:34.257Z"
+            "date_created": "2023-03-29T08:41:17.562Z"
         },
         {
-            "id": "5f73a1cf-89c0-4c59-9862-506c5232c49a",
+            "id": "e9e9d323-d8d5-4481-b1fe-053d09b1db03",
             "username": "user2@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-29T08:29:34.396Z"
+            "date_created": "2023-03-29T08:41:17.700Z"
         },
         {
-            "id": "0117bce2-f2c5-487e-92e9-bde681d53615",
+            "id": "b0915f87-7473-4e2c-8f41-ff102635e8ce",
             "username": "app1@example.com",
             "password": "secret",
             "is_active": true,
-            "date_created": "2023-03-29T08:29:34.529Z"
+            "date_created": "2023-03-29T08:41:17.832Z"
         }
     ]
 }
