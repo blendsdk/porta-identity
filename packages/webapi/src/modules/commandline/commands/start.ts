@@ -9,9 +9,9 @@ import { SysUserProfileDataService } from "../../../dataservices/SysUserProfileD
 import { eClientType, IPortaApplicationSetting, PORTA_REGISTRY } from "../../../types";
 import { commonUtils, databaseUtils } from "../../../utils";
 import { application } from "../../application";
-import * as fs from "fs";
-import * as path from "path";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
+import path from "path";
+import fs from "fs";
 
 /**
  * Interface describing the commandline args
