@@ -1,7 +1,7 @@
-import { encodeBase64Key } from "@blendsdk/crypto";
 import { createApiStore } from "@blendsdk/react";
-import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse } from "@porta/shared";
+import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse, portaAuthUtils } from "@porta/shared";
 import Cookies from "js-cookie";
+import { getBaseUrl } from "../../system/session";
 import { PortaApi } from "../api";
 
 /**
@@ -41,7 +41,9 @@ export const getAuthenticatingTenant = () => {
  * @returns
  */
 export const updateUserSelectList = (tenant: string, user?: string) => {
-    const listKey = encodeBase64Key({ type: "user_list", tenant });
+    debugger;
+    const system = getBaseUrl();
+    const listKey = portaAuthUtils.getKeySignature(tenant, system, "user_list");
     const list = JSON.parse(Cookies.get(listKey) || "[]") as any[];
     if (user) {
         const tenant = getAuthenticatingTenant();

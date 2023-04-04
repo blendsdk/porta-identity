@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS sys_user_group CASCADE;
 DROP TABLE IF EXISTS sys_permission CASCADE;
 DROP TABLE IF EXISTS sys_group_permission CASCADE;
 DROP TABLE IF EXISTS sys_client CASCADE;
+DROP TABLE IF EXISTS sys_session CASCADE;
 DROP TABLE IF EXISTS sys_access_token CASCADE;
 DROP TABLE IF EXISTS sys_refresh_token CASCADE;
 DROP TABLE IF EXISTS sys_mfa CASCADE;
@@ -86,6 +87,14 @@ ALTER TABLE sys_client ADD COLUMN client_credentials_user_id uuid;
 ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uri varchar;
 ALTER TABLE sys_client ADD PRIMARY KEY (id);
 ALTER TABLE sys_client ADD UNIQUE (client_id);
+CREATE TABLE sys_session();
+ALTER TABLE sys_session ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
+ALTER TABLE sys_session ADD COLUMN session_id varchar NOT NULL;
+ALTER TABLE sys_session ADD COLUMN user_id uuid NOT NULL;
+ALTER TABLE sys_session ADD COLUMN client_id uuid NOT NULL;
+ALTER TABLE sys_session ADD COLUMN date_created timestamp without time zone  DEFAULT now();
+ALTER TABLE sys_session ADD PRIMARY KEY (id);
+ALTER TABLE sys_session ADD UNIQUE (user_id,client_id);
 CREATE TABLE sys_access_token();
 ALTER TABLE sys_access_token ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_access_token ADD COLUMN ttl integer NOT NULL;
@@ -94,6 +103,7 @@ ALTER TABLE sys_access_token ADD COLUMN auth_time integer NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN date_created timestamp without time zone  DEFAULT now();
 ALTER TABLE sys_access_token ADD COLUMN auth_request_params jsonb;
 ALTER TABLE sys_access_token ADD COLUMN access_token varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
+ALTER TABLE sys_access_token ADD COLUMN session_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN user_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN client_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN tenant_id uuid NOT NULL;
@@ -130,6 +140,9 @@ ALTER TABLE sys_user_group ADD FOREIGN KEY (group_id) REFERENCES sys_group (id) 
 ALTER TABLE sys_group_permission ADD FOREIGN KEY (group_id) REFERENCES sys_group (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_group_permission ADD FOREIGN KEY (permission_id) REFERENCES sys_permission (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_client ADD FOREIGN KEY (client_credentials_user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_session ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_session ADD FOREIGN KEY (client_id) REFERENCES sys_client (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_access_token ADD FOREIGN KEY (session_id) REFERENCES sys_session (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (client_id) REFERENCES sys_client (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (tenant_id) REFERENCES sys_tenant (id) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -201,17 +214,28 @@ CREATE OR REPLACE VIEW sys_access_token_view AS select
 	row_to_json(su) as user,
 	row_to_json(sup) as profile,
 	row_to_json(sc) as client,
-	row_to_json(st) as tenant
+	row_to_json(st) as tenant,
+	row_to_json(se) as session
 from
 	sys_access_token sat
 	inner join sys_user su on sat.user_id = su.id
 	inner join sys_user_profile sup on sup.user_id = su.id
 	inner join sys_client sc on sc.id = sat.client_id
 	inner join sys_tenant st on st.id = sat.tenant_id
+	inner join sys_session se on se.id = sat.session_id
 where
 	st.is_active = true
 	and sc.is_active = true
 	and su.is_active = true;
+DROP VIEW IF EXISTS sys_session_view CASCADE;
+CREATE OR REPLACE VIEW sys_session_view AS select
+    se.*,
+    row_to_json(cl) as client,
+    row_to_json(us) as user
+from
+    sys_session se
+    inner join sys_client cl on cl.id = se.client_id
+    inner join sys_user us on us.id = se.user_id;
 DROP TABLE IF EXISTS sys_tenant CASCADE;
 DROP TABLE IF EXISTS sys_user CASCADE;
 DROP TABLE IF EXISTS sys_user_profile CASCADE;
@@ -220,6 +244,7 @@ DROP TABLE IF EXISTS sys_user_group CASCADE;
 DROP TABLE IF EXISTS sys_permission CASCADE;
 DROP TABLE IF EXISTS sys_group_permission CASCADE;
 DROP TABLE IF EXISTS sys_client CASCADE;
+DROP TABLE IF EXISTS sys_session CASCADE;
 DROP TABLE IF EXISTS sys_access_token CASCADE;
 DROP TABLE IF EXISTS sys_refresh_token CASCADE;
 DROP TABLE IF EXISTS sys_mfa CASCADE;
@@ -298,6 +323,14 @@ ALTER TABLE sys_client ADD COLUMN client_credentials_user_id uuid;
 ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uri varchar;
 ALTER TABLE sys_client ADD PRIMARY KEY (id);
 ALTER TABLE sys_client ADD UNIQUE (client_id);
+CREATE TABLE sys_session();
+ALTER TABLE sys_session ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
+ALTER TABLE sys_session ADD COLUMN session_id varchar NOT NULL;
+ALTER TABLE sys_session ADD COLUMN user_id uuid NOT NULL;
+ALTER TABLE sys_session ADD COLUMN client_id uuid NOT NULL;
+ALTER TABLE sys_session ADD COLUMN date_created timestamp without time zone  DEFAULT now();
+ALTER TABLE sys_session ADD PRIMARY KEY (id);
+ALTER TABLE sys_session ADD UNIQUE (user_id,client_id);
 CREATE TABLE sys_access_token();
 ALTER TABLE sys_access_token ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_access_token ADD COLUMN ttl integer NOT NULL;
@@ -306,6 +339,7 @@ ALTER TABLE sys_access_token ADD COLUMN auth_time integer NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN date_created timestamp without time zone  DEFAULT now();
 ALTER TABLE sys_access_token ADD COLUMN auth_request_params jsonb;
 ALTER TABLE sys_access_token ADD COLUMN access_token varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
+ALTER TABLE sys_access_token ADD COLUMN session_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN user_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN client_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN tenant_id uuid NOT NULL;
@@ -342,6 +376,9 @@ ALTER TABLE sys_user_group ADD FOREIGN KEY (group_id) REFERENCES sys_group (id) 
 ALTER TABLE sys_group_permission ADD FOREIGN KEY (group_id) REFERENCES sys_group (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_group_permission ADD FOREIGN KEY (permission_id) REFERENCES sys_permission (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_client ADD FOREIGN KEY (client_credentials_user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_session ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_session ADD FOREIGN KEY (client_id) REFERENCES sys_client (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_access_token ADD FOREIGN KEY (session_id) REFERENCES sys_session (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (client_id) REFERENCES sys_client (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (tenant_id) REFERENCES sys_tenant (id) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -402,13 +439,15 @@ CREATE OR REPLACE VIEW sys_access_token_view AS select
 	row_to_json(su) as user,
 	row_to_json(sup) as profile,
 	row_to_json(sc) as client,
-	row_to_json(st) as tenant
+	row_to_json(st) as tenant,
+	row_to_json(se) as session
 from
 	sys_access_token sat
 	inner join sys_user su on sat.user_id = su.id
 	inner join sys_user_profile sup on sup.user_id = su.id
 	inner join sys_client sc on sc.id = sat.client_id
 	inner join sys_tenant st on st.id = sat.tenant_id
+	inner join sys_session se on se.id = sat.session_id
 where
 	st.is_active = true
 	and sc.is_active = true
@@ -423,4 +462,13 @@ CREATE OR REPLACE VIEW sys_refresh_token_view AS select
     rt.date_created + ( rt.ttl || ' seconds')::interval expire_at
 from
     sys_refresh_token rt
-    inner join sys_access_token at on at.id = rt.access_token_id
+    inner join sys_access_token at on at.id = rt.access_token_id;
+DROP VIEW IF EXISTS sys_session_view CASCADE;
+CREATE OR REPLACE VIEW sys_session_view AS select
+    se.*,
+    row_to_json(cl) as client,
+    row_to_json(us) as user
+from
+    sys_session se
+    inner join sys_client cl on cl.id = se.client_id
+    inner join sys_user us on us.id = se.user_id

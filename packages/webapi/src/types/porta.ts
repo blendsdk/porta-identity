@@ -8,6 +8,7 @@ import {
     ISysClient,
     ISysGroup,
     ISysGroupsByUserView,
+    ISysSession,
     ISysTenant,
     ISysUser,
     ISysUserPermissionView,
@@ -78,13 +79,14 @@ export interface IAuthRequestParams extends ISysAccessTokenAuthRequestParams {
 export interface IAccessToken
     extends Omit<
         ISysAccessTokenView,
-        "user" | "profile" | "client" | "tenant" | "auth_time" | "auth_request" | "auth_request_params"
+        "user" | "profile" | "client" | "tenant" | "auth_time" | "auth_request" | "auth_request_params" | "session"
     > {
     auth_time: number;
     user: ISysUser;
     profile: ISysUserProfile;
     client: ISysClient;
     tenant: ISysTenant;
+    session: ISysSession;
     permissions: ISysUserPermissionView[];
     roles: ISysGroup[];
     auth_request_params: IAuthRequestParams;

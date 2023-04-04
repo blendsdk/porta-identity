@@ -572,6 +572,104 @@ export interface IUserInfoPostResponse {}
 
 /**
  * @export
+ * @interface ISessionLogoutGetRequest
+ */
+export interface ISessionLogoutGetRequest {
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	id_token_hint: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	post_logout_redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	state: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	ui_locales: string;
+}
+
+/**
+ * @export
+ * @interface ISessionLogoutGet
+ */
+export interface ISessionLogoutGet {}
+
+/**
+ * @export
+ * @interface ISessionLogoutGetResponse
+ */
+export interface ISessionLogoutGetResponse {}
+
+/**
+ * @export
+ * @interface ISessionLogoutPostRequest
+ */
+export interface ISessionLogoutPostRequest {
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	id_token_hint: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	post_logout_redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	state: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	ui_locales: string;
+}
+
+/**
+ * @export
+ * @interface ISessionLogoutPost
+ */
+export interface ISessionLogoutPost {}
+
+/**
+ * @export
+ * @interface ISessionLogoutPostResponse
+ */
+export interface ISessionLogoutPostResponse {}
+
+/**
+ * @export
  * @interface IAuthenticationKeepAliveRequest
  */
 export interface IAuthenticationKeepAliveRequest {}

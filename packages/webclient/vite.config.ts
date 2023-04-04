@@ -16,27 +16,8 @@ export default defineConfig({
     define: {
         "process.env": process.env
     },
-    // build: {
-    //     rollupOptions: {
-    //         output: {
-    //             manualChunks: (id) => {
-    //                 const [, part] = id.split("node_modules");
-    //                 const packagePath = (part || "").split("/").filter(Boolean);
-    //                 let [scope, pkg] = packagePath || [];
-
-    //                 scope = scope || "";
-    //                 if (scope.startsWith("@fluentui")) {
-    //                     return chunkName([scope, pkg].join("-"));
-    //                 } else if (scope.startsWith("@") || scope.startsWith("lodash")) {
-    //                     return chunkName(scope);
-    //                 } else if (scope.startsWith("react")) {
-    //                     return chunkName("react");
-    //                 } else {
-    //                     return undefined;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // },
+    optimizeDeps: {
+        include: ["@porta/shared"]
+    },
     plugins: [react()]
 });

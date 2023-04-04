@@ -1,7 +1,8 @@
 import {
 	ISysGroupPermissionDataServiceFindSysGroupPermissionByIdParams,
 	ISysGroupPermissionDataServiceDeleteSysGroupPermissionByIdFilter,
-	ISysGroupPermissionDataServiceUpdateSysGroupPermissionByIdFilter
+	ISysGroupPermissionDataServiceUpdateSysGroupPermissionByIdFilter,
+	ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
 } from "./types";
 import { ISysGroupPermission } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -80,6 +81,25 @@ export abstract class SysGroupPermissionDataServiceBase extends DataService<Post
 			Partial<ISysGroupPermission>,
 			ISysGroupPermissionDataServiceUpdateSysGroupPermissionByIdFilter
 		>(`sys_group_permission`, params, filter, { single: true });
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_group_permission record by  and
+	 * @param {ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams}
+	 * @returns {ISysGroupPermission}
+	 * @memberof SysGroupPermissionDataServiceBase
+	 */
+	public async findSysGroupPermissionByGroupIdAndPermissionId(
+		params: ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
+	): Promise<ISysGroupPermission> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<
+			ISysGroupPermission,
+			ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
+		>(`SELECT * FROM sys_group_permission WHERE group_id = :group_id AND permission_id = :permission_id`, params, {
+			single: true
+		});
 		return result.data;
 	}
 }

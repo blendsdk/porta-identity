@@ -9,5 +9,8 @@
         "test": "DEBUG=true jest --detectOpenHandles --runInBand --passWithNoTests --forceExit $TEST_FILTER",
         "watch": "tsc -w"
     },
-    "types": "./dist/index.d.ts"
+    "types": "./dist/index.d.ts",
+    "dependencies": {
+        "@blendsdk/stdlib": "3.2.231"
+    }
 }

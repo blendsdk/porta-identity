@@ -223,6 +223,11 @@ export interface ISysAccessTokenView {
 	 * @type string
 	 * @memberOf ISysAccessTokenView
 	 */
+	session_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
 	user_id: string;
 	/**
 	 * @type string
@@ -274,6 +279,11 @@ export interface ISysAccessTokenView {
 	 * @memberOf ISysAccessTokenView
 	 */
 	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	session: string;
 }
 
 /**
@@ -311,6 +321,48 @@ export interface ISysRefreshTokenView {
 	 * @memberOf ISysRefreshTokenView
 	 */
 	expire_at: string;
+}
+
+/**
+ * @export
+ * @interface ISysSessionView
+ */
+export interface ISysSessionView {
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	session_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	date_created: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	client: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	user: string;
 }
 
 /**
@@ -616,6 +668,38 @@ export interface ISysClient {
 
 /**
  * @export
+ * @interface ISysSession
+ */
+export interface ISysSession {
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	session_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	date_created?: string;
+}
+
+/**
+ * @export
  * @interface ISysAccessToken
  */
 export interface ISysAccessToken {
@@ -654,6 +738,11 @@ export interface ISysAccessToken {
 	 * @memberOf ISysAccessToken
 	 */
 	access_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	session_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAccessToken

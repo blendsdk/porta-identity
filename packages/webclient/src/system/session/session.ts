@@ -5,7 +5,7 @@ import { eAppRoutes } from "../../application/routing";
 //import { useTheme } from "../../application/theme";
 import { ApplicationApi } from "../api";
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;
     return `${protocol}//${hostname}${hostname.toLowerCase().indexOf("localhost") !== -1 ? ":4000" : ""}`;
 };

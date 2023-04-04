@@ -160,26 +160,34 @@ export class SigninEndpointController extends EndpointController {
     }): Promise<string> {
         const { tenant, user } = await this.getAuthenticatedUser(flowId);
 
-        const { accessTokenKeySignature, refreshTokenKeySignature, accessTokenStorage, refreshTokenStorage } =
-            await this.createSessionStorageForUser({
-                tenant,
-                authRecord,
-                user_id: user.id,
-                auth_request_params: {
-                    claims: authRequest.claims,
-                    scope: authRequest.scope,
-                    ui_locales: authRequest.ui_locales,
-                    acr_values: authRequest.acr_values
-                }
-            });
+        const {
+            accessTokenKeySignature,
+            refreshTokenKeySignature,
+            accessTokenStorage,
+            refreshTokenStorage,
+            sessionKeySignature,
+            sessionStorage
+        } = await this.createSessionStorageForUser({
+            tenant,
+            authRecord,
+            user_id: user.id,
+            auth_request_params: {
+                claims: authRequest.claims,
+                scope: authRequest.scope,
+                ui_locales: authRequest.ui_locales,
+                acr_values: authRequest.acr_values
+            }
+        });
 
-        this.installLocalCookies(
-            tenant.id,
+        this.installLocalCookies({
+            tenant: tenant.name,
             accessTokenStorage,
             accessTokenKeySignature,
             refreshTokenStorage,
-            refreshTokenKeySignature
-        );
+            refreshTokenKeySignature,
+            sessionKeySignature,
+            sessionStorage
+        });
 
         return accessTokenStorage.access_token;
     }

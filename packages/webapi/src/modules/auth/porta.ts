@@ -2,8 +2,8 @@ import { IDictionaryOf } from "@blendsdk/stdlib";
 import { IApplicationModule } from "@blendsdk/webafx";
 import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webafx-auth";
 import { HttpRequest } from "@blendsdk/webafx-common";
+import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
 import { databaseUtils } from "../../utils";
-import { eKeySignatureType, portaAuthUtils } from "./utils";
 
 export class IPortaAuthenticationModule {
     PORTA_SSO_COMMON_NAME?: string;
@@ -30,6 +30,13 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         this.tenantKeySignatures = {};
     }
 
+    protected getServerUrl(request: HttpRequest, local?: boolean) {
+        const { address, port } = request.context.getService<{ address: any; port: any }>("serverInfo");
+        return `${local ? "http" : request.headers["x-forwarded-proto"] || request.protocol}://${
+            local ? address : request.hostname
+        }${local ? `:${port}` : ""}`;
+    }
+
     /**
      * Create and cache signature to find the access_tokens from Cookies
      *
@@ -47,8 +54,8 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
                     id: tenantRecord.id,
                     tenant: tenantRecord.name,
                     sig: portaAuthUtils.getKeySignature(
-                        tenantRecord,
-                        this.config.PORTA_SSO_COMMON_NAME,
+                        tenantRecord.name,
+                        this.getServerUrl(req),
                         eKeySignatureType.access_token
                     )
                 };

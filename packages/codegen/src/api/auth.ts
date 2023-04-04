@@ -238,5 +238,49 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         }
     });
 
+    builder.defineApi({
+        id: "session_logout_get",
+        url: "/:tenant/oauth2/logout",
+        group: "authorization",
+        method: "get",
+        public: false,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("id_token_hint", { location: eParameterLocation.query })
+                .addString("client_id", { location: eParameterLocation.query })
+                .addString("post_logout_redirect_uri", { location: eParameterLocation.query })
+                .addString("state", { location: eParameterLocation.query })
+                .addString("ui_locales", { location: eParameterLocation.query });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
+        id: "session_logout_post",
+        url: "/:tenant/oauth2/logout",
+        group: "authorization",
+        method: "post",
+        public: false,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("id_token_hint", { location: eParameterLocation.body })
+                .addString("client_id", { location: eParameterLocation.body })
+                .addString("post_logout_redirect_uri", { location: eParameterLocation.body })
+                .addString("state", { location: eParameterLocation.body })
+                .addString("ui_locales", { location: eParameterLocation.body });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
     builder.defineTokenAuthenticationAPI();
 }

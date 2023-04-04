@@ -3,7 +3,14 @@ import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant } from "@porta/shared";
+import {
+    eKeySignatureType,
+    IAuthorizeRequest,
+    IAuthorizeResponse,
+    ISysAuthorizationView,
+    ISysTenant,
+    portaAuthUtils
+} from "@porta/shared";
 import * as jwt from "jsonwebtoken";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
@@ -17,9 +24,11 @@ import {
     IPortaApplicationSetting
 } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
-import { eKeySignatureType, expireSecondsFromNow, portaAuthUtils } from "../../../auth/utils";
 import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
+import * as crypto from "crypto";
+import { expireSecondsFromNow } from "../../../auth/utils";
+
 /**
  * Handles the authorize endpoint
  *
@@ -309,7 +318,8 @@ export class AuthorizeEndpointController extends EndpointController {
         currentUserToken: string,
         confidentialClient: boolean
     ): Promise<string> {
-        const flowId = portaAuthUtils.randomSHA256();
+        // Create a flo ID
+        const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
 
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
         const expireAt = new Date(expire);
@@ -374,10 +384,9 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async getCurrentlyAuthenticatedUserToken(
         tenant: ISysTenant
     ): Promise<{ token: string; accessTokenStorage: IAccessToken }> {
-        const { PORTA_SSO_COMMON_NAME } = this.getSettings<IPortaApplicationSetting>();
         const accessTokenKeySignature = portaAuthUtils.getKeySignature(
-            tenant,
-            PORTA_SSO_COMMON_NAME,
+            tenant.name,
+            this.getServerUrl(),
             eKeySignatureType.access_token
         );
         // we first get the token from the cookie

@@ -19,7 +19,11 @@ import {
     IUserInfoGetRequest,
     IUserInfoGetResponse,
     IUserInfoPostRequest,
-    IUserInfoPostResponse
+    IUserInfoPostResponse,
+    ISessionLogoutGetRequest,
+    ISessionLogoutGetResponse,
+    ISessionLogoutPostRequest,
+    ISessionLogoutPostResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -39,6 +43,12 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    public sessionLogoutGet(_params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {
+        throw new Error("Method not implemented.");
+    }
+    public sessionLogoutPost(_params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>> {
+        throw new Error("Method not implemented.");
+    }
     /**
      * Creates a sub-controller config
      *

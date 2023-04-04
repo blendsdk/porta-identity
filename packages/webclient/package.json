@@ -15,6 +15,7 @@
     "@blendsdk/stdlib": "^3.2.218",
     "@fluentui/react-components": "^9.18.0",
     "@fluentui/react-icons": "^2.0.196",
+    "@originjs/vite-plugin-commonjs": "^1.0.3",
     "@porta/shared": "^1.0.133",
     "@types/js-cookie": "^3.0.3",
     "formik": "^2.2.9",

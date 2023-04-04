@@ -60,6 +60,16 @@ export const AuthorizationModule = (): IRouter => {
 				dispatch: "user_info_post",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.user_info_post
+			}),
+			defineControllerRoute({
+				dispatch: "session_logout_get",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.session_logout_get
+			}),
+			defineControllerRoute({
+				dispatch: "session_logout_post",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.session_logout_post
 			})
 		]
 	};

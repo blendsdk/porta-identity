@@ -15,6 +15,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const permission = database.addTable("sys_permission");
     const group_permission = database.addTable("sys_group_permission");
     const client = database.addTable("sys_client");
+    const session = database.addTable("sys_session");
     const access_token = database.addTable("sys_access_token");
     const refresh_token = database.addTable("sys_refresh_token");
 
@@ -109,6 +110,20 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
         .stringColumn("post_logout_redirect_uri", { required: false });
 
+    session
+        .primaryKeyColumn("id", true)
+        .stringColumn("session_id")
+        .referenceColumn("user_id", user, "id", {
+            onUpdate: eDBForeignKeyAction.cascade,
+            onDelete: eDBForeignKeyAction.cascade
+        })
+        .referenceColumn("client_id", client, "id", {
+            onUpdate: eDBForeignKeyAction.cascade,
+            onDelete: eDBForeignKeyAction.cascade
+        })
+        .dateTimeColumn("date_created", { default: "now()" })
+        .uniqueConstraint(["user_id", "client_id"]);
+
     access_token
         //
         .primaryKeyColumn("id", true)
@@ -133,6 +148,10 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("access_token", {
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
+        })
+        .referenceColumn("session_id", session, "id", {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
         })
         .referenceColumn("user_id", user, "id", {
             onDelete: eDBForeignKeyAction.cascade,
@@ -167,6 +186,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     database.addView("sys_user_permission_view", path.join(resourcesRoot, "user_permission_view.sql"), 102);
     database.addView("sys_access_token_view", path.join(resourcesRoot, "access_token_view.sql"), 103);
     database.addView("sys_refresh_token_view", path.join(resourcesRoot, "refresh_token_view.sql"), 103);
+    database.addView("sys_session_view", path.join(resourcesRoot, "session_view.sql"), 104);
 
     // Create a view to type builder
     const view2Type = new PostgreSQLTypeFromQuery({

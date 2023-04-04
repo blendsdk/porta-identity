@@ -15,6 +15,39 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             `Provides functionality to get data from ${view.getName()} view`
         );
 
+        if (view.getName() === "sys_session_view") {
+            svc.defineMethod({
+                name: "find_session_by_client_and_user",
+                query: "select * from sys_session_view where user_id = :user_id and client_id = :client_id",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("user_id")
+                        .addString("client_id");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+
+            svc.defineMethod({
+                name: "find_session_by_session_id",
+                query: "select * from sys_session_view where id = :id",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("id");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+        }
+
         if (view.getName() === "sys_access_token_view") {
             svc.defineMethod({
                 name: "find_access_token",
@@ -261,6 +294,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             svc.defineDeleteByPrimaryKeyMethod({ table: table.getName() });
             svc.defineUpdateByPrimaryKeyMethod({ table: table.getName() });
             svc.defineFindByUniqueColumnMethod({ table: table.getName() });
+            svc.defineFindByUniqueConstraintMethod({ table: table.getName() });
         }
     });
 }

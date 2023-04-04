@@ -4,6 +4,7 @@ import {
     IAuthorizeRequest,
     ISysAuthorizationView,
     ISysRefreshTokenView,
+    ISysSession,
     ISysTenant,
     IToken,
     ITokenRequest,
@@ -238,7 +239,7 @@ export class TokenEndpointController extends EndpointController {
 
                 if (accessTokenStorage) {
                     // create a new access token based on the previous access token
-                    const { user_id, tenant_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
+                    const { user_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
 
                     const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
 
@@ -256,7 +257,9 @@ export class TokenEndpointController extends EndpointController {
                             accessTokenKeySignature,
                             refreshTokenKeySignature,
                             accessTokenStorage: newAccessTokenStorage,
-                            refreshTokenStorage: newRefreshTokenStorage
+                            refreshTokenStorage: newRefreshTokenStorage,
+                            sessionStorage,
+                            sessionKeySignature
                         } = await this.createSessionStorageForUser({
                             tenant: tenantRecord,
                             user_id,
@@ -266,13 +269,15 @@ export class TokenEndpointController extends EndpointController {
                         // revoke the previous refresh_token and access_token
                         await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
 
-                        this.installLocalCookies(
-                            tenant_id,
-                            newAccessTokenStorage,
+                        this.installLocalCookies({
+                            tenant: tenantRecord.name,
+                            accessTokenStorage: newAccessTokenStorage,
                             accessTokenKeySignature,
-                            newRefreshTokenStorage,
-                            refreshTokenKeySignature
-                        );
+                            refreshTokenStorage: newRefreshTokenStorage,
+                            refreshTokenKeySignature,
+                            sessionKeySignature,
+                            sessionStorage
+                        });
 
                         token = await this.buildTokenPayload({
                             tenant: tenantRecord,
@@ -283,7 +288,8 @@ export class TokenEndpointController extends EndpointController {
                                 acr_values: auth_req_params.acr_values,
                                 nonce: undefined,
                                 state: tokenRequest.state
-                            }
+                            },
+                            sessionStorage
                         });
                     } else {
                         errors.push("invalid_bound_client");
@@ -325,17 +331,18 @@ export class TokenEndpointController extends EndpointController {
                     if (this.checkOTACodeValidity(authRecord, client_id, /* redirect_uri -->*/ null)) {
                         const err = await this.checkAccessSecret(tokenRequest, authRecord, undefined);
                         if (err.length === 0) {
-                            const { accessTokenStorage, refreshTokenStorage } = await this.createSessionStorageForUser({
-                                tenant: tenantRecord,
-                                authRecord,
-                                user_id: authRecord.client_credentials_user_id,
-                                auth_request_params: {
-                                    claims: tokenRequest.claims,
-                                    scope: tokenRequest.scope,
-                                    ui_locales: undefined,
-                                    acr_values: undefined
-                                }
-                            });
+                            const { accessTokenStorage, refreshTokenStorage, sessionStorage } =
+                                await this.createSessionStorageForUser({
+                                    tenant: tenantRecord,
+                                    authRecord,
+                                    user_id: authRecord.client_credentials_user_id,
+                                    auth_request_params: {
+                                        claims: tokenRequest.claims,
+                                        scope: tokenRequest.scope,
+                                        ui_locales: undefined,
+                                        acr_values: undefined
+                                    }
+                                });
                             token = await this.buildTokenPayload({
                                 tenant: tenantRecord,
                                 client_id: authRecord.client_id,
@@ -345,7 +352,8 @@ export class TokenEndpointController extends EndpointController {
                                     acr_values: accessTokenStorage.auth_request_params.acr_values
                                 },
                                 accessTokenStorage,
-                                refreshTokenStorage
+                                refreshTokenStorage,
+                                sessionStorage
                             });
                         } else {
                             err.forEach((e) => errors.push(e));
@@ -412,13 +420,15 @@ export class TokenEndpointController extends EndpointController {
         client_id,
         authRequest,
         accessTokenStorage,
-        refreshTokenStorage
+        refreshTokenStorage,
+        sessionStorage
     }: {
         tenant: ISysTenant;
         client_id: string;
         authRequest: Required<Pick<IAuthorizeRequest, "nonce" | "state" | "acr_values">>;
         accessTokenStorage: IAccessToken;
         refreshTokenStorage: ISysRefreshTokenView;
+        sessionStorage: ISysSession;
     }): Promise<IToken> {
         const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
         const { data } = (await keyDs.findJwkKeys())[0];
@@ -432,6 +442,8 @@ export class TokenEndpointController extends EndpointController {
         const { nonce, state } = authRequest || {};
 
         const acr = this.handleAcrClaims(authRequest.acr_values);
+
+        const { session_id: sid } = sessionStorage;
 
         const id_token = await new jose.SignJWT({
             "urn:acl:roles": roles
@@ -457,7 +469,8 @@ export class TokenEndpointController extends EndpointController {
             nonce,
             state,
             auth_time,
-            acr
+            acr,
+            sid
         })
             .setProtectedHeader({ alg: "RS256" })
             .setIssuedAt()
@@ -548,7 +561,8 @@ export class TokenEndpointController extends EndpointController {
                         state: authRequest.state
                     },
                     accessTokenStorage,
-                    refreshTokenStorage
+                    refreshTokenStorage,
+                    sessionStorage: accessTokenStorage.session
                 })
             };
         } else {

@@ -1,6 +1,6 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { ISysClient, ISysRefreshTokenView, ISysTenant } from "@porta/shared";
+import { ISysClient, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
 import { IAccessToken, IAuthRequestParams, IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
 import fs from "fs";
 import path from "path";
@@ -23,6 +23,8 @@ import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataSer
 import { SysAccessTokenViewDataService } from "../dataservices/SysAccessTokenViewDataService";
 import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
 import { SysRefreshTokenViewDataService } from "../dataservices/SysRefreshTokenViewDataService";
+import { SysSessionDataService } from "../dataservices/SysSessionDataService";
+import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
 
 class DatabaseUtils {
     /**
@@ -368,12 +370,28 @@ class DatabaseUtils {
         return this.findRefreshTokenByTenant(tenant_id, result.refresh_token);
     }
 
+    /**
+     * Fins a refresh_token by tenant
+     *
+     * @param {string} tenant
+     * @param {string} refresh_token
+     * @returns {Promise<ISysRefreshTokenView>}
+     * @memberof DatabaseUtils
+     */
     public async findRefreshTokenByTenant(tenant: string, refresh_token: string): Promise<ISysRefreshTokenView> {
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const refreshTokenDs = new SysRefreshTokenViewDataService({ dataSource });
         return await refreshTokenDs.findRefreshToken({ refresh_token });
     }
 
+    /**
+     * Finds a refresh_token corresponding the access_token
+     *
+     * @param {string} tenant
+     * @param {string} access_token
+     * @returns {Promise<ISysRefreshTokenView>}
+     * @memberof DatabaseUtils
+     */
     public async findRefreshTokenByTenantAndAccessToken(
         tenant: string,
         access_token: string
@@ -383,10 +401,66 @@ class DatabaseUtils {
         return await refreshTokenDs.findRefreshTokenByAccessToken({ access_token });
     }
 
+    /**
+     * Create a new session of retrieve the existing one for a given user and client
+     *
+     * @param {string} tenant_id
+     * @param {string} client_id
+     * @param {string} user_id
+     * @returns
+     * @memberof DatabaseUtils
+     */
+    public async createOrGetSession(tenant_id: string, client_id: string, user_id: string) {
+        let sessionRecord: ISysSession = undefined;
+
+        const { dataSource } = (await this.getTenantDataSource(tenant_id)) || {};
+        const sharedContext = dataSource.createSharedContext();
+        const sessionDs = new SysSessionDataService({ sharedContext });
+        const sessionViewDs = new SysSessionViewDataService({ sharedContext });
+
+        // calculate the sid that is overlapping all clients
+        const session_id = await sha256Hash([tenant_id, user_id].join(""));
+
+        // try finding an existing session
+        sessionRecord = await sessionDs.findSysSessionByUserIdAndClientId({
+            user_id,
+            client_id
+        });
+
+        // or create a new session
+        sessionRecord =
+            sessionRecord ||
+            (await sessionDs.insertIntoSysSession({
+                client_id,
+                user_id,
+                session_id
+            }));
+
+        // find the record above as view
+        const result = await sessionViewDs.findSessionBySessionId({ id: sessionRecord.id });
+
+        await (await sharedContext).disposeContext();
+        return result;
+    }
+
+    /**
+     * Creates new access_token
+     *
+     * @param {string} tenant_id
+     * @param {string} client_id
+     * @param {string} user_id
+     * @param {string} session_id
+     * @param {number} ttl
+     * @param {number} refresh_ttl
+     * @param {IAuthRequestParams} auth_request_params
+     * @returns
+     * @memberof DatabaseUtils
+     */
     public async newAccessToken(
         tenant_id: string,
         client_id: string,
         user_id: string,
+        session_id: string,
         ttl: number,
         refresh_ttl: number,
         auth_request_params: IAuthRequestParams
@@ -397,6 +471,7 @@ class DatabaseUtils {
             tenant_id,
             client_id,
             user_id,
+            session_id,
             ttl,
             refresh_ttl,
             auth_request_params,
@@ -448,7 +523,9 @@ class DatabaseUtils {
             await this.initializeTenantDataSource(tenantRecord);
             return {
                 tenantRecord,
-                dataSource: dataSourceManager.getDataSource<PostgreSQLDataSource>(tenantRecord.id)
+                dataSource: dataSourceManager.getDataSource<PostgreSQLDataSource>(
+                    this.getTenantDataSourceID(tenantRecord)
+                )
             };
         } else {
             return undefined;

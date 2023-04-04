@@ -50,3 +50,20 @@ export interface ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter {
 	 */
 	id: string;
 }
+
+/**
+ * @export
+ * @interface ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+ */
+export interface ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+	 */
+	group_id: string;
+}

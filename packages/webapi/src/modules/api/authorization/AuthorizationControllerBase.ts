@@ -24,7 +24,11 @@ import {
 	IUserInfoGetRequest,
 	IUserInfoGetResponse,
 	IUserInfoPostRequest,
-	IUserInfoPostResponse
+	IUserInfoPostResponse,
+	ISessionLogoutGetRequest,
+	ISessionLogoutGetResponse,
+	ISessionLogoutPostRequest,
+	ISessionLogoutPostResponse
 } from "@porta/shared";
 
 /**
@@ -117,4 +121,20 @@ export abstract class AuthorizationControllerBase<
 	 * @memberof AuthorizationControllerBase
 	 */
 	public abstract userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/logout
+	 * @abstract
+	 * @param {ISessionLogoutGetRequest} params
+	 * @returns {Promise<Response<ISessionLogoutGetResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>>;
+	/**
+	 * Method for handling [POST] /:tenant/oauth2/logout
+	 * @abstract
+	 * @param {ISessionLogoutPostRequest} params
+	 * @returns {Promise<Response<ISessionLogoutPostResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>>;
 }

@@ -29,6 +29,10 @@ import {
 	IUserInfoGetResponse,
 	IUserInfoPostRequest,
 	IUserInfoPostResponse,
+	ISessionLogoutGetRequest,
+	ISessionLogoutGetResponse,
+	ISessionLogoutPostRequest,
+	ISessionLogoutPostResponse,
 	IAuthenticationKeepAliveRequest,
 	IAuthenticationKeepAliveResponse,
 	IAuthenticationLogoutRequest,
@@ -58,6 +62,8 @@ export interface IPortaApi {
 		oidcDiscoveryKeys: THttpRequest<IOidcDiscoveryKeysRequest, IOidcDiscoveryKeysResponse>;
 		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
 		userInfoPost: THttpRequest<IUserInfoPostRequest, IUserInfoPostResponse>;
+		sessionLogoutGet: THttpRequest<ISessionLogoutGetRequest, ISessionLogoutGetResponse>;
+		sessionLogoutPost: THttpRequest<ISessionLogoutPostRequest, ISessionLogoutPostResponse>;
 	};
 	authentication: {
 		authenticationKeepAlive: THttpRequest<IAuthenticationKeepAliveRequest | void, IAuthenticationKeepAliveResponse>;
@@ -90,7 +96,9 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			}),
 			oidcDiscoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys", signed: false }),
 			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me", signed: false }),
-			userInfoPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/me", signed: false })
+			userInfoPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/me", signed: false }),
+			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout", signed: false }),
+			sessionLogoutPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/logout", signed: false })
 		},
 		authentication: {
 			authenticationKeepAlive: defineEndpoint({ method: "post", url: "/api/authentication/keep-alive" }),

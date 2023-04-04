@@ -12,6 +12,8 @@ export const routeDefinitions: {
 		oidc_discovery_keys: IRouteBase;
 		user_info_get: IRouteBase;
 		user_info_post: IRouteBase;
+		session_logout_get: IRouteBase;
+		session_logout_post: IRouteBase;
 	};
 	authentication: {
 		authentication_keep_alive: IRouteBase;
@@ -51,7 +53,21 @@ export const routeDefinitions: {
 			signed: false
 		},
 		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false, signed: false },
-		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false, signed: false }
+		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false, signed: false },
+		session_logout_get: {
+			id: "session_logout_get",
+			method: "get",
+			url: "/:tenant/oauth2/logout",
+			public: false,
+			signed: false
+		},
+		session_logout_post: {
+			id: "session_logout_post",
+			method: "post",
+			url: "/:tenant/oauth2/logout",
+			public: false,
+			signed: false
+		}
 	},
 	authentication: {
 		authentication_keep_alive: {

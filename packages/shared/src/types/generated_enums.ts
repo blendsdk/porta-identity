@@ -129,6 +129,7 @@ export const eSysAccessTokenView = {
 	DATE_CREATED: "date_created",
 	AUTH_REQUEST_PARAMS: "auth_request_params",
 	ACCESS_TOKEN: "access_token",
+	SESSION_ID: "session_id",
 	USER_ID: "user_id",
 	CLIENT_ID: "client_id",
 	TENANT_ID: "tenant_id",
@@ -139,7 +140,8 @@ export const eSysAccessTokenView = {
 	USER: "user",
 	PROFILE: "profile",
 	CLIENT: "client",
-	TENANT: "tenant"
+	TENANT: "tenant",
+	SESSION: "session"
 } as const;
 export type eSysAccessTokenView = (typeof eSysAccessTokenView)[keyof typeof eSysAccessTokenView];
 
@@ -158,6 +160,23 @@ export const eSysRefreshTokenView = {
 	EXPIRE_AT: "expire_at"
 } as const;
 export type eSysRefreshTokenView = (typeof eSysRefreshTokenView)[keyof typeof eSysRefreshTokenView];
+
+/**
+ * Enum of the type sys_session_view
+ * @export
+ * @enum
+ */
+export const eSysSessionView = {
+	$name: "sys_session_view",
+	ID: "id",
+	SESSION_ID: "session_id",
+	USER_ID: "user_id",
+	CLIENT_ID: "client_id",
+	DATE_CREATED: "date_created",
+	CLIENT: "client",
+	USER: "user"
+} as const;
+export type eSysSessionView = (typeof eSysSessionView)[keyof typeof eSysSessionView];
 
 /**
  * Enum of the type sys_tenant
@@ -289,6 +308,21 @@ export const eSysClient = {
 export type eSysClient = (typeof eSysClient)[keyof typeof eSysClient];
 
 /**
+ * Enum of the type sys_session
+ * @export
+ * @enum
+ */
+export const eSysSession = {
+	$name: "sys_session",
+	ID: "id",
+	SESSION_ID: "session_id",
+	USER_ID: "user_id",
+	CLIENT_ID: "client_id",
+	DATE_CREATED: "date_created"
+} as const;
+export type eSysSession = (typeof eSysSession)[keyof typeof eSysSession];
+
+/**
  * Enum of the type sys_access_token
  * @export
  * @enum
@@ -302,6 +336,7 @@ export const eSysAccessToken = {
 	DATE_CREATED: "date_created",
 	AUTH_REQUEST_PARAMS: "auth_request_params",
 	ACCESS_TOKEN: "access_token",
+	SESSION_ID: "session_id",
 	USER_ID: "user_id",
 	CLIENT_ID: "client_id",
 	TENANT_ID: "tenant_id"

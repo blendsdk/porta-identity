@@ -42,7 +42,8 @@ export class OIDCDiscoveryEndpointController extends EndpointController {
                 claims_supported: Object.keys(eOAuthClaims),
                 token_endpoint_auth_methods_supported: Object.keys(eOAuthTokenEndpointAuthMethods),
                 request_object_signing_alg_values_supported: Object.keys(eOAuthSigningAlg),
-                request_parameter_supported: true
+                request_parameter_supported: true,
+                end_session_endpoint: `${this.getServerUrl()}/${tenant}/oauth2/logout`
             } as any);
         } else {
             return new BadRequestResponse({

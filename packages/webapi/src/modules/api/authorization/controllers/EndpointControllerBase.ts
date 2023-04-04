@@ -9,7 +9,15 @@ import {
     RedirectResponse,
     SuccessResponse
 } from "@blendsdk/webafx-common";
-import { IAuthenticationFlowState, ISysAuthorizationView, ISysRefreshTokenView, ISysTenant } from "@porta/shared";
+import {
+    eKeySignatureType,
+    IAuthenticationFlowState,
+    ISysAuthorizationView,
+    ISysRefreshTokenView,
+    ISysSession,
+    ISysTenant,
+    portaAuthUtils
+} from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -30,10 +38,8 @@ import {
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
 import { commonUtils, databaseUtils } from "../../../../utils";
-import { eKeySignatureType, portaAuthUtils } from "../../../auth/utils";
 import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
-import { encodeBase64Key } from "@blendsdk/crypto";
 
 /**
  * Enum describing flow parts
@@ -169,14 +175,30 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         }
     }
 
-    protected installLocalCookies(
-        tenant_id: string,
-        accessTokenStorage: IAccessToken,
-        accessTokenKeySignature: string,
-        refreshTokenStorage: ISysRefreshTokenView,
-        refreshTokenKeySignature: string
-    ) {
+    protected installLocalCookies({
+        tenant,
+        accessTokenStorage,
+        accessTokenKeySignature,
+        refreshTokenStorage,
+        refreshTokenKeySignature,
+        sessionKeySignature,
+        sessionStorage
+    }: {
+        tenant: string;
+        accessTokenStorage: IAccessToken;
+        accessTokenKeySignature: string;
+        refreshTokenStorage: ISysRefreshTokenView;
+        refreshTokenKeySignature: string;
+        sessionKeySignature: string;
+        sessionStorage: ISysSession;
+    }) {
         const { access_token, expire_at } = accessTokenStorage;
+
+        // also readable from the UI
+        this.setCookie(sessionKeySignature, sessionStorage.session_id, {
+            expires: new Date(expire_at),
+            sameSite: "lax" // only send to this endpoint
+        });
 
         // set the token cookie
         this.setCookie(accessTokenKeySignature, access_token, {
@@ -188,9 +210,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         });
 
         // session length info for the ui
-        this.setCookie(encodeBase64Key({ type: "session", tenant: tenant_id }), new Date(expire_at).getTime(), {
-            expires: new Date(expire_at)
-        });
+        this.setCookie(
+            portaAuthUtils.getKeySignature(tenant, this.getServerUrl(), eKeySignatureType.session),
+            new Date(expire_at).getTime(),
+            {
+                expires: new Date(expire_at)
+            }
+        );
 
         if (refreshTokenKeySignature && refreshTokenStorage) {
             const { refresh_token, expire_at } = refreshTokenStorage || {};
@@ -202,8 +228,9 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 sameSite: "lax", // only send to this endpoint
                 httpOnly: true
             });
+
             this.setCookie(
-                encodeBase64Key({ type: "refresh_session", tenant: tenant_id }),
+                portaAuthUtils.getKeySignature(tenant, this.getServerUrl(), eKeySignatureType.refresh_session),
                 new Date(expire_at).getTime(),
                 {
                     expires: new Date(expire_at)
@@ -239,13 +266,19 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         let { access_token_ttl, refresh_token_ttl } = authRecord;
         const { scope } = auth_request_params;
 
-        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, PORTA_SSO_COMMON_NAME } =
-            this.getSettings<IPortaApplicationSetting>();
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
 
         const accessTokenKeySignature = portaAuthUtils.getKeySignature(
-            tenant,
-            PORTA_SSO_COMMON_NAME,
+            tenant.name,
+            this.getServerUrl(),
             eKeySignatureType.access_token
+        );
+
+        const sessionStorage = await databaseUtils.createOrGetSession(tenant.id, authRecord.id, user_id);
+        const sessionKeySignature = portaAuthUtils.getKeySignature(
+            tenant.name,
+            this.getServerUrl(),
+            eKeySignatureType.session_id
         );
 
         // checking the offline access grant
@@ -258,6 +291,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             tenant.id,
             authRecord.id,
             user_id,
+            sessionStorage.id,
             access_token_ttl,
             offline_access === true ? refresh_token_ttl : access_token_ttl, // if there is no offline_access then this token will be revoked at access_token_ttl,
             auth_request_params
@@ -276,8 +310,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 refresh_token_ttl
             );
             refreshTokenKeySignature = portaAuthUtils.getKeySignature(
-                tenant,
-                PORTA_SSO_COMMON_NAME,
+                tenant.name,
+                this.getServerUrl(),
                 eKeySignatureType.refresh_token
             );
         }
@@ -286,7 +320,9 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             accessTokenKeySignature,
             refreshTokenKeySignature,
             accessTokenStorage,
-            refreshTokenStorage
+            refreshTokenStorage,
+            sessionKeySignature,
+            sessionStorage
         };
     }
 

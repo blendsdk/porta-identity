@@ -38,3 +38,20 @@ export interface ISysGroupPermissionDataServiceUpdateSysGroupPermissionByIdFilte
 	 */
 	id: string;
 }
+
+/**
+ * @export
+ * @interface ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
+ */
+export interface ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
+	 */
+	group_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupPermissionDataServiceFindSysGroupPermissionByGroupIdAndPermissionIdParams
+	 */
+	permission_id: string;
+}

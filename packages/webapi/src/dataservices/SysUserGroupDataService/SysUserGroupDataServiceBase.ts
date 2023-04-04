@@ -2,7 +2,8 @@ import {
 	ISysUserGroupDataServiceFindGroupsByUserIdParams,
 	ISysUserGroupDataServiceFindSysUserGroupByIdParams,
 	ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter,
-	ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter
+	ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter,
+	ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
 } from "./types";
 import { ISysGroupsByUserView, ISysUserGroup } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -97,6 +98,23 @@ export abstract class SysUserGroupDataServiceBase extends DataService<PostgreSQL
 			Partial<ISysUserGroup>,
 			ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter
 		>(`sys_user_group`, params, filter, { single: true });
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_user_group record by  and
+	 * @param {ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams}
+	 * @returns {ISysUserGroup}
+	 * @memberof SysUserGroupDataServiceBase
+	 */
+	public async findSysUserGroupByUserIdAndGroupId(
+		params: ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+	): Promise<ISysUserGroup> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<
+			ISysUserGroup,
+			ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+		>(`SELECT * FROM sys_user_group WHERE user_id = :user_id AND group_id = :group_id`, params, { single: true });
 		return result.data;
 	}
 }
