@@ -15,6 +15,10 @@ import * as crypto from "crypto";
 import { expireSecondsFromNow } from "../../../auth/utils";
 import { AUTH_FLOW_TTL } from "./constants";
 
+interface ISessionStorage extends Omit<ISysSessionView, "post_logout_redirect_uris"> {
+    post_logout_redirect_uris: { uri: [] };
+}
+
 export class EndSessionController extends EndpointController {
     protected renderGetRedirect(url: string) {
         return `<html>
@@ -145,32 +149,86 @@ export class EndSessionController extends EndpointController {
             : undefined;
     }
 
-    protected async createLogoutFlow(tenant: string, session: ISysSessionView) {
+    protected async createLogoutFlow(
+        tenant: string,
+        session: ISessionStorage,
+        post_logout_redirect_uri: string,
+        errors: string[]
+    ) {
         const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
+        const post_logout_redirect_uris: string[] = [...session.post_logout_redirect_uris?.uri];
 
-        await this.getCache().setValue<Partial<ILogoutFlowStorage>>(
-            this.getLogoutFlowCacheKey(flowId),
-            {
-                ...(session as any),
-                tenant,
-                flowState: eLogoutFlowState.consent,
-                finalizeURL: `${this.getServerUrl()}${this.request.path}?lf=${flowId}`
-            },
-            {
-                expire
-            }
-        );
-        return flowId;
+        // when none is registered
+        if (post_logout_redirect_uris.length === 0) {
+            errors.push("no_registered_post_logout_redirect_uri");
+        }
+
+        // when none matching
+        if (
+            post_logout_redirect_uri &&
+            post_logout_redirect_uris.filter((i) => {
+                return i === post_logout_redirect_uri;
+            }).length === 0
+        ) {
+            errors.push("no_registered_post_logout_redirect_uri");
+        }
+
+        // when none provided and multiple registered
+        if (!post_logout_redirect_uri && post_logout_redirect_uris.length > 1) {
+            errors.push("missing_post_logout_redirect_uri");
+        }
+
+        // select the first one of none provided and only a single one is registered
+        if (!post_logout_redirect_uri && post_logout_redirect_uris.length == 1) {
+            post_logout_redirect_uri = post_logout_redirect_uris[0];
+        }
+
+        if (errors.length === 0) {
+            await this.getCache().setValue<Partial<ILogoutFlowStorage>>(
+                this.getLogoutFlowCacheKey(flowId),
+                {
+                    ...(session as any),
+                    tenant,
+                    flowState: eLogoutFlowState.consent,
+                    finalizeURL: `${this.getServerUrl()}${this.request.path}?lf=${flowId}`,
+                    post_logout_redirect_uri
+                },
+                {
+                    expire
+                }
+            );
+        }
+
+        return errors.length === 0 ? flowId : undefined;
+    }
+
+    /**
+     * Delete all cookies
+     *
+     * @protected
+     * @memberof EndSessionController
+     */
+    protected deleteAllCookies() {
+        const cookies = this.request.cookies;
+        const signedCookies = this.request.signedCookies;
+
+        for (const cookieName in cookies) {
+            this.response.cookie(cookieName, "", { expires: new Date(0) });
+        }
+
+        for (const cookieName in signedCookies) {
+            this.response.cookie(cookieName, "", { expires: new Date(0) });
+        }
     }
 
     protected async handleLogoutFlowRequest(flowId: string) {
-        const floeData = await this.getCache().getValue<ILogoutFlowStorage>(this.getLogoutFlowCacheKey(flowId));
+        const flowData = await this.getCache().getValue<ILogoutFlowStorage>(this.getLogoutFlowCacheKey(flowId));
 
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL * 3);
         const expireAt = new Date(expire);
 
-        const { flowState = undefined } = floeData || {};
+        const { flowState = undefined } = flowData || {};
 
         if (flowState === eLogoutFlowState.consent) {
             this.setCookie("_lf", flowId, {
@@ -184,8 +242,12 @@ export class EndSessionController extends EndpointController {
                 expires: expireAt,
                 sameSite: "lax"
             });
+            flowData.flowState = eLogoutFlowState.finalize;
+            await this.getCache().setValue(this.getLogoutFlowCacheKey(flowId), flowData);
             return new SuccessResponse(this.renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
+            this.deleteAllCookies();
+            return new SuccessResponse(this.renderGetRedirect(flowData.post_logout_redirect_uri));
         } else {
             // render that the flow is already finalized invalid and the user can close this browser or tab
         }
@@ -193,7 +255,7 @@ export class EndSessionController extends EndpointController {
 
     protected async handleInitialRequest(tenantRecord: ISysTenant, params: ISessionLogoutGetRequest) {
         let logoutFlowId: string = undefined;
-        const { state, tenant, id_token_hint, client_id, logout_hint } = params || {};
+        const { state, tenant, id_token_hint, client_id, logout_hint, post_logout_redirect_uri } = params || {};
         const { anonymus_logout = false } = this.request.context.getSessionStorage<{ anonymus_logout: boolean }>();
         const { idToken, errors } = await this.validateIDToken(tenant, id_token_hint, client_id);
 
@@ -201,6 +263,8 @@ export class EndSessionController extends EndpointController {
         const hintedSession = await this.fontSessionByClientIDAndLogoutHint(tenantRecord, client_id, logout_hint);
         // If the id token is ok? (not given or given and ok!)
         if (!errors) {
+            const uriErrors: string[] = [];
+
             if (anonymus_logout) {
                 // If we have an id_token here then it is validated and ok
                 // In that case we will use the id_token as the recommended way of validating
@@ -211,11 +275,21 @@ export class EndSessionController extends EndpointController {
                     if (sid !== session?.session_id) {
                         throw new Error("Invalid session! Code 1024");
                     }
-                    logoutFlowId = await this.createLogoutFlow(tenant, session);
+                    logoutFlowId = await this.createLogoutFlow(
+                        tenant,
+                        session as any,
+                        post_logout_redirect_uri,
+                        uriErrors
+                    );
                 } else if (hintedSession) {
                     // Here we don't have an ID token, but the session was found (guessed) based on the
                     // client_id and the logout_hint (user_id)
-                    logoutFlowId = await this.createLogoutFlow(tenant, hintedSession);
+                    logoutFlowId = await this.createLogoutFlow(
+                        tenant,
+                        hintedSession as any,
+                        post_logout_redirect_uri,
+                        uriErrors
+                    );
                 } else {
                     return this.responseWithError(
                         {
@@ -229,7 +303,17 @@ export class EndSessionController extends EndpointController {
             } else {
                 // authenticated user
             }
-            if (logoutFlowId) {
+
+            if (uriErrors.length !== 0) {
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: errors.join(", "),
+                        state
+                    },
+                    true
+                );
+            } else if (logoutFlowId) {
                 return new RedirectResponse({
                     url: `${this.getServerUrl()}${this.request.path}?lf=${logoutFlowId}`
                 });

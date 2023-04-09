@@ -302,7 +302,8 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .createAppendType(payload_type) //
                 .addString("logo")
                 .addString("application_name")
-                .addString("organization");
+                .addString("organization")
+                .addString("finalize_url");
             typeSchema.createResponseType(response_type, payload_type);
         }
     });

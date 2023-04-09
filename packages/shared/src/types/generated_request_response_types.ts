@@ -720,6 +720,11 @@ export interface ILogoutFlowInfo {
 	 * @memberOf ILogoutFlowInfo
 	 */
 	organization: string;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	finalize_url: string;
 }
 
 /**

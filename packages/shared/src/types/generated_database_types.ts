@@ -363,6 +363,11 @@ export interface ISysSessionView {
 	 * @type string
 	 * @memberOf ISysSessionView
 	 */
+	post_logout_redirect_uris: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
 	oidc_sub_claim: string;
 	/**
 	 * @type string

@@ -19,13 +19,14 @@ export class LogoutFlowInfoEndpointController extends EndpointController {
      */
     public async handleRequest(_params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
         try {
-            const { client_id, client } = (await this.getCurrentLogoutFlow()) || {};
+            const { client_id, client, finalizeURL } = (await this.getCurrentLogoutFlow()) || {};
             if (client_id) {
                 return new SuccessResponse<ILogoutFlowInfoResponse>({
                     data: {
                         logo: client.logo,
                         organization: "organization->TODO",
-                        application_name: client.application_name
+                        application_name: client.application_name,
+                        finalize_url: finalizeURL
                     }
                 });
             } else {

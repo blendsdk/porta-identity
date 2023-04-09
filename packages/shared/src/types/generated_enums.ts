@@ -186,6 +186,7 @@ export const eSysSessionView = {
 	CLIENT_ID: "client_id",
 	DATE_CREATED: "date_created",
 	OIDC_CLIENT_ID: "oidc_client_id",
+	POST_LOGOUT_REDIRECT_URIS: "post_logout_redirect_uris",
 	OIDC_SUB_CLAIM: "oidc_sub_claim",
 	CLIENT: "client",
 	USER: "user"

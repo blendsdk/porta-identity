@@ -371,6 +371,10 @@ export const validationSchema = {
 				oidc_client_id: {
 					type: eJsonSchemaType.string
 				},
+				post_logout_redirect_uris: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
 				oidc_sub_claim: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
@@ -391,6 +395,7 @@ export const validationSchema = {
 				"client_id",
 				"date_created",
 				"oidc_client_id",
+				"post_logout_redirect_uris",
 				"oidc_sub_claim",
 				"client",
 				"user"
@@ -1212,9 +1217,12 @@ export const validationSchema = {
 				},
 				organization: {
 					type: eJsonSchemaType.string
+				},
+				finalize_url: {
+					type: eJsonSchemaType.string
 				}
 			},
-			required: ["logo", "application_name", "organization"]
+			required: ["logo", "application_name", "organization", "finalize_url"]
 		},
 		authentication_keep_alive_request: {
 			type: eJsonSchemaType.object

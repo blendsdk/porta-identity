@@ -27,6 +27,7 @@ export const LogoutView = () => {
 
         onSubmit: (_values) => {
             if (form.isValid) {
+                window.location.href = flowInfo.finalize_url;
             }
         }
     });
