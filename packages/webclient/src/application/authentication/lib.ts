@@ -3,10 +3,10 @@ import {
     IAuthenticationFlowState,
     ICheckFlowRequest,
     ICheckFlowResponse,
-    portaAuthUtils,
     ILogoutFlowInfoRequest,
     ILogoutFlowInfoResponse,
-    ILogoutFlowInfo
+    ILogoutFlowInfo,
+    portaAuthUtils
 } from "@porta/shared";
 import Cookies from "js-cookie";
 import { getBaseUrl } from "../../system/session";
@@ -73,7 +73,7 @@ export const updateUserSelectList = (tenant: string, user?: string) => {
     return list;
 };
 
-export const isExpired = (key:string) => {
+export const isExpired = (key: string) => {
     const now = Date.now();
     const _ls = Cookies.get(key);
 

@@ -96,7 +96,7 @@
         "nl": "Ik blijf ingelogd"
     },
     "logout_confirm_message": {
-        "en": "Do you wish to sign out of from ${application_name}?",
-        "nl": "Wilt u zich afmelden bij ${application_name}?"
+        "en": "Do you wish to sign out of from <span style=\"white-space:nowrap\">${application_name}?</span>",
+        "nl": "Wilt u zich afmelden bij <span style=\"white-space:nowrap\">${application_name}?</span>"
     }
 }

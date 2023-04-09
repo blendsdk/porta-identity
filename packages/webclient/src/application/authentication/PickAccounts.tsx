@@ -62,7 +62,7 @@ export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) =>
             ...accounts,
             {
                 account: translate("use_another_account"),
-                tenant: null
+                tenant: null as any
             }
         ];
     }, [accounts, translate]);
