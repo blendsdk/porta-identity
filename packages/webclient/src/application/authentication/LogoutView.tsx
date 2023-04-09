@@ -14,8 +14,8 @@ import { isExpired } from "./lib";
 
 export const LogoutView = () => {
     const { translate } = useTranslator();
-    const [flowInfo, setFlowInfo] = useState<ILogoutFlowInfo>(undefined);
-    const [flowState, setFlowState] = useState<number>(undefined);
+    const [flowInfo, setFlowInfo] = useState<ILogoutFlowInfo>();
+    const [flowState, setFlowState] = useState<number>();
     const [flowStarted, setFlowStarted] = useState<boolean>(false);
 
     const styles = useStyles();
@@ -74,7 +74,7 @@ export const LogoutView = () => {
         return () => {
             clearInterval(checker);
         };
-    }, [flowState]);
+    }, [flowStarted, flowState]);
 
     return (
         <div className={styles.wrapper}>
@@ -87,9 +87,15 @@ export const LogoutView = () => {
                     {flowState === eFlowState.INVALID_SESSION && <InvalidSession logout />}
                     {flowState && flowState !== eFlowState.COMPLETE && flowState !== eFlowState.INVALID_SESSION && (
                         <>
-                            <Subtitle1 className={styles.logout_message}>
-                                {translate("logout_confirm_message", flowInfo)}
-                            </Subtitle1>
+                            <div className={styles.logout_message}>
+                                <Subtitle1>
+                                    <span
+                                        dangerouslySetInnerHTML={{
+                                            __html: translate("logout_confirm_message", flowInfo)
+                                        }}
+                                    />
+                                </Subtitle1>
+                            </div>
                             <div className={styles.footer}>
                                 <Button
                                     size={FIELD_SIZE}

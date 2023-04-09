@@ -60,6 +60,12 @@ export const useStyles = makeStyles({
     },
     logout_message: {
         textAlign: "center",
-        ...shorthands.padding("1rem")
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        ...shorthands.padding("1rem"),
+        "& span": {
+            textAlign: "center"
+        }
     }
 });

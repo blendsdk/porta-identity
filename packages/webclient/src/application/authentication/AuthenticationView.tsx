@@ -19,8 +19,8 @@ import { PickAccounts } from "./PickAccounts";
 
 export const AuthenticationView = () => {
     const { translate } = useTranslator();
-    const [flowInfo, setFlowInfo] = useState<IFlowInfo>(undefined);
-    const [flowState, setFlowState] = useState<number>(undefined);
+    const [flowInfo, setFlowInfo] = useState<IFlowInfo>();
+    const [flowState, setFlowState] = useState<number>();
     const [flowStarted, setFlowStarted] = useState<boolean>(false);
     const [accounts, setAccounts] = useState<IExistingAccount[]>([]);
     const styles = useStyles();
@@ -149,7 +149,7 @@ export const AuthenticationView = () => {
         return () => {
             clearInterval(checker);
         };
-    }, [flowState]);
+    }, [flowStarted, flowState, lastTenant]);
 
     return (
         <div className={styles.wrapper}>
