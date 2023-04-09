@@ -60,7 +60,7 @@ class DatabaseUtils {
             client_credentials_user_id: client.client_credentials_user_id || null,
             description: client.description || `${tenant.name} webapp client`,
             logo: client.logo || null,
-            post_logout_redirect_uri: client.post_logout_redirect_uri,
+            post_logout_redirect_uris: client.post_logout_redirect_uris,
             redirect_uri: client.redirect_uri,
             secret: client.secret || commonUtils.getUUID(),
             access_token_ttl: client.access_token_ttl,
@@ -402,7 +402,7 @@ class DatabaseUtils {
     }
 
     /**
-     * Create a new session of retrieve the existing one for a given user and client
+     * Create a new session or retrieve the existing one for a given user and client
      *
      * @param {string} tenant_id
      * @param {string} client_id

@@ -108,7 +108,14 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("valid_until", { required: false })
         .stringColumn("redirect_uri", { required: false })
         .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
-        .stringColumn("post_logout_redirect_uri", { required: false });
+        .jsonColumn(
+            "post_logout_redirect_uris",
+            ({ suggestedTypeName, mainSchema }) => {
+                mainSchema.createAppendType(suggestedTypeName, {}).addString("uri", { array: true });
+                return suggestedTypeName;
+            },
+            { required: false }
+        );
 
     session
         .primaryKeyColumn("id", true)

@@ -4,7 +4,11 @@ export const eAppRoutes = {
         path: "/"
     },
     signin: {
-        key:"signin",
-        path:"/fe/auth/signin"
+        key: "signin",
+        path: "/fe/auth/signin"
+    },
+    signout: {
+        key: "signout",
+        path: "/fe/auth/signout"
     }
 };

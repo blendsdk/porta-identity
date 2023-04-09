@@ -1,8 +1,23 @@
 import { createApiStore } from "@blendsdk/react";
-import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse, portaAuthUtils } from "@porta/shared";
+import {
+    IAuthenticationFlowState,
+    ICheckFlowRequest,
+    ICheckFlowResponse,
+    portaAuthUtils,
+    ILogoutFlowInfoRequest,
+    ILogoutFlowInfoResponse,
+    ILogoutFlowInfo
+} from "@porta/shared";
 import Cookies from "js-cookie";
 import { getBaseUrl } from "../../system/session";
 import { PortaApi } from "../api";
+
+/**
+ * Gets the LogoutFlow info
+ */
+export const useGetLogoutFlow = createApiStore<ILogoutFlowInfo, ILogoutFlowInfoRequest, ILogoutFlowInfoResponse>({
+    api: PortaApi.authorization.logoutFlowInfo
+});
 
 /**
  * The CheckFlow Store
@@ -41,7 +56,6 @@ export const getAuthenticatingTenant = () => {
  * @returns
  */
 export const updateUserSelectList = (tenant: string, user?: string) => {
-    debugger;
     const system = getBaseUrl();
     const listKey = portaAuthUtils.getKeySignature(tenant, system, "user_list");
     const list = JSON.parse(Cookies.get(listKey) || "[]") as any[];
@@ -57,4 +71,26 @@ export const updateUserSelectList = (tenant: string, user?: string) => {
         Cookies.set(listKey, JSON.stringify(list));
     }
     return list;
+};
+
+export const isExpired = (key:string) => {
+    const now = Date.now();
+    const _ls = Cookies.get(key);
+
+    let expire = now - 1;
+
+    if (_ls) {
+        try {
+            expire = parseInt(_ls);
+        } catch {
+            //no-op
+        }
+    }
+
+    // edge case
+    if (isNaN(expire)) {
+        expire = now - 1;
+    }
+
+    return expire - Date.now() <= 0;
 };

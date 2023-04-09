@@ -1,9 +1,12 @@
-import { IDictionaryOf } from "@blendsdk/stdlib";
+import { IDictionaryOf, MD5 } from "@blendsdk/stdlib";
 import { IApplicationModule } from "@blendsdk/webafx";
 import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webafx-auth";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
+import { IAccessToken } from "../../types";
 import { databaseUtils } from "../../utils";
+
+const ANONYMUS_LOGOUT_TOKEN = MD5(Date.now());
 
 export class IPortaAuthenticationModule {
     PORTA_SSO_COMMON_NAME?: string;
@@ -65,6 +68,20 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     }
 
     /**
+     * Allow to pass the token authorization for the logout endpoint
+     *
+     * @protected
+     * @param {HttpRequest} req
+     * @returns
+     * @memberof PortaAuthenticationModule
+     */
+    protected getAnonymusLogoutToken(req: HttpRequest) {
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>();
+        const logoutUri = `/${tenant}/oauth2/logout`;
+        return logoutUri === req.path ? ANONYMUS_LOGOUT_TOKEN : undefined;
+    }
+
+    /**
      * Gets/finds a session from cookie, body or header
      *
      * @protected
@@ -75,7 +92,12 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const { sig = undefined } = (await this.getKeySignature(req)) || {};
         const { access_token = undefined } = req.context.getParameters<{ access_token: string }>();
-        return access_token || this.getBearerToken(req) || (sig ? this.getCookieToken(sig, req) : undefined);
+        return (
+            access_token ||
+            this.getBearerToken(req) ||
+            (sig ? this.getCookieToken(sig, req) : undefined) ||
+            this.getAnonymusLogoutToken(req)
+        );
     }
 
     /**
@@ -91,19 +113,26 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     protected async findUserByToken<UserType = any>(token: string, req: HttpRequest): Promise<UserType> {
         const { sig = undefined, tenant = undefined, id = undefined } = (await this.getKeySignature(req)) || {};
         if (sig && tenant && token && id) {
-            let accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
+            if (token === ANONYMUS_LOGOUT_TOKEN) {
+                return {
+                    anonymus_logout: true,
+                    user: {}
+                } as Partial<IAccessToken> as UserType;
+            } else {
+                let accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
 
-            // check if the access token has expired
-            if (accessTokenStorage && accessTokenStorage.is_expired) {
-                accessTokenStorage = undefined;
-                this.getLogger().warn("AccessToken was expired", accessTokenStorage);
+                // check if the access token has expired
+                if (accessTokenStorage && accessTokenStorage.is_expired) {
+                    accessTokenStorage = undefined;
+                    this.getLogger().warn("AccessToken was expired", accessTokenStorage);
+                }
+
+                return accessTokenStorage
+                    ? accessTokenStorage.tenant.id === id
+                        ? (accessTokenStorage as any)
+                        : undefined
+                    : undefined;
             }
-
-            return accessTokenStorage
-                ? accessTokenStorage.tenant.id === id
-                    ? (accessTokenStorage as any)
-                    : undefined
-                : undefined;
         } else {
             return undefined;
         }

@@ -28,7 +28,9 @@ import {
 	ISessionLogoutGetRequest,
 	ISessionLogoutGetResponse,
 	ISessionLogoutPostRequest,
-	ISessionLogoutPostResponse
+	ISessionLogoutPostResponse,
+	ILogoutFlowInfoRequest,
+	ILogoutFlowInfoResponse
 } from "@porta/shared";
 
 /**
@@ -137,4 +139,12 @@ export abstract class AuthorizationControllerBase<
 	 * @memberof AuthorizationControllerBase
 	 */
 	public abstract sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>>;
+	/**
+	 * Method for handling [GET] /lf/flow_info
+	 * @abstract
+	 * @param {ILogoutFlowInfoRequest} params
+	 * @returns {Promise<Response<ILogoutFlowInfoResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>>;
 }

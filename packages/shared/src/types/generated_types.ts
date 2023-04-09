@@ -60,6 +60,18 @@ export interface ISysMfaSettings {}
 
 /**
  * @export
+ * @interface ISysClientPostLogoutRedirectUris
+ */
+export interface ISysClientPostLogoutRedirectUris {
+	/**
+	 * @type string[]
+	 * @memberOf ISysClientPostLogoutRedirectUris
+	 */
+	uri: string[];
+}
+
+/**
+ * @export
  * @interface ISysAccessTokenAuthRequestParams
  */
 export interface ISysAccessTokenAuthRequestParams {

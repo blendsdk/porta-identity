@@ -1,6 +1,7 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
+import * as jwt from "jsonwebtoken";
 import {
     BadRequestResponse,
     Controller,
@@ -33,6 +34,7 @@ import {
     IAuthRequestParams,
     ICachedFlowInformation,
     IErrorResponseParams,
+    ILogoutFlowStorage,
     IPortaApplicationSetting
 } from "../../../../types";
 import { Claims } from "../Claims";
@@ -40,6 +42,7 @@ import { formPostTemplate } from "../FormPostTemplate";
 import { commonUtils, databaseUtils } from "../../../../utils";
 import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
+import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 
 /**
  * Enum describing flow parts
@@ -197,6 +200,9 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         // also readable from the UI
         this.setCookie(sessionKeySignature, sessionStorage.session_id, {
             expires: new Date(expire_at),
+            signed: true,
+            httpOnly: true,
+            secure: this.request.protocol !== "http",
             sameSite: "lax" // only send to this endpoint
         });
 
@@ -243,12 +249,17 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * Creates session storage for a given user
      *
      * @protected
-     * @param {ISysTenant} tenant
-     * @param {ISysAuthorizationView} authRecord
-     * @param {string} user_id
-     * @param {*} ui_locales
-     * @param {string} scope
-     * @param {string} claims
+     * @param {{
+     *         tenant: ISysTenant;
+     *         authRecord: ISysAuthorizationView;
+     *         user_id: string;
+     *         auth_request_params: IAuthRequestParams;
+     *     }} {
+     *         tenant,
+     *         authRecord,
+     *         user_id,
+     *         auth_request_params
+     *     }
      * @returns
      * @memberof EndpointController
      */
@@ -338,6 +349,42 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
+     * Find the logout flow id either based on a cookie or request parameter
+     *
+     * @protected
+     * @returns {string}
+     * @memberof EndpointController
+     */
+    protected findLogoutFlowID(): string {
+        return this.getCookie("_lf", true) || this.request.context.getParameters<{ lf: string }>().lf || undefined;
+    }
+
+    /**
+     * Gets the current authentication flow either from the cookie or the `flow` which is also
+     * the ota code
+     *
+     * @protected
+     * @param {string} [flowId]
+     * @returns {Promise<ICachedFlowInformation>}
+     * @memberof EndpointController
+     */
+    protected async getCurrentAuthenticationFlow(flowId?: string): Promise<ICachedFlowInformation> {
+        return this.getFlow<ICachedFlowInformation>(eFlow.info, flowId || this.findFlowID());
+    }
+
+    /**
+     * Gets the cache key for the logout flow
+     *
+     * @protected
+     * @param {string} flowId
+     * @returns
+     * @memberof EndpointController
+     */
+    protected getLogoutFlowCacheKey(flowId: string) {
+        return ["logout_flow", flowId].join(":");
+    }
+
+    /**
      * Gets the current authentication flow either from the cookie or the `flow` which is also
      * the ota code
      *
@@ -346,8 +393,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns {Promise<ICachedFlowInformation>}
      * @memberof EndPointController
      */
-    protected async getCurrentAuthenticationFlow(flowId?: string): Promise<ICachedFlowInformation> {
-        return this.getFlow<ICachedFlowInformation>(eFlow.info, flowId || this.findFlowID());
+    protected async getCurrentLogoutFlow(): Promise<ILogoutFlowStorage> {
+        return this.getCache().getValue<ILogoutFlowStorage>(this.getLogoutFlowCacheKey(this.findLogoutFlowID()));
     }
 
     /**
@@ -410,10 +457,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndPointController
      */
     protected createFlowUrl(action: string, flow?: string) {
-        const { protocol, hostname, socket } = this.request;
-        return `${protocol}://${hostname}${this.isLocalEnv() ? `:${socket.localPort}` : ""}/af/${action}?af=${
-            flow || this.findFlowID()
-        }`;
+        return `${this.getServerUrl()}/af/${action}?af=${flow || this.findFlowID()}`;
     }
 
     /**
@@ -521,5 +565,26 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             client_id: undefined,
             client_secret: undefined
         };
+    }
+
+    protected async getJWKKey(tenant: string): Promise<{ publicKey: string; privateKey: string }> {
+        const { dataSource } = await databaseUtils.getTenantDataSource(tenant);
+        const keyDs = new SysKeyDataService({ dataSource });
+        const { data } = (await keyDs.findJwkKeys())[0];
+        return JSON.parse(data);
+    }
+
+    protected verifyGetJWT(payLoad: string, publicKey: string, options?: jwt.VerifyOptions) {
+        try {
+            return {
+                jwt: jwt.verify(payLoad, publicKey, options),
+                error: undefined
+            };
+        } catch (err) {
+            return {
+                jwt: undefined,
+                error: err.message
+            };
+        }
     }
 }

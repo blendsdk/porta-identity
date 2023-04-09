@@ -17,6 +17,22 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         if (view.getName() === "sys_session_view") {
             svc.defineMethod({
+                name: "find_session_by_oidc_client_and_subject",
+                query: "select * from sys_session_view where oidc_sub_claim = :sub_claim and oidc_client_id = :client_id",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("sub_claim")
+                        .addString("client_id");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
+
+            svc.defineMethod({
                 name: "find_session_by_client_and_user",
                 query: "select * from sys_session_view where user_id = :user_id and client_id = :client_id",
                 recordSet: false,

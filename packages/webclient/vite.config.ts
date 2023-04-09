@@ -19,5 +19,15 @@ export default defineConfig({
     optimizeDeps: {
         include: ["@porta/shared"]
     },
-    plugins: [react()]
+    server: {
+        hmr: {
+            protocol: "ws",
+            host: "porta.local"
+        }
+    },
+    plugins: [
+        react({
+            include: "**/*.tsx"
+        })
+    ]
 });

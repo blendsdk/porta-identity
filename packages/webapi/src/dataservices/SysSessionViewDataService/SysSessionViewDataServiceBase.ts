@@ -1,4 +1,5 @@
 import {
+	ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams,
 	ISysSessionViewDataServiceFindSessionByClientAndUserParams,
 	ISysSessionViewDataServiceFindSessionBySessionIdParams
 } from "./types";
@@ -14,6 +15,24 @@ import { PostgreSQLExecutionContext } from "@blendsdk/postgresql";
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysSessionViewDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * @param {ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams}
+	 * @returns {ISysSessionView}
+	 * @memberof SysSessionViewDataServiceBase
+	 */
+	public async findSessionByOidcClientAndSubject(
+		params: ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+	): Promise<ISysSessionView> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<
+			ISysSessionView,
+			ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+		>(`select * from sys_session_view where oidc_sub_claim = :sub_claim and oidc_client_id = :client_id`, params, {
+			single: true
+		});
+		return result.data;
+	}
+
 	/**
 	 * @param {ISysSessionViewDataServiceFindSessionByClientAndUserParams}
 	 * @returns {ISysSessionView}

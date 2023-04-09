@@ -14,6 +14,7 @@ export const routeDefinitions: {
 		user_info_post: IRouteBase;
 		session_logout_get: IRouteBase;
 		session_logout_post: IRouteBase;
+		logout_flow_info: IRouteBase;
 	};
 	authentication: {
 		authentication_keep_alive: IRouteBase;
@@ -67,7 +68,8 @@ export const routeDefinitions: {
 			url: "/:tenant/oauth2/logout",
 			public: false,
 			signed: false
-		}
+		},
+		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true, signed: false }
 	},
 	authentication: {
 		authentication_keep_alive: {

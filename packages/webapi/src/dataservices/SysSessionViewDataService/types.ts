@@ -5,6 +5,23 @@
 
 /**
  * @export
+ * @interface ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+ */
+export interface ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams {
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+	 */
+	sub_claim: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+	 */
+	client_id: string;
+}
+
+/**
+ * @export
  * @interface ISysSessionViewDataServiceFindSessionByClientAndUserParams
  */
 export interface ISysSessionViewDataServiceFindSessionByClientAndUserParams {

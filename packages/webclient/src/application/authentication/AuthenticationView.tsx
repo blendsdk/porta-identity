@@ -8,7 +8,7 @@ import { PortaApi } from "../api";
 import { eFlowState, FIELD_SIZE, IAuthenticationDialogModel, IExistingAccount } from "./types";
 import * as yup from "yup";
 import { isEmptyObject } from "@blendsdk/stdlib";
-import { updateUserSelectList, useCheckFlow, validateData } from "./lib";
+import { isExpired, updateUserSelectList, useCheckFlow, validateData } from "./lib";
 import { useStyles } from "./styles";
 import { Button, mergeClasses, Spinner } from "@fluentui/react-components";
 import { InvalidSession } from "./InvalidSession";
@@ -122,26 +122,8 @@ export const AuthenticationView = () => {
     });
 
     useEffect(() => {
-        const now = Date.now();
-        const _as = Cookies.get("_as");
-
-        let expire = now - 1;
-
-        if (_as) {
-            try {
-                expire = parseInt(_as);
-            } catch {
-                //no-op
-            }
-        }
-
-        // edge case
-        if (isNaN(expire)) {
-            expire = now - 1;
-        }
-
         const checker = setInterval(() => {
-            if (expire - Date.now() <= 0 && flowState !== eFlowState.INVALID_SESSION) {
+            if (isExpired("_as") && flowState !== eFlowState.INVALID_SESSION) {
                 setFlowState(eFlowState.INVALID_SESSION);
             } else if (flowState === undefined && !flowStarted) {
                 PortaApi.authorization

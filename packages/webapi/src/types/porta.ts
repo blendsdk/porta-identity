@@ -9,11 +9,17 @@ import {
     ISysGroup,
     ISysGroupsByUserView,
     ISysSession,
+    ISysSessionView,
     ISysTenant,
     ISysUser,
     ISysUserPermissionView,
     ISysUserProfile
 } from "@porta/shared";
+
+export enum eLogoutFlowState {
+    consent = "consent",
+    finalize = "finalize"
+}
 
 //TODO: make dynamic from the config!
 export const PORTA_REGISTRY = "porta";
@@ -90,6 +96,7 @@ export interface IAccessToken
     permissions: ISysUserPermissionView[];
     roles: ISysGroup[];
     auth_request_params: IAuthRequestParams;
+    anonymus_logout?: boolean;
 }
 
 export interface IPortaApplicationSetting {
@@ -99,6 +106,15 @@ export interface IPortaApplicationSetting {
     ACCESS_TOKEN_TTL: number;
     REFRESH_TOKEN_TTL: number;
     PORTA_SSO_COMMON_NAME: string;
+}
+
+export interface ILogoutFlowStorage extends Omit<ISysSessionView, "user" | "client"> {
+    client: ISysClient;
+    user: ISysUser;
+    tenant: string;
+    flowState?: eLogoutFlowState;
+    finalizeURL: string;
+    state?: string;
 }
 
 export interface ICachedFlowInformation {

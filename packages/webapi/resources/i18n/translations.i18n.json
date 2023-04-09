@@ -67,6 +67,14 @@
         "en": "Authentication process timed out",
         "nl": "Er is een time-out opgetreden bij het authenticatieproces"
     },
+    "invalid_logout_session_caption": {
+        "en": "A timeout occurred while logging out",
+        "nl": "Er is een time-out opgetreden bij het uitloggen"
+    },
+    "invalid_logout_session_text": {
+        "en": "It is not possible to continue with the logout process. Please close this window and return to you application.",
+        "nl": "Het is niet mogelijk om verder te gaan met het uitlogproces. Sluit dit venster en keer terug naar uw applicatie."
+    },
     "invalid_auth_session_text": {
         "en": "It took too long to complete your authentication. Please return to your application's login screen and start over again.",
         "nl": "Het duurde te lang om uw authenticatie te voltooien. Ga terug naar het inlogscherm van uw applicatie en begin opnieuw."
@@ -78,5 +86,17 @@
     "please_wait": {
         "en": "Please wait...",
         "nl": "Even geduld aub..."
+    },
+    "btn_yes_logout": {
+        "en": "I want to logout",
+        "nl": "Ik wil uitloggen"
+    },
+    "keep_me_signed_in": {
+        "en": "Keep me signed in",
+        "nl": "Ik blijf ingelogd"
+    },
+    "logout_confirm_message": {
+        "en": "Do you wish to sign out of from ${application_name}?",
+        "nl": "Wilt u zich afmelden bij ${application_name}?"
     }
 }

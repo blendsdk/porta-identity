@@ -23,13 +23,17 @@ import {
     ISessionLogoutGetRequest,
     ISessionLogoutGetResponse,
     ISessionLogoutPostRequest,
-    ISessionLogoutPostResponse
+    ISessionLogoutPostResponse,
+    ILogoutFlowInfoRequest,
+    ILogoutFlowInfoResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
 import { CheckFlowEndpointController } from "./controllers/CheckFlowEndpointController";
+import { EndSessionController } from "./controllers/EndSessionController";
 import { FlowInfoEndpointController } from "./controllers/FlowInfoEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
+import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
 import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
 import { RedirectEndpointController } from "./controllers/RedirectEndpointController";
 import { SigninEndpointController } from "./controllers/SigninEndpointController";
@@ -43,12 +47,6 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
-    public sessionLogoutGet(_params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {
-        throw new Error("Method not implemented.");
-    }
-    public sessionLogoutPost(_params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>> {
-        throw new Error("Method not implemented.");
-    }
     /**
      * Creates a sub-controller config
      *
@@ -64,6 +62,14 @@ export class AuthorizationController extends AuthorizationControllerBase {
         };
     }
 
+    public sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+    public sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
     public authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
         const subController = new AuthorizeEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
@@ -78,6 +84,10 @@ export class AuthorizationController extends AuthorizationControllerBase {
     }
     public redirect(params: IRedirectRequest): Promise<Response<IRedirectResponse>> {
         const subController = new RedirectEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+    public logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
+        const subController = new LogoutFlowInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
     public flowInfo(params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>> {
@@ -96,12 +106,10 @@ export class AuthorizationController extends AuthorizationControllerBase {
         const subController = new JWKSEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
-
     public userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
         const subController = new UserInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
-
     public userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>> {
         const subController = new UserInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);

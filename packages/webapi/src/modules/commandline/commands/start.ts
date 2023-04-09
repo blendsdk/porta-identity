@@ -3,7 +3,7 @@ import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { asyncForEach } from "@blendsdk/stdlib";
 import { RedisCache } from "@blendsdk/webafx-cache/dist/cache";
 import { ISysClient, ISysUser } from "@porta/shared";
-import { CommandBuilder } from "yargs";
+import { ArgumentsCamelCase, CommandBuilder } from "yargs";
 import { SysUserDataService } from "../../../dataservices/SysUserDataService";
 import { SysUserProfileDataService } from "../../../dataservices/SysUserProfileDataService";
 import { eClientType, IPortaApplicationSetting, PORTA_REGISTRY } from "../../../types";
@@ -198,7 +198,10 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
                 secret: "secret",
                 client_type: eClientType.confidential,
                 redirect_uri,
-                client_credentials_user_id: serviceUser.id
+                client_credentials_user_id: serviceUser.id,
+                post_logout_redirect_uris: {
+                    uri: [[redirect_uri, "post_logout_redirect"].join("/")]
+                }
             },
             tenantRecord
         )
@@ -243,7 +246,7 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
     );
 }
 
-export const handler = async (argv: ICommandLineArgs) => {
+export const handler = async (argv: ArgumentsCamelCase<ICommandLineArgs>) => {
     try {
         application.loadFileConfig(argv.config);
         try {

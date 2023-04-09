@@ -1,6 +1,4 @@
 import { sha256Hash } from "@blendsdk/crypto";
-import { dataSourceManager } from "@blendsdk/datakit";
-import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import {
@@ -11,8 +9,6 @@ import {
     ISysTenant,
     portaAuthUtils
 } from "@porta/shared";
-import * as jwt from "jsonwebtoken";
-import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
     eErrorType,
     eOAuthDisplayModes,
@@ -69,11 +65,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 const tenantRecord = await databaseUtils.findTenant(tenant);
                 if (tenantRecord && tenantRecord.is_active) {
                     await this.initializeTenantDataSource(tenantRecord);
-                    const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(tenantRecord.id);
-                    const keyDs = new SysKeyDataService({ dataSource });
-                    const { data } = (await keyDs.findJwkKeys())[0];
-                    const { publicKey } = JSON.parse(data);
-                    const payload = jwt.verify(request, publicKey);
+                    const { publicKey } = await this.getJWKKey(tenantRecord.name);
+                    const payload = this.verifyGetJWT(request, publicKey);
                     apply(authRequest, payload, { overwrite: true, mergeArrays: true });
                 } else {
                     return this.responseWithError(

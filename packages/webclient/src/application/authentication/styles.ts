@@ -57,5 +57,9 @@ export const useStyles = makeStyles({
     },
     spinner: {
         ...shorthands.padding("1rem")
+    },
+    logout_message: {
+        textAlign: "center",
+        ...shorthands.padding("1rem")
     }
 });

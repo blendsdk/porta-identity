@@ -3,6 +3,7 @@
  * THIS FILE IS AUTO GENERATED
  */
 
+import { ISysClientPostLogoutRedirectUris } from "./generated_types";
 import { ISysAccessTokenAuthRequestParams } from "./generated_types";
 import { ISysMfaSettings } from "./generated_types";
 
@@ -85,7 +86,7 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
-	post_logout_redirect_uri: string;
+	post_logout_redirect_uris: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -353,6 +354,16 @@ export interface ISysSessionView {
 	 * @memberOf ISysSessionView
 	 */
 	date_created: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	oidc_client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	oidc_sub_claim: string;
 	/**
 	 * @type string
 	 * @memberOf ISysSessionView
@@ -660,10 +671,10 @@ export interface ISysClient {
 	 */
 	client_credentials_user_id?: string;
 	/**
-	 * @type string
+	 * @type ISysClientPostLogoutRedirectUris
 	 * @memberOf ISysClient
 	 */
-	post_logout_redirect_uri?: string;
+	post_logout_redirect_uris?: ISysClientPostLogoutRedirectUris;
 }
 
 /**

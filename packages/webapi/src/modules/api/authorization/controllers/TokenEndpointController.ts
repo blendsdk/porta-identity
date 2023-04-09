@@ -466,6 +466,13 @@ export class TokenEndpointController extends EndpointController {
                         permission: r.code
                     };
                 }),
+            tenant: {
+                ...tenant,
+                allow_registration: undefined,
+                allow_reset_password: undefined,
+                database: undefined,
+                is_active: undefined
+            } as ISysTenant,
             nonce,
             state,
             auth_time,

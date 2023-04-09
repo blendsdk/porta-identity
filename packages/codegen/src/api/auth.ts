@@ -248,12 +248,14 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
-                .addString("tenant", { location: eParameterLocation.params })
-                .addString("id_token_hint", { location: eParameterLocation.query })
-                .addString("client_id", { location: eParameterLocation.query })
-                .addString("post_logout_redirect_uri", { location: eParameterLocation.query })
-                .addString("state", { location: eParameterLocation.query })
-                .addString("ui_locales", { location: eParameterLocation.query });
+                .addString("tenant", { location: eParameterLocation.params, optional: true })
+                .addString("id_token_hint", { location: eParameterLocation.query, optional: true })
+                .addString("logout_hint", { location: eParameterLocation.query, optional: true })
+                .addString("client_id", { location: eParameterLocation.query, optional: true })
+                .addString("post_logout_redirect_uri", { location: eParameterLocation.query, optional: true })
+                .addString("state", { location: eParameterLocation.query, optional: true })
+                .addString("ui_locales", { location: eParameterLocation.query, optional: true })
+                .addString("lf", { location: eParameterLocation.query, optional: true });
 
             typeSchema.createAppendType(payload_type);
             typeSchema.createAppendType(response_type); //
@@ -271,14 +273,37 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
             typeSchema
                 .createAppendType(request_type) //
                 .addString("tenant", { location: eParameterLocation.params })
-                .addString("id_token_hint", { location: eParameterLocation.body })
-                .addString("client_id", { location: eParameterLocation.body })
-                .addString("post_logout_redirect_uri", { location: eParameterLocation.body })
-                .addString("state", { location: eParameterLocation.body })
-                .addString("ui_locales", { location: eParameterLocation.body });
+                .addString("id_token_hint", { location: eParameterLocation.body, optional: true })
+                .addString("logout_hint", { location: eParameterLocation.body, optional: true })
+                .addString("client_id", { location: eParameterLocation.body, optional: true })
+                .addString("post_logout_redirect_uri", { location: eParameterLocation.body, optional: true })
+                .addString("state", { location: eParameterLocation.body, optional: true })
+                .addString("ui_locales", { location: eParameterLocation.body, optional: true })
+                .addString("lf", { location: eParameterLocation.query, optional: true }); // this only is here to satisfy TS typing
 
             typeSchema.createAppendType(payload_type);
             typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
+        id: "logout_flow_info",
+        url: "/lf/flow_info",
+        group: "authorization",
+        method: "get",
+        public: true,
+        signed: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("lf", { optional: true });
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("application_name")
+                .addString("organization");
+            typeSchema.createResponseType(response_type, payload_type);
         }
     });
 
