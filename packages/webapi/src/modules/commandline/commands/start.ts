@@ -214,7 +214,10 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
                 client_id: "client1",
                 secret: "secret",
                 client_type: eClientType.confidential,
-                redirect_uri
+                redirect_uri,
+                post_logout_redirect_uris: {
+                    uri: [[redirect_uri, "post_logout_redirect"].join("/")]
+                }
             },
             tenantRecord
         )
@@ -227,7 +230,10 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
                 client_id: "client2",
                 secret: "secret",
                 client_type: eClientType.confidential,
-                redirect_uri
+                redirect_uri,
+                post_logout_redirect_uris: {
+                    uri: [[redirect_uri, "post_logout_redirect"].join("/")]
+                }
             },
             tenantRecord
         )

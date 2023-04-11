@@ -7,7 +7,7 @@ import {
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { EndpointController } from "./EndpointControllerBase";
 import { ISessionLogoutPostRequest } from "@porta/shared";
-import { eErrorType, eLogoutFlowState, ILogoutFlowStorage } from "../../../../types";
+import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
 import { ISysTenant } from "@porta/shared";
 import { databaseUtils } from "../../../../utils";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
@@ -153,15 +153,32 @@ export class EndSessionController extends EndpointController {
         tenant: string,
         session: ISessionStorage,
         post_logout_redirect_uri: string,
-        errors: string[]
+        errors: string[],
+        accessToken: IAccessToken,
+        state: string
     ) {
         const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
-        const post_logout_redirect_uris: string[] = [...session.post_logout_redirect_uris?.uri];
+        const post_logout_redirect_uris: string[] = [...((session.post_logout_redirect_uris || {}).uri || [])];
+
+        // Do checks if there is an access token
+        if (accessToken) {
+            if (session.session_id !== accessToken.session.session_id) {
+                errors.push("invalid_or_mismatch_session");
+            }
+
+            if (session.user_id !== accessToken.user_id) {
+                errors.push("invalid_or_mismatch_user");
+            }
+
+            if (session.client_id !== accessToken.client_id) {
+                errors.push("invalid_or_mismatch_client");
+            }
+        }
 
         // when none is registered
         if (post_logout_redirect_uris.length === 0) {
-            errors.push("no_registered_post_logout_redirect_uri");
+            errors.push("no_registered_post_logout_redirect_uri_by_client");
         }
 
         // when none matching
@@ -180,9 +197,9 @@ export class EndSessionController extends EndpointController {
         }
 
         // select the first one of none provided and only a single one is registered
-        if (!post_logout_redirect_uri && post_logout_redirect_uris.length == 1) {
-            post_logout_redirect_uri = post_logout_redirect_uris[0];
-        }
+        // if (!post_logout_redirect_uri && post_logout_redirect_uris.length == 1) {
+        //     post_logout_redirect_uri = post_logout_redirect_uris[0];
+        // }
 
         if (errors.length === 0) {
             await this.getCache().setValue<Partial<ILogoutFlowStorage>>(
@@ -192,7 +209,9 @@ export class EndSessionController extends EndpointController {
                     tenant,
                     flowState: eLogoutFlowState.consent,
                     finalizeURL: `${this.getServerUrl()}${this.request.path}?lf=${flowId}`,
-                    post_logout_redirect_uri
+                    post_logout_redirect_uri,
+                    flowId,
+                    state
                 },
                 {
                     expire
@@ -242,12 +261,28 @@ export class EndSessionController extends EndpointController {
                 expires: expireAt,
                 sameSite: "lax"
             });
+            this.setCookie("_t", flowData.tenant, {
+                expires: expireAt,
+                sameSite: "lax"
+            });
+            this.setCookie("_l", flowId, {
+                expires: expireAt,
+                sameSite: "lax"
+            });
+
             flowData.flowState = eLogoutFlowState.finalize;
             await this.getCache().setValue(this.getLogoutFlowCacheKey(flowId), flowData);
             return new SuccessResponse(this.renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
             this.deleteAllCookies();
-            return new SuccessResponse(this.renderGetRedirect(flowData.post_logout_redirect_uri));
+
+            if (flowData.post_logout_redirect_uri) {
+                const url = new URL(flowData.post_logout_redirect_uri);
+                url.searchParams.append("state", flowData.state);
+                return new SuccessResponse(this.renderGetRedirect(url.toString()));
+            } else {
+                return new SuccessResponse({ data: { done: true } });
+            }
         } else {
             // render that the flow is already finalized invalid and the user can close this browser or tab
         }
@@ -265,50 +300,74 @@ export class EndSessionController extends EndpointController {
         if (!errors) {
             const uriErrors: string[] = [];
 
-            if (anonymus_logout) {
-                // If we have an id_token here then it is validated and ok
-                // In that case we will use the id_token as the recommended way of validating
-                // the session and user
-                if (idToken) {
-                    const { sub, aud, sid } = idToken;
-                    const session = await this.fontSessionByClientIDAndLogoutHint(tenantRecord, aud, sub);
-                    if (sid !== session?.session_id) {
-                        throw new Error("Invalid session! Code 1024");
-                    }
-                    logoutFlowId = await this.createLogoutFlow(
-                        tenant,
-                        session as any,
-                        post_logout_redirect_uri,
-                        uriErrors
-                    );
-                } else if (hintedSession) {
-                    // Here we don't have an ID token, but the session was found (guessed) based on the
-                    // client_id and the logout_hint (user_id)
-                    logoutFlowId = await this.createLogoutFlow(
-                        tenant,
-                        hintedSession as any,
-                        post_logout_redirect_uri,
-                        uriErrors
-                    );
-                } else {
-                    return this.responseWithError(
-                        {
-                            error: eErrorType.invalid_request,
-                            error_description: "unable_to_determine_session",
-                            state
-                        },
-                        true
-                    );
+            const sessionByAccessToken: IAccessToken = anonymus_logout
+                ? undefined
+                : this.getContext().getSessionStorage<IAccessToken>();
+
+            // If we have an id_token here then it is validated and ok
+            // In that case we will use the id_token as the recommended way of validating
+            // the session and user
+            if (idToken) {
+                const { sub, aud, sid } = idToken;
+                const session = await this.fontSessionByClientIDAndLogoutHint(tenantRecord, aud, sub);
+                if (sid !== session?.session_id) {
+                    uriErrors.push("idk_session_mismatch");
                 }
+                logoutFlowId = await this.createLogoutFlow(
+                    tenant,
+                    session as any,
+                    post_logout_redirect_uri,
+                    uriErrors,
+                    sessionByAccessToken,
+                    state
+                );
+            } else if (hintedSession) {
+                // Here we don't have an ID token, but the session was found (guessed) based on the
+                // client_id and the logout_hint (user_id)
+                logoutFlowId = await this.createLogoutFlow(
+                    tenant,
+                    hintedSession as any,
+                    post_logout_redirect_uri,
+                    uriErrors,
+                    sessionByAccessToken,
+                    state
+                );
+            } else if (sessionByAccessToken) {
+                logoutFlowId = await this.createLogoutFlow(
+                    tenant,
+                    {
+                        user: sessionByAccessToken.user as any,
+                        user_id: sessionByAccessToken.user_id,
+                        client: sessionByAccessToken.client as any,
+                        client_id: sessionByAccessToken.client.id,
+                        oidc_client_id: sessionByAccessToken.client.client_id,
+                        oidc_sub_claim: sessionByAccessToken.user.id,
+                        post_logout_redirect_uris: sessionByAccessToken.client.post_logout_redirect_uris as any,
+                        session_id: sessionByAccessToken.session.session_id,
+                        id: sessionByAccessToken.session.id,
+                        date_created: sessionByAccessToken.session.date_created
+                    },
+                    post_logout_redirect_uri,
+                    uriErrors,
+                    sessionByAccessToken,
+                    state
+                );
             } else {
-                // authenticated user
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: "unable_to_determine_session",
+                        state
+                    },
+                    true
+                );
             }
 
             if (uriErrors.length !== 0) {
                 return this.responseWithError(
                     {
                         error: eErrorType.invalid_request,
-                        error_description: errors.join(", "),
+                        error_description: uriErrors[0], // only the first one
                         state
                     },
                     true
@@ -350,7 +409,7 @@ export class EndSessionController extends EndpointController {
         params: ISessionLogoutPostRequest | ISessionLogoutGetRequest
     ): Promise<Response<ISessionLogoutGetResponse | ISessionLogoutPostResponse>> {
         // get the request params
-        const { state, tenant, lf: logoutFlow = undefined } = params || {};
+        let { state, tenant, lf: logoutFlow = undefined } = params || {};
 
         const tenantRecord = await this.getTenant(tenant);
         if (tenantRecord && tenantRecord.is_active) {

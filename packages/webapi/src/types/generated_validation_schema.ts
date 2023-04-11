@@ -1190,7 +1190,7 @@ export const validationSchema = {
 				},
 				lf: {
 					type: eJsonSchemaType.string,
-					location: eParameterLocation.query
+					location: eParameterLocation.body
 				}
 			},
 			required: ["tenant"]
@@ -1220,9 +1220,15 @@ export const validationSchema = {
 				},
 				finalize_url: {
 					type: eJsonSchemaType.string
+				},
+				flowId: {
+					type: eJsonSchemaType.string
+				},
+				has_post_redirect: {
+					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["logo", "application_name", "organization", "finalize_url"]
+			required: ["logo", "application_name", "organization", "finalize_url", "flowId", "has_post_redirect"]
 		},
 		authentication_keep_alive_request: {
 			type: eJsonSchemaType.object

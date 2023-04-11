@@ -27,7 +27,18 @@ export const LogoutView = () => {
 
         onSubmit: (_values) => {
             if (form.isValid) {
-                window.location.href = flowInfo.finalize_url;
+                if (flowInfo.has_post_redirect) {
+                    window.location.href = flowInfo.finalize_url;
+                } else {
+                    PortaApi.authorization
+                        .sessionLogoutPost({
+                            tenant: Cookies.get("_t"),
+                            lf: flowInfo.flowId
+                        })
+                        .then(() => {
+                            setFlowState(eFlowState.COMPLETE);
+                        });
+                }
             }
         }
     });
@@ -52,9 +63,14 @@ export const LogoutView = () => {
         }
 
         const checker = setInterval(() => {
-            if (isExpired("_ls") && flowState !== eFlowState.INVALID_SESSION) {
+            console.log(isExpired("_ls"));
+
+            if (isExpired("_ls") && flowState === eFlowState.COMPLETE) {
+                console.log("done");
+            } else if (isExpired("_ls") && flowState !== eFlowState.INVALID_SESSION) {
                 setFlowState(eFlowState.INVALID_SESSION);
             } else if (flowState === undefined && !flowStarted) {
+                setFlowState(eFlowState.LOGOUT_PROGRESS);
                 PortaApi.authorization
                     .logoutFlowInfo({})
                     .then(({ data }) => {
@@ -83,6 +99,14 @@ export const LogoutView = () => {
                 <div className={mergeClasses(styles.authView)}>
                     {flowInfo && flowState !== eFlowState.INVALID_SESSION && (
                         <img className={styles.logo} src={flowInfo.logo || LogoImage} alt="logo" />
+                    )}
+                    {flowInfo && flowState === eFlowState.COMPLETE && (
+                        <div className={styles.logout_message}>
+                            <Subtitle1>{translate("logout_complete")}</Subtitle1>
+                        </div>
+                    )}
+                    {flowState === eFlowState.LOGOUT_PROGRESS && (
+                        <Spinner className={styles.spinner} size="small" label={translate("please_wait")} />
                     )}
                     {!flowState && <Spinner className={styles.spinner} size="small" label={translate("please_wait")} />}
                     {flowState === eFlowState.INVALID_SESSION && <InvalidSession logout />}

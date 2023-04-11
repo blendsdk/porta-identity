@@ -98,5 +98,9 @@
     "logout_confirm_message": {
         "en": "Do you wish to sign out of from <span style=\"white-space:nowrap\">${application_name}?</span>",
         "nl": "Wilt u zich afmelden bij <span style=\"white-space:nowrap\">${application_name}?</span>"
+    },
+    "logout_complete": {
+        "en": "You are successfully signed out. You can close this browser tab or window now.",
+        "nl": "U bent succesvol uitgelogd. U kunt dit browsertabblad of dit browservenster nu sluiten."
     }
 }

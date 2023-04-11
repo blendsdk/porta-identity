@@ -279,7 +279,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("post_logout_redirect_uri", { location: eParameterLocation.body, optional: true })
                 .addString("state", { location: eParameterLocation.body, optional: true })
                 .addString("ui_locales", { location: eParameterLocation.body, optional: true })
-                .addString("lf", { location: eParameterLocation.query, optional: true }); // this only is here to satisfy TS typing
+                .addString("lf", { location: eParameterLocation.body, optional: true }); // this only is here to satisfy TS typing
 
             typeSchema.createAppendType(payload_type);
             typeSchema.createAppendType(response_type); //
@@ -303,7 +303,9 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("logo")
                 .addString("application_name")
                 .addString("organization")
-                .addString("finalize_url");
+                .addString("finalize_url")
+                .addString("flowId")
+                .addBoolean("has_post_redirect");
             typeSchema.createResponseType(response_type, payload_type);
         }
     });

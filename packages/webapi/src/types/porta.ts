@@ -115,6 +115,7 @@ export interface ILogoutFlowStorage extends Omit<ISysSessionView, "user" | "clie
     flowState?: eLogoutFlowState;
     finalizeURL: string;
     state?: string;
+    flowId: string;
     post_logout_redirect_uri: string;
 }
 

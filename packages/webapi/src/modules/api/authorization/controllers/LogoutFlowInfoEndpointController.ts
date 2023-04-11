@@ -1,3 +1,4 @@
+import { isNullOrUndef } from "@blendsdk/stdlib";
 import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { ILogoutFlowInfoRequest, ILogoutFlowInfoResponse } from "@porta/shared";
 import { EndpointController } from "./EndpointControllerBase";
@@ -19,14 +20,17 @@ export class LogoutFlowInfoEndpointController extends EndpointController {
      */
     public async handleRequest(_params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
         try {
-            const { client_id, client, finalizeURL } = (await this.getCurrentLogoutFlow()) || {};
+            const { client_id, client, finalizeURL, post_logout_redirect_uri, flowId } =
+                (await this.getCurrentLogoutFlow()) || {};
             if (client_id) {
                 return new SuccessResponse<ILogoutFlowInfoResponse>({
                     data: {
                         logo: client.logo,
                         organization: "organization->TODO",
                         application_name: client.application_name,
-                        finalize_url: finalizeURL
+                        finalize_url: finalizeURL,
+                        has_post_redirect: !isNullOrUndef(post_logout_redirect_uri),
+                        flowId
                     }
                 });
             } else {

@@ -725,6 +725,16 @@ export interface ILogoutFlowInfo {
 	 * @memberOf ILogoutFlowInfo
 	 */
 	finalize_url: string;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	flowId: string;
+	/**
+	 * @type boolean
+	 * @memberOf ILogoutFlowInfo
+	 */
+	has_post_redirect: boolean;
 }
 
 /**

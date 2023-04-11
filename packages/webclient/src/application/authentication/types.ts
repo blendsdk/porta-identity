@@ -22,5 +22,6 @@ export const eFlowState = {
     REQUIRE_PASSWORD: 2,
     START_MFA: 3,
     COMPLETE: 4,
+    LOGOUT_PROGRESS: 5,
     INVALID_SESSION: 99
 };
