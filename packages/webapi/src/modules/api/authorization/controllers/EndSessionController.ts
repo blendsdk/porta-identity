@@ -241,6 +241,14 @@ export class EndSessionController extends EndpointController {
         }
     }
 
+    /**
+     * Handle the form and following (second) request
+     *
+     * @protected
+     * @param {string} flowId
+     * @returns
+     * @memberof EndSessionController
+     */
     protected async handleLogoutFlowRequest(flowId: string) {
         const flowData = await this.getCache().getValue<ILogoutFlowStorage>(this.getLogoutFlowCacheKey(flowId));
 
@@ -249,7 +257,9 @@ export class EndSessionController extends EndpointController {
 
         const { flowState = undefined } = flowData || {};
 
+        // Setting the flow to ask for logout
         if (flowState === eLogoutFlowState.consent) {
+            // set the flow id cookie
             this.setCookie("_lf", flowId, {
                 expires: expireAt,
                 signed: true,
@@ -257,25 +267,38 @@ export class EndSessionController extends EndpointController {
                 sameSite: "lax", // only send to this endpoint
                 httpOnly: true
             });
+
+            // set the logout session length
             this.setCookie("_ls", expire, {
                 expires: expireAt,
                 sameSite: "lax"
             });
+
+            // set the tenant name
             this.setCookie("_t", flowData.tenant, {
                 expires: expireAt,
                 sameSite: "lax"
             });
+
+            // set the readable logout flow id
             this.setCookie("_l", flowId, {
                 expires: expireAt,
                 sameSite: "lax"
             });
 
+            // change and save the flow for the following call
             flowData.flowState = eLogoutFlowState.finalize;
             await this.getCache().setValue(this.getLogoutFlowCacheKey(flowId), flowData);
+
+            // return to the logout form
             return new SuccessResponse(this.renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
+            // delete all the cookies
             this.deleteAllCookies();
+            // delete the flow cache
+            await this.getCache().deleteValue(this.getLogoutFlowCacheKey(flowId));
 
+            // Response by redirect otherwise with JSON
             if (flowData.post_logout_redirect_uri) {
                 const url = new URL(flowData.post_logout_redirect_uri);
                 url.searchParams.append("state", flowData.state);
@@ -283,11 +306,18 @@ export class EndSessionController extends EndpointController {
             } else {
                 return new SuccessResponse({ data: { done: true } });
             }
-        } else {
-            // render that the flow is already finalized invalid and the user can close this browser or tab
         }
     }
 
+    /**
+     * Handle the initial logout request
+     *
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISessionLogoutGetRequest} params
+     * @returns
+     * @memberof EndSessionController
+     */
     protected async handleInitialRequest(tenantRecord: ISysTenant, params: ISessionLogoutGetRequest) {
         let logoutFlowId: string = undefined;
         const { state, tenant, id_token_hint, client_id, logout_hint, post_logout_redirect_uri } = params || {};
@@ -333,6 +363,7 @@ export class EndSessionController extends EndpointController {
                     state
                 );
             } else if (sessionByAccessToken) {
+                // create the flow by access token
                 logoutFlowId = await this.createLogoutFlow(
                     tenant,
                     {
