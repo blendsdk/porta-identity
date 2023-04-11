@@ -3,7 +3,6 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysClientPostLogoutRedirectUris } from "./generated_types";
 import { ISysAccessTokenAuthRequestParams } from "./generated_types";
 import { ISysMfaSettings } from "./generated_types";
 
@@ -86,7 +85,12 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
-	post_logout_redirect_uris: string;
+	post_logout_redirect_uri: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	is_back_channel_post_logout: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -363,7 +367,12 @@ export interface ISysSessionView {
 	 * @type string
 	 * @memberOf ISysSessionView
 	 */
-	post_logout_redirect_uris: string;
+	post_logout_redirect_uri: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysSessionView
+	 */
+	is_back_channel_post_logout: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysSessionView
@@ -676,10 +685,15 @@ export interface ISysClient {
 	 */
 	client_credentials_user_id?: string;
 	/**
-	 * @type ISysClientPostLogoutRedirectUris
+	 * @type string
 	 * @memberOf ISysClient
 	 */
-	post_logout_redirect_uris?: ISysClientPostLogoutRedirectUris;
+	post_logout_redirect_uri?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysClient
+	 */
+	is_back_channel_post_logout?: boolean;
 }
 
 /**

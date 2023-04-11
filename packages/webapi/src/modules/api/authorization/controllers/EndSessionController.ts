@@ -15,9 +15,7 @@ import * as crypto from "crypto";
 import { expireSecondsFromNow } from "../../../auth/utils";
 import { AUTH_FLOW_TTL } from "./constants";
 
-interface ISessionStorage extends Omit<ISysSessionView, "post_logout_redirect_uris"> {
-    post_logout_redirect_uris: { uri: [] };
-}
+interface ISessionStorage extends ISysSessionView {}
 
 export class EndSessionController extends EndpointController {
     protected renderGetRedirect(url: string) {
@@ -159,7 +157,6 @@ export class EndSessionController extends EndpointController {
     ) {
         const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
-        const post_logout_redirect_uris: string[] = [...((session.post_logout_redirect_uris || {}).uri || [])];
 
         // Do checks if there is an access token
         if (accessToken) {
@@ -177,29 +174,19 @@ export class EndSessionController extends EndpointController {
         }
 
         // when none is registered
-        if (post_logout_redirect_uris.length === 0) {
+        if (!session.post_logout_redirect_uri) {
             errors.push("no_registered_post_logout_redirect_uri_by_client");
         }
 
         // when none matching
-        if (
-            post_logout_redirect_uri &&
-            post_logout_redirect_uris.filter((i) => {
-                return i === post_logout_redirect_uri;
-            }).length === 0
-        ) {
+        if (post_logout_redirect_uri && session.post_logout_redirect_uri !== post_logout_redirect_uri) {
             errors.push("no_registered_post_logout_redirect_uri");
         }
 
         // when none provided and multiple registered
-        if (!post_logout_redirect_uri && post_logout_redirect_uris.length > 1) {
+        if (!post_logout_redirect_uri && session.post_logout_redirect_uri && !accessToken) {
             errors.push("missing_post_logout_redirect_uri");
         }
-
-        // select the first one of none provided and only a single one is registered
-        // if (!post_logout_redirect_uri && post_logout_redirect_uris.length == 1) {
-        //     post_logout_redirect_uri = post_logout_redirect_uris[0];
-        // }
 
         if (errors.length === 0) {
             await this.getCache().setValue<Partial<ILogoutFlowStorage>>(
@@ -301,7 +288,9 @@ export class EndSessionController extends EndpointController {
             // Response by redirect otherwise with JSON
             if (flowData.post_logout_redirect_uri) {
                 const url = new URL(flowData.post_logout_redirect_uri);
-                url.searchParams.append("state", flowData.state);
+                if (flowData.state) {
+                    url.searchParams.append("state", flowData.state);
+                }
                 return new SuccessResponse(this.renderGetRedirect(url.toString()));
             } else {
                 return new SuccessResponse({ data: { done: true } });
@@ -373,12 +362,13 @@ export class EndSessionController extends EndpointController {
                         client_id: sessionByAccessToken.client.id,
                         oidc_client_id: sessionByAccessToken.client.client_id,
                         oidc_sub_claim: sessionByAccessToken.user.id,
-                        post_logout_redirect_uris: sessionByAccessToken.client.post_logout_redirect_uris as any,
+                        post_logout_redirect_uri: sessionByAccessToken.client.post_logout_redirect_uri,
                         session_id: sessionByAccessToken.session.session_id,
                         id: sessionByAccessToken.session.id,
-                        date_created: sessionByAccessToken.session.date_created
+                        date_created: sessionByAccessToken.session.date_created,
+                        is_back_channel_post_logout: sessionByAccessToken.client.is_back_channel_post_logout
                     },
-                    post_logout_redirect_uri,
+                    undefined,
                     uriErrors,
                     sessionByAccessToken,
                     state

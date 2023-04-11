@@ -32,18 +32,6 @@ export const eSysMfaSettings = {
 export type eSysMfaSettings = (typeof eSysMfaSettings)[keyof typeof eSysMfaSettings];
 
 /**
- * Enum of the type sys_client_post_logout_redirect_uris
- * @export
- * @enum
- */
-export const eSysClientPostLogoutRedirectUris = {
-	$name: "sys_client_post_logout_redirect_uris",
-	URI: "uri"
-} as const;
-export type eSysClientPostLogoutRedirectUris =
-	(typeof eSysClientPostLogoutRedirectUris)[keyof typeof eSysClientPostLogoutRedirectUris];
-
-/**
  * Enum of the type sys_access_token_auth_request_params
  * @export
  * @enum
@@ -79,7 +67,8 @@ export const eSysAuthorizationView = {
 	VALID_UNTIL: "valid_until",
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
-	POST_LOGOUT_REDIRECT_URIS: "post_logout_redirect_uris",
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
 	CLIENT_CREDENTIALS_USER: "client_credentials_user"
 } as const;
 export type eSysAuthorizationView = (typeof eSysAuthorizationView)[keyof typeof eSysAuthorizationView];
@@ -186,7 +175,8 @@ export const eSysSessionView = {
 	CLIENT_ID: "client_id",
 	DATE_CREATED: "date_created",
 	OIDC_CLIENT_ID: "oidc_client_id",
-	POST_LOGOUT_REDIRECT_URIS: "post_logout_redirect_uris",
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
 	OIDC_SUB_CLAIM: "oidc_sub_claim",
 	CLIENT: "client",
 	USER: "user"
@@ -318,7 +308,8 @@ export const eSysClient = {
 	VALID_UNTIL: "valid_until",
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
-	POST_LOGOUT_REDIRECT_URIS: "post_logout_redirect_uris"
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout"
 } as const;
 export type eSysClient = (typeof eSysClient)[keyof typeof eSysClient];
 

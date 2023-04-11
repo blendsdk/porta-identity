@@ -1,7 +1,8 @@
 select
     se.*,
     cl.client_id as oidc_client_id,
-    cl.post_logout_redirect_uris,
+    cl.post_logout_redirect_uri,
+    cl.is_back_channel_post_logout,
     us.id as oidc_sub_claim,
     row_to_json(cl) as client,
     row_to_json(us) as user

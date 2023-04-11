@@ -84,7 +84,8 @@ ALTER TABLE sys_client ADD COLUMN valid_from timestamp without time zone  DEFAUL
 ALTER TABLE sys_client ADD COLUMN valid_until timestamp without time zone;
 ALTER TABLE sys_client ADD COLUMN redirect_uri varchar;
 ALTER TABLE sys_client ADD COLUMN client_credentials_user_id uuid;
-ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uris jsonb;
+ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uri varchar;
+ALTER TABLE sys_client ADD COLUMN is_back_channel_post_logout boolean  DEFAULT false;
 ALTER TABLE sys_client ADD PRIMARY KEY (id);
 ALTER TABLE sys_client ADD UNIQUE (client_id);
 CREATE TABLE sys_session();
@@ -231,7 +232,8 @@ DROP VIEW IF EXISTS sys_session_view CASCADE;
 CREATE OR REPLACE VIEW sys_session_view AS select
     se.*,
     cl.client_id as oidc_client_id,
-    cl.post_logout_redirect_uris,
+    cl.post_logout_redirect_uri,
+    cl.is_back_channel_post_logout,
     us.id as oidc_sub_claim,
     row_to_json(cl) as client,
     row_to_json(us) as user
@@ -323,7 +325,8 @@ ALTER TABLE sys_client ADD COLUMN valid_from timestamp without time zone  DEFAUL
 ALTER TABLE sys_client ADD COLUMN valid_until timestamp without time zone;
 ALTER TABLE sys_client ADD COLUMN redirect_uri varchar;
 ALTER TABLE sys_client ADD COLUMN client_credentials_user_id uuid;
-ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uris jsonb;
+ALTER TABLE sys_client ADD COLUMN post_logout_redirect_uri varchar;
+ALTER TABLE sys_client ADD COLUMN is_back_channel_post_logout boolean  DEFAULT false;
 ALTER TABLE sys_client ADD PRIMARY KEY (id);
 ALTER TABLE sys_client ADD UNIQUE (client_id);
 CREATE TABLE sys_session();
@@ -470,7 +473,8 @@ DROP VIEW IF EXISTS sys_session_view CASCADE;
 CREATE OR REPLACE VIEW sys_session_view AS select
     se.*,
     cl.client_id as oidc_client_id,
-    cl.post_logout_redirect_uris,
+    cl.post_logout_redirect_uri,
+    cl.is_back_channel_post_logout,
     us.id as oidc_sub_claim,
     row_to_json(cl) as client,
     row_to_json(us) as user

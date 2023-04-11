@@ -42,18 +42,6 @@ export const validationSchema = {
 		sys_mfa_settings: {
 			type: eJsonSchemaType.object
 		},
-		sys_client_post_logout_redirect_uris: {
-			type: eJsonSchemaType.object,
-			properties: {
-				uri: {
-					type: eJsonSchemaType.array,
-					items: {
-						type: eJsonSchemaType.string
-					}
-				}
-			},
-			required: ["uri"]
-		},
 		sys_access_token_auth_request_params: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -123,9 +111,11 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				post_logout_redirect_uris: {
-					type: eJsonSchemaType.string,
-					format: "json"
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
 				},
 				client_credentials_user: {
 					type: eJsonSchemaType.string,
@@ -147,7 +137,8 @@ export const validationSchema = {
 				"valid_until",
 				"redirect_uri",
 				"client_credentials_user_id",
-				"post_logout_redirect_uris",
+				"post_logout_redirect_uri",
+				"is_back_channel_post_logout",
 				"client_credentials_user"
 			]
 		},
@@ -371,9 +362,11 @@ export const validationSchema = {
 				oidc_client_id: {
 					type: eJsonSchemaType.string
 				},
-				post_logout_redirect_uris: {
-					type: eJsonSchemaType.string,
-					format: "json"
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
 				},
 				oidc_sub_claim: {
 					type: eJsonSchemaType.string,
@@ -395,7 +388,8 @@ export const validationSchema = {
 				"client_id",
 				"date_created",
 				"oidc_client_id",
-				"post_logout_redirect_uris",
+				"post_logout_redirect_uri",
+				"is_back_channel_post_logout",
 				"oidc_sub_claim",
 				"client",
 				"user"
@@ -611,9 +605,11 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				post_logout_redirect_uris: {
-					type: eJsonSchemaType.object,
-					$ref: "#/definitions/sys_client_post_logout_redirect_uris"
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
 				}
 			},
 			required: ["client_id", "client_type", "application_name"]
