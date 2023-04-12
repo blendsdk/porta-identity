@@ -61,7 +61,7 @@ export class SigninEndpointController extends EndpointController {
             }
 
             // build response ?
-            if (response_types.indexOf(eOAuthResponseType.none) === -1) {
+            if (response_types.indexOf(eOAuthResponseType.code) !== -1) {
                 await asyncForEach(response_types, async (type) => {
                     switch (type) {
                         case eOAuthResponseType.code:

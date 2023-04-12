@@ -16,6 +16,7 @@ import {
     eClientType,
     eErrorType,
     eOAuthGrantType,
+    eOAuthSigningAlg,
     IAccessToken,
     IAuthRequestParams,
     ICachedFlowInformation,
@@ -437,7 +438,7 @@ export class TokenEndpointController extends EndpointController {
         const { auth_time, roles, permissions, expire_at, user, access_token, ttl } = accessTokenStorage;
         const { refresh_token, ttl: refresh_token_expires_in } = refreshTokenStorage || {};
 
-        const pKey = await jose.importPKCS8(privateKey, "RS256");
+        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
 
         const { nonce, state } = authRequest || {};
 

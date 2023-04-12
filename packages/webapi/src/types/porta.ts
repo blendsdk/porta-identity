@@ -142,8 +142,7 @@ export interface ICachedUser {
 }
 
 export enum eOAuthResponseType {
-    code = "code",
-    none = "none"
+    code = "code"
 }
 
 export enum eOAuthResponseMode {

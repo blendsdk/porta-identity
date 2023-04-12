@@ -5,6 +5,7 @@ import { IOidcDiscoveryKeysRequest, IOidcDiscoveryKeysResponse, ISysKey } from "
 import * as jose from "jose";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
+import { eOAuthSigningAlg } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
 import { EndpointController } from "./EndpointControllerBase";
 interface IJwkKey {
@@ -45,6 +46,7 @@ export class JWKSEndpointController extends EndpointController {
                     const pubKey = await jose.importSPKI(publicKey, "ES256");
                     const jwk = await jose.exportJWK(pubKey);
                     jwk.use = "sig";
+                    jwk.alg = eOAuthSigningAlg.RS256;
                     jwk.kid = record.key_id;
                     jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
                     jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
