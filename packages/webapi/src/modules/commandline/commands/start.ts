@@ -195,7 +195,7 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
             {
                 application_name: "oidc client credentials",
                 client_id: "service-client",
-                secret: "secret",
+                secret: "hYrN6jbdLq6WtfxjhVxmdF3vVdOgNK9p",
                 client_type: eClientType.confidential,
                 redirect_uri,
                 client_credentials_user_id: serviceUser.id,
@@ -210,7 +210,7 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
             {
                 application_name: "oidc client 1",
                 client_id: "client1",
-                secret: "secret",
+                secret: "hYrN6jbdLq6WtfxjhVxmdF3vVdOgNK9p",
                 client_type: eClientType.confidential,
                 redirect_uri,
                 post_logout_redirect_uri: [redirect_uri.replace("/callback", ""), "post_logout_redirect"].join("/")
@@ -224,7 +224,7 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
             {
                 application_name: "oidc client 2",
                 client_id: "client2",
-                secret: "secret",
+                secret: "hYrN6jbdLq6WtfxjhVxmdF3vVdOgNK9p",
                 client_type: eClientType.confidential,
                 redirect_uri,
                 post_logout_redirect_uri: [redirect_uri.replace("/callback", ""), "post_logout_redirect"].join("/")

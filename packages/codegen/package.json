@@ -24,7 +24,7 @@
     "@blendsdk/logger": "3.2.231",
     "@blendsdk/postgresql": "3.2.231",
     "@blendsdk/stdlib": "3.2.231",
-    "glob": "^9.3.4",
-    "jose": "^4.13.1"
+    "glob": "^10.0.0",
+    "jose": "^4.13.2"
   }
 }

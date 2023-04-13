@@ -480,7 +480,7 @@ export class TokenEndpointController extends EndpointController {
             acr,
             sid
         })
-            .setProtectedHeader({ alg: "RS256" })
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256 })
             .setIssuedAt()
             .setIssuer(this.getIssuer(tenant.name))
             .setAudience(client_id)

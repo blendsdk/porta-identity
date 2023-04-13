@@ -38,14 +38,14 @@
     "jest-watch-typeahead": "^2.2.2",
     "lerna": "^6.6.1",
     "nodemon": "^2.0.22",
-    "npm-check-updates": "^16.10.7",
+    "npm-check-updates": "^16.10.8",
     "react-dropzone": "^14.2.3",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4",
     "zustand": "^4.3.7"
   },
   "dependencies": {
-    "glob": "^9.3.4",
+    "glob": "^10.0.0",
     "remove": "^0.1.5"
   }
 }

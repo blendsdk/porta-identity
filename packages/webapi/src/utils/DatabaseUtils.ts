@@ -493,14 +493,6 @@ class DatabaseUtils {
         const accessTokenDs = new SysAccessTokenViewDataService({ dataSource });
         const result = await accessTokenDs.findAccessToken({ access_token });
 
-        // const userGroupDs = new SysUserGroupDataService({ sharedContext });
-        // const permissionDs = new SysPermissionDataService({ sharedContext });
-
-        // const userPerms = await permissionDs.findPermissionsByUserId({ user_id: userRecord.id });
-        // const userGroups = await userGroupDs.findGroupsByUserId({
-        //     user_id: userRecord.id
-        // });
-
         return result
             ? ({
                   ...(result as any),
