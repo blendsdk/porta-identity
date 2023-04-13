@@ -27,7 +27,7 @@ jobs:
             - name: Building the Project
               run: |
                   yarn build
-                  mv ./packages/webclient/dist ./packages/webapi/public
+                  mv ./packages/webclient/build ./packages/webapi/public
 
             - name: Testing the project
               run: |
