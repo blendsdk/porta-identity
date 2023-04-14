@@ -476,7 +476,7 @@ describe("Authorize Sequence Happy", () => {
             client_id: client.client_id,
             redirect_uri: client.redirect_uri,
             response_type: "code",
-            scope: "some-scope",
+            scope: "openid",
             state: makeState({
                 tenant: test_set,
                 grant_type: "authorization_code",
