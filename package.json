@@ -4,9 +4,6 @@
   "workspaces": {
     "packages": [
       "packages/*"
-    ],
-    "nohoist": [
-      "**/glob/**"
     ]
   },
   "engines": {
@@ -20,7 +17,7 @@
     "bootstrap": "lerna bootstrap --use-workspaces",
     "build": "lerna clean -y && lerna run build",
     "test": "jest jest --clearCache && lerna run --scope=@porta/webapi test",
-    "ncu": "ncu -u -x chalk,nanoid,\"@blendsdk*\",\"@porta*\" && lerna exec \"ncu -u -x chalk,nanoid,'@blendsdk*','@porta*' \" && rm -fR node_modules yarn.lock && yarn install && yarn bootstrap && yarn build && yarn test",
+    "ncu": "ncu -u -x scheduler,chalk,nanoid,\"@blendsdk*\",\"@porta*\" && lerna exec \"ncu -u -x chalk,nanoid,'@blendsdk*','@porta*' \" && rm -fR node_modules yarn.lock && yarn install && yarn bootstrap && yarn build && yarn test",
     "generate": "lerna run generate --scope=@porta/codegen && lerna run build --scope=@porta/shared",
     "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh && yarn remove -W glob && yarn -W add glob",
     "blend:stable": "`pwd`/scripts/blend-update.js stable > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
@@ -30,22 +27,24 @@
   "devDependencies": {
     "@jest/core": "^29.5.0",
     "@jest/reporters": "^29.5.0",
-    "@types/jest": "^29.5.0",
-    "@types/node": "^18.15.11",
+    "@types/jest": "^29.5.1",
+    "@types/node": "^18.16.0",
     "concurrently": "^8.0.1",
     "jest": "^29.5.0",
     "jest-cli": "^29.5.0",
     "jest-watch-typeahead": "^2.2.2",
     "lerna": "^6.6.1",
     "nodemon": "^2.0.22",
-    "npm-check-updates": "^16.10.8",
+    "npm-check-updates": "^16.10.9",
     "react-dropzone": "^14.2.3",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4",
     "zustand": "^4.3.7"
   },
   "dependencies": {
-    "glob": "^10.0.0",
-    "remove": "^0.1.5"
+    "glob": "^10.2.2",
+    "mkdirp": "^3.0.1",
+    "remove": "^0.1.5",
+    "scheduler": "0.20.0"
   }
 }

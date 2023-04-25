@@ -1,4 +1,4 @@
-import { createAndSetSigningKeyCookie, IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
@@ -37,7 +37,6 @@ export const SPARoutes = (): IRouter => {
                 method: "get",
                 url: "*",
                 public: true,
-                signed: false,
                 handlers: (req: HttpRequest, res: HttpResponse, next: NextFunction) => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
@@ -45,7 +44,7 @@ export const SPARoutes = (): IRouter => {
                         indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
-                        res.send(indexFile.replace("_csr_", createAndSetSigningKeyCookie(req, res)));
+                        res.send(indexFile);
                     } else {
                         next();
                     }

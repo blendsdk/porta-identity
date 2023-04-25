@@ -52,8 +52,11 @@ async function generate() {
         }
     });
 
+    const { schema, views } = database.getSchemaSQL();
+
     // Write the database SQL script to file
-    writeFileSync(path.join(WebApiRoot, "resources", "database", "schema.sql"), database.getSchemaSQL().join(";\n"));
+    writeFileSync(path.join(WebApiRoot, "resources", "database", "schema.sql"), schema.join(";\n"));
+    writeFileSync(path.join(WebApiRoot, "resources", "database", "views.sql"), views.join(";\n"));
 
     // Write the TypeScript types to file
     writeFileSync(path.join(SharedRoot, "src", "types", "generated_types.ts"), types || "export {}");

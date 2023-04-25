@@ -23,53 +23,33 @@ export const routeDefinitions: {
 	};
 } = {
 	blend: {
-		get_translations: {
-			id: "get_translations",
-			method: "get",
-			url: "/api/i18n/:locale?",
-			public: false,
-			signed: false
-		},
-		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true, signed: false }
+		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
+		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true }
 	},
 	authorization: {
-		authorize: { id: "authorize", method: "get", url: "/:tenant/oauth2/authorize", public: true, signed: false },
-		token: { id: "token", method: "post", url: "/:tenant/oauth2/token", public: true, signed: false },
-		signin: { id: "signin", method: "get", url: "/af/signin", public: true, signed: false },
-		redirect: { id: "redirect", method: "get", url: "/af/redirect", public: true, signed: false },
+		authorize: { id: "authorize", method: "get", url: "/:tenant/oauth2/authorize", public: true },
+		token: { id: "token", method: "post", url: "/:tenant/oauth2/token", public: true },
+		signin: { id: "signin", method: "get", url: "/af/signin", public: true },
+		redirect: { id: "redirect", method: "get", url: "/af/redirect", public: true },
 		flow_info: { id: "flow_info", method: "post", url: "/af/flow_info", public: true },
 		check_flow: { id: "check_flow", method: "post", url: "/af/check_flow", public: true },
 		oidc_discovery: {
 			id: "oidc_discovery",
 			method: "get",
 			url: "/:tenant/oauth2/.well-known/openid-configuration",
-			public: true,
-			signed: false
+			public: true
 		},
 		oidc_discovery_keys: {
 			id: "oidc_discovery_keys",
 			method: "get",
 			url: "/:tenant/oauth2/discovery/keys",
-			public: true,
-			signed: false
+			public: true
 		},
-		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false, signed: false },
-		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false, signed: false },
-		session_logout_get: {
-			id: "session_logout_get",
-			method: "get",
-			url: "/:tenant/oauth2/logout",
-			public: false,
-			signed: false
-		},
-		session_logout_post: {
-			id: "session_logout_post",
-			method: "post",
-			url: "/:tenant/oauth2/logout",
-			public: false,
-			signed: false
-		},
-		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true, signed: false }
+		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false },
+		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
+		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: false },
+		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
+		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true }
 	},
 	authentication: {
 		authentication_keep_alive: {
@@ -77,12 +57,7 @@ export const routeDefinitions: {
 			method: "post",
 			url: "/api/authentication/keep-alive"
 		},
-		authentication_logout: {
-			id: "authentication_logout",
-			method: "post",
-			url: "/api/authentication/logout",
-			signed: false
-		},
+		authentication_logout: { id: "authentication_logout", method: "post", url: "/api/authentication/logout" },
 		authentication_login: { id: "authentication_login", method: "post", url: "/api/authentication/login" }
 	}
 };

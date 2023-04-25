@@ -82,31 +82,27 @@ export interface IPortaApi {
 export const PortaApi = createHttpApi<IPortaApi>({
 	definitions: {
 		blend: {
-			getTranslations: defineEndpoint({ method: "get", url: "/api/i18n/:locale?", signed: false }),
-			getAppVersion: defineEndpoint({ method: "get", url: "/api/version", signed: false })
+			getTranslations: defineEndpoint({ method: "get", url: "/api/i18n/:locale?" }),
+			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
 		authorization: {
-			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize", signed: false }),
-			token: defineEndpoint({ method: "post", url: "/:tenant/oauth2/token", signed: false }),
-			signin: defineEndpoint({ method: "get", url: "/af/signin", signed: false }),
-			redirect: defineEndpoint({ method: "get", url: "/af/redirect", signed: false }),
+			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" }),
+			token: defineEndpoint({ method: "post", url: "/:tenant/oauth2/token" }),
+			signin: defineEndpoint({ method: "get", url: "/af/signin" }),
+			redirect: defineEndpoint({ method: "get", url: "/af/redirect" }),
 			flowInfo: defineEndpoint({ method: "post", url: "/af/flow_info" }),
 			checkFlow: defineEndpoint({ method: "post", url: "/af/check_flow" }),
-			oidcDiscovery: defineEndpoint({
-				method: "get",
-				url: "/:tenant/oauth2/.well-known/openid-configuration",
-				signed: false
-			}),
-			oidcDiscoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys", signed: false }),
-			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me", signed: false }),
-			userInfoPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/me", signed: false }),
-			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout", signed: false }),
-			sessionLogoutPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/logout", signed: false }),
-			logoutFlowInfo: defineEndpoint({ method: "get", url: "/lf/flow_info", signed: false })
+			oidcDiscovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
+			oidcDiscoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
+			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me" }),
+			userInfoPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/me" }),
+			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout" }),
+			sessionLogoutPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/logout" }),
+			logoutFlowInfo: defineEndpoint({ method: "get", url: "/lf/flow_info" })
 		},
 		authentication: {
 			authenticationKeepAlive: defineEndpoint({ method: "post", url: "/api/authentication/keep-alive" }),
-			authenticationLogout: defineEndpoint({ method: "post", url: "/api/authentication/logout", signed: false }),
+			authenticationLogout: defineEndpoint({ method: "post", url: "/api/authentication/logout" }),
 			authenticationLogin: defineEndpoint({ method: "post", url: "/api/authentication/login" })
 		}
 	}

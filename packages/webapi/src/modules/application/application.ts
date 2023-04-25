@@ -1,4 +1,4 @@
-import { Application, BypassCallSignature } from "@blendsdk/webafx";
+import { Application } from "@blendsdk/webafx";
 import { CacheModule } from "@blendsdk/webafx-cache";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import * as path from "path";
@@ -45,10 +45,5 @@ const application = new Application({
         return new PortaAuthenticationModule({ ...config });
     }
 ]);
-
-if (process.env.BYPASS) {
-    application.getLogger().warn("Bypassing the call signature");
-    application.addSignatureHandler("bypass-for-dev", BypassCallSignature);
-}
 
 export { application };

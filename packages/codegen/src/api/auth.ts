@@ -16,7 +16,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -52,7 +51,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "post",
         public: true,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -89,7 +87,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema //
                 .createAppendType(request_type)
@@ -106,7 +103,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -129,7 +125,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
             typeSchema //
                 .createAppendType(request_type)
                 .addString("af", { optional: true });
-
             typeSchema
                 .createAppendType(payload_type) //
                 .addString("logo")
@@ -172,7 +167,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
+
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -192,7 +187,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
+
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -209,7 +204,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: false,
-        signed: false,
+
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -226,7 +221,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "post",
         public: false,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -244,7 +238,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: false,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -268,7 +261,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "post",
         public: false,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -292,7 +284,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
-        signed: false,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema //
                 .createAppendType(request_type)
