@@ -1,13 +1,13 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { ISysClient, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
-import { IAccessToken, IAuthRequestParams, IPortaApplicationSetting, PORTA_REGISTRY } from "../types";
+import { IAccessToken, IAuthRequestParams, IPortaApplicationSetting, PORTA_REGISTRY, eClientType } from "../types";
 import fs from "fs";
 import path from "path";
 import util from "util";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { application } from "../modules/application";
-import { isString, ucFirst } from "@blendsdk/stdlib";
+import { MD5, isString, ucFirst } from "@blendsdk/stdlib";
 import { sha256Hash } from "@blendsdk/crypto";
 import { SysGroupDataService } from "../dataservices/SysGroupDataService";
 import { SysGroupPermissionDataService } from "../dataservices/SysGroupPermissionDataService";
@@ -292,7 +292,8 @@ class DatabaseUtils {
         allow_registration: boolean,
         allow_reset_password: boolean,
         admin_user: string,
-        admin_password: string
+        admin_password: string,
+        public_domain?: string
     ) {
         return new Promise<void>(async (resolve, reject) => {
             try {
@@ -319,7 +320,7 @@ class DatabaseUtils {
                         await this.seedDatabase(dbConn, admin_user, admin_password, tenantName);
                         await dbConn.withContext(async (sharedContext) => {
                             const tenantDs = new SysTenantDataService({ sharedContext });
-                            tenantDs.insertIntoSysTenant({
+                            await tenantDs.insertIntoSysTenant({
                                 name: tenantName,
                                 organization: "Porta Registry Tenant",
                                 allow_registration: false,
@@ -327,6 +328,20 @@ class DatabaseUtils {
                                 is_active: true,
                                 database: databaseName
                             });
+
+                            await databaseUtils.createClient(
+                                {
+                                    application_name: "porta",
+                                    client_type: eClientType.confidential,
+                                    description: "Porta Internal Client",
+                                    is_active: true,
+                                    client_id: MD5([admin_user, admin_password].join("")),
+                                    redirect_uri: `https://${public_domain}/oidc/callback`,
+                                    post_logout_redirect_uri: `https://${public_domain}/post_logout`,
+                                    secret: admin_password
+                                },
+                                {} as any // this will default to the master database
+                            );
                         });
                     }
                     resolve();

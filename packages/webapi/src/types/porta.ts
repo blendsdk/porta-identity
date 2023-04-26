@@ -106,6 +106,7 @@ export interface IPortaApplicationSetting {
     ACCESS_TOKEN_TTL: number;
     REFRESH_TOKEN_TTL: number;
     PORTA_SSO_COMMON_NAME: string;
+    PORTA_PUBLIC_DOMAIN: string;
 }
 
 export interface ILogoutFlowStorage extends Omit<ISysSessionView, "user" | "client"> {

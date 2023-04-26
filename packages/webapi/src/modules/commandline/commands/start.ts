@@ -71,7 +71,7 @@ export const builder: CommandBuilder = {
 export function checkAndInitialize() {
     return new Promise<void>(async (resolve, reject) => {
         try {
-            const { PORTA_ADMIN, PORTA_PASSWORD, DB_DATABASE } = application.getSettings<
+            const { PORTA_ADMIN, PORTA_PASSWORD, DB_DATABASE, PORTA_PUBLIC_DOMAIN } = application.getSettings<
                 IPortaApplicationSetting & IDatabaseAppSettings
             >();
             await databaseUtils.initializeTenant(
@@ -81,7 +81,8 @@ export function checkAndInitialize() {
                 false,
                 true,
                 PORTA_ADMIN,
-                PORTA_PASSWORD
+                PORTA_PASSWORD,
+                PORTA_PUBLIC_DOMAIN
             );
             resolve();
         } catch (err) {

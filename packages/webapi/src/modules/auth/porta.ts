@@ -1,12 +1,20 @@
 import { IDictionaryOf, MD5 } from "@blendsdk/stdlib";
-import { IApplicationModule } from "@blendsdk/webafx";
+import { IApplicationModule, IDatabaseAppSettings } from "@blendsdk/webafx";
 import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webafx-auth";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
-import { IAccessToken } from "../../types";
+import { IAccessToken, IPortaApplicationSetting, eOAuthPKCECodeChallengeMethod } from "../../types";
 import { databaseUtils } from "../../utils";
+import { BaseClient, Issuer, custom, generators } from "openid-client";
+import { SysClientDataService } from "../../dataservices/SysClientDataService";
+import { renderGetRedirect } from "./utils";
+import * as crypto from "crypto";
 
 const ANONYMUS_LOGOUT_TOKEN = MD5(Date.now());
+
+custom.setHttpOptionsDefaults({
+    timeout: 10000
+});
 
 export class IPortaAuthenticationModule {
     PORTA_SSO_COMMON_NAME?: string;
@@ -34,10 +42,14 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
     }
 
     protected getServerUrl(request: HttpRequest, local?: boolean) {
-        const { address, port } = request.context.getService<{ address: any; port: any }>("serverInfo");
+        let { address, port } = request.context.getService<{ address: any; port: any }>("serverInfo");
+
+        port = (request.headers["x-forwarded-port"] || port).toString();
+        port = port === "80" || port === "443" ? undefined : port;
+
         return `${local ? "http" : request.headers["x-forwarded-proto"] || request.protocol}://${
             local ? address : request.hostname
-        }${local ? `:${port}` : ""}`;
+        }${local && port ? `:${port}` : ""}`;
     }
 
     /**
@@ -138,8 +150,82 @@ export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAu
         }
     }
 
+    protected oidcIssuer: Issuer<BaseClient>;
+    protected oidcClient: BaseClient;
+
+    protected async getOidcClient(req: HttpRequest): Promise<BaseClient> {
+        if (!this.oidcIssuer) {
+            const { PORTA_ADMIN, PORTA_PASSWORD } = this.application.getSettings<
+                IPortaApplicationSetting & IDatabaseAppSettings
+            >();
+
+            const client_id = MD5([PORTA_ADMIN, PORTA_PASSWORD].join(""));
+            const clientDs = new SysClientDataService();
+            const clientRecord = await clientDs.findSysClientByClientId({
+                client_id
+            });
+
+            this.oidcIssuer = await Issuer.discover(`${this.getServerUrl(req)}/porta/oauth2`);
+            this.oidcClient = new this.oidcIssuer.Client({
+                client_id: clientRecord.client_id,
+                client_secret: clientRecord.secret,
+                redirect_uris: [clientRecord.redirect_uri],
+                response_types: ["code"]
+            });
+        }
+        return this.oidcClient;
+    }
+
+    protected async getOidcIssuer(req: HttpRequest): Promise<Issuer<BaseClient>> {
+        if (!this.oidcIssuer) {
+            this.oidcIssuer = await Issuer.discover(`${this.getServerUrl(req)}/porta/oauth2`);
+        }
+        return this.oidcIssuer;
+    }
+
     protected createSignHandler(): void {
         //noop
+        this.application.addRouter({
+            routes: [
+                {
+                    method: "get",
+                    url: "/login",
+                    public: true,
+                    handlers: (req: HttpRequest, res: HttpResponse, next: NextFunction) => {
+                        const worker = new Promise<any>(async (resolve, reject) => {
+                            try {
+                                const state = crypto.randomUUID();
+                                const code_verifier = generators.codeVerifier();
+
+                                const oidcClient = await this.getOidcClient(req);
+
+                                const redirectTo = oidcClient.authorizationUrl({
+                                    scope: "openid email profile",
+                                    code_challenge: generators.codeChallenge(code_verifier),
+                                    code_challenge_method: eOAuthPKCECodeChallengeMethod.S256
+                                });
+
+                                await req.context.getCache().setValue(state, {
+                                    code_verifier
+                                });
+
+                                resolve(redirectTo);
+                            } catch (err) {
+                                reject(err);
+                            }
+                        });
+
+                        worker
+                            .then((url) => {
+                                res.send(renderGetRedirect(url, 1000));
+                            })
+                            .catch((err) => {
+                                next(err);
+                            });
+                    }
+                }
+            ]
+        });
         return;
     }
 

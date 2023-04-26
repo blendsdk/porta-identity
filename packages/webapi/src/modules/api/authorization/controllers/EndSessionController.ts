@@ -12,83 +12,12 @@ import { ISysTenant } from "@porta/shared";
 import { databaseUtils } from "../../../../utils";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
 import * as crypto from "crypto";
-import { expireSecondsFromNow } from "../../../auth/utils";
+import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
 import { AUTH_FLOW_TTL } from "./constants";
 
 interface ISessionStorage extends ISysSessionView {}
 
 export class EndSessionController extends EndpointController {
-    protected renderGetRedirect(url: string) {
-        return `<html>
-            <style>
-            #html-spinner{
-                width:32px;
-                height:32px;
-                border:2px solid #c9c9c9;
-                border-top:2px solid white;
-                border-radius:50%;
-              }
-
-              #html-spinner{
-                -webkit-transition-property: -webkit-transform;
-                -webkit-transition-duration: 1.2s;
-                -webkit-animation-name: rotate;
-                -webkit-animation-iteration-count: infinite;
-                -webkit-animation-timing-function: linear;
-
-                -moz-transition-property: -moz-transform;
-                -moz-animation-name: rotate;
-                -moz-animation-duration: 1.2s;
-                -moz-animation-iteration-count: infinite;
-                -moz-animation-timing-function: linear;
-
-                transition-property: transform;
-                animation-name: rotate;
-                animation-duration: 1.2s;
-                animation-iteration-count: infinite;
-                animation-timing-function: linear;
-              }
-
-              @-webkit-keyframes rotate {
-                  from {-webkit-transform: rotate(0deg);}
-                  to {-webkit-transform: rotate(360deg);}
-              }
-
-              @-moz-keyframes rotate {
-                  from {-moz-transform: rotate(0deg);}
-                  to {-moz-transform: rotate(360deg);}
-              }
-
-              @keyframes rotate {
-                  from {transform: rotate(0deg);}
-                  to {transform: rotate(360deg);}
-              }
-
-
-              /* Rest of page style*/
-              body{
-                background:#fcfcfc;
-                font-family: 'Open Sans', sans-serif;
-                -webkit-font-smoothing: antialiased;
-                color:#c9c9c9;
-              }
-
-
-              #html-spinner {
-                position:absolute;
-                top:50%;
-                left:50%;
-              }
-            </style>
-            <body>
-                <div id="html-spinner"></div>
-            </body>
-            <script>
-               window.location.href="${url}";
-            </script>
-        </html>`;
-    }
-
     /**
      * Validates and retrieves the ID token
      *
@@ -278,7 +207,7 @@ export class EndSessionController extends EndpointController {
             await this.getCache().setValue(this.getLogoutFlowCacheKey(flowId), flowData);
 
             // return to the logout form
-            return new SuccessResponse(this.renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
+            return new SuccessResponse(renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
             // delete all the cookies
             this.deleteAllCookies();
@@ -291,7 +220,7 @@ export class EndSessionController extends EndpointController {
                 if (flowData.state) {
                     url.searchParams.append("state", flowData.state);
                 }
-                return new SuccessResponse(this.renderGetRedirect(url.toString()));
+                return new SuccessResponse(renderGetRedirect(url.toString()));
             } else {
                 return new SuccessResponse({ data: { done: true } });
             }

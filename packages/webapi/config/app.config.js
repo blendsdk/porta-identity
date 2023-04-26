@@ -19,6 +19,7 @@ module.exports = {
     PORTA_ADMIN: "admin@blendsdk.net",
     PORTA_PASSWORD: "secret",
     PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",
+    PORTA_PUBLIC_DOMAIN: "porta.local",
     PORTA_SSO_COMMON_NAME: "porta_development",
     ENFORCE_PKCE: false
 };

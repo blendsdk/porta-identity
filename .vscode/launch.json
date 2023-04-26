@@ -53,7 +53,7 @@
             "name": "WebApi Debug",
             "program": "${workspaceFolder}/packages/webapi/dist/index.js",
             "args": ["start", "--config", "./config/*.config.js"],
-            "env": { "BYPASS": true },
+            "env": { "BYPASS": true, "NODE_TLS_REJECT_UNAUTHORIZED": "0" },
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen",
             "cwd": "${workspaceFolder}/packages/webapi",
