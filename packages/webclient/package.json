@@ -1,7 +1,7 @@
 {
   "name": "@porta/webclient",
   "private": true,
-  "version": "1.0.133",
+  "version": "1.0.136",
   "homepage": "/fe",
   "scripts": {
     "start": "WDS_SOCKET_HOST=localhost react-scripts start",
@@ -16,24 +16,24 @@
     "@blendsdk/stdlib": "^3.2.218",
     "@fluentui/react-components": "^9.19.1",
     "@fluentui/react-icons": "^2.0.200",
-    "@porta/shared": "^1.0.133",
-    "@types/js-cookie": "^3.0.3",
-    "formik": "^2.2.9",
-    "js-cookie": "^3.0.5",
-    "yup": "^1.1.1",
-    "zustand": "^4.3.7",
+    "@porta/shared": "^1.0.136",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.4.3",
     "@types/jest": "^29.5.1",
+    "@types/js-cookie": "^3.0.3",
     "@types/node": "^18.16.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "formik": "^2.2.9",
+    "js-cookie": "^3.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "typescript": "^5.0.4",
-    "web-vitals": "^3.3.1"
+    "web-vitals": "^3.3.1",
+    "yup": "^1.1.1",
+    "zustand": "^4.3.7"
   },
   "eslintConfig": {
     "extends": [
