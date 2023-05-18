@@ -44,9 +44,19 @@ initializeSystemError({
 initializeRouter();
 
 initializeSession({
+    // getExpirationTimestamp: () => {
+    //     const { tenant } = routerStoreInstance.getParameters<any>();
+    //     const params = routerStoreInstance.getParameters<any>();
+    //     console.log({ tenant, params });
+    //     if (tenant) {
+    //         debugger;
+    //     }
+    //     debugger;
+    //     return -1;
+    // },
     refreshSession: () => {
         throw Error("refreshSession is not implemented yet");
     },
-    loginRoute: eAppRoutes.signin.path,
+    loginRoute: eAppRoutes.signinRedirect.path,
     startRoute: eAppRoutes.dashboard.path
 });

@@ -1,8 +1,4 @@
 export const eAppRoutes = {
-    dashboard: {
-        key: "dashboard",
-        path: "/"
-    },
     signin: {
         key: "signin",
         path: "/fe/auth/signin"
@@ -10,5 +6,13 @@ export const eAppRoutes = {
     signout: {
         key: "signout",
         path: "/fe/auth/signout"
+    },
+    dashboard: {
+        key: "dashboard",
+        path: "/fe/:tenant/dashboard"
+    },
+    signinRedirect: {
+        key: "signinRedirect",
+        path: "/fe/local/signin"
     }
 };

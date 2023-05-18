@@ -336,7 +336,7 @@ class DatabaseUtils {
                                     description: "Porta Internal Client",
                                     is_active: true,
                                     client_id: MD5([admin_user, admin_password].join("")),
-                                    redirect_uri: `https://${public_domain}/oidc/callback`,
+                                    redirect_uri: `https://${public_domain}/${tenantName}/local/signin/callback`,
                                     post_logout_redirect_uri: `https://${public_domain}/post_logout`,
                                     secret: admin_password
                                 },

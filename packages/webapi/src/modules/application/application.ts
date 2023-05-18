@@ -7,6 +7,7 @@ import { PortaAuthenticationModule } from "../auth/porta";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
+import { LocalAuthRoutes } from "../auth/local";
 
 /**
  * Configuration setting for testing
@@ -28,6 +29,7 @@ const application = new Application({
         //
         ValidationSchema(),
         AuthorizationModule(),
+        LocalAuthRoutes(),
         SPARoutes()
     ]
 }).addModule([
