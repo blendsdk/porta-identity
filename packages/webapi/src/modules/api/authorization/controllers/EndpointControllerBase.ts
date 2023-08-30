@@ -437,7 +437,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns
      * @memberof EndpointController
      */
-    protected getAuthorizationRecord(tenant: ISysTenant, client_id: string, redirect_uri: string) {
+    protected async getAuthorizationRecord(tenant: ISysTenant, client_id: string, redirect_uri: string) {
         const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(
             databaseUtils.getTenantDataSourceID(tenant)
         );
@@ -445,7 +445,31 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         if (redirect_uri === eOAuthGrantType.client_credentials) {
             return authViewDs.findByClientIdOnly({ client_id });
         } else {
-            return authViewDs.findByClientIdAndRedirectUri({ client_id, redirect_uri });
+            // Internally the redirect_uri is saved as JSON array. so we need to parse it
+            // to check if it is conforming. Another implementation fo this would have
+            // been to normalize the redirect_uris as a separate DB table. This was
+            // a lot of work and required yet another refactoring, so the decision is made
+            // to implement it this way.
+            const authRecord = await authViewDs.findByClientIdAndRedirectUri({ client_id });
+
+            // check if there is an auth record with the given client_id
+            if (authRecord) {
+                let uris: string[] = [];
+                let uri = authRecord?.redirect_uri;
+                try {
+                    if (uri.startsWith("[") && uri.endsWith("]")) {
+                        uris = JSON.parse(authRecord.redirect_uri || "[]");
+                    } else {
+                        uris.push(uri);
+                    }
+                } catch (err) {
+                    uris = [uri];
+                }
+                authRecord.redirect_uri = uris.filter(Boolean).find((u) => {
+                    return u == redirect_uri;
+                });
+            }
+            return authRecord?.redirect_uri ? authRecord : undefined;
         }
     }
 

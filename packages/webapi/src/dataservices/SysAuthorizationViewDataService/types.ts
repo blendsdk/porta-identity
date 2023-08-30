@@ -13,11 +13,6 @@ export interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriPar
 	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
 	 */
 	client_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
-	 */
-	redirect_uri: string;
 }
 
 /**
