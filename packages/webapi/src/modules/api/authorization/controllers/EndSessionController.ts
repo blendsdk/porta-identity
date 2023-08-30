@@ -67,14 +67,18 @@ export class EndSessionController extends EndpointController {
      * @memberof EndSessionController
      */
     protected async findSessionByClientIDAndLogoutHint(tenant: ISysTenant, client_id: string, logout_hint: string) {
-        const { dataSource } = await databaseUtils.getTenantDataSource(tenant.name);
-        const sessionDs = new SysSessionViewDataService({ dataSource });
-        return logout_hint && client_id
-            ? sessionDs.findSessionByOidcClientAndSubject({
-                  client_id,
-                  sub_claim: logout_hint
-              })
-            : undefined;
+        if (tenant) {
+            const { dataSource } = await databaseUtils.getTenantDataSource(tenant.name);
+            const sessionDs = new SysSessionViewDataService({ dataSource });
+            return logout_hint && client_id
+                ? sessionDs.findSessionByOidcClientAndSubject({
+                      client_id,
+                      sub_claim: logout_hint
+                  })
+                : null;
+        } else {
+            return null;
+        }
     }
 
     protected async createLogoutFlow(
