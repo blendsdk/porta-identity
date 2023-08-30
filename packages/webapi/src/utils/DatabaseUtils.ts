@@ -14,7 +14,6 @@ import { SysGroupPermissionDataService } from "../dataservices/SysGroupPermissio
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysPermissionDataService } from "../dataservices/SysPermissionDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
-import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { commonUtils } from "./CommonUtils";
@@ -25,6 +24,7 @@ import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataS
 import { SysRefreshTokenViewDataService } from "../dataservices/SysRefreshTokenViewDataService";
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
+import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
 
 class DatabaseUtils {
     /**
