@@ -4,7 +4,7 @@ import {
     ISessionLogoutPostResponse,
     ISysSessionView
 } from "@porta/shared";
-import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { EndpointController } from "./EndpointControllerBase";
 import { ISessionLogoutPostRequest } from "@porta/shared";
 import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
@@ -14,6 +14,7 @@ import { SysSessionViewDataService } from "../../../../dataservices/SysSessionVi
 import * as crypto from "crypto";
 import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
 import { AUTH_FLOW_TTL } from "./constants";
+import { createErrorObject } from "@blendsdk/stdlib";
 
 interface ISessionStorage extends ISysSessionView {}
 
@@ -65,7 +66,7 @@ export class EndSessionController extends EndpointController {
      * @returns
      * @memberof EndSessionController
      */
-    protected async fontSessionByClientIDAndLogoutHint(tenant: ISysTenant, client_id: string, logout_hint: string) {
+    protected async findSessionByClientIDAndLogoutHint(tenant: ISysTenant, client_id: string, logout_hint: string) {
         const { dataSource } = await databaseUtils.getTenantDataSource(tenant.name);
         const sessionDs = new SysSessionViewDataService({ dataSource });
         return logout_hint && client_id
@@ -215,8 +216,8 @@ export class EndSessionController extends EndpointController {
             await this.getCache().deleteValue(this.getLogoutFlowCacheKey(flowId));
 
             // Response by redirect otherwise with JSON
-            if (flowData.post_logout_redirect_uri) {
-                const url = new URL(flowData.post_logout_redirect_uri);
+            if (flowData?.client.post_logout_redirect_uri) {
+                const url = new URL(flowData.client.post_logout_redirect_uri);
                 if (flowData.state) {
                     url.searchParams.append("state", flowData.state);
                 }
@@ -224,6 +225,8 @@ export class EndSessionController extends EndpointController {
             } else {
                 return new SuccessResponse({ data: { done: true } });
             }
+        } else {
+            return new BadRequestResponse(createErrorObject("INVALID_LOGOUT_FLOW", { flowId }));
         }
     }
 
@@ -243,7 +246,7 @@ export class EndSessionController extends EndpointController {
         const { idToken, errors } = await this.validateIDToken(tenant, id_token_hint, client_id);
 
         // find a session based on the client_id and logout_hint
-        const hintedSession = await this.fontSessionByClientIDAndLogoutHint(tenantRecord, client_id, logout_hint);
+        const hintedSession = await this.findSessionByClientIDAndLogoutHint(tenantRecord, client_id, logout_hint);
         // If the id token is ok? (not given or given and ok!)
         if (!errors) {
             const uriErrors: string[] = [];
@@ -257,7 +260,7 @@ export class EndSessionController extends EndpointController {
             // the session and user
             if (idToken) {
                 const { sub, aud, sid } = idToken;
-                const session = await this.fontSessionByClientIDAndLogoutHint(tenantRecord, aud, sub);
+                const session = await this.findSessionByClientIDAndLogoutHint(tenantRecord, aud, sub);
                 if (sid !== session?.session_id) {
                     uriErrors.push("idk_session_mismatch");
                 }

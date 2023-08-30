@@ -188,7 +188,7 @@ export const LocalAuthRoutes = (): IRouter => {
                     },
                     required: ["tenant"]
                 },
-                handlers: (req: HttpRequest<ITenantRequestParams>, res: HttpResponse, next: NextFunction) => {
+                handlers: (req: HttpRequest<ITenantRequestParams>, res: HttpResponse, _next: NextFunction) => {
                     const worker = new Promise<string>(async (resolve) => {
                         const { tenant } = req.context.getParameters<ITenantRequestParams>();
                         const tenantRecord = await databaseUtils.findTenant(tenant);
