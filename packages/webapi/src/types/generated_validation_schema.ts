@@ -369,8 +369,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean
 				},
 				oidc_sub_claim: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
+					type: eJsonSchemaType.string
 				},
 				client: {
 					type: eJsonSchemaType.string,
