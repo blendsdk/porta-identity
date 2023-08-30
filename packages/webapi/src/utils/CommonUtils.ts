@@ -39,6 +39,31 @@ class CommonUtils {
     }
 
     /**
+     * Tries and clean to parse a string into an array.
+     * If not possible then return an array with the input as its element
+     *
+     * @param {string} data
+     * @returns
+     * @memberof CommonUtils
+     */
+    public parseToArray(data: string) {
+        let result = [];
+        if (data) {
+            data = data.toString().trim();
+            try {
+                if (data.startsWith("[") && data.endsWith("]")) {
+                    result = JSON.parse(data);
+                } else {
+                    result.push(data);
+                }
+            } catch (err) {
+                result.push(data);
+            }
+        }
+        return result.filter(Boolean);
+    }
+
+    /**
      * Verifies PKCE
      *
      * @export

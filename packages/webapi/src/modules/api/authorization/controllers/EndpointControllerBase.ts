@@ -454,18 +454,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
             // check if there is an auth record with the given client_id
             if (authRecord) {
-                let uris: string[] = [];
-                let uri = authRecord?.redirect_uri;
-                try {
-                    if (uri.startsWith("[") && uri.endsWith("]")) {
-                        uris = JSON.parse(authRecord.redirect_uri || "[]");
-                    } else {
-                        uris.push(uri);
-                    }
-                } catch (err) {
-                    uris = [uri];
-                }
-                authRecord.redirect_uri = uris.filter(Boolean).find((u) => {
+                const uris = commonUtils.parseToArray(authRecord?.redirect_uri);
+                authRecord.redirect_uri = uris.find((u) => {
                     return u == redirect_uri;
                 });
             }
