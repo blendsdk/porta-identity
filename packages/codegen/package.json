@@ -14,16 +14,16 @@
     "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
   },
   "devDependencies": {
-    "@types/node": "^18.16.0",
-    "tslib": "^2.5.0"
+    "@types/node": "^20.5.7",
+    "tslib": "^2.6.2"
   },
   "dependencies": {
-    "@blendsdk/codegen": "3.2.243",
-    "@blendsdk/datakit": "3.2.243",
-    "@blendsdk/jsonschema": "3.2.243",
-    "@blendsdk/logger": "3.2.243",
-    "@blendsdk/postgresql": "3.2.243",
-    "@blendsdk/stdlib": "3.2.243",
-    "jose": "^4.14.1"
+    "@blendsdk/codegen": "3.2.288",
+    "@blendsdk/datakit": "3.2.288",
+    "@blendsdk/jsonschema": "3.2.288",
+    "@blendsdk/logger": "3.2.288",
+    "@blendsdk/postgresql": "3.2.288",
+    "@blendsdk/stdlib": "3.2.288",
+    "jose": "^4.14.4"
   }
 }

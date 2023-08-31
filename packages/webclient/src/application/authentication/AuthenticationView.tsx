@@ -1,4 +1,3 @@
-import { catchSystemError } from "@blendsdk/react";
 import { IFlowInfo } from "@porta/shared";
 import { useFormik } from "formik";
 import Cookies from "js-cookie";

@@ -1,0 +1,38 @@
+{
+    "name": "@porta/bff-test",
+    "private": "true",
+    "version": "1.0.136",
+    "main": "dist/index.js",
+    "bin": {
+        "porta-ctrl": "./dist/index.js"
+    },
+    "author": "TrueSoftware <info@truesoftware.nl>",
+    "scripts": {
+        "build": "rm -fR ./dist ./temp && tsc",
+        "watch:ts": "rm -fR ./dist && tsc -w",
+        "watch:node": "NODE_TLS_REJECT_UNAUTHORIZED=0 BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config/ --inspect ./dist/index.js start --config=`pwd`/config/*.config.js --config=`pwd`/config/.*.config.js --migrate=${MIGRATE:-false}",
+        "test": "NODE_TLS_REJECT_UNAUTHORIZED=0 yarn cache:restart && yarn db:restart && sleep 30 && BYPASS=true TEST=true jest --detectOpenHandles --passWithNoTests && yarn db:stop",
+        "cache:start": "docker-compose -f ./docker/docker-compose.yml up -d redis",
+        "cache:stop": "docker-compose -f ./docker/docker-compose.yml rm -fsv redis && docker container prune --force",
+        "cache:restart": "yarn cache:stop && sleep 5 && yarn cache:start"
+    },
+    "dependencies": {
+        "@blendsdk/clientkit": "3.2.288",
+        "@blendsdk/crypto": "3.2.288",
+        "@blendsdk/jsonschema": "3.2.288",
+        "@blendsdk/stdlib": "3.2.288",
+        "@blendsdk/webafx": "3.2.288",
+        "@blendsdk/webafx-cache": "3.2.288",
+        "@blendsdk/webafx-common": "3.2.288",
+        "@blendsdk/webafx-i18n": "3.2.288",
+        "@types/react": "^18.2.21",
+        "@types/react-dom": "^18.2.7",
+        "jsonwebtoken": "^9.0.2",
+        "openid-client": "^5.4.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "tslib": "^2.6.2",
+        "yargs": "^17.7.2",
+        "typescript": "^5.2.2"
+    }
+}

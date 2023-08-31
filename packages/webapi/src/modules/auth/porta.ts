@@ -1,7 +1,7 @@
 import { IDictionaryOf, MD5 } from "@blendsdk/stdlib";
 import { IApplicationModule } from "@blendsdk/webafx";
-import { AuthenticationModuleBase, IAuthenticationModule } from "@blendsdk/webafx-auth";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { AuthenticationModuleBase, IAuthenticationModule, TGetUserMethod } from "@blendsdk/webafx-auth";
+import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
 import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
 import { IAccessToken } from "../../types";
 import { databaseUtils } from "../../utils";
@@ -19,6 +19,19 @@ export class IPortaAuthenticationModule {
 }
 
 export class PortaAuthenticationModule extends AuthenticationModuleBase<IPortaAuthenticationModule> {
+    protected findSessionStorageByToken<SessionStorageType = any>(
+        _token: string,
+        _req: HttpRequest<{}>
+    ): Promise<SessionStorageType> {
+        throw new Error("Method not implemented.");
+    }
+    protected createRequestContextGetUserMethod(
+        _sessionStorage: any,
+        _route: IRoute,
+        _reg: HttpRequest<{}>
+    ): Promise<TGetUserMethod> {
+        throw new Error("Method not implemented.");
+    }
     /**
      * KeySignature cache (safe for multiple docker instances)
      *

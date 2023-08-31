@@ -1,0 +1,106 @@
+{
+    "signin_caption": {
+        "en": "Sign In",
+        "nl": "Inloggen"
+    },
+    "password_caption": {
+        "en": "Enter password",
+        "nl": "Voer uw wachtwoord in"
+    },
+    "login_text_placeholder": {
+        "en": "Sign in with your email.",
+        "nl": "Log in met uw e-mailadres."
+    },
+    "btn_cannot_access_account": {
+        "en": "Can't access your account?",
+        "nl": "Heeft u geen toegang tot uw account?"
+    },
+    "btn_signin_next": {
+        "en": "Next",
+        "nl": "Verder"
+    },
+    "btn_back": {
+        "en": "Back",
+        "nl": "Terug"
+    },
+    "no_account_question": {
+        "en": "No account?",
+        "nl": "Heeft u nog geen account?"
+    },
+    "create_account_btn": {
+        "en": "Create one.",
+        "nl": "Maak nu een account aan."
+    },
+    "btn_next": {
+        "en": "Next",
+        "nl": "Volgende"
+    },
+    "btn_signin": {
+        "en": "Sign In",
+        "nl": "Inloggen"
+    },
+    "username_is_required": {
+        "en": "Please provide a username.",
+        "nl": "Geef een gebruikersnaam op a.u.b."
+    },
+    "password_text_placeholder": {
+        "en": "Your password",
+        "nl": "Uw wachtwoord"
+    },
+    "not_a_valid_account": {
+        "en": "Please provide a valid account.",
+        "nl": "Geef een geldig account op a.u.b."
+    },
+    "account_not_found": {
+        "en": "This account is unknown.",
+        "nl": "Dit account is niet bekend bij ons."
+    },
+    "invalid_password": {
+        "en": "This password is invalid.",
+        "nl": "Dit wachtwoord is ongeldig."
+    },
+    "use_another_account": {
+        "en": "Use another account",
+        "nl": "Een ander account gebruiken"
+    },
+    "invalid_auth_session_caption": {
+        "en": "Authentication process timed out",
+        "nl": "Er is een time-out opgetreden bij het authenticatieproces"
+    },
+    "invalid_logout_session_caption": {
+        "en": "A timeout occurred while logging out",
+        "nl": "Er is een time-out opgetreden bij het uitloggen"
+    },
+    "invalid_logout_session_text": {
+        "en": "It is not possible to continue with the logout process. Please close this window and return to you application.",
+        "nl": "Het is niet mogelijk om verder te gaan met het uitlogproces. Sluit dit venster en keer terug naar uw applicatie."
+    },
+    "invalid_auth_session_text": {
+        "en": "It took too long to complete your authentication. Please return to your application's login screen and start over again.",
+        "nl": "Het duurde te lang om uw authenticatie te voltooien. Ga terug naar het inlogscherm van uw applicatie en begin opnieuw."
+    },
+    "please_wait_while_redirecting": {
+        "en": "Please wait while being redirected...",
+        "nl": "U wordt omgeleid. Even geduld aub..."
+    },
+    "please_wait": {
+        "en": "Please wait...",
+        "nl": "Even geduld aub..."
+    },
+    "btn_yes_logout": {
+        "en": "I want to logout",
+        "nl": "Ik wil uitloggen"
+    },
+    "keep_me_signed_in": {
+        "en": "Keep me signed in",
+        "nl": "Ik blijf ingelogd"
+    },
+    "logout_confirm_message": {
+        "en": "Do you wish to sign out of from <span style=\"white-space:nowrap\">${application_name}?</span>",
+        "nl": "Wilt u zich afmelden bij <span style=\"white-space:nowrap\">${application_name}?</span>"
+    },
+    "logout_complete": {
+        "en": "You are successfully signed out. You can close this browser tab or window now.",
+        "nl": "U bent succesvol uitgelogd. U kunt dit browsertabblad of dit browservenster nu sluiten."
+    }
+}
