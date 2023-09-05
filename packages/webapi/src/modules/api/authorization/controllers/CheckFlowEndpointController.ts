@@ -60,10 +60,17 @@ export class CheckFlowEndpointController extends EndpointController {
         const mfa_answers = JSON.parse(mfa_input);
         const mfa_codes = await this.getMFACodes();
         let mfa_state: IDictionaryOf<boolean> = {};
+        let all_state: number = 0;
         mfa_list.forEach((item) => {
             const key = `mfa_${item}`;
             mfa_state[key] = mfa_answers[key] === mfa_codes[item];
+            all_state += mfa_answers[key] === mfa_codes[item] ? 0 : 1;
         });
+
+        if (all_state === 0) {
+            await this.saveAuthenticatedUser(tenantRecord, userRecord);
+        }
+
         return new SuccessResponse<ICheckFlowResponse>({
             data: await this.updateCurrentFlowState({
                 mfa_state: JSON.stringify(mfa_state)
@@ -190,8 +197,11 @@ export class CheckFlowEndpointController extends EndpointController {
         // if the password_state is true then it means we are basically authenticated except for a
         // final mfa validation. This is a case when there is not mfa for this user
         if (password_state) {
-            await this.saveAuthenticatedUser(tenantRecord, userRecord);
-            await this.sendMFACodes(tenantRecord);
+            if (mfa_list.length === 0) {
+                await this.saveAuthenticatedUser(tenantRecord, userRecord);
+            } else {
+                await this.sendMFACodes(tenantRecord);
+            }
         }
 
         return new SuccessResponse<ICheckFlowResponse>({
