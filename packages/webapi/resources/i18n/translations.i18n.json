@@ -1,4 +1,8 @@
 {
+    "invalid_mfa_portamail": {
+        "en": "Invalid Validation Code!",
+        "nl": "Verificatiecode is niet geldig!"
+    },
     "mfa_email_subject": {
         "en": "${organization} Verification Code",
         "nl": "${organization} Verificatiecode"
