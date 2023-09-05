@@ -162,6 +162,8 @@ export const LoginView = () => {
                                 } else {
                                     finalizeAndRedirect(form.values.username);
                                 }
+                            } else {
+                                checkFlow.reset();
                             }
                         });
                     });
@@ -176,6 +178,8 @@ export const LoginView = () => {
                         validateForm().then((valResult) => {
                             if (isEmptyObject(valResult)) {
                                 finalizeAndRedirect(form.values.username);
+                            } else {
+                                checkFlow.reset();
                             }
                         });
                     });
