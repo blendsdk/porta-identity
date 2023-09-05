@@ -74,7 +74,8 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addNumber("expires_in")
                 .addString("id_token")
                 .addString("refresh_token", { optional: true })
-                .addNumber("refresh_token_expires_in", { optional: true });
+                .addNumber("refresh_token_expires_in", { optional: true })
+                .addNumber("refresh_token_expires_at", { optional: true });
 
             typeSchema.createResponseType(response_type, payload_type);
         }

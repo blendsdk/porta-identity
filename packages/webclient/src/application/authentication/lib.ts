@@ -1,30 +1,35 @@
-import { createApiStore } from "@blendsdk/react";
-import {
-    IAuthenticationFlowState,
-    ICheckFlowRequest,
-    ICheckFlowResponse,
-    ILogoutFlowInfoRequest,
-    ILogoutFlowInfoResponse,
-    ILogoutFlowInfo,
-    portaAuthUtils
-} from "@porta/shared";
 import Cookies from "js-cookie";
 import { getBaseUrl } from "../../system/session";
-import { PortaApi } from "../api";
+import { portaAuthUtils } from "@porta/shared";
+
+export const FIELD_SIZE = "large";
+
+export interface IExistingAccountStorage {
+    [client_id: string]: IExistingAccount[];
+}
+
+export interface IExistingAccount {
+    account: string;
+    tenant: string;
+}
+
+export interface IAuthenticationDialogModel {
+    username: string;
+    password: string;
+    mfa: string;
+}
 
 /**
- * Gets the LogoutFlow info
+ * Enum describing the UI flow
  */
-export const useGetLogoutFlow = createApiStore<ILogoutFlowInfo, ILogoutFlowInfoRequest, ILogoutFlowInfoResponse>({
-    api: PortaApi.authorization.logoutFlowInfo
-});
-
-/**
- * The CheckFlow Store
- */
-export const useCheckFlow = createApiStore<IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse>({
-    api: PortaApi.authorization.checkFlow
-});
+export const eFlowState = {
+    SELECT_ACCOUNT: 1,
+    REQUIRE_PASSWORD: 2,
+    START_MFA: 3,
+    COMPLETE: 4,
+    LOGOUT_PROGRESS: 5,
+    INVALID_SESSION: 99
+};
 
 /**
  * Form data validator
@@ -41,11 +46,33 @@ export const validateData = (data: any, validator: (data: any) => void) => {
     }
 };
 
+export const isFlowExpired = (key: string) => {
+    const now = Date.now();
+    const _ls = Cookies.get(key);
+
+    let expire = now - 1;
+
+    if (_ls) {
+        try {
+            expire = parseInt(_ls);
+        } catch {
+            //no-op
+        }
+    }
+
+    // edge case
+    if (isNaN(expire)) {
+        expire = now - 1;
+    }
+
+    return expire - Date.now() <= 0;
+};
+
 /**
  * Get the current tenant from the cookies
  * @returns
  */
-export const getAuthenticatingTenant = () => {
+const getAuthenticatingTenant = () => {
     return Cookies.get("_at");
 };
 
@@ -71,26 +98,4 @@ export const updateUserSelectList = (tenant: string, user?: string) => {
         Cookies.set(listKey, JSON.stringify(list));
     }
     return list;
-};
-
-export const isExpired = (key: string) => {
-    const now = Date.now();
-    const _ls = Cookies.get(key);
-
-    let expire = now - 1;
-
-    if (_ls) {
-        try {
-            expire = parseInt(_ls);
-        } catch {
-            //no-op
-        }
-    }
-
-    // edge case
-    if (isNaN(expire)) {
-        expire = now - 1;
-    }
-
-    return expire - Date.now() <= 0;
 };

@@ -16,10 +16,19 @@ export const useStyles = makeStyles({
             height: "100%"
         }
     },
+    authViewContent: {
+        display: "flex",
+        flexDirection: "column",
+        boxSizing: "border-box",
+        ...shorthands.flex(1),
+        justifyContent: "center",
+        ...shorthands.gap(tokens.spacingVerticalL)
+    },
     authView: {
         backgroundColor: tokens.colorNeutralBackground1,
         display: "flex",
         flexDirection: "column",
+        justifyContent: "center",
         boxSizing: "border-box",
         ...shorthands.gap(tokens.spacingVerticalL),
         ...shorthands.padding("1rem"),
@@ -27,6 +36,7 @@ export const useStyles = makeStyles({
             display: "flex",
             position: "absolute",
             width: "440px",
+            minHeight: "240px",
             transform: "translate(-50%, -50%)",
             top: "50%",
             left: "50%",
@@ -39,7 +49,8 @@ export const useStyles = makeStyles({
         }
     },
     logo: {
-        maxHeight: "48px"
+        maxHeight: "48px",
+        ...shorthands.flex(1)
     },
     footer: {
         display: "flex",
@@ -56,7 +67,8 @@ export const useStyles = makeStyles({
         textAlign: "center"
     },
     spinner: {
-        ...shorthands.padding("1rem")
+        ...shorthands.padding("1rem"),
+        ...shorthands.flex(1)
     },
     logout_message: {
         textAlign: "center",

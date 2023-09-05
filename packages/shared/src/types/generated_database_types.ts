@@ -190,11 +190,6 @@ export interface ISysUserPermissionView {
  */
 export interface ISysAccessTokenView {
 	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenView
-	 */
-	id: string;
-	/**
 	 * @type number
 	 * @memberOf ISysAccessTokenView
 	 */
@@ -204,6 +199,11 @@ export interface ISysAccessTokenView {
 	 * @memberOf ISysAccessTokenView
 	 */
 	refresh_ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	id: string;
 	/**
 	 * @type number
 	 * @memberOf ISysAccessTokenView

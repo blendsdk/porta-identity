@@ -24,6 +24,7 @@ import {
 } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
+import { millisecondsToSeconds } from "../../../auth/utils";
 
 /**
  * Handles the token endpoint
@@ -436,7 +437,11 @@ export class TokenEndpointController extends EndpointController {
         const { privateKey } = JSON.parse(data);
 
         const { auth_time, roles, permissions, expire_at, user, access_token, ttl } = accessTokenStorage;
-        const { refresh_token, ttl: refresh_token_expires_in } = refreshTokenStorage || {};
+        const {
+            refresh_token,
+            ttl: refresh_token_expires_in,
+            expire_at: refresh_token_expires_at
+        } = refreshTokenStorage || {};
 
         const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
 
@@ -484,7 +489,7 @@ export class TokenEndpointController extends EndpointController {
             .setIssuedAt()
             .setIssuer(this.getIssuer(tenant.name))
             .setAudience(client_id)
-            .setExpirationTime(new Date(expire_at).getTime())
+            .setExpirationTime(millisecondsToSeconds(Date.parse(expire_at)))
             .setSubject(user.id)
             .sign(pKey);
 
@@ -494,7 +499,8 @@ export class TokenEndpointController extends EndpointController {
             id_token,
             token_type: "Bearer", // OIDC
             refresh_token,
-            refresh_token_expires_in
+            refresh_token_expires_in: parseFloat(refresh_token_expires_in as any),
+            refresh_token_expires_at: millisecondsToSeconds(new Date(refresh_token_expires_at).getTime())
         };
     }
 

@@ -177,7 +177,7 @@ export class Claims {
                     scope: "email",
                     claim: "email",
                     handler: this.handleClaim(() => {
-                        return user.username;
+                        return profile.email || user.username;
                     })
                 },
                 {

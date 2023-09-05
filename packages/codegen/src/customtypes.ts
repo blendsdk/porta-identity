@@ -9,8 +9,7 @@ export function createCustomTypes(order: number) {
             .addBoolean("account_state", { optional: true })
             .addBoolean("password_state", { optional: true })
             .addString("signin_url", { optional: true })
-            .addBoolean("mfa_state", { optional: true })
-            .addString("mfa", { optional: true })
+            .addString("mfa_state", { optional: true })
             .addString("mfa_list", { array: true, optional: true });
     } else {
         typeSchema

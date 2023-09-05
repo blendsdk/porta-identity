@@ -197,19 +197,29 @@ from
 DROP VIEW IF EXISTS sys_refresh_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_refresh_token_view AS select
     rt.id,
-    rt.ttl,
+    trunc(extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()))::bigint as ttl,
     rt.refresh_token,
     at.access_token,
-    rt.date_created + ( rt.ttl || ' seconds')::interval < now() as is_expire,
-    rt.date_created + ( rt.ttl || ' seconds')::interval expire_at
+    extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()) < 0 as is_expire,
+    rt.date_created + ( at.refresh_ttl || ' seconds')::interval as expire_at
 from
     sys_refresh_token rt
     inner join sys_access_token at on at.id = rt.access_token_id;
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
-	sat.*,
-	sat.date_created + (ttl || ' seconds') :: interval < now() as is_expired,
-	sat.date_created + (refresh_ttl || ' seconds') :: interval < now() as is_revoke,
+	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
+	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
+	sat.id,
+	sat.auth_time,
+	sat.date_created,
+	sat.auth_request_params,
+	sat.access_token,
+	sat.session_id,
+	sat.user_id,
+	sat.client_id,
+	sat.tenant_id,
+	extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now()) < 0 as is_expired,
+	extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now()) < 0 as is_revoke,
 	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
 	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
@@ -437,9 +447,19 @@ from
     inner join sys_permission sp on sp.id = sgp.permission_id;
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
-	sat.*,
-	sat.date_created + (ttl || ' seconds') :: interval < now() as is_expired,
-	sat.date_created + (refresh_ttl || ' seconds') :: interval < now() as is_revoke,
+	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
+	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
+	sat.id,
+	sat.auth_time,
+	sat.date_created,
+	sat.auth_request_params,
+	sat.access_token,
+	sat.session_id,
+	sat.user_id,
+	sat.client_id,
+	sat.tenant_id,
+	extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now()) < 0 as is_expired,
+	extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now()) < 0 as is_revoke,
 	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
 	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
@@ -461,11 +481,11 @@ where
 DROP VIEW IF EXISTS sys_refresh_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_refresh_token_view AS select
     rt.id,
-    rt.ttl,
+    trunc(extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()))::bigint as ttl,
     rt.refresh_token,
     at.access_token,
-    rt.date_created + ( rt.ttl || ' seconds')::interval < now() as is_expire,
-    rt.date_created + ( rt.ttl || ' seconds')::interval expire_at
+    extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()) < 0 as is_expire,
+    rt.date_created + ( at.refresh_ttl || ' seconds')::interval as expire_at
 from
     sys_refresh_token rt
     inner join sys_access_token at on at.id = rt.access_token_id;

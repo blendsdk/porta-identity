@@ -21,5 +21,6 @@ module.exports = {
     PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",
     PORTA_PUBLIC_DOMAIN: "porta.local",
     PORTA_SSO_COMMON_NAME: "porta_development",
-    ENFORCE_PKCE: false
+    ENFORCE_PKCE: false,
+    MFA_EMAIL_FROM: "no-reply@truesoftware.nl"
 };

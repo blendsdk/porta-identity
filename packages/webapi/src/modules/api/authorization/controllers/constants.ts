@@ -2,7 +2,7 @@
 export const REDIRECT_TTL = 30;
 
 // How log an authentication flow will exist
-export const AUTH_FLOW_TTL = 60 * 3;
+export const AUTH_FLOW_TTL = 60 * 10;
 
 // How long an OTA will exist. This is always a bit lower than AUTH_FLOW_TTL
 export const OTA_TTL = 2.5 * 60;

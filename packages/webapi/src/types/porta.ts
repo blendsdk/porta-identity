@@ -137,6 +137,10 @@ export interface IFlowRedirect {
     redirect_uri: string;
 }
 
+export interface IMFACodes {
+    mfa_codes: IDictionaryOf<string>;
+}
+
 export interface ICachedUser {
     tenant: ISysTenant;
     user: ISysUser;

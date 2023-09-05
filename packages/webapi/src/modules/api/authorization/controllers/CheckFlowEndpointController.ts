@@ -1,12 +1,23 @@
 import { verifyStringSync } from "@blendsdk/crypto";
-import { createErrorObject } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { IAuthenticationFlowState, ICheckFlowRequest, ICheckFlowResponse, ISysTenant, ISysUser } from "@porta/shared";
+import {
+    IAuthenticationFlowState,
+    ICheckFlowRequest,
+    ICheckFlowResponse,
+    ISysTenant,
+    ISysUser,
+    ISysUserProfile
+} from "@porta/shared";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { ICachedFlowInformation, ICachedUser } from "../../../../types";
+import { ICachedFlowInformation, ICachedUser, IMFACodes } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
+import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
+import { II18NRequestContext } from "@blendsdk/webafx-i18n";
+import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
+import { EmailMFAProvider } from "../EMailMFAProvider";
+import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 
 /**
  * Handles the CheckFlow endpoint
@@ -25,7 +36,7 @@ export class CheckFlowEndpointController extends EndpointController {
      */
     public async handleRequest({ state, options }: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
         try {
-            let { tenantRecord = undefined } = await this.getCurrentAuthenticationFlow(); // TODO refactore try.catch
+            let { tenantRecord = undefined } = await this.getCurrentAuthenticationFlow();
             // get the latest tenant record
             const tenantDs = new SysTenantDataService();
             tenantRecord = await tenantDs.findSysTenantById({ id: tenantRecord.id });
@@ -34,11 +45,30 @@ export class CheckFlowEndpointController extends EndpointController {
             } else if (state === "check_pwd") {
                 return this.checkPasswordFlow(tenantRecord, options);
             } else if (state == "check_mfa") {
-                return new ServerErrorResponse(createErrorObject("NOT IMPLEMENTED !"));
+                return this.checkMFAFlow(tenantRecord, options);
             }
         } catch (err) {
             return new ServerErrorResponse(err.message);
         }
+    }
+
+    protected async checkMFAFlow(tenantRecord: ISysTenant, mfa_input: string) {
+        const currentState = await this.getCurrentFlowState();
+        const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
+        const userRecord = await userDs.findByUsernameNonService({ username: currentState.account });
+        const mfa_list = await this.getMFAList(userDs, userRecord);
+        const mfa_answers = JSON.parse(mfa_input);
+        const mfa_codes = await this.getMFACodes();
+        let mfa_state: IDictionaryOf<boolean> = {};
+        mfa_list.forEach((item) => {
+            const key = `mfa_${item}`;
+            mfa_state[key] = mfa_answers[key] === mfa_codes[item];
+        });
+        return new SuccessResponse<ICheckFlowResponse>({
+            data: await this.updateCurrentFlowState({
+                mfa_state: JSON.stringify(mfa_state)
+            })
+        });
     }
 
     /**
@@ -54,30 +84,17 @@ export class CheckFlowEndpointController extends EndpointController {
         // get the user from the tenant db
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
         const userRecord = await userDs.findByUsernameNonService({ username: username?.toLocaleLowerCase() });
+        const mfa_list = await this.getMFAList(userDs, userRecord);
 
         return new SuccessResponse<ICheckFlowResponse>({
             data: await this.updateCurrentFlowState({
                 account: userRecord !== null ? userRecord.username : null,
                 account_status: userRecord !== null,
                 account_state: tenantRecord.is_active ? userRecord?.is_active || false : false,
-                signin_url: this.createFlowUrl("signin")
+                signin_url: this.createFlowUrl("signin"),
+                mfa_list: mfa_list
             })
         });
-
-        // if (userRecord) {
-        //     return new SuccessResponse<ICheckFlowResponse>({
-        //         data: await this.updateCurrentFlowState({
-        //             account: userRecord !== null ? userRecord.username : null,
-        //             account_status: userRecord !== null,
-        //             account_state: tenantRecord.is_active ? userRecord?.is_active || false : false,
-        //             signin_url: this.createFlowUrl("signin")
-        //         })
-        //     });
-        // } else {
-        //     return new ServerErrorResponse({
-        //         message: "INVALID_OR_MISSING_USERNAME"
-        //     });
-        // }
     }
 
     /**
@@ -95,6 +112,60 @@ export class CheckFlowEndpointController extends EndpointController {
         return this.setFlow(eFlow.state, flowId, state);
     }
 
+    protected async getMFAList(userDs: SysUserDataService, userRecord: ISysUser) {
+        return (await userDs.findMfaByUserId({ user_id: userRecord.id })).map((item) => {
+            return item.mfa_name;
+        });
+    }
+
+    /**
+     * Configures and sends a MFA Email
+     *
+     * @protected
+     * @param {ISysUser} userRecord
+     * @param {ISysUserProfile} profileRecord
+     * @returns
+     * @memberof CheckFlowEndpointController
+     */
+    protected async sendMFAEmailCode(userRecord: ISysUser, profileRecord: ISysUserProfile) {
+        const { authRecord, tenantRecord } = await this.getCurrentAuthenticationFlow();
+        const emailMfa = new EmailMFAProvider({
+            mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
+            settings: this.request.context.getSettings(),
+            trans: ((this as any).context as II18NRequestContext).getTranslator(),
+            flowState: await this.getCurrentFlowState(),
+            tenantRecord,
+            authRecord,
+            userRecord,
+            profileRecord
+        });
+        return emailMfa.send();
+    }
+
+    protected async sendMFACodes(tenantRecord: ISysTenant) {
+        const currentState = await this.getCurrentFlowState();
+        const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
+        const profileDs = new SysUserProfileDataService({
+            tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+        });
+        const userRecord = await userDs.findByUsernameNonService({ username: currentState.account });
+        const profileRecord = await profileDs.findUserProfileByUserId({ user_id: userRecord.id });
+        const mfa_list = await this.getMFAList(userDs, userRecord);
+        const mfa_codes: IDictionaryOf<string> = {};
+        if (mfa_list.length !== 0) {
+            await asyncForEach(mfa_list, async (item) => {
+                switch (item) {
+                    case "portamail":
+                        mfa_codes[item] = await this.sendMFAEmailCode(userRecord, profileRecord);
+                        break;
+                    default:
+                        throw new Error(`MFA Type ${item} is not implemented`);
+                }
+            });
+        }
+        return await this.saveMFACodes(mfa_codes);
+    }
+
     /**
      * Checks a password for a previously given account
      *
@@ -110,29 +181,44 @@ export class CheckFlowEndpointController extends EndpointController {
         // get the user from the tenant db
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
         const userRecord = await userDs.findByUsernameNonService({ username: currentState.account });
-        const mfa_list = (await userDs.findMfaByUserId({ user_id: userRecord.id })).map((item) => {
-            return item.mfa_name;
-        });
+        const mfa_list = await this.getMFAList(userDs, userRecord);
         const password_state =
             currentState.account_state && currentState.account_status && currentState.account
                 ? verifyStringSync(password, userRecord.password)
                 : false;
 
-        const mfa_state = mfa_list.length == 0 ? true : null; // if there is no mfa then pretend mfa auth is also ok.
-
         // if the password_state is true then it means we are basically authenticated except for a
         // final mfa validation. This is a case when there is not mfa for this user
-        if (password_state && mfa_state) {
+        if (password_state) {
             await this.saveAuthenticatedUser(tenantRecord, userRecord);
+            await this.sendMFACodes(tenantRecord);
         }
 
         return new SuccessResponse<ICheckFlowResponse>({
             data: await this.updateCurrentFlowState({
                 password_state,
-                mfa_list,
-                mfa_state
+                mfa_list
             })
         });
+    }
+
+    protected async getMFACodes() {
+        const flowId = this.findFlowID();
+        const { mfa_codes } = await this.getFlow<IMFACodes>(eFlow.mfa_codes, flowId);
+        return mfa_codes;
+    }
+
+    protected async saveMFACodes(mfa_codes: IDictionaryOf<string>) {
+        const flowId = this.findFlowID();
+        const { expire = undefined } = await this.getCurrentAuthenticationFlow();
+        return this.setFlow<IMFACodes>(
+            eFlow.mfa_codes,
+            flowId,
+            { mfa_codes },
+            {
+                expire
+            }
+        );
     }
 
     /**
@@ -146,7 +232,6 @@ export class CheckFlowEndpointController extends EndpointController {
      */
     protected async saveAuthenticatedUser(tenant: ISysTenant, user: ISysUser) {
         const flowId = this.findFlowID();
-
         const { expire = undefined } = await this.getCurrentAuthenticationFlow();
 
         delete user.password;

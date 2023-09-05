@@ -300,6 +300,11 @@ export interface IToken {
 	 * @memberOf IToken
 	 */
 	refresh_token_expires_in?: number;
+	/**
+	 * @type number
+	 * @memberOf IToken
+	 */
+	refresh_token_expires_at?: number;
 }
 
 /**

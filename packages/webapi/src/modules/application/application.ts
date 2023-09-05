@@ -8,6 +8,7 @@ import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
 import { LocalAuthRoutes } from "../auth/local";
+import { MailerModule } from "@blendsdk/webafx-mailer";
 
 /**
  * Configuration setting for testing
@@ -38,13 +39,19 @@ const application = new Application({
         return new CacheModule({ ...config, id: config.PORTA_SSO_COMMON_NAME });
     },
     I18NModuleFactory({
-        translationDatabase: path.join(process.cwd(), "resources", "i18n", "*.json")
+        translationDatabase: [
+            path.join(process.cwd(), "resources", "i18n", "*.json"),
+            path.join(process.cwd(), "resources", "i18n", "*.html")
+        ]
     }),
     (config) => {
         return new DatabaseModule({ ...config });
     },
     (config) => {
         return new PortaAuthenticationModule({ ...config });
+    },
+    (config) => {
+        return new MailerModule(config);
     }
 ]);
 

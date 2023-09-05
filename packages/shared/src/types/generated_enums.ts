@@ -16,7 +16,6 @@ export const eAuthenticationFlowState = {
 	PASSWORD_STATE: "password_state",
 	SIGNIN_URL: "signin_url",
 	MFA_STATE: "mfa_state",
-	MFA: "mfa",
 	MFA_LIST: "mfa_list"
 } as const;
 export type eAuthenticationFlowState = (typeof eAuthenticationFlowState)[keyof typeof eAuthenticationFlowState];
@@ -123,9 +122,9 @@ export type eSysUserPermissionView = (typeof eSysUserPermissionView)[keyof typeo
  */
 export const eSysAccessTokenView = {
 	$name: "sys_access_token_view",
-	ID: "id",
 	TTL: "ttl",
 	REFRESH_TTL: "refresh_ttl",
+	ID: "id",
 	AUTH_TIME: "auth_time",
 	DATE_CREATED: "date_created",
 	AUTH_REQUEST_PARAMS: "auth_request_params",

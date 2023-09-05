@@ -5,12 +5,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { dashboardPage } from "./page";
 import { BaseClient, Issuer, custom } from "openid-client";
+import { eJsonSchemaType } from "@blendsdk/jsonschema";
 
 custom.setHttpOptionsDefaults({
     timeout: 10000
 });
 
 let portaIssuer: Issuer<BaseClient> = undefined;
+let portaClient: BaseClient = undefined;
 
 let indexFile: string = null;
 
@@ -37,6 +39,42 @@ export const BFFRoutes = (): IRouter => {
             },
             {
                 method: "get",
+                url: "/callback",
+                public: true,
+                request: {
+                    properties: {
+                        code: {
+                            type: eJsonSchemaType.string
+                        },
+                        state: {
+                            type: eJsonSchemaType.string
+                        }
+                    },
+                    required: ["code"]
+                },
+                handlers: (req: HttpRequest, res: HttpResponse, next: NextFunction) => {
+                    const worker = new Promise<any>(async (resolve, reject) => {
+                        try {
+                            const params = portaClient.callbackParams(req);
+                            const tokenSet = await portaClient.callback("https://bff.local/callback", params, {});
+                            resolve({
+                                tokenSet,
+                                claims: tokenSet.claims(),
+                                userinfo: await portaClient.userinfo(tokenSet.access_token)
+                            });
+                        } catch (err: any) {
+                            reject(err);
+                        }
+                    });
+                    worker
+                        .then((data) => {
+                            res.json(data);
+                        })
+                        .catch(next);
+                }
+            },
+            {
+                method: "get",
                 url: "/login",
                 public: true,
                 handlers: (_req: HttpRequest, res: HttpResponse, next: NextFunction) => {
@@ -46,15 +84,17 @@ export const BFFRoutes = (): IRouter => {
                                 portaIssuer = await Issuer.discover("https://porta.local/porta/oauth2");
                                 console.log("Discovered issuer %s %O", portaIssuer.issuer, portaIssuer.metadata);
                             }
-                            const client = new portaIssuer.Client({
-                                client_id: "porta1",
-                                client_secret: "secret1",
-                                redirect_uris: ["https://bff.local/callback"],
-                                response_types: ["code"]
-                            });
+                            if (!portaClient) {
+                                portaClient = new portaIssuer.Client({
+                                    client_id: "porta1",
+                                    client_secret: "secret1",
+                                    redirect_uris: ["https://bff.local/callback"],
+                                    response_types: ["code"]
+                                });
+                            }
                             resolve(
-                                client.authorizationUrl({
-                                    scope: "openid email profile"
+                                portaClient.authorizationUrl({
+                                    scope: "openid email profile offline_access"
                                 })
                             );
                         } catch (err: any) {

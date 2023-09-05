@@ -1,7 +1,7 @@
 import { Body1, makeStyles, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
 import React from "react";
-import { useTranslator } from "../../system/i18n";
 import { Warning24Regular } from "@fluentui/react-icons";
+import { useTranslation } from "../../system/i18n";
 
 const useStyles = makeStyles({
     root: {
@@ -20,7 +20,8 @@ const useStyles = makeStyles({
     },
     body: {
         //...shorthands.margin(tokens.spacingVerticalL, 0),
-        ...shorthands.padding("0.2rem", "0.3rem")
+        ...shorthands.padding("0.2rem", "0.3rem"),
+        textAlign: "center"
     },
     warnIcon: {
         color: tokens.colorPaletteRedForeground1,
@@ -30,7 +31,7 @@ const useStyles = makeStyles({
 });
 
 export const InvalidSession: React.FC<{ logout?: boolean }> = ({ logout }) => {
-    const { translate } = useTranslator();
+    const { t } = useTranslation();
     const styles = useStyles();
 
     return (
@@ -38,11 +39,11 @@ export const InvalidSession: React.FC<{ logout?: boolean }> = ({ logout }) => {
             <div className={styles.header}>
                 <Warning24Regular className={styles.warnIcon} />
                 <Subtitle1 className="subtitle">
-                    {translate(logout ? "invalid_logout_session_caption" : "invalid_auth_session_caption")}
+                    {t(logout ? "invalid_logout_session_caption" : "invalid_auth_session_caption")}
                 </Subtitle1>
             </div>
             <Body1 className={styles.body}>
-                {translate(logout ? "invalid_logout_session_text" : "invalid_auth_session_text")}
+                {t(logout ? "invalid_logout_session_text" : "invalid_auth_session_text")}
             </Body1>
         </div>
     );

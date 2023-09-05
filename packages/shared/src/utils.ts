@@ -9,7 +9,7 @@ export enum eKeySignatureType {
     user_list = "user_list"
 }
 
-class PortaAuthUtils {
+export class PortaAuthUtils {
     /**
      * Creates a per tenant access token key signature
      *

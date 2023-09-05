@@ -3,7 +3,7 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { THttpRequest, createHttpApi, defineEndpoint } from "@blendsdk/clientkit";
+import { THttpRequest, createHttpApi, defineEndpoint, eParameterLocation } from "@blendsdk/clientkit";
 import {
 	IGetTranslationsRequest,
 	IGetTranslationsResponse,
@@ -87,7 +87,24 @@ export const PortaApi = createHttpApi<IPortaApi>({
 		},
 		authorization: {
 			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" }),
-			token: defineEndpoint({ method: "post", url: "/:tenant/oauth2/token" }),
+			token: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/token",
+				parameters: {
+					tenant: eParameterLocation.params,
+					client_id: eParameterLocation.body,
+					redirect_uri: eParameterLocation.body,
+					grant_type: eParameterLocation.body,
+					code: eParameterLocation.body,
+					code_verifier: eParameterLocation.body,
+					client_secret: eParameterLocation.body,
+					state: eParameterLocation.body,
+					nonce: eParameterLocation.body,
+					scope: eParameterLocation.query,
+					claims: eParameterLocation.query,
+					refresh_token: eParameterLocation.body
+				}
+			}),
 			signin: defineEndpoint({ method: "get", url: "/af/signin" }),
 			redirect: defineEndpoint({ method: "get", url: "/af/redirect" }),
 			flowInfo: defineEndpoint({ method: "post", url: "/af/flow_info" }),
@@ -95,9 +112,26 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			oidcDiscovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
 			oidcDiscoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
 			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me" }),
-			userInfoPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/me" }),
+			userInfoPost: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/me",
+				parameters: { access_token: eParameterLocation.body, tenant: eParameterLocation.params }
+			}),
 			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout" }),
-			sessionLogoutPost: defineEndpoint({ method: "post", url: "/:tenant/oauth2/logout" }),
+			sessionLogoutPost: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/logout",
+				parameters: {
+					tenant: eParameterLocation.params,
+					id_token_hint: eParameterLocation.body,
+					logout_hint: eParameterLocation.body,
+					client_id: eParameterLocation.body,
+					post_logout_redirect_uri: eParameterLocation.body,
+					state: eParameterLocation.body,
+					ui_locales: eParameterLocation.body,
+					lf: eParameterLocation.body
+				}
+			}),
 			logoutFlowInfo: defineEndpoint({ method: "get", url: "/lf/flow_info" })
 		},
 		authentication: {

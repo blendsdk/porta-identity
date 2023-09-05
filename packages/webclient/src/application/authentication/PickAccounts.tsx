@@ -1,9 +1,9 @@
 import { Body2, makeStyles, mergeClasses, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
 import Cookies from "js-cookie";
 import React, { Fragment, useMemo } from "react";
-import { useTranslator } from "../../system/i18n";
-import { IExistingAccount } from "./types";
 import { ContactCard32Regular, PersonAccounts24Regular } from "@fluentui/react-icons";
+import { useTranslation } from "../../system/i18n";
+import { IExistingAccount } from "./lib";
 
 const useStyles = makeStyles({
     root: {
@@ -54,18 +54,18 @@ export interface IPickAccounts {
  * PickAccount component
  */
 export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) => {
-    const { translate } = useTranslator();
+    const { t } = useTranslation();
     const styles = useStyles();
 
     const list = useMemo<IExistingAccount[]>(() => {
         return [
             ...accounts,
             {
-                account: translate("use_another_account"),
+                account: t("use_another_account"),
                 tenant: null as any
             }
         ];
-    }, [accounts, translate]);
+    }, [accounts, t]);
 
     const lastTenant = useMemo(() => {
         return Cookies.get("_at");
@@ -73,7 +73,7 @@ export const PickAccounts: React.FC<IPickAccounts> = ({ accounts, onSelect }) =>
 
     return (
         <Fragment>
-            <Subtitle1>{translate("signin_caption")}</Subtitle1>
+            <Subtitle1>{t("signin_caption")}</Subtitle1>
             <div className={styles.root}>
                 {list
                     .filter((i) => i.tenant === lastTenant || i.tenant === "default" || i.tenant === null)

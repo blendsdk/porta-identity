@@ -9,6 +9,8 @@ export const secondsToMilliseconds = (seconds: number) => seconds * 1000;
  */
 export const expireSecondsFromNow = (seconds: number) => Date.now() + secondsToMilliseconds(seconds);
 
+export const millisecondsToSeconds = (milliseconds: number) => Math.trunc(milliseconds / 1000);
+
 export const renderGetRedirect = (url: string, delay?: number) => {
     return `<html>
         <style>

@@ -54,7 +54,8 @@ export enum eFlow {
     state = "state",
     user = "user",
     access_token = "access_token",
-    info = "info"
+    info = "info",
+    mfa_codes = "mfa_codes"
 }
 
 /**

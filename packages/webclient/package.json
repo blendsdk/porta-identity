@@ -1,56 +1,39 @@
 {
   "name": "@porta/webclient",
-  "private": true,
   "version": "1.0.136",
-  "homepage": "/fe",
+  "type": "module",
   "scripts": {
-    "start": "WDS_SOCKET_HOST=localhost react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "tsc && vite build --force --outDir ../webapi/resources/public/static",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@blendsdk/crypto": "^3.2.218",
-    "@blendsdk/fluentrc": "^3.2.218",
-    "@blendsdk/react": "^3.2.218",
-    "@blendsdk/stdlib": "^3.2.218",
-    "@fluentui/react-components": "^9.30.1",
-    "@fluentui/react-icons": "^2.0.212",
-    "@porta/shared": "^1.0.136",
-    "@testing-library/jest-dom": "^6.1.2",
-    "@testing-library/react": "^14.0.0",
-    "@testing-library/user-event": "^14.4.3",
-    "@types/jest": "^29.5.4",
-    "@types/js-cookie": "^3.0.3",
-    "@types/node": "^20.5.7",
-    "@types/react": "^18.2.21",
-    "@types/react-dom": "^18.2.7",
+    "@blendsdk/clientkit": "3.2.288",
+    "@blendsdk/crypto": "3.2.288",
+    "@blendsdk/fluentrc": "3.2.288",
+    "@blendsdk/react": "3.2.288",
+    "@blendsdk/stdlib": "3.2.288",
+    "@fluentui/react-components": "^9.27.4",
+    "@porta/shared": "1.0.136",
+    "dayjs": "^1.11.9",
     "formik": "^2.4.3",
-    "js-cookie": "^3.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^5.2.2",
-    "web-vitals": "^3.4.0",
-    "yup": "^1.2.0",
-    "zustand": "^4.4.1"
+    "yup": "^1.2.0"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "devDependencies": {
+    "@types/jest": "^29.5.3",
+    "@types/node": "^20.4.9",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
   }
 }

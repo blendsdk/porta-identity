@@ -1,9 +1,7 @@
-import { ErrorDialog } from "@blendsdk/fluentrc";
-import { clearAllCookies, initializeRouter, initializeSession, initializeSystemError } from "@blendsdk/react";
-import { eAppRoutes } from "../../application/routing";
-// TODO: fix theme
-//import { useTheme } from "../../application/theme";
+import { DefaultSystemErrorStore, makeRouter, makeSystemError } from "@blendsdk/react";
 import { ApplicationApi } from "../api";
+import { ErrorDialog, makeTheme } from "@blendsdk/fluentrc";
+import { teamsLightTheme } from "@fluentui/react-components";
 
 export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;
@@ -25,38 +23,16 @@ ApplicationApi.setSigningKey(() => {
     });
 });
 
-initializeSystemError({
-    errorView: ErrorDialog,
-    errorViewCustomParams: () => {
-        return {
-            //TODO: check what should come here!
-        };
-    },
-    isError: (error: any) => {
-        if (error?.name === "UNAUTHORIZED_ACCESS") {
-            clearAllCookies();
-            return false;
-        }
-        return true;
+export const useAppTheme = makeTheme({
+    onInit: (store) => {
+        store.setTheme(teamsLightTheme);
     }
 });
 
-initializeRouter();
-
-initializeSession({
-    // getExpirationTimestamp: () => {
-    //     const { tenant } = routerStoreInstance.getParameters<any>();
-    //     const params = routerStoreInstance.getParameters<any>();
-    //     console.log({ tenant, params });
-    //     if (tenant) {
-    //         debugger;
-    //     }
-    //     debugger;
-    //     return -1;
-    // },
-    refreshSession: () => {
-        throw Error("refreshSession is not implemented yet");
-    },
-    loginRoute: eAppRoutes.signinRedirect.path,
-    startRoute: eAppRoutes.dashboard.path
+export const useSystemError = makeSystemError(DefaultSystemErrorStore, {
+    CustomErrorDialog: ErrorDialog
 });
+
+export const useRouter = makeRouter();
+
+//export const useSession = makeSession(SessionStore);

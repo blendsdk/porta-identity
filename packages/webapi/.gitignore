@@ -63,3 +63,4 @@ typings/
 dist
 public
 oidc-conformance-accounts.json
+local.config.js

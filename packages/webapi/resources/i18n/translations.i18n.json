@@ -1,4 +1,20 @@
 {
+    "mfa_email_subject": {
+        "en": "${organization} Verification Code",
+        "nl": "${organization} Verificatiecode"
+    },
+    "mfa_caption": {
+        "en": "Validation Code",
+        "nl": "Validatiecode"
+    },
+    "mfa_portamail_text_placeholder": {
+        "en": "Enter validation code",
+        "nl": "Voer validatiecode in"
+    },
+    "mfa_portamail_is_required": {
+        "en": "Please provide the MFA code that was emailed to you.",
+        "nl": "Geef de MFA-code op die naar u is gemaild."
+    },
     "signin_caption": {
         "en": "Sign In",
         "nl": "Inloggen"

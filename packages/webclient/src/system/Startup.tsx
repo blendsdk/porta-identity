@@ -1,34 +1,41 @@
-import { Router, Session, SystemError } from "@blendsdk/react";
-import { useMemo } from "react";
-import { loadUserProfile } from "../application/api";
-import { useTranslator } from "./i18n";
+import { Router, SessionLoadingView, SystemError } from "@blendsdk/react";
 import { appRoutes } from "../application/routing";
-import { FluentProvider, teamsLightTheme } from "@fluentui/react-components";
 import "./session";
+import { useAppTheme, useSystemError } from "./session";
+import { FluentProvider } from "@fluentui/react-components";
+import { useEffect, useState } from "react";
+import { useTranslation } from "./i18n";
+
+const getCurrentLocale = () => {
+    return (window.navigator as any).userLanguage || window.navigator.language;
+};
 
 /**
  * Index component that is going to load the application component
  * and the application theme
  */
 export const Startup = () => {
-    const translator = useTranslator();
-
-    const routes = useMemo(() => {
-        return [...appRoutes];
+    const { theme } = useAppTheme();
+    const { catchSystemError } = useSystemError();
+    const { translationStore } = useTranslation();
+    const [ready, setReady] = useState<boolean>(false);
+    useEffect(() => {
+        const worker = new Promise<void>(async (resolve, reject) => {
+            try {
+                await translationStore.initialize(getCurrentLocale());
+                setReady(true);
+                resolve();
+            } catch (err: any) {
+                reject(err);
+            }
+        });
+        worker.catch(catchSystemError);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
-        <FluentProvider theme={teamsLightTheme}>
-            <Session
-                onBeforeStart={() => {
-                    return translator.load();
-                }}
-                onLoadUserProfile={loadUserProfile}
-            >
-                <SystemError>
-                    <Router routes={routes} />
-                </SystemError>
-            </Session>
+        <FluentProvider theme={theme}>
+            <SystemError>{ready ? <Router routes={appRoutes} /> : <SessionLoadingView />}</SystemError>
         </FluentProvider>
     );
 };

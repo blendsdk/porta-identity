@@ -1,19 +1,13 @@
 import { IRoute } from "@blendsdk/react";
-import { AuthenticationView } from "../authentication";
-import { LogoutView } from "../authentication/LogoutView";
+import { LoginView, LogoutView } from "../authentication";
 import { eAppRoutes } from "./constants";
-import { Dashboard, SignInRedirect } from "../dashboard";
+import { SignInRedirect } from "../dashboard";
 
 export const appRoutes: IRoute[] = [
     {
-        name: eAppRoutes.dashboard.key,
-        path: eAppRoutes.dashboard.path,
-        component: Dashboard
-    },
-    {
         name: eAppRoutes.signin.key,
         path: eAppRoutes.signin.path,
-        component: AuthenticationView
+        component: LoginView
     },
     {
         name: eAppRoutes.signinRedirect.key,

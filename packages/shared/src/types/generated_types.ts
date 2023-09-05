@@ -36,15 +36,10 @@ export interface IAuthenticationFlowState {
 	 */
 	signin_url?: string;
 	/**
-	 * @type boolean
-	 * @memberOf IAuthenticationFlowState
-	 */
-	mfa_state?: boolean;
-	/**
 	 * @type string
 	 * @memberOf IAuthenticationFlowState
 	 */
-	mfa?: string;
+	mfa_state?: string;
 	/**
 	 * @type string[]
 	 * @memberOf IAuthenticationFlowState

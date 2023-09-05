@@ -26,9 +26,6 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				mfa_state: {
-					type: eJsonSchemaType.boolean
-				},
-				mfa: {
 					type: eJsonSchemaType.string
 				},
 				mfa_list: {
@@ -209,17 +206,17 @@ export const validationSchema = {
 		sys_access_token_view: {
 			type: eJsonSchemaType.object,
 			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
 				ttl: {
 					type: eJsonSchemaType.number,
-					format: "integer"
+					format: "decimal"
 				},
 				refresh_ttl: {
 					type: eJsonSchemaType.number,
-					format: "integer"
+					format: "decimal"
+				},
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				},
 				auth_time: {
 					type: eJsonSchemaType.number,
@@ -288,9 +285,9 @@ export const validationSchema = {
 				}
 			},
 			required: [
-				"id",
 				"ttl",
 				"refresh_ttl",
+				"id",
 				"auth_time",
 				"date_created",
 				"auth_request_params",
@@ -319,7 +316,7 @@ export const validationSchema = {
 				},
 				ttl: {
 					type: eJsonSchemaType.number,
-					format: "integer"
+					format: "bigint"
 				},
 				refresh_token: {
 					type: eJsonSchemaType.string
@@ -979,6 +976,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				refresh_token_expires_in: {
+					type: eJsonSchemaType.number
+				},
+				refresh_token_expires_at: {
 					type: eJsonSchemaType.number
 				}
 			},

@@ -20,6 +20,7 @@
   "dependencies": {
     "@blendsdk/codegen": "3.2.288",
     "@blendsdk/datakit": "3.2.288",
+    "@blendsdk/filesystem": "3.2.288",
     "@blendsdk/jsonschema": "3.2.288",
     "@blendsdk/logger": "3.2.288",
     "@blendsdk/postgresql": "3.2.288",

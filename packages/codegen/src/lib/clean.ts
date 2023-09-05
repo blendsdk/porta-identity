@@ -1,7 +1,7 @@
 import * as fs from "fs";
-import * as glob from "glob";
 import * as path from "path";
 import { consoleLogger, projectRoot } from "./lib";
+import { globSync } from "@blendsdk/filesystem";
 
 /**
  * Delete existing generated files
@@ -10,7 +10,7 @@ import { consoleLogger, projectRoot } from "./lib";
  */
 export function clean_generated() {
     const folder = path.resolve(projectRoot, "**", "generated_*");
-    const files = glob.globSync(folder);
+    const files = globSync(folder);
     files.forEach((f) => {
         consoleLogger.info(`Deleting ${f.replace(projectRoot, "")}`);
         fs.unlinkSync(f);

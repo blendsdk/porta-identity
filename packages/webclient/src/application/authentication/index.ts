@@ -1,1 +1,2 @@
-export * from "./AuthenticationView";
+export * from "./LoginView";
+export * from "./LogoutView";

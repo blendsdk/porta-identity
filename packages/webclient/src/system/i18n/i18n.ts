@@ -1,16 +1,25 @@
-import { createTranslator } from "@blendsdk/react";
-import { ApplicationApi, IApplicationI18NKeys } from "../api/generated_api";
+import { TranslationStoreBase, makeTranslator } from "@blendsdk/react";
+import { ApplicationApi } from "../api/generated_api";
+import { ITranslationDatabase } from "@blendsdk/i18n";
 
 /**
- * Creates a translator store to be used in this application
+ * Implements a translation store
  *
+ * @export
+ * @class I18TranslationStore
+ * @extends {TranslationStoreBase}
  */
-export const useTranslator = createTranslator<IApplicationI18NKeys>({
-    loader: (locale: string) => {
+export class I18TranslationStore extends TranslationStoreBase {
+    /**
+     * @param {string} [locale]
+     * @returns {Promise<ITranslationDatabase>}
+     * @memberof I18TranslationStore
+     */
+    load(locale?: string): Promise<ITranslationDatabase> {
         return new Promise((resolve, reject) => {
             ApplicationApi.blend
                 .getTranslations({
-                    locale: locale || (window.navigator as any).userLanguage || window.navigator.language
+                    locale
                 })
                 .then(({ data }) => {
                     resolve(data);
@@ -18,4 +27,6 @@ export const useTranslator = createTranslator<IApplicationI18NKeys>({
                 .catch(reject);
         });
     }
-});
+}
+
+export const useTranslation = makeTranslator(I18TranslationStore);
