@@ -1,4 +1,8 @@
 {
+    "password_is_required": {
+        "en": "Password is required",
+        "nl": "Een wachtwoord is verplicht"
+    },
     "invalid_mfa_portamail": {
         "en": "Invalid Validation Code!",
         "nl": "Verificatiecode is niet geldig!"
