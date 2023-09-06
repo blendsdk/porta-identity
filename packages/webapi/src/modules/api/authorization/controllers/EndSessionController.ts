@@ -9,7 +9,7 @@ import { EndpointController } from "./EndpointControllerBase";
 import { ISessionLogoutPostRequest } from "@porta/shared";
 import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
 import { ISysTenant } from "@porta/shared";
-import { databaseUtils } from "../../../../utils";
+import { commonUtils, databaseUtils } from "../../../../utils";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
 import * as crypto from "crypto";
 import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
@@ -91,6 +91,8 @@ export class EndSessionController extends EndpointController {
     ) {
         const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
+        let post_logout_redirect_uri_list: string[] = undefined;
+        let post_logout_redirect_uri_matched = undefined;
 
         // Do checks if there is an access token
         if (accessToken) {
@@ -110,16 +112,21 @@ export class EndSessionController extends EndpointController {
         // when none is registered
         if (!session.post_logout_redirect_uri) {
             errors.push("no_registered_post_logout_redirect_uri_by_client");
-        }
-
-        // when none matching
-        if (post_logout_redirect_uri && session.post_logout_redirect_uri !== post_logout_redirect_uri) {
-            errors.push("no_registered_post_logout_redirect_uri");
+        } else {
+            post_logout_redirect_uri_list = commonUtils.parseToArray(session.post_logout_redirect_uri || "[]");
+            post_logout_redirect_uri_matched = post_logout_redirect_uri_list.find((item) => {
+                return item === post_logout_redirect_uri;
+            });
         }
 
         // when none provided and multiple registered
-        if (!post_logout_redirect_uri && session.post_logout_redirect_uri && !accessToken) {
+        if (!post_logout_redirect_uri && post_logout_redirect_uri_list.length !== 0 && !accessToken) {
             errors.push("missing_post_logout_redirect_uri");
+        }
+
+        // when none matching
+        if (!post_logout_redirect_uri_matched) {
+            errors.push("no_registered_post_logout_redirect_uri");
         }
 
         if (errors.length === 0) {
@@ -220,8 +227,8 @@ export class EndSessionController extends EndpointController {
             await this.getCache().deleteValue(this.getLogoutFlowCacheKey(flowId));
 
             // Response by redirect otherwise with JSON
-            if (flowData?.client.post_logout_redirect_uri) {
-                const url = new URL(flowData.client.post_logout_redirect_uri);
+            if (flowData?.post_logout_redirect_uri) {
+                const url = new URL(flowData.post_logout_redirect_uri);
                 if (flowData.state) {
                     url.searchParams.append("state", flowData.state);
                 }

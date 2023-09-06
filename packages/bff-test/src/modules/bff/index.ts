@@ -68,9 +68,24 @@ export const BFFRoutes = (): IRouter => {
                     });
                     worker
                         .then((data) => {
-                            res.json(data);
+                            res.json({
+                                data,
+                                logout: portaClient.endSessionUrl({
+                                    logout_hint: data.claims["sub"],
+                                    state: "hello",
+                                    post_logout_redirect_uri: `${req.context.getServerURL()}/logout`.replace(":443", "")
+                                })
+                            });
                         })
                         .catch(next);
+                }
+            },
+            {
+                method: "get",
+                url: "/logout",
+                public: true,
+                handlers: (_req: HttpRequest, res: HttpResponse, next: NextFunction) => {
+                    res.send("You are logged out");
                 }
             },
             {

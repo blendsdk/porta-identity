@@ -45,8 +45,6 @@ export const LoginView = () => {
         return accounts.length !== 0 && useAnotherAccount;
     }, [accounts.length, useAnotherAccount]);
 
-    const isInvalidFlow = isFlowExpired("_as") && flowState !== eFlowState.INVALID_SESSION;
-
     const finalizeAndRedirect = useCallback(
         (username: string) => {
             updateUserSelectList(lastTenant, username);
@@ -67,7 +65,6 @@ export const LoginView = () => {
             mfa: ""
         },
         validate: (values) => {
-            console.log(values);
             if (flowState === eFlowState.SELECT_ACCOUNT) {
                 // if the store does not have an account(not check with the backend)
                 // then validate the given username.
@@ -190,6 +187,7 @@ export const LoginView = () => {
 
     useEffect(() => {
         const checker = setInterval(() => {
+            const isInvalidFlow = isFlowExpired("_as") && flowState !== eFlowState.COMPLETE;
             if (isInvalidFlow) {
                 setFlowState(eFlowState.INVALID_SESSION);
                 setFlowInfo(undefined);
@@ -217,7 +215,7 @@ export const LoginView = () => {
         return () => {
             clearInterval(checker);
         };
-    }, [accounts, catchSystemError, flowState, isInvalidFlow]);
+    }, [accounts, catchSystemError, flowState, lastTenant]);
 
     return !flowState ? (
         <SessionLoadingView />

@@ -28,6 +28,7 @@ export const eFlowState = {
     START_MFA: 3,
     COMPLETE: 4,
     LOGOUT_PROGRESS: 5,
+    LOGOUT_CANCELED: 6,
     INVALID_SESSION: 99
 };
 
