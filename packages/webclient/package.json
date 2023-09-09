@@ -1,6 +1,7 @@
 {
   "name": "@porta/webclient",
   "version": "1.0.136",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blendsdk/clientkit": "3.2.288",
-    "@blendsdk/crypto": "3.2.288",
-    "@blendsdk/fluentrc": "3.2.288",
-    "@blendsdk/react": "3.2.288",
-    "@blendsdk/stdlib": "3.2.288",
+    "@blendsdk/clientkit": "3.2.294",
+    "@blendsdk/crypto": "3.2.294",
+    "@blendsdk/fluentrc": "3.2.294",
+    "@blendsdk/react": "3.2.294",
+    "@blendsdk/stdlib": "3.2.294",
     "@fluentui/react-components": "^9.27.4",
     "@porta/shared": "1.0.136",
     "dayjs": "^1.11.9",

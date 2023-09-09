@@ -1,0 +1,17 @@
+src
+jest.config.js
+tsconfig.json
+tslint.json
+jsconfig.json
+.gitignore
+node_modules
+dist/tests
+fiddle.ts
+*.tgz
+**/test/**
+temp
+specs
+*.map
+*.log
+*.tgz
+docker

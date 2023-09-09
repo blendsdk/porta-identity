@@ -12,6 +12,7 @@
   },
   "scripts": {
     "tag-version-auto": "lerna version --no-changelog --conventional-commits --yes",
+    "tag-version-pre": "lerna version patch --no-changelog --include-merged-tags --force-publish --exact",
     "publish-packages": "lerna publish from-package",
     "postinstall": "rm -fR ./node_modules/@types/eslint-scope &&  rm -fR node_modules/@types/cacheable-request",
     "build": "lerna clean -y && lerna run build",

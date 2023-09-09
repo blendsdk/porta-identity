@@ -2,6 +2,7 @@ import { Application } from "@blendsdk/webafx";
 import { CacheModule } from "@blendsdk/webafx-cache";
 import * as path from "path";
 import { BFFRoutes } from "../bff";
+import { PortaClient } from "../bff/auth";
 
 /**
  * Configuration setting for testing
@@ -22,6 +23,9 @@ const application = new Application({
     //
     (config) => {
         return new CacheModule({ ...config, id: "bff" });
+    },
+    (config) => {
+        return new PortaClient({ ...config });
     }
 ]);
 

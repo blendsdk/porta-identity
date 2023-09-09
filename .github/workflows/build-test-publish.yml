@@ -16,37 +16,41 @@ jobs:
               with:
                   fetch-depth: 0
 
-            # - name: Locking the build queue
-            #   run: workflow_queue queue blendsdk
+            - name: queue work
+              if: always()
+              run: work_queue queue ${{ github.event.organization.login }}_${{ github.event.repository.name }}
 
-            # - name: Installing Packages
-            #   run: |
-            #       yarn install
-            #       yarn bootstrap
+            - name: Installing Packages
+              run: |
+                  yarn install
 
-            # - name: Building the Project
-            #   run: |
-            #       yarn build
-            #       mv ./packages/webclient/build ./packages/webapi/public
+            - name: Building the Project
+              run: |
+                  yarn build
 
-            # - name: Testing the project
-            #   run: |
-            #       mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
-            #       yarn test
+            - name: Testing the project
+              run: |
+                  mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
+                  yarn test
 
-            # - name: Publish packages
-            #   run: |
-            #       git reset --hard
-            #       yarn tag-version-auto --yes
-            #       yarn publish-packages --yes
+            - name: Publish Production Packages
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
+              run: |
+                  git reset --hard
+                  yarn tag-version-auto --yes
+                  yarn publish-packages --yes
+
+            - name: Publish Non-production Packages
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
+              run: |
+                  git reset --hard
+                  yarn tag-version-auto --yes
+                  yarn publish-packages-pre --yes --dist-tag next
 
             # - name: Deploy
             #   run: |
             #       ssh porta@docker1 "mkdir -p ~/containers/${BRANCH_NAME} && cd ~/containers/${BRANCH_NAME} && ./build-app-image.sh porta ${BRANCH_NAME} && ./swap.sh porta ${BRANCH_NAME}"
 
-            # - name: Unlocking The Build Queue
-            #   if: always()
-            #   run: workflow_queue clear blendsdk
-
-            # - uses: colpal/actions-clean@v1
-            #   if: ${{ always() }} # To ensure this step runs even when earlier steps fail
+            - name: clear work
+              if: always()
+              run: work_queue clear ${{ github.event.organization.login }}_${{ github.event.repository.name }}

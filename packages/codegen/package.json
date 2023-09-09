@@ -1,5 +1,6 @@
 {
   "name": "@porta/codegen",
+  "private": true,
   "version": "1.0.136",
   "description": "Code generation package for porta",
   "main": "dist/index.js",
@@ -18,13 +19,13 @@
     "tslib": "^2.6.2"
   },
   "dependencies": {
-    "@blendsdk/codegen": "3.2.288",
-    "@blendsdk/datakit": "3.2.288",
-    "@blendsdk/filesystem": "3.2.288",
-    "@blendsdk/jsonschema": "3.2.288",
-    "@blendsdk/logger": "3.2.288",
-    "@blendsdk/postgresql": "3.2.288",
-    "@blendsdk/stdlib": "3.2.288",
+    "@blendsdk/codegen": "3.2.294",
+    "@blendsdk/datakit": "3.2.294",
+    "@blendsdk/filesystem": "3.2.294",
+    "@blendsdk/jsonschema": "3.2.294",
+    "@blendsdk/logger": "3.2.294",
+    "@blendsdk/postgresql": "3.2.294",
+    "@blendsdk/stdlib": "3.2.294",
     "jose": "^4.14.4"
   }
 }
