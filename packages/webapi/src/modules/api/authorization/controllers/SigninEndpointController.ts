@@ -202,6 +202,13 @@ export class SigninEndpointController extends EndpointController {
     protected async isAuthFlowSuccessful() {
         const { account, account_state, account_status, password_state, mfa_state } =
             (await this.getCurrentFlowState()) || {};
+        this.getLogger().debug("isAuthFlowSuccessful", {
+            account,
+            account_state,
+            account_status,
+            password_state,
+            mfa_state
+        });
         return account && account_state && account_status && password_state && mfa_state;
     }
 }
