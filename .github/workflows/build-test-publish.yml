@@ -44,8 +44,8 @@ jobs:
               if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
               run: |
                   git reset --hard
-                  yarn tag-version-auto --yes
-                  yarn publish-packages-pre --yes --dist-tag next
+                  yarn tag-version-pre --yes
+                  yarn publish-packages --yes --dist-tag next
 
             # - name: Deploy
             #   run: |
