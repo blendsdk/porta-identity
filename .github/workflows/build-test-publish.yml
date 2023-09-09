@@ -26,6 +26,7 @@ jobs:
 
             - name: Building the Project
               run: |
+                  cp ./packages/webclient/vite.config.cicd.ts ./packages/webclient/vite.config.ts
                   yarn build
 
             # - name: Testing the project
@@ -47,9 +48,10 @@ jobs:
                   yarn tag-version-pre --yes
                   yarn publish-packages --yes --dist-tag next
 
-            # - name: Deploy
-            #   run: |
-            #       ssh porta@docker1 "mkdir -p ~/containers/${BRANCH_NAME} && cd ~/containers/${BRANCH_NAME} && ./build-app-image.sh porta ${BRANCH_NAME} && ./swap.sh porta ${BRANCH_NAME}"
+            - name: Development Deploy
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
+              run: |
+                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
 
             - name: clear work
               if: always()
