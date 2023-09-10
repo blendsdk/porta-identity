@@ -1,4 +1,9 @@
-import { TokenAuthenticationModuleBase, ITokenAuthenticationModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
+import {
+    TokenAuthenticationModuleBase,
+    ITokenAuthenticationModuleBase,
+    TGetUserMethod,
+    SESSION_TTL_KEY
+} from "@blendsdk/webafx-auth";
 import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
 
 import {
@@ -50,7 +55,7 @@ export interface ILandingURLConfig {
 }
 
 interface IClientCache {
-    code_verifier: string;
+    code_verifier?: string;
     appState: string;
     tenant: string;
     ui_locales: string;
@@ -66,6 +71,16 @@ export interface PortaMultiTenantClientModule extends ITokenAuthenticationModule
  * @extends {AuthenticationModuleBase}
  */
 export abstract class PortaMultiTenantClientModule extends TokenAuthenticationModuleBase<PortaMultiTenantClientModule> {
+    /**
+     * Finds or creates a user
+     *
+     * @protected
+     * @abstract
+     * @param {IPortaAuthenticationResult} oidcData
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<any>}
+     * @memberof PortaMultiTenantClientModule
+     */
     protected abstract findOrCreateUser(
         oidcData: IPortaAuthenticationResult,
         req: HttpRequest<IPortaHTTPRequestContext>
@@ -76,10 +91,14 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @protected
      * @abstract
      * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @param {boolean} [logout]
      * @returns {Promise<ILandingURLConfig>}
      * @memberof PortaMultiTenantClientModule
      */
-    protected abstract getLandingURL(req: HttpRequest<IPortaHTTPRequestContext>): Promise<ILandingURLConfig>;
+    protected abstract getLandingURL(
+        req: HttpRequest<IPortaHTTPRequestContext>,
+        logout?: boolean
+    ): Promise<ILandingURLConfig>;
     /**
      * Provide a discovery URL to use to connect to the Porta OIDC provider
      *
@@ -128,7 +147,11 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @memberof PortaMultiTenantClientModule
      */
     protected getRedirectURI(tenant: string, req: HttpRequest) {
-        return `${req.context.getServerURL().replace(":443", "")}/oidc/${tenant}/callback`;
+        const serverURL = req.context.getServerURL().replace(/\:80|\:443/g, "");
+        return {
+            redirect_uri: `${serverURL}/oidc/${tenant}/signin/callback`,
+            post_logout_redirect_uris: [`${serverURL}/oidc/${tenant}/signout/callback`]
+        };
     }
 
     /**
@@ -151,7 +174,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
         if (!client) {
             client = clientCache[cacheKey] = new issuer.Client({
                 ...clientConfig,
-                redirect_uri: this.getRedirectURI(tenant, req)
+                ...this.getRedirectURI(tenant, req)
             });
         }
         return client;
@@ -167,7 +190,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
         this.application.addRouter({
             routes: [
                 {
-                    url: "/oidc/:tenant/login",
+                    url: "/oidc/:tenant/signin",
                     method: "get",
                     public: true,
                     request: {
@@ -230,7 +253,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                     }
                 },
                 {
-                    url: "/oidc/:tenant/callback",
+                    url: "/oidc/:tenant/signin/callback",
                     method: "get",
                     public: true,
                     request: {
@@ -246,22 +269,19 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                             try {
                                 const cache = req.context.getCache();
                                 const { state, tenant } = req.context.getParameters<IRequestParameters>();
-                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
-                                const client = await this.getOIDCClient(tenant, discoveryUrl, req);
-
                                 const { code_verifier, ui_locales, appState } = await cache.getValue<IClientCache>(
                                     `openid-client:${state}`
                                 );
+                                req.query.state = appState;
+                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
+                                const client = await this.getOIDCClient(tenant, discoveryUrl, req);
 
                                 const callbackParameters = client.callbackParams(req);
-                                const tokenSet = await client.callback(
-                                    this.getRedirectURI(tenant, req),
-                                    callbackParameters,
-                                    {
-                                        code_verifier,
-                                        state
-                                    }
-                                );
+                                const { redirect_uri } = this.getRedirectURI(tenant, req);
+                                const tokenSet = await client.callback(redirect_uri, callbackParameters, {
+                                    code_verifier,
+                                    state
+                                });
                                 resolve({
                                     tokenSet,
                                     claims: tokenSet.claims(),
@@ -293,8 +313,11 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                                 const { searchParams, url: landingURL } = await this.getLandingURL(req);
                                                 const url = new URL(landingURL);
                                                 Object.entries(searchParams || {}).forEach(([k, v]) => {
-                                                    url.searchParams.append(k, v);
+                                                    if (v) {
+                                                        url.searchParams.append(k, v);
+                                                    }
                                                 });
+
                                                 res.send(renderGetRedirect(url.toString(), 1));
                                             });
                                         }
@@ -309,27 +332,9 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                 sendResponse(resp, res);
                             });
                     }
-                },
-                {
-                    url: "/oidc/:tenant/logout",
-                    method: "get",
-                    public: true
                 }
             ]
         });
-    }
-
-    /**
-     * Create the cookie key signature name
-     *
-     * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {string}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected createKeySignatureName(req: HttpRequest<IPortaHTTPRequestContext>): string {
-        const tenant: any = req.context?.porta?.claims["tenant"];
-        return tenant?.id;
     }
 
     /**
@@ -341,7 +346,13 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @memberof PortaMultiTenantClientModule
      */
     protected async authenticateUser(req: HttpRequest<IPortaHTTPRequestContext>): Promise<any> {
-        return this.findOrCreateUser(req.context.porta, req);
+        const data = await this.findOrCreateUser(req.context.porta, req);
+        return {
+            ...data,
+            _sub: req.context.porta.tokenSet.claims().sub,
+            _tenant: (req.context.porta.claims.tenant as any).name,
+            _ui_locales: req.context.porta.ui_locales
+        };
     }
 
     /**
@@ -358,7 +369,142 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @protected
      * @memberof PortaMultiTenantClientModule
      */
-    protected createSignOutHandler(): void {}
+    protected createSignOutHandler(): void {
+        this.application.addRouter({
+            routes: [
+                {
+                    url: "/oidc/:tenant/signout",
+                    method: "get",
+                    public: false,
+                    request: {
+                        properties: {
+                            tenant: { type: eJsonSchemaType.string },
+                            state: { type: eJsonSchemaType.string, location: eParameterLocation.query }
+                        },
+                        required: ["tenant"]
+                    },
+                    handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse) => {
+                        const worker = new Promise<any>(async (resolve, reject) => {
+                            try {
+                                const { state, locale, tenant } = req.context.getParameters<IRequestParameters>();
+                                const cache = req.context.getCache();
+                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
+                                const client = await this.getOIDCClient(tenant, discoveryUrl, req);
+                                const stateKey = crypto.randomUUID().replace(/\-/gi, "");
+
+                                await cache.setValue<IClientCache>(
+                                    `openid-client:${stateKey}`,
+                                    {
+                                        appState: state,
+                                        tenant,
+                                        ui_locales: locale
+                                    },
+                                    {
+                                        expire: Date.now() + 60000
+                                    }
+                                );
+
+                                const { _sub: logout_hint } = req.context.getUser<any>();
+                                const { post_logout_redirect_uris } = this.getRedirectURI(tenant, req);
+
+                                const url = client
+                                    .endSessionUrl({
+                                        state: stateKey,
+                                        post_logout_redirect_uri: post_logout_redirect_uris[0],
+                                        client_id: client.metadata.client_id,
+                                        logout_hint
+                                    })
+                                    .replace(/\:443|\:80/g, "");
+                                resolve(url);
+                            } catch (err: any) {
+                                if (err.response && err.response.body) {
+                                    reject(err.response.body);
+                                } else {
+                                    reject(err);
+                                }
+                            }
+                        });
+                        worker
+                            .then((url) => {
+                                res.send(renderGetRedirect(url));
+                            })
+                            .catch((err) => {
+                                const resp = new ServerErrorResponse(err);
+                                sendResponse(resp, res);
+                            });
+                    }
+                },
+                {
+                    url: "/oidc/:tenant/signout/callback",
+                    method: "get",
+                    public: false,
+                    request: {
+                        properties: {
+                            tenant: { type: eJsonSchemaType.string },
+                            state: { type: eJsonSchemaType.string, location: eParameterLocation.query }
+                        },
+                        required: ["tenant"]
+                    },
+                    handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse) => {
+                        const worker = new Promise<string>(async (resolve, reject) => {
+                            try {
+                                const { state, tenant } = req.context.getParameters<IRequestParameters>();
+                                const cache = req.context.getCache();
+                                const { _cacheKey } = req.context.getUser<any>();
+                                const expTTL = new Date(Date.now() - 100000);
+                                const { ui_locales, appState } = await cache.getValue<IClientCache>(
+                                    `openid-client:${state}`
+                                );
+                                req.context.porta = {
+                                    tenant,
+                                    ui_locales,
+                                    state: appState,
+                                    tokenSet: undefined,
+                                    claims: undefined,
+                                    userInfo: undefined
+                                };
+
+                                const { url, searchParams } = await this.getLandingURL(req, true);
+                                const respUrl = new URL(url);
+                                Object.entries(searchParams || {}).forEach(([k, v]) => {
+                                    if (v) {
+                                        respUrl.searchParams.append(k, v);
+                                    }
+                                });
+
+                                await cache.deleteValue(_cacheKey);
+                                res.cookie(this.getKeySignature(req), "", {
+                                    httpOnly: true,
+                                    expires: expTTL,
+                                    signed: true,
+                                    secure: req.protocol !== "http"
+                                });
+                                // the session cookie
+                                res.cookie(SESSION_TTL_KEY, -1, {
+                                    expires: expTTL
+                                });
+                                resolve(respUrl.toString());
+                            } catch (err: any) {
+                                if (err.response && err.response.body) {
+                                    reject(err.response.body);
+                                } else {
+                                    reject(err);
+                                }
+                            }
+                        });
+                        worker
+                            .then(async (url) => {
+                                res.send(renderGetRedirect(url));
+                            })
+                            .catch((err) => {
+                                const resp = new ServerErrorResponse(err);
+                                sendResponse(resp, res);
+                            });
+                    }
+                }
+            ]
+        });
+    }
 
     /**
      * @protected
@@ -380,7 +526,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
         _reg: HttpRequest<{}>
     ): Promise<TGetUserMethod> {
         return () => {
-            return sessionStorage.user;
+            return { ...sessionStorage.user, _cacheKey: sessionStorage.cacheKey };
         };
     }
 }

@@ -8,6 +8,10 @@ import {
 import { ClientMetadata, BaseClient, AuthorizationParameters } from "openid-client";
 
 export class PortaClient extends PortaMultiTenantClientModule {
+    protected createKeySignatureName(_req: HttpRequest<{}>): string {
+        return "bff-application";
+    }
+
     protected async findOrCreateUser(
         oidcData: IPortaAuthenticationResult,
         _req: HttpRequest<IPortaHTTPRequestContext>
@@ -27,23 +31,23 @@ export class PortaClient extends PortaMultiTenantClientModule {
             last_name: oidcData.userInfo.family_name
         };
     }
-    protected async getLandingURL(req: HttpRequest<IPortaHTTPRequestContext>): Promise<ILandingURLConfig> {
+    protected async getLandingURL(
+        req: HttpRequest<IPortaHTTPRequestContext>,
+        logout?: boolean
+    ): Promise<ILandingURLConfig> {
         const { state, ui_locales, tenant } = req.context.porta;
         return {
-            url: `${req.context.getServerURL()}/fe/dashboard/${tenant}/tenant/${ui_locales}/locale`,
+            url: `${req.context.getServerURL()}/fe/dashboard/${tenant}/tenant`,
             searchParams: {
-                state
+                state,
+                ui_locales,
+                logout: logout ? "Y" : "N"
             }
         };
     }
 
-    protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
-        switch (req.context.getParameters().state) {
-            case "remote":
-                return `https://dev.portaidentity.com/porta/oauth2`;
-            default:
-                return `https://porta.local/porta/oauth2`;
-        }
+    protected async getDiscoveryURL(_tenant: string, _req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+        return `https://dev.portaidentity.com/porta/oauth2`;
     }
 
     protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {

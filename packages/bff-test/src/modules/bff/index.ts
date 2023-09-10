@@ -11,29 +11,20 @@ let indexFile: string = null;
 export const BFFRoutes = (): IRouter => {
     return {
         routes: [
-            // this needs to be the last one
             {
                 method: "get",
-                url: "/login/local",
+                url: "/login",
                 public: true,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(
-                        renderGetRedirect(
-                            `${req.context.getServerURL().replace(":443", "")}/oidc/porta/login?state=local`
-                        )
-                    );
+                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/porta/signin`));
                 }
             },
             {
                 method: "get",
-                url: "/login/remote",
-                public: true,
+                url: "/logout",
+                public: false,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(
-                        renderGetRedirect(
-                            `${req.context.getServerURL().replace(":443", "")}/oidc/porta/login?state=remote`
-                        )
-                    );
+                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/porta/signout`));
                 }
             },
             {
