@@ -44,7 +44,8 @@ export class EmailMFAProvider {
             to,
             subject,
             from: this.config.settings.MFA_EMAIL_FROM,
-            html
+            html,
+            priority: "high"
         });
         return code;
     }

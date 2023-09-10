@@ -14,6 +14,30 @@ export const BFFRoutes = (): IRouter => {
             // this needs to be the last one
             {
                 method: "get",
+                url: "/login/local",
+                public: true,
+                handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
+                    res.send(
+                        renderGetRedirect(
+                            `${req.context.getServerURL().replace(":443", "")}/oidc/porta/login?state=local`
+                        )
+                    );
+                }
+            },
+            {
+                method: "get",
+                url: "/login/remote",
+                public: true,
+                handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
+                    res.send(
+                        renderGetRedirect(
+                            `${req.context.getServerURL().replace(":443", "")}/oidc/porta/login?state=remote`
+                        )
+                    );
+                }
+            },
+            {
+                method: "get",
                 url: "*",
                 public: false,
                 handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse, next: NextFunction) => {
@@ -27,14 +51,6 @@ export const BFFRoutes = (): IRouter => {
                     } else {
                         next();
                     }
-                }
-            },
-            {
-                method: "get",
-                url: "/login",
-                public: true,
-                handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/porta/login`));
                 }
             }
         ]

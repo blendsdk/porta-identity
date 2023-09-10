@@ -52,6 +52,15 @@ export class CheckFlowEndpointController extends EndpointController {
         }
     }
 
+    /**
+     * Checks the MFA flow
+     *
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {string} mfa_input
+     * @returns
+     * @memberof CheckFlowEndpointController
+     */
     protected async checkMFAFlow(tenantRecord: ISysTenant, mfa_input: string) {
         const currentState = await this.getCurrentFlowState();
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
@@ -119,6 +128,15 @@ export class CheckFlowEndpointController extends EndpointController {
         return this.setFlow(eFlow.state, flowId, state);
     }
 
+    /**
+     * Gets the MFA list by given user
+     *
+     * @protected
+     * @param {SysUserDataService} userDs
+     * @param {ISysUser} userRecord
+     * @returns
+     * @memberof CheckFlowEndpointController
+     */
     protected async getMFAList(userDs: SysUserDataService, userRecord: ISysUser) {
         return (await userDs.findMfaByUserId({ user_id: userRecord.id })).map((item) => {
             return item.mfa_name;

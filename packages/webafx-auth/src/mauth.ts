@@ -86,10 +86,11 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @protected
      * @abstract
      * @param {string} tenant
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
      * @returns {Promise<string>}
      * @memberof PortaMultiTenantClientModule
      */
-    protected abstract getDiscoveryURL(tenant: string): Promise<string>;
+    protected abstract getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string>;
     /**
      * Provide the Porta OIDC client connection provider
      *
@@ -177,13 +178,13 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                         },
                         required: ["tenant"]
                     },
-                    handlers: (req: HttpRequest, res: HttpResponse) => {
+                    handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse) => {
                         const worker = new Promise<string>(async (resolve, reject) => {
                             try {
                                 // The original state
                                 const { state, locale, tenant } = req.context.getParameters<IRequestParameters>();
                                 const cache = req.context.getCache();
-                                const discoveryUrl = await this.getDiscoveryURL(tenant);
+                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
                                 const client = await this.getOIDCClient(tenant, discoveryUrl, req);
 
                                 const code_verifier = generators.codeVerifier();
@@ -245,7 +246,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                             try {
                                 const cache = req.context.getCache();
                                 const { state, tenant } = req.context.getParameters<IRequestParameters>();
-                                const discoveryUrl = await this.getDiscoveryURL(tenant);
+                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
                                 const client = await this.getOIDCClient(tenant, discoveryUrl, req);
 
                                 const { code_verifier, ui_locales, appState } = await cache.getValue<IClientCache>(
@@ -327,8 +328,8 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @memberof PortaMultiTenantClientModule
      */
     protected createKeySignatureName(req: HttpRequest<IPortaHTTPRequestContext>): string {
-        const tenant: any = req.context.porta.claims["tenant"];
-        return tenant.id;
+        const tenant: any = req.context?.porta?.claims["tenant"];
+        return tenant?.id;
     }
 
     /**
