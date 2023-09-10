@@ -167,24 +167,22 @@ export class AuthorizeEndpointController extends EndpointController {
                     // and the prompt is not explicitly set
                     signinUrl =
                         returningAuthorization && isNullOrUndef(authRequest.prompt) && !requireLoginDueMaxAge
-                            ? this.createFlowUrl("signin")
+                            ? this.createFlowUrl("signin", flowId)
                             : PORTA_SIGNIN_URI || `${this.request.baseUrl}/fe/auth/signin`;
                 }
 
-                const params = new URLSearchParams();
+                const url = new URL(signinUrl);
 
-                if (!isNullOrUndef(this.request.headers["x-blend-no-browser"])) {
-                    params.append("af", flowId);
+                if (!isNullOrUndef(this.request.headers["x-blend-no-browser"]) && !url.searchParams.has("af")) {
+                    url.searchParams.append("af", flowId);
                 }
 
                 if (state) {
-                    params.append("state", state);
+                    url.searchParams.append("state", state);
                 }
 
-                signinUrl = [signinUrl, params.toString()].filter(Boolean).join("?");
-
                 return new RedirectResponse({
-                    url: signinUrl
+                    url: url.toString()
                 });
             } else {
                 await this.clearAuthenticationFlow(flowId);

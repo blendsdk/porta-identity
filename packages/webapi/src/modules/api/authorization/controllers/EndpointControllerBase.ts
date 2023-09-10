@@ -494,7 +494,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndPointController
      */
     protected createFlowUrl(action: string, flow?: string) {
-        return `${this.getServerUrl()}/af/${action}?af=${flow || this.findFlowID()}`;
+        const url = new URL(`${this.getServerUrl()}/af/${action}`);
+        flow = flow || this.findFlowID();
+        if (flow) {
+            url.searchParams.append("af", flow);
+        }
+        return url.toString();
     }
 
     /**
