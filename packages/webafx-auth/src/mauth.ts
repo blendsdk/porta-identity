@@ -270,7 +270,11 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                     tenant
                                 });
                             } catch (err: any) {
-                                reject(err);
+                                if (err.response && err.response.body) {
+                                    reject(err.response.body);
+                                } else {
+                                    reject(err);
+                                }
                             }
                         });
                         worker
