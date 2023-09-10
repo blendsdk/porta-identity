@@ -200,15 +200,20 @@ export class SigninEndpointController extends EndpointController {
      * @memberof AuthorizationController
      */
     protected async isAuthFlowSuccessful() {
-        const { account, account_state, account_status, password_state, mfa_state } =
+        let { account, account_state, account_status, password_state, mfa_state } =
             (await this.getCurrentFlowState()) || {};
-        this.getLogger().debug("isAuthFlowSuccessful", {
-            account,
-            account_state,
-            account_status,
-            password_state,
-            mfa_state
+
+        // This is a weak checking and potentially a security bug
+        // since we only check for the provided KV pairs and not the
+        // required.
+        const mfa = JSON.parse(mfa_state || "{}");
+        let mfa_state_all: number = 0;
+        Object.values(mfa).forEach((v) => {
+            if (!v) {
+                mfa_state_all += 1;
+            }
         });
-        return account && account_state && account_status && password_state && mfa_state;
+
+        return account && account_state && account_status && password_state && mfa_state_all === 0;
     }
 }
