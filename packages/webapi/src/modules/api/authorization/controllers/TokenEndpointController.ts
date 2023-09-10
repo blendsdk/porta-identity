@@ -1,4 +1,4 @@
-import { isNullOrUndef } from "@blendsdk/stdlib";
+import { base64Decode, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
@@ -640,6 +640,17 @@ export class TokenEndpointController extends EndpointController {
         const isPublicClient = client_type == eClientType.public;
         const isConfidentialClient = client_type === eClientType.confidential;
         const isServiceClient = client_type === eClientType.service;
+
+        // Try to get it from Authorization Bearer
+        if (!tokenRequest.client_secret) {
+            try {
+                const basic = base64Decode(this.getHeaderAuthorization("basic"));
+                const [, client_secret] = basic.split(":");
+                tokenRequest.client_secret = client_secret;
+            } catch (err) {
+                errors.push("invalid_basic_auth_bearer_client_secret");
+            }
+        }
 
         /**
          * If the client_type is confidential or a service account then

@@ -68,6 +68,28 @@ export enum eFlow {
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
     /**
+     * Gets the authorization bearer
+     *
+     * @protected
+     * @returns
+     * @memberof EndpointController
+     */
+    protected getHeaderAuthorization(tokenType: string) {
+        const bearerHeader = this.request.headers["authorization"] || undefined;
+        /**
+         * The format of the Bearer Token must be {prefix}{TOKEN_KEY_SPLIT}{data} otherwise it will not be recognized
+         */
+        if (bearerHeader) {
+            const [bearer = "", token = ""] = bearerHeader.split(" ");
+            if (bearer.trim().toLocaleLowerCase() === tokenType.toLocaleLowerCase() && token.length !== 0) {
+                return token;
+            } else {
+                return undefined;
+            }
+        }
+    }
+
+    /**
      * Redirect to the client with error response
      *
      *
