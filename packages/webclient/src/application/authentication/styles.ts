@@ -21,7 +21,7 @@ export const useStyles = makeStyles({
         flexDirection: "column",
         boxSizing: "border-box",
         ...shorthands.flex(1),
-        justifyContent: "center",
+        justifyContent: "start",
         ...shorthands.gap(tokens.spacingVerticalL)
     },
     authView: {
