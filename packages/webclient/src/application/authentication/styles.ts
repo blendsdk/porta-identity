@@ -50,6 +50,7 @@ export const useStyles = makeStyles({
     },
     logo: {
         minHeight: "72px",
+        maxHeight: "72px",
         height: "72px",
         ...shorthands.flex(1),
         backgroundRepeat: "no-repeat",
