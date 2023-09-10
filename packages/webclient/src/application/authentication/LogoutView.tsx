@@ -61,7 +61,7 @@ export const LogoutView = () => {
             <form>
                 <div className={s.authView}>
                     {flowInfo && flowState !== eFlowState.INVALID_SESSION && (
-                        <img className={s.logo} src={flowInfo.logo || LogoImage} alt="logo" />
+                        <div className={s.logo} style={{ backgroundImage: `url(${flowInfo.logo || LogoImage})` }} />
                     )}
                     <div className={s.authViewContent}>
                         {flowState === eFlowState.COMPLETE && (

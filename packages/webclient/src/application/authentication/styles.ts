@@ -49,8 +49,13 @@ export const useStyles = makeStyles({
         }
     },
     logo: {
-        maxHeight: "48px",
-        ...shorthands.flex(1)
+        minHeight: "72px",
+        height: "72px",
+        ...shorthands.flex(1),
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "contain",
+        backgroundPositionX: "center",
+        backgroundPositionY: "center"
     },
     footer: {
         display: "flex",
