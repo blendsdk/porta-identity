@@ -51,7 +51,7 @@ export interface IRequestParameters {
 
 export interface ILandingURLConfig {
     url: string;
-    searchParams?: IDictionaryOf<string>;
+    searchParams?: IDictionaryOf<any>;
 }
 
 interface IClientCache {
@@ -178,6 +178,24 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
             });
         }
         return client;
+    }
+
+    /**
+     * Compiles a given URL with search parameters
+     *
+     * @protected
+     * @param {{url: string, searchParams: IDictionaryOf<any>}} {url,searchParams}
+     * @returns
+     * @memberof PortaMultiTenantClientModule
+     */
+    protected compileURL({ url, searchParams }: { url: string; searchParams?: IDictionaryOf<any> }) {
+        const res = new URL(url);
+        Object.entries(searchParams || {}).forEach(([k, v]) => {
+            if (v) {
+                res.searchParams.append(k, v);
+            }
+        });
+        return res.toString();
     }
 
     /**
@@ -310,15 +328,10 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                                 res
                                             });
                                             worker.then(async () => {
-                                                const { searchParams, url: landingURL } = await this.getLandingURL(req);
-                                                const url = new URL(landingURL);
-                                                Object.entries(searchParams || {}).forEach(([k, v]) => {
-                                                    if (v) {
-                                                        url.searchParams.append(k, v);
-                                                    }
-                                                });
                                                 res.cookie("locale", data.ui_locales);
-                                                res.send(renderGetRedirect(url.toString(), 1));
+                                                res.send(
+                                                    renderGetRedirect(this.compileURL(await this.getLandingURL(req)))
+                                                );
                                             });
                                         }
                                     })
@@ -464,13 +477,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                     userInfo: undefined
                                 };
 
-                                const { url, searchParams } = await this.getLandingURL(req, true);
-                                const respUrl = new URL(url);
-                                Object.entries(searchParams || {}).forEach(([k, v]) => {
-                                    if (v) {
-                                        respUrl.searchParams.append(k, v);
-                                    }
-                                });
+                                const respUrl = this.compileURL(await this.getLandingURL(req, true));
 
                                 await cache.deleteValue(_cacheKey);
                                 res.cookie(this.getKeySignature(req), "", {
