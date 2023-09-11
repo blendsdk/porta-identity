@@ -206,6 +206,14 @@ export const validationSchema = {
 		sys_access_token_view: {
 			type: eJsonSchemaType.object,
 			properties: {
+				default_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				default_refresh_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
 				ttl: {
 					type: eJsonSchemaType.number,
 					format: "decimal"
@@ -285,6 +293,8 @@ export const validationSchema = {
 				}
 			},
 			required: [
+				"default_ttl",
+				"default_refresh_ttl",
 				"ttl",
 				"refresh_ttl",
 				"id",

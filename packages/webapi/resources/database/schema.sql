@@ -207,6 +207,8 @@ from
     inner join sys_access_token at on at.id = rt.access_token_id;
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
+	ttl as default_ttl,
+	refresh_ttl as default_refresh_ttl,
 	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
 	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
 	sat.id,
@@ -447,6 +449,8 @@ from
     inner join sys_permission sp on sp.id = sgp.permission_id;
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
+	ttl as default_ttl,
+	refresh_ttl as default_refresh_ttl,
 	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
 	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
 	sat.id,

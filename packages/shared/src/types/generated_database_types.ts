@@ -193,6 +193,16 @@ export interface ISysAccessTokenView {
 	 * @type number
 	 * @memberOf ISysAccessTokenView
 	 */
+	default_ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessTokenView
+	 */
+	default_refresh_ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAccessTokenView
+	 */
 	ttl: number;
 	/**
 	 * @type number

@@ -38,7 +38,14 @@ export const BFFRoutes = (): IRouter => {
                         indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.template.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
-                        res.send(formatString(indexFile, { page: dashboardPage({ user: req.context.getUser() }) }));
+                        res.send(
+                            formatString(indexFile, {
+                                page: dashboardPage({
+                                    user: req.context.getUser(),
+                                    serverURL: req.context.getServerURL()
+                                })
+                            })
+                        );
                     } else {
                         next();
                     }

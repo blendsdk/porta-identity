@@ -510,7 +510,142 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @protected
      * @memberof PortaMultiTenantClientModule
      */
-    protected createSessionRefreshHandler(): void {}
+    protected createSessionRefreshHandler(): void {
+        this.application.addRouter({
+            routes: [
+                {
+                    url: "/oidc/:tenant/refresh",
+                    method: "post",
+                    public: false,
+                    request: {
+                        properties: {
+                            tenant: { type: eJsonSchemaType.string }
+                        },
+                        required: ["tenant"]
+                    },
+                    handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse) => {
+                        const worker = new Promise<any>(async (resolve, reject) => {
+                            try {
+                                const { tenant } = req.context.getParameters<IRequestParameters>();
+                                const discoveryUrl = await this.getDiscoveryURL(tenant, req);
+                                const client = await this.getOIDCClient(tenant, discoveryUrl, req);
+                                const { oidc_refresh_token, _ui_locales: ui_locales } = req.context.getUser<any>();
+
+                                const tokenSet = await client.refresh(oidc_refresh_token);
+
+                                resolve({
+                                    tokenSet,
+                                    claims: tokenSet.claims(),
+                                    userInfo: await client.userinfo(tokenSet.access_token),
+                                    ui_locales,
+                                    tenant
+                                });
+                            } catch (err: any) {
+                                if (err.response && err.response.body) {
+                                    reject(err.response.body);
+                                } else {
+                                    reject(err);
+                                }
+                            }
+                        });
+                        worker
+                            .then((data) => {
+                                req.context.porta = data;
+                                this.authenticateUser(req)
+                                    .then((user) => {
+                                        if (user) {
+                                            const worker = this.createResponseAuthorized({
+                                                user,
+                                                req,
+                                                res
+                                            });
+                                            worker.then(async (data) => {
+                                                res.json({ user, data });
+                                            });
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        const resp = new ServerErrorResponse(err);
+                                        sendResponse(resp, res);
+                                    });
+                            })
+                            .catch((err) => {
+                                const resp = new ServerErrorResponse(err);
+                                sendResponse(resp, res);
+                            });
+                    }
+                },
+                {
+                    url: "/oidc/:tenant/signout/callback",
+                    method: "get",
+                    public: false,
+                    request: {
+                        properties: {
+                            tenant: { type: eJsonSchemaType.string },
+                            state: { type: eJsonSchemaType.string, location: eParameterLocation.query }
+                        },
+                        required: ["tenant"]
+                    },
+                    handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse) => {
+                        const worker = new Promise<string>(async (resolve, reject) => {
+                            try {
+                                const { state, tenant } = req.context.getParameters<IRequestParameters>();
+                                const cache = req.context.getCache();
+                                const { _cacheKey } = req.context.getUser<any>();
+                                const expTTL = new Date(Date.now() - 100000);
+                                const { ui_locales, appState } = await cache.getValue<IClientCache>(
+                                    `openid-client:${state}`
+                                );
+                                req.context.porta = {
+                                    tenant,
+                                    ui_locales,
+                                    state: appState,
+                                    tokenSet: undefined,
+                                    claims: undefined,
+                                    userInfo: undefined
+                                };
+
+                                const { url, searchParams } = await this.getLandingURL(req, true);
+                                const respUrl = new URL(url);
+                                Object.entries(searchParams || {}).forEach(([k, v]) => {
+                                    if (v) {
+                                        respUrl.searchParams.append(k, v);
+                                    }
+                                });
+
+                                await cache.deleteValue(_cacheKey);
+                                res.cookie(this.getKeySignature(req), "", {
+                                    httpOnly: true,
+                                    expires: expTTL,
+                                    signed: true,
+                                    secure: req.protocol !== "http"
+                                });
+                                // the session cookie
+                                res.cookie(SESSION_TTL_KEY, -1, {
+                                    expires: expTTL
+                                });
+                                resolve(respUrl.toString());
+                            } catch (err: any) {
+                                if (err.response && err.response.body) {
+                                    reject(err.response.body);
+                                } else {
+                                    reject(err);
+                                }
+                            }
+                        });
+                        worker
+                            .then(async (url) => {
+                                res.send(renderGetRedirect(url));
+                            })
+                            .catch((err) => {
+                                const resp = new ServerErrorResponse(err);
+                                sendResponse(resp, res);
+                            });
+                    }
+                }
+            ]
+        });
+    }
 
     /**
      * @protected

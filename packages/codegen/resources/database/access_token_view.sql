@@ -1,4 +1,6 @@
 select
+	ttl as default_ttl,
+	refresh_ttl as default_refresh_ttl,
 	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
 	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
 	sat.id,

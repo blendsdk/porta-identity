@@ -241,7 +241,8 @@ export class TokenEndpointController extends EndpointController {
 
                 if (accessTokenStorage) {
                     // create a new access token based on the previous access token
-                    const { user_id, ttl, refresh_ttl, auth_request_params, client } = accessTokenStorage;
+                    const { user_id, auth_request_params, client, default_refresh_ttl, default_ttl } =
+                        accessTokenStorage;
 
                     const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
 
@@ -265,7 +266,11 @@ export class TokenEndpointController extends EndpointController {
                         } = await this.createSessionStorageForUser({
                             tenant: tenantRecord,
                             user_id,
-                            authRecord: { access_token_ttl: ttl, refresh_token_ttl: refresh_ttl, id: client.id } as any,
+                            authRecord: {
+                                access_token_ttl: default_ttl,
+                                refresh_token_ttl: default_refresh_ttl,
+                                id: client.id
+                            } as any,
                             auth_request_params: auth_req_params
                         });
                         // revoke the previous refresh_token and access_token

@@ -122,6 +122,8 @@ export type eSysUserPermissionView = (typeof eSysUserPermissionView)[keyof typeo
  */
 export const eSysAccessTokenView = {
 	$name: "sys_access_token_view",
+	DEFAULT_TTL: "default_ttl",
+	DEFAULT_REFRESH_TTL: "default_refresh_ttl",
 	TTL: "ttl",
 	REFRESH_TTL: "refresh_ttl",
 	ID: "id",
