@@ -317,7 +317,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                                         url.searchParams.append(k, v);
                                                     }
                                                 });
-
+                                                res.cookie("locale", data.ui_locales);
                                                 res.send(renderGetRedirect(url.toString(), 1));
                                             });
                                         }
