@@ -351,34 +351,6 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
     }
 
     /**
-     * Authenticates the user by passing the OIDC data to the implementing class
-     *
-     * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {Promise<any>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected async authenticateUser(req: HttpRequest<IPortaHTTPRequestContext>): Promise<any> {
-        const data = await this.findOrCreateUser(req.context.porta, req);
-        return {
-            ...data,
-            _sub: req.context.porta.tokenSet.claims().sub,
-            _tenant: (req.context.porta.claims.tenant as any).name,
-            _ui_locales: req.context.porta.ui_locales
-        };
-    }
-
-    /**
-     * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {number}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected getTokenTTL(req: HttpRequest<IPortaHTTPRequestContext>): number {
-        return req.context.porta.tokenSet.expires_in * 1000;
-    }
-
-    /**
      * @protected
      * @memberof PortaMultiTenantClientModule
      */
@@ -670,5 +642,33 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
         return () => {
             return { ...sessionStorage.user, _cacheKey: sessionStorage.cacheKey };
         };
+    }
+
+    /**
+     * Authenticates the user by passing the OIDC data to the implementing class
+     *
+     * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<any>}
+     * @memberof PortaMultiTenantClientModule
+     */
+    protected async authenticateUser(req: HttpRequest<IPortaHTTPRequestContext>): Promise<any> {
+        const data = await this.findOrCreateUser(req.context.porta, req);
+        return {
+            ...data,
+            _sub: req.context.porta.tokenSet.claims().sub,
+            _tenant: (req.context.porta.claims.tenant as any).name,
+            _ui_locales: req.context.porta.ui_locales
+        };
+    }
+
+    /**
+     * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {number}
+     * @memberof PortaMultiTenantClientModule
+     */
+    protected getTokenTTL(req: HttpRequest<IPortaHTTPRequestContext>): number {
+        return req.context.porta.tokenSet.expires_in * 1000;
     }
 }
