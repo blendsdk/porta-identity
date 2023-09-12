@@ -756,6 +756,71 @@ export interface ILogoutFlowInfoResponse {
 
 /**
  * @export
+ * @interface IForgotPasswordFlowInfoRequest
+ */
+export interface IForgotPasswordFlowInfoRequest {}
+
+/**
+ * @export
+ * @interface IForgotPasswordFlowInfo
+ */
+export interface IForgotPasswordFlowInfo {
+	/**
+	 * @type string
+	 * @memberOf IForgotPasswordFlowInfo
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf IForgotPasswordFlowInfo
+	 */
+	organization: string;
+}
+
+/**
+ * @export
+ * @interface IForgotPasswordFlowInfoResponse
+ */
+export interface IForgotPasswordFlowInfoResponse {
+	/**
+	 * @type IForgotPasswordFlowInfo
+	 * @memberOf IForgotPasswordFlowInfoResponse
+	 */
+	data: IForgotPasswordFlowInfo;
+}
+
+/**
+ * @export
+ * @interface IForgotPasswordRequestAccountRequest
+ */
+export interface IForgotPasswordRequestAccountRequest {
+	/**
+	 * @type string
+	 * @memberOf IForgotPasswordRequestAccountRequest
+	 */
+	account: string;
+}
+
+/**
+ * @export
+ * @interface IForgotPasswordRequestAccount
+ */
+export interface IForgotPasswordRequestAccount {}
+
+/**
+ * @export
+ * @interface IForgotPasswordRequestAccountResponse
+ */
+export interface IForgotPasswordRequestAccountResponse {
+	/**
+	 * @type IForgotPasswordRequestAccount
+	 * @memberOf IForgotPasswordRequestAccountResponse
+	 */
+	data: IForgotPasswordRequestAccount;
+}
+
+/**
+ * @export
  * @interface IAuthenticationKeepAliveRequest
  */
 export interface IAuthenticationKeepAliveRequest {}

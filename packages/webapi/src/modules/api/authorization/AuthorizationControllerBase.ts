@@ -30,7 +30,11 @@ import {
 	ISessionLogoutPostRequest,
 	ISessionLogoutPostResponse,
 	ILogoutFlowInfoRequest,
-	ILogoutFlowInfoResponse
+	ILogoutFlowInfoResponse,
+	IForgotPasswordFlowInfoRequest,
+	IForgotPasswordFlowInfoResponse,
+	IForgotPasswordRequestAccountRequest,
+	IForgotPasswordRequestAccountResponse
 } from "@porta/shared";
 
 /**
@@ -147,4 +151,24 @@ export abstract class AuthorizationControllerBase<
 	 * @memberof AuthorizationControllerBase
 	 */
 	public abstract logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>>;
+	/**
+	 * Method for handling [POST] /fp/flow_info
+	 * @abstract
+	 * @param {IForgotPasswordFlowInfoRequest} params
+	 * @returns {Promise<Response<IForgotPasswordFlowInfoResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract forgotPasswordFlowInfo(
+		params: IForgotPasswordFlowInfoRequest
+	): Promise<Response<IForgotPasswordFlowInfoResponse>>;
+	/**
+	 * Method for handling [POST] /fp/forgot_request_account
+	 * @abstract
+	 * @param {IForgotPasswordRequestAccountRequest} params
+	 * @returns {Promise<Response<IForgotPasswordRequestAccountResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract forgotPasswordRequestAccount(
+		params: IForgotPasswordRequestAccountRequest
+	): Promise<Response<IForgotPasswordRequestAccountResponse>>;
 }

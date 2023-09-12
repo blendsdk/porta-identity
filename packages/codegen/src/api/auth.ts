@@ -302,5 +302,39 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         }
     });
 
+    builder.defineApi({
+        id: "forgot_password_flow_info",
+        url: "/fp/flow_info",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type);
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("organization");
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
+        id: "forgot_password_request_account",
+        url: "/fp/forgot_request_account",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("account");
+
+            typeSchema.createAppendType(payload_type); //
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
     builder.defineTokenAuthenticationAPI();
 }

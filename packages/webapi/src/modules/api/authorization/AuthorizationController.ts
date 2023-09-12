@@ -25,7 +25,9 @@ import {
     ISessionLogoutPostRequest,
     ISessionLogoutPostResponse,
     ILogoutFlowInfoRequest,
-    ILogoutFlowInfoResponse
+    ILogoutFlowInfoResponse,
+    IForgotPasswordFlowInfoRequest,
+    IForgotPasswordFlowInfoResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -39,6 +41,9 @@ import { RedirectEndpointController } from "./controllers/RedirectEndpointContro
 import { SigninEndpointController } from "./controllers/SigninEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
 import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
+import { PasswordResetEndpointController } from "./controllers/PasswordResetEndpointController";
+import { IForgotPasswordRequestAccountRequest } from "@porta/shared";
+import { IForgotPasswordRequestAccountResponse } from "@porta/shared";
 
 /**
  * @export
@@ -90,6 +95,19 @@ export class AuthorizationController extends AuthorizationControllerBase {
         const subController = new LogoutFlowInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
     }
+    public forgotPasswordFlowInfo(
+        params: IForgotPasswordFlowInfoRequest
+    ): Promise<Response<IForgotPasswordFlowInfoResponse>> {
+        const subController = new PasswordResetEndpointController(this.createSubControllerConfig());
+        return subController.forgotPasswordFlowInfo(params);
+    }
+    public forgotPasswordRequestAccount(
+        params: IForgotPasswordRequestAccountRequest
+    ): Promise<Response<IForgotPasswordRequestAccountResponse>> {
+        const subController = new PasswordResetEndpointController(this.createSubControllerConfig());
+        return subController.forgotPasswordRequestAccount(params);
+    }
+
     public flowInfo(params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>> {
         const subController = new FlowInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);

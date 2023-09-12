@@ -2,6 +2,7 @@ import { IRoute } from "@blendsdk/react";
 import { LoginView, LogoutView } from "../authentication";
 import { eAppRoutes } from "./constants";
 import { SignInRedirect } from "../dashboard";
+import { ForgotPassword } from "../authentication/ForgotPassword";
 
 export const appRoutes: IRoute[] = [
     {
@@ -18,5 +19,10 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.signout.key,
         path: eAppRoutes.signout.path,
         component: LogoutView
+    },
+    {
+        name: eAppRoutes.forgotPassword.key,
+        path: eAppRoutes.forgotPassword.path,
+        component: ForgotPassword
     }
 ];

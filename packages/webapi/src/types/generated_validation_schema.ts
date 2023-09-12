@@ -1235,6 +1235,33 @@ export const validationSchema = {
 			},
 			required: ["logo", "application_name", "organization", "finalize_url", "flowId", "has_post_redirect"]
 		},
+		forgot_password_flow_info_request: {
+			type: eJsonSchemaType.object
+		},
+		forgot_password_flow_info: {
+			type: eJsonSchemaType.object,
+			properties: {
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["logo", "organization"]
+		},
+		forgot_password_request_account_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				account: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["account"]
+		},
+		forgot_password_request_account: {
+			type: eJsonSchemaType.object
+		},
 		authentication_keep_alive_request: {
 			type: eJsonSchemaType.object
 		},

@@ -26,6 +26,12 @@ export class CheckFlow extends DataStoreBase implements IAuthenticationFlowState
         this.signin_url = undefined;
     }
 
+    public async requestResetPassword(account: string) {
+        this.beginFetching();
+        await ApplicationApi.authorization.forgotPasswordRequestAccount({ account });
+        this.doneFetching();
+    }
+
     public async check(params: ICheckFlowRequest) {
         this.beginFetching();
         const { data = undefined } = await ApplicationApi.authorization.checkFlow(params);

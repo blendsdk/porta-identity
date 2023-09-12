@@ -1,36 +1,14 @@
-import { Body1, Input, makeStyles, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
+import { Body1, Input, Subtitle1 } from "@fluentui/react-components";
 import { FormikProps } from "formik";
 import React, { Fragment } from "react";
 import { useTranslation } from "../../system/i18n";
 import { IAuthenticationDialogModel, FIELD_SIZE } from "./lib";
 import { useCheckFlowStore } from "./store";
+import { useStyles } from "./styles";
 
 export interface IGetMFA {
     form: FormikProps<IAuthenticationDialogModel>;
 }
-
-const useStyles = makeStyles({
-    validation: {
-        color: tokens.colorPaletteRedForeground1
-    },
-    mfa_wrapper: {
-        display: "flex",
-        flexDirection: "column",
-        ...shorthands.gap(tokens.spacingVerticalM)
-    },
-    mfa_input: {
-        "& input": {
-            textAlign: "center",
-            fontSize: "1.5rem",
-            color: tokens.colorBrandBackground,
-            fontWeight: "bold",
-            "::placeholder": {
-                fontSize: "initial",
-                fontWeight: "normal"
-            }
-        }
-    }
-});
 
 export const GetMFA: React.FC<IGetMFA> = ({ form }) => {
     const { t } = useTranslation();

@@ -1,5 +1,4 @@
 import { Body1 } from "@fluentui/react-components";
-import { IFlowInfo, ILogoutFlowInfo } from "@porta/shared";
 import { useStyles } from "./styles";
 import { eAppRoutes } from "../routing";
 import { useRouter } from "../../system/session";
@@ -8,7 +7,7 @@ import { useTranslation } from "../../system/i18n";
 import { eFlowState } from "./lib";
 
 export interface IOrgName {
-    flowInfo: IFlowInfo | ILogoutFlowInfo | undefined;
+    flowInfo: { allow_reset_password?: boolean; organization: string } | undefined;
     flowState: number;
 }
 export const OrgName: React.FC<IOrgName> = ({ flowInfo, flowState }) => {

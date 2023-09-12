@@ -2,7 +2,7 @@ import { Translator } from "@blendsdk/i18n";
 import { IMailer } from "@blendsdk/webafx-mailer";
 import { IAuthenticationFlowState, ISysAuthorizationView, ISysTenant, ISysUser, ISysUserProfile } from "@porta/shared";
 
-interface IMfaEmailSettings {
+export interface IMfaEmailSettings {
     MFA_EMAIL_FROM: string;
 }
 

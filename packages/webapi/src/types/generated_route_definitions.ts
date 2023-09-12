@@ -15,6 +15,8 @@ export const routeDefinitions: {
 		session_logout_get: IRouteBase;
 		session_logout_post: IRouteBase;
 		logout_flow_info: IRouteBase;
+		forgot_password_flow_info: IRouteBase;
+		forgot_password_request_account: IRouteBase;
 	};
 	authentication: {
 		authentication_keep_alive: IRouteBase;
@@ -49,7 +51,14 @@ export const routeDefinitions: {
 		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
 		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: false },
 		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
-		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true }
+		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true },
+		forgot_password_flow_info: { id: "forgot_password_flow_info", method: "post", url: "/fp/flow_info", public: true },
+		forgot_password_request_account: {
+			id: "forgot_password_request_account",
+			method: "post",
+			url: "/fp/forgot_request_account",
+			public: true
+		}
 	},
 	authentication: {
 		authentication_keep_alive: {

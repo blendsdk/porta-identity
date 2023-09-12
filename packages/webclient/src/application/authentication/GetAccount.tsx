@@ -1,19 +1,14 @@
-import { Body1, Input, makeStyles, Subtitle1, tokens } from "@fluentui/react-components";
+import { Body1, Input, Subtitle1 } from "@fluentui/react-components";
 import { FormikProps } from "formik";
 import React, { Fragment } from "react";
 import { useTranslation } from "../../system/i18n";
 import { FIELD_SIZE, IAuthenticationDialogModel } from "./lib";
 import { useCheckFlowStore } from "./store";
+import { useStyles } from "./styles";
 
 export interface IGetAccount {
     form: FormikProps<IAuthenticationDialogModel>;
 }
-
-const useStyles = makeStyles({
-    validation: {
-        color: tokens.colorPaletteRedForeground1
-    }
-});
 
 export const GetAccount: React.FC<IGetAccount> = ({ form }) => {
     const { t } = useTranslation();

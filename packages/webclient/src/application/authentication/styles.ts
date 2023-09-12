@@ -99,5 +99,28 @@ export const useStyles = makeStyles({
         "& span": {
             textAlign: "center"
         }
+    },
+    validation: {
+        color: tokens.colorPaletteRedForeground1
+    },
+    resetWrapper: {
+        textAlign: "center"
+    },
+    mfa_wrapper: {
+        display: "flex",
+        flexDirection: "column",
+        ...shorthands.gap(tokens.spacingVerticalM)
+    },
+    mfa_input: {
+        "& input": {
+            textAlign: "center",
+            fontSize: "1.5rem",
+            color: tokens.colorBrandBackground,
+            fontWeight: "bold",
+            "::placeholder": {
+                fontSize: "initial",
+                fontWeight: "normal"
+            }
+        }
     }
 });

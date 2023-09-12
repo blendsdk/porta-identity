@@ -134,5 +134,28 @@
     "forgot_password_link": {
         "en": "Forgot password?",
         "nl": "Wachtwoord vergeten?"
+    },
+    "forgot_password_text": {
+        "en": "Please provide your account or email and click on "
+    },
+    "forgot_password_text_placeholder": {
+        "en": "Provide you account or email",
+        "nl": "Geef uw account of e-mailadres op"
+    },
+    "forgot_password_btn": {
+        "en": "Submit",
+        "nl": "Verzenden"
+    },
+    "account_is_required": {
+        "en": "Please provide your account or email",
+        "nl": "Geef uw account of e-mailadres op"
+    },
+    "mail_reset_password_subject": {
+        "en": "Reset you password for ${organization}",
+        "nl": "Wachtwoord wijzigen voor ${organization}"
+    },
+    "forgot_password_complete": {
+        "en": "We have received your request. You will receive an email with further instructions. You can close this window.",
+        "nl": "We hebben uw aanvraag ontvangen. U ontvangt een e-mail met verdere instructies. U kunt dit venster sluiten."
     }
 }
