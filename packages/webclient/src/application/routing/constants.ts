@@ -10,5 +10,9 @@ export const eAppRoutes = {
     signinRedirect: {
         key: "signinRedirect",
         path: "/fe/local/signin"
+    },
+    forgotPassword: {
+        key: "forgotPassword",
+        path: "/fe/forgot-password"
     }
 };

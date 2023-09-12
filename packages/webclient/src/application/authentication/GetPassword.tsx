@@ -12,6 +12,9 @@ export interface IGetPassword {
 const useStyles = makeStyles({
     validation: {
         color: tokens.colorPaletteRedForeground1
+    },
+    resetWrapper: {
+        textAlign: "center"
     }
 });
 

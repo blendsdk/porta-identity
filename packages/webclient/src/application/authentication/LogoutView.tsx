@@ -9,6 +9,7 @@ import { useStyles } from "./styles";
 import { ApplicationApi } from "../../system/api";
 import { Body2, Button, Spinner } from "@fluentui/react-components";
 import { InvalidSession } from "./InvalidSession";
+import { OrgName } from "./OrgName";
 
 export const LogoutView = () => {
     const { t } = useTranslation();
@@ -69,12 +70,10 @@ export const LogoutView = () => {
                         )}
                         {flowState === eFlowState.INVALID_SESSION && <InvalidSession logout />}
                         {flowInfo && flowState === eFlowState.LOGOUT_CANCELED && (
-                            <Body2 as="h2" align="center">
-                                {t("logout_canceled", flowInfo)}
-                            </Body2>
+                            <Body2 align="center">{t("logout_canceled", flowInfo)}</Body2>
                         )}
                         {flowInfo && flowState === eFlowState.LOGOUT_PROGRESS && (
-                            <Body2 as="h2" align="center">
+                            <Body2 align="center">
                                 <span
                                     dangerouslySetInnerHTML={{ __html: t("logout_confirm_message", flowInfo) }}
                                 ></span>
@@ -106,6 +105,7 @@ export const LogoutView = () => {
                             </div>
                         )}
                     </div>
+                    <OrgName flowInfo={flowInfo} flowState={flowState} />
                 </div>
             </form>
         </div>

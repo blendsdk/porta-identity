@@ -31,7 +31,7 @@ export class FlowInfoEndpointController extends EndpointController {
                         client_id: authRequest.client_id,
                         application_name: authRecord.application_name,
                         allow_registration: tenantRecord.allow_registration || false,
-                        allow_reset_password: tenantRecord.allow_registration || false,
+                        allow_reset_password: tenantRecord.allow_reset_password || false,
                         organization: tenantRecord.organization
                     }
                 });

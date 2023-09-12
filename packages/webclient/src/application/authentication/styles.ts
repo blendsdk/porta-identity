@@ -1,6 +1,16 @@
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useStyles = makeStyles({
+    org: {
+        color: tokens.colorNeutralStroke1Pressed
+    },
+    org_spacer: {
+        ...shorthands.flex(1)
+    },
+    orgWrapper: {
+        display: "flex",
+        flexDirection: "row"
+    },
     wrapper: {
         backgroundColor: tokens.colorNeutralBackground1Hover,
         backgroundSize: "cover",
@@ -21,8 +31,13 @@ export const useStyles = makeStyles({
         flexDirection: "column",
         boxSizing: "border-box",
         ...shorthands.flex(1),
-        justifyContent: "start",
-        ...shorthands.gap(tokens.spacingVerticalL)
+        ...shorthands.gap(tokens.spacingVerticalL),
+        "@media only screen and (min-width: 600px)": {
+            justifyContent: "space-evenly"
+        },
+        "@media only screen and (max-width: 600px)": {
+            justifyContent: "start"
+        }
     },
     authView: {
         backgroundColor: tokens.colorNeutralBackground1,
@@ -36,7 +51,7 @@ export const useStyles = makeStyles({
             display: "flex",
             position: "absolute",
             width: "440px",
-            minHeight: "270px",
+            minHeight: "300px",
             transform: "translate(-50%, -50%)",
             top: "50%",
             left: "50%",

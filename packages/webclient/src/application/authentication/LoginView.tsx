@@ -26,6 +26,7 @@ import * as yup from "yup";
 import { isEmptyObject } from "@blendsdk/stdlib";
 import { GetMFA } from "./GetMFA";
 import Cookies from "js-cookie";
+import { OrgName } from "./OrgName";
 
 export const LoginView = () => {
     const { t } = useTranslation();
@@ -308,6 +309,7 @@ export const LoginView = () => {
                                 )}
                         </div>
                     )}
+                    <OrgName flowInfo={flowInfo} flowState={flowState} />
                 </div>
             </form>
         </div>

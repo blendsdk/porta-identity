@@ -130,5 +130,9 @@
     "logout_complete": {
         "en": "You are successfully signed out. You can close this browser tab or window now.",
         "nl": "U bent succesvol uitgelogd. U kunt dit browsertabblad of dit browservenster nu sluiten."
+    },
+    "forgot_password_link": {
+        "en": "Forgot password?",
+        "nl": "Wachtwoord vergeten?"
     }
 }
