@@ -68,7 +68,12 @@ export const LogoutView = () => {
                         {flowState === eFlowState.COMPLETE && (
                             <Spinner className={s.spinner} size="small" label={t("please_wait_while_redirecting")} />
                         )}
-                        {flowState === eFlowState.INVALID_SESSION && <InvalidSession logout />}
+                        {flowState === eFlowState.INVALID_SESSION && (
+                            <InvalidSession
+                                caption="invalid_logout_session_caption"
+                                message="invalid_logout_session_message"
+                            />
+                        )}
                         {flowInfo && flowState === eFlowState.LOGOUT_CANCELED && (
                             <Body2 align="center">{t("logout_canceled", flowInfo)}</Body2>
                         )}

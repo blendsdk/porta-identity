@@ -87,19 +87,19 @@
         "en": "Use another account",
         "nl": "Een ander account gebruiken"
     },
-    "invalid_auth_session_caption": {
-        "en": "Authentication process timed out",
-        "nl": "Er is een time-out opgetreden bij het authenticatieproces"
-    },
     "invalid_logout_session_caption": {
         "en": "A timeout occurred while signing out",
         "nl": "Er is een time-out opgetreden bij het uitloggen"
     },
-    "invalid_logout_session_text": {
+    "invalid_logout_session_message": {
         "en": "It is not possible to continue with the sign-out process. Please close this window and return to you application.",
         "nl": "Het is niet mogelijk om verder te gaan met het uitlogproces. Sluit dit venster en keer terug naar uw applicatie."
     },
-    "invalid_auth_session_text": {
+    "invalid_auth_session_caption": {
+        "en": "Authentication process timed out",
+        "nl": "Er is een time-out opgetreden bij het authenticatieproces"
+    },
+    "invalid_auth_session_message": {
         "en": "It took too long to complete your authentication. Please return to your application's login screen and start over again.",
         "nl": "Het duurde te lang om uw authenticatie te voltooien. Ga terug naar het inlogscherm van uw applicatie en begin opnieuw."
     },

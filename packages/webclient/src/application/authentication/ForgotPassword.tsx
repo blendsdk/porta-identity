@@ -90,7 +90,12 @@ export const ForgotPassword = () => {
                         <div className={s.logo} style={{ backgroundImage: `url(${flowInfo.logo || LogoImage})` }} />
                     )}
                     <div className={s.authViewContent}>
-                        {flowState === eFlowState.INVALID_SESSION && <InvalidSession />}
+                        {flowState === eFlowState.INVALID_SESSION && (
+                            <InvalidSession
+                                caption="invalid_auth_session_caption"
+                                message="invalid_logout_session_message"
+                            />
+                        )}
                         {(!flowInfo && flowState === eFlowState.FORGOT_PASSWORD_PROGRESS) || requestFlow.fetching ? (
                             <Spinner className={s.spinner} size="small" label={t("please_wait")} />
                         ) : null}

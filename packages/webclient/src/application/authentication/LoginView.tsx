@@ -232,7 +232,12 @@ export const LoginView = () => {
                     ) : null}
                     {!checkFlow.fetching && (
                         <div className={s.authViewContent}>
-                            {flowState === eFlowState.INVALID_SESSION && <InvalidSession />}
+                            {flowState === eFlowState.INVALID_SESSION && (
+                                <InvalidSession
+                                    caption="invalid_auth_session_caption"
+                                    message="invalid_auth_session_message"
+                                />
+                            )}
                             {flowState === eFlowState.SELECT_ACCOUNT && showPickAccount && (
                                 <PickAccounts
                                     onSelect={({ account, tenant }: IExistingAccount) => {
