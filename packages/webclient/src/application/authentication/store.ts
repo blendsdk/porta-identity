@@ -1,5 +1,5 @@
 import { DataStoreBase, makeGlobalStore } from "@blendsdk/react";
-import { IAuthenticationFlowState, ICheckFlowRequest } from "@porta/shared";
+import { IAuthenticationFlowState, ICheckFlowRequest, IRequestPasswordResetRequest } from "@porta/shared";
 import { ApplicationApi } from "../../system/api";
 
 export class CheckFlow extends DataStoreBase implements IAuthenticationFlowState {
@@ -26,7 +26,13 @@ export class CheckFlow extends DataStoreBase implements IAuthenticationFlowState
         this.signin_url = undefined;
     }
 
-    public async requestResetPassword(account: string) {
+    public async requestPasswordReset(params: IRequestPasswordResetRequest) {
+        this.beginFetching();
+        await ApplicationApi.authorization.requestPasswordReset(params);
+        this.doneFetching();
+    }
+
+    public async forgotPasswordRequestAccount(account: string) {
         this.beginFetching();
         await ApplicationApi.authorization.forgotPasswordRequestAccount({ account });
         this.doneFetching();

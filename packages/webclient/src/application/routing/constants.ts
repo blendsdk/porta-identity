@@ -14,5 +14,9 @@ export const eAppRoutes = {
     forgotPassword: {
         key: "forgotPassword",
         path: "/fe/forgot-password"
+    },
+    resetPassword: {
+        key: "resetPassword",
+        path: "/fe/reset-password/:flow/t"
     }
 };

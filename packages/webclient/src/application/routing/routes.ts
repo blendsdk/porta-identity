@@ -3,6 +3,7 @@ import { LoginView, LogoutView } from "../authentication";
 import { eAppRoutes } from "./constants";
 import { SignInRedirect } from "../dashboard";
 import { ForgotPassword } from "../authentication/ForgotPassword";
+import { ResetPassword } from "../authentication/ResetPassword";
 
 export const appRoutes: IRoute[] = [
     {
@@ -24,5 +25,10 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.forgotPassword.key,
         path: eAppRoutes.forgotPassword.path,
         component: ForgotPassword
+    },
+    {
+        name: eAppRoutes.resetPassword.key,
+        path: eAppRoutes.resetPassword.path,
+        component: ResetPassword
     }
 ];

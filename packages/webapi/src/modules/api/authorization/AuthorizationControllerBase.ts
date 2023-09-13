@@ -34,7 +34,11 @@ import {
 	IForgotPasswordFlowInfoRequest,
 	IForgotPasswordFlowInfoResponse,
 	IForgotPasswordRequestAccountRequest,
-	IForgotPasswordRequestAccountResponse
+	IForgotPasswordRequestAccountResponse,
+	ICheckPasswordResetRequestRequest,
+	ICheckPasswordResetRequestResponse,
+	IRequestPasswordResetRequest,
+	IRequestPasswordResetResponse
 } from "@porta/shared";
 
 /**
@@ -171,4 +175,24 @@ export abstract class AuthorizationControllerBase<
 	public abstract forgotPasswordRequestAccount(
 		params: IForgotPasswordRequestAccountRequest
 	): Promise<Response<IForgotPasswordRequestAccountResponse>>;
+	/**
+	 * Method for handling [POST] /fp/check_password_reset_request
+	 * @abstract
+	 * @param {ICheckPasswordResetRequestRequest} params
+	 * @returns {Promise<Response<ICheckPasswordResetRequestResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract checkPasswordResetRequest(
+		params: ICheckPasswordResetRequestRequest
+	): Promise<Response<ICheckPasswordResetRequestResponse>>;
+	/**
+	 * Method for handling [POST] /fp/request_password_reset
+	 * @abstract
+	 * @param {IRequestPasswordResetRequest} params
+	 * @returns {Promise<Response<IRequestPasswordResetResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract requestPasswordReset(
+		params: IRequestPasswordResetRequest
+	): Promise<Response<IRequestPasswordResetResponse>>;
 }

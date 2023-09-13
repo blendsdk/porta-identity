@@ -30,7 +30,7 @@ const useStyles = makeStyles({
     }
 });
 
-export const InvalidSession: React.FC<{ logout?: boolean }> = ({ logout }) => {
+export const InvalidSession: React.FC<{ caption: string; message: string }> = ({ message, caption }) => {
     const { t } = useTranslation();
     const styles = useStyles();
 
@@ -38,13 +38,9 @@ export const InvalidSession: React.FC<{ logout?: boolean }> = ({ logout }) => {
         <div className={styles.root}>
             <div className={styles.header}>
                 <Warning24Regular className={styles.warnIcon} />
-                <Subtitle1 className="subtitle">
-                    {t(logout ? "invalid_logout_session_caption" : "invalid_auth_session_caption")}
-                </Subtitle1>
+                <Subtitle1 className="subtitle">{t(caption)}</Subtitle1>
             </div>
-            <Body1 className={styles.body}>
-                {t(logout ? "invalid_logout_session_text" : "invalid_auth_session_text")}
-            </Body1>
+            <Body1 className={styles.body}>{t(message)}</Body1>
         </div>
     );
 };

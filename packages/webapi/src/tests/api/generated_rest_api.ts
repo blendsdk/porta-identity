@@ -39,6 +39,10 @@ import {
 	IForgotPasswordFlowInfoResponse,
 	IForgotPasswordRequestAccountRequest,
 	IForgotPasswordRequestAccountResponse,
+	ICheckPasswordResetRequestRequest,
+	ICheckPasswordResetRequestResponse,
+	IRequestPasswordResetRequest,
+	IRequestPasswordResetResponse,
 	IAuthenticationKeepAliveRequest,
 	IAuthenticationKeepAliveResponse,
 	IAuthenticationLogoutRequest,
@@ -76,6 +80,8 @@ export interface IPortaApi {
 			IForgotPasswordRequestAccountRequest,
 			IForgotPasswordRequestAccountResponse
 		>;
+		checkPasswordResetRequest: THttpRequest<ICheckPasswordResetRequestRequest, ICheckPasswordResetRequestResponse>;
+		requestPasswordReset: THttpRequest<IRequestPasswordResetRequest, IRequestPasswordResetResponse>;
 	};
 	authentication: {
 		authenticationKeepAlive: THttpRequest<IAuthenticationKeepAliveRequest | void, IAuthenticationKeepAliveResponse>;
@@ -143,7 +149,9 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			}),
 			logoutFlowInfo: defineEndpoint({ method: "get", url: "/lf/flow_info" }),
 			forgotPasswordFlowInfo: defineEndpoint({ method: "post", url: "/fp/flow_info" }),
-			forgotPasswordRequestAccount: defineEndpoint({ method: "post", url: "/fp/forgot_request_account" })
+			forgotPasswordRequestAccount: defineEndpoint({ method: "post", url: "/fp/forgot_request_account" }),
+			checkPasswordResetRequest: defineEndpoint({ method: "post", url: "/fp/check_password_reset_request" }),
+			requestPasswordReset: defineEndpoint({ method: "post", url: "/fp/request_password_reset" })
 		},
 		authentication: {
 			authenticationKeepAlive: defineEndpoint({ method: "post", url: "/api/authentication/keep-alive" }),

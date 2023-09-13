@@ -472,6 +472,11 @@ export interface ISysUser {
 	 * @memberOf ISysUser
 	 */
 	date_created?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	date_changed?: string;
 }
 
 /**

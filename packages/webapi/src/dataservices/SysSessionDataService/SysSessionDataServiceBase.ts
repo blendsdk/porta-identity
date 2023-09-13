@@ -1,10 +1,11 @@
+import { ISysSession } from "@porta/shared";
 import {
+	ISysSessionDataServiceDeleteSysSessionByUserIdFilter,
 	ISysSessionDataServiceFindSysSessionByIdParams,
 	ISysSessionDataServiceDeleteSysSessionByIdFilter,
 	ISysSessionDataServiceUpdateSysSessionByIdFilter,
 	ISysSessionDataServiceFindSysSessionByUserIdAndClientIdParams
 } from "./types";
-import { ISysSession } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
 import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/postgresql";
 
@@ -16,6 +17,24 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysSessionDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * Delete a sys_session record by
+	 * @param {Partial<ISysSession>}
+	 * @returns {void}
+	 * @memberof SysSessionDataServiceBase
+	 */
+	public async deleteSysSessionByUserId(
+		filter: ISysSessionDataServiceDeleteSysSessionByUserIdFilter
+	): Promise<IExecuteQueryReturnValue<ICountRecordsResult, IPostgreSQLQueryResult>> {
+		const ctx = await this.getContext();
+		const result = await ctx.deleteRecords<ISysSessionDataServiceDeleteSysSessionByUserIdFilter>(
+			`sys_session`,
+			filter,
+			{ single: false }
+		);
+		return result;
+	}
+
 	/**
 	 * Find a sys_session record by
 	 * @param {ISysSessionDataServiceFindSysSessionByIdParams}

@@ -27,7 +27,11 @@ import {
     ILogoutFlowInfoRequest,
     ILogoutFlowInfoResponse,
     IForgotPasswordFlowInfoRequest,
-    IForgotPasswordFlowInfoResponse
+    IForgotPasswordFlowInfoResponse,
+    ICheckPasswordResetRequestRequest,
+    ICheckPasswordResetRequestResponse,
+    IRequestPasswordResetRequest,
+    IRequestPasswordResetResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -100,6 +104,18 @@ export class AuthorizationController extends AuthorizationControllerBase {
     ): Promise<Response<IForgotPasswordFlowInfoResponse>> {
         const subController = new PasswordResetEndpointController(this.createSubControllerConfig());
         return subController.forgotPasswordFlowInfo(params);
+    }
+    public checkPasswordResetRequest(
+        params: ICheckPasswordResetRequestRequest
+    ): Promise<Response<ICheckPasswordResetRequestResponse>> {
+        const subController = new PasswordResetEndpointController(this.createSubControllerConfig());
+        return subController.checkPasswordResetRequest(params);
+    }
+    public requestPasswordReset(
+        params: IRequestPasswordResetRequest
+    ): Promise<Response<IRequestPasswordResetResponse>> {
+        const subController = new PasswordResetEndpointController(this.createSubControllerConfig());
+        return subController.requestPasswordReset(params);
     }
     public forgotPasswordRequestAccount(
         params: IForgotPasswordRequestAccountRequest

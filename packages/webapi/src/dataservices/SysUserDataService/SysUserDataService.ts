@@ -33,13 +33,15 @@ export class SysUserDataService extends SysUserDataServiceBase {
     }
 
     protected updateSysUserByIdInConverter(record: Partial<ISysUser>): Partial<ISysUser> {
+        const rec: any = record;
         /**
          * Only update if the password is set again
          */
-        if (!isNullOrUndef(record.password)) {
-            record.password = hashStringSync(record.password);
+        if (!isNullOrUndef(rec.i_password)) {
+            rec.i_password = hashStringSync(rec.i_password);
         }
-        return record;
+        rec.date_changed = new Date().toString();
+        return rec;
     }
 
     protected updateSysUserByIdOutConverter(record: ISysUser): ISysUser {

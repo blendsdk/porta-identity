@@ -85,6 +85,16 @@ export const AuthorizationModule = (): IRouter => {
 				dispatch: "forgot_password_request_account",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.forgot_password_request_account
+			}),
+			defineControllerRoute({
+				dispatch: "check_password_reset_request",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.check_password_reset_request
+			}),
+			defineControllerRoute({
+				dispatch: "request_password_reset",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.request_password_reset
 			})
 		]
 	};

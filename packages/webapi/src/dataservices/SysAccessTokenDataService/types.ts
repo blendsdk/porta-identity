@@ -17,6 +17,18 @@ export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilt
 
 /**
  * @export
+ * @interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter
+ */
+export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter
+	 */
+	user_id: string;
+}
+
+/**
+ * @export
  * @interface ISysAccessTokenDataServiceFindSysAccessTokenByIdParams
  */
 export interface ISysAccessTokenDataServiceFindSysAccessTokenByIdParams {

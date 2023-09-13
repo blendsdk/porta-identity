@@ -374,6 +374,25 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
+     * Delete all cookies
+     *
+     * @protected
+     * @memberof EndSessionController
+     */
+    protected deleteAllCookies() {
+        const cookies = this.request.cookies;
+        const signedCookies = this.request.signedCookies;
+
+        for (const cookieName in cookies) {
+            this.response.cookie(cookieName, "", { expires: new Date(0) });
+        }
+
+        for (const cookieName in signedCookies) {
+            this.response.cookie(cookieName, "", { expires: new Date(0) });
+        }
+    }
+
+    /**
      * Gets the cache key for the logout flow
      *
      * @protected

@@ -17,6 +17,8 @@ export const routeDefinitions: {
 		logout_flow_info: IRouteBase;
 		forgot_password_flow_info: IRouteBase;
 		forgot_password_request_account: IRouteBase;
+		check_password_reset_request: IRouteBase;
+		request_password_reset: IRouteBase;
 	};
 	authentication: {
 		authentication_keep_alive: IRouteBase;
@@ -57,6 +59,18 @@ export const routeDefinitions: {
 			id: "forgot_password_request_account",
 			method: "post",
 			url: "/fp/forgot_request_account",
+			public: true
+		},
+		check_password_reset_request: {
+			id: "check_password_reset_request",
+			method: "post",
+			url: "/fp/check_password_reset_request",
+			public: true
+		},
+		request_password_reset: {
+			id: "request_password_reset",
+			method: "post",
+			url: "/fp/request_password_reset",
 			public: true
 		}
 	},

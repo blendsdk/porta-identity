@@ -41,7 +41,7 @@ export const ForgotPassword = () => {
             if (form.isValid) {
                 setFlowState(eFlowState.FORGOT_PASSWORD_PROGRESS);
                 requestFlow
-                    .requestResetPassword(values.account)
+                    .forgotPasswordRequestAccount(values.account)
                     .then(() => {
                         setFlowState(eFlowState.COMPLETE);
                     })

@@ -157,5 +157,45 @@
     "forgot_password_complete": {
         "en": "We have received your request. You will receive an email with further instructions. You can close this window.",
         "nl": "We hebben uw aanvraag ontvangen. U ontvangt een e-mail met verdere instructies. U kunt dit venster sluiten."
+    },
+    "reset_password": {
+        "en": "Reset password",
+        "nl": "Wachtwoord wijzigen"
+    },
+    "please_provide_a_password": {
+        "en": "Please provide a password",
+        "nl": "Geef een wachtwoord op"
+    },
+    "please_re_type_your_password": {
+        "en": "Please re-type your password",
+        "nl": "Typ uw wachtwoord opnieuw"
+    },
+    "password_must_have_at_least_8_characters": {
+        "en": "Password must have at least 8 characters",
+        "nl": "Wachtwoord moet minimaal 8 tekens bevatten"
+    },
+    "invalid_reset_password_session_caption": {
+        "en": "Unable to reset your password",
+        "nl": "Wachtwoord instellen niet mogelijk"
+    },
+    "invalid_reset_password_session_message": {
+        "en": "We are unable to change your password because the link you used in not valid anymore. Please request to reset your password again.",
+        "nl": "We kunnen uw wachtwoord niet wijzigen omdat de link die u gebruikte niet meer geldig is. Vraag alstublieft opnieuw een wachtwoord reset aan."
+    },
+    "password_not_strong": {
+        "en": "Password must at least have one uppercase, one lowercase, one numeric and one special character.",
+        "nl": "Het wachtwoord moet minimaal één hoofdletter, één kleine letter, één cijfer en één speciaal teken bevatten."
+    },
+    "passwords_do_not_match": {
+        "en": "Passwords do not match",
+        "nl": "Wachtwoorden komen niet overeen"
+    },
+    "reset_password_complete": {
+        "en": "Your password been changed. Please close this window and sign on again.",
+        "nl": "Uw wachtwoord is gewijzigd. Sluit dit venster en meld u opnieuw aan."
+    },
+    "reset_password_btn": {
+        "en": "Reset Password",
+        "nl": "Wachtwoord wijzigen"
     }
 }

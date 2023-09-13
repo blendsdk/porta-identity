@@ -8,7 +8,12 @@ import { useTranslation } from "./i18n";
 import Cookies from "js-cookie";
 
 const getCurrentLocale = () => {
-    return Cookies.get("ui_locales") || (window.navigator as any).userLanguage || window.navigator.language;
+    return (
+        Cookies.get("ui_locales") ||
+        Cookies.get("locale") ||
+        (window.navigator as any).userLanguage ||
+        window.navigator.language
+    );
 };
 
 /**

@@ -1,11 +1,17 @@
 import {
+    ICheckPasswordResetRequestRequest,
+    ICheckPasswordResetRequestResponse,
     IForgotPasswordFlowInfoRequest,
     IForgotPasswordFlowInfoResponse,
     IForgotPasswordRequestAccountRequest,
-    IForgotPasswordRequestAccountResponse
+    IForgotPasswordRequestAccountResponse,
+    IRequestPasswordResetRequest,
+    IRequestPasswordResetResponse,
+    ISysAuthorizationView,
+    ISysTenant
 } from "@porta/shared";
 import { EndpointController } from "./EndpointControllerBase";
-import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { BadRequestResponse, Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
@@ -13,9 +19,111 @@ import { databaseUtils } from "../../../../utils";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 import { IMfaEmailSettings } from "../EMailMFAProvider";
 import { AUTH_FLOW_TTL } from "./constants";
-import { errorObjectInfo } from "@blendsdk/stdlib";
+import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
+import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 
 export class PasswordResetEndpointController extends EndpointController {
+    protected async getResetPasswordFlow(flow: string, check?: boolean) {
+        const cache = this.context.getCache();
+        let checkResult: boolean = true;
+        const {
+            account = undefined,
+            authRecord = undefined,
+            tenantRecord = undefined
+        } = (await cache.getValue<{ account: string; authRecord: ISysAuthorizationView; tenantRecord: ISysTenant }>(
+            `reset-password-request:${flow}`
+        )) || {};
+        if (check) {
+            const flowCheck = (await cache.getValue<string>(`reset-password-request-check:${account}`)) || {};
+            checkResult = flow === flowCheck;
+        } else {
+            checkResult = authRecord !== undefined && tenantRecord !== undefined && account !== undefined;
+        }
+        return {
+            check: checkResult,
+            authRecord,
+            tenantRecord,
+            account
+        };
+    }
+
+    public async requestPasswordReset({
+        confirmPassword,
+        flow,
+        password
+    }: IRequestPasswordResetRequest): Promise<Response<IRequestPasswordResetResponse>> {
+        try {
+            const { account, check, tenantRecord } = await this.getResetPasswordFlow(flow);
+            if (check && account) {
+                if (!isNullOrUndef(password) && !isNullOrUndef(confirmPassword) && password === confirmPassword) {
+                    const userDs = new SysUserDataService({
+                        tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+                    });
+
+                    const accessTokenDs = new SysAccessTokenDataService({
+                        tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+                    });
+
+                    const sessionDs = new SysSessionDataService({
+                        tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+                    });
+
+                    let userRecord = await userDs.findByUsernameNonService({ username: account });
+
+                    userRecord = await userDs.updateSysUserById(
+                        {
+                            password
+                        },
+                        {
+                            id: userRecord.id
+                        }
+                    );
+
+                    // delete all access tokens
+                    await accessTokenDs.deleteSysAccessTokenByUserId({ user_id: userRecord.id });
+                    // delete all sessions
+                    await sessionDs.deleteSysSessionByUserId({ user_id: userRecord.id });
+                    // delete all local cookies
+                    this.deleteAllCookies();
+
+                    return new SuccessResponse<IRequestPasswordResetResponse>({
+                        data: {
+                            status: true
+                        }
+                    });
+                } else {
+                    return new BadRequestResponse(new Error("PASSWORDS_DO_NOT_MATCH"));
+                }
+            } else {
+                return new BadRequestResponse(new Error("INVALID_RESET_PASSWORD_FLOW"));
+            }
+        } catch (err) {
+            return new ServerErrorResponse(err);
+        }
+    }
+
+    public async checkPasswordResetRequest({
+        flow
+    }: ICheckPasswordResetRequestRequest): Promise<Response<ICheckPasswordResetRequestResponse>> {
+        try {
+            const { authRecord, check, tenantRecord } = await this.getResetPasswordFlow(flow);
+            // check if this flow is the most recent
+            if (check) {
+                return new SuccessResponse<ICheckPasswordResetRequestResponse>({
+                    data: {
+                        logo: authRecord.logo,
+                        organization: tenantRecord.organization
+                    }
+                });
+            } else {
+                return new BadRequestResponse(new Error("INVALID_MATCHING_FLOW"));
+            }
+        } catch (err) {
+            return new ServerErrorResponse(err);
+        }
+    }
+
     public async forgotPasswordFlowInfo(
         _params: IForgotPasswordFlowInfoRequest
     ): Promise<Response<IForgotPasswordFlowInfoResponse>> {
@@ -32,7 +140,7 @@ export class PasswordResetEndpointController extends EndpointController {
                 return new BadRequestResponse(new Error("INVALID_REQUEST_NO_FLOW"));
             }
         } catch (err) {
-            return new BadRequestResponse(err);
+            return new ServerErrorResponse(err);
         }
     }
 
@@ -94,7 +202,7 @@ export class PasswordResetEndpointController extends EndpointController {
                 return new BadRequestResponse(new Error("INVALID_REQUEST_NO_FLOW"));
             }
         } catch (err) {
-            return new BadRequestResponse(err);
+            return new ServerErrorResponse(err);
         }
     }
 }

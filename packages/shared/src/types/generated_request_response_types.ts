@@ -821,6 +821,93 @@ export interface IForgotPasswordRequestAccountResponse {
 
 /**
  * @export
+ * @interface ICheckPasswordResetRequestRequest
+ */
+export interface ICheckPasswordResetRequestRequest {
+	/**
+	 * @type string
+	 * @memberOf ICheckPasswordResetRequestRequest
+	 */
+	flow: string;
+}
+
+/**
+ * @export
+ * @interface ICheckPasswordResetRequest
+ */
+export interface ICheckPasswordResetRequest {
+	/**
+	 * @type string
+	 * @memberOf ICheckPasswordResetRequest
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckPasswordResetRequest
+	 */
+	organization: string;
+}
+
+/**
+ * @export
+ * @interface ICheckPasswordResetRequestResponse
+ */
+export interface ICheckPasswordResetRequestResponse {
+	/**
+	 * @type ICheckPasswordResetRequest
+	 * @memberOf ICheckPasswordResetRequestResponse
+	 */
+	data: ICheckPasswordResetRequest;
+}
+
+/**
+ * @export
+ * @interface IRequestPasswordResetRequest
+ */
+export interface IRequestPasswordResetRequest {
+	/**
+	 * @type string
+	 * @memberOf IRequestPasswordResetRequest
+	 */
+	flow: string;
+	/**
+	 * @type string
+	 * @memberOf IRequestPasswordResetRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf IRequestPasswordResetRequest
+	 */
+	confirmPassword: string;
+}
+
+/**
+ * @export
+ * @interface IRequestPasswordReset
+ */
+export interface IRequestPasswordReset {
+	/**
+	 * @type boolean
+	 * @memberOf IRequestPasswordReset
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface IRequestPasswordResetResponse
+ */
+export interface IRequestPasswordResetResponse {
+	/**
+	 * @type IRequestPasswordReset
+	 * @memberOf IRequestPasswordResetResponse
+	 */
+	data: IRequestPasswordReset;
+}
+
+/**
+ * @export
  * @interface IAuthenticationKeepAliveRequest
  */
 export interface IAuthenticationKeepAliveRequest {}

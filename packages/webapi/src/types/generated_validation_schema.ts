@@ -448,6 +448,10 @@ export const validationSchema = {
 				date_created: {
 					type: eJsonSchemaType.string,
 					format: "datetime"
+				},
+				date_changed: {
+					type: eJsonSchemaType.string,
+					format: "date"
 				}
 			},
 			required: ["username", "password"]
@@ -1261,6 +1265,51 @@ export const validationSchema = {
 		},
 		forgot_password_request_account: {
 			type: eJsonSchemaType.object
+		},
+		check_password_reset_request_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				flow: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["flow"]
+		},
+		check_password_reset_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["logo", "organization"]
+		},
+		request_password_reset_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				flow: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				confirmPassword: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["flow", "password", "confirmPassword"]
+		},
+		request_password_reset: {
+			type: eJsonSchemaType.object,
+			properties: {
+				status: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["status"]
 		},
 		authentication_keep_alive_request: {
 			type: eJsonSchemaType.object

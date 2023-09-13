@@ -336,5 +336,44 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         }
     });
 
+    builder.defineApi({
+        id: "check_password_reset_request",
+        url: "/fp/check_password_reset_request",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("flow");
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("organization");
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
+        id: "request_password_reset",
+        url: "/fp/request_password_reset",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("flow")
+                .addString("password")
+                .addString("confirmPassword");
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addBoolean("status");
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
     builder.defineTokenAuthenticationAPI();
 }

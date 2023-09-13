@@ -151,25 +151,6 @@ export class EndSessionController extends EndpointController {
     }
 
     /**
-     * Delete all cookies
-     *
-     * @protected
-     * @memberof EndSessionController
-     */
-    protected deleteAllCookies() {
-        const cookies = this.request.cookies;
-        const signedCookies = this.request.signedCookies;
-
-        for (const cookieName in cookies) {
-            this.response.cookie(cookieName, "", { expires: new Date(0) });
-        }
-
-        for (const cookieName in signedCookies) {
-            this.response.cookie(cookieName, "", { expires: new Date(0) });
-        }
-    }
-
-    /**
      * Handle the form and following (second) request
      *
      * @protected

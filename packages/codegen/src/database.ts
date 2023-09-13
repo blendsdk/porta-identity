@@ -36,7 +36,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("username", { unique: true })
         .stringColumn("password")
         .booleanColumn("is_active", { default: "true" })
-        .dateTimeColumn("date_created", { default: "now()" });
+        .dateTimeColumn("date_created", { default: "now()" })
+        .dateColumn("date_changed", { default: "now()" });
 
     user_profile //
         .primaryKeyColumn("id", true)

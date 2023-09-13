@@ -212,7 +212,8 @@ export const eSysUser = {
 	USERNAME: "username",
 	PASSWORD: "password",
 	IS_ACTIVE: "is_active",
-	DATE_CREATED: "date_created"
+	DATE_CREATED: "date_created",
+	DATE_CHANGED: "date_changed"
 } as const;
 export type eSysUser = (typeof eSysUser)[keyof typeof eSysUser];
 

@@ -5,6 +5,18 @@
 
 /**
  * @export
+ * @interface ISysSessionDataServiceDeleteSysSessionByUserIdFilter
+ */
+export interface ISysSessionDataServiceDeleteSysSessionByUserIdFilter {
+	/**
+	 * @type string
+	 * @memberOf ISysSessionDataServiceDeleteSysSessionByUserIdFilter
+	 */
+	user_id: string;
+}
+
+/**
+ * @export
  * @interface ISysSessionDataServiceFindSysSessionByIdParams
  */
 export interface ISysSessionDataServiceFindSysSessionByIdParams {
