@@ -43,6 +43,7 @@ import { commonUtils, databaseUtils } from "../../../../utils";
 import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 
 /**
  * Enum describing flow parts
@@ -156,10 +157,34 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
+     * Revokes and destroys aal access tokens for a given user and client
+     *
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {string} client_id
+     * @param {*} user_id
+     * @memberof EndpointController
+     */
+    protected async destroySessionAndAllTokens(tenantRecord: ISysTenant, client_id: string, user_id) {
+        const accessTokenDs = new SysAccessTokenDataService({
+            tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+        });
+
+        const sessionDs = new SysSessionDataService({
+            tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+        });
+
+        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id });
+        await accessTokenDs.deleteSysAccessTokenByUserIdAndClientId({ user_id, client_id });
+        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id });
+    }
+
+    /**
      * Revokes a given access token
      *
      * @protected
-     * @param {string} accessToken
+     * @param {ISysTenant} tenantRecord
+     * @param {string} access_token
      * @memberof EndpointController
      */
     protected async revokeAccessToken(tenantRecord: ISysTenant, access_token: string) {
@@ -170,6 +195,14 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         }
     }
 
+    /**
+     * Revokes a given refresh token
+     *
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysRefreshTokenView} refreshTokenStorage
+     * @memberof EndpointController
+     */
     protected async revokeRefreshToken(tenantRecord: ISysTenant, refreshTokenStorage: ISysRefreshTokenView) {
         const { dataSource } = await databaseUtils.getTenantDataSource(tenantRecord.id);
         this.revokeAccessToken(tenantRecord, refreshTokenStorage.access_token);
@@ -179,6 +212,29 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         }
     }
 
+    /**
+     * Install the browser cookies
+     *
+     * @protected
+     * @param {{
+     *         tenant: string;
+     *         accessTokenStorage: IAccessToken;
+     *         accessTokenKeySignature: string;
+     *         refreshTokenStorage: ISysRefreshTokenView;
+     *         refreshTokenKeySignature: string;
+     *         sessionKeySignature: string;
+     *         sessionStorage: ISysSession;
+     *     }} {
+     *         tenant,
+     *         accessTokenStorage,
+     *         accessTokenKeySignature,
+     *         refreshTokenStorage,
+     *         refreshTokenKeySignature,
+     *         sessionKeySignature,
+     *         sessionStorage
+     *     }
+     * @memberof EndpointController
+     */
     protected installLocalCookies({
         tenant,
         accessTokenStorage,

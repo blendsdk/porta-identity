@@ -202,6 +202,10 @@ export class EndSessionController extends EndpointController {
             // return to the logout form
             return new SuccessResponse(renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
+            // Removes all token by this user and client
+            const tenantRecord = await databaseUtils.getTenant(flowData.tenant);
+            await this.destroySessionAndAllTokens(tenantRecord, flowData.user_id, flowData.client_id);
+
             // delete all the cookies
             this.deleteAllCookies();
             // delete the flow cache

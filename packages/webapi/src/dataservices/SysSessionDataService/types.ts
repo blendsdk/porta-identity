@@ -17,6 +17,23 @@ export interface ISysSessionDataServiceDeleteSysSessionByUserIdFilter {
 
 /**
  * @export
+ * @interface ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter
+ */
+export interface ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter {
+	/**
+	 * @type string
+	 * @memberOf ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter
+	 */
+	client_id: string;
+}
+
+/**
+ * @export
  * @interface ISysSessionDataServiceFindSysSessionByIdParams
  */
 export interface ISysSessionDataServiceFindSysSessionByIdParams {

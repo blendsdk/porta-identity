@@ -20,8 +20,6 @@ import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfi
 import { IMfaEmailSettings } from "../EMailMFAProvider";
 import { AUTH_FLOW_TTL } from "./constants";
 import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
-import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
-import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 
 export class PasswordResetEndpointController extends EndpointController {
     protected async getResetPasswordFlow(flow: string, check?: boolean) {
@@ -54,18 +52,10 @@ export class PasswordResetEndpointController extends EndpointController {
         password
     }: IRequestPasswordResetRequest): Promise<Response<IRequestPasswordResetResponse>> {
         try {
-            const { account, check, tenantRecord } = await this.getResetPasswordFlow(flow);
+            const { account, check, tenantRecord, authRecord } = await this.getResetPasswordFlow(flow);
             if (check && account) {
                 if (!isNullOrUndef(password) && !isNullOrUndef(confirmPassword) && password === confirmPassword) {
                     const userDs = new SysUserDataService({
-                        tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
-                    });
-
-                    const accessTokenDs = new SysAccessTokenDataService({
-                        tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
-                    });
-
-                    const sessionDs = new SysSessionDataService({
                         tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
                     });
 
@@ -80,10 +70,9 @@ export class PasswordResetEndpointController extends EndpointController {
                         }
                     );
 
-                    // delete all access tokens
-                    await accessTokenDs.deleteSysAccessTokenByUserId({ user_id: userRecord.id });
-                    // delete all sessions
-                    await sessionDs.deleteSysSessionByUserId({ user_id: userRecord.id });
+                    // Removes all token assigned to this user spanning by client_id.
+                    // This will "logout" the given user in all access tokens for a given client
+                    await this.destroySessionAndAllTokens(tenantRecord, authRecord.client_id, userRecord.id);
                     // delete all local cookies
                     this.deleteAllCookies();
 

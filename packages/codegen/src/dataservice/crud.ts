@@ -173,6 +173,14 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                     return c.getName() === "user_id";
                 })
             );
+            svc.defineDeleteByColumnMethod(
+                {
+                    table: table.getName()
+                },
+                table.getColumns().filter((c) => {
+                    return c.getName() === "user_id" || c.getName() === "client_id";
+                })
+            );
         }
 
         if (table.getName() === "sys_access_token") {
@@ -190,6 +198,14 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                 },
                 table.getColumns().filter((c) => {
                     return c.getName() === "user_id";
+                })
+            );
+            svc.defineDeleteByColumnMethod(
+                {
+                    table: table.getName()
+                },
+                table.getColumns().filter((c) => {
+                    return c.getName() === "user_id" || c.getName() === "client_id";
                 })
             );
         }

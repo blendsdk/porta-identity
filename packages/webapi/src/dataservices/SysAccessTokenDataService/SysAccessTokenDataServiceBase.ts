@@ -2,6 +2,7 @@ import { ISysAccessToken } from "@porta/shared";
 import {
 	ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilter,
 	ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter,
+	ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter,
 	ISysAccessTokenDataServiceFindSysAccessTokenByIdParams,
 	ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter,
 	ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter,
@@ -47,6 +48,24 @@ export abstract class SysAccessTokenDataServiceBase extends DataService<PostgreS
 	): Promise<IExecuteQueryReturnValue<ICountRecordsResult, IPostgreSQLQueryResult>> {
 		const ctx = await this.getContext();
 		const result = await ctx.deleteRecords<ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter>(
+			`sys_access_token`,
+			filter,
+			{ single: false }
+		);
+		return result;
+	}
+
+	/**
+	 * Delete a sys_access_token record by  and
+	 * @param {Partial<ISysAccessToken>}
+	 * @returns {void}
+	 * @memberof SysAccessTokenDataServiceBase
+	 */
+	public async deleteSysAccessTokenByUserIdAndClientId(
+		filter: ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
+	): Promise<IExecuteQueryReturnValue<ICountRecordsResult, IPostgreSQLQueryResult>> {
+		const ctx = await this.getContext();
+		const result = await ctx.deleteRecords<ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter>(
 			`sys_access_token`,
 			filter,
 			{ single: false }

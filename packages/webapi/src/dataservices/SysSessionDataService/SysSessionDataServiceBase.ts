@@ -1,6 +1,7 @@
 import { ISysSession } from "@porta/shared";
 import {
 	ISysSessionDataServiceDeleteSysSessionByUserIdFilter,
+	ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter,
 	ISysSessionDataServiceFindSysSessionByIdParams,
 	ISysSessionDataServiceDeleteSysSessionByIdFilter,
 	ISysSessionDataServiceUpdateSysSessionByIdFilter,
@@ -28,6 +29,24 @@ export abstract class SysSessionDataServiceBase extends DataService<PostgreSQLEx
 	): Promise<IExecuteQueryReturnValue<ICountRecordsResult, IPostgreSQLQueryResult>> {
 		const ctx = await this.getContext();
 		const result = await ctx.deleteRecords<ISysSessionDataServiceDeleteSysSessionByUserIdFilter>(
+			`sys_session`,
+			filter,
+			{ single: false }
+		);
+		return result;
+	}
+
+	/**
+	 * Delete a sys_session record by  and
+	 * @param {Partial<ISysSession>}
+	 * @returns {void}
+	 * @memberof SysSessionDataServiceBase
+	 */
+	public async deleteSysSessionByUserIdAndClientId(
+		filter: ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter
+	): Promise<IExecuteQueryReturnValue<ICountRecordsResult, IPostgreSQLQueryResult>> {
+		const ctx = await this.getContext();
+		const result = await ctx.deleteRecords<ISysSessionDataServiceDeleteSysSessionByUserIdAndClientIdFilter>(
 			`sys_session`,
 			filter,
 			{ single: false }
