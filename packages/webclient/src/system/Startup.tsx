@@ -1,20 +1,10 @@
-import { Router, SessionLoadingView, SystemError } from "@blendsdk/react";
+import { Router, SessionLoadingView, SystemError, getCurrentLocale } from "@blendsdk/react";
 import { appRoutes } from "../application/routing";
 import "./session";
 import { useAppTheme, useSystemError } from "./session";
 import { FluentProvider } from "@fluentui/react-components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "./i18n";
-import Cookies from "js-cookie";
-
-const getCurrentLocale = () => {
-    return (
-        Cookies.get("ui_locales") ||
-        Cookies.get("locale") ||
-        (window.navigator as any).userLanguage ||
-        window.navigator.language
-    );
-};
 
 /**
  * Index component that is going to load the application component
