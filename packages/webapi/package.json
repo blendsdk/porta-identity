@@ -39,9 +39,9 @@
         "@porta/shared": "1.0.160",
         "@types/jsonwebtoken": "^9.0.2",
         "dayjs": "^1.11.9",
-        "jose": "^4.14.4",
+        "jose": "^4.14.6",
         "jsonwebtoken": "^9.0.2",
-        "openid-client": "^5.4.3",
+        "openid-client": "^5.5.0",
         "tslib": "^2.6.2",
         "yargs": "^17.7.2"
     },
