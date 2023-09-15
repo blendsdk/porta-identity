@@ -44,6 +44,7 @@ import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTok
 import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
 import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
+import { SysClientDataService } from "../../../../dataservices/SysClientDataService";
 
 /**
  * Enum describing flow parts
@@ -165,7 +166,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {*} user_id
      * @memberof EndpointController
      */
-    protected async destroySessionAndAllTokens(tenantRecord: ISysTenant, client_id: string, user_id) {
+    protected async destroySessionAndAllTokens(tenantRecord: ISysTenant, client_id: string, user_id: string) {
         const accessTokenDs = new SysAccessTokenDataService({
             tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
         });
@@ -174,9 +175,15 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
         });
 
-        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id });
-        await accessTokenDs.deleteSysAccessTokenByUserIdAndClientId({ user_id, client_id });
-        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id });
+        const clientDs = new SysClientDataService({
+            tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
+        });
+
+        const clientRecord = await clientDs.findSysClientByClientId({ client_id });
+
+        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id: clientRecord.id });
+        await accessTokenDs.deleteSysAccessTokenByUserIdAndClientId({ user_id, client_id: clientRecord.id });
+        await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id: clientRecord.id });
     }
 
     /**

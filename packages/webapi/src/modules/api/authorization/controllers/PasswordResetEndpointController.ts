@@ -55,20 +55,17 @@ export class PasswordResetEndpointController extends EndpointController {
             const { account, check, tenantRecord, authRecord } = await this.getResetPasswordFlow(flow);
             if (check && account) {
                 if (!isNullOrUndef(password) && !isNullOrUndef(confirmPassword) && password === confirmPassword) {
+                    const cache = this.context.getCache();
+
                     const userDs = new SysUserDataService({
                         tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
                     });
 
                     let userRecord = await userDs.findByUsernameNonService({ username: account });
+                    userRecord = await userDs.updateSysUserById({ password }, { id: userRecord.id });
 
-                    userRecord = await userDs.updateSysUserById(
-                        {
-                            password
-                        },
-                        {
-                            id: userRecord.id
-                        }
-                    );
+                    await cache.deleteValue(`reset-password-request-check:${account}`);
+                    await cache.deleteValue(`reset-password-request:${flow}`);
 
                     // Removes all token assigned to this user spanning by client_id.
                     // This will "logout" the given user in all access tokens for a given client
