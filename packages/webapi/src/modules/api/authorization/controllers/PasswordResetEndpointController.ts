@@ -21,7 +21,19 @@ import { IMfaEmailSettings } from "../EMailMFAProvider";
 import { AUTH_FLOW_TTL } from "./constants";
 import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
 
+/**
+ * @export
+ * @class PasswordResetEndpointController
+ * @extends {EndpointController}
+ */
 export class PasswordResetEndpointController extends EndpointController {
+    /**
+     * @protected
+     * @param {string} flow
+     * @param {boolean} [check]
+     * @returns
+     * @memberof PasswordResetEndpointController
+     */
     protected async getResetPasswordFlow(flow: string, check?: boolean) {
         const cache = this.context.getCache();
         let checkResult: boolean = true;
@@ -46,6 +58,15 @@ export class PasswordResetEndpointController extends EndpointController {
         };
     }
 
+    /**
+     * @param {IRequestPasswordResetRequest} {
+     *         confirmPassword,
+     *         flow,
+     *         password
+     *     }
+     * @returns {Promise<Response<IRequestPasswordResetResponse>>}
+     * @memberof PasswordResetEndpointController
+     */
     public async requestPasswordReset({
         confirmPassword,
         flow,
@@ -89,6 +110,13 @@ export class PasswordResetEndpointController extends EndpointController {
         }
     }
 
+    /**
+     * @param {ICheckPasswordResetRequestRequest} {
+     *         flow
+     *     }
+     * @returns {Promise<Response<ICheckPasswordResetRequestResponse>>}
+     * @memberof PasswordResetEndpointController
+     */
     public async checkPasswordResetRequest({
         flow
     }: ICheckPasswordResetRequestRequest): Promise<Response<ICheckPasswordResetRequestResponse>> {
@@ -110,6 +138,11 @@ export class PasswordResetEndpointController extends EndpointController {
         }
     }
 
+    /**
+     * @param {IForgotPasswordFlowInfoRequest} _params
+     * @returns {Promise<Response<IForgotPasswordFlowInfoResponse>>}
+     * @memberof PasswordResetEndpointController
+     */
     public async forgotPasswordFlowInfo(
         _params: IForgotPasswordFlowInfoRequest
     ): Promise<Response<IForgotPasswordFlowInfoResponse>> {
@@ -130,6 +163,13 @@ export class PasswordResetEndpointController extends EndpointController {
         }
     }
 
+    /**
+     * @param {IForgotPasswordRequestAccountRequest} {
+     *         account
+     *     }
+     * @returns {Promise<Response<IForgotPasswordRequestAccountResponse>>}
+     * @memberof PasswordResetEndpointController
+     */
     public async forgotPasswordRequestAccount({
         account
     }: IForgotPasswordRequestAccountRequest): Promise<Response<IForgotPasswordRequestAccountResponse>> {
