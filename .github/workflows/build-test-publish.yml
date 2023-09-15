@@ -46,7 +46,7 @@ jobs:
               run: |
                   git reset --hard
                   yarn tag-version-pre --yes
-                  yarn publish-packages --yes
+                  yarn publish-packages --yes --dist-tag next
 
             - name: Development Deploy
               if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
