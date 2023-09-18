@@ -179,7 +179,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
         });
 
-        const clientRecord = await clientDs.findSysClientByClientId({ client_id });
+        const clientRecord = await clientDs.findSysClientById({ id: client_id });
 
         await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id: clientRecord.id });
         await accessTokenDs.deleteSysAccessTokenByUserIdAndClientId({ user_id, client_id: clientRecord.id });
