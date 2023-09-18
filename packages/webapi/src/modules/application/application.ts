@@ -3,12 +3,12 @@ import { CacheModule } from "@blendsdk/webafx-cache";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import * as path from "path";
 import { AuthorizationModule } from "../api/authorization";
-import { PortaAuthenticationModule } from "../auth/porta";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
-import { LocalAuthRoutes } from "../auth/local";
 import { MailerModule } from "@blendsdk/webafx-mailer";
+import { ApplicationModule } from "../api/application";
+import { PortaSelfAuthenticationModule } from "../auth/selfauth";
 
 /**
  * Configuration setting for testing
@@ -30,7 +30,8 @@ const application = new Application({
         //
         ValidationSchema(),
         AuthorizationModule(),
-        LocalAuthRoutes(),
+        ApplicationModule(),
+        // LocalAuthRoutes(),
         SPARoutes()
     ]
 }).addModule([
@@ -48,7 +49,7 @@ const application = new Application({
         return new DatabaseModule({ ...config });
     },
     (config) => {
-        return new PortaAuthenticationModule({ ...config });
+        return new PortaSelfAuthenticationModule({ ...config });
     },
     (config) => {
         return new MailerModule(config);

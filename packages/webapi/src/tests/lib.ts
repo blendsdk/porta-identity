@@ -2,7 +2,6 @@ import { sha256Hash } from "@blendsdk/crypto";
 import { base64Decode, base64Encode } from "@blendsdk/stdlib";
 import { ISysClient } from "@porta/shared";
 import { application } from "../modules/application";
-import { checkAndInitialize } from "../modules/commandline/commands/start";
 import { eClientType } from "../types";
 import { databaseUtils } from "../utils";
 import { PortaApi } from "./api";
@@ -79,7 +78,6 @@ export function create_before_all(test_set: string) {
         await application.run().then(async () => {
             PortaApi.setBaseUrl(BASE_URL);
         });
-        await checkAndInitialize();
         await cleanTestTenant(test_set);
         await initTestTenant(test_set);
         await databaseUtils.initializeTenantDataSource(test_set);

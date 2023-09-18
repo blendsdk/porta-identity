@@ -1,15 +1,13 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { asyncForEach } from "@blendsdk/stdlib";
-import { RedisCache } from "@blendsdk/webafx-cache/dist/cache";
 import { ISysClient, ISysUser } from "@porta/shared";
 import { ArgumentsCamelCase, CommandBuilder } from "yargs";
 import { SysUserDataService } from "../../../dataservices/SysUserDataService";
 import { SysUserProfileDataService } from "../../../dataservices/SysUserProfileDataService";
-import { eClientType, IPortaApplicationSetting, PORTA_REGISTRY } from "../../../types";
-import { commonUtils, databaseUtils } from "../../../utils";
+import { eClientType, IPortaApplicationSetting } from "../../../types";
+import { databaseUtils } from "../../../utils";
 import { application } from "../../application";
-import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import path from "path";
 import fs from "fs";
 
@@ -61,96 +59,6 @@ export const builder: CommandBuilder = {
             "The redirect uri configured in OIDC conformance suite. This option initializes data for the OIDC conformance suite"
     }
 };
-
-/**
- * Check and initialize the registry database
- *
- * @export
- * @returns
- */
-export function checkAndInitialize() {
-    return new Promise<void>(async (resolve, reject) => {
-        try {
-            const { PORTA_ADMIN, PORTA_PASSWORD, DB_DATABASE, PORTA_PUBLIC_DOMAIN } = application.getSettings<
-                IPortaApplicationSetting & IDatabaseAppSettings
-            >();
-            await databaseUtils.initializeTenant(
-                PORTA_REGISTRY,
-                DB_DATABASE,
-                "Porta Registry",
-                false,
-                true,
-                PORTA_ADMIN,
-                PORTA_PASSWORD,
-                PORTA_PUBLIC_DOMAIN
-            );
-            resolve();
-        } catch (err) {
-            reject(err);
-        }
-    });
-}
-
-/**
- * Check if this is a promoted "container" instance
- *
- * @returns
- */
-function isInitSequence() {
-    /**
-     * Wait method
-     */
-    const wait = (ms?: number) => {
-        const getRandomInt = (min: number, max: number) => {
-            min = Math.ceil(min);
-            max = Math.floor(max);
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        };
-
-        return new Promise<void>((resolve) => {
-            setTimeout(() => {
-                resolve();
-            }, ms || getRandomInt(1000, 2000));
-        });
-    };
-
-    return new Promise<boolean>(async (resolve, reject) => {
-        try {
-            // Get the redis credentials
-            const { REDIS_HOST, REDIS_PASSWORD, REDIS_PORT } = application.getSettings<any>();
-
-            // Connect to redis
-            const cache = new RedisCache({
-                host: REDIS_HOST,
-                password: REDIS_PASSWORD,
-                port: REDIS_PORT,
-                uniqueId: "startup"
-            });
-            await cache.connect();
-
-            // Create an ID and write/overwrite it to redis cache immediately
-            const id = commonUtils.getUUID();
-            await cache.setValue("rank", id);
-
-            let count = 0;
-            let last = false;
-            const counts = process.env.BYPASS ? 2 : 10; //
-
-            // Start waiting and counting for `counts` random seconds
-            // to make the last "container" instance to surface!
-            while (count !== counts) {
-                await wait();
-                last = id === (await cache.getValue("rank"));
-                count += 1;
-            }
-
-            // return if this is the last container
-            resolve(last);
-        } catch (err) {
-            reject(err);
-        }
-    });
-}
 
 async function createOIDCConformanceSuite(redirect_uri: string) {
     const tenantName = "oidc_suite";
@@ -250,14 +158,17 @@ async function createOIDCConformanceSuite(redirect_uri: string) {
 export const handler = async (argv: ArgumentsCamelCase<ICommandLineArgs>) => {
     try {
         application.loadFileConfig(argv.config);
+
+        // Sets the porta registry tenant from the config parameter to be read from
+        // CommonUtils
+        const { PORTA_REGISTRY_TENANT } = application.getSettings<IPortaApplicationSetting>();
+        process.env.PORTA_REGISTRY_TENANT = PORTA_REGISTRY_TENANT || "registry";
+
         try {
             await application.run();
-            if (await isInitSequence()) {
-                await checkAndInitialize();
-                if (argv.oidcRedirectUri) {
-                    application.getLogger("Initializing data for OIDC conformance suite");
-                    await createOIDCConformanceSuite(argv.oidcRedirectUri);
-                }
+            if (argv.oidcRedirectUri) {
+                application.getLogger("Initializing data for OIDC conformance suite");
+                await createOIDCConformanceSuite(argv.oidcRedirectUri);
             }
         } catch (err) {
             await application.stop();

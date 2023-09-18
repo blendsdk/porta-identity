@@ -978,3 +978,54 @@ export interface IAuthenticationLoginResponse {
 	 */
 	ttl: number;
 }
+
+/**
+ * @export
+ * @interface IInitializeRequest
+ */
+export interface IInitializeRequest {
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	email: string;
+}
+
+/**
+ * @export
+ * @interface IInitialize
+ */
+export interface IInitialize {
+	/**
+	 * @type string
+	 * @memberOf IInitialize
+	 */
+	error?: string;
+	/**
+	 * @type boolean
+	 * @memberOf IInitialize
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface IInitializeResponse
+ */
+export interface IInitializeResponse {
+	/**
+	 * @type IInitialize
+	 * @memberOf IInitializeResponse
+	 */
+	data: IInitialize;
+}

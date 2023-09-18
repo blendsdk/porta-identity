@@ -593,8 +593,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @param {ISysTenant} tenant
      * @memberof EndPointController
      */
-    protected initializeTenantDataSource(tenant: ISysTenant) {
-        return databaseUtils.initializeTenantDataSource(tenant);
+    protected async initializeTenantDataSource(tenant: ISysTenant) {
+        try {
+            return await databaseUtils.initializeTenantDataSource(tenant);
+        } catch (err: any) {
+            this.getLogger().error(err.message, { err });
+            return undefined;
+        }
     }
 
     /**

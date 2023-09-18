@@ -1,8 +1,8 @@
 import {
     TokenAuthenticationModuleBase,
     ITokenAuthenticationModuleBase,
-    TGetUserMethod,
-    SESSION_TTL_KEY
+    SESSION_TTL_KEY,
+    TGetUserMethod
 } from "@blendsdk/webafx-auth";
 import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
 
@@ -61,7 +61,7 @@ interface IClientCache {
     ui_locales: string;
 }
 
-export interface PortaMultiTenantClientModule extends ITokenAuthenticationModuleBase {}
+export interface IPortaMultiTenantClientModule extends ITokenAuthenticationModuleBase {}
 
 /**
  * Porta OIDC client
@@ -70,7 +70,7 @@ export interface PortaMultiTenantClientModule extends ITokenAuthenticationModule
  * @class PortaClientModule
  * @extends {AuthenticationModuleBase}
  */
-export abstract class PortaMultiTenantClientModule extends TokenAuthenticationModuleBase<PortaMultiTenantClientModule> {
+export abstract class PortaMultiTenantClientModule extends TokenAuthenticationModuleBase<IPortaMultiTenantClientModule> {
     /**
      * Finds or creates a user
      *
@@ -204,7 +204,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @protected
      * @memberof PortaMultiTenantClientModule
      */
-    protected createSignHandler(): void {
+    protected createSignInHandler(): void {
         this.application.addRouter({
             routes: [
                 {
@@ -316,38 +316,54 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                 }
                             }
                         });
-                        worker
-                            .then((data: IPortaAuthenticationResult) => {
-                                req.context.porta = data;
-                                this.authenticateUser(req)
-                                    .then((user) => {
-                                        if (user) {
-                                            const worker = this.createResponseAuthorized({
-                                                user,
-                                                req,
-                                                res
-                                            });
-                                            worker.then(async () => {
-                                                res.cookie("locale", data.ui_locales);
-                                                res.send(
-                                                    renderGetRedirect(this.compileURL(await this.getLandingURL(req)))
-                                                );
-                                            });
-                                        }
-                                    })
-                                    .catch((err) => {
-                                        const resp = new ServerErrorResponse(err);
-                                        sendResponse(resp, res);
-                                    });
-                            })
-                            .catch((err) => {
-                                const resp = new ServerErrorResponse(err);
-                                sendResponse(resp, res);
-                            });
+                        this.handleSignInCallbackWorker(req, res, worker);
                     }
                 }
             ]
         });
+    }
+
+    /**
+     * Handles the sign-in callback worker.
+     * This function is abstract for it can be overridden
+     *
+     * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @param {HttpResponse} res
+     * @param {Promise<any>} worker
+     * @memberof PortaMultiTenantClientModule
+     */
+    protected handleSignInCallbackWorker(
+        req: HttpRequest<IPortaHTTPRequestContext>,
+        res: HttpResponse,
+        worker: Promise<any>
+    ) {
+        worker
+            .then((data: IPortaAuthenticationResult) => {
+                req.context.porta = data;
+                this.authenticateUser(req)
+                    .then((user) => {
+                        if (user) {
+                            const worker = this.createResponseAuthorized({
+                                user,
+                                req,
+                                res
+                            });
+                            worker.then(async () => {
+                                res.cookie("locale", data.ui_locales);
+                                res.send(renderGetRedirect(this.compileURL(await this.getLandingURL(req))));
+                            });
+                        }
+                    })
+                    .catch((err) => {
+                        const resp = new ServerErrorResponse(err);
+                        sendResponse(resp, res);
+                    });
+            })
+            .catch((err) => {
+                const resp = new ServerErrorResponse(err);
+                sendResponse(resp, res);
+            });
     }
 
     /**
@@ -452,7 +468,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                 const respUrl = this.compileURL(await this.getLandingURL(req, true));
 
                                 await cache.deleteValue(_cacheKey);
-                                res.cookie(this.getKeySignature(req), "", {
+                                res.cookie(await this.getKeySignature(req), "", {
                                     httpOnly: true,
                                     expires: expTTL,
                                     signed: true,
@@ -593,7 +609,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                 });
 
                                 await cache.deleteValue(_cacheKey);
-                                res.cookie(this.getKeySignature(req), "", {
+                                res.cookie(await this.getKeySignature(req), "", {
                                     httpOnly: true,
                                     expires: expTTL,
                                     signed: true,

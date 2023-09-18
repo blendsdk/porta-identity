@@ -25,6 +25,7 @@ export const routeDefinitions: {
 		authentication_logout: IRouteBase;
 		authentication_login: IRouteBase;
 	};
+	application: { initialize: IRouteBase };
 } = {
 	blend: {
 		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
@@ -82,5 +83,6 @@ export const routeDefinitions: {
 		},
 		authentication_logout: { id: "authentication_logout", method: "post", url: "/api/authentication/logout" },
 		authentication_login: { id: "authentication_login", method: "post", url: "/api/authentication/login" }
-	}
+	},
+	application: { initialize: { id: "initialize", method: "post", url: "/api/initialize", public: false } }
 };

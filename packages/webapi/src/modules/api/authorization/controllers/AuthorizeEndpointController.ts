@@ -248,33 +248,37 @@ export class AuthorizeEndpointController extends EndpointController {
 
         if (tenantRecord && tenantRecord.is_active) {
             // make sure we have a database for this tenant
-            await this.initializeTenantDataSource(tenantRecord);
-            // check if we have a authorization record using the request combination
-            const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
-            if (authRecord) {
-                // get the current user if possible
-                const { token, accessTokenStorage: storage } = await this.getCurrentlyAuthenticatedUserToken(
-                    tenantRecord
-                );
+            const tenantDatabase = await this.initializeTenantDataSource(tenantRecord);
+            if (tenantDatabase) {
+                // check if we have a authorization record using the request combination
+                const authRecord = await this.getAuthorizationRecord(tenantRecord, client_id, redirect_uri);
+                if (authRecord) {
+                    // get the current user if possible
+                    const { token, accessTokenStorage: storage } = await this.getCurrentlyAuthenticatedUserToken(
+                        tenantRecord
+                    );
 
-                // check if the previous token is of the current tenant
-                if (token && storage) {
-                    currentUserToken = token;
+                    // check if the previous token is of the current tenant
+                    if (token && storage) {
+                        currentUserToken = token;
+                    }
+
+                    accessTokenStorage = storage;
+
+                    // create a flow (anyway)
+                    flowId = await this.createAuthenticationFlow(
+                        response_types,
+                        tenantRecord,
+                        authRecord,
+                        authRequest,
+                        currentUserToken,
+                        confidentialClient
+                    );
+                } else {
+                    errors.push("invalid_authorization_record");
                 }
-
-                accessTokenStorage = storage;
-
-                // create a flow (anyway)
-                flowId = await this.createAuthenticationFlow(
-                    response_types,
-                    tenantRecord,
-                    authRecord,
-                    authRequest,
-                    currentUserToken,
-                    confidentialClient
-                );
             } else {
-                errors.push("invalid_authorization_record");
+                errors.push("invalid_tenant_database");
             }
         } else {
             errors.push("invalid_or_inactive_tenant");
@@ -410,7 +414,7 @@ export class AuthorizeEndpointController extends EndpointController {
             return eOAuthPKCECodeChallengeMethod[code_challenge_method] !== undefined;
         } else if (!code_challenge && !code_challenge_method) {
             // none is provided then check if the PKCE needs to be enforced!
-            const { ENFORCE_PKCE = true } = this.request.context.getSettings<{ ENFORCE_PKCE: boolean }>();
+            const { ENFORCE_PKCE = true } = this.request.context.getSettings<IPortaApplicationSetting>();
             return !ENFORCE_PKCE;
         } else {
             // only one is provided

@@ -46,15 +46,16 @@ export class PortaClient extends PortaMultiTenantClientModule {
         };
     }
 
-    protected async getDiscoveryURL(_tenant: string, _req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
-        return `https://dev.portaidentity.com/porta/oauth2`;
-        //return `https://porta.local/porta/oauth2`;
+    protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+        //return `https://dev.portaidentity.com/registry/oauth2`;
+        const { tenant } = req.context.getParameters<{ tenant: string }>();
+        return `https://porta.local/${tenant}/oauth2`;
     }
 
     protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
         return {
-            client_id: "porta1",
-            client_secret: "secret1"
+            client_id: "bff1",
+            client_secret: "secret"
         };
     }
     protected async getAuthorizationParameters(

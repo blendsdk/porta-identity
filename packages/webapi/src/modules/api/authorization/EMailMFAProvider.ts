@@ -1,14 +1,11 @@
 import { Translator } from "@blendsdk/i18n";
 import { IMailer } from "@blendsdk/webafx-mailer";
 import { IAuthenticationFlowState, ISysAuthorizationView, ISysTenant, ISysUser, ISysUserProfile } from "@porta/shared";
-
-export interface IMfaEmailSettings {
-    MFA_EMAIL_FROM: string;
-}
+import { IPortaApplicationSetting } from "../../../types";
 
 export interface IEmailMFAProvider {
     mailer: IMailer;
-    settings: IMfaEmailSettings;
+    settings: IPortaApplicationSetting;
     trans: Translator;
     flowState: IAuthenticationFlowState;
     tenantRecord: ISysTenant;

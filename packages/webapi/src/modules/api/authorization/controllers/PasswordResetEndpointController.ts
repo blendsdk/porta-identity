@@ -17,9 +17,9 @@ import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { databaseUtils } from "../../../../utils";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
-import { IMfaEmailSettings } from "../EMailMFAProvider";
 import { AUTH_FLOW_TTL } from "./constants";
 import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
+import { IPortaApplicationSetting } from "../../../../types";
 
 /**
  * @export
@@ -187,7 +187,7 @@ export class PasswordResetEndpointController extends EndpointController {
                     });
                     const userRecord = await userDs.findByUsernameNonService({ username: account });
                     const profileRecord = await profileDs.findUserProfileByUserId({ user_id: userRecord.id });
-                    const { MFA_EMAIL_FROM } = this.context.getSettings<IMfaEmailSettings>();
+                    const { MFA_EMAIL_FROM } = this.context.getSettings<IPortaApplicationSetting>();
                     const mailService = this.request.context.getService<IMailer>(KEY_MAILER_SERVICE);
                     const trans = ((this as any).context as II18NRequestContext).getTranslator();
 

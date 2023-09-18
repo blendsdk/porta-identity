@@ -21,9 +21,6 @@ export enum eLogoutFlowState {
     finalize = "finalize"
 }
 
-//TODO: make dynamic from the config!
-export const PORTA_REGISTRY = "porta";
-
 /**
  * Interface describing the One Time Access Code cache
  *
@@ -103,10 +100,14 @@ export interface IPortaApplicationSetting {
     PORTA_SIGNIN_URI: string;
     PORTA_ADMIN: string;
     PORTA_PASSWORD: string;
-    ACCESS_TOKEN_TTL: number;
-    REFRESH_TOKEN_TTL: number;
     PORTA_SSO_COMMON_NAME: string;
     PORTA_PUBLIC_DOMAIN: string;
+    PORTA_REGISTRY_TENANT: string;
+    PORTA_API_KEY: string;
+    ACCESS_TOKEN_TTL: number;
+    REFRESH_TOKEN_TTL: number;
+    ENFORCE_PKCE: boolean;
+    MFA_EMAIL_FROM: string;
 }
 
 export interface ILogoutFlowStorage extends Omit<ISysSessionView, "user" | "client"> {
@@ -186,6 +187,11 @@ export enum eOAuthClaims {
 export enum eOAuthTokenEndpointAuthMethods {
     client_secret_post = "client_secret_post",
     client_secret_basic = "client_secret_basic"
+}
+
+export enum eDatabaseType {
+    system = "system",
+    registry = "registry"
 }
 
 export enum eOAuthDisplayModes {

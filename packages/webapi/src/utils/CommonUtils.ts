@@ -2,7 +2,7 @@ import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
 import { sha256Verify } from "@blendsdk/crypto";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
-import { eOAuthPKCECodeChallengeMethod, IErrorResponseParams } from "../types";
+import { eOAuthPKCECodeChallengeMethod, IErrorResponseParams, IPortaApplicationSetting } from "../types";
 
 //const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
@@ -20,6 +20,20 @@ errorParserRegistry.push((data: IErrorResponseParams) => {
 });
 
 class CommonUtils {
+    /**
+     * Gets the PORTA_REGISTRY_TENANT parameter
+     *
+     * @returns
+     * @memberof CommonUtils
+     */
+    public getPortaRegistryTenant() {
+        const { PORTA_REGISTRY_TENANT = undefined } = (process.env as any as IPortaApplicationSetting) || {};
+        if (!PORTA_REGISTRY_TENANT) {
+            throw new Error("Parameter PORTA_REGISTRY_TENANT is not set!");
+        }
+        return PORTA_REGISTRY_TENANT;
+    }
+
     public parseSeparatedTokens(strTokens: string, caseSensitive?: boolean): IDictionaryOf<boolean> {
         const data: IDictionaryOf<boolean> = {};
         caseSensitive = caseSensitive === true ? true : false;

@@ -16,7 +16,7 @@ export const BFFRoutes = (): IRouter => {
                 url: "/login",
                 public: true,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/porta/signin`));
+                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/bff/signin`));
                 }
             },
             {
@@ -24,7 +24,7 @@ export const BFFRoutes = (): IRouter => {
                 url: "/logout",
                 public: false,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/porta/signout`));
+                    res.send(renderGetRedirect(`${req.context.getServerURL().replace(":443", "")}/oidc/bff/signout`));
                 }
             },
             {

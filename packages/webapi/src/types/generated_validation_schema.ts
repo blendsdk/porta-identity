@@ -1331,6 +1331,33 @@ export const validationSchema = {
 				}
 			},
 			required: ["username", "password"]
+		},
+		initialize_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				username: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				email: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["password", "email"]
+		},
+		initialize: {
+			type: eJsonSchemaType.object,
+			properties: {
+				error: {
+					type: eJsonSchemaType.string
+				},
+				status: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["status"]
 		}
 	}
 };
