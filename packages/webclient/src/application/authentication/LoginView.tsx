@@ -222,7 +222,7 @@ export const LoginView = () => {
         <SessionLoadingView />
     ) : (
         <div className={s.wrapper}>
-            <form>
+            <form onSubmit={form.handleSubmit}>
                 <div className={s.authView}>
                     {flowInfo && flowState !== eFlowState.INVALID_SESSION && (
                         <div className={s.logo} style={{ backgroundImage: `url(${flowInfo.logo || LogoImage})` }} />
