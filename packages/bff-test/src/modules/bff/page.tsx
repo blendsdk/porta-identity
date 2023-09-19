@@ -14,7 +14,7 @@ export interface IDashboardPage {
 export const dashboardPage: React.FC<IDashboardPage> = ({ user, serverURL }) => {
     const script = `
     const onRefreshToken = () => {
-        fetch("${serverURL}/oidc/porta/refresh", {
+        fetch("${serverURL}/oidc/bff/refresh", {
             method: "post"
         })
             .then((res) => {

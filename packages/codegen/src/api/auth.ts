@@ -205,7 +205,6 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: false,
-
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //

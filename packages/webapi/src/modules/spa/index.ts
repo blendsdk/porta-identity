@@ -1,4 +1,4 @@
-import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { IRouter, IStaticFileAppSettings, UNAUTHORIZED_PRIVATE_ENDPOINT_HANDLER } from "@blendsdk/webafx";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
@@ -9,6 +9,15 @@ let versionInfo = null;
 
 export const SPARoutes = (): IRouter => {
     return {
+        requestHandlers: {
+            [UNAUTHORIZED_PRIVATE_ENDPOINT_HANDLER]: (req: HttpRequest, _res: HttpResponse, next: NextFunction) => {
+                const { tags = [] } = req.context.getRoute();
+                if (tags.length !== 0) {
+                    req.context.getLogger().info("Tags", { tags });
+                }
+                next();
+            }
+        },
         routes: [
             {
                 method: "get",

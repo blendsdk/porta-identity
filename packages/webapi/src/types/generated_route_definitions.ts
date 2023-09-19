@@ -50,7 +50,13 @@ export const routeDefinitions: {
 			url: "/:tenant/oauth2/discovery/keys",
 			public: true
 		},
-		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false },
+		user_info_get: {
+			id: "user_info_get",
+			method: "get",
+			url: "/:tenant/oauth2/me",
+			public: false,
+			tags: ["OIDC", "API", "PROFILE"]
+		},
 		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
 		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: false },
 		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
