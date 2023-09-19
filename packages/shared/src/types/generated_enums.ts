@@ -110,8 +110,13 @@ export const eSysUserPermissionView = {
 	$name: "sys_user_permission_view",
 	USER_ID: "user_id",
 	PERMISSION_ID: "permission_id",
+	GROUP_ID: "group_id",
 	CODE: "code",
-	IS_ACTIVE: "is_active"
+	IS_ACTIVE: "is_active",
+	GROUP_NAME: "group_name",
+	GROUP_DESCRIPTION: "group_description",
+	PERMISSION_DESCRIPTION: "permission_description",
+	GROUP_IS_ACTIVE: "group_is_active"
 } as const;
 export type eSysUserPermissionView = (typeof eSysUserPermissionView)[keyof typeof eSysUserPermissionView];
 

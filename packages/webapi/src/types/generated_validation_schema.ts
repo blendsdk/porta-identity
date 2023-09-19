@@ -194,14 +194,40 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				group_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
 				code: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
 					type: eJsonSchemaType.boolean
+				},
+				group_name: {
+					type: eJsonSchemaType.string
+				},
+				group_description: {
+					type: eJsonSchemaType.string
+				},
+				permission_description: {
+					type: eJsonSchemaType.string
+				},
+				group_is_active: {
+					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["user_id", "permission_id", "code", "is_active"]
+			required: [
+				"user_id",
+				"permission_id",
+				"group_id",
+				"code",
+				"is_active",
+				"group_name",
+				"group_description",
+				"permission_description",
+				"group_is_active"
+			]
 		},
 		sys_access_token_view: {
 			type: eJsonSchemaType.object,

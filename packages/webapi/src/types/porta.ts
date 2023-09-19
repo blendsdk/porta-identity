@@ -90,8 +90,8 @@ export interface IAccessToken
     client: ISysClient;
     tenant: ISysTenant;
     session: ISysSession;
-    permissions: ISysUserPermissionView[];
-    roles: ISysGroup[];
+    permissions: Partial<ISysUserPermissionView>[];
+    roles: Partial<ISysGroup>[];
     auth_request_params: IAuthRequestParams;
     anonymus_logout?: boolean;
 }

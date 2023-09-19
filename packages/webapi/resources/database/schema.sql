@@ -181,8 +181,13 @@ DROP VIEW IF EXISTS sys_user_permission_view CASCADE;
 CREATE OR REPLACE VIEW sys_user_permission_view AS select
     sug.user_id,
     sgp.permission_id,
+    sug.group_id,
     sp.code,
-    sp.is_active
+    sp.is_active,
+    sg."name" as group_name,
+    sg.description as group_description,
+    sp.description as permission_description,
+    sg.is_active as group_is_active
 from
     sys_user_group sug
     inner join sys_group sg on sg.id = sug.group_id
@@ -442,8 +447,13 @@ DROP VIEW IF EXISTS sys_user_permission_view CASCADE;
 CREATE OR REPLACE VIEW sys_user_permission_view AS select
     sug.user_id,
     sgp.permission_id,
+    sug.group_id,
     sp.code,
-    sp.is_active
+    sp.is_active,
+    sg."name" as group_name,
+    sg.description as group_description,
+    sp.description as permission_description,
+    sg.is_active as group_is_active
 from
     sys_user_group sug
     inner join sys_group sg on sg.id = sug.group_id

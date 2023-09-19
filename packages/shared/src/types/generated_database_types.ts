@@ -176,12 +176,37 @@ export interface ISysUserPermissionView {
 	 * @type string
 	 * @memberOf ISysUserPermissionView
 	 */
+	group_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
 	code: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysUserPermissionView
 	 */
 	is_active: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	group_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	group_description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	permission_description: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysUserPermissionView
+	 */
+	group_is_active: boolean;
 }
 
 /**

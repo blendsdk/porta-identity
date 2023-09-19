@@ -7,7 +7,7 @@ import path from "path";
 import util from "util";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { application } from "../modules/application";
-import { MD5, isString, ucFirst } from "@blendsdk/stdlib";
+import { MD5, asyncForEach, isString, ucFirst } from "@blendsdk/stdlib";
 import { sha256Hash } from "@blendsdk/crypto";
 import { SysGroupDataService } from "../dataservices/SysGroupDataService";
 import { SysGroupPermissionDataService } from "../dataservices/SysGroupPermissionDataService";
@@ -25,6 +25,7 @@ import { SysRefreshTokenViewDataService } from "../dataservices/SysRefreshTokenV
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
 import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
+import { ePermission } from "@porta/shared";
 
 class DatabaseUtils {
     /**
@@ -257,15 +258,18 @@ class DatabaseUtils {
                 group_id: userGroup.id
             });
 
-            const adminPerm = await permissionDs.insertIntoSysPermission({
-                code: "ADMIN",
-                description: "Can perform system administrative operations",
-                is_active: true
+            await asyncForEach(Object.entries(ePermission), async ([k, v]) => {
+                await permissionDs.insertIntoSysPermission({
+                    code: k,
+                    id: MD5(v),
+                    description: k,
+                    is_active: true
+                });
             });
 
             await groupPermissionDs.insertIntoSysGroupPermission({
                 group_id: adminGroup.id,
-                permission_id: adminPerm.id
+                permission_id: MD5(ePermission.CAN_MANAGE_TENANTS)
             });
 
             await keysDs.insertIntoSysKey({
@@ -509,15 +513,41 @@ class DatabaseUtils {
     public async findAccessTokenByTenant(tenant: string, access_token: string): Promise<IAccessToken> {
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const accessTokenDs = new SysAccessTokenViewDataService({ dataSource });
-        const result = await accessTokenDs.findAccessToken({ access_token });
+        const accessToken = await accessTokenDs.findAccessToken({ access_token });
+        const permissionsDs = new SysPermissionDataService({ dataSource });
 
-        return result
-            ? ({
-                  ...(result as any),
-                  roles: [],
-                  permissions: []
-              } as IAccessToken)
-            : undefined;
+        if (accessToken) {
+            const permissions = (await permissionsDs.findPermissionsByUserId({ user_id: accessToken.user_id })) || [];
+            return {
+                ...(accessToken as any),
+                roles: permissions
+                    .filter((p) => {
+                        return p.group_is_active === true;
+                    })
+                    .map((p) => {
+                        const { group_id: id, group_name: name, group_is_active } = p;
+                        return {
+                            id,
+                            name,
+                            is_active: group_is_active
+                        };
+                    }),
+                permissions: permissions
+                    .filter((p) => {
+                        return p.is_active === true;
+                    })
+                    .map((p) => {
+                        const { permission_id, code, is_active } = p;
+                        return {
+                            permission_id,
+                            code,
+                            is_active
+                        };
+                    })
+            } as IAccessToken;
+        } else {
+            return undefined;
+        }
     }
 
     /**

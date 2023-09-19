@@ -46,18 +46,20 @@ export const SPARoutes = (): IRouter => {
                 method: "get",
                 url: "*",
                 public: true,
-                handlers: (req: HttpRequest, res: HttpResponse, next: NextFunction) => {
-                    // cache the location to avoid resolving
-                    if (!indexFile) {
-                        const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
+                handlers: [
+                    (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
+                        // cache the location to avoid resolving
+                        if (!indexFile) {
+                            const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
+                            indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
+                        }
+                        if (req.url === "/" || req.url.startsWith("/fe")) {
+                            res.send(indexFile);
+                        } else {
+                            res.redirect("/fe/not-found");
+                        }
                     }
-                    if (req.url === "/" || req.url.startsWith("/fe")) {
-                        res.send(indexFile);
-                    } else {
-                        next();
-                    }
-                }
+                ]
             }
         ]
     };
