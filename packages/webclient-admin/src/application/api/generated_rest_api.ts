@@ -117,7 +117,8 @@ export const PortaApi = createHttpApi<IPortaApi>({
 					nonce: eParameterLocation.body,
 					scope: eParameterLocation.query,
 					claims: eParameterLocation.query,
-					refresh_token: eParameterLocation.body
+					refresh_token: eParameterLocation.body,
+					resource: eParameterLocation.query
 				}
 			}),
 			signin: defineEndpoint({ method: "get", url: "/af/signin" }),

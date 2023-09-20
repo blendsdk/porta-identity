@@ -363,13 +363,14 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
 
         const accessTokenStorage = await databaseUtils.newAccessToken(
-            tenant.id,
-            authRecord.id,
+            tenant,
+            authRecord,
             user_id,
             sessionStorage.id,
             access_token_ttl,
             offline_access === true ? refresh_token_ttl : access_token_ttl, // if there is no offline_access then this token will be revoked at access_token_ttl,
-            auth_request_params
+            auth_request_params,
+            this.getIssuer(tenant.name)
         );
 
         // empty variables for refresh token

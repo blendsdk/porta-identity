@@ -36,7 +36,8 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
                 .addString("prompt", { location: eParameterLocation.query, optional: true })
                 .addNumber("max_age", { location: eParameterLocation.query, optional: true })
-                .addString("display", { location: eParameterLocation.query, optional: true });
+                .addString("display", { location: eParameterLocation.query, optional: true })
+                .addString("resource", { location: eParameterLocation.query, optional: true });
 
             typeSchema.createAppendType(payload_type); //
 
@@ -65,7 +66,8 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
                 .addString("nonce", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
                 .addString("scope", { location: eParameterLocation.query, optional: true })
                 .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
-                .addString("refresh_token", { location: eParameterLocation.body, optional: true });
+                .addString("refresh_token", { location: eParameterLocation.body, optional: true })
+                .addString("resource", { location: eParameterLocation.query, optional: true });
 
             typeSchema
                 .createAppendType(payload_type) //

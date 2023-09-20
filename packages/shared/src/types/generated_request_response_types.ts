@@ -178,6 +178,11 @@ export interface IAuthorizeRequest {
 	 * @memberOf IAuthorizeRequest
 	 */
 	display?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	resource?: string;
 }
 
 /**
@@ -263,6 +268,11 @@ export interface ITokenRequest {
 	 * @memberOf ITokenRequest
 	 */
 	refresh_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	resource?: string;
 }
 
 /**

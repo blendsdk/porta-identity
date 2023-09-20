@@ -40,6 +40,7 @@ export const eSysAccessTokenAuthRequestParams = {
 	UI_LOCALES: "ui_locales",
 	CLAIMS: "claims",
 	ACR_VALUES: "acr_values",
+	RESOURCE: "resource",
 	SCOPE: "scope"
 } as const;
 export type eSysAccessTokenAuthRequestParams =

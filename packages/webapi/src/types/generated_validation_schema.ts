@@ -51,11 +51,14 @@ export const validationSchema = {
 				acr_values: {
 					type: eJsonSchemaType.string
 				},
+				resource: {
+					type: eJsonSchemaType.string
+				},
 				scope: {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["ui_locales", "claims", "acr_values", "scope"]
+			required: ["ui_locales", "claims", "acr_values", "resource", "scope"]
 		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
@@ -935,6 +938,10 @@ export const validationSchema = {
 				display: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.query
+				},
+				resource: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
 				}
 			},
 			required: ["tenant", "client_id", "redirect_uri", "scope"]
@@ -993,6 +1000,10 @@ export const validationSchema = {
 				refresh_token: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.body
+				},
+				resource: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
 				}
 			},
 			required: ["tenant", "grant_type"]

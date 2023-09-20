@@ -1,7 +1,14 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { ISysClient, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
-import { IAccessToken, IAuthRequestParams, IPortaApplicationSetting, eClientType, eDatabaseType } from "../types";
+import { ISysAuthorizationView, ISysClient, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
+import {
+    IAccessToken,
+    IAuthRequestParams,
+    IPortaApplicationSetting,
+    eClientType,
+    eDatabaseType,
+    eOAuthSigningAlg
+} from "../types";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -26,6 +33,8 @@ import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
 import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
 import { ePermission } from "@porta/shared";
+import * as jose from "jose";
+import { millisecondsToSeconds } from "../modules/auth/utils";
 
 class DatabaseUtils {
     /**
@@ -479,28 +488,50 @@ class DatabaseUtils {
      * @memberof DatabaseUtils
      */
     public async newAccessToken(
-        tenant_id: string,
-        client_id: string,
+        tenant: ISysTenant,
+        client: ISysAuthorizationView,
         user_id: string,
         session_id: string,
         ttl: number,
         refresh_ttl: number,
-        auth_request_params: IAuthRequestParams
+        auth_request_params: IAuthRequestParams,
+        issuer: string
     ) {
-        const { dataSource } = (await this.getTenantDataSource(tenant_id)) || {};
+        const { dataSource } = (await this.getTenantDataSource(tenant.id)) || {};
         const accessTokenDs = new SysAccessTokenDataService({ dataSource });
+
+        const { privateKey } = await this.getJWKSigningKeys(tenant);
+        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
+
+        const date_created = new Date();
+
+        const access_token = await new jose.SignJWT({
+            client_id: client.client_id,
+            tenant: tenant.id
+        }) //
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
+            .setIssuer(issuer)
+            .setExpirationTime(millisecondsToSeconds(date_created.getTime()) + ttl)
+            .setAudience(auth_request_params.resource || client.client_id)
+            .setSubject(user_id)
+            .setJti(session_id)
+            .setIssuedAt(millisecondsToSeconds(date_created.getTime()))
+            .sign(pKey);
+
         const result = await accessTokenDs.insertIntoSysAccessToken({
-            tenant_id,
-            client_id,
+            access_token,
+            tenant_id: tenant.id,
+            client_id: client.id,
             user_id,
             session_id,
             ttl,
             refresh_ttl,
             auth_request_params,
-            auth_time: auth_request_params.auth_time || Math.trunc(new Date().getTime() / 1000)
+            auth_time: auth_request_params.auth_time || Math.trunc(new Date().getTime() / 1000),
+            date_created: date_created.toISOString()
         });
 
-        return this.findAccessTokenByTenant(tenant_id, result.access_token);
+        return this.findAccessTokenByTenant(tenant.id, result.access_token);
     }
 
     /**

@@ -252,7 +252,8 @@ export class TokenEndpointController extends EndpointController {
                             scope: tokenRequest.scope || auth_request_params.scope,
                             ui_locales: auth_request_params.ui_locales,
                             acr_values: auth_request_params.acr_values,
-                            auth_time: accessTokenStorage.auth_time
+                            auth_time: accessTokenStorage.auth_time,
+                            resource: auth_request_params.resource
                         };
 
                         const {
@@ -346,7 +347,8 @@ export class TokenEndpointController extends EndpointController {
                                         claims: tokenRequest.claims,
                                         scope: tokenRequest.scope,
                                         ui_locales: undefined,
-                                        acr_values: undefined
+                                        acr_values: undefined,
+                                        resource: tokenRequest.resource || tokenRequest.client_id
                                     }
                                 });
                             token = await this.buildTokenPayload({

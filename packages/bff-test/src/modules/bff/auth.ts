@@ -66,7 +66,8 @@ export class PortaClient extends PortaMultiTenantClientModule {
         return {
             scope: "openid email profile offline_access",
             state: `hello-${Date.now()}`,
-            ui_locales: "nl-NL"
+            ui_locales: "nl-NL",
+            resource: _req.context.getServerURL()
         };
     }
 }

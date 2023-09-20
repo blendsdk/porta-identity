@@ -141,6 +141,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
                     .addString("ui_locales")
                     .addString("claims")
                     .addString("acr_values")
+                    .addString("resource")
                     .addString("scope");
 
                 return suggestedTypeName;
