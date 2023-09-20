@@ -1,5 +1,5 @@
 import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
 import {
     ILandingURLConfig,
     IPortaAuthenticationResult,
@@ -11,6 +11,7 @@ import { ClientMetadata, BaseClient, AuthorizationParameters } from "openid-clie
 import { databaseUtils } from "../../utils";
 import { IAccessToken, IPortaApplicationSetting } from "../../types";
 import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
+import { TGetUserMethod } from "@blendsdk/webafx-auth";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
 
@@ -53,7 +54,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @param {string} tenant
      * @param {string} token
      * @returns
-     * @memberof PortaAuthenticationModule
+     * @memberof PortaSelfAuthenticationModule
      */
     protected async findAccessTokenByTenant(tenant: string, token: string) {
         const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
@@ -86,7 +87,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @protected
      * @param {HttpRequest} req
      * @returns
-     * @memberof PortaAuthenticationModule
+     * @memberof PortaSelfAuthenticationModule
      */
     protected async getKeySignatureCustom(req: HttpRequest) {
         const tenant = this.getTenantFromRequest(req);
@@ -127,7 +128,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @param {string} token
      * @param {HttpRequest<{}>} req
      * @returns {Promise<SessionStorageType>}
-     * @memberof PortaAuthenticationModule
+     * @memberof PortaSelfAuthenticationModule
      */
     protected async findSessionStorageByToken<SessionStorageType = any>(
         token: string,
@@ -184,7 +185,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @protected
      * @param {HttpRequest} req
      * @returns
-     * @memberof PortaAuthenticationModule
+     * @memberof PortaSelfAuthenticationModule
      */
     protected getAnonymusLogoutURLToken(req: HttpRequest) {
         const { tenant = undefined } = req.context.getParameters<{ tenant: string }>();
@@ -198,7 +199,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @protected
      * @param {HttpRequest} req
      * @returns {Promise<string>}
-     * @memberof PortaAuthenticationModule
+     * @memberof PortaSelfAuthenticationModule
      */
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const { sig = undefined } = (await this.getKeySignatureCustom(req)) || {};
@@ -226,6 +227,16 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
         }
 
         return access_token || bearerToken || cookieToken || anonLogoutToken;
+    }
+
+    protected async createRequestContextGetUserMethod(
+        sessionStorage: any,
+        _route: IRoute,
+        _reg: HttpRequest<{}>
+    ): Promise<TGetUserMethod> {
+        return () => {
+            return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey };
+        };
     }
 
     protected findOrCreateUser(

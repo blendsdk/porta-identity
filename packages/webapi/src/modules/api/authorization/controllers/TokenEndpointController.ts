@@ -11,7 +11,6 @@ import {
     ITokenResponse
 } from "@porta/shared";
 import * as jose from "jose";
-import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
 import {
     eClientType,
     eErrorType,
@@ -437,9 +436,7 @@ export class TokenEndpointController extends EndpointController {
         refreshTokenStorage: ISysRefreshTokenView;
         sessionStorage: ISysSession;
     }): Promise<IToken> {
-        const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
-        const { data } = (await keyDs.findJwkKeys())[0];
-        const { privateKey } = JSON.parse(data);
+        const { privateKey } = await databaseUtils.getJWKSigningKeys(tenant);
 
         const { auth_time, roles, permissions, expire_at, user, access_token, ttl } = accessTokenStorage;
         const {

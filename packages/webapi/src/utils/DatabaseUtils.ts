@@ -499,7 +499,22 @@ class DatabaseUtils {
             auth_request_params,
             auth_time: auth_request_params.auth_time || Math.trunc(new Date().getTime() / 1000)
         });
+
         return this.findAccessTokenByTenant(tenant_id, result.access_token);
+    }
+
+    /**
+     * Returns the JWK keys from the keystore
+     *
+     * @protected
+     * @param {ISysTenant} tenant
+     * @returns {Promise<{ privateKey: string; publicKey: string }>}
+     * @memberof DatabaseUtils
+     */
+    public async getJWKSigningKeys(tenant: ISysTenant): Promise<{ privateKey: string; publicKey: string }> {
+        const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
+        const { data } = (await keyDs.findJwkKeys())[0];
+        return JSON.parse(data);
     }
 
     /**

@@ -1,3 +1,4 @@
 export const ePermission = {
+    GROUP_PERMISSION: "GROUP_PERMISSION",
     CAN_MANAGE_TENANTS: "CAN_MANAGE_TENANTS"
 };

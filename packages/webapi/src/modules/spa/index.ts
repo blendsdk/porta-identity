@@ -1,4 +1,4 @@
-import { IRouter, IStaticFileAppSettings, UNAUTHORIZED_PRIVATE_ENDPOINT_HANDLER } from "@blendsdk/webafx";
+import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
@@ -9,15 +9,6 @@ let versionInfo = null;
 
 export const SPARoutes = (): IRouter => {
     return {
-        requestHandlers: {
-            [UNAUTHORIZED_PRIVATE_ENDPOINT_HANDLER]: (req: HttpRequest, _res: HttpResponse, next: NextFunction) => {
-                const { tags = [] } = req.context.getRoute();
-                if (tags.length !== 0) {
-                    req.context.getLogger().info("Tags", { tags });
-                }
-                next();
-            }
-        },
         routes: [
             {
                 method: "get",
@@ -46,20 +37,18 @@ export const SPARoutes = (): IRouter => {
                 method: "get",
                 url: "*",
                 public: true,
-                handlers: [
-                    (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                        // cache the location to avoid resolving
-                        if (!indexFile) {
-                            const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                            indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
-                        }
-                        if (req.url === "/" || req.url.startsWith("/fe")) {
-                            res.send(indexFile);
-                        } else {
-                            res.redirect("/fe/not-found");
-                        }
+                handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
+                    // cache the location to avoid resolving
+                    if (!indexFile) {
+                        const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
+                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
                     }
-                ]
+                    if (req.url === "/" || req.url.startsWith("/fe")) {
+                        res.send(indexFile);
+                    } else {
+                        res.redirect("/fe/not-found");
+                    }
+                }
             }
         ]
     };
