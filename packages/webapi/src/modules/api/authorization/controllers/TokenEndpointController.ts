@@ -374,7 +374,7 @@ export class TokenEndpointController extends EndpointController {
                     errors.push("not_a_confidential_client");
                 }
             } else {
-                errors.push("invalid_request!!");
+                errors.push("invalid_request_auth_record");
             }
         } else {
             errors.push("invalid_tenant");
