@@ -30,5 +30,12 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.resetPassword.key,
         path: eAppRoutes.resetPassword.path,
         component: ResetPassword
+    },
+    {
+        name: eAppRoutes.root.key,
+        path: eAppRoutes.root.path,
+        component: () => {
+            return "hello" as any;
+        }
     }
 ];
