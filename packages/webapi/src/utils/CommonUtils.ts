@@ -34,6 +34,14 @@ class CommonUtils {
         return PORTA_REGISTRY_TENANT;
     }
 
+    /**
+     * Parses a a string with spaces to an array
+     *
+     * @param {string} strTokens
+     * @param {boolean} [caseSensitive]
+     * @returns {IDictionaryOf<boolean>}
+     * @memberof CommonUtils
+     */
     public parseSeparatedTokens(strTokens: string, caseSensitive?: boolean): IDictionaryOf<boolean> {
         const data: IDictionaryOf<boolean> = {};
         caseSensitive = caseSensitive === true ? true : false;
@@ -47,6 +55,12 @@ class CommonUtils {
         return data;
     }
 
+    /**
+     * Creates a random uuid in sha256 format
+     *
+     * @returns
+     * @memberof CommonUtils
+     */
     public getUUID() {
         // random bytes length is arbitrary
         return crypto.createHash("sha256").update(crypto.randomBytes(32).toString("hex")).digest("hex");
@@ -104,6 +118,14 @@ class CommonUtils {
         }
     }
 
+    /**
+     * Generates a public and private key plus certificate to be used
+     * as JWK keys
+     *
+     * @param {string} name
+     * @returns
+     * @memberof CommonUtils
+     */
     public async generateKeyPareAndCertificate(name: string) {
         const alg = {
             name: "RSASSA-PKCS1-v1_5",
