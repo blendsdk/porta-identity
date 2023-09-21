@@ -58,13 +58,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      */
     protected async findAccessTokenByTenant(tenant: string, token: string) {
         const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
-        // check if the access token has expired
-        if (accessTokenStorage && accessTokenStorage.is_expired) {
-            this.getLogger().warn("AccessToken was expired", accessTokenStorage);
-            return undefined;
-        } else {
-            return accessTokenStorage;
-        }
+        return isNullOrUndef(accessTokenStorage) ? undefined : accessTokenStorage;
     }
 
     /**
