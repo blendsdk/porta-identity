@@ -45,7 +45,7 @@ class CommonUtils {
     public parseSeparatedTokens(strTokens: string, caseSensitive?: boolean): IDictionaryOf<boolean> {
         const data: IDictionaryOf<boolean> = {};
         caseSensitive = caseSensitive === true ? true : false;
-        strTokens
+        (strTokens || "")
             .replace(/ /gi, ",")
             .split(",")
             .filter(Boolean)
