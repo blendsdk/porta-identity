@@ -391,16 +391,6 @@ class DatabaseUtils {
         });
     }
 
-    public async newRefreshToken(tenant_id: string, access_token_id: string, ttl: number) {
-        const { dataSource } = (await this.getTenantDataSource(tenant_id)) || {};
-        const refreshTokenDs = new SysRefreshTokenDataService({ dataSource });
-        const result = await refreshTokenDs.insertIntoSysRefreshToken({
-            access_token_id,
-            ttl
-        });
-        return this.findRefreshTokenByTenant(tenant_id, result.refresh_token);
-    }
-
     /**
      * Fins a refresh_token by tenant
      *
@@ -475,7 +465,7 @@ class DatabaseUtils {
     }
 
     /**
-     * Creates new access_token
+     * Creates new JWT access token
      *
      * @param {string} tenant_id
      * @param {string} client_id
@@ -507,7 +497,7 @@ class DatabaseUtils {
 
         const access_token = await new jose.SignJWT({
             client_id: client.client_id,
-            tenant: tenant.id
+            ten: tenant.id
         }) //
             .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
             .setIssuer(issuer)
@@ -532,6 +522,62 @@ class DatabaseUtils {
         });
 
         return this.findAccessTokenByTenant(tenant.id, result.access_token);
+    }
+
+    /**
+     * Creates a new JWT refresh token
+     *
+     * @param {ISysTenant} tenant
+     * @param {ISysAuthorizationView} client
+     * @param {string} user_id
+     * @param {string} session_id
+     * @param {number} ttl
+     * @param {IAuthRequestParams} auth_request_params
+     * @param {string} issuer
+     * @param {string} access_token_id
+     * @returns
+     * @memberof DatabaseUtils
+     */
+    public async newRefreshToken(
+        tenant: ISysTenant,
+        client: ISysAuthorizationView,
+        user_id: string,
+        session_id: string,
+        ttl: number,
+        auth_request_params: IAuthRequestParams,
+        issuer: string,
+        access_token_id: string
+    ) {
+        const { dataSource } = (await this.getTenantDataSource(tenant.id)) || {};
+        const refreshTokenDs = new SysRefreshTokenDataService({ dataSource });
+
+        const { privateKey } = await this.getJWKSigningKeys(tenant);
+        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
+
+        const date_created = new Date();
+
+        const refresh_token = await new jose.SignJWT({
+            client_id: client.client_id,
+            ten: tenant.id,
+            ati: access_token_id
+        }) //
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "rt+JWT" })
+            .setIssuer(issuer)
+            .setExpirationTime(millisecondsToSeconds(date_created.getTime()) + ttl)
+            .setAudience(auth_request_params.resource || client.client_id)
+            .setSubject(user_id)
+            .setJti(session_id)
+            .setIssuedAt(millisecondsToSeconds(date_created.getTime()))
+            .sign(pKey);
+
+        const result = await refreshTokenDs.insertIntoSysRefreshToken({
+            access_token_id,
+            refresh_token,
+            ttl,
+            date_created: date_created.toISOString()
+        });
+
+        return this.findRefreshTokenByTenant(tenant.id, result.refresh_token);
     }
 
     /**
@@ -597,8 +643,6 @@ class DatabaseUtils {
     }
 
     /**
-     * TODO: doc
-     *
      * @param {string} tenant
      * @returns
      * @memberof EndpointController

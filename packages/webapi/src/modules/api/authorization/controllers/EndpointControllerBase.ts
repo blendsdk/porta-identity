@@ -381,9 +381,14 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         // creating the refresh tokens
         if (offline_access) {
             refreshTokenStorage = await databaseUtils.newRefreshToken(
-                tenant.id,
-                accessTokenStorage.id,
-                refresh_token_ttl
+                tenant,
+                authRecord,
+                user_id,
+                sessionStorage.id,
+                refresh_token_ttl,
+                auth_request_params,
+                this.getIssuer(tenant.name),
+                accessTokenStorage.id
             );
             refreshTokenKeySignature = portaAuthUtils.getKeySignature(
                 tenant.name,
