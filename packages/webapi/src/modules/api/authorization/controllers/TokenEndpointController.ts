@@ -269,7 +269,8 @@ export class TokenEndpointController extends EndpointController {
                             authRecord: {
                                 access_token_ttl: default_ttl,
                                 refresh_token_ttl: default_refresh_ttl,
-                                id: client.id
+                                id: client.id,
+                                client_id: client.client_id
                             } as any,
                             auth_request_params: auth_req_params
                         });
