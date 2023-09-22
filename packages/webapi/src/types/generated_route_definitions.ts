@@ -2,6 +2,7 @@ import { IRouteBase } from "@blendsdk/stdlib";
 export const routeDefinitions: {
 	blend: { get_translations: IRouteBase; get_app_version: IRouteBase };
 	authorization: {
+		token_info: IRouteBase;
 		authorize: IRouteBase;
 		token: IRouteBase;
 		signin: IRouteBase;
@@ -32,6 +33,7 @@ export const routeDefinitions: {
 		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true }
 	},
 	authorization: {
+		token_info: { id: "token_info", method: "post", url: "/:tenant/oauth2/token_info", public: false },
 		authorize: { id: "authorize", method: "get", url: "/:tenant/oauth2/authorize", public: true },
 		token: { id: "token", method: "post", url: "/:tenant/oauth2/token", public: true },
 		signin: { id: "signin", method: "get", url: "/af/signin", public: true },

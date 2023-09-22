@@ -35,7 +35,7 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.root.key,
         path: eAppRoutes.root.path,
         component: () => {
-            return "hello" as any;
+            return "" as any;
         }
     }
 ];

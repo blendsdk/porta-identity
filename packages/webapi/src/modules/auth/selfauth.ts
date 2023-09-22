@@ -1,5 +1,5 @@
 import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
-import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
+import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
 import {
     ILandingURLConfig,
     IPortaAuthenticationResult,
@@ -9,9 +9,10 @@ import {
 } from "@porta/webafx-auth";
 import { ClientMetadata, BaseClient, AuthorizationParameters } from "openid-client";
 import { databaseUtils } from "../../utils";
-import { IAccessToken, IPortaApplicationSetting } from "../../types";
+import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../types";
 import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
 import { TGetUserMethod } from "@blendsdk/webafx-auth";
+import { TokenEndpointController } from "../api/authorization/controllers/TokenEndpointController";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
 
@@ -19,6 +20,7 @@ const ANONYMUS_LOGOUT_TOKEN = MD5(Date.now());
 
 enum eTokenType {
     BEARER_TOKEN = "BEARER_TOKEN",
+    CLIENT_CREDENTIALS = "CLIENT_CREDENTIALS",
     COOKIE_TOKEN = "COOKIE_TOKEN",
     ANONYMOUS_LOGOUT_TOKEN = "ANONYMOUS_LOGOUT_TOKEN",
     DIRECT_API = "ANONYMOUS_LOGOUT_TOKEN"
@@ -75,6 +77,10 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
         return tenant;
     }
 
+    protected async validateTenant(tenant: string) {
+        return !isNullOrUndef(await databaseUtils.findTenant(tenant));
+    }
+
     /**
      * Create and cache signature to find the access_tokens from Cookies
      *
@@ -126,7 +132,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      */
     protected async findSessionStorageByToken<SessionStorageType = any>(
         token: string,
-        req: HttpRequest<{}>
+        req: HttpRequest<IRequestContext>
     ): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
 
@@ -138,7 +144,9 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
                 } as Partial<IAccessToken> as SessionStorageType;
             case eTokenType.BEARER_TOKEN: {
                 const tenant = this.getTenantFromRequest(req);
-                const accessTokenStorage = await this.findAccessTokenByTenant(tenant, token);
+                const accessTokenStorage = (await this.validateTenant(tenant))
+                    ? await this.findAccessTokenByTenant(tenant, token)
+                    : undefined;
                 return accessTokenStorage
                     ? accessTokenStorage.tenant.name === tenant
                         ? (accessTokenStorage as SessionStorageType)
@@ -167,6 +175,28 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
                     direct_api: true,
                     user: {}
                 } as SessionStorageType;
+            }
+            case eTokenType.CLIENT_CREDENTIALS: {
+                const { client_id, client_secret } = token || ({} as any);
+                const tenant = this.getTenantFromRequest(req);
+                if (await this.validateTenant(tenant)) {
+                    const controller = new TokenEndpointController({ request: req, response: undefined });
+                    const { token: newToken } = await controller.getTokenByClientCredentials(
+                        {
+                            grant_type: eOAuthGrantType.client_credentials,
+                            tenant,
+                            client_id,
+                            client_secret,
+                            scope: "email profile acl"
+                        },
+                        { short_access_token_ttl: 60 }
+                    );
+                    return newToken && newToken.access_token
+                        ? ((await this.findAccessTokenByTenant(tenant, newToken.access_token)) as SessionStorageType)
+                        : undefined;
+                } else {
+                    return undefined;
+                }
             }
             default:
                 return undefined;
@@ -197,19 +227,37 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      */
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const { sig = undefined } = (await this.getKeySignatureCustom(req)) || {};
-        const { access_token = undefined } = req.context.getParameters<{ access_token: string }>();
+        const {
+            access_token = undefined,
+            client_id = undefined,
+            client_secret = undefined
+        } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string }>();
 
         const bearerToken = this.getBearerToken(req) || undefined;
         const cookieToken = sig ? this.getCookieToken(sig, req) : undefined;
         const anonLogoutToken = this.getAnonymusLogoutURLToken(req);
+        const { account: basic_account, password: basic_password } = this.getBasicAuthCredentials(req);
+        let clientSecretParams =
+            !isNullOrUndef(client_id) && !isNullOrUndef(client_secret) ? { client_id, client_secret } : undefined;
 
-        if (bearerToken) {
+        if (bearerToken || access_token) {
             const { PORTA_API_KEY = undefined } = req.context.getSettings<IPortaApplicationSetting>();
             if (bearerToken === PORTA_API_KEY && !isNullOrUndef(PORTA_API_KEY)) {
                 req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.DIRECT_API);
             } else {
                 req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
             }
+        }
+
+        if (!isNullOrUndef(basic_account) && !isNullOrUndef(basic_password)) {
+            clientSecretParams = {
+                client_id: basic_account,
+                client_secret: basic_password
+            };
+        }
+
+        if (clientSecretParams) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
         }
 
         if (cookieToken) {
@@ -220,7 +268,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
         }
 
-        return access_token || bearerToken || cookieToken || anonLogoutToken;
+        return access_token || bearerToken || cookieToken || clientSecretParams || anonLogoutToken;
     }
 
     protected async createRequestContextGetUserMethod(
@@ -245,18 +293,26 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
     ): Promise<ILandingURLConfig> {
         throw new Error("Method not implemented.");
     }
-    protected getDiscoveryURL(_tenant: string, _req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
-        throw new Error("Method not implemented.");
+    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+        return `${req.context.getServerURL()}/${tenant}/oauth2`;
     }
-    protected getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
-        throw new Error("Method not implemented.");
+    protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
+        return {
+            client_id: "local_login",
+            secret: "secret"
+        };
     }
-    protected getAuthorizationParameters(
+    protected async getAuthorizationParameters(
         _tenant: string,
         _client: BaseClient,
         _req: HttpRequest<{}>
     ): Promise<AuthorizationParameters> {
-        throw new Error("Method not implemented.");
+        return {
+            scope: "openid email profile offline_access",
+            state: `hello-${Date.now()}`,
+            ui_locales: "nl-NL",
+            resource: _req.context.getServerURL()
+        };
     }
 
     protected createKeySignatureName(_req: HttpRequest<{}>): string {

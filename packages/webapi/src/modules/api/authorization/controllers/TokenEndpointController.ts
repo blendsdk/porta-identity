@@ -25,6 +25,10 @@ import { commonUtils, databaseUtils } from "../../../../utils";
 import { eFlow, EndpointController } from "./EndpointControllerBase";
 import { millisecondsToSeconds } from "../../../auth/utils";
 
+export interface IGetTokenByClientCredentialsOptions {
+    short_access_token_ttl?: number;
+}
+
 /**
  * Handles the token endpoint
  *
@@ -313,12 +317,15 @@ export class TokenEndpointController extends EndpointController {
     /**
      * Creates a token by client credentials for confidential clients
      *
-     * @protected
      * @param {ITokenRequest} tokenRequest
      * @returns
      * @memberof TokenEndpointController
      */
-    protected async getTokenByClientCredentials(tokenRequest: ITokenRequest) {
+    public async getTokenByClientCredentials(
+        tokenRequest: ITokenRequest,
+        options?: IGetTokenByClientCredentialsOptions
+    ) {
+        const { short_access_token_ttl = undefined } = options || {};
         const { client_id, tenant, nonce, state } = tokenRequest || {};
         const tenantRecord = await this.getTenant(tenant);
         let token: IToken = undefined;
@@ -331,6 +338,10 @@ export class TokenEndpointController extends EndpointController {
             );
 
             if (authRecord) {
+                if (short_access_token_ttl) {
+                    authRecord.access_token_ttl = short_access_token_ttl;
+                }
+
                 if (!isNullOrUndef(authRecord.client_credentials_user_id)) {
                     /**
                      * The redirect_uri should already be null from the

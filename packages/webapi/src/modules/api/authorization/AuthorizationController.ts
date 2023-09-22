@@ -48,6 +48,9 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
 import { PasswordResetEndpointController } from "./controllers/PasswordResetEndpointController";
 import { IForgotPasswordRequestAccountRequest } from "@porta/shared";
 import { IForgotPasswordRequestAccountResponse } from "@porta/shared";
+import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
+import { ITokenInfoRequest } from "@porta/shared";
+import { ITokenInfoResponse } from "@porta/shared";
 
 /**
  * @export
@@ -69,6 +72,11 @@ export class AuthorizationController extends AuthorizationControllerBase {
             response: this.response,
             ...this.request.context.services
         };
+    }
+
+    public tokenInfo(params: ITokenInfoRequest): Promise<Response<ITokenInfoResponse>> {
+        const subController = new TokenInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
     }
 
     public sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {

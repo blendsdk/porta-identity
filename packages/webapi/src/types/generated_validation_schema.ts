@@ -866,6 +866,70 @@ export const validationSchema = {
 			},
 			required: ["webclient", "webapi", "mobileclient"]
 		},
+		token_info_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_secret: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				}
+			},
+			required: ["tenant", "token"]
+		},
+		token_info: {
+			type: eJsonSchemaType.object,
+			properties: {
+				active: {
+					type: eJsonSchemaType.boolean
+				},
+				scope: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				username: {
+					type: eJsonSchemaType.string
+				},
+				token_type: {
+					type: eJsonSchemaType.string
+				},
+				exp: {
+					type: eJsonSchemaType.number
+				},
+				iat: {
+					type: eJsonSchemaType.number
+				},
+				nbf: {
+					type: eJsonSchemaType.number
+				},
+				sub: {
+					type: eJsonSchemaType.string
+				},
+				aud: {
+					type: eJsonSchemaType.string
+				},
+				iss: {
+					type: eJsonSchemaType.string
+				},
+				jti: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["active"]
+		},
 		authorize_request: {
 			type: eJsonSchemaType.object,
 			properties: {

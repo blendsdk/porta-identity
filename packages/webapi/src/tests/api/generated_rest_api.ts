@@ -9,6 +9,8 @@ import {
 	IGetTranslationsResponse,
 	IGetAppVersionRequest,
 	IGetAppVersionResponse,
+	ITokenInfoRequest,
+	ITokenInfoResponse,
 	IAuthorizeRequest,
 	IAuthorizeResponse,
 	ITokenRequest,
@@ -62,6 +64,7 @@ export interface IPortaApi {
 		getAppVersion: THttpRequest<IGetAppVersionRequest | void, IGetAppVersionResponse>;
 	};
 	authorization: {
+		tokenInfo: THttpRequest<ITokenInfoRequest, ITokenInfoResponse>;
 		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
 		token: THttpRequest<ITokenRequest, ITokenResponse>;
 		signin: THttpRequest<ISigninRequest, ISigninResponse>;
@@ -101,6 +104,16 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
 		authorization: {
+			tokenInfo: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/token_info",
+				parameters: {
+					tenant: eParameterLocation.params,
+					token: eParameterLocation.body,
+					client_id: eParameterLocation.body,
+					client_secret: eParameterLocation.body
+				}
+			}),
 			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" }),
 			token: defineEndpoint({
 				method: "post",

@@ -100,7 +100,9 @@ export class CheckFlowEndpointController extends EndpointController {
         // get the user from the tenant db
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
         const userRecord = await userDs.findByUsernameNonService({ username: username?.toLocaleLowerCase() });
-        const mfa_list = await this.getMFAList(userDs, userRecord);
+
+        // we are not allowed to login login with a service user
+        const mfa_list = userRecord ? await this.getMFAList(userDs, userRecord) : [];
 
         return new SuccessResponse<ICheckFlowResponse>({
             data: await this.updateCurrentFlowState({

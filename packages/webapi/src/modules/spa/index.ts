@@ -3,6 +3,8 @@ import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { renderGetRedirect } from "../auth/utils";
+import { eJsonSchemaType } from "@blendsdk/jsonschema";
 
 let indexFile: string = null;
 let versionInfo = null;
@@ -10,6 +12,22 @@ let versionInfo = null;
 export const SPARoutes = (): IRouter => {
     return {
         routes: [
+            {
+                method: "get",
+                public: true,
+                url: "/:tenant/manage",
+                request: {
+                    properties: {
+                        tenant: {
+                            type: eJsonSchemaType.string
+                        }
+                    }
+                },
+                handlers: (req: HttpRequest, res: HttpResponse) => {
+                    const { tenant } = req.context.getParameters<any>();
+                    res.send(renderGetRedirect(`${req.context.getServerURL()}/oidc/${tenant}/signin`));
+                }
+            },
             {
                 method: "get",
                 url: "/api/version",
@@ -41,7 +59,7 @@ export const SPARoutes = (): IRouter => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
                         const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
+                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.template.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
                         res.send(indexFile);
