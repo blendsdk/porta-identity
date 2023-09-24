@@ -655,7 +655,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
     protected async createRequestContextGetUserMethod(
         sessionStorage: any,
         _route: IRoute,
-        _reg: HttpRequest<{}>
+        _req: HttpRequest<{}>
     ): Promise<TGetUserMethod> {
         return () => {
             return { ...sessionStorage.user, _cacheKey: sessionStorage.cacheKey };
