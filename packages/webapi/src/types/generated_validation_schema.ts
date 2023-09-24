@@ -98,11 +98,11 @@ export const validationSchema = {
 				},
 				valid_from: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				valid_until: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				redirect_uri: {
 					type: eJsonSchemaType.string
@@ -115,6 +115,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				is_system_client: {
 					type: eJsonSchemaType.boolean
 				},
 				client_credentials_user: {
@@ -139,6 +142,7 @@ export const validationSchema = {
 				"client_credentials_user_id",
 				"post_logout_redirect_uri",
 				"is_back_channel_post_logout",
+				"is_system_client",
 				"client_credentials_user"
 			]
 		},
@@ -176,6 +180,9 @@ export const validationSchema = {
 				description: {
 					type: eJsonSchemaType.string
 				},
+				group_type: {
+					type: eJsonSchemaType.string
+				},
 				is_active: {
 					type: eJsonSchemaType.boolean
 				},
@@ -184,7 +191,7 @@ export const validationSchema = {
 					format: "uuid"
 				}
 			},
-			required: ["id", "name", "description", "is_active", "user_id"]
+			required: ["id", "name", "description", "group_type", "is_active", "user_id"]
 		},
 		sys_user_permission_view: {
 			type: eJsonSchemaType.object,
@@ -261,7 +268,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				auth_request_params: {
 					type: eJsonSchemaType.string,
@@ -294,11 +301,11 @@ export const validationSchema = {
 				},
 				expire_at: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				revoke_at: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				user: {
 					type: eJsonSchemaType.string,
@@ -368,7 +375,7 @@ export const validationSchema = {
 				},
 				expire_at: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				}
 			},
 			required: ["id", "ttl", "refresh_token", "access_token", "is_expire", "expire_at"]
@@ -393,7 +400,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				oidc_client_id: {
 					type: eJsonSchemaType.string
@@ -476,7 +483,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				date_changed: {
 					type: eJsonSchemaType.string,
@@ -530,6 +537,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				description: {
+					type: eJsonSchemaType.string
+				},
+				group_type: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
@@ -631,11 +641,11 @@ export const validationSchema = {
 				},
 				valid_from: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				valid_until: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				redirect_uri: {
 					type: eJsonSchemaType.string
@@ -648,6 +658,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				is_system_client: {
 					type: eJsonSchemaType.boolean
 				}
 			},
@@ -673,7 +686,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				}
 			},
 			required: ["session_id", "user_id", "client_id"]
@@ -699,7 +712,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				auth_request_params: {
 					type: eJsonSchemaType.object,
@@ -740,7 +753,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime"
+					format: "datetime-tz"
 				},
 				refresh_token: {
 					type: eJsonSchemaType.string

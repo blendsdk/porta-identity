@@ -69,6 +69,7 @@ export const eSysAuthorizationView = {
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
 	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
 	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
+	IS_SYSTEM_CLIENT: "is_system_client",
 	CLIENT_CREDENTIALS_USER: "client_credentials_user"
 } as const;
 export type eSysAuthorizationView = (typeof eSysAuthorizationView)[keyof typeof eSysAuthorizationView];
@@ -97,6 +98,7 @@ export const eSysGroupsByUserView = {
 	ID: "id",
 	NAME: "name",
 	DESCRIPTION: "description",
+	GROUP_TYPE: "group_type",
 	IS_ACTIVE: "is_active",
 	USER_ID: "user_id"
 } as const;
@@ -251,6 +253,7 @@ export const eSysGroup = {
 	ID: "id",
 	NAME: "name",
 	DESCRIPTION: "description",
+	GROUP_TYPE: "group_type",
 	IS_ACTIVE: "is_active"
 } as const;
 export type eSysGroup = (typeof eSysGroup)[keyof typeof eSysGroup];
@@ -317,7 +320,8 @@ export const eSysClient = {
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
 	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
-	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout"
+	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
+	IS_SYSTEM_CLIENT: "is_system_client"
 } as const;
 export type eSysClient = (typeof eSysClient)[keyof typeof eSysClient];
 

@@ -1,7 +1,7 @@
 import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/stdlib";
+import { eDefaultPermissions } from "@porta/shared";
 import { IAccessToken } from "../../../types";
 import { commonUtils } from "../../../utils";
-import { ePermission } from "@porta/shared";
 
 /**
  * Interface describing a claim
@@ -236,9 +236,8 @@ export class Claims {
                     handler: this.handleClaim(() => {
                         return permissions
                             .filter((r) => {
-                                // Here we filter the GROUP_PERMISSION since it is for handling Role based
-                                // access only
-                                return r.is_active === true && r.code !== ePermission.GROUP_PERMISSION;
+                                // Here we filter the GROUP_PERMISSION since it is for handling Role based access only
+                                return r.is_active === true && r.code !== eDefaultPermissions.GROUP_PERMISSION.code;
                             })
                             .map((r) => {
                                 return {

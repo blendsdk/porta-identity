@@ -1,5 +1,5 @@
-import { IDictionaryOf } from "@blendsdk/stdlib";
 import { IAuthorizeRequest, ITokenRequest } from "@porta/shared";
+import { IDictionaryOf } from "@blendsdk/stdlib";
 
 export interface IFlow {
     request?: Partial<IAuthorizeRequest>;

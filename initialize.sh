@@ -29,6 +29,6 @@ echo -e "\n"
 curl -sS -k -X POST "https://porta.local/api/initialize" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -H "Authorization: Bearer ${PORTA_API_KEY}" \
-    -d "username=${USERNAME}&password=${PASSWORD}&email=${EMAIL}" | jq ".data"
+    -d "username=${USERNAME}&password=${PASSWORD}&email=${EMAIL}" | jq "."
 
 

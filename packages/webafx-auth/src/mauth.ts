@@ -1,24 +1,23 @@
+import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
+import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
 import {
-    TokenAuthenticationModuleBase,
     ITokenAuthenticationModuleBase,
     SESSION_TTL_KEY,
-    TGetUserMethod
+    TGetUserMethod,
+    TokenAuthenticationModuleBase
 } from "@blendsdk/webafx-auth";
-import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
-
+import { HttpRequest, HttpResponse, IRoute, sendResponse, ServerErrorResponse } from "@blendsdk/webafx-common";
 import {
     AuthorizationParameters,
     BaseClient,
     ClientMetadata,
+    custom,
+    generators,
     IdTokenClaims,
     Issuer,
     TokenSet,
-    UserinfoResponse,
-    custom,
-    generators
+    UserinfoResponse
 } from "openid-client";
-import { IDictionaryOf } from "@blendsdk/stdlib";
-import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 import { renderGetRedirect } from "./utils";
 
 // This is global for this application
@@ -350,7 +349,10 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                 res
                             });
                             worker.then(async () => {
-                                res.cookie("locale", data.ui_locales);
+                                req.params.state = data.state; // we rewrite the state since this incoming state from mauth and the data.state is from uke requestor
+                                if (!isNullOrUndef(data.ui_locales)) {
+                                    res.cookie("locale", data.ui_locales);
+                                }
                                 res.send(renderGetRedirect(this.compileURL(await this.getLandingURL(req))));
                             });
                         }

@@ -1,8 +1,8 @@
 import path from "path";
-import { Database, eDBForeignKeyAction, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
+import { consoleLogger, typeSchema } from "./lib";
+import { Database, eDBForeignKeyAction, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
 import { dataSourceConfig } from "./config";
-import { typeSchema, consoleLogger } from "./lib";
 
 export async function createDatabaseSchema(database: Database, resourcesRoot: string) {
     resourcesRoot = path.join(resourcesRoot, "database");
@@ -53,6 +53,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .stringColumn("name", { unique: true })
         .stringColumn("description")
+        .stringColumn("group_type", { default: "'A'" })
         .booleanColumn("is_active", { default: "true" });
 
     user_group //
@@ -110,7 +111,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("redirect_uri", { required: false })
         .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
         .stringColumn("post_logout_redirect_uri", { required: false })
-        .booleanColumn("is_back_channel_post_logout", { default: "false" });
+        .booleanColumn("is_back_channel_post_logout", { default: "false" })
+        .booleanColumn("is_system_client", { default: "false" });
 
     session
         .primaryKeyColumn("id", true)

@@ -1,10 +1,11 @@
+import { eJsonSchemaType } from "@blendsdk/jsonschema";
+import { base64Encode } from "@blendsdk/stdlib";
 import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { renderGetRedirect } from "../auth/utils";
-import { eJsonSchemaType } from "@blendsdk/jsonschema";
 
 let indexFile: string = null;
 let versionInfo = null;
@@ -25,7 +26,33 @@ export const SPARoutes = (): IRouter => {
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
                     const { tenant } = req.context.getParameters<any>();
-                    res.send(renderGetRedirect(`${req.context.getServerURL()}/oidc/${tenant}/signin`));
+                    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
+                    url.searchParams.append(
+                        "state",
+                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/manage` }))
+                    );
+                    res.send(renderGetRedirect(url.toString()));
+                }
+            },
+            {
+                method: "get",
+                public: false,
+                url: "/:tenant/me",
+                request: {
+                    properties: {
+                        tenant: {
+                            type: eJsonSchemaType.string
+                        }
+                    }
+                },
+                handlers: (req: HttpRequest, res: HttpResponse) => {
+                    const { tenant } = req.context.getParameters<any>();
+                    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
+                    url.searchParams.append(
+                        "state",
+                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/me` }))
+                    );
+                    res.send(renderGetRedirect(url.toString()));
                 }
             },
             {
@@ -59,7 +86,7 @@ export const SPARoutes = (): IRouter => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
                         const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.template.html")).toString();
+                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
                         res.send(indexFile);

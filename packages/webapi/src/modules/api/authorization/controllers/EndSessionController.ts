@@ -1,20 +1,20 @@
+import * as crypto from "crypto";
+import { AUTH_FLOW_TTL } from "./constants";
+import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { commonUtils, databaseUtils } from "../../../../utils";
+import { createErrorObject } from "@blendsdk/stdlib";
+import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
+import { EndpointController } from "./EndpointControllerBase";
+import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
 import {
     ISessionLogoutGetRequest,
     ISessionLogoutGetResponse,
     ISessionLogoutPostResponse,
     ISysSessionView
 } from "@porta/shared";
-import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { EndpointController } from "./EndpointControllerBase";
 import { ISessionLogoutPostRequest } from "@porta/shared";
-import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
 import { ISysTenant } from "@porta/shared";
-import { commonUtils, databaseUtils } from "../../../../utils";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
-import * as crypto from "crypto";
-import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
-import { AUTH_FLOW_TTL } from "./constants";
-import { createErrorObject } from "@blendsdk/stdlib";
 
 interface ISessionStorage extends ISysSessionView {}
 
@@ -203,7 +203,7 @@ export class EndSessionController extends EndpointController {
             return new SuccessResponse(renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
             // Removes all token by this user and client
-            const tenantRecord = await databaseUtils.getTenant(flowData.tenant);
+            const tenantRecord = await databaseUtils.findTenant(flowData.tenant);
             await this.destroySessionAndAllTokens(tenantRecord, flowData.client_id, flowData.user_id);
 
             // delete all the cookies

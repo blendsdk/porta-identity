@@ -92,6 +92,11 @@ export interface ISysAuthorizationView {
 	 */
 	is_back_channel_post_logout: boolean;
 	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	is_system_client: boolean;
+	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
@@ -145,6 +150,11 @@ export interface ISysGroupsByUserView {
 	 * @memberOf ISysGroupsByUserView
 	 */
 	description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupsByUserView
+	 */
+	group_type: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysGroupsByUserView
@@ -572,6 +582,11 @@ export interface ISysGroup {
 	 */
 	description: string;
 	/**
+	 * @type string
+	 * @memberOf ISysGroup
+	 */
+	group_type?: string;
+	/**
 	 * @type boolean
 	 * @memberOf ISysGroup
 	 */
@@ -734,6 +749,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	is_back_channel_post_logout?: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ISysClient
+	 */
+	is_system_client?: boolean;
 }
 
 /**

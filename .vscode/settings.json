@@ -12,5 +12,8 @@
         "signin",
         "Signin",
         "webafx"
-    ]
+    ],
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    }
 }

@@ -1,7 +1,7 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
-import * as jwt from "jsonwebtoken";
+import { SESSION_TTL_KEY } from "@blendsdk/webafx-auth";
 import {
     BadRequestResponse,
     Controller,
@@ -11,40 +11,40 @@ import {
     SuccessResponse
 } from "@blendsdk/webafx-common";
 import {
-    eKeySignatureType,
     IAuthenticationFlowState,
     ISysAuthorizationView,
     ISysRefreshTokenView,
     ISysSession,
     ISysTenant,
+    eKeySignatureType,
     portaAuthUtils
 } from "@porta/shared";
 import fs from "fs";
+import * as jwt from "jsonwebtoken";
 import path from "path";
-import util from "util";
 import { URLSearchParams } from "url";
-
+import util from "util";
+import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { SysAuthorizationViewDataService } from "../../../../dataservices/SysAuthorizationViewDataService";
+import { SysClientDataService } from "../../../../dataservices/SysClientDataService";
+import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
+import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 import {
-    eOAuthGrantType,
-    eOAuthResponseMode,
     IAccessToken,
     IAuthRequestParams,
     ICachedFlowInformation,
     IErrorResponseParams,
     ILogoutFlowStorage,
-    IPortaApplicationSetting
+    IPortaApplicationSetting,
+    eOAuthGrantType,
+    eOAuthResponseMode
 } from "../../../../types";
+import { commonUtils, databaseUtils } from "../../../../utils";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
-import { commonUtils, databaseUtils } from "../../../../utils";
-import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
-import { SysRefreshTokenDataService } from "../../../../dataservices/SysRefreshTokenDataService";
-import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
-import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
-import { SysClientDataService } from "../../../../dataservices/SysClientDataService";
 
 /**
  * Enum describing flow parts
@@ -268,6 +268,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             httpOnly: true,
             secure: this.request.protocol !== "http",
             sameSite: "lax" // only send to this endpoint
+        });
+
+        this.setCookie(SESSION_TTL_KEY, new Date(expire_at).getTime(), {
+            signed: false,
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax"
         });
 
         // set the token cookie
@@ -588,7 +595,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndPointController
      */
     protected getTenant(tenant: string): Promise<ISysTenant> {
-        return databaseUtils.getTenant(tenant);
+        return databaseUtils.findTenant(tenant);
     }
 
     /**

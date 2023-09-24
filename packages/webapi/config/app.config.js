@@ -14,14 +14,14 @@ module.exports = {
     DB_USER: "postgres",
     DB_PASSWORD: "postgres",
     DB_DATABASE: "postgres",
-    ACCESS_TOKEN_TTL: 60 * 60 * 4, // 4 hours
+    ACCESS_TOKEN_TTL: 60 * 60 * 3, // 4 hours
     REFRESH_TOKEN_TTL: 60 * 60 * 24 * 7, // one week,
     PORTA_ADMIN: "admin@blendsdk.net", // NO <-------------
     PORTA_PASSWORD: "secret", // NO <----------------
     PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",
     PORTA_PUBLIC_DOMAIN: "porta.local", // NO <---------------
     PORTA_SSO_COMMON_NAME: "porta_development",
-    PORTA_REGISTRY_TENANT: "registry",
+    PORTA_REGISTRY_TENANT: "devreg",
     PORTA_API_KEY: "YFmDkzFRhyuKwL9L0OdB9XGX6SbwytqI6gL3rEupc1NlAaBePXpPh4LEGKTAqoT1",
     ENFORCE_PKCE: false,
     MFA_EMAIL_FROM: "no-reply@truesoftware.nl"

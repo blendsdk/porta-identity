@@ -1,9 +1,8 @@
-import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { ApplicationControllerBase } from "./ApplicationControllerBase";
+import { commonUtils } from "../../../utils";
+import { DatabaseSeed } from "../../../utils/DatabaseSeed";
 import { IInitializeRequest, IInitializeResponse } from "@porta/shared";
-import { commonUtils, databaseUtils } from "../../../utils";
-import { IDatabaseAppSettings } from "@blendsdk/webafx";
-import { IPortaApplicationSetting } from "../../../types";
+import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 
 /**
  * @export
@@ -23,27 +22,26 @@ export class ApplicationController extends ApplicationControllerBase {
         try {
             username = username || email;
 
-            const { PORTA_REGISTRY_TENANT } = this.request.context.getSettings<
-                IPortaApplicationSetting & IDatabaseAppSettings
-            >();
-
-            const status = await databaseUtils.initializeTenant(
-                commonUtils.getPortaRegistryTenant(),
-                PORTA_REGISTRY_TENANT,
-                "Porta Registry",
-                false,
-                true,
+            const databaseSeed = new DatabaseSeed();
+            const tenantRecord = await databaseSeed.initializeTenant({
+                admin_password: password,
+                admin_user: username,
+                allow_registration: false,
+                allow_reset_password: true,
+                databaseName: commonUtils.getPortaRegistryTenant(),
+                organization: "Porta Registry",
+                tenantName: commonUtils.getPortaRegistryTenant(),
                 username,
                 password,
-                this.getContext().getServerURL()
-            );
-
-            return new SuccessResponse<IInitializeResponse>({
-                data: {
-                    status,
-                    error: status ? undefined : "Porta is already initialized!"
-                }
+                email,
+                serverURL: this.getServerUrl()
             });
+
+            return new SuccessResponse({
+                status: tenantRecord ? true : false,
+                error: tenantRecord ? undefined : "Porta is already initialized!",
+                ...(tenantRecord || {})
+            } as any);
         } catch (err) {
             return new ServerErrorResponse(err);
         }

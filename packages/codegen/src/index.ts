@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-import { createMethodName, databaseToSchema, EnumBuilder } from "@blendsdk/codegen";
+import { EnumBuilder, createMethodName, databaseToSchema } from "@blendsdk/codegen";
 import * as path from "path";
 import { createAPISchema } from "./api";
 import { createCustomTypes } from "./customtypes";
