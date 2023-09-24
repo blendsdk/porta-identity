@@ -306,7 +306,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                     ui_locales,
                                     state: appState,
                                     tenant
-                                });
+                                } as IPortaAuthenticationResult);
                             } catch (err: any) {
                                 if (err.response && err.response.body) {
                                     reject(err.response.body);

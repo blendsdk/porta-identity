@@ -377,7 +377,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             access_token_ttl,
             offline_access === true ? refresh_token_ttl : access_token_ttl, // if there is no offline_access then this token will be revoked at access_token_ttl,
             auth_request_params,
-            this.getIssuer(tenant.name)
+            this.getIssuer(tenant.name),
+            {
+                signout_url: `${this.getServerUrl()}/oidc/${tenant.name}/signout`,
+                ...(offline_access === true
+                    ? { refresh_token_url: `${this.getServerUrl()}/oidc/${tenant.name}/refresh` }
+                    : {})
+            }
         );
 
         // empty variables for refresh token

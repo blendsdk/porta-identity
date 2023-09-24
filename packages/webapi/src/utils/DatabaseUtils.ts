@@ -1,7 +1,7 @@
 import { sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { isString } from "@blendsdk/stdlib";
+import { IDictionaryOf, isString } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { ISysAuthorizationView, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
 import * as jose from "jose";
@@ -192,7 +192,8 @@ class DatabaseUtils {
         ttl: number,
         refresh_ttl: number,
         auth_request_params: IAuthRequestParams,
-        issuer: string
+        issuer: string,
+        claims: IDictionaryOf<any>
     ) {
         const { dataSource } = (await this.getTenantDataSource(tenant.id)) || {};
         const accessTokenDs = new SysAccessTokenDataService({ dataSource });
@@ -204,7 +205,8 @@ class DatabaseUtils {
 
         const access_token = await new jose.SignJWT({
             client_id: client.client_id,
-            ten: tenant.id
+            ten: tenant.id,
+            ...claims
         }) //
             .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
             .setIssuer(issuer)
