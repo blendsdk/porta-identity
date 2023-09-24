@@ -289,7 +289,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
     protected async createRequestContextGetUserMethod(
         sessionStorage: any,
         _route: IRoute,
-        _reg: HttpRequest<{}>
+        _req: HttpRequest<{}>
     ): Promise<TGetUserMethod> {
         return () => {
             return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey };
