@@ -1,18 +1,18 @@
-import { IForgotPasswordFlowInfo } from "@porta/shared";
-import { Fragment, useEffect, useState } from "react";
-import { useRouter, useSystemError } from "../../system/session";
-import { useStyles } from "./styles";
 import { SessionLoadingView } from "@blendsdk/react";
-import { FIELD_SIZE, eFlowState } from "./lib";
-import LogoImage from "../../resources/logo.svg";
-import { OrgName } from "./OrgName";
-import { ApplicationApi } from "../../system/api";
-import { InvalidSession } from "./InvalidSession";
-import { useTranslation } from "../../system/i18n";
 import { Body1, Button, Input, Spinner, Subtitle1 } from "@fluentui/react-components";
+import { IForgotPasswordFlowInfo } from "@porta/shared";
 import { useFormik } from "formik";
+import { Fragment, useEffect, useState } from "react";
 import * as yup from "yup";
+import LogoImage from "../../resources/logo.svg";
+import { ApplicationApi } from "../../system/api";
+import { useTranslation } from "../../system/i18n";
+import { useRouter, useSystemError } from "../../system/session";
+import { InvalidSession } from "./InvalidSession";
+import { OrgName } from "./OrgName";
+import { FIELD_SIZE, eFlowState } from "./lib";
 import { useCheckFlowStore } from "./store";
+import { useStyles } from "./styles";
 
 interface IResetPasswordDialogModel {
     password: string;

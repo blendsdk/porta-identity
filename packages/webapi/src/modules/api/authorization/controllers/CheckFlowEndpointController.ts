@@ -1,5 +1,8 @@
 import { verifyStringSync } from "@blendsdk/crypto";
+import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { II18NRequestContext } from "@blendsdk/webafx-i18n";
+import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import {
     IAuthenticationFlowState,
     ICheckFlowRequest,
@@ -10,14 +13,11 @@ import {
 } from "@porta/shared";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
+import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
 import { ICachedFlowInformation, ICachedUser, IMFACodes } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
-import { eFlow, EndpointController } from "./EndpointControllerBase";
-import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { II18NRequestContext } from "@blendsdk/webafx-i18n";
-import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
 import { EmailMFAProvider } from "../EMailMFAProvider";
-import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
+import { EndpointController, eFlow } from "./EndpointControllerBase";
 
 /**
  * Handles the CheckFlow endpoint

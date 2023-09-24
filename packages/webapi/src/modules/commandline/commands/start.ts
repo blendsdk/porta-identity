@@ -1,6 +1,6 @@
-import { application } from "../../application";
 import { ArgumentsCamelCase, CommandBuilder } from "yargs";
 import { IPortaApplicationSetting } from "../../../types";
+import { application } from "../../application";
 
 /**
  * Interface describing the commandline args

@@ -1,8 +1,8 @@
-import { ApplicationControllerBase } from "./ApplicationControllerBase";
+import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { IInitializeRequest, IInitializeResponse } from "@porta/shared";
 import { commonUtils } from "../../../utils";
 import { DatabaseSeed } from "../../../utils/DatabaseSeed";
-import { IInitializeRequest, IInitializeResponse } from "@porta/shared";
-import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { ApplicationControllerBase } from "./ApplicationControllerBase";
 
 /**
  * @export

@@ -1,7 +1,7 @@
 import { PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
 import { dataSourceConfig } from "../config";
-import { database, typeSchema, consoleLogger } from "./lib";
+import { consoleLogger, database, typeSchema } from "./lib";
 
 /**
  * Generate views defined in the database

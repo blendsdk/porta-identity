@@ -9,7 +9,7 @@ export type TI18NCompositeFn = (parameters?: any, plural?: boolean) => string;
  * @export
  */
 export interface I18NKeys {
-	LOGIN: string;
+    LOGIN: string;
 }
 /**
  * DO NOT CHANGE THIS FILE
@@ -22,6 +22,6 @@ export interface I18NKeys {
  * @enum
  */
 export const eI18NKeys = {
-	LOGIN: "login"
+    LOGIN: "login"
 } as const;
 export type eI18NKeys = (typeof eI18NKeys)[keyof typeof eI18NKeys];

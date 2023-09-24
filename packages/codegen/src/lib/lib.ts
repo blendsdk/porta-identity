@@ -1,8 +1,8 @@
 import { PostgreSQLDatabase, TypeBuilder, TypeSchema } from "@blendsdk/codegen";
+import { ensureFilePath } from "@blendsdk/filesystem";
 import * as fs from "fs";
 import * as path from "path";
 import { CodeGenLogger } from "./logger";
-import { ensureFilePath } from "@blendsdk/filesystem";
 
 export const consoleLogger = new CodeGenLogger();
 export const typeSchema = new TypeSchema();

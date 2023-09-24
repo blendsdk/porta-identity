@@ -8,11 +8,11 @@
  * @interface ISysKeyDataServiceFindSysKeyByIdParams
  */
 export interface ISysKeyDataServiceFindSysKeyByIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysKeyDataServiceFindSysKeyByIdParams
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysKeyDataServiceFindSysKeyByIdParams
+     */
+    id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysKeyDataServiceFindSysKeyByIdParams {
  * @interface ISysKeyDataServiceDeleteSysKeyByIdFilter
  */
 export interface ISysKeyDataServiceDeleteSysKeyByIdFilter {
-	/**
-	 * @type string
-	 * @memberOf ISysKeyDataServiceDeleteSysKeyByIdFilter
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysKeyDataServiceDeleteSysKeyByIdFilter
+     */
+    id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysKeyDataServiceDeleteSysKeyByIdFilter {
  * @interface ISysKeyDataServiceUpdateSysKeyByIdFilter
  */
 export interface ISysKeyDataServiceUpdateSysKeyByIdFilter {
-	/**
-	 * @type string
-	 * @memberOf ISysKeyDataServiceUpdateSysKeyByIdFilter
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysKeyDataServiceUpdateSysKeyByIdFilter
+     */
+    id: string;
 }
 
 /**
@@ -44,9 +44,9 @@ export interface ISysKeyDataServiceUpdateSysKeyByIdFilter {
  * @interface ISysKeyDataServiceFindSysKeyByKeyIdParams
  */
 export interface ISysKeyDataServiceFindSysKeyByKeyIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysKeyDataServiceFindSysKeyByKeyIdParams
-	 */
-	key_id: string;
+    /**
+     * @type string
+     * @memberOf ISysKeyDataServiceFindSysKeyByKeyIdParams
+     */
+    key_id: string;
 }

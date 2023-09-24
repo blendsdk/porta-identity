@@ -2,36 +2,40 @@ import { Response } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
     IAuthorizeResponse,
-    ITokenRequest,
-    ITokenResponse,
-    ISigninRequest,
-    ISigninResponse,
-    IRedirectRequest,
-    IRedirectResponse,
-    IFlowInfoRequest,
-    IFlowInfoResponse,
     ICheckFlowRequest,
     ICheckFlowResponse,
-    IOidcDiscoveryRequest,
-    IOidcDiscoveryResponse,
+    ICheckPasswordResetRequestRequest,
+    ICheckPasswordResetRequestResponse,
+    IFlowInfoRequest,
+    IFlowInfoResponse,
+    IForgotPasswordFlowInfoRequest,
+    IForgotPasswordFlowInfoResponse,
+    IForgotPasswordRequestAccountRequest,
+    IForgotPasswordRequestAccountResponse,
+    ILogoutFlowInfoRequest,
+    ILogoutFlowInfoResponse,
     IOidcDiscoveryKeysRequest,
     IOidcDiscoveryKeysResponse,
-    IUserInfoGetRequest,
-    IUserInfoGetResponse,
-    IUserInfoPostRequest,
-    IUserInfoPostResponse,
+    IOidcDiscoveryRequest,
+    IOidcDiscoveryResponse,
+    IRedirectRequest,
+    IRedirectResponse,
+    IRequestPasswordResetRequest,
+    IRequestPasswordResetResponse,
     ISessionLogoutGetRequest,
     ISessionLogoutGetResponse,
     ISessionLogoutPostRequest,
     ISessionLogoutPostResponse,
-    ILogoutFlowInfoRequest,
-    ILogoutFlowInfoResponse,
-    IForgotPasswordFlowInfoRequest,
-    IForgotPasswordFlowInfoResponse,
-    ICheckPasswordResetRequestRequest,
-    ICheckPasswordResetRequestResponse,
-    IRequestPasswordResetRequest,
-    IRequestPasswordResetResponse
+    ISigninRequest,
+    ISigninResponse,
+    ITokenInfoRequest,
+    ITokenInfoResponse,
+    ITokenRequest,
+    ITokenResponse,
+    IUserInfoGetRequest,
+    IUserInfoGetResponse,
+    IUserInfoPostRequest,
+    IUserInfoPostResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -41,16 +45,12 @@ import { FlowInfoEndpointController } from "./controllers/FlowInfoEndpointContro
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
 import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
+import { PasswordResetEndpointController } from "./controllers/PasswordResetEndpointController";
 import { RedirectEndpointController } from "./controllers/RedirectEndpointController";
 import { SigninEndpointController } from "./controllers/SigninEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
-import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
-import { PasswordResetEndpointController } from "./controllers/PasswordResetEndpointController";
-import { IForgotPasswordRequestAccountRequest } from "@porta/shared";
-import { IForgotPasswordRequestAccountResponse } from "@porta/shared";
 import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
-import { ITokenInfoRequest } from "@porta/shared";
-import { ITokenInfoResponse } from "@porta/shared";
+import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
 
 /**
  * @export

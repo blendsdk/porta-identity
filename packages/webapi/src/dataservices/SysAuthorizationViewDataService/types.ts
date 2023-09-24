@@ -8,11 +8,11 @@
  * @interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
  */
 export interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams {
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
-	 */
-	client_id: string;
+    /**
+     * @type string
+     * @memberOf ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriParams
+     */
+    client_id: string;
 }
 
 /**
@@ -20,9 +20,9 @@ export interface ISysAuthorizationViewDataServiceFindByClientIdAndRedirectUriPar
  * @interface ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
  */
 export interface ISysAuthorizationViewDataServiceFindByClientIdOnlyParams {
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
-	 */
-	client_id: string;
+    /**
+     * @type string
+     * @memberOf ISysAuthorizationViewDataServiceFindByClientIdOnlyParams
+     */
+    client_id: string;
 }

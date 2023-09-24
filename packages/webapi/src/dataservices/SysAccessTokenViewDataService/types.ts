@@ -8,9 +8,9 @@
  * @interface ISysAccessTokenViewDataServiceFindAccessTokenParams
  */
 export interface ISysAccessTokenViewDataServiceFindAccessTokenParams {
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenParams
-	 */
-	access_token: string;
+    /**
+     * @type string
+     * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenParams
+     */
+    access_token: string;
 }

@@ -1,7 +1,7 @@
-import { DefaultSystemErrorStore, makeRouter, makeSystemError } from "@blendsdk/react";
-import { ApplicationApi } from "../api";
 import { ErrorDialog, makeTheme } from "@blendsdk/fluentrc";
+import { DefaultSystemErrorStore, makeRouter, makeSystemError } from "@blendsdk/react";
 import { teamsLightTheme } from "@fluentui/react-components";
+import { ApplicationApi } from "../api";
 
 export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;

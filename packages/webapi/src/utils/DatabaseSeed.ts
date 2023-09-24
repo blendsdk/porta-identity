@@ -1,16 +1,16 @@
 import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { asyncForEach, IDictionaryOf, isNullOrUndef, MD5, ucFirst } from "@blendsdk/stdlib";
+import { IDictionaryOf, MD5, asyncForEach, isNullOrUndef, ucFirst } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import {
-    eDefaultPermissions,
-    eDefaultSystemGroups,
     ISysClient,
     ISysGroup,
     ISysPermission,
     ISysTenant,
-    ISysUser
+    ISysUser,
+    eDefaultPermissions,
+    eDefaultSystemGroups
 } from "@porta/shared";
 import fs from "fs";
 import path from "path";
@@ -25,7 +25,7 @@ import { SysUserDataService } from "../dataservices/SysUserDataService";
 import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataService";
 import { application } from "../modules/application";
-import { eDatabaseType, IPortaApplicationSetting } from "../types";
+import { IPortaApplicationSetting, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
 import { databaseUtils } from "./DatabaseUtils";
 

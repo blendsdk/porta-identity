@@ -1,3 +1,7 @@
+import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
+import { BadRequestResponse, Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { II18NRequestContext } from "@blendsdk/webafx-i18n";
+import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import {
     ICheckPasswordResetRequestRequest,
     ICheckPasswordResetRequestResponse,
@@ -10,16 +14,12 @@ import {
     ISysAuthorizationView,
     ISysTenant
 } from "@porta/shared";
-import { EndpointController } from "./EndpointControllerBase";
-import { BadRequestResponse, Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { databaseUtils } from "../../../../utils";
 import { SysUserProfileDataService } from "../../../../dataservices/SysUserProfileDataService";
-import { AUTH_FLOW_TTL } from "./constants";
-import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
 import { IPortaApplicationSetting } from "../../../../types";
+import { databaseUtils } from "../../../../utils";
+import { EndpointController } from "./EndpointControllerBase";
+import { AUTH_FLOW_TTL } from "./constants";
 
 /**
  * @export

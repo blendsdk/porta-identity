@@ -2,28 +2,28 @@ import { sha256Hash } from "@blendsdk/crypto";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import {
-    eKeySignatureType,
     IAuthorizeRequest,
     IAuthorizeResponse,
     ISysAuthorizationView,
     ISysTenant,
+    eKeySignatureType,
     portaAuthUtils
 } from "@porta/shared";
+import * as crypto from "crypto";
 import {
+    IAccessToken,
+    IPortaApplicationSetting,
     eErrorType,
     eOAuthDisplayModes,
     eOAuthPKCECodeChallengeMethod,
     eOAuthPrompt,
     eOAuthResponseMode,
-    eOAuthResponseType,
-    IAccessToken,
-    IPortaApplicationSetting
+    eOAuthResponseType
 } from "../../../../types";
 import { databaseUtils } from "../../../../utils";
-import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
-import { eFlow, EndpointController } from "./EndpointControllerBase";
-import * as crypto from "crypto";
 import { expireSecondsFromNow } from "../../../auth/utils";
+import { EndpointController, eFlow } from "./EndpointControllerBase";
+import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
 
 /**
  * Handles the authorize endpoint

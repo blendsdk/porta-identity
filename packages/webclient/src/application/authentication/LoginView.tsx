@@ -1,4 +1,21 @@
+import { SessionLoadingView } from "@blendsdk/react";
+import { isEmptyObject } from "@blendsdk/stdlib";
+import { Button, Spinner } from "@fluentui/react-components";
+import { IFlowInfo } from "@porta/shared";
+import { useFormik } from "formik";
+import Cookies from "js-cookie";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as yup from "yup";
+import LogoImage from "../../resources/logo.svg";
+import { ApplicationApi } from "../../system/api";
+import { useTranslation } from "../../system/i18n";
+import { useSystemError } from "../../system/session";
+import { GetAccount } from "./GetAccount";
+import { GetMFA } from "./GetMFA";
+import { GetPassword } from "./GetPassword";
+import { InvalidSession } from "./InvalidSession";
+import { OrgName } from "./OrgName";
+import { PickAccounts } from "./PickAccounts";
 import {
     FIELD_SIZE,
     IAuthenticationDialogModel,
@@ -8,25 +25,8 @@ import {
     updateUserSelectList,
     validateData
 } from "./lib";
-import { SessionLoadingView } from "@blendsdk/react";
-import { ApplicationApi } from "../../system/api";
-import { IFlowInfo } from "@porta/shared";
-import { useSystemError } from "../../system/session";
-import LogoImage from "../../resources/logo.svg";
-import { useTranslation } from "../../system/i18n";
-import { Button, Spinner } from "@fluentui/react-components";
-import { InvalidSession } from "./InvalidSession";
-import { useFormik } from "formik";
 import { useCheckFlowStore } from "./store";
-import { GetAccount } from "./GetAccount";
-import { GetPassword } from "./GetPassword";
-import { PickAccounts } from "./PickAccounts";
 import { useStyles } from "./styles";
-import * as yup from "yup";
-import { isEmptyObject } from "@blendsdk/stdlib";
-import { GetMFA } from "./GetMFA";
-import Cookies from "js-cookie";
-import { OrgName } from "./OrgName";
 
 export const LoginView = () => {
     const { t } = useTranslation();

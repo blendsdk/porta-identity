@@ -1,14 +1,14 @@
 import { Application } from "@blendsdk/webafx";
 import { CacheModule } from "@blendsdk/webafx-cache";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
+import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
+import { ApplicationModule } from "../api/application";
 import { AuthorizationModule } from "../api/authorization";
+import { PortaSelfAuthenticationModule } from "../auth/selfauth";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
-import { MailerModule } from "@blendsdk/webafx-mailer";
-import { ApplicationModule } from "../api/application";
-import { PortaSelfAuthenticationModule } from "../auth/selfauth";
 
 /**
  * Configuration setting for testing

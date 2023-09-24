@@ -9,13 +9,13 @@ import { routeDefinitions } from "../../../types";
 import { ApplicationController } from "./ApplicationController";
 
 export const ApplicationModule = (): IRouter => {
-	return {
-		routes: [
-			defineControllerRoute({
-				dispatch: "initialize",
-				controller: ApplicationController,
-				route: routeDefinitions.application.initialize
-			})
-		]
-	};
+    return {
+        routes: [
+            defineControllerRoute({
+                dispatch: "initialize",
+                controller: ApplicationController,
+                route: routeDefinitions.application.initialize
+            })
+        ]
+    };
 };

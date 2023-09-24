@@ -1,6 +1,6 @@
+import { ITranslationDatabase } from "@blendsdk/i18n";
 import { TranslationStoreBase, makeTranslator } from "@blendsdk/react";
 import { ApplicationApi } from "../api/generated_api";
-import { ITranslationDatabase } from "@blendsdk/i18n";
 
 /**
  * Implements a translation store

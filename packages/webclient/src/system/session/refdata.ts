@@ -1,6 +1,6 @@
 import { DataStoreBase, makeGlobalStore } from "@blendsdk/react";
-import { ApplicationApi } from "../api";
 import { IFlowInfo } from "@porta/shared";
+import { ApplicationApi } from "../api";
 
 class RefData extends DataStoreBase {
     public flowInfo: IFlowInfo | undefined;

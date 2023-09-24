@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { FIELD_SIZE, eFlowState, isFlowExpired } from "./lib";
 import { SessionLoadingView } from "@blendsdk/react";
-import { ILogoutFlowInfo } from "@porta/shared";
-import { useSystemError } from "../../system/session";
-import LogoImage from "../../resources/logo.svg";
-import { useTranslation } from "../../system/i18n";
-import { useStyles } from "./styles";
-import { ApplicationApi } from "../../system/api";
 import { Body2, Button, Spinner } from "@fluentui/react-components";
+import { ILogoutFlowInfo } from "@porta/shared";
+import { useCallback, useEffect, useState } from "react";
+import LogoImage from "../../resources/logo.svg";
+import { ApplicationApi } from "../../system/api";
+import { useTranslation } from "../../system/i18n";
+import { useSystemError } from "../../system/session";
 import { InvalidSession } from "./InvalidSession";
 import { OrgName } from "./OrgName";
+import { FIELD_SIZE, eFlowState, isFlowExpired } from "./lib";
+import { useStyles } from "./styles";
 
 export const LogoutView = () => {
     const { t } = useTranslation();

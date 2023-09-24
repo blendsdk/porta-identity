@@ -6,17 +6,17 @@ import {
     TGetUserMethod,
     TokenAuthenticationModuleBase
 } from "@blendsdk/webafx-auth";
-import { HttpRequest, HttpResponse, IRoute, sendResponse, ServerErrorResponse } from "@blendsdk/webafx-common";
+import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
 import {
     AuthorizationParameters,
     BaseClient,
     ClientMetadata,
-    custom,
-    generators,
     IdTokenClaims,
     Issuer,
     TokenSet,
-    UserinfoResponse
+    UserinfoResponse,
+    custom,
+    generators
 } from "openid-client";
 import { renderGetRedirect } from "./utils";
 

@@ -12,18 +12,18 @@ import {
 } from "@porta/shared";
 import * as jose from "jose";
 import {
-    eClientType,
-    eErrorType,
-    eOAuthGrantType,
-    eOAuthSigningAlg,
     IAccessToken,
     IAuthRequestParams,
     ICachedFlowInformation,
-    IOTACache
+    IOTACache,
+    eClientType,
+    eErrorType,
+    eOAuthGrantType,
+    eOAuthSigningAlg
 } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
-import { eFlow, EndpointController } from "./EndpointControllerBase";
 import { millisecondsToSeconds } from "../../../auth/utils";
+import { EndpointController, eFlow } from "./EndpointControllerBase";
 
 export interface IGetTokenByClientCredentialsOptions {
     short_access_token_ttl?: number;

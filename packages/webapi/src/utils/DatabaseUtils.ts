@@ -16,7 +16,7 @@ import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataSer
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { application } from "../modules/application";
 import { millisecondsToSeconds } from "../modules/auth/utils";
-import { eDatabaseType, eOAuthSigningAlg, IAccessToken, IAuthRequestParams } from "../types";
+import { IAccessToken, IAuthRequestParams, eDatabaseType, eOAuthSigningAlg } from "../types";
 import { commonUtils } from "./CommonUtils";
 
 class DatabaseUtils {

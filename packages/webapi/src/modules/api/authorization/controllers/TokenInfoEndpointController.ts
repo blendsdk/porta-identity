@@ -1,10 +1,10 @@
+import { wrapInArray } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { ITokenInfo, ITokenInfoRequest, ITokenInfoResponse } from "@porta/shared";
-import { EndpointController } from "./EndpointControllerBase";
-import { databaseUtils } from "../../../../utils";
-import * as jose from "jose";
 import { millisecondsToSeconds } from "@porta/webafx-auth/dist/utils";
-import { wrapInArray } from "@blendsdk/stdlib";
+import * as jose from "jose";
+import { databaseUtils } from "../../../../utils";
+import { EndpointController } from "./EndpointControllerBase";
 
 /**
  * Handler for the token_info endpoint

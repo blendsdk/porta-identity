@@ -1,10 +1,10 @@
-import { Body1 } from "@fluentui/react-components";
-import { useStyles } from "./styles";
-import { eAppRoutes } from "../routing";
-import { useRouter } from "../../system/session";
 import { Link } from "@blendsdk/react";
+import { Body1 } from "@fluentui/react-components";
 import { useTranslation } from "../../system/i18n";
+import { useRouter } from "../../system/session";
+import { eAppRoutes } from "../routing";
 import { eFlowState } from "./lib";
+import { useStyles } from "./styles";
 
 export interface IOrgName {
     flowInfo: { allow_reset_password?: boolean; organization: string } | undefined;

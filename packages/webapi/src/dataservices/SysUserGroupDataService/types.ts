@@ -8,11 +8,11 @@
  * @interface ISysUserGroupDataServiceFindGroupsByUserIdParams
  */
 export interface ISysUserGroupDataServiceFindGroupsByUserIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceFindGroupsByUserIdParams
-	 */
-	user_id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceFindGroupsByUserIdParams
+     */
+    user_id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysUserGroupDataServiceFindGroupsByUserIdParams {
  * @interface ISysUserGroupDataServiceFindSysUserGroupByIdParams
  */
 export interface ISysUserGroupDataServiceFindSysUserGroupByIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceFindSysUserGroupByIdParams
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceFindSysUserGroupByIdParams
+     */
+    id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysUserGroupDataServiceFindSysUserGroupByIdParams {
  * @interface ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter
  */
 export interface ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter {
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter
+     */
+    id: string;
 }
 
 /**
@@ -44,11 +44,11 @@ export interface ISysUserGroupDataServiceDeleteSysUserGroupByIdFilter {
  * @interface ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter
  */
 export interface ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter {
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter
-	 */
-	id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter
+     */
+    id: string;
 }
 
 /**
@@ -56,14 +56,14 @@ export interface ISysUserGroupDataServiceUpdateSysUserGroupByIdFilter {
  * @interface ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
  */
 export interface ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
-	 */
-	user_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
-	 */
-	group_id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+     */
+    user_id: string;
+    /**
+     * @type string
+     * @memberOf ISysUserGroupDataServiceFindSysUserGroupByUserIdAndGroupIdParams
+     */
+    group_id: string;
 }

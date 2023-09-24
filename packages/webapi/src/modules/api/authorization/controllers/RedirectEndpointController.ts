@@ -7,7 +7,7 @@ import {
     SuccessResponse
 } from "@blendsdk/webafx-common";
 import { IRedirectRequest } from "@porta/shared";
-import { eOAuthResponseMode, IFlowRedirect } from "../../../../types";
+import { IFlowRedirect, eOAuthResponseMode } from "../../../../types";
 import { expireSecondsFromNow } from "../../../auth/utils";
 import { formPostTemplate } from "../FormPostTemplate";
 import { EndpointController } from "./EndpointControllerBase";

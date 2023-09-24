@@ -1,8 +1,4 @@
-import {
-    Database,
-    PostgreSQLDataServiceBuilder,
-    TypeSchema
-} from "@blendsdk/codegen";
+import { Database, PostgreSQLDataServiceBuilder, TypeSchema } from "@blendsdk/codegen";
 import { dataSourceConfig } from "../config";
 import { createCrudDataServices } from "../dataservice/crud";
 

@@ -8,11 +8,11 @@
  * @interface ISysRefreshTokenViewDataServiceFindRefreshTokenParams
  */
 export interface ISysRefreshTokenViewDataServiceFindRefreshTokenParams {
-	/**
-	 * @type string
-	 * @memberOf ISysRefreshTokenViewDataServiceFindRefreshTokenParams
-	 */
-	refresh_token: string;
+    /**
+     * @type string
+     * @memberOf ISysRefreshTokenViewDataServiceFindRefreshTokenParams
+     */
+    refresh_token: string;
 }
 
 /**
@@ -20,9 +20,9 @@ export interface ISysRefreshTokenViewDataServiceFindRefreshTokenParams {
  * @interface ISysRefreshTokenViewDataServiceFindRefreshTokenByAccessTokenParams
  */
 export interface ISysRefreshTokenViewDataServiceFindRefreshTokenByAccessTokenParams {
-	/**
-	 * @type string
-	 * @memberOf ISysRefreshTokenViewDataServiceFindRefreshTokenByAccessTokenParams
-	 */
-	access_token: string;
+    /**
+     * @type string
+     * @memberOf ISysRefreshTokenViewDataServiceFindRefreshTokenByAccessTokenParams
+     */
+    access_token: string;
 }

@@ -1,6 +1,6 @@
+import { portaAuthUtils } from "@porta/shared";
 import Cookies from "js-cookie";
 import { getBaseUrl } from "../../system/session";
-import { portaAuthUtils } from "@porta/shared";
 
 export const FIELD_SIZE = "large";
 

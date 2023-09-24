@@ -1,9 +1,9 @@
 import { IRoute } from "@blendsdk/react";
 import { LoginView, LogoutView } from "../authentication";
-import { eAppRoutes } from "./constants";
-import { SignInRedirect } from "../dashboard";
 import { ForgotPassword } from "../authentication/ForgotPassword";
 import { ResetPassword } from "../authentication/ResetPassword";
+import { SignInRedirect } from "../dashboard";
+import { eAppRoutes } from "./constants";
 
 export const appRoutes: IRoute[] = [
     {

@@ -1,7 +1,7 @@
+import { globSync } from "@blendsdk/filesystem";
 import * as fs from "fs";
 import * as path from "path";
 import { consoleLogger, projectRoot } from "./lib";
-import { globSync } from "@blendsdk/filesystem";
 
 /**
  * Delete existing generated files

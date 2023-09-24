@@ -1,8 +1,8 @@
-import path from "path";
+import { Database, PostgreSQLTypeFromQuery, eDBForeignKeyAction } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
-import { consoleLogger, typeSchema } from "./lib";
-import { Database, eDBForeignKeyAction, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
+import path from "path";
 import { dataSourceConfig } from "./config";
+import { consoleLogger, typeSchema } from "./lib";
 
 export async function createDatabaseSchema(database: Database, resourcesRoot: string) {
     resourcesRoot = path.join(resourcesRoot, "database");

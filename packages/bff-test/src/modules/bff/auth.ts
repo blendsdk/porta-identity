@@ -5,7 +5,7 @@ import {
     IPortaHTTPRequestContext,
     PortaMultiTenantClientModule
 } from "@porta/webafx-auth";
-import { ClientMetadata, BaseClient, AuthorizationParameters } from "openid-client";
+import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 
 export class PortaClient extends PortaMultiTenantClientModule {
     protected createKeySignatureName(_req: HttpRequest<{}>): string {

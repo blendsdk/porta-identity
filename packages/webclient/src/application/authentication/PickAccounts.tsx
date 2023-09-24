@@ -1,7 +1,7 @@
 import { Body2, makeStyles, mergeClasses, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
+import { ContactCard32Regular, PersonAccounts24Regular } from "@fluentui/react-icons";
 import Cookies from "js-cookie";
 import React, { Fragment, useMemo } from "react";
-import { ContactCard32Regular, PersonAccounts24Regular } from "@fluentui/react-icons";
 import { useTranslation } from "../../system/i18n";
 import { IExistingAccount } from "./lib";
 

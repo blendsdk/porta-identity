@@ -1,6 +1,6 @@
 import { Body1, makeStyles, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
-import React from "react";
 import { Warning24Regular } from "@fluentui/react-icons";
+import React from "react";
 import { useTranslation } from "../../system/i18n";
 
 const useStyles = makeStyles({

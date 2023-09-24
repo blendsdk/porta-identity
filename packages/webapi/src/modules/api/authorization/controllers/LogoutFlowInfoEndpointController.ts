@@ -1,8 +1,8 @@
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { ILogoutFlowInfoRequest, ILogoutFlowInfoResponse } from "@porta/shared";
-import { EndpointController } from "./EndpointControllerBase";
 import { databaseUtils } from "../../../../utils";
+import { EndpointController } from "./EndpointControllerBase";
 
 /**
  * Handle the Logout FlowInfo endpoint
