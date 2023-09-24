@@ -1,5 +1,4 @@
 import { IDictionaryOf } from "@blendsdk/stdlib";
-
 import {
     IAuthorizeRequest,
     ISysAccessTokenAuthRequestParams,
@@ -98,8 +97,6 @@ export interface IAccessToken
 
 export interface IPortaApplicationSetting {
     PORTA_SIGNIN_URI: string;
-    PORTA_ADMIN: string;
-    PORTA_PASSWORD: string;
     PORTA_SSO_COMMON_NAME: string;
     PORTA_PUBLIC_DOMAIN: string;
     PORTA_REGISTRY_TENANT: string;
