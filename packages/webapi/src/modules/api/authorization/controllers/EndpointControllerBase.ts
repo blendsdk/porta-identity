@@ -379,7 +379,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             auth_request_params,
             this.getIssuer(tenant.name),
             {
-                signout_url: `${this.getServerUrl()}/oidc/${tenant.name}/signout`,
                 ...(offline_access === true
                     ? { refresh_token_url: `${this.getServerUrl()}/oidc/${tenant.name}/refresh` }
                     : {})

@@ -53,7 +53,7 @@ export class Claims {
      * @memberof Claims
      */
     public constructor(accessTokenStorage: IAccessToken, serverUrl: string, tenantName: string) {
-        const { user, profile, tenant, permissions, roles } = accessTokenStorage || {};
+        const { user, profile, tenant, permissions, roles, client } = accessTokenStorage || {};
 
         this.accessTokenStorage = accessTokenStorage;
 
@@ -101,6 +101,16 @@ export class Claims {
                     claim: "preferred_username",
                     handler: this.handleClaim(() => {
                         return fq_email;
+                    })
+                },
+                {
+                    scope: "profile",
+                    claim: "signout_url",
+                    handler: this.handleClaim(() => {
+                        const signOutURL = new URL(`${serverUrl}/${tenant.name}/oauth2/logout`);
+                        signOutURL.searchParams.append("client_id", client.client_id);
+                        signOutURL.searchParams.append("logout_hint", user.id);
+                        return signOutURL.toString();
                     })
                 },
                 {

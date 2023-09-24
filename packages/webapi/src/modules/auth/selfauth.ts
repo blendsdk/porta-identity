@@ -54,6 +54,23 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
     }
 
     /**
+     * @override
+     * @protected
+     * @param {string} tenant
+     * @param {HttpRequest} req
+     * @returns
+     * @memberof PortaSelfAuthenticationModule
+     */
+    protected getRedirectURI(tenant: string, req: HttpRequest) {
+        const serverURL = req.context.getServerURL().replace(/\:80|\:443/g, "");
+        const { redirect_uri } = super.getRedirectURI(tenant, req);
+        return {
+            redirect_uri,
+            post_logout_redirect_uris: [`${serverURL}/fe/${tenant}/signout/complete`]
+        };
+    }
+
+    /**
      * @protected
      * @param {string} tenant
      * @param {string} token
@@ -292,7 +309,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
         _req: HttpRequest<{}>
     ): Promise<TGetUserMethod> {
         return () => {
-            return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey };
+            return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey, _sub: sessionStorage.user_id };
         };
     }
 

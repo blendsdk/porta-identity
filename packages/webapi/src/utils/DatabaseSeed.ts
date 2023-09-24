@@ -328,7 +328,7 @@ export class DatabaseSeed {
                     client_id: await sha256Hash(`porta_ui_${tenant.id}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     redirect_uri: `${serverURL}/oidc/${tenant.name}/signin/callback`,
-                    post_logout_redirect_uri: `${serverURL}/oidc/${tenant.name}/signout/callback`
+                    post_logout_redirect_uri: `${serverURL}/fe/${tenant.name}/signout/complete`
                 },
                 tenant
             );

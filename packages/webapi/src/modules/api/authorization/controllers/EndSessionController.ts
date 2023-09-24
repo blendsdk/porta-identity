@@ -1,20 +1,26 @@
-import * as crypto from "crypto";
-import { AUTH_FLOW_TTL } from "./constants";
-import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { commonUtils, databaseUtils } from "../../../../utils";
 import { createErrorObject } from "@blendsdk/stdlib";
-import { eErrorType, eLogoutFlowState, IAccessToken, ILogoutFlowStorage } from "../../../../types";
-import { EndpointController } from "./EndpointControllerBase";
-import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
+import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     ISessionLogoutGetRequest,
     ISessionLogoutGetResponse,
+    ISessionLogoutPostRequest,
     ISessionLogoutPostResponse,
-    ISysSessionView
+    ISysSessionView,
+    ISysTenant
 } from "@porta/shared";
-import { ISessionLogoutPostRequest } from "@porta/shared";
-import { ISysTenant } from "@porta/shared";
+import * as crypto from "crypto";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
+import {
+    IAccessToken,
+    ILogoutFlowStorage,
+    IPortaApplicationSetting,
+    eErrorType,
+    eLogoutFlowState
+} from "../../../../types";
+import { commonUtils, databaseUtils } from "../../../../utils";
+import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
+import { EndpointController } from "./EndpointControllerBase";
+import { AUTH_FLOW_TTL } from "./constants";
 
 interface ISessionStorage extends ISysSessionView {}
 
@@ -213,8 +219,10 @@ export class EndSessionController extends EndpointController {
 
             // Response by redirect otherwise with JSON
             if (flowData?.post_logout_redirect_uri) {
+                const { PORTA_REGISTRY_TENANT } = this.request.context.getSettings<IPortaApplicationSetting>();
+
                 const url = new URL(flowData.post_logout_redirect_uri);
-                if (flowData.state) {
+                if (flowData.state && tenantRecord.name !== PORTA_REGISTRY_TENANT) {
                     url.searchParams.append("state", flowData.state);
                 }
                 return new SuccessResponse(renderGetRedirect(url.toString()));
@@ -274,7 +282,7 @@ export class EndSessionController extends EndpointController {
                 logoutFlowId = await this.createLogoutFlow(
                     tenant,
                     hintedSession as any,
-                    post_logout_redirect_uri,
+                    post_logout_redirect_uri ? post_logout_redirect_uri : hintedSession.post_logout_redirect_uri,
                     uriErrors,
                     sessionByAccessToken,
                     state
