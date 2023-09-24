@@ -90,7 +90,7 @@ export class PasswordResetEndpointController extends EndpointController {
 
                     // Removes all token assigned to this user spanning by client_id.
                     // This will "logout" the given user in all access tokens for a given client
-                    await this.destroySessionAndAllTokens(tenantRecord, authRecord.client_id, userRecord.id);
+                    await this.destroySessionAndAllTokens(tenantRecord, authRecord.id, userRecord.id);
                     // delete all local cookies
                     this.deleteAllCookies();
 
