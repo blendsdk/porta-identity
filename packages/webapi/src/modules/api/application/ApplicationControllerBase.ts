@@ -14,14 +14,14 @@ import { IInitializeRequest, IInitializeResponse } from "@porta/shared";
  * @template RequestContextType
  */
 export abstract class ApplicationControllerBase<
-    RequestContextType extends IRequestContext = IRequestContext
+	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
-    /**
-     * Method for handling [POST] /api/initialize
-     * @abstract
-     * @param {IInitializeRequest} params
-     * @returns {Promise<Response<IInitializeResponse>>}
-     * @memberof ApplicationControllerBase
-     */
-    public abstract initialize(params: IInitializeRequest): Promise<Response<IInitializeResponse>>;
+	/**
+	 * Method for handling [POST] /api/initialize
+	 * @abstract
+	 * @param {IInitializeRequest} params
+	 * @returns {Promise<Response<IInitializeResponse>>}
+	 * @memberof ApplicationControllerBase
+	 */
+	public abstract initialize(params: IInitializeRequest): Promise<Response<IInitializeResponse>>;
 }

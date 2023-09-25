@@ -351,7 +351,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                             worker.then(async () => {
                                 req.params.state = data.state; // we rewrite the state since this incoming state from mauth and the data.state is from uke requestor
                                 if (!isNullOrUndef(data.ui_locales)) {
-                                    res.cookie("locale", data.ui_locales);
+                                    res.cookie("ui_locales", data.ui_locales);
                                 }
                                 res.send(renderGetRedirect(this.compileURL(await this.getLandingURL(req))));
                             });

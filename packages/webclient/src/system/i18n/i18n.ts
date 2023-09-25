@@ -19,7 +19,8 @@ export class I18TranslationStore extends TranslationStoreBase {
         return new Promise((resolve, reject) => {
             ApplicationApi.blend
                 .getTranslations({
-                    locale
+                    locale,
+                    save: false
                 })
                 .then(({ data }) => {
                     resolve(data);

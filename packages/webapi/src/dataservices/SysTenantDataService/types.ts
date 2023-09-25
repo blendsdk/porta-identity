@@ -8,11 +8,11 @@
  * @interface ISysTenantDataServiceFindByNameOrIdParams
  */
 export interface ISysTenantDataServiceFindByNameOrIdParams {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceFindByNameOrIdParams
-     */
-    name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindByNameOrIdParams
+	 */
+	name: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysTenantDataServiceFindByNameOrIdParams {
  * @interface ISysTenantDataServiceFindSysTenantByIdParams
  */
 export interface ISysTenantDataServiceFindSysTenantByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceFindSysTenantByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindSysTenantByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysTenantDataServiceFindSysTenantByIdParams {
  * @interface ISysTenantDataServiceDeleteSysTenantByIdFilter
  */
 export interface ISysTenantDataServiceDeleteSysTenantByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceDeleteSysTenantByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceDeleteSysTenantByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -44,11 +44,11 @@ export interface ISysTenantDataServiceDeleteSysTenantByIdFilter {
  * @interface ISysTenantDataServiceUpdateSysTenantByIdFilter
  */
 export interface ISysTenantDataServiceUpdateSysTenantByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceUpdateSysTenantByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceUpdateSysTenantByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -56,11 +56,11 @@ export interface ISysTenantDataServiceUpdateSysTenantByIdFilter {
  * @interface ISysTenantDataServiceFindSysTenantByNameParams
  */
 export interface ISysTenantDataServiceFindSysTenantByNameParams {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceFindSysTenantByNameParams
-     */
-    name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindSysTenantByNameParams
+	 */
+	name: string;
 }
 
 /**
@@ -68,9 +68,9 @@ export interface ISysTenantDataServiceFindSysTenantByNameParams {
  * @interface ISysTenantDataServiceFindSysTenantByDatabaseParams
  */
 export interface ISysTenantDataServiceFindSysTenantByDatabaseParams {
-    /**
-     * @type string
-     * @memberOf ISysTenantDataServiceFindSysTenantByDatabaseParams
-     */
-    database: string;
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindSysTenantByDatabaseParams
+	 */
+	database: string;
 }

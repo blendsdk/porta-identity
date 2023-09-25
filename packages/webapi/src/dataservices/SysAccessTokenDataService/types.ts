@@ -8,11 +8,11 @@
  * @interface ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilter
  */
 export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilter {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilter
-     */
-    access_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilter
+	 */
+	access_token: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByAccessTokenFilt
  * @interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter
  */
 export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter
-     */
-    user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter
+	 */
+	user_id: string;
 }
 
 /**
@@ -32,16 +32,16 @@ export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdFilter {
  * @interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
  */
 export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
-     */
-    user_id: string;
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
-     */
-    client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClientIdFilter
+	 */
+	client_id: string;
 }
 
 /**
@@ -49,11 +49,11 @@ export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByUserIdAndClient
  * @interface ISysAccessTokenDataServiceFindSysAccessTokenByIdParams
  */
 export interface ISysAccessTokenDataServiceFindSysAccessTokenByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceFindSysAccessTokenByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceFindSysAccessTokenByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -61,11 +61,11 @@ export interface ISysAccessTokenDataServiceFindSysAccessTokenByIdParams {
  * @interface ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter
  */
 export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -73,11 +73,11 @@ export interface ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter {
  * @interface ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter
  */
 export interface ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -85,9 +85,9 @@ export interface ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter {
  * @interface ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams
  */
 export interface ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams {
-    /**
-     * @type string
-     * @memberOf ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams
-     */
-    access_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams
+	 */
+	access_token: string;
 }

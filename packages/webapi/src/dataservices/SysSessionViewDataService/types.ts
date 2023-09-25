@@ -8,16 +8,16 @@
  * @interface ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
  */
 export interface ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams {
-    /**
-     * @type string
-     * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
-     */
-    sub_claim: string;
-    /**
-     * @type string
-     * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
-     */
-    client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+	 */
+	sub_claim: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectParams
+	 */
+	client_id: string;
 }
 
 /**
@@ -25,16 +25,16 @@ export interface ISysSessionViewDataServiceFindSessionByOidcClientAndSubjectPara
  * @interface ISysSessionViewDataServiceFindSessionByClientAndUserParams
  */
 export interface ISysSessionViewDataServiceFindSessionByClientAndUserParams {
-    /**
-     * @type string
-     * @memberOf ISysSessionViewDataServiceFindSessionByClientAndUserParams
-     */
-    user_id: string;
-    /**
-     * @type string
-     * @memberOf ISysSessionViewDataServiceFindSessionByClientAndUserParams
-     */
-    client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByClientAndUserParams
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionByClientAndUserParams
+	 */
+	client_id: string;
 }
 
 /**
@@ -42,9 +42,9 @@ export interface ISysSessionViewDataServiceFindSessionByClientAndUserParams {
  * @interface ISysSessionViewDataServiceFindSessionBySessionIdParams
  */
 export interface ISysSessionViewDataServiceFindSessionBySessionIdParams {
-    /**
-     * @type string
-     * @memberOf ISysSessionViewDataServiceFindSessionBySessionIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionViewDataServiceFindSessionBySessionIdParams
+	 */
+	id: string;
 }

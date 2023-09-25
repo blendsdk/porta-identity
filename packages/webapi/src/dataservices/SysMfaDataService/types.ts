@@ -8,11 +8,11 @@
  * @interface ISysMfaDataServiceFindSysMfaByIdParams
  */
 export interface ISysMfaDataServiceFindSysMfaByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysMfaDataServiceFindSysMfaByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysMfaDataServiceFindSysMfaByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysMfaDataServiceFindSysMfaByIdParams {
  * @interface ISysMfaDataServiceDeleteSysMfaByIdFilter
  */
 export interface ISysMfaDataServiceDeleteSysMfaByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysMfaDataServiceDeleteSysMfaByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysMfaDataServiceDeleteSysMfaByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -32,9 +32,9 @@ export interface ISysMfaDataServiceDeleteSysMfaByIdFilter {
  * @interface ISysMfaDataServiceUpdateSysMfaByIdFilter
  */
 export interface ISysMfaDataServiceUpdateSysMfaByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysMfaDataServiceUpdateSysMfaByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysMfaDataServiceUpdateSysMfaByIdFilter
+	 */
+	id: string;
 }

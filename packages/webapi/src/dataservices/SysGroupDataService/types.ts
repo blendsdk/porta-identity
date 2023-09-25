@@ -8,11 +8,11 @@
  * @interface ISysGroupDataServiceFindSysGroupByIdParams
  */
 export interface ISysGroupDataServiceFindSysGroupByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysGroupDataServiceFindSysGroupByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupDataServiceFindSysGroupByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysGroupDataServiceFindSysGroupByIdParams {
  * @interface ISysGroupDataServiceDeleteSysGroupByIdFilter
  */
 export interface ISysGroupDataServiceDeleteSysGroupByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysGroupDataServiceDeleteSysGroupByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupDataServiceDeleteSysGroupByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysGroupDataServiceDeleteSysGroupByIdFilter {
  * @interface ISysGroupDataServiceUpdateSysGroupByIdFilter
  */
 export interface ISysGroupDataServiceUpdateSysGroupByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysGroupDataServiceUpdateSysGroupByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupDataServiceUpdateSysGroupByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -44,9 +44,9 @@ export interface ISysGroupDataServiceUpdateSysGroupByIdFilter {
  * @interface ISysGroupDataServiceFindSysGroupByNameParams
  */
 export interface ISysGroupDataServiceFindSysGroupByNameParams {
-    /**
-     * @type string
-     * @memberOf ISysGroupDataServiceFindSysGroupByNameParams
-     */
-    name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysGroupDataServiceFindSysGroupByNameParams
+	 */
+	name: string;
 }

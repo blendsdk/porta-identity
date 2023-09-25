@@ -1,4 +1,4 @@
-import { eJsonSchemaType } from "@blendsdk/jsonschema";
+import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 import { base64Encode } from "@blendsdk/stdlib";
 import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
@@ -22,20 +22,21 @@ export const SPARoutes = (): IRouter => {
                         tenant: {
                             type: eJsonSchemaType.string
                         },
-                        lang: {
-                            type: eJsonSchemaType.string
+                        locale: {
+                            type: eJsonSchemaType.string,
+                            location: eParameterLocation.query
                         }
                     }
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
-                    const { tenant, lang } = req.context.getParameters<any>();
+                    const { tenant, locale } = req.context.getParameters<any>();
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
                         base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/manage` }))
                     );
-                    if (lang) {
-                        url.searchParams.append("lang", lang);
+                    if (locale) {
+                        url.searchParams.append("locale", locale);
                     }
                     res.send(renderGetRedirect(url.toString()));
                 }
@@ -49,20 +50,21 @@ export const SPARoutes = (): IRouter => {
                         tenant: {
                             type: eJsonSchemaType.string
                         },
-                        lang: {
-                            type: eJsonSchemaType.string
+                        locale: {
+                            type: eJsonSchemaType.string,
+                            location: eParameterLocation.query
                         }
                     }
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
-                    const { tenant, lang } = req.context.getParameters<any>();
+                    const { tenant, locale } = req.context.getParameters<any>();
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
                         base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/me` }))
                     );
-                    if (lang) {
-                        url.searchParams.append("lang", lang);
+                    if (locale) {
+                        url.searchParams.append("locale", locale);
                     }
                     res.send(renderGetRedirect(url.toString()));
                 }

@@ -8,11 +8,11 @@
  * @interface ISysUserProfileDataServiceFindUserProfileByUserIdParams
  */
 export interface ISysUserProfileDataServiceFindUserProfileByUserIdParams {
-    /**
-     * @type string
-     * @memberOf ISysUserProfileDataServiceFindUserProfileByUserIdParams
-     */
-    user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserProfileDataServiceFindUserProfileByUserIdParams
+	 */
+	user_id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysUserProfileDataServiceFindUserProfileByUserIdParams {
  * @interface ISysUserProfileDataServiceFindSysUserProfileByIdParams
  */
 export interface ISysUserProfileDataServiceFindSysUserProfileByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysUserProfileDataServiceFindSysUserProfileByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserProfileDataServiceFindSysUserProfileByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysUserProfileDataServiceFindSysUserProfileByIdParams {
  * @interface ISysUserProfileDataServiceDeleteSysUserProfileByIdFilter
  */
 export interface ISysUserProfileDataServiceDeleteSysUserProfileByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysUserProfileDataServiceDeleteSysUserProfileByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserProfileDataServiceDeleteSysUserProfileByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -44,9 +44,9 @@ export interface ISysUserProfileDataServiceDeleteSysUserProfileByIdFilter {
  * @interface ISysUserProfileDataServiceUpdateSysUserProfileByIdFilter
  */
 export interface ISysUserProfileDataServiceUpdateSysUserProfileByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysUserProfileDataServiceUpdateSysUserProfileByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserProfileDataServiceUpdateSysUserProfileByIdFilter
+	 */
+	id: string;
 }

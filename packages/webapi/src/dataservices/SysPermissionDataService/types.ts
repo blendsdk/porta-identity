@@ -8,11 +8,11 @@
  * @interface ISysPermissionDataServiceFindPermissionsByUserIdParams
  */
 export interface ISysPermissionDataServiceFindPermissionsByUserIdParams {
-    /**
-     * @type string
-     * @memberOf ISysPermissionDataServiceFindPermissionsByUserIdParams
-     */
-    user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermissionDataServiceFindPermissionsByUserIdParams
+	 */
+	user_id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysPermissionDataServiceFindPermissionsByUserIdParams {
  * @interface ISysPermissionDataServiceFindSysPermissionByIdParams
  */
 export interface ISysPermissionDataServiceFindSysPermissionByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysPermissionDataServiceFindSysPermissionByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermissionDataServiceFindSysPermissionByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -32,11 +32,11 @@ export interface ISysPermissionDataServiceFindSysPermissionByIdParams {
  * @interface ISysPermissionDataServiceDeleteSysPermissionByIdFilter
  */
 export interface ISysPermissionDataServiceDeleteSysPermissionByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysPermissionDataServiceDeleteSysPermissionByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermissionDataServiceDeleteSysPermissionByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -44,11 +44,11 @@ export interface ISysPermissionDataServiceDeleteSysPermissionByIdFilter {
  * @interface ISysPermissionDataServiceUpdateSysPermissionByIdFilter
  */
 export interface ISysPermissionDataServiceUpdateSysPermissionByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysPermissionDataServiceUpdateSysPermissionByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermissionDataServiceUpdateSysPermissionByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -56,9 +56,9 @@ export interface ISysPermissionDataServiceUpdateSysPermissionByIdFilter {
  * @interface ISysPermissionDataServiceFindSysPermissionByCodeParams
  */
 export interface ISysPermissionDataServiceFindSysPermissionByCodeParams {
-    /**
-     * @type string
-     * @memberOf ISysPermissionDataServiceFindSysPermissionByCodeParams
-     */
-    code: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermissionDataServiceFindSysPermissionByCodeParams
+	 */
+	code: string;
 }

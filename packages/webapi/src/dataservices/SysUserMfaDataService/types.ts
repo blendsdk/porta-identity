@@ -8,11 +8,11 @@
  * @interface ISysUserMfaDataServiceFindSysUserMfaByIdParams
  */
 export interface ISysUserMfaDataServiceFindSysUserMfaByIdParams {
-    /**
-     * @type string
-     * @memberOf ISysUserMfaDataServiceFindSysUserMfaByIdParams
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserMfaDataServiceFindSysUserMfaByIdParams
+	 */
+	id: string;
 }
 
 /**
@@ -20,11 +20,11 @@ export interface ISysUserMfaDataServiceFindSysUserMfaByIdParams {
  * @interface ISysUserMfaDataServiceDeleteSysUserMfaByIdFilter
  */
 export interface ISysUserMfaDataServiceDeleteSysUserMfaByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysUserMfaDataServiceDeleteSysUserMfaByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserMfaDataServiceDeleteSysUserMfaByIdFilter
+	 */
+	id: string;
 }
 
 /**
@@ -32,9 +32,9 @@ export interface ISysUserMfaDataServiceDeleteSysUserMfaByIdFilter {
  * @interface ISysUserMfaDataServiceUpdateSysUserMfaByIdFilter
  */
 export interface ISysUserMfaDataServiceUpdateSysUserMfaByIdFilter {
-    /**
-     * @type string
-     * @memberOf ISysUserMfaDataServiceUpdateSysUserMfaByIdFilter
-     */
-    id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserMfaDataServiceUpdateSysUserMfaByIdFilter
+	 */
+	id: string;
 }
