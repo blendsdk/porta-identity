@@ -15,6 +15,7 @@ import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
+import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataService";
 import { application } from "../modules/application";
 import { millisecondsToSeconds } from "../modules/auth/utils";
 import { IAccessToken, IAuthRequestParams, eDatabaseType, eOAuthSigningAlg } from "../types";
@@ -102,15 +103,21 @@ class DatabaseUtils {
     /**
      * Finds a user by given userid
      *
-     * @param {string} userid
+     * @param {string} user_id
      * @param {string} tenant
      * @returns
      * @memberof DatabaseUtils
      */
-    public async findUserByUserId(userid: string, tenant: string) {
+    public async findUserByUserId(user_id: string, tenant: string) {
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const userDs = new SysUserDataService({ dataSource });
-        return userDs.findSysUserById({ id: userid });
+        const profileDs = new SysUserProfileDataService({ dataSource });
+        const user = await userDs.findSysUserById({ id: user_id });
+        const profile = user ? await profileDs.findUserProfileByUserId({ user_id }) : undefined;
+        return {
+            user,
+            profile
+        };
     }
 
     /**
