@@ -369,6 +369,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         access_token_ttl = access_token_ttl || ACCESS_TOKEN_TTL;
         refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
 
+        const userRecord = await databaseUtils.findUserByUserId(user_id, tenant.name);
+
         const accessTokenStorage = await databaseUtils.newAccessToken(
             tenant,
             authRecord,
@@ -379,9 +381,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             auth_request_params,
             this.getIssuer(tenant.name),
             {
-                ...(offline_access === true
-                    ? { refresh_token_url: `${this.getServerUrl()}/oidc/${tenant.name}/refresh` }
-                    : {})
+                ...(userRecord ? { udc: new Date(userRecord.date_changed).getTime() } : {})
             }
         );
 

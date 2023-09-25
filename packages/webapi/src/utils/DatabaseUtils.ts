@@ -14,6 +14,7 @@ import { SysRefreshTokenViewDataService } from "../dataservices/SysRefreshTokenV
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysSessionViewDataService } from "../dataservices/SysSessionViewDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
+import { SysUserDataService } from "../dataservices/SysUserDataService";
 import { application } from "../modules/application";
 import { millisecondsToSeconds } from "../modules/auth/utils";
 import { IAccessToken, IAuthRequestParams, eDatabaseType, eOAuthSigningAlg } from "../types";
@@ -96,6 +97,20 @@ class DatabaseUtils {
                 reject(err);
             }
         });
+    }
+
+    /**
+     * Finds a user by given userid
+     *
+     * @param {string} userid
+     * @param {string} tenant
+     * @returns
+     * @memberof DatabaseUtils
+     */
+    public async findUserByUserId(userid: string, tenant: string) {
+        const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
+        const userDs = new SysUserDataService({ dataSource });
+        return userDs.findSysUserById({ id: userid });
     }
 
     /**
