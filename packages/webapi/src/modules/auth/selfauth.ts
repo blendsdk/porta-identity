@@ -121,14 +121,16 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
         if (tenant && !this.tenantKeySignatures[tenant]) {
             const tenantRecord = await databaseUtils.findTenant(tenant);
             if (tenantRecord) {
+                const { client_id } = await this.getOIDCClientConfig(tenant);
                 this.tenantKeySignatures[tenant] = {
                     id: tenantRecord.id,
                     tenant: tenantRecord.name,
-                    sig: portaAuthUtils.getKeySignature(
-                        tenantRecord.name,
-                        req.context.getServerURL(),
-                        eKeySignatureType.access_token
-                    )
+                    sig: portaAuthUtils.getKeySignature({
+                        tenant: tenantRecord.name,
+                        client: client_id,
+                        system: req.context.getServerURL(),
+                        type: eKeySignatureType.access_token
+                    })
                 };
             }
         }

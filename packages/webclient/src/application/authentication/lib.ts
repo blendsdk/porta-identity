@@ -89,7 +89,12 @@ const getAuthenticatingTenant = () => {
  */
 export const updateUserSelectList = (tenant: string, user?: string) => {
     const system = getBaseUrl();
-    const listKey = portaAuthUtils.getKeySignature(tenant, system, "user_list");
+    const listKey = portaAuthUtils.getKeySignature({
+        tenant,
+        system,
+        type: "user_list",
+        client: "any"
+    });
     const list = JSON.parse(Cookies.get(listKey) || "[]") as any[];
     if (user) {
         const tenant = getAuthenticatingTenant();

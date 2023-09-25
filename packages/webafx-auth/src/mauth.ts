@@ -403,7 +403,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                         ui_locales: locale
                                     },
                                     {
-                                        expire: Date.now() + 60000
+                                        expire: Date.now() + 1200000
                                     }
                                 );
 

@@ -255,7 +255,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 if (authRecord) {
                     // get the current user if possible
                     const { token, accessTokenStorage: storage } = await this.getCurrentlyAuthenticatedUserToken(
-                        tenantRecord
+                        tenantRecord,
+                        authRecord.client_id
                     );
 
                     // check if the previous token is of the current tenant
@@ -373,17 +374,21 @@ export class AuthorizeEndpointController extends EndpointController {
      * Gets the current authenticated user
      *
      * @protected
-     * @returns {Promise<string>}
+     * @param {ISysTenant} tenant
+     * @param {string} client_id
+     * @returns {Promise<{ token: string; accessTokenStorage: IAccessToken }>}
      * @memberof AuthorizeEndpointController
      */
     protected async getCurrentlyAuthenticatedUserToken(
-        tenant: ISysTenant
+        tenant: ISysTenant,
+        client_id: string
     ): Promise<{ token: string; accessTokenStorage: IAccessToken }> {
-        const accessTokenKeySignature = portaAuthUtils.getKeySignature(
-            tenant.name,
-            this.getServerUrl(),
-            eKeySignatureType.access_token
-        );
+        const accessTokenKeySignature = portaAuthUtils.getKeySignature({
+            tenant: tenant.name,
+            client: client_id,
+            system: this.getServerUrl(),
+            type: eKeySignatureType.access_token
+        });
         // we first get the token from the cookie
         const accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
 

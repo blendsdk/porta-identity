@@ -10,13 +10,7 @@ import {
 } from "@porta/shared";
 import * as crypto from "crypto";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
-import {
-    IAccessToken,
-    ILogoutFlowStorage,
-    IPortaApplicationSetting,
-    eErrorType,
-    eLogoutFlowState
-} from "../../../../types";
+import { IAccessToken, ILogoutFlowStorage, eErrorType, eLogoutFlowState } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
 import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
 import { EndpointController } from "./EndpointControllerBase";
@@ -213,16 +207,19 @@ export class EndSessionController extends EndpointController {
             await this.destroySessionAndAllTokens(tenantRecord, flowData.client_id, flowData.user_id);
 
             // delete all the cookies
-            this.deleteAllCookies();
+            this.deleteAllCookies({
+                tenant: flowData.tenant,
+                client: flowData.client.client_id,
+                system: this.getServerUrl(),
+                type: undefined
+            });
             // delete the flow cache
             await this.getCache().deleteValue(this.getLogoutFlowCacheKey(flowId));
 
             // Response by redirect otherwise with JSON
             if (flowData?.post_logout_redirect_uri) {
-                const { PORTA_REGISTRY_TENANT } = this.request.context.getSettings<IPortaApplicationSetting>();
-
                 const url = new URL(flowData.post_logout_redirect_uri);
-                if (flowData.state && tenantRecord.name !== PORTA_REGISTRY_TENANT) {
+                if (flowData.state && flowData.client.is_system_client !== true) {
                     url.searchParams.append("state", flowData.state);
                 }
                 return new SuccessResponse(renderGetRedirect(url.toString()));

@@ -12,6 +12,7 @@ import {
 } from "@blendsdk/webafx-common";
 import {
     IAuthenticationFlowState,
+    IPortaUtilsGetKeySignature,
     ISysAuthorizationView,
     ISysRefreshTokenView,
     ISysSession,
@@ -288,7 +289,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         // session length info for the ui
         this.setCookie(
-            portaAuthUtils.getKeySignature(tenant, this.getServerUrl(), eKeySignatureType.session),
+            portaAuthUtils.getKeySignature({
+                tenant,
+                client: accessTokenStorage.client.client_id,
+                system: this.getServerUrl(),
+                type: eKeySignatureType.session
+            }),
             new Date(expire_at).getTime(),
             {
                 expires: new Date(expire_at)
@@ -307,7 +313,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             });
 
             this.setCookie(
-                portaAuthUtils.getKeySignature(tenant, this.getServerUrl(), eKeySignatureType.refresh_session),
+                portaAuthUtils.getKeySignature({
+                    tenant,
+                    client: accessTokenStorage.client.client_id,
+                    system: this.getServerUrl(),
+                    type: eKeySignatureType.refresh_session
+                }),
                 new Date(expire_at).getTime(),
                 {
                     expires: new Date(expire_at)
@@ -350,18 +361,20 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
 
-        const accessTokenKeySignature = portaAuthUtils.getKeySignature(
-            tenant.name,
-            this.getServerUrl(),
-            eKeySignatureType.access_token
-        );
+        const accessTokenKeySignature = portaAuthUtils.getKeySignature({
+            tenant: tenant.name,
+            client: authRecord.client_id,
+            system: this.getServerUrl(),
+            type: eKeySignatureType.access_token
+        });
 
         const sessionStorage = await databaseUtils.createOrGetSession(tenant.id, authRecord.id, user_id);
-        const sessionKeySignature = portaAuthUtils.getKeySignature(
-            tenant.name,
-            this.getServerUrl(),
-            eKeySignatureType.session_id
-        );
+        const sessionKeySignature = portaAuthUtils.getKeySignature({
+            tenant: tenant.name,
+            client: authRecord.client_id,
+            system: this.getServerUrl(),
+            type: eKeySignatureType.session_id
+        });
 
         // checking the offline access grant
         const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
@@ -403,11 +416,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 this.getIssuer(tenant.name),
                 accessTokenStorage.id
             );
-            refreshTokenKeySignature = portaAuthUtils.getKeySignature(
-                tenant.name,
-                this.getServerUrl(),
-                eKeySignatureType.refresh_token
-            );
+            refreshTokenKeySignature = portaAuthUtils.getKeySignature({
+                tenant: tenant.name,
+                client: authRecord.client_id,
+                system: this.getServerUrl(),
+                type: eKeySignatureType.refresh_token
+            });
         }
 
         return {
@@ -461,19 +475,32 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @protected
      * @memberof EndSessionController
      */
-    protected deleteAllCookies() {
+    protected deleteAllCookies(params?: IPortaUtilsGetKeySignature) {
+        const { client, system, tenant } = params || {};
         const cookies = this.request.cookies;
         const signedCookies = this.request.signedCookies;
         const skip = ["lang", "locale", "ui_locales"];
+        const deleteKeys: string[] = [];
+
+        Object.entries(eKeySignatureType).forEach(([_k, type]) => {
+            deleteKeys.push(
+                portaAuthUtils.getKeySignature({
+                    client,
+                    system,
+                    tenant,
+                    type
+                })
+            );
+        });
 
         for (const cookieName in cookies) {
-            if (!skip.includes(cookieName)) {
+            if (!skip.includes(cookieName) && deleteKeys.includes(cookieName)) {
                 this.response.cookie(cookieName, "", { expires: new Date(0) });
             }
         }
 
         for (const cookieName in signedCookies) {
-            if (!skip.includes(cookieName)) {
+            if (!skip.includes(cookieName) && deleteKeys.includes(cookieName)) {
                 this.response.cookie(cookieName, "", { expires: new Date(0) });
             }
         }

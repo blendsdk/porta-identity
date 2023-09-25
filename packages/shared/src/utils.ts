@@ -1,4 +1,4 @@
-import { MD5 } from "@blendsdk/stdlib";
+import { CRC32 } from "@blendsdk/stdlib";
 
 export enum eKeySignatureType {
     access_token = "access_token",
@@ -7,6 +7,13 @@ export enum eKeySignatureType {
     session = "session_length",
     refresh_session = "refresh_session_length",
     user_list = "user_list"
+}
+
+export interface IPortaUtilsGetKeySignature {
+    tenant: string;
+    client: string;
+    system: string;
+    type: eKeySignatureType | string;
 }
 
 export class PortaAuthUtils {
@@ -19,8 +26,8 @@ export class PortaAuthUtils {
      * @returns
      * @memberof PortaAuthUtils
      */
-    public getKeySignature(tenant: string, system: string, type: eKeySignatureType | string) {
-        return MD5(JSON.stringify({ type, tenant, system }));
+    public getKeySignature({ type, tenant, client, system }: IPortaUtilsGetKeySignature) {
+        return CRC32<string>([type, tenant, client, system].join("-"), { hexOutput: true });
     }
 }
 
