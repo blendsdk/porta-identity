@@ -54,7 +54,7 @@ export class PortaClient extends PortaMultiTenantClientModule {
 
     protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
         return {
-            client_id: "bff1",
+            client_id: "bff",
             client_secret: "secret"
         };
     }
