@@ -463,13 +463,18 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     protected deleteAllCookies() {
         const cookies = this.request.cookies;
         const signedCookies = this.request.signedCookies;
+        const skip = ["lang", "locale", "ui_locales"];
 
         for (const cookieName in cookies) {
-            this.response.cookie(cookieName, "", { expires: new Date(0) });
+            if (!skip.includes(cookieName)) {
+                this.response.cookie(cookieName, "", { expires: new Date(0) });
+            }
         }
 
         for (const cookieName in signedCookies) {
-            this.response.cookie(cookieName, "", { expires: new Date(0) });
+            if (!skip.includes(cookieName)) {
+                this.response.cookie(cookieName, "", { expires: new Date(0) });
+            }
         }
     }
 

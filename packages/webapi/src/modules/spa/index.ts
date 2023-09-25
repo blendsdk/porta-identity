@@ -21,16 +21,22 @@ export const SPARoutes = (): IRouter => {
                     properties: {
                         tenant: {
                             type: eJsonSchemaType.string
+                        },
+                        lang: {
+                            type: eJsonSchemaType.string
                         }
                     }
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
-                    const { tenant } = req.context.getParameters<any>();
+                    const { tenant, lang } = req.context.getParameters<any>();
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
                         base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/manage` }))
                     );
+                    if (lang) {
+                        url.searchParams.append("lang", lang);
+                    }
                     res.send(renderGetRedirect(url.toString()));
                 }
             },
@@ -42,16 +48,22 @@ export const SPARoutes = (): IRouter => {
                     properties: {
                         tenant: {
                             type: eJsonSchemaType.string
+                        },
+                        lang: {
+                            type: eJsonSchemaType.string
                         }
                     }
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
-                    const { tenant } = req.context.getParameters<any>();
+                    const { tenant, lang } = req.context.getParameters<any>();
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
                         base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/me` }))
                     );
+                    if (lang) {
+                        url.searchParams.append("lang", lang);
+                    }
                     res.send(renderGetRedirect(url.toString()));
                 }
             },
