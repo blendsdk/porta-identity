@@ -7,6 +7,7 @@ import {
     TokenAuthenticationModuleBase
 } from "@blendsdk/webafx-auth";
 import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
+import * as crypto from "crypto";
 import {
     AuthorizationParameters,
     BaseClient,
