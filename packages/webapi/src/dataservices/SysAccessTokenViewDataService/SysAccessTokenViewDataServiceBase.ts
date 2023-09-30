@@ -1,4 +1,7 @@
-import { ISysAccessTokenViewDataServiceFindAccessTokenParams } from "./types";
+import {
+	ISysAccessTokenViewDataServiceFindAccessTokenParams,
+	ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+} from "./types";
 import { ISysAccessTokenView } from "@porta/shared";
 import { DataService } from "@blendsdk/datakit";
 import { PostgreSQLExecutionContext } from "@blendsdk/postgresql";
@@ -22,6 +25,26 @@ export abstract class SysAccessTokenViewDataServiceBase extends DataService<Post
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<ISysAccessTokenView, ISysAccessTokenViewDataServiceFindAccessTokenParams>(
 			`select * from sys_access_token_view where access_token = :access_token`,
+			params,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * @param {ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams}
+	 * @returns {ISysAccessTokenView}
+	 * @memberof SysAccessTokenViewDataServiceBase
+	 */
+	public async findAccessTokenByAcrReference(
+		params: ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+	): Promise<ISysAccessTokenView> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<
+			ISysAccessTokenView,
+			ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+		>(
+			`select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference`,
 			params,
 			{ single: true }
 		);

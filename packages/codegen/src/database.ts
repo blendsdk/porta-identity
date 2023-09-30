@@ -144,6 +144,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
                     .addString("claims")
                     .addString("acr_values")
                     .addString("resource")
+                    .addString("token_reference")
                     .addString("scope");
 
                 return suggestedTypeName;

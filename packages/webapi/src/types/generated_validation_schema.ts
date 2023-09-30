@@ -54,11 +54,14 @@ export const validationSchema = {
 				resource: {
 					type: eJsonSchemaType.string
 				},
+				token_reference: {
+					type: eJsonSchemaType.string
+				},
 				scope: {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["ui_locales", "claims", "acr_values", "resource", "scope"]
+			required: ["ui_locales", "claims", "acr_values", "resource", "token_reference", "scope"]
 		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,

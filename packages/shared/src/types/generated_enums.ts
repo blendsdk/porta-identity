@@ -41,6 +41,7 @@ export const eSysAccessTokenAuthRequestParams = {
 	CLAIMS: "claims",
 	ACR_VALUES: "acr_values",
 	RESOURCE: "resource",
+	TOKEN_REFERENCE: "token_reference",
 	SCOPE: "scope"
 } as const;
 export type eSysAccessTokenAuthRequestParams =

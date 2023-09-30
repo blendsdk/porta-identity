@@ -77,8 +77,8 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @returns
      * @memberof PortaSelfAuthenticationModule
      */
-    protected async findAccessTokenByTenant(tenant: string, token: string) {
-        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
+    protected async findAccessTokenByTenant(tenant: string, token: string, token_reference?: boolean) {
+        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token, token_reference);
         return isNullOrUndef(accessTokenStorage) ? undefined : accessTokenStorage;
     }
 
@@ -198,16 +198,27 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
                 const tenant = this.getTenantFromRequest(req);
                 if (await this.validateTenant(tenant)) {
                     const controller = new TokenEndpointController({ request: req, response: undefined });
-                    const { token: newToken } = await controller.getTokenByClientCredentials({
-                        grant_type: eOAuthGrantType.client_credentials,
-                        tenant,
-                        client_id,
-                        client_secret,
-                        scope: "email profile acl"
-                    });
-                    return newToken && newToken.access_token
-                        ? ((await this.findAccessTokenByTenant(tenant, newToken.access_token)) as SessionStorageType)
-                        : undefined;
+
+                    const acr_ref = MD5([client_id, client_secret, req.context.getRoute().url].join(""));
+                    const existing_access_token = await databaseUtils.findAccessTokenByTenant(tenant, acr_ref, true);
+
+                    if (existing_access_token) {
+                        return existing_access_token as SessionStorageType;
+                    } else {
+                        const { token: newToken } = await controller.getTokenByClientCredentials({
+                            grant_type: eOAuthGrantType.client_credentials,
+                            tenant,
+                            client_id,
+                            client_secret,
+                            scope: "email profile acl"
+                        });
+                        return newToken && newToken.access_token
+                            ? ((await this.findAccessTokenByTenant(
+                                  tenant,
+                                  newToken.access_token
+                              )) as SessionStorageType)
+                            : undefined;
+                    }
                 } else {
                     return undefined;
                 }

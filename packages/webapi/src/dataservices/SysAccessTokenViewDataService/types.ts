@@ -14,3 +14,15 @@ export interface ISysAccessTokenViewDataServiceFindAccessTokenParams {
 	 */
 	access_token: string;
 }
+
+/**
+ * @export
+ * @interface ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+ */
+export interface ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+	 */
+	token_reference: string;
+}

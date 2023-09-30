@@ -176,7 +176,8 @@ export class SigninEndpointController extends EndpointController {
                 scope: authRequest.scope,
                 ui_locales: authRequest.ui_locales,
                 acr_values: authRequest.acr_values,
-                resource: authRequest.resource || authRequest.client_id
+                resource: authRequest.resource || authRequest.client_id,
+                token_reference: undefined
             }
         });
 

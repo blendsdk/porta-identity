@@ -1,4 +1,4 @@
-import { isNullOrUndef } from "@blendsdk/stdlib";
+import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
@@ -257,7 +257,8 @@ export class TokenEndpointController extends EndpointController {
                             ui_locales: auth_request_params.ui_locales,
                             acr_values: auth_request_params.acr_values,
                             auth_time: accessTokenStorage.auth_time,
-                            resource: auth_request_params.resource
+                            resource: auth_request_params.resource,
+                            token_reference: auth_request_params.token_reference
                         };
 
                         const {
@@ -360,6 +361,12 @@ export class TokenEndpointController extends EndpointController {
                                         scope: tokenRequest.scope,
                                         ui_locales: undefined,
                                         acr_values: undefined,
+                                        // We use this as a reference to implement token reuse.
+                                        // The selfauth will look for a token that has acr_values set
+                                        // so it does not create a new token each time
+                                        token_reference: MD5(
+                                            [client_id, authRecord.secret, this.request.context.getRoute().url].join("")
+                                        ),
                                         resource: tokenRequest.resource || tokenRequest.client_id
                                     }
                                 });

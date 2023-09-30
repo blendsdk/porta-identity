@@ -4,7 +4,8 @@ services:
     db:
         hostname: db
         container_name: porta_db
-        image: postgres
+        image: postgres:14
+        restart: unless-stopped
         ports:
             - 5010:5432
         environment:

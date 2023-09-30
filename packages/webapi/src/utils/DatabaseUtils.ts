@@ -333,10 +333,16 @@ class DatabaseUtils {
      * @returns
      * @memberof EndpointController
      */
-    public async findAccessTokenByTenant(tenant: string, access_token: string): Promise<IAccessToken> {
+    public async findAccessTokenByTenant(
+        tenant: string,
+        access_token: string,
+        token_reference?: boolean
+    ): Promise<IAccessToken> {
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const accessTokenDs = new SysAccessTokenViewDataService({ dataSource });
-        const accessToken = await accessTokenDs.findAccessToken({ access_token });
+        const accessToken = token_reference
+            ? await accessTokenDs.findAccessTokenByAcrReference({ token_reference: access_token })
+            : await accessTokenDs.findAccessToken({ access_token });
         const permissionsDs = new SysPermissionDataService({ dataSource });
 
         if (accessToken) {

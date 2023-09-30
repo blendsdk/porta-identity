@@ -82,6 +82,11 @@ export interface ISysAccessTokenAuthRequestParams {
 	 * @type string
 	 * @memberOf ISysAccessTokenAuthRequestParams
 	 */
+	token_reference: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenAuthRequestParams
+	 */
 	scope: string;
 }
 
