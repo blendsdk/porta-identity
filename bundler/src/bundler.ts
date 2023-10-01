@@ -11,8 +11,8 @@ ensureFolder(buildFolder);
 ensureFolder(packagesDepFolder);
 ensureFolder(bundleDist);
 
-let packages = ["shared", "webapi"];
-packages.forEach((pkg) => {
+const srcPackages = ["shared","webafx-auth","webapi"];
+srcPackages.forEach((pkg) => {
     const pkgPath = path.resolve(path.join(process.cwd(), "..", "packages", pkg));
     logger.info(`Creating local package in ${pkgPath}`);
     executeCommand({
@@ -31,8 +31,8 @@ executeCommand({
     cwd: buildFolder
 });
 
-packages = globSync(path.join(packagesDepFolder, "*.tgz"));
-["shared", "webapi"].forEach((pkg) => {
+const packages = globSync(path.join(packagesDepFolder, "*.tgz"));
+srcPackages.forEach((pkg) => {
     const file = packages.find((file) => {
         return path.basename(file).includes(pkg);
     });
