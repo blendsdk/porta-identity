@@ -84,7 +84,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends PortaMultiTenantAuth
     ): Promise<AuthorizationParameters> {
         const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string }>();
         return {
-            scope: "openid email profile offline_access",
+            scope: "profile address openid email phone acl",
             state,
             ui_locales,
             resource: req.context.getServerURL()
