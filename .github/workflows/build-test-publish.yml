@@ -51,14 +51,14 @@ jobs:
               run: |
                   cd ./bundler && bun install && bun create:bundle
 
-            # - name: Development Deploy
-            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
-            #   run: |
-            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
-            #       rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
-            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
+            - name: Development Deploy
+              if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
+              run: |
+                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
+                  rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
+                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
 
-            #       # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
+                  # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
 
             - name: clear work
               if: always()
