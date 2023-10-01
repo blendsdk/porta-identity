@@ -2,6 +2,7 @@
     "name": "@porta/webapi",
     "version": "1.0.182",
     "main": "dist/index.js",
+    "private": true,
     "bin": {
         "porta-ctrl": "./dist/index.js"
     },
