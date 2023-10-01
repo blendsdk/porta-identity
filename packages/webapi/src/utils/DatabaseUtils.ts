@@ -228,6 +228,12 @@ class DatabaseUtils {
 
         const date_created = new Date();
 
+        console.error({
+            tag1: "========================================================",
+            expTime: millisecondsToSeconds(date_created.getTime()) + ttl,
+            tag2: "========================================================"
+        });
+
         const access_token = await new jose.SignJWT({
             client_id: client.client_id,
             ten: tenant.id,
