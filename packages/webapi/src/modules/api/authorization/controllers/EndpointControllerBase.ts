@@ -378,6 +378,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         // checking the offline access grant
         const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
 
+        // Need to convert this to string and back since the default values are provide
+        // from the config files and possibly from process.env
         access_token_ttl = parseFloat((access_token_ttl || ACCESS_TOKEN_TTL).toString());
         refresh_token_ttl = parseFloat((refresh_token_ttl || REFRESH_TOKEN_TTL).toString());
 
