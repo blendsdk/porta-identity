@@ -228,10 +228,6 @@ class DatabaseUtils {
 
         const date_created = new Date();
 
-        // This was not a problem on the dev machine
-        // somehow I have to convert the number to and from string!!
-        const expTime = parseFloat((millisecondsToSeconds(date_created.getTime()) + ttl).toString());
-
         const access_token = await new jose.SignJWT({
             client_id: client.client_id,
             ten: tenant.id,
@@ -239,7 +235,7 @@ class DatabaseUtils {
         }) //
             .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
             .setIssuer(issuer)
-            .setExpirationTime(expTime)
+            .setExpirationTime(millisecondsToSeconds(date_created.getTime()) + ttl)
             .setAudience(auth_request_params.resource || client.client_id)
             .setSubject(user_id)
             .setJti(session_id)
