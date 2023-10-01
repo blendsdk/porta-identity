@@ -1,4 +1,4 @@
-import { createErrorObject } from "@blendsdk/stdlib";
+import { createErrorObject, errorObjectInfo } from "@blendsdk/stdlib";
 import {
     IRedirectResponse,
     RedirectResponse,
@@ -84,6 +84,7 @@ export class RedirectEndpointController extends EndpointController {
                 ? resp
                 : new ServerErrorResponse(createErrorObject({ message: "INVALID_REDIRECTION_FLOW", cause: errors }));
         } catch (err) {
+            this.getLogger().error(err.message, errorObjectInfo(err));
             return new ServerErrorResponse(err.message);
         }
     }

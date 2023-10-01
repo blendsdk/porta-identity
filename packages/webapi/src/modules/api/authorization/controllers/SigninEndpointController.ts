@@ -1,4 +1,4 @@
-import { asyncForEach, IDictionaryOf } from "@blendsdk/stdlib";
+import { asyncForEach, errorObjectInfo, IDictionaryOf } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, ServerErrorResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISigninRequest, ISigninResponse, ISysAuthorizationView } from "@porta/shared";
 import { eErrorType, eOAuthResponseType, ICachedUser, IFlowRedirect, IOTACache } from "../../../../types";
@@ -125,6 +125,7 @@ export class SigninEndpointController extends EndpointController {
                 url: this.createFlowUrl("redirect", redirectId)
             });
         } catch (err) {
+            this.getLogger().error(err.message, errorObjectInfo(err));
             return new ServerErrorResponse(err.message);
         }
     }

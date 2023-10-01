@@ -1,5 +1,5 @@
 import { verifyStringSync } from "@blendsdk/crypto";
-import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
+import { IDictionaryOf, asyncForEach, errorObjectInfo } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -48,6 +48,7 @@ export class CheckFlowEndpointController extends EndpointController {
                 return this.checkMFAFlow(tenantRecord, options);
             }
         } catch (err) {
+            this.getLogger().error(err.message, errorObjectInfo(err));
             return new ServerErrorResponse(err.message);
         }
     }
