@@ -5,8 +5,10 @@ import { IDictionaryOf, isString } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { ISysAuthorizationView, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
 import * as jose from "jose";
+import { ClientMetadata } from "openid-client";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysAccessTokenViewDataService } from "../dataservices/SysAccessTokenViewDataService";
+import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysPermissionDataService } from "../dataservices/SysPermissionDataService";
 import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
@@ -20,6 +22,7 @@ import { application } from "../modules/application";
 import { millisecondsToSeconds } from "../modules/auth/utils";
 import { IAccessToken, IAuthRequestParams, eDatabaseType, eOAuthSigningAlg } from "../types";
 import { commonUtils } from "./CommonUtils";
+import { eDefaultClients } from "./DatabaseSeed";
 
 class DatabaseUtils {
     /**
@@ -409,6 +412,22 @@ class DatabaseUtils {
     public async findTenant(tenant: string): Promise<ISysTenant> {
         const tenantDs = new SysTenantDataService({ tenantId: eDatabaseType.registry });
         return await tenantDs.findByNameOrId({ name: tenant });
+    }
+
+    /**
+     * @param {string} tenant
+     * @returns {Promise<ClientMetadata>}
+     * @memberof PortaSelfAuthenticationModule
+     */
+    public async getOIDCClientConfig(tenant: string): Promise<ClientMetadata> {
+        const { tenantRecord } = await databaseUtils.getTenantDataSource(tenant);
+        const clientDs = new SysClientDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
+        const client = await clientDs.findSysClientById({ id: eDefaultClients.UI_CLIENT.id });
+
+        return {
+            client_id: client.client_id,
+            client_secret: client.secret
+        };
     }
 }
 

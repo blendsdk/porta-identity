@@ -181,7 +181,7 @@ export class SigninEndpointController extends EndpointController {
             }
         });
 
-        this.installLocalCookies({
+        await this.installLocalCookies({
             tenant: tenant.name,
             accessTokenStorage,
             accessTokenKeySignature,

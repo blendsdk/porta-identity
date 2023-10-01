@@ -1,13 +1,7 @@
 import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
-import {
-    ITokenAuthenticationModuleBase,
-    SESSION_TTL_KEY,
-    TGetUserMethod,
-    TokenAuthenticationModuleBase
-} from "@blendsdk/webafx-auth";
-import { HttpRequest, HttpResponse, IRoute, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
-import * as crypto from "crypto";
+import { TokenAuthenticationModuleBase } from "@blendsdk/webafx-auth";
+import { HttpRequest, HttpResponse, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
 import {
     AuthorizationParameters,
     BaseClient,
@@ -29,6 +23,58 @@ custom.setHttpOptionsDefaults({
 const issuerCache: IDictionaryOf<Issuer<BaseClient>> = {};
 const clientCache: IDictionaryOf<BaseClient> = {};
 
+/**
+ * Landing URL interface
+ *
+ * @export
+ * @interface ILandingURLConfig
+ */
+export interface ILandingURLConfig {
+    url: string;
+    searchParams?: IDictionaryOf<any>;
+}
+
+/**
+ * Interface for holding the client data
+ *
+ * @interface IClientCache
+ */
+interface IClientCache {
+    code_verifier?: string;
+    appState: string;
+    tenant: string;
+    ui_locales: string;
+}
+
+/**
+ * Common request parameters
+ *
+ * @export
+ * @interface IRequestParameters
+ */
+export interface IRequestParameters {
+    tenant: string;
+    state?: string;
+    code?: string;
+    locale?: string;
+}
+
+/**
+ * Porta req.context type
+ *
+ * @export
+ * @interface IPortaHTTPRequestContext
+ */
+export interface IPortaHTTPRequestContext {
+    porta: IPortaAuthenticationResult;
+}
+
+/**
+ * The OIDC authentication result interface
+ *
+ * @export
+ * @interface IPortaAuthenticationResult
+ */
 export interface IPortaAuthenticationResult {
     tokenSet: TokenSet;
     claims: IdTokenClaims;
@@ -38,53 +84,7 @@ export interface IPortaAuthenticationResult {
     tenant: string;
 }
 
-export interface IPortaHTTPRequestContext {
-    porta: IPortaAuthenticationResult;
-}
-
-export interface IRequestParameters {
-    tenant: string;
-    state?: string;
-    code?: string;
-    locale?: string;
-}
-
-export interface ILandingURLConfig {
-    url: string;
-    searchParams?: IDictionaryOf<any>;
-}
-
-interface IClientCache {
-    code_verifier?: string;
-    appState: string;
-    tenant: string;
-    ui_locales: string;
-}
-
-export interface IPortaMultiTenantClientModule extends ITokenAuthenticationModuleBase {}
-
-/**
- * Porta OIDC client
- *
- * @export
- * @class PortaClientModule
- * @extends {AuthenticationModuleBase}
- */
-export abstract class PortaMultiTenantClientModule extends TokenAuthenticationModuleBase<IPortaMultiTenantClientModule> {
-    /**
-     * Finds or creates a user
-     *
-     * @protected
-     * @abstract
-     * @param {IPortaAuthenticationResult} oidcData
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {Promise<any>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected abstract findOrCreateUser(
-        oidcData: IPortaAuthenticationResult,
-        req: HttpRequest<IPortaHTTPRequestContext>
-    ): Promise<any>;
+export abstract class PortaMultiTenantAuthenticationTokenModule extends TokenAuthenticationModuleBase {
     /**
      * Gets the landing URL after authentication is complete
      *
@@ -100,27 +100,6 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
         logout?: boolean
     ): Promise<ILandingURLConfig>;
     /**
-     * Provide a discovery URL to use to connect to the Porta OIDC provider
-     *
-     * @protected
-     * @abstract
-     * @param {string} tenant
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {Promise<string>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected abstract getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string>;
-    /**
-     * Provide the Porta OIDC client connection provider
-     *
-     * @protected
-     * @abstract
-     * @param {string} tenant
-     * @returns {Promise<ClientMetadata>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected abstract getOIDCClientConfig(tenant: string): Promise<ClientMetadata>;
-    /**
      * Provide the OIDC authorization URL parameters
      *
      * @protected
@@ -129,13 +108,89 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
      * @param {BaseClient} client
      * @param {HttpRequest} req
      * @returns {Promise<AuthorizationParameters>}
-     * @memberof PortaMultiTenantClientModule
+     * @memberof PortaMultiTenantAuthenticationTokenModule
      */
     protected abstract getAuthorizationParameters(
         tenant: string,
         client: BaseClient,
         req: HttpRequest
     ): Promise<AuthorizationParameters>;
+    /**
+     * Provide the Porta OIDC client connection provider
+     *
+     * @protected
+     * @abstract
+     * @param {string} tenant
+     * @returns {Promise<ClientMetadata>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected abstract getOIDCClientConfig(tenant: string): Promise<ClientMetadata>;
+    /**
+     * Provide a discovery URL to use to connect to the Porta OIDC provider
+     *
+     * @protected
+     * @abstract
+     * @param {string} tenant
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<string>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected abstract getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string>;
+
+    /**
+     * Finds or creates a user
+     *
+     * @protected
+     * @abstract
+     * @param {IPortaAuthenticationResult} oidcData
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<any>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected abstract findOrCreateUser(
+        oidcData: IPortaAuthenticationResult,
+        req: HttpRequest<IPortaHTTPRequestContext>
+    ): Promise<any>;
+
+    /**
+     * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<number>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected async getTokenTTL(req: HttpRequest<IPortaHTTPRequestContext>): Promise<number> {
+        return req.context.porta.tokenSet.expires_in * 1000;
+    }
+
+    /**
+     * Authenticates the user by passing the OIDC data to the implementing class
+     *
+     * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @returns {Promise<any>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected async authenticateUser(req: HttpRequest<IPortaHTTPRequestContext>): Promise<any> {
+        const data = await this.findOrCreateUser(req.context.porta, req);
+        return {
+            ...data,
+            _sub: req.context.porta.tokenSet.claims().sub,
+            _tenant: (req.context.porta.claims.tenant as any).name,
+            _ui_locales: req.context.porta.ui_locales
+        };
+    }
+
+    /**
+     * Initializes this module
+     *
+     * @returns {Promise<void>}
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    public async onInitialize(): Promise<void> {
+        this.createSignIn();
+        this.createSignOut();
+        this.createSessionRefresh();
+    }
 
     /**
      * Provide the callback URL to this provider
@@ -199,12 +254,58 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
     }
 
     /**
-     * Create the sign-in handler
+     * Handles the sign-in callback worker.
+     * This function is abstract for it can be overridden
      *
      * @protected
+     * @param {HttpRequest<IPortaHTTPRequestContext>} req
+     * @param {HttpResponse} res
+     * @param {Promise<any>} worker
      * @memberof PortaMultiTenantClientModule
      */
-    protected createSignInHandler(): void {
+    protected handleSignInCallbackWorker(
+        req: HttpRequest<IPortaHTTPRequestContext>,
+        res: HttpResponse,
+        worker: Promise<any>
+    ) {
+        worker
+            .then((data: IPortaAuthenticationResult) => {
+                req.context.porta = data;
+                this.authenticateUser(req)
+                    .then((user) => {
+                        if (user) {
+                            const worker = this.createResponseAuthorized({
+                                user,
+                                req,
+                                res
+                            });
+                            worker.then(async () => {
+                                req.params.state = data.state; // we rewrite the state since this incoming state from mauth and the data.state is from uke requestor
+                                if (!isNullOrUndef(data.ui_locales)) {
+                                    res.cookie("ui_locales", data.ui_locales);
+                                }
+                                res.send(renderGetRedirect(this.compileURL(await this.getLandingURL(req))));
+                            });
+                        }
+                    })
+                    .catch((err) => {
+                        const resp = new ServerErrorResponse(err);
+                        sendResponse(resp, res);
+                    });
+            })
+            .catch((err) => {
+                const resp = new ServerErrorResponse(err);
+                sendResponse(resp, res);
+            });
+    }
+
+    /**
+     * Create the sign-in endpoints
+     *
+     * @protected
+     * @memberof PortaMultiTenantAuthenticationTokenModule
+     */
+    protected createSignIn(): void {
         this.application.addRouter({
             routes: [
                 {
@@ -287,9 +388,8 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                             try {
                                 const cache = req.context.getCache();
                                 const { state, tenant } = req.context.getParameters<IRequestParameters>();
-                                const { code_verifier, ui_locales, appState } = await cache.getValue<IClientCache>(
-                                    `openid-client:${state}`
-                                );
+                                const { code_verifier, ui_locales, appState } =
+                                    (await cache.getValue<IClientCache>(`openid-client:${state}`)) || {};
                                 req.query.state = appState;
                                 const discoveryUrl = await this.getDiscoveryURL(tenant, req);
                                 const client = await this.getOIDCClient(tenant, discoveryUrl, req);
@@ -324,56 +424,12 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
     }
 
     /**
-     * Handles the sign-in callback worker.
-     * This function is abstract for it can be overridden
+     * Creates sign-out endpoints
      *
      * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @param {HttpResponse} res
-     * @param {Promise<any>} worker
-     * @memberof PortaMultiTenantClientModule
+     * @memberof PortaMultiTenantAuthenticationTokenModule
      */
-    protected handleSignInCallbackWorker(
-        req: HttpRequest<IPortaHTTPRequestContext>,
-        res: HttpResponse,
-        worker: Promise<any>
-    ) {
-        worker
-            .then((data: IPortaAuthenticationResult) => {
-                req.context.porta = data;
-                this.authenticateUser(req)
-                    .then((user) => {
-                        if (user) {
-                            const worker = this.createResponseAuthorized({
-                                user,
-                                req,
-                                res
-                            });
-                            worker.then(async () => {
-                                req.params.state = data.state; // we rewrite the state since this incoming state from mauth and the data.state is from uke requestor
-                                if (!isNullOrUndef(data.ui_locales)) {
-                                    res.cookie("ui_locales", data.ui_locales);
-                                }
-                                res.send(renderGetRedirect(this.compileURL(await this.getLandingURL(req))));
-                            });
-                        }
-                    })
-                    .catch((err) => {
-                        const resp = new ServerErrorResponse(err);
-                        sendResponse(resp, res);
-                    });
-            })
-            .catch((err) => {
-                const resp = new ServerErrorResponse(err);
-                sendResponse(resp, res);
-            });
-    }
-
-    /**
-     * @protected
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected createSignOutHandler(): void {
+    protected createSignOut(): void {
         this.application.addRouter({
             routes: [
                 {
@@ -478,7 +534,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                     secure: req.protocol !== "http"
                                 });
                                 // the session cookie
-                                res.cookie(SESSION_TTL_KEY, -1, {
+                                res.cookie(await this.getSessionTTLKey(req), -1, {
                                     expires: expTTL
                                 });
                                 resolve(respUrl.toString());
@@ -505,10 +561,12 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
     }
 
     /**
+     * Creates session refresh endpoint
+     *
      * @protected
-     * @memberof PortaMultiTenantClientModule
+     * @memberof PortaMultiTenantAuthenticationTokenModule
      */
-    protected createSessionRefreshHandler(): void {
+    protected createSessionRefresh(): void {
         this.application.addRouter({
             routes: [
                 {
@@ -619,7 +677,7 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                                     secure: req.protocol !== "http"
                                 });
                                 // the session cookie
-                                res.cookie(SESSION_TTL_KEY, -1, {
+                                res.cookie(await this.getSessionTTLKey(req), -1, {
                                     expires: expTTL
                                 });
                                 resolve(respUrl.toString());
@@ -643,51 +701,5 @@ export abstract class PortaMultiTenantClientModule extends TokenAuthenticationMo
                 }
             ]
         });
-    }
-
-    /**
-     * @protected
-     * @param {*} sessionStorage
-     * @param {IRoute} _route
-     * @param {HttpRequest<{}>} _reg
-     * @returns {Promise<TGetUserMethod>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected async createRequestContextGetUserMethod(
-        sessionStorage: any,
-        _route: IRoute,
-        _req: HttpRequest<{}>
-    ): Promise<TGetUserMethod> {
-        return () => {
-            return { ...sessionStorage.user, _cacheKey: sessionStorage.cacheKey };
-        };
-    }
-
-    /**
-     * Authenticates the user by passing the OIDC data to the implementing class
-     *
-     * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {Promise<any>}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected async authenticateUser(req: HttpRequest<IPortaHTTPRequestContext>): Promise<any> {
-        const data = await this.findOrCreateUser(req.context.porta, req);
-        return {
-            ...data,
-            _sub: req.context.porta.tokenSet.claims().sub,
-            _tenant: (req.context.porta.claims.tenant as any).name,
-            _ui_locales: req.context.porta.ui_locales
-        };
-    }
-
-    /**
-     * @protected
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {number}
-     * @memberof PortaMultiTenantClientModule
-     */
-    protected getTokenTTL(req: HttpRequest<IPortaHTTPRequestContext>): number {
-        return req.context.porta.tokenSet.expires_in * 1000;
     }
 }

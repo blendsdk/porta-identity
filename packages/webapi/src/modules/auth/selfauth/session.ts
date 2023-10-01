@@ -1,20 +1,10 @@
-import { IDictionaryOf, MD5, base64Decode, isNullOrUndef } from "@blendsdk/stdlib";
-import { ICreateResponseAuthorizedParams, TGetUserMethod } from "@blendsdk/webafx-auth";
+import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
+import { SessionProviderModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
 import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
-import { eKeySignatureType, portaAuthUtils } from "@porta/shared";
-import {
-    ILandingURLConfig,
-    IPortaAuthenticationResult,
-    IPortaHTTPRequestContext,
-    IPortaMultiTenantClientModule,
-    PortaMultiTenantClientModule
-} from "@porta/webafx-auth";
-import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
-import { SysClientDataService } from "../../dataservices/SysClientDataService";
-import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../types";
-import { databaseUtils } from "../../utils";
-import { eDefaultClients } from "../../utils/DatabaseSeed";
-import { TokenEndpointController } from "../api/authorization/controllers/TokenEndpointController";
+import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../../types";
+import { databaseUtils } from "../../../utils";
+import { TokenEndpointController } from "../../api/authorization/controllers/TokenEndpointController";
+import { keySignatureProvider } from "./keysignature";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
 
@@ -28,60 +18,14 @@ enum eTokenType {
     DIRECT_API = "ANONYMOUS_LOGOUT_TOKEN"
 }
 
-export interface IPortaSelfAuthenticationModule {
-    PORTA_SSO_COMMON_NAME?: string;
-    PORTA_SESSION_LENGTH?: number;
-}
-
-export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule {
-    /**
-     * KeySignature cache (safe for multiple docker instances)
-     *
-     * @protected
-     * @type {IDictionaryOf<{ tenant: string; sig: string; id: string }>}
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected tenantKeySignatures: IDictionaryOf<{ tenant: string; sig: string; id: string }>;
-
-    /**
-     * Creates an instance of PortaSelfAuthenticationModule.
-     * @param {(IPortaSelfAuthenticationModule & IPortaMultiTenantClientModule)} [config]
-     * @memberof PortaSelfAuthenticationModule
-     */
-    public constructor(config?: IPortaSelfAuthenticationModule & IPortaMultiTenantClientModule) {
-        super({ ...config });
-        this.tenantKeySignatures = {};
-    }
-
-    /**
-     * @override
-     * @protected
-     * @param {string} tenant
-     * @param {HttpRequest} req
-     * @returns
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected getRedirectURI(tenant: string, req: HttpRequest) {
-        const serverURL = req.context.getServerURL().replace(/\:80|\:443/g, "");
-        const { redirect_uri } = super.getRedirectURI(tenant, req);
-        return {
-            redirect_uri,
-            post_logout_redirect_uris: [`${serverURL}/fe/${tenant}/signout/complete`]
-        };
-    }
-
-    /**
-     * @protected
-     * @param {string} tenant
-     * @param {string} token
-     * @returns
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async findAccessTokenByTenant(tenant: string, token: string, token_reference?: boolean) {
-        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token, token_reference);
-        return isNullOrUndef(accessTokenStorage) ? undefined : accessTokenStorage;
-    }
-
+/**
+ * Implements a session provider
+ *
+ * @export
+ * @class PortaSelfAuthSessionProviderModule
+ * @extends {SessionProviderModuleBase}
+ */
+export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBase {
     /**
      * Get the tenant from request
      *
@@ -109,32 +53,15 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
     }
 
     /**
-     * Create and cache signature to find the access_tokens from Cookies
-     *
      * @protected
-     * @param {HttpRequest} req
+     * @param {string} tenant
+     * @param {string} token
      * @returns
      * @memberof PortaSelfAuthenticationModule
      */
-    protected async getKeySignatureCustom(req: HttpRequest) {
-        const tenant = this.getTenantFromRequest(req);
-        if (tenant && !this.tenantKeySignatures[tenant]) {
-            const tenantRecord = await databaseUtils.findTenant(tenant);
-            if (tenantRecord) {
-                const { client_id } = await this.getOIDCClientConfig(tenant);
-                this.tenantKeySignatures[tenant] = {
-                    id: tenantRecord.id,
-                    tenant: tenantRecord.name,
-                    sig: portaAuthUtils.getKeySignature({
-                        tenant: tenantRecord.name,
-                        client: client_id,
-                        system: req.context.getServerURL(),
-                        type: eKeySignatureType.access_token
-                    })
-                };
-            }
-        }
-        return tenant ? this.tenantKeySignatures[tenant] : (undefined as any);
+    protected async findAccessTokenByTenant(tenant: string, token: string, token_reference?: boolean) {
+        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token, token_reference);
+        return isNullOrUndef(accessTokenStorage) ? undefined : accessTokenStorage;
     }
 
     /**
@@ -175,7 +102,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
                     sig = undefined,
                     tenant = undefined,
                     id = undefined
-                } = (await this.getKeySignatureCustom(req)) || {};
+                } = (await keySignatureProvider.getKeySignature(req)) || {};
                 if (sig && tenant && token && id) {
                     const accessTokenStorage = await this.findAccessTokenByTenant(tenant, token);
                     return accessTokenStorage
@@ -199,8 +126,12 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
                 if (await this.validateTenant(tenant)) {
                     const controller = new TokenEndpointController({ request: req, response: undefined });
 
-                    const acr_ref = MD5([client_id, client_secret, req.context.getRoute().url].join(""));
-                    const existing_access_token = await databaseUtils.findAccessTokenByTenant(tenant, acr_ref, true);
+                    const token_reference = MD5([client_id, client_secret, req.context.getRoute().url].join(""));
+                    const existing_access_token = await databaseUtils.findAccessTokenByTenant(
+                        tenant,
+                        token_reference,
+                        true
+                    );
 
                     if (existing_access_token) {
                         return existing_access_token as SessionStorageType;
@@ -229,18 +160,6 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
     }
 
     /**
-     * @protected
-     * @param {ICreateResponseAuthorizedParams} _params
-     * @returns
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
-        // only the SESSION_TTL_KEY was supposed to be passes here but is is being
-        // takes care of by `installLocalCookies`
-        return null;
-    }
-
-    /**
      * Allow to pass the token authorization for the logout endpoint
      *
      * @protected
@@ -263,7 +182,7 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
      * @memberof PortaSelfAuthenticationModule
      */
     protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
-        const { sig = undefined } = (await this.getKeySignatureCustom(req)) || {};
+        const { sig = undefined } = (await keySignatureProvider.getKeySignature(req)) || {};
         const {
             access_token = undefined,
             client_id = undefined,
@@ -324,90 +243,5 @@ export class PortaSelfAuthenticationModule extends PortaMultiTenantClientModule 
         return () => {
             return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey, _sub: sessionStorage.user_id };
         };
-    }
-
-    protected async findOrCreateUser(
-        oidcData: IPortaAuthenticationResult,
-        _req: HttpRequest<IPortaHTTPRequestContext>
-    ): Promise<any> {
-        return oidcData;
-    }
-
-    protected async getLandingURL(
-        req: HttpRequest<IPortaHTTPRequestContext>,
-        _logout?: boolean
-    ): Promise<ILandingURLConfig> {
-        const { state } = req.context.getParameters<{ state: string }>();
-        const { location = undefined } = JSON.parse(state ? base64Decode(state) : "{}" || "{}");
-        return {
-            url: location || req.context.getServerURL()
-        };
-    }
-
-    /**
-     * @protected
-     * @param {string} tenant
-     * @param {HttpRequest<IPortaHTTPRequestContext>} req
-     * @returns {Promise<string>}
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
-        return `${req.context.getServerURL()}/${tenant}/oauth2`;
-    }
-
-    /**
-     * @protected
-     * @param {string} tenant
-     * @returns {Promise<ClientMetadata>}
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async getOIDCClientConfig(tenant: string): Promise<ClientMetadata> {
-        const { tenantRecord } = await databaseUtils.getTenantDataSource(tenant);
-        const clientDs = new SysClientDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
-        const client = await clientDs.findSysClientById({ id: eDefaultClients.UI_CLIENT.id });
-
-        return {
-            client_id: client.client_id,
-            client_secret: client.secret
-        };
-    }
-
-    /**
-     * @protected
-     * @param {string} _tenant
-     * @param {BaseClient} _client
-     * @param {HttpRequest<{}>} req
-     * @returns {Promise<AuthorizationParameters>}
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async getAuthorizationParameters(
-        _tenant: string,
-        _client: BaseClient,
-        req: HttpRequest<{}>
-    ): Promise<AuthorizationParameters> {
-        const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string }>();
-        return {
-            scope: "openid email profile offline_access",
-            state,
-            ui_locales,
-            resource: req.context.getServerURL()
-        };
-    }
-
-    protected createKeySignatureName(_req: HttpRequest<{}>): string {
-        throw new Error("Method not implemented.");
-    }
-
-    /**
-     * This method should not be called in this class
-     *
-     * @protected
-     * @param {HttpRequest<{}>} _req
-     * @returns {Promise<string>}
-     * @memberof PortaSelfAuthenticationModule
-     */
-    protected async getKeySignature(req: HttpRequest<{}>): Promise<string> {
-        const { sig } = await this.getKeySignatureCustom(req);
-        return sig;
     }
 }

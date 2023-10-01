@@ -282,7 +282,7 @@ export class TokenEndpointController extends EndpointController {
                         // revoke the previous refresh_token and access_token
                         await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
 
-                        this.installLocalCookies({
+                        await this.installLocalCookies({
                             tenant: tenantRecord.name,
                             accessTokenStorage: newAccessTokenStorage,
                             accessTokenKeySignature,

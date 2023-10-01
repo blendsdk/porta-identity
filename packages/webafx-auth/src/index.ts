@@ -1,2 +1,2 @@
-export * from "./mauth";
-export { renderGetRedirect } from "./utils";
+export * from "./token";
+export * from "./utils";

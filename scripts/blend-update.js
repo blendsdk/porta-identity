@@ -8,7 +8,7 @@ const packages = glob.sync(path.join(root, "packages", "**", "package.json")).fi
 const install = [`rm ${path.join(root, "yarn.lock")}`, ""];
 const channel = process.argv[2];
 
-if (["next", "develop", "stable"].indexOf(channel) !== -1) {
+if (["next", "develop", "stable", "webauth-rewrite"].indexOf(channel) !== -1) {
     packages.forEach((file) => {
         const package = JSON.parse(fs.readFileSync(file).toString());
         const deps = [];

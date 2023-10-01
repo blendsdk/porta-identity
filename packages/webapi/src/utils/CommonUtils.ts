@@ -1,5 +1,6 @@
 import { sha256Verify } from "@blendsdk/crypto";
 import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
+import { HttpRequest } from "@blendsdk/webafx-common";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
 import { eOAuthPKCECodeChallengeMethod, IErrorResponseParams, IPortaApplicationSetting } from "../types";
@@ -160,6 +161,28 @@ class CommonUtils {
             privateKey: "-----BEGIN PRIVATE KEY-----\n" + private_key + "\n-----END PRIVATE KEY-----",
             certificate: "-----BEGIN CERTIFICATE-----\n" + cert.toString("base64") + "\n-----END CERTIFICATE-----"
         };
+    }
+
+    /**
+     * Get the tenant from request
+     *
+     * @param {HttpRequest} req
+     * @returns
+     * @memberof CommonUtils
+     */
+    public getTenantFromRequest(req: HttpRequest) {
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>() || {};
+        return tenant;
+    }
+
+    /**
+     * @param {HttpRequest} req
+     * @returns {Promise<string>}
+     * @memberof CommonUtils
+     */
+    public async getSessionTTLKey(_req: HttpRequest): Promise<string> {
+        //TODO: refactor to support multi tenant client session
+        return "_session";
     }
 }
 

@@ -1,7 +1,6 @@
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
-import { SESSION_TTL_KEY } from "@blendsdk/webafx-auth";
 import {
     BadRequestResponse,
     Controller,
@@ -243,7 +242,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      *     }
      * @memberof EndpointController
      */
-    protected installLocalCookies({
+    protected async installLocalCookies({
         tenant,
         accessTokenStorage,
         accessTokenKeySignature,
@@ -271,7 +270,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             sameSite: "lax" // only send to this endpoint
         });
 
-        this.setCookie(SESSION_TTL_KEY, new Date(expire_at).getTime(), {
+        this.setCookie(await commonUtils.getSessionTTLKey(this.request), new Date(expire_at).getTime(), {
             signed: false,
             httpOnly: true,
             secure: false,

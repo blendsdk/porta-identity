@@ -5,7 +5,8 @@ import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
 import { ApplicationModule } from "../api/application";
 import { AuthorizationModule } from "../api/authorization";
-import { PortaSelfAuthenticationModule } from "../auth/selfauth";
+import { PortaSelfAuthSessionProviderModule } from "../auth/selfauth/session";
+import { PortaSelfAuthTokenAuthenticationModule } from "../auth/selfauth/token";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
@@ -49,7 +50,10 @@ const application = new Application({
         return new DatabaseModule({ ...config });
     },
     (config) => {
-        return new PortaSelfAuthenticationModule({ ...config });
+        return new PortaSelfAuthSessionProviderModule({ ...config });
+    },
+    (config) => {
+        return new PortaSelfAuthTokenAuthenticationModule({ ...config });
     },
     (config) => {
         return new MailerModule(config);

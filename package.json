@@ -22,6 +22,8 @@
     "blend:next": "`pwd`/scripts/blend-update.js next > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
     "blend:stable": "`pwd`/scripts/blend-update.js stable > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
     "blend:develop": "`pwd`/scripts/blend-update.js develop > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "blend:branch": "`pwd`/scripts/blend-update.js ${BLEND_BRANCH} > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
+    "blend:webauth-rewrite": "`pwd`/scripts/blend-update.js webauth-rewrite > ./blend-update-gen.sh && chmod +x ./blend-update-gen.sh && ./blend-update-gen.sh && rm ./blend-update-gen.sh",
     "dev": "nodemon --verbose --delay 2.5 --watch ./packages/codegen/src --watch ./scripts --ext ts `pwd`/scripts/dev.sh"
   },
   "devDependencies": {
