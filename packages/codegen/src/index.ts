@@ -38,7 +38,7 @@ async function generate() {
         types,
         database: dbs,
         request_response
-    } = typeBuilder.build(typeSchema.getSchema(), {
+    } = await typeBuilder.build(typeSchema.getSchema(), {
         importMapper: (from: string) => {
             switch (from) {
                 case "database":
@@ -68,7 +68,7 @@ async function generate() {
     // Write TypeScript route definitions to file
     writeFileSync(
         path.join(WebApiRoot, "src", "types", `generated_validation_schema.ts`),
-        typeSchema.toSource("validationSchema")
+        await typeSchema.toSource("validationSchema")
     );
 
     apiBuilder.writeOut(path.join(WebApiRoot, "src", "modules", "api"));
@@ -76,21 +76,21 @@ async function generate() {
     // Create route definitions
     writeFileSync(
         path.join(WebApiRoot, "src", "types", `generated_route_definitions.ts`),
-        apiBuilder.getSharedRouteDefinitions()
+        await apiBuilder.getSharedRouteDefinitions()
     );
 
     const enumBuilder = new EnumBuilder({ logger: consoleLogger, typeSchema });
     // create enums
-    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), enumBuilder.build());
+    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), await enumBuilder.build());
 
     // create i18n keys
     writeFileSync(
         path.join(SharedRoot, "src", "types", "generated_i18n_keys.ts"), //
-        enumBuilder.buildFromI18nFile(path.join(process.cwd(), "resources", "**", "*.i18n.json"))
+        await enumBuilder.buildFromI18nFile(path.join(process.cwd(), "resources", "**", "*.i18n.json"))
     );
 
     // write the client both to the webclient and also to the webapi for tests
-    const { code, variableInterfaceName, variableName } = apiBuilder.getClientSideAPI(
+    const { code, variableInterfaceName, variableName } = await apiBuilder.getClientSideAPI(
         createMethodName("porta_api", false),
         "@porta/shared"
     );
