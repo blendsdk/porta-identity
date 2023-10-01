@@ -1,0 +1,20 @@
+{
+  "name": "bundler",
+  "module": "src/bundler.ts",
+  "type": "module",
+  "scripts": {
+    "create:bundle": "bun run ./src/bundler.ts"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@blendsdk/filesystem": "^3.2.323",
+    "@blendsdk/logger": "^3.2.323",
+    "@blendsdk/stdlib": "^3.2.323",
+    "tslib": "^2.6.2"
+  }
+}

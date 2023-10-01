@@ -12,9 +12,8 @@ jobs:
     BuildTestDeploy:
         runs-on: self-hosted
         steps:
-            - uses: actions/checkout@v2
-              with:
-                  fetch-depth: 0
+            - uses: actions/checkout@v3
+            - uses: oven-sh/setup-bun@v1
 
             - name: queue work
               if: always()
@@ -42,16 +41,20 @@ jobs:
                   yarn publish-packages --yes
 
             - name: Publish Non-production Packages
-              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
+              if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
               run: |
                   git reset --hard
                   yarn tag-version-pre --yes
                   yarn publish-packages --yes --dist-tag next
 
-            - name: Development Deploy
-              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/develop')
-              run: |
-                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
+            # - name: Development Deploy
+            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
+            #   run: |
+            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
+            #       rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
+            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
+
+            #       # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
 
             - name: clear work
               if: always()
