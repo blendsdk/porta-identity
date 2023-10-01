@@ -230,7 +230,7 @@ class DatabaseUtils {
 
         console.error({
             tag1: "========================================================",
-            expTime: millisecondsToSeconds(date_created.getTime()) + ttl,
+            expTime: parseFloat(millisecondsToSeconds(date_created.getTime()) + ttl),
             tag2: "========================================================"
         });
 
