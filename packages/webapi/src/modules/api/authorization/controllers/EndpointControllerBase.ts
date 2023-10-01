@@ -378,8 +378,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         // checking the offline access grant
         const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
 
-        access_token_ttl = access_token_ttl || ACCESS_TOKEN_TTL;
-        refresh_token_ttl = refresh_token_ttl || REFRESH_TOKEN_TTL;
+        access_token_ttl = parseFloat((access_token_ttl || ACCESS_TOKEN_TTL).toString());
+        refresh_token_ttl = parseFloat((refresh_token_ttl || REFRESH_TOKEN_TTL).toString());
 
         const { user, profile } = await databaseUtils.findUserByUserId(user_id, tenant.name);
 
