@@ -1,7 +1,7 @@
 {
     "name": "@porta/bff-test",
     "private": true,
-    "version": "1.0.192",
+    "version": "1.0.193",
     "main": "dist/index.js",
     "bin": {
         "porta-ctrl": "./dist/index.js"
@@ -26,7 +26,7 @@
         "@blendsdk/webafx-cache-redis": "3.2.326",
         "@blendsdk/webafx-common": "3.2.326",
         "@blendsdk/webafx-i18n": "3.2.326",
-        "@porta/webafx-auth": "1.0.192",
+        "@porta/webafx-auth": "1.0.193",
         "@types/react": "^18.2.24",
         "@types/react-dom": "^18.2.8",
         "jsonwebtoken": "^9.0.2",
