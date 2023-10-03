@@ -1,5 +1,5 @@
 import { Application } from "@blendsdk/webafx";
-import { CacheModule } from "@blendsdk/webafx-cache";
+import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import * as path from "path";
 import { BFFRoutes } from "../bff";
 import { BffTokenAuthenticationModule } from "../bff/auth";
@@ -23,7 +23,7 @@ const application = new Application({
 }).addModule([
     //
     (config) => {
-        return new CacheModule({ ...config, id: "bff" });
+        return new RedisCacheModule({ ...config, id: "bff" });
     },
     (config) => {
         return new BffTokenAuthenticationModule({ ...config });

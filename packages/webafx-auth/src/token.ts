@@ -2,6 +2,7 @@ import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
 import { TokenAuthenticationModuleBase } from "@blendsdk/webafx-auth";
 import { HttpRequest, HttpResponse, ServerErrorResponse, sendResponse } from "@blendsdk/webafx-common";
+import * as crypto from "crypto";
 import {
     AuthorizationParameters,
     BaseClient,

@@ -3,7 +3,9 @@ import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common
 
 export const RoleBasedAccessHandler = (): IRouter => {
     // const rbacTable = new RoleBasedAccessTable({
-    //     roles: {}
+    //     roles: {
+    //         [routeDefinitions.application.initialize.url]:eDefaultPermissions.CAN_CREATE_TENANT.code
+    //     }
     // });
 
     return {

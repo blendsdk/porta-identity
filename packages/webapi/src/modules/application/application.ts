@@ -1,5 +1,5 @@
 import { Application } from "@blendsdk/webafx";
-import { CacheModule } from "@blendsdk/webafx-cache";
+import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
@@ -38,7 +38,7 @@ const application = new Application({
 }).addModule([
     //
     (config) => {
-        return new CacheModule({ ...config, id: config.PORTA_SSO_COMMON_NAME });
+        return new RedisCacheModule({ ...config, id: config.PORTA_SSO_COMMON_NAME });
     },
     I18NModuleFactory({
         translationDatabase: [
