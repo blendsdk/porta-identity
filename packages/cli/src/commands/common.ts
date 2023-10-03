@@ -36,6 +36,8 @@ export function checkGetToken() {
     if (!token) {
         lineLogger.error('Unable to continue. Please run "porta-cli login" to authenticate first');
         process.exit(1);
+    } else {
+        lineLogger.info(`Using [${token.tenant}] on [${token.host}]`);
     }
     return token;
 }

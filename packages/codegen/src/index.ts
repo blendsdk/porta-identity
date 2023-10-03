@@ -9,8 +9,7 @@ import { clean_generated } from "./lib/clean";
 
 const WebApiRoot: string = path.join(process.cwd(), "..", "webapi");
 const WebClientRoot: string = path.join(process.cwd(), "..", "webclient");
-const WebClientAdminRoot: string = path.join(process.cwd(), "..", "webclient-admin");
-const WebClientAccountRoot: string = path.join(process.cwd(), "..", "webclient-account");
+const CLIRoot: string = path.join(process.cwd(), "..", "cli");
 const SharedRoot: string = path.join(process.cwd(), "..", "shared");
 const packageScope = "@porta";
 
@@ -96,17 +95,15 @@ async function generate() {
     );
     [
         path.join(WebClientRoot, "src", "application", "api", "generated_rest_api.ts"),
-        path.join(WebClientAdminRoot, "src", "application", "api", "generated_rest_api.ts"),
-        path.join(WebClientAccountRoot, "src", "application", "api", "generated_rest_api.ts"),
+        path.join(CLIRoot, "src", "api", "generated_rest_api.ts"),
         path.join(WebApiRoot, "src", "tests", "api", "generated_rest_api.ts")
     ].forEach((target) => {
         writeFileSync(target, code);
     });
 
     [
-        path.join(WebClientRoot, "src", "system", "api", "generated_api.ts"),
-        path.join(WebClientAdminRoot, "src", "system", "api", "generated_api.ts"),
-        path.join(WebClientAccountRoot, "src", "system", "api", "generated_api.ts")
+        //
+        path.join(WebClientRoot, "src", "system", "api", "generated_api.ts")
     ].forEach((outFile) => {
         writeFileSync(
             outFile,

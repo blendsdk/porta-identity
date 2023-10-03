@@ -1479,6 +1479,34 @@ export const validationSchema = {
 				}
 			},
 			required: ["status"]
+		},
+		create_tenant_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				name: {
+					type: eJsonSchemaType.string
+				},
+				email: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				allow_registration: {
+					type: eJsonSchemaType.boolean
+				},
+				allow_reset_password: {
+					type: eJsonSchemaType.boolean
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["tenant", "name", "email", "password", "allow_registration", "allow_reset_password", "organization"]
 		}
 	}
 };

@@ -11,15 +11,13 @@ export function createLoginCommand(): CommandModule {
         builder: {
             h: {
                 alias: "host",
-                requiresArg: true,
-                type: "string",
-                default: "https://dev.portaidentity.com"
+                required: true,
+                type: "string"
             },
             t: {
                 alias: "tenant",
-                requiresArg: true,
-                type: "string",
-                default: "registry"
+                required: true,
+                type: "string"
             }
         },
         handler: ({ host, tenant }) => {

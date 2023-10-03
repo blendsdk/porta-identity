@@ -21,6 +21,18 @@ export const eAuthenticationFlowState = {
 export type eAuthenticationFlowState = (typeof eAuthenticationFlowState)[keyof typeof eAuthenticationFlowState];
 
 /**
+ * Enum of the type ops_response
+ * @export
+ * @enum
+ */
+export const eOpsResponse = {
+	$name: "ops_response",
+	MESSAGE: "message",
+	SUCCESS: "success"
+} as const;
+export type eOpsResponse = (typeof eOpsResponse)[keyof typeof eOpsResponse];
+
+/**
  * Enum of the type sys_mfa_settings
  * @export
  * @enum

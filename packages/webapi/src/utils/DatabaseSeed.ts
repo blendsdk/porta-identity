@@ -47,6 +47,15 @@ export const eDefaultClients: IDictionaryOf<ISysClient> = {
         is_system_client: true,
         client_id: "porta_api_client",
         application_name: undefined
+    },
+    CLI_CLIENT: {
+        id: MD5("porta_cli_client"),
+        client_type: "P",
+        description: "porta_cli_application",
+        is_active: true,
+        is_system_client: true,
+        client_id: "porta_cli_client",
+        application_name: undefined
     }
 };
 
@@ -60,8 +69,6 @@ export interface IInitializeTenant {
     organization: string;
     allow_registration: boolean;
     allow_reset_password: boolean;
-    admin_user: string;
-    admin_password: string;
     username: string;
     password: string;
     email: string;
@@ -210,7 +217,7 @@ export class DatabaseSeed {
         const keysDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
         return keysDs.insertIntoSysKey({
             key_type: "JWK",
-            key_id: await sha256Hash(Date.now().toString()),
+            key_id: await sha256Hash(tenant.id + Date.now().toString()),
             data: (await commonUtils.generateKeyPareAndCertificate(tenant.name)) as any
         });
     }
@@ -290,58 +297,69 @@ export class DatabaseSeed {
             );
 
             // default groups
-            const usersGroup = await this.createGroup(eDefaultSystemGroups.USERS_GROUP, tenant);
-            const adminGroup = await this.createGroup(eDefaultSystemGroups.ADMINISTRATORS_GROUP, tenant);
-            const apiGroup = await this.createGroup(eDefaultSystemGroups.API_GROUP, tenant);
+            const usersGroup = await this.createGroup(eDefaultSystemGroups.USERS_GROUP, tenantRecord);
+            const adminGroup = await this.createGroup(eDefaultSystemGroups.ADMINISTRATORS_GROUP, tenantRecord);
+            const apiGroup = await this.createGroup(eDefaultSystemGroups.API_GROUP, tenantRecord);
 
             // assign the admin user to the system groups
-            await this.assignUserToGroup(adminUser, usersGroup, tenant);
-            await this.assignUserToGroup(adminUser, adminGroup, tenant);
-            await this.assignUserToGroup(apiUser, apiGroup, tenant);
+            await this.assignUserToGroup(adminUser, usersGroup, tenantRecord);
+            await this.assignUserToGroup(adminUser, adminGroup, tenantRecord);
+            await this.assignUserToGroup(apiUser, apiGroup, tenantRecord);
 
             await asyncForEach(Object.entries(eDefaultPermissions), async ([code, perm]) => {
                 switch (code) {
                     case eDefaultPermissions.CAN_CREATE_TENANT.code:
                         if (isRegistry) {
-                            await this.createPermission(perm, tenant);
+                            await this.createPermission(perm, tenantRecord);
                         }
                         break;
                     default:
-                        await this.createPermission(perm, tenant);
+                        await this.createPermission(perm, tenantRecord);
                 }
             });
 
             if (isRegistry) {
-                await this.assignGroupPermission(adminGroup, eDefaultPermissions.CAN_CREATE_TENANT, tenant);
+                await this.assignGroupPermission(adminGroup, eDefaultPermissions.CAN_CREATE_TENANT, tenantRecord);
             }
 
             // Creating ROLE/GROUP membership permissions to each group
             // so it runs out as roles on the Claims
             await asyncForEach([usersGroup, adminGroup, apiGroup], async (group) => {
-                await this.assignGroupPermission(group, eDefaultPermissions.GROUP_PERMISSION, tenant);
+                await this.assignGroupPermission(group, eDefaultPermissions.GROUP_PERMISSION, tenantRecord);
             });
 
             await this.createClient(
                 {
                     ...eDefaultClients.UI_CLIENT,
                     application_name: `${ucFirst(tenant.name)} Admin`,
-                    client_id: await sha256Hash(`porta_ui_${tenant.id}`),
+                    client_id: await sha256Hash(`porta_ui_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     redirect_uri: `${serverURL}/oidc/${tenant.name}/signin/callback`,
                     post_logout_redirect_uri: `${serverURL}/fe/${tenant.name}/signout/complete`
                 },
-                tenant
+                tenantRecord
             );
 
             await this.createClient(
                 {
                     ...eDefaultClients.API_CLIENT,
                     application_name: `${ucFirst(tenant.name)} API`,
-                    client_id: await sha256Hash(`porta_api_${tenant.id}`),
+                    client_id: await sha256Hash(`porta_api_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     client_credentials_user_id: apiUser.id
                 },
-                tenant
+                tenantRecord
+            );
+
+            await this.createClient(
+                {
+                    ...eDefaultClients.CLI_CLIENT,
+                    application_name: `${ucFirst(tenant.name)} CLI`,
+                    client_id: await sha256Hash(`porta_cli_${tenant.name}`),
+                    secret: await sha256Hash(generateRandomUUID()),
+                    redirect_uri: `http://localhost:9090/oidc/${tenant.name}/signin/callback`
+                },
+                tenantRecord
             );
         }
 
@@ -401,10 +419,8 @@ export class DatabaseSeed {
         });
         ctx.disposeContext();
 
-        if (isRegistry) {
-            const tenantDs = new SysTenantDataService({ tenantId });
-            tenant = await tenantDs.insertIntoSysTenant(tenant);
-        }
+        const tenantDs = new SysTenantDataService({ tenantId });
+        tenant = await tenantDs.insertIntoSysTenant(tenant);
         return tenant;
     }
 }

@@ -362,6 +362,15 @@
     "@types/bcryptjs" "^2.4.4"
     bcryptjs "^2.4.3"
 
+"@blendsdk/crypto@^3.2.329":
+  version "3.2.329"
+  resolved "https://pak.truesoftware.net/@blendsdk/crypto/-/crypto-3.2.329.tgz#383e80a183fdf6c2407aabded5ed9dc910b67ce5"
+  integrity sha512-z0rScVMyumuCyF055w0as4ul2OtboCyR2zXd6T1mpHJtaHuXJFuLw6Lqr8H02GI0F2kGHCzInMWp2gqoEtkNLQ==
+  dependencies:
+    "@blendsdk/stdlib" "3.2.329"
+    "@types/bcryptjs" "^2.4.4"
+    bcryptjs "^2.4.3"
+
 "@blendsdk/datakit@3.2.328":
   version "3.2.328"
   resolved "https://pak.truesoftware.net/@blendsdk/datakit/-/datakit-3.2.328.tgz#b3ee57877c914a1597489700e3ea1a7498ad731b"
@@ -459,6 +468,11 @@
   version "3.2.328"
   resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.328.tgz#3a127ddad6b1cf3b2dd412a1505fd30caf8031f6"
   integrity sha512-I6YIID/BiHTzDx+7DJ7WjLm1uAgVixCrUz2JwzZo/I8ZAawrd1vck18pw2QToYmSOyW/G+BUc1KgmpyaboLHXQ==
+
+"@blendsdk/stdlib@3.2.329":
+  version "3.2.329"
+  resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.329.tgz#b3f38bf06f2d231278f53f88f49a65be3b40cf29"
+  integrity sha512-MuOhm6zfASDf0Nrt2ZquSLBv5PLqepQ+olZN5i7Tl3yM//l9Riyqt/P61Wi5EllforbqkM5wulZF6EtYIfL3Tg==
 
 "@blendsdk/webafx-auth@3.2.328":
   version "3.2.328"

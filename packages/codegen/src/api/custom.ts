@@ -1,4 +1,5 @@
 import { ApiBuilder, refType } from "@blendsdk/codegen";
+import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function defineCustomApi(builder: ApiBuilder) {
     builder.defineApi({
@@ -7,7 +8,6 @@ export function defineCustomApi(builder: ApiBuilder) {
         group: "application",
         method: "post",
         public: false,
-        generate: "backend-only",
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema //
                 .createAppendType(request_type)
@@ -24,10 +24,20 @@ export function defineCustomApi(builder: ApiBuilder) {
 
     builder.defineApi({
         id: "create_tenant",
-        url: "/api/tenant",
+        url: "/api/:tenant/tenant",
         group: "application",
         method: "post",
-        request_type: refType("sys_tenant"),
-        payload_type: refType("ops_response")
+        response_type: refType("ops_response"),
+        createTypes: ({ request_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("tenant", { location: eParameterLocation.query })
+                .addString("name")
+                .addString("email")
+                .addString("password")
+                .addBoolean("allow_registration")
+                .addBoolean("allow_reset_password")
+                .addString("organization");
+        }
     });
 }

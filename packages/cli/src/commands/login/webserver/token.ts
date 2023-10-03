@@ -1,3 +1,4 @@
+import { sha256Hash } from "@blendsdk/crypto";
 import { CRC32 } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import {
@@ -38,9 +39,9 @@ export class CliTokenAuth extends PortaMultiTenantAuthenticationTokenModule {
             resource: req.context.getServerURL()
         };
     }
-    protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
+    protected async getOIDCClientConfig(tenant: string): Promise<ClientMetadata> {
         return {
-            client_id: "45021daaf811840705b8e41ffad8e5dea56627a9ec005388ba0105e22c429666",
+            client_id: await sha256Hash(`porta_cli_${tenant}`),
             token_endpoint_auth_method: "none"
         };
     }

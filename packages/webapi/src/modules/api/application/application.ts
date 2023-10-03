@@ -15,6 +15,11 @@ export const ApplicationModule = (): IRouter => {
 				dispatch: "initialize",
 				controller: ApplicationController,
 				route: routeDefinitions.application.initialize
+			}),
+			defineControllerRoute({
+				dispatch: "create_tenant",
+				controller: ApplicationController,
+				route: routeDefinitions.application.create_tenant
 			})
 		]
 	};

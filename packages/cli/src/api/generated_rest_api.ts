@@ -50,7 +50,11 @@ import {
 	IAuthenticationLogoutRequest,
 	IAuthenticationLogoutResponse,
 	IAuthenticationLoginRequest,
-	IAuthenticationLoginResponse
+	IAuthenticationLoginResponse,
+	IInitializeRequest,
+	IInitializeResponse,
+	ICreateTenantRequest,
+	IOpsResponse
 } from "@porta/shared";
 
 /**
@@ -90,6 +94,10 @@ export interface IPortaApi {
 		authenticationKeepAlive: THttpRequest<IAuthenticationKeepAliveRequest | void, IAuthenticationKeepAliveResponse>;
 		authenticationLogout: THttpRequest<IAuthenticationLogoutRequest | void, IAuthenticationLogoutResponse>;
 		authenticationLogin: THttpRequest<IAuthenticationLoginRequest, IAuthenticationLoginResponse>;
+	};
+	application: {
+		initialize: THttpRequest<IInitializeRequest, IInitializeResponse>;
+		createTenant: THttpRequest<ICreateTenantRequest, IOpsResponse>;
 	};
 }
 
@@ -171,6 +179,14 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			authenticationKeepAlive: defineEndpoint({ method: "post", url: "/api/authentication/keep-alive" }),
 			authenticationLogout: defineEndpoint({ method: "post", url: "/api/authentication/logout" }),
 			authenticationLogin: defineEndpoint({ method: "post", url: "/api/authentication/login" })
+		},
+		application: {
+			initialize: defineEndpoint({ method: "post", url: "/api/initialize" }),
+			createTenant: defineEndpoint({
+				method: "post",
+				url: "/api/:tenant/tenant",
+				parameters: { tenant: eParameterLocation.query }
+			})
 		}
 	}
 });

@@ -49,6 +49,23 @@ export interface IAuthenticationFlowState {
 
 /**
  * @export
+ * @interface IOpsResponse
+ */
+export interface IOpsResponse {
+	/**
+	 * @type string
+	 * @memberOf IOpsResponse
+	 */
+	message: string;
+	/**
+	 * @type boolean
+	 * @memberOf IOpsResponse
+	 */
+	success: boolean;
+}
+
+/**
+ * @export
  * @interface ISysMfaSettings
  */
 export interface ISysMfaSettings {}

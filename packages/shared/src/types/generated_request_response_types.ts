@@ -1150,3 +1150,45 @@ export interface IInitializeResponse {
 	 */
 	data: IInitialize;
 }
+
+/**
+ * @export
+ * @interface ICreateTenantRequest
+ */
+export interface ICreateTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	name: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	email: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	password: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateTenantRequest
+	 */
+	allow_registration: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateTenantRequest
+	 */
+	allow_reset_password: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	organization: string;
+}

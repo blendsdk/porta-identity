@@ -1,4 +1,5 @@
 import yargs from "yargs";
+import { createInitCommand } from "./commands/init";
 import { createLoginCommand } from "./commands/login";
 import { createTenantCommand } from "./commands/tenant";
 
@@ -7,6 +8,7 @@ console.log("Welcome to Porta CLI utility");
 yargs
     //
     .scriptName("porta-cli")
+    .command(createInitCommand())
     .command(createLoginCommand())
     .command(createTenantCommand())
     .demandCommand(1)
