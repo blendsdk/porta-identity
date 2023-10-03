@@ -9,11 +9,11 @@
   },
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@blendsdk/crypto": "3.2.328",
-    "@blendsdk/jsonschema": "3.2.328",
-    "@blendsdk/stdlib": "3.2.328",
-    "@blendsdk/webafx-auth": "3.2.328",
-    "@blendsdk/webafx-common": "3.2.328",
+    "@blendsdk/crypto": "3.2.329",
+    "@blendsdk/jsonschema": "3.2.329",
+    "@blendsdk/stdlib": "3.2.329",
+    "@blendsdk/webafx-auth": "3.2.329",
+    "@blendsdk/webafx-common": "3.2.329",
     "jsonwebtoken": "^9.0.2",
     "openid-client": "^5.5.0"
   }
