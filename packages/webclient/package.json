@@ -10,27 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@blendsdk/clientkit": "3.2.323",
-    "@blendsdk/crypto": "3.2.323",
-    "@blendsdk/fluentrc": "3.2.323",
-    "@blendsdk/react": "3.2.323",
-    "@blendsdk/stdlib": "3.2.323",
-    "@fluentui/react-components": "^9.31.1",
-    "@porta/shared": "1.0.191",
-    "dayjs": "^1.11.9",
-    "formik": "^2.4.4",
-=======
     "@blendsdk/clientkit": "3.2.326",
     "@blendsdk/crypto": "3.2.326",
     "@blendsdk/fluentrc": "3.2.326",
     "@blendsdk/react": "3.2.326",
     "@blendsdk/stdlib": "3.2.326",
     "@fluentui/react-components": "^9.33.0",
-    "@porta/shared": "1.0.190",
+    "@porta/shared": "1.0.191",
     "dayjs": "^1.11.10",
     "formik": "^2.4.5",
->>>>>>> fix: updated packages and made the cli compile with pkg
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "yup": "^1.3.2"
