@@ -1,7 +1,7 @@
 {
     "name": "@porta/cli",
     "private": true,
-    "version": "1.0.191",
+    "version": "1.0.192",
     "main": "dist/index.js",
     "bin": {
         "porta-cli": "./dist/index.js"
@@ -22,9 +22,9 @@
         "@blendsdk/webafx-cache-memory": "3.2.326",
         "@blendsdk/webafx-common": "3.2.326",
         "@peculiar/x509": "^1.9.5",
+        "@porta/webafx-auth": "1.0.192",
         "@types/yargs": "^17.0.26",
         "http-terminator": "^3.2.0",
-        "@porta/webafx-auth": "1.0.191",
         "jose": "^4.14.6",
         "tslib": "^2.6.2",
         "yargs": "^17.7.2"
