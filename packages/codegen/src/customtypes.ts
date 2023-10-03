@@ -11,6 +11,12 @@ export function createCustomTypes(order: number) {
             .addString("signin_url", { optional: true })
             .addString("mfa_state", { optional: true })
             .addString("mfa_list", { array: true, optional: true });
+
+        typeSchema
+            //
+            .createAppendType("ops_response")
+            .addString("message")
+            .addBoolean("success");
     } else {
         typeSchema
             .createAppendType("porta_account") //

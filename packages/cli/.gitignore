@@ -65,3 +65,4 @@ public
 oidc-conformance-accounts.json
 cli-dist
 temp
+.porta-cli.conf

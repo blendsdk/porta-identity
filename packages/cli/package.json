@@ -15,17 +15,22 @@
         "build:pkg": "yarn build && mkdir -p ./cli-dist && rm -fR ./cli-dist && npx pkg --target node18-macos-x64 -C GZip -o ./cli-dist/porta-cli ./dist/index.js"
     },
     "dependencies": {
-        "@blendsdk/jsonschema": "3.2.326",
-        "@blendsdk/stdlib": "3.2.326",
-        "@blendsdk/webafx": "3.2.326",
-        "@blendsdk/webafx-auth": "3.2.326",
-        "@blendsdk/webafx-cache-memory": "3.2.326",
-        "@blendsdk/webafx-common": "3.2.326",
+        "@blendsdk/filesystem": "3.2.328",
+        "@blendsdk/jsonschema": "3.2.328",
+        "@blendsdk/logger": "^3.2.328",
+        "@blendsdk/stdlib": "3.2.328",
+        "@blendsdk/webafx": "3.2.328",
+        "@blendsdk/webafx-auth": "3.2.328",
+        "@blendsdk/webafx-cache-memory": "3.2.328",
+        "@blendsdk/webafx-common": "3.2.328",
+        "@inquirer/prompts": "^3.1.2",
         "@peculiar/x509": "^1.9.5",
         "@porta/webafx-auth": "1.0.193",
+        "@porta/shared": "1.0.193",
         "@types/yargs": "^17.0.26",
         "http-terminator": "^3.2.0",
         "jose": "^4.14.6",
+        "jwt-decode": "^3.1.2",
         "tslib": "^2.6.2",
         "yargs": "^17.7.2"
     }

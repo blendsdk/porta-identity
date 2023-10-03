@@ -1,5 +1,7 @@
+import { lineLogger } from "@blendsdk/filesystem";
 import { spawnSync } from "child_process";
 import { CommandModule } from "yargs";
+import { saveToken } from "../common";
 import { createWebserver } from "./webserver/webserver";
 
 export function createLoginCommand(): CommandModule {
@@ -23,8 +25,13 @@ export function createLoginCommand(): CommandModule {
         handler: ({ host, tenant }) => {
             const webserver = createWebserver({
                 host: host as any,
-                onAuthToken: (token) => {
-                    console.log(token);
+                onAuthToken: (storage: any) => {
+                    saveToken({
+                        token: storage.tokenSet.access_token,
+                        host: host.toString(),
+                        tenant: tenant.toString()
+                    });
+                    lineLogger.info("Authentication complete.");
                 }
             });
             webserver().then(() => {

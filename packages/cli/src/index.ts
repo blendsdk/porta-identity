@@ -1,12 +1,13 @@
-#!/usr/bin/env node
-//
 import yargs from "yargs";
 import { createLoginCommand } from "./commands/login";
+import { createTenantCommand } from "./commands/tenant";
 
 // tslint:disable-next-line: no-unused-expression
+console.log("Welcome to Porta CLI utility");
 yargs
     //
     .scriptName("porta-cli")
     .command(createLoginCommand())
+    .command(createTenantCommand())
     .demandCommand(1)
     .help().argv;

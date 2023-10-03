@@ -1,4 +1,4 @@
-import { ApiBuilder } from "@blendsdk/codegen";
+import { ApiBuilder, refType } from "@blendsdk/codegen";
 
 export function defineCustomApi(builder: ApiBuilder) {
     builder.defineApi({
@@ -20,5 +20,14 @@ export function defineCustomApi(builder: ApiBuilder) {
                 .addBoolean("status");
             typeSchema.createResponseType(response_type, payload_type);
         }
+    });
+
+    builder.defineApi({
+        id: "create_tenant",
+        url: "/api/tenant",
+        group: "application",
+        method: "post",
+        request_type: refType("sys_tenant"),
+        payload_type: refType("ops_response")
     });
 }
