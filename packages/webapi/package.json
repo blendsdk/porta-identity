@@ -32,6 +32,7 @@
         "@blendsdk/stdlib": "3.2.326",
         "@blendsdk/webafx": "3.2.326",
         "@blendsdk/webafx-auth": "3.2.326",
+        "@blendsdk/webafx-cache-redis": "^3.2.326",
         "@blendsdk/webafx-common": "3.2.326",
         "@blendsdk/webafx-i18n": "3.2.326",
         "@blendsdk/webafx-mailer": "3.2.326",

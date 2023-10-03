@@ -479,7 +479,7 @@
     "@blendsdk/webafx" "3.2.326"
     "@blendsdk/webafx-common" "3.2.326"
 
-"@blendsdk/webafx-cache-redis@3.2.326":
+"@blendsdk/webafx-cache-redis@3.2.326", "@blendsdk/webafx-cache-redis@^3.2.326":
   version "3.2.326"
   resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-redis/-/webafx-cache-redis-3.2.326.tgz#cc8c38dc2cdab738504e19a8035bf969227ad02a"
   integrity sha512-wuHFYj1xNCye649F9mQ1109hfzWGdPQji/Gtjt2EoAE3wmN5GQg3YkjZ8V+LqAo0e8CN2Deqp1ZVwZwzEkvcUw==
