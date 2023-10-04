@@ -91,6 +91,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             state
         });
 
+        this.getLogger().error(error, params);
+
         if (toUserAgent) {
             return new BadRequestResponse({
                 message: error,
