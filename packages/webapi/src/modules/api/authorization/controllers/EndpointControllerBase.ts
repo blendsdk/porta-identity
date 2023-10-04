@@ -387,6 +387,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         const { user, profile } = await databaseUtils.findUserByUserId(user_id, tenant.name);
 
+        console.error(tenant);
+
         const accessTokenStorage = await databaseUtils.newAccessToken(
             tenant,
             authRecord,
