@@ -1,6 +1,6 @@
 {
   "name": "@porta/webafx-auth",
-  "version": "1.0.198",
+  "version": "1.0.199",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
