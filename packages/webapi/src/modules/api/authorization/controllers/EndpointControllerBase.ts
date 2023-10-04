@@ -578,6 +578,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const dataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(
             databaseUtils.getTenantDataSourceID(tenant)
         );
+
         const authViewDs = new SysAuthorizationViewDataService({ dataSource });
         if (redirect_uri === eOAuthGrantType.client_credentials) {
             return authViewDs.findByClientIdOnly({ client_id });
@@ -596,6 +597,9 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                     return u == redirect_uri;
                 });
             }
+
+            this.getLogger().debug("Looking for", { tenant, client_id, redirect_uri, result: authRecord });
+
             return authRecord?.redirect_uri ? authRecord : undefined;
         }
     }
