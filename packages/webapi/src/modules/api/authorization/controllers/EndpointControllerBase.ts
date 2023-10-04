@@ -387,8 +387,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         const { user, profile } = await databaseUtils.findUserByUserId(user_id, tenant.name);
 
-        console.error(tenant);
-
         const accessTokenStorage = await databaseUtils.newAccessToken(
             tenant,
             authRecord,
@@ -599,9 +597,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                     return u == redirect_uri;
                 });
             }
-
-            this.getLogger().debug("Looking for", { tenant, client_id, redirect_uri, result: authRecord });
-
             return authRecord?.redirect_uri ? authRecord : undefined;
         }
     }
