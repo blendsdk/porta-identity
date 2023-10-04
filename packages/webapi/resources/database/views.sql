@@ -88,7 +88,7 @@ CREATE OR REPLACE VIEW sys_refresh_token_view AS select
     trunc(extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()))::bigint as ttl,
     rt.refresh_token,
     at.access_token,
-    extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()) < 0 as is_expire,
+    extract('epoch' from rt.date_created + (rt.ttl || ' seconds') :: interval - now()) < 0 as is_expired,
     rt.date_created + ( at.refresh_ttl || ' seconds')::interval as expire_at
 from
     sys_refresh_token rt

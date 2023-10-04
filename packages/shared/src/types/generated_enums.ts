@@ -179,7 +179,7 @@ export const eSysRefreshTokenView = {
 	TTL: "ttl",
 	REFRESH_TOKEN: "refresh_token",
 	ACCESS_TOKEN: "access_token",
-	IS_EXPIRE: "is_expire",
+	IS_EXPIRED: "is_expired",
 	EXPIRE_AT: "expire_at"
 } as const;
 export type eSysRefreshTokenView = (typeof eSysRefreshTokenView)[keyof typeof eSysRefreshTokenView];

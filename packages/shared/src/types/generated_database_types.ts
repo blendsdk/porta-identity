@@ -365,7 +365,7 @@ export interface ISysRefreshTokenView {
 	 * @type boolean
 	 * @memberOf ISysRefreshTokenView
 	 */
-	is_expire: boolean;
+	is_expired: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysRefreshTokenView

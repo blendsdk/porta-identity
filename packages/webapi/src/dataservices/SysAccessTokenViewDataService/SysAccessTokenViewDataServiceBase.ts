@@ -1,6 +1,6 @@
 import {
 	ISysAccessTokenViewDataServiceFindAccessTokenParams,
-	ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+	ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams
 } from "./types";
 import { ISysAccessTokenView } from "@porta/shared";
 import { DataService } from "@blendsdk/datakit";
@@ -32,17 +32,17 @@ export abstract class SysAccessTokenViewDataServiceBase extends DataService<Post
 	}
 
 	/**
-	 * @param {ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams}
+	 * @param {ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams}
 	 * @returns {ISysAccessTokenView}
 	 * @memberof SysAccessTokenViewDataServiceBase
 	 */
-	public async findAccessTokenByAcrReference(
-		params: ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+	public async findAccessTokenByReference(
+		params: ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams
 	): Promise<ISysAccessTokenView> {
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<
 			ISysAccessTokenView,
-			ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+			ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams
 		>(
 			`select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference`,
 			params,

@@ -228,19 +228,25 @@ export class TokenEndpointController extends EndpointController {
         } else if (!refresh_token) {
             errors.push(eErrorType.invalid_request);
         } else {
-            let refreshTokenStorage = await databaseUtils.findRefreshTokenByTenant(tenantRecord.id, refresh_token);
+            let refreshTokenStorage = await databaseUtils.findRefreshTokenByTenant({
+                tenant: tenantRecord.id,
+                refresh_token,
+                check_validity: false
+            });
             if (!refreshTokenStorage) {
                 errors.push(eErrorType.invalid_request);
-            } else if (refreshTokenStorage && refreshTokenStorage.is_expire) {
+            } else if (refreshTokenStorage && refreshTokenStorage.is_expired) {
                 // delete the access_token and the refresh_token
                 await this.revokeRefreshToken(tenantRecord, refreshTokenStorage);
                 errors.push("refresh_token_expired");
             } else {
-                // get the access_token
-                const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(
-                    tenantRecord.id,
-                    refreshTokenStorage.access_token
-                );
+                // get the access_token even it is expired so we can create a newone for it.
+                // The check_validity is set to false to get the token
+                const accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
+                    tenant: tenantRecord.id,
+                    access_token: refreshTokenStorage.access_token,
+                    check_validity: false
+                });
 
                 if (accessTokenStorage) {
                     // create a new access token based on the previous access token
@@ -308,6 +314,7 @@ export class TokenEndpointController extends EndpointController {
                         errors.push("invalid_bound_client");
                     }
                 } else {
+                    this.getLogger().debug("No old access token found.");
                     errors.push("invalid_refresh_token");
                 }
             }
@@ -581,11 +588,16 @@ export class TokenEndpointController extends EndpointController {
         if (errors.length === 0) {
             const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
 
-            const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenantRecord.id, access_token);
-            const refreshTokenStorage = await databaseUtils.findRefreshTokenByTenantAndAccessToken(
-                tenantRecord.id,
+            const accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
+                tenant: tenantRecord.id,
+                access_token,
+                check_validity: true
+            });
+
+            const refreshTokenStorage = await databaseUtils.findRefreshTokenByTenantAndAccessToken({
+                tenant: tenantRecord.id,
                 access_token
-            );
+            });
 
             return {
                 errors: [],

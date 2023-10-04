@@ -24,6 +24,21 @@ import { IAccessToken, IAuthRequestParams, eDatabaseType, eOAuthSigningAlg } fro
 import { commonUtils } from "./CommonUtils";
 import { eDefaultClients } from "./DatabaseSeed";
 
+export interface IFindAccessTokenByTenant {
+    tenant: string;
+    access_token: string;
+    token_reference?: boolean;
+    check_validity?: boolean; // defaults to true
+}
+
+export interface IFindRefreshTokenByTenantAndAccessToken extends Omit<IFindAccessTokenByTenant, "token_reference"> {}
+
+export interface IFindRefreshTokenByTenant {
+    tenant: string;
+    refresh_token: string;
+    check_validity?: boolean; // defaults to true
+}
+
 class DatabaseUtils {
     /**
      * Get a data source id based on a tenant record
@@ -131,10 +146,14 @@ class DatabaseUtils {
      * @returns {Promise<ISysRefreshTokenView>}
      * @memberof DatabaseUtils
      */
-    public async findRefreshTokenByTenant(tenant: string, refresh_token: string): Promise<ISysRefreshTokenView> {
+    public async findRefreshTokenByTenant(params: IFindRefreshTokenByTenant): Promise<ISysRefreshTokenView> {
+        let { tenant, check_validity, refresh_token } = params;
+        check_validity = check_validity === false ? false : true;
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const refreshTokenDs = new SysRefreshTokenViewDataService({ dataSource });
-        return await refreshTokenDs.findRefreshToken({ refresh_token });
+        const refreshToken = await refreshTokenDs.findRefreshToken({ refresh_token });
+        const isValid = check_validity === true ? !refreshToken.is_expired : true;
+        return isValid ? refreshToken : undefined;
     }
 
     /**
@@ -146,12 +165,14 @@ class DatabaseUtils {
      * @memberof DatabaseUtils
      */
     public async findRefreshTokenByTenantAndAccessToken(
-        tenant: string,
-        access_token: string
+        params: IFindRefreshTokenByTenantAndAccessToken
     ): Promise<ISysRefreshTokenView> {
+        const { tenant, access_token, check_validity } = params;
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const refreshTokenDs = new SysRefreshTokenViewDataService({ dataSource });
-        return await refreshTokenDs.findRefreshTokenByAccessToken({ access_token });
+        const refreshToken = await refreshTokenDs.findRefreshTokenByAccessToken({ access_token });
+        const isValid = check_validity === true ? !refreshToken.is_expired : true;
+        return isValid ? refreshToken : undefined;
     }
 
     /**
@@ -255,7 +276,7 @@ class DatabaseUtils {
             date_created: date_created.toISOString()
         });
 
-        return this.findAccessTokenByTenant(tenant.id, result.access_token);
+        return this.findAccessTokenByTenant({ tenant: tenant.id, access_token: result.access_token });
     }
 
     /**
@@ -311,7 +332,7 @@ class DatabaseUtils {
             date_created: date_created.toISOString()
         });
 
-        return this.findRefreshTokenByTenant(tenant.id, result.refresh_token);
+        return this.findRefreshTokenByTenant({ tenant: tenant.id, refresh_token: result.refresh_token });
     }
 
     /**
@@ -336,21 +357,24 @@ class DatabaseUtils {
      * @returns
      * @memberof EndpointController
      */
-    public async findAccessTokenByTenant(
-        tenant: string,
-        access_token: string,
-        token_reference?: boolean
-    ): Promise<IAccessToken> {
+    public async findAccessTokenByTenant(params: IFindAccessTokenByTenant): Promise<IAccessToken> {
+        let { access_token, tenant, check_validity, token_reference } = params;
+
+        // make true by default
+        (check_validity == check_validity) === false ? false : true;
+
         const { dataSource } = (await this.getTenantDataSource(tenant)) || {};
         const accessTokenDs = new SysAccessTokenViewDataService({ dataSource });
         const accessToken = token_reference
-            ? await accessTokenDs.findAccessTokenByAcrReference({ token_reference: access_token })
+            ? await accessTokenDs.findAccessTokenByReference({ token_reference: access_token })
             : await accessTokenDs.findAccessToken({ access_token });
         const permissionsDs = new SysPermissionDataService({ dataSource });
 
         if (accessToken) {
+            const isValid = check_validity === true ? !accessToken.is_expired : true;
+
             const permissions = (await permissionsDs.findPermissionsByUserId({ user_id: accessToken.user_id })) || [];
-            return {
+            const result = {
                 ...(accessToken as any),
                 roles: permissions
                     .filter((p) => {
@@ -377,6 +401,7 @@ class DatabaseUtils {
                         };
                     })
             } as IAccessToken;
+            return isValid ? result : undefined;
         } else {
             return undefined;
         }

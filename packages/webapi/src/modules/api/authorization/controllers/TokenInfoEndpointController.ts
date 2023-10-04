@@ -54,18 +54,27 @@ export class TokenInfoEndpointController extends EndpointController {
                 const pKey = await jose.importSPKI(publicKey, "ES256");
 
                 // look for the access_token
-                let accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token);
+                let accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
+                    tenant,
+                    access_token: token,
+                    check_validity: false
+                });
                 // if not found then maybe it is a refresh token
                 if (!accessTokenStorage) {
-                    const refreshToken = await databaseUtils.findRefreshTokenByTenant(tenant, token);
+                    const refreshToken = await databaseUtils.findRefreshTokenByTenant({
+                        tenant,
+                        refresh_token: token,
+                        check_validity: false
+                    });
                     // if this is a refresh token then find its corresponding access token
                     if (refreshToken) {
                         token_type = "refresh_token";
                         resp = await this.getJWTInfo(token, pKey);
-                        accessTokenStorage = await databaseUtils.findAccessTokenByTenant(
+                        accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
                             tenant,
-                            refreshToken.access_token
-                        );
+                            access_token: refreshToken.access_token,
+                            check_validity: false
+                        });
                     }
                 } else {
                     token_type = "access_token";
@@ -75,7 +84,7 @@ export class TokenInfoEndpointController extends EndpointController {
                 if (accessTokenStorage) {
                     const { client, auth_request_params, user, date_created } = accessTokenStorage;
                     resp = {
-                        active: true,
+                        active: !accessTokenStorage.is_expired,
                         scope: auth_request_params.scope,
                         client_id: client.client_id,
                         username: user.username,

@@ -17,12 +17,12 @@ export interface ISysAccessTokenViewDataServiceFindAccessTokenParams {
 
 /**
  * @export
- * @interface ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+ * @interface ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams
  */
-export interface ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams {
+export interface ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams {
 	/**
 	 * @type string
-	 * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenByAcrReferenceParams
+	 * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams
 	 */
 	token_reference: string;
 }

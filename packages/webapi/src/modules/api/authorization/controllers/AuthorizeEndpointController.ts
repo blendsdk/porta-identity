@@ -394,12 +394,16 @@ export class AuthorizeEndpointController extends EndpointController {
 
         // now we check if this token actually exists and was not revoked before
 
-        let accessTokenRecord = await databaseUtils.findAccessTokenByTenant(tenant.id, accessTokenFromCookie);
-        const isValid = accessTokenRecord && !accessTokenRecord.is_expired;
+        //TODO: token anchor
+        let accessTokenRecord = await databaseUtils.findAccessTokenByTenant({
+            tenant: tenant.id,
+            access_token: accessTokenFromCookie,
+            check_validity: true
+        });
 
         return {
-            token: isValid ? accessTokenFromCookie : undefined,
-            accessTokenStorage: isValid ? accessTokenRecord : undefined
+            token: accessTokenRecord?.access_token,
+            accessTokenStorage: accessTokenRecord
         };
     }
 

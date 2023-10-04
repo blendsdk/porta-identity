@@ -60,7 +60,12 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @memberof PortaSelfAuthenticationModule
      */
     protected async findAccessTokenByTenant(tenant: string, token: string, token_reference?: boolean) {
-        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant(tenant, token, token_reference);
+        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
+            tenant,
+            access_token: token,
+            token_reference,
+            check_validity: true
+        });
         return isNullOrUndef(accessTokenStorage) ? undefined : accessTokenStorage;
     }
 
@@ -127,11 +132,12 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
                     const controller = new TokenEndpointController({ request: req, response: undefined });
 
                     const token_reference = MD5([client_id, client_secret, req.context.getRoute().url].join(""));
-                    const existing_access_token = await databaseUtils.findAccessTokenByTenant(
+                    const existing_access_token = await databaseUtils.findAccessTokenByTenant({
                         tenant,
-                        token_reference,
-                        true
-                    );
+                        access_token: token_reference,
+                        token_reference: true,
+                        check_validity: true
+                    });
 
                     if (existing_access_token) {
                         return existing_access_token as SessionStorageType;

@@ -80,7 +80,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                 returnType: view.getName()
             });
             svc.defineMethod({
-                name: "find_access_token_by_acr_reference",
+                name: "find_access_token_by_reference",
                 query: "select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,

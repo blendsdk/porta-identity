@@ -373,7 +373,7 @@ export const validationSchema = {
 				access_token: {
 					type: eJsonSchemaType.string
 				},
-				is_expire: {
+				is_expired: {
 					type: eJsonSchemaType.boolean
 				},
 				expire_at: {
@@ -381,7 +381,7 @@ export const validationSchema = {
 					format: "datetime-tz"
 				}
 			},
-			required: ["id", "ttl", "refresh_token", "access_token", "is_expire", "expire_at"]
+			required: ["id", "ttl", "refresh_token", "access_token", "is_expired", "expire_at"]
 		},
 		sys_session_view: {
 			type: eJsonSchemaType.object,
