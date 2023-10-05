@@ -12,9 +12,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@blendsdk/filesystem": "^3.2.325",
-    "@blendsdk/logger": "^3.2.325",
-    "@blendsdk/stdlib": "^3.2.325",
+    "@blendsdk/filesystem": "^3.2.332",
+    "@blendsdk/logger": "^3.2.332",
+    "@blendsdk/stdlib": "^3.2.332",
     "tslib": "^2.6.2"
   }
 }
