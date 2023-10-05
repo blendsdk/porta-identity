@@ -1,7 +1,7 @@
 {
     "name": "@porta/cli",
     "private": true,
-    "version": "1.0.201",
+    "version": "1.0.202",
     "main": "dist/index.js",
     "bin": {
         "porta-cli": "./dist/index.js"
@@ -28,7 +28,7 @@
         "@inquirer/password": "^1.1.12",
         "@inquirer/prompts": "^3.1.2",
         "@peculiar/x509": "^1.9.5",
-        "@porta/shared": "1.0.201",
+        "@porta/shared": "1.0.202",
         "@types/yargs": "^17.0.26",
         "http-terminator": "^3.2.0",
         "jose": "^4.14.6",
