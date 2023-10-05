@@ -1,4 +1,4 @@
-import { IPortaAuthenticationResult } from "@porta/webafx-auth";
+import { IOpenIDAuthenticationResult } from "@blendsdk/webafx-auth-oidc";
 import React, { Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -7,7 +7,7 @@ export interface dummy {
 }
 
 export interface IDashboardPage {
-    user: IPortaAuthenticationResult;
+    user: IOpenIDAuthenticationResult;
     serverURL: string;
 }
 

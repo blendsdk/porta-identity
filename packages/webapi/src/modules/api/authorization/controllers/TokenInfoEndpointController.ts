@@ -1,7 +1,7 @@
 import { wrapInArray } from "@blendsdk/stdlib";
+import { millisecondsToSeconds } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { ITokenInfo, ITokenInfoRequest, ITokenInfoResponse } from "@porta/shared";
-import { millisecondsToSeconds } from "@porta/webafx-auth";
 import * as jose from "jose";
 import { databaseUtils } from "../../../../utils";
 import { EndpointController } from "./EndpointControllerBase";

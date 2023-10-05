@@ -1,15 +1,16 @@
 import { CRC32 } from "@blendsdk/stdlib";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
-    IPortaAuthenticationResult,
-    IPortaHTTPRequestContext,
-    PortaMultiTenantAuthenticationTokenModule
-} from "@porta/webafx-auth";
+    IOpenIDAuthenticationResult,
+    IOpenIDHTTPRequestContext,
+    MultiTenantOpenIDTokenAuthenticationModule
+} from "@blendsdk/webafx-auth-oidc";
+import { HttpRequest } from "@blendsdk/webafx-common";
 import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 
-export class BffTokenAuthenticationModule extends PortaMultiTenantAuthenticationTokenModule {
-    protected newAccessToken(_req: HttpRequest<{}>): Promise<string> {
+export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
         return CRC32(new Date().toString());
     }
 
@@ -21,10 +22,10 @@ export class BffTokenAuthenticationModule extends PortaMultiTenantAuthentication
      * @memberof BffTokenAuthenticationModule
      */
     protected async getLandingURL(
-        req: HttpRequest<IPortaHTTPRequestContext>,
+        req: HttpRequest<IOpenIDHTTPRequestContext>,
         logout?: boolean
     ): Promise<ILandingURLConfig> {
-        const { state, ui_locales, tenant } = req.context.porta;
+        const { state, ui_locales, tenant } = req.context.openid;
         return {
             url: `${req.context.getServerURL()}/fe/dashboard/${tenant}/tenant`,
             searchParams: {
@@ -76,7 +77,7 @@ export class BffTokenAuthenticationModule extends PortaMultiTenantAuthentication
      * @returns {Promise<string>}
      * @memberof BffTokenAuthenticationModule
      */
-    protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+    protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         //return `https://dev.portaidentity.com/registry/oauth2`;
         const { tenant } = req.context.getParameters<{ tenant: string }>();
         return `https://porta.local/${tenant}/oauth2`;
@@ -90,8 +91,8 @@ export class BffTokenAuthenticationModule extends PortaMultiTenantAuthentication
      * @memberof BffTokenAuthenticationModule
      */
     protected async findOrCreateUser(
-        oidcData: IPortaAuthenticationResult,
-        _req: HttpRequest<IPortaHTTPRequestContext>
+        oidcData: IOpenIDAuthenticationResult,
+        _req: HttpRequest<IOpenIDHTTPRequestContext>
     ): Promise<any> {
         return {
             user: oidcData.claims.sub,

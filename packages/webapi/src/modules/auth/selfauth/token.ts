@@ -1,24 +1,25 @@
 import { base64Decode } from "@blendsdk/stdlib";
-import { ICreateResponseAuthorizedParams } from "@blendsdk/webafx-auth";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
-    IPortaAuthenticationResult,
-    IPortaHTTPRequestContext,
-    PortaMultiTenantAuthenticationTokenModule
-} from "@porta/webafx-auth";
+    IOpenIDAuthenticationResult,
+    IOpenIDHTTPRequestContext,
+    MultiTenantOpenIDTokenAuthenticationModule
+} from "@blendsdk/webafx-auth-oidc";
+import { HttpRequest } from "@blendsdk/webafx-common";
 import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 import { databaseUtils } from "../../../utils";
 import { keySignatureProvider } from "./keysignature";
 
-export class PortaSelfAuthTokenAuthenticationModule extends PortaMultiTenantAuthenticationTokenModule {
+export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
     /**
      * @protected
+     * @param {INewAccessOrRefreshToken} params
      * @param {HttpRequest<{}>} req
      * @returns {Promise<string>}
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
-    protected newAccessToken(_req: HttpRequest<{}>): Promise<string> {
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
         throw new Error("Method not implemented.");
     }
 
@@ -59,7 +60,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends PortaMultiTenantAuth
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async getLandingURL(
-        req: HttpRequest<IPortaHTTPRequestContext>,
+        req: HttpRequest<IOpenIDHTTPRequestContext>,
         _logout?: boolean
     ): Promise<ILandingURLConfig> {
         const { state } = req.context.getParameters<{ state: string }>();
@@ -108,7 +109,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends PortaMultiTenantAuth
      * @returns {Promise<string>}
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
-    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         return `${req.context.getServerURL()}/${tenant}/oauth2`;
     }
 
@@ -120,8 +121,8 @@ export class PortaSelfAuthTokenAuthenticationModule extends PortaMultiTenantAuth
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async findOrCreateUser(
-        oidcData: IPortaAuthenticationResult,
-        _req: HttpRequest<IPortaHTTPRequestContext>
+        oidcData: IOpenIDAuthenticationResult,
+        _req: HttpRequest<IOpenIDHTTPRequestContext>
     ): Promise<any> {
         return oidcData;
     }

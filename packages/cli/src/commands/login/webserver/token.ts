@@ -1,21 +1,22 @@
 import { sha256Hash } from "@blendsdk/crypto";
 import { CRC32 } from "@blendsdk/stdlib";
-import { HttpRequest } from "@blendsdk/webafx-common";
+import { INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
-    IPortaAuthenticationResult,
-    IPortaHTTPRequestContext,
-    PortaMultiTenantAuthenticationTokenModule
-} from "@porta/webafx-auth";
+    IOpenIDAuthenticationResult,
+    IOpenIDHTTPRequestContext,
+    MultiTenantOpenIDTokenAuthenticationModule
+} from "@blendsdk/webafx-auth-oidc";
+import { HttpRequest } from "@blendsdk/webafx-common";
 import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 import { getKeySignature } from "./common";
 
-export class CliTokenAuth extends PortaMultiTenantAuthenticationTokenModule {
+export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
     protected async getLandingURL(
-        req: HttpRequest<IPortaHTTPRequestContext>,
+        req: HttpRequest<IOpenIDHTTPRequestContext>,
         logout?: boolean | undefined
     ): Promise<ILandingURLConfig> {
-        const { state, ui_locales, tenant } = req.context.porta;
+        const { state, ui_locales, tenant } = req.context.openid;
         return {
             url: `${req.context.getServerURL()}/${tenant}/complete`,
             searchParams: {
@@ -46,23 +47,23 @@ export class CliTokenAuth extends PortaMultiTenantAuthenticationTokenModule {
         };
     }
 
-    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IPortaHTTPRequestContext>): Promise<string> {
+    protected async getDiscoveryURL(tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string }>();
         return `${PORTA_HOST}/${tenant}/oauth2`;
     }
 
     protected async findOrCreateUser(
-        oidcData: IPortaAuthenticationResult,
-        _req: HttpRequest<IPortaHTTPRequestContext>
+        oidcData: IOpenIDAuthenticationResult,
+        _req: HttpRequest<IOpenIDHTTPRequestContext>
     ): Promise<any> {
         return oidcData;
     }
 
     protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
-        return "_session";
+        return SESSION_KEY;
     }
 
-    protected newAccessToken(_req: HttpRequest<{}>): Promise<string> {
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
         return CRC32(new Date().toUTCString());
     }
 

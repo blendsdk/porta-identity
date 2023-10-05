@@ -1,7 +1,7 @@
 import { formatString } from "@blendsdk/stdlib";
 import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { IOpenIDHTTPRequestContext, renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
-import { IPortaHTTPRequestContext, renderGetRedirect } from "@porta/webafx-auth";
 import * as fs from "fs";
 import * as path from "path";
 import { dashboardPage } from "./page";
@@ -34,7 +34,7 @@ export const BFFRoutes = (): IRouter => {
                 method: "get",
                 url: "*",
                 public: false,
-                handlers: (req: HttpRequest<IPortaHTTPRequestContext>, res: HttpResponse, next: NextFunction) => {
+                handlers: (req: HttpRequest<IOpenIDHTTPRequestContext>, res: HttpResponse, next: NextFunction) => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
                         const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
