@@ -91,7 +91,7 @@ export class EndSessionController extends EndpointController {
     ) {
         const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
-        let post_logout_redirect_uri_list: string[] = undefined;
+        let post_logout_redirect_uri_list: string[] = [];
         let post_logout_redirect_uri_matched = undefined;
 
         // Do checks if there is an access token
