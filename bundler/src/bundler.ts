@@ -11,7 +11,7 @@ ensureFolder(buildFolder);
 ensureFolder(packagesDepFolder);
 ensureFolder(bundleDist);
 
-const srcPackages = ["shared","webafx-auth","webapi"];
+const srcPackages = ["shared", "webapi"];
 srcPackages.forEach((pkg) => {
     const pkgPath = path.resolve(path.join(process.cwd(), "..", "packages", pkg));
     logger.info(`Creating local package in ${pkgPath}`);
