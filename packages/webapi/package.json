@@ -1,6 +1,6 @@
 {
     "name": "@porta/webapi",
-    "version": "1.0.203",
+    "version": "1.0.204",
     "main": "dist/index.js",
     "private": true,
     "bin": {
@@ -39,7 +39,7 @@
         "@blendsdk/webafx-mailer": "3.2.332",
         "@peculiar/webcrypto": "^1.4.3",
         "@peculiar/x509": "^1.9.5",
-        "@porta/shared": "1.0.203",
+        "@porta/shared": "1.0.204",
         "@types/jsonwebtoken": "^9.0.3",
         "dayjs": "^1.11.10",
         "jose": "^4.15.1",
