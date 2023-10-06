@@ -69,6 +69,13 @@ export class Claims {
                     })
                 },
                 {
+                    scope: ["userinfo", "profile"],
+                    claim: "updated_at",
+                    handler: this.handleClaim(() => {
+                        return new Date(user.date_changed).getTime();
+                    })
+                },
+                {
                     scope: "profile",
                     claim: "given_name",
                     handler: this.handleClaim(() => {
@@ -237,17 +244,17 @@ export class Claims {
                                     role_id: r.id,
                                     role: r.name
                                 };
-                            })
+                            });
                         return tmp.filter((obj, index) => {
-                            return index === tmp.findIndex(o => obj.role_id === o.role_id);
-                        })
+                            return index === tmp.findIndex((o) => obj.role_id === o.role_id);
+                        });
                     })
                 },
                 {
                     scope: "acl",
                     claim: "permissions",
                     handler: this.handleClaim(() => {
-                        const tmp =  permissions
+                        const tmp = permissions
                             .filter((r) => {
                                 // Here we filter the GROUP_PERMISSION since it is for handling Role based access only
                                 return r.is_active === true && r.code !== eDefaultPermissions.GROUP_PERMISSION.code;
@@ -258,9 +265,9 @@ export class Claims {
                                     permission: r.code
                                 };
                             });
-                            return tmp.filter((obj, index) => {
-                                return index === tmp.findIndex(o => obj.permission_id === o.permission_id);
-                            })
+                        return tmp.filter((obj, index) => {
+                            return index === tmp.findIndex((o) => obj.permission_id === o.permission_id);
+                        });
                     })
                 }
             ];
