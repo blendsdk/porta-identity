@@ -392,9 +392,6 @@ export class AuthorizeEndpointController extends EndpointController {
         // we first get the token from the cookie
         const accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
 
-        // now we check if this token actually exists and was not revoked before
-
-        //TODO: token anchor
         let accessTokenRecord = await databaseUtils.findAccessTokenByTenant({
             tenant: tenant.id,
             access_token: accessTokenFromCookie,

@@ -1,5 +1,6 @@
 import { sha256Verify } from "@blendsdk/crypto";
 import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
+import { SESSION_KEY } from "@blendsdk/webafx-auth";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
@@ -182,7 +183,7 @@ class CommonUtils {
      */
     public async getSessionTTLKey(_req: HttpRequest): Promise<string> {
         //TODO: refactor to support multi tenant client session
-        return "_session";
+        return SESSION_KEY;
     }
 }
 
