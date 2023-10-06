@@ -171,10 +171,9 @@ export class Claims {
                 },
                 {
                     scope: "profile",
-                    claim: "updated_at",
+                    claim: "profile_updated_at",
                     handler: this.handleClaim(() => {
-                        // return new Date(profile.date_changed).getTime() / 1000;
-                        return undefined;
+                        return new Date(profile.date_changed).getTime();
                     })
                 },
                 {
