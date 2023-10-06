@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "remove": "^0.1.5",
-    "scheduler": "0.20.0"
+    "scheduler": "0.20.0",
+    "ts-node": "^10.9.1"
   }
 }

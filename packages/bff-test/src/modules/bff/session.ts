@@ -3,6 +3,14 @@ import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
 import { getCommonKeySignature } from "./common";
 
 export class BffSessionProviderModule extends SessionProviderModuleBase {
+    /**
+     * @protected
+     * @template SessionStorageType
+     * @param {string} token
+     * @param {HttpRequest<{}>} req
+     * @returns {Promise<SessionStorageType>}
+     * @memberof BffSessionProviderModule
+     */
     protected async findSessionStorageByToken<SessionStorageType = any>(
         token: string,
         req: HttpRequest<{}>

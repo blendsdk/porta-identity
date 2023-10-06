@@ -1,5 +1,5 @@
 import { base64Decode } from "@blendsdk/stdlib";
-import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
+import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
@@ -98,7 +98,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @returns {Promise<ClientMetadata>}
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
-    protected getOIDCClientConfig(tenant: string): Promise<ClientMetadata> {
+    protected getOIDCClientConfig(_req: HttpRequest, tenant: string): Promise<ClientMetadata> {
         return databaseUtils.getOIDCClientConfig(tenant);
     }
 
@@ -134,7 +134,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
-        return "_session";
+        return SESSION_KEY;
     }
 
     /**

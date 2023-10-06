@@ -63,7 +63,7 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
      * @returns {Promise<ClientMetadata>}
      * @memberof BffTokenAuthenticationModule
      */
-    protected async getOIDCClientConfig(_tenant: string): Promise<ClientMetadata> {
+    protected async getOIDCClientConfig(_req: HttpRequest, _tenant: string): Promise<ClientMetadata> {
         return {
             client_id: "bff",
             client_secret: "secret"
