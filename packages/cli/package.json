@@ -8,6 +8,7 @@
     },
     "author": "TrueSoftware <info@truesoftware.nl>",
     "scripts": {
+        "cli:run": "NODE_TLS_REJECT_UNAUTHORIZED=0 node ./dist/index.js",
         "build": "rm -fR ./dist ./temp && tsc",
         "watch:ts": "rm -fR ./dist && tsc -w",
         "watch:node": "NODE_TLS_REJECT_UNAUTHORIZED=0 BYPASS=true DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources/ --watch ./config/ --inspect ./dist/index.js start --config=`pwd`/config/*.config.js --config=`pwd`/config/.*.config.js --migrate=${MIGRATE:-false}",
