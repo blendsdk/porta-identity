@@ -40,7 +40,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
             resource: req.context.getServerURL()
         };
     }
-    protected async getOIDCClientConfig(tenant: string): Promise<ClientMetadata> {
+    protected async getOIDCClientConfig(_req: HttpRequest, tenant: string): Promise<ClientMetadata> {
         return {
             client_id: await sha256Hash(`porta_cli_${tenant}`),
             token_endpoint_auth_method: "none"
