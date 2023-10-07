@@ -263,21 +263,26 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }) {
         const { access_token, expire_at } = accessTokenStorage;
 
-        // also readable from the UI
-        this.setCookie(sessionKeySignature, sessionStorage.session_id, {
-            expires: new Date(expire_at),
-            signed: true,
-            httpOnly: true,
-            secure: this.request.protocol !== "http",
-            sameSite: "lax" // only send to this endpoint
-        });
+        //TODO delete
+        if (Date.now() === 1) {
+            console.log({ tenant, refreshTokenStorage, refreshTokenKeySignature, sessionKeySignature, sessionStorage });
+        }
 
-        this.setCookie(await commonUtils.getSessionTTLKey(this.request), new Date(expire_at).getTime(), {
-            signed: false,
-            httpOnly: false,
-            secure: false,
-            sameSite: "lax"
-        });
+        // also readable from the UI
+        // this.setCookie(sessionKeySignature, sessionStorage.session_id, {
+        //     expires: new Date(expire_at),
+        //     signed: true,
+        //     httpOnly: true,
+        //     secure: this.request.protocol !== "http",
+        //     sameSite: "lax" // only send to this endpoint
+        // });
+
+        // this.setCookie(await commonUtils.getSessionTTLKey(this.request), new Date(expire_at).getTime(), {
+        //     signed: false,
+        //     httpOnly: false,
+        //     secure: false,
+        //     sameSite: "lax"
+        // });
 
         // set the token cookie
         this.setCookie(accessTokenKeySignature, access_token, {
@@ -289,43 +294,43 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         });
 
         // session length info for the ui
-        this.setCookie(
-            portaAuthUtils.getKeySignature({
-                tenant,
-                client: accessTokenStorage.client.client_id,
-                system: this.getServerURL(),
-                type: eKeySignatureType.session
-            }),
-            new Date(expire_at).getTime(),
-            {
-                expires: new Date(expire_at)
-            }
-        );
+        // this.setCookie(
+        //     portaAuthUtils.getKeySignature({
+        //         tenant,
+        //         client: accessTokenStorage.client.client_id,
+        //         system: this.getServerURL(),
+        //         type: eKeySignatureType.session
+        //     }),
+        //     new Date(expire_at).getTime(),
+        //     {
+        //         expires: new Date(expire_at)
+        //     }
+        // );
 
-        if (refreshTokenKeySignature && refreshTokenStorage) {
-            const { refresh_token, expire_at } = refreshTokenStorage || {};
+        // if (refreshTokenKeySignature && refreshTokenStorage) {
+        //     const { refresh_token, expire_at } = refreshTokenStorage || {};
 
-            this.setCookie(refreshTokenKeySignature, refresh_token, {
-                expires: new Date(expire_at),
-                signed: true,
-                secure: this.request.protocol !== "http",
-                sameSite: "lax", // only send to this endpoint
-                httpOnly: true
-            });
+        //     this.setCookie(refreshTokenKeySignature, refresh_token, {
+        //         expires: new Date(expire_at),
+        //         signed: true,
+        //         secure: this.request.protocol !== "http",
+        //         sameSite: "lax", // only send to this endpoint
+        //         httpOnly: true
+        //     });
 
-            this.setCookie(
-                portaAuthUtils.getKeySignature({
-                    tenant,
-                    client: accessTokenStorage.client.client_id,
-                    system: this.getServerURL(),
-                    type: eKeySignatureType.refresh_session
-                }),
-                new Date(expire_at).getTime(),
-                {
-                    expires: new Date(expire_at)
-                }
-            );
-        }
+        //     this.setCookie(
+        //         portaAuthUtils.getKeySignature({
+        //             tenant,
+        //             client: accessTokenStorage.client.client_id,
+        //             system: this.getServerURL(),
+        //             type: eKeySignatureType.refresh_session
+        //         }),
+        //         new Date(expire_at).getTime(),
+        //         {
+        //             expires: new Date(expire_at)
+        //         }
+        //     );
+        // }
     }
 
     /**

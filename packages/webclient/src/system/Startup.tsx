@@ -37,7 +37,7 @@ export const Startup = () => {
                     return translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
                 }}
                 onSessionStarted={() => {
-                    return new Promise(async (resolve) => {
+                    return new Promise<void>(async (resolve) => {
                         try {
                             await referenceData.load();
                             resolve();
