@@ -27,7 +27,9 @@ export class PortaAuthUtils {
      * @memberof PortaAuthUtils
      */
     public getKeySignature({ type, tenant, client, system }: IPortaUtilsGetKeySignature) {
-        console.error({type, tenant, client, system})
+        console.log("============================================")
+        console.log({type, tenant, client, system})
+        console.log("============================================")
         return CRC32<string>([type, tenant, client, system].join("-"), { hexOutput: true });
     }
 }
