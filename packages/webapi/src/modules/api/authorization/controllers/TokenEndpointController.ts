@@ -314,7 +314,7 @@ export class TokenEndpointController extends EndpointController {
                         errors.push("invalid_bound_client");
                     }
                 } else {
-                    this.getLogger().debug("No old access token found.");
+                    await this.getLogger().debug("No old access token found.");
                     errors.push("invalid_refresh_token");
                 }
             }

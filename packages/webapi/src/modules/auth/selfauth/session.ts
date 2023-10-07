@@ -85,7 +85,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
     ): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
 
-        req.context.getLogger().debug("findSessionStorageByToken",{token,tokenType})
+        await req.context.getLogger().debug("findSessionStorageByToken",{token,tokenType})
 
         switch (tokenType) {
             case eTokenType.ANONYMOUS_LOGOUT_TOKEN:
@@ -233,7 +233,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
         }
 
-        req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken,sig,tenant:commonUtils.getTenantFromRequest(req)})
+        await req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken,sig,tenant:commonUtils.getTenantFromRequest(req)})
 
         return access_token || bearerToken || cookieToken || clientSecretParams || anonLogoutToken;
     }
