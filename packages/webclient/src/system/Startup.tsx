@@ -34,11 +34,9 @@ export const Startup = () => {
         <FluentProvider theme={theme}>
             <SessionProvider
                 onBeforeStart={() => {
-                    console.log("a");
                     return translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
                 }}
                 onSessionStarted={() => {
-                    console.log("b");
                     return new Promise(async (resolve) => {
                         try {
                             await referenceData.load();
