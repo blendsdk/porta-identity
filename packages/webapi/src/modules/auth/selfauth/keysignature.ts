@@ -67,7 +67,7 @@ export class KeySignatureProvider {
                     })
                 };
             }
-            req.context.getLogger().debug("SIG",{sig})
+            req.context.getLogger().debug("SIG", { sig });
         }
         return sig;
     }

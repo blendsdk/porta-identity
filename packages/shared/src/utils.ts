@@ -28,12 +28,20 @@ export class PortaAuthUtils {
      */
     public getKeySignature({ type, tenant, client, system }: IPortaUtilsGetKeySignature) {
         const url = new URL(system);
-        console.log("============================")
+        console.log("============================");
+        const key = [type, tenant, client, url.hostname].join("-");
+        const crc = CRC32<string>(key, { hexOutput: true });
         console.log({
-            hostname:url.hostname,
-            type, tenant, client, system
-        })
-        return CRC32<string>([type, tenant, client, url.hostname].join("-"), { hexOutput: true });
+            hostname: url.hostname,
+            type,
+            tenant,
+            client,
+            system,
+            key,
+            crc
+        });
+        console.log("============================");
+        return crc;
     }
 }
 
