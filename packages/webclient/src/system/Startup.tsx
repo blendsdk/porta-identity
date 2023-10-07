@@ -1,10 +1,11 @@
-import { Router, SessionLoadingView, SystemError, getCurrentLocale } from "@blendsdk/react";
+import { Router, SessionProvider, SystemError, getCurrentLocale } from "@blendsdk/react";
 import { FluentProvider } from "@fluentui/react-components";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { appRoutes } from "../application/routing";
+import { useReferenceData } from "../lib";
 import { useTranslation } from "./i18n";
 import "./session";
-import { useAppTheme, useSystemError } from "./session";
+import { useAppTheme, useRouter, useSystemError } from "./session";
 
 /**
  * Index component that is going to load the application component
@@ -14,12 +15,12 @@ export const Startup = () => {
     const { theme } = useAppTheme();
     const { catchSystemError } = useSystemError();
     const { translationStore } = useTranslation();
-    const [ready, setReady] = useState<boolean>(false);
+    const router = useRouter();
+    const referenceData = useReferenceData();
     useEffect(() => {
         const worker = new Promise<void>(async (resolve, reject) => {
             try {
                 await translationStore.initialize(getCurrentLocale());
-                setReady(true);
                 resolve();
             } catch (err: any) {
                 reject(err);
@@ -31,7 +32,34 @@ export const Startup = () => {
 
     return (
         <FluentProvider theme={theme}>
-            <SystemError>{ready ? <Router routes={appRoutes} /> : <SessionLoadingView />}</SystemError>
+            <SessionProvider
+                onBeforeStart={() => {
+                    console.log("a");
+                    return translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
+                }}
+                onSessionStarted={() => {
+                    console.log("b");
+                    return new Promise(async (resolve) => {
+                        try {
+                            await referenceData.load();
+                            resolve();
+                        } catch (err: any) {
+                            catchSystemError(err);
+                        }
+                    });
+                }}
+            >
+                <SystemError>
+                    <Router
+                        routes={appRoutes}
+                        // unAuthorizedAccessView={<UNA />}
+                        // onHandleAccessControl={(route, params) => {
+                        //     console.log(ses.hasValidSession);
+                        //     return route === eAppRoutes.suppliersOverview.key ? false : true;
+                        // }}
+                    />
+                </SystemError>
+            </SessionProvider>
         </FluentProvider>
     );
 };

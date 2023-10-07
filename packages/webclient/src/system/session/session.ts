@@ -1,7 +1,8 @@
 import { ErrorDialog, makeTheme } from "@blendsdk/fluentrc";
-import { DefaultSystemErrorStore, makeRouter, makeSystemError } from "@blendsdk/react";
-import { teamsLightTheme } from "@fluentui/react-components";
+import { DefaultSystemErrorStore, makeRouter, makeSession, makeSystemError } from "@blendsdk/react";
 import { ApplicationApi } from "../api";
+import { SessionStore } from "./store";
+import { lightTheme } from "./theme";
 
 export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;
@@ -25,7 +26,7 @@ ApplicationApi.setSigningKey(() => {
 
 export const useAppTheme = makeTheme({
     onInit: (store) => {
-        store.setTheme(teamsLightTheme);
+        store.setTheme(lightTheme);
     }
 });
 
@@ -35,4 +36,4 @@ export const useSystemError = makeSystemError(DefaultSystemErrorStore, {
 
 export const useRouter = makeRouter();
 
-//export const useSession = makeSession(SessionStore);
+export const useSession = makeSession(SessionStore);

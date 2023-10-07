@@ -7,10 +7,6 @@ export const eAppRoutes = {
         key: "signout",
         path: "/fe/auth/signout"
     },
-    signinRedirect: {
-        key: "signinRedirect",
-        path: "/fe/local/signin"
-    },
     forgotPassword: {
         key: "forgotPassword",
         path: "/fe/forgot-password"
@@ -21,6 +17,10 @@ export const eAppRoutes = {
     },
     root: {
         key: "root",
-        path: "/"
+        path: "/fe/"
+    },
+    noValidSession: {
+        key: "no-valid-session",
+        path: "/fe/session-expired"
     }
 };

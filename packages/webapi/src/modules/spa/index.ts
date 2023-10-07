@@ -33,11 +33,12 @@ export const SPARoutes = (): IRouter => {
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
-                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/manage` }))
+                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/manage` }))
                     );
                     if (locale) {
                         url.searchParams.append("locale", locale);
                     }
+                    res.cookie("_manage", tenant);
                     res.send(renderGetRedirect(url.toString()));
                 }
             },

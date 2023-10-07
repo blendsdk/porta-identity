@@ -1,0 +1,26 @@
+{
+    "dashboard_btn": {
+        "en": "Dashboard",
+        "nl": "Dashboard"
+    },
+    "applications": {
+        "en": "Applications",
+        "nl": "Applicaties"
+    },
+    "users": {
+        "en": "Accounts",
+        "nl": "Gebruikers"
+    },
+    "roles": {
+        "en": "Roles",
+        "nl": "Rollen"
+    },
+    "my_account": {
+        "en": "My Account",
+        "nl": "Mijn account"
+    },
+    "session_expired_message": {
+        "en": "Your session is expired! Please sign-in again.",
+        "nl": "Uw sessie is verlopen! Meld u opnieuw aan."
+    }
+}

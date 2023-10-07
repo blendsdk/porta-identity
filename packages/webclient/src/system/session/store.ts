@@ -1,4 +1,6 @@
 import { SessionStoreBase, useGlobalSystemError } from "@blendsdk/react";
+import Cookies from "js-cookie";
+import { eAppRoutes } from "../../application/routing";
 import { ApplicationApi } from "../api";
 
 /**
@@ -14,7 +16,19 @@ export class SessionStore extends SessionStoreBase {
      */
     protected onSessionExpired(): Promise<void> {
         return new Promise((resolve) => {
-            this.stopChecking();
+            const router = this.getRouter();
+            switch (router.getRouteName()) {
+                case eAppRoutes.signin.key:
+                case eAppRoutes.signout.key:
+                case eAppRoutes.forgotPassword.key:
+                case eAppRoutes.resetPassword.key:
+                case eAppRoutes.noValidSession.key:
+                    this.stopChecking();
+                    break;
+                default:
+                    Cookies.remove("_session");
+                    this.getRouter().go(eAppRoutes.noValidSession.key, undefined, true);
+            }
             resolve();
         });
     }

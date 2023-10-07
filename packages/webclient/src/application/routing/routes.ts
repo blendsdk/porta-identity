@@ -2,7 +2,8 @@ import { IRoute } from "@blendsdk/react";
 import { LoginView, LogoutView } from "../authentication";
 import { ForgotPassword } from "../authentication/ForgotPassword";
 import { ResetPassword } from "../authentication/ResetPassword";
-import { SignInRedirect } from "../dashboard";
+import { DashboardOverview } from "../dashboard/DashboardView";
+import { SessionExpiredView } from "../dashboard/SessionExpred";
 import { eAppRoutes } from "./constants";
 
 export const appRoutes: IRoute[] = [
@@ -10,11 +11,6 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.signin.key,
         path: eAppRoutes.signin.path,
         component: LoginView
-    },
-    {
-        name: eAppRoutes.signinRedirect.key,
-        path: eAppRoutes.signinRedirect.path,
-        component: SignInRedirect
     },
     {
         name: eAppRoutes.signout.key,
@@ -34,8 +30,11 @@ export const appRoutes: IRoute[] = [
     {
         name: eAppRoutes.root.key,
         path: eAppRoutes.root.path,
-        component: () => {
-            return "" as any;
-        }
+        component: DashboardOverview
+    },
+    {
+        name: eAppRoutes.noValidSession.key,
+        path: eAppRoutes.noValidSession.path,
+        component: SessionExpiredView
     }
 ];

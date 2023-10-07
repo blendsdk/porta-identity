@@ -274,7 +274,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         this.setCookie(await commonUtils.getSessionTTLKey(this.request), new Date(expire_at).getTime(), {
             signed: false,
-            httpOnly: true,
+            httpOnly: false,
             secure: false,
             sameSite: "lax"
         });
