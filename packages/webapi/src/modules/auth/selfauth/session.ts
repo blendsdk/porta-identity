@@ -233,6 +233,8 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
         }
 
+        req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken})
+
         return access_token || bearerToken || cookieToken || clientSecretParams || anonLogoutToken;
     }
 
