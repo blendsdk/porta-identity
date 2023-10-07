@@ -1,7 +1,7 @@
 {
   "name": "@porta/codegen",
   "private": true,
-  "version": "1.0.220",
+  "version": "1.0.221",
   "description": "Code generation package for porta",
   "main": "dist/index.js",
   "author": "TrueSoftware <info@truesoftware.nl>",
