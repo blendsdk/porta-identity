@@ -1,6 +1,6 @@
 {
   "name": "@porta/webclient",
-  "version": "1.0.226",
+  "version": "1.0.227",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "@blendsdk/react": "3.2.338",
     "@blendsdk/stdlib": "3.2.338",
     "@fluentui/react-components": "^9.33.0",
-    "@porta/shared": "1.0.226",
+    "@porta/shared": "1.0.227",
     "dayjs": "^1.11.10",
     "formik": "^2.4.5",
     "react": "^18.2.0",
