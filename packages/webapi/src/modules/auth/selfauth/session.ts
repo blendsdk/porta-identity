@@ -85,6 +85,8 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
     ): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
 
+        req.context.getLogger().debug("findSessionStorageByToken",{token,tokenType})
+
         switch (tokenType) {
             case eTokenType.ANONYMOUS_LOGOUT_TOKEN:
                 return {
@@ -161,6 +163,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
                 }
             }
             default:
+                req.context.getLogger().error("INVALID_TOKEN_TYPE",{tokenType})
                 return undefined;
         }
     }
