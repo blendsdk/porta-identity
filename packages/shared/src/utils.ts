@@ -1,3 +1,5 @@
+import { CRC32 } from "@blendsdk/stdlib";
+
 export enum eKeySignatureType {
     access_token = "access_token",
     refresh_token = "refresh_token",
@@ -31,8 +33,7 @@ export class PortaAuthUtils {
             hostname:url.hostname,
             type, tenant, client, system
         })
-        return [type, tenant, client, url.hostname].join("_")
-        //return CRC32<string>([type, tenant, client, url.hostname].join("-"), { hexOutput: true });
+        return CRC32<string>([type, tenant, client, url.hostname].join("-"), { hexOutput: true });
     }
 }
 
