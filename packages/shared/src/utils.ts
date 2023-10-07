@@ -1,3 +1,5 @@
+import { MD5 } from "@blendsdk/stdlib";
+
 export enum eKeySignatureType {
     access_token = "access_token",
     refresh_token = "refresh_token",
@@ -29,7 +31,7 @@ export class PortaAuthUtils {
         console.log({type, tenant, client, system})
         console.log("============================================")
         //return CRC32<string>([type, tenant, client, system].join("-"), { hexOutput: true });
-        return [type, tenant, client, system].join("-")
+        return MD5([type, tenant, client, system].join("-"))
     }
 }
 
