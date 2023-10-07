@@ -84,7 +84,9 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
                         <AppBarTabHeader addBottomSpacing>
                             <Subtitle1>Settings</Subtitle1>
                         </AppBarTabHeader>
-                        <Button appearance="primary">{t("logout")}</Button>
+                        <Button appearance="primary" onClick={()=>{
+                            window.location.href = refData.userProfile.signout_url
+                        }}>{t("logout")}</Button>
                     </AppBarTab>
                 </AppBarTabList>
             )}
