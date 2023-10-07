@@ -2,7 +2,7 @@ import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { SessionProviderModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
 import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
 import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../../types";
-import { databaseUtils } from "../../../utils";
+import { commonUtils, databaseUtils } from "../../../utils";
 import { TokenEndpointController } from "../../api/authorization/controllers/TokenEndpointController";
 import { keySignatureProvider } from "./keysignature";
 
@@ -233,7 +233,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
         }
 
-        req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken})
+        req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken,sig,tenant:commonUtils.getTenantFromRequest(req)})
 
         return access_token || bearerToken || cookieToken || clientSecretParams || anonLogoutToken;
     }
