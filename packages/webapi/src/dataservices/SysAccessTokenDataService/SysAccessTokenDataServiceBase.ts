@@ -98,8 +98,6 @@ export abstract class SysAccessTokenDataServiceBase extends DataService<PostgreS
      * @memberof SysAccessTokenDataServiceBase
      */
     public async insertIntoSysAccessToken(params: ISysAccessToken): Promise<ISysAccessToken> {
-        console.error(JSON.stringify(params, null, 4));
-
         const ctx = await this.getContext();
         const result = await ctx.insertRecord<ISysAccessToken, ISysAccessToken>(`sys_access_token`, params, {
             single: true
