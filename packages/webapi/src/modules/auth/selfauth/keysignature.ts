@@ -28,13 +28,35 @@ export class KeySignatureProvider {
      * @returns
      * @memberof PortaSelfAuthenticationModule
      */
+    // public async getKeySignature(req: HttpRequest) {
+    //     const tenant = commonUtils.getTenantFromRequest(req);
+    //     if (tenant && !this.tenantKeySignatures[tenant]) {
+    //         const tenantRecord = await databaseUtils.findTenant(tenant);
+    //         if (tenantRecord) {
+    //             const { client_id } = await databaseUtils.getOIDCClientConfig(tenant);
+    //             this.tenantKeySignatures[tenant] = {
+    //                 id: tenantRecord.id,
+    //                 tenant: tenantRecord.name,
+    //                 sig: portaAuthUtils.getKeySignature({
+    //                     tenant: tenantRecord.name,
+    //                     client: client_id,
+    //                     system: req.context.getServerURL(),
+    //                     type: eKeySignatureType.access_token
+    //                 })
+    //             };
+    //         }
+    //     }
+    //     return tenant ? this.tenantKeySignatures[tenant] : (undefined as any);
+    // }
+
     public async getKeySignature(req: HttpRequest) {
         const tenant = commonUtils.getTenantFromRequest(req);
-        if (tenant && !this.tenantKeySignatures[tenant]) {
+        let sig = undefined;
+        if (tenant) {
             const tenantRecord = await databaseUtils.findTenant(tenant);
             if (tenantRecord) {
                 const { client_id } = await databaseUtils.getOIDCClientConfig(tenant);
-                this.tenantKeySignatures[tenant] = {
+                sig = {
                     id: tenantRecord.id,
                     tenant: tenantRecord.name,
                     sig: portaAuthUtils.getKeySignature({
@@ -45,8 +67,9 @@ export class KeySignatureProvider {
                     })
                 };
             }
+            req.context.getLogger().debug("SIG",{sig})
         }
-        return tenant ? this.tenantKeySignatures[tenant] : (undefined as any);
+        return sig;
     }
 }
 
