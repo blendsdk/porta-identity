@@ -19,7 +19,6 @@ export class SessionStore extends SessionStoreBase {
             const router = this.getRouter();
             switch (router.getRouteName()) {
                 case eAppRoutes.signin.key:
-                case eAppRoutes.signout.key:
                 case eAppRoutes.forgotPassword.key:
                 case eAppRoutes.resetPassword.key:
                 case eAppRoutes.noValidSession.key:
