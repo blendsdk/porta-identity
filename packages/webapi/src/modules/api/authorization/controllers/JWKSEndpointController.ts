@@ -50,7 +50,7 @@ export class JWKSEndpointController extends EndpointController {
                     jwk.kid = record.key_id;
                     jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
                     jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
-                    jwk.issuer = `${this.getServerUrl()}/${tenant}/oauth2`;
+                    jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
                     (jwks as any[]).push(jwk);
                 });
                 this.getCache().setValue(cacheKey, jwks);

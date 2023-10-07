@@ -31,7 +31,7 @@ export class ApplicationController extends ApplicationControllerBase {
                 username: email,
                 password,
                 email,
-                serverURL: this.getServerUrl()
+                serverURL: this.getServerURL()
             });
 
             return new SuccessResponse({
@@ -66,7 +66,7 @@ export class ApplicationController extends ApplicationControllerBase {
                 username,
                 password,
                 email,
-                serverURL: this.getServerUrl()
+                serverURL: this.getServerURL()
             });
 
             return new SuccessResponse({

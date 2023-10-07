@@ -1,4 +1,4 @@
-import { RoleBasedAccessTable } from "@blendsdk/rbac";
+import { RoleBasedAccessTable, eAclRuleType } from "@blendsdk/rbac";
 import { IRouter, RBAC_HANDLER } from "@blendsdk/webafx";
 import {
     HttpRequest,
@@ -7,14 +7,22 @@ import {
     UnAuthorizedAccessResponse,
     sendResponse
 } from "@blendsdk/webafx-common";
-import { eDefaultPermissions } from "@porta/shared";
+import { ISysUserPermissionView, eDefaultPermissions } from "@porta/shared";
 import { IAccessToken, routeDefinitions } from "../../types";
 
 export const RoleBasedAccessHandler = (): IRouter => {
     const rbacTable = new RoleBasedAccessTable({
-        permissions: {
-            [routeDefinitions.application.create_tenant.url]: eDefaultPermissions.CAN_CREATE_TENANT.code
-        }
+        rules:[
+            {
+                subject:routeDefinitions.application.create_tenant.url,
+                type:eAclRuleType.permission,
+                check:(tokens:ISysUserPermissionView[])=>{
+                    return tokens.find(t=>{
+                        return t.code === eDefaultPermissions.CAN_CREATE_TENANT.code
+                    }) !== undefined
+                }
+            }
+        ]
     });
 
     return {
@@ -24,20 +32,11 @@ export const RoleBasedAccessHandler = (): IRouter => {
                 const { permissions = [] } = req.context.getUser<IAccessToken>() || {};
 
                 if (
-                    rbacTable.hasAccessByPermission(
-                        url,
-                        permissions.map((p) => {
-                            return p.code;
-                        }),
-                        {
-                            passWhenNoRulePresent: true,
-                            allRequired: false
-                        }
-                    )
+                    rbacTable.check(url,permissions,eAclRuleType.permission,{passWhenNoRulePresent:true,allRequired:false})
                 ) {
                     next();
                 } else {
-                    sendResponse(new UnAuthorizedAccessResponse(new Error("UNAUTHORIZED_ACCESS_TO ENDPOINT")), res);
+                    sendResponse(new UnAuthorizedAccessResponse(new Error("UNAUTHORIZED_ACCESS_TO_ENDPOINT")), res);
                 }
             }
         }

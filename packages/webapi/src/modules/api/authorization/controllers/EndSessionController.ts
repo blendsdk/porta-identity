@@ -136,7 +136,7 @@ export class EndSessionController extends EndpointController {
                     ...(session as any),
                     tenant,
                     flowState: eLogoutFlowState.consent,
-                    finalizeURL: `${this.getServerUrl()}${this.request.path}?lf=${flowId}`,
+                    finalizeURL: `${this.getServerURL()}${this.request.path}?lf=${flowId}`,
                     post_logout_redirect_uri,
                     flowId,
                     state
@@ -200,7 +200,7 @@ export class EndSessionController extends EndpointController {
             await this.getCache().setValue(this.getLogoutFlowCacheKey(flowId), flowData);
 
             // return to the logout form
-            return new SuccessResponse(renderGetRedirect(`${this.getServerUrl()}/fe/auth/signout`));
+            return new SuccessResponse(renderGetRedirect(`${this.getServerURL()}/fe/auth/signout`));
         } else if (flowState === eLogoutFlowState.finalize) {
             // Removes all token by this user and client
             const tenantRecord = await databaseUtils.findTenant(flowData.tenant);
@@ -210,7 +210,7 @@ export class EndSessionController extends EndpointController {
             this.deleteAllCookies({
                 tenant: flowData.tenant,
                 client: flowData.client.client_id,
-                system: this.getServerUrl(),
+                system: this.getServerURL(),
                 type: undefined
             });
             // delete the flow cache
@@ -328,7 +328,7 @@ export class EndSessionController extends EndpointController {
                 );
             } else if (logoutFlowId) {
                 return new RedirectResponse({
-                    url: `${this.getServerUrl()}${this.request.path}?lf=${logoutFlowId}`
+                    url: `${this.getServerURL()}${this.request.path}?lf=${logoutFlowId}`
                 });
             } else {
                 return this.responseWithError(

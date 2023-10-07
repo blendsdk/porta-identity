@@ -198,7 +198,7 @@ export class PasswordResetEndpointController extends EndpointController {
                         html: trans.translate("mail_reset_password_body", {
                             ...profileRecord,
                             ...tenantRecord,
-                            url: `${this.getServerUrl()}/fe/reset-password/${stateKey}/t`,
+                            url: `${this.getServerURL()}/fe/reset-password/${stateKey}/t`,
                             ttl: Math.trunc(AUTH_FLOW_TTL / 60)
                         })
                     });

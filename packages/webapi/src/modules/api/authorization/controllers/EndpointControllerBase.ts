@@ -117,7 +117,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected getClaimsByScope(accessTokenStorage: IAccessToken, tenantName: string) {
-        const claims = new Claims(accessTokenStorage, this.getServerUrl(), tenantName);
+        const claims = new Claims(accessTokenStorage, this.getServerURL(), tenantName);
         return claims.getClaims();
     }
 
@@ -156,7 +156,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected getIssuer(tenant: string) {
-        return `${this.getServerUrl()}/${tenant}/oauth2`;
+        return `${this.getServerURL()}/${tenant}/oauth2`;
     }
 
     /**
@@ -293,7 +293,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             portaAuthUtils.getKeySignature({
                 tenant,
                 client: accessTokenStorage.client.client_id,
-                system: this.getServerUrl(),
+                system: this.getServerURL(),
                 type: eKeySignatureType.session
             }),
             new Date(expire_at).getTime(),
@@ -317,7 +317,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 portaAuthUtils.getKeySignature({
                     tenant,
                     client: accessTokenStorage.client.client_id,
-                    system: this.getServerUrl(),
+                    system: this.getServerURL(),
                     type: eKeySignatureType.refresh_session
                 }),
                 new Date(expire_at).getTime(),
@@ -365,7 +365,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const accessTokenKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
             client: authRecord.client_id,
-            system: this.getServerUrl(),
+            system: this.getServerURL(),
             type: eKeySignatureType.access_token
         });
 
@@ -373,7 +373,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const sessionKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
             client: authRecord.client_id,
-            system: this.getServerUrl(),
+            system: this.getServerURL(),
             type: eKeySignatureType.session_id
         });
 
@@ -422,7 +422,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             refreshTokenKeySignature = portaAuthUtils.getKeySignature({
                 tenant: tenant.name,
                 client: authRecord.client_id,
-                system: this.getServerUrl(),
+                system: this.getServerURL(),
                 type: eKeySignatureType.refresh_token
             });
         }
@@ -609,7 +609,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndPointController
      */
     protected createFlowUrl(action: string, flow?: string) {
-        const url = new URL(`${this.getServerUrl()}/af/${action}`);
+        const url = new URL(`${this.getServerURL()}/af/${action}`);
         flow = flow || this.findFlowID();
         if (flow) {
             url.searchParams.append("af", flow);

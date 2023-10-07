@@ -386,7 +386,7 @@ export class AuthorizeEndpointController extends EndpointController {
         const accessTokenKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
             client: client_id,
-            system: this.getServerUrl(),
+            system: this.getServerURL(),
             type: eKeySignatureType.access_token
         });
         // we first get the token from the cookie
