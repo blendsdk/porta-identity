@@ -11,7 +11,8 @@ export class ReferenceDataStore extends DataStoreBase {
     }
 
     public getManageTenant() {
-        return Cookies.get("_manage") || "";
+        // the _t is available at logout
+        return Cookies.get("_manage") || Cookies.get("_t") ||"";
     }
 
     protected async loadUserProfile() {
