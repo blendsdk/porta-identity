@@ -1,7 +1,7 @@
 {
     "name": "@porta/bff-test",
     "private": true,
-    "version": "1.0.214",
+    "version": "1.0.215",
     "main": "dist/index.js",
     "bin": {
         "porta-ctrl": "./dist/index.js"
