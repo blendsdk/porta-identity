@@ -263,7 +263,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }) {
         const { access_token, expire_at } = accessTokenStorage;
 
-        //TODO delete
+        //TODO Cleanup this method!!
         if (Date.now() === 1) {
             console.log({ tenant, refreshTokenStorage, refreshTokenKeySignature, sessionKeySignature, sessionStorage });
         }
@@ -277,12 +277,25 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         //     sameSite: "lax" // only send to this endpoint
         // });
 
-        // this.setCookie(await commonUtils.getSessionTTLKey(this.request), new Date(expire_at).getTime(), {
-        //     signed: false,
-        //     httpOnly: false,
-        //     secure: false,
-        //     sameSite: "lax"
-        // });
+        const { sessionKey, sessionTTLKey } = commonUtils.getSessionTTLKey(tenant);
+
+        // readable from client
+        this.setCookie(sessionTTLKey, new Date(expire_at).getTime(), {
+            signed: false,
+            httpOnly: false,
+            secure: false,
+            sameSite: "lax"
+        });
+
+        // this is the reference to the key of the access token
+        // to be read by self auth
+        this.setCookie(sessionKey, accessTokenKeySignature, {
+            expires: new Date(expire_at),
+            signed: true,
+            secure: this.request.protocol !== "http",
+            sameSite: "lax", // only send to this endpoint
+            httpOnly: true
+        });
 
         // set the token cookie
         this.setCookie(accessTokenKeySignature, access_token, {
@@ -450,7 +463,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected findFlowID(): string {
-        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string }>().af || undefined;
+        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string; }>().af || undefined;
     }
 
     /**
@@ -461,7 +474,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected findLogoutFlowID(): string {
-        return this.getCookie("_lf", true) || this.request.context.getParameters<{ lf: string }>().lf || undefined;
+        return this.getCookie("_lf", true) || this.request.context.getParameters<{ lf: string; }>().lf || undefined;
     }
 
     /**
@@ -483,12 +496,13 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @protected
      * @memberof EndSessionController
      */
-    protected deleteAllCookies(params?: IPortaUtilsGetKeySignature) {
+    protected async deleteAllCookies(params?: IPortaUtilsGetKeySignature) {
         const { client, system, tenant } = params || {};
         const cookies = this.request.cookies;
         const signedCookies = this.request.signedCookies;
         const skip = ["lang", "locale", "ui_locales"];
-        const deleteKeys: string[] = [];
+        const { sessionKey, sessionTTLKey } = await commonUtils.getSessionTTLKey(tenant);
+        const deleteKeys: string[] = ["_l", "_t", "_ls", "_lf", sessionKey, sessionTTLKey];
 
         Object.entries(eKeySignatureType).forEach(([_k, type]) => {
             deleteKeys.push(
@@ -734,7 +748,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         };
     }
 
-    protected async getJWKKey(tenant: string): Promise<{ publicKey: string; privateKey: string }> {
+    protected async getJWKKey(tenant: string): Promise<{ publicKey: string; privateKey: string; }> {
         const { dataSource } = await databaseUtils.getTenantDataSource(tenant);
         const keyDs = new SysKeyDataService({ dataSource });
         const { data } = (await keyDs.findJwkKeys())[0];

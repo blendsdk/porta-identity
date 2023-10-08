@@ -4,7 +4,6 @@ import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
 import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../../types";
 import { commonUtils, databaseUtils } from "../../../utils";
 import { TokenEndpointController } from "../../api/authorization/controllers/TokenEndpointController";
-import { keySignatureProvider } from "./keysignature";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
 
@@ -35,7 +34,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @memberof PortaSelfAuthenticationModule
      */
     protected getTenantFromRequest(req: HttpRequest) {
-        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>() || {};
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>() || {};
         //TODO: Also add from the cookie
         return tenant;
     }
@@ -85,7 +84,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
     ): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
 
-        await req.context.getLogger().debug("findSessionStorageByToken",{token,tokenType})
+        await req.context.getLogger().debug("findSessionStorageByToken", { token, tokenType });
 
         switch (tokenType) {
             case eTokenType.ANONYMOUS_LOGOUT_TOKEN:
@@ -104,23 +103,23 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
                         : undefined
                     : undefined;
             }
-            case eTokenType.COOKIE_TOKEN: {
-                const {
-                    sig = undefined,
-                    tenant = undefined,
-                    id = undefined
-                } = (await keySignatureProvider.getKeySignature(req)) || {};
-                if (sig && tenant && token && id) {
-                    const accessTokenStorage = await this.findAccessTokenByTenant(tenant, token);
-                    return accessTokenStorage
-                        ? accessTokenStorage.tenant.id === id
-                            ? (accessTokenStorage as SessionStorageType)
-                            : undefined
-                        : undefined;
-                } else {
-                    return undefined;
-                }
-            }
+            // case eTokenType.COOKIE_TOKEN: {
+            //     const {
+            //         sig = undefined,
+            //         tenant = undefined,
+            //         id = undefined
+            //     } = (await keySignatureProvider.getKeySignature(req)) || {};
+            //     if (sig && tenant && token && id) {
+            //         const accessTokenStorage = await this.findAccessTokenByTenant(tenant, token);
+            //         return accessTokenStorage
+            //             ? accessTokenStorage.tenant.id === id
+            //                 ? (accessTokenStorage as SessionStorageType)
+            //                 : undefined
+            //             : undefined;
+            //     } else {
+            //         return undefined;
+            //     }
+            // }
             case eTokenType.DIRECT_API: {
                 return {
                     direct_api: true,
@@ -153,9 +152,9 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
                         });
                         return newToken && newToken.access_token
                             ? ((await this.findAccessTokenByTenant(
-                                  tenant,
-                                  newToken.access_token
-                              )) as SessionStorageType)
+                                tenant,
+                                newToken.access_token
+                            )) as SessionStorageType)
                             : undefined;
                     }
                 } else {
@@ -163,7 +162,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
                 }
             }
             default:
-                req.context.getLogger().error("INVALID_TOKEN_TYPE",{tokenType})
+                req.context.getLogger().error("INVALID_TOKEN_TYPE", { tokenType });
                 return undefined;
         }
     }
@@ -177,9 +176,53 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @memberof PortaSelfAuthenticationModule
      */
     protected getAnonymusLogoutURLToken(req: HttpRequest) {
-        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>();
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>();
         const logoutUri = `/${tenant}/oauth2/logout`;
         return logoutUri === req.path ? ANONYMUS_LOGOUT_TOKEN : undefined;
+    }
+
+    protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
+        const { tenant } = req.context.getParameters<{ tenant: string; }>();
+        const bearerToken = this.getBearerToken(req) || undefined;
+        const {
+            access_token = undefined,
+            client_id = undefined,
+            client_secret = undefined
+        } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string; }>();
+        const { account, password } = this.getBasicAuthCredentials(req);
+        const anonLogoutToken = this.getAnonymusLogoutURLToken(req);
+        const { sessionKey } = commonUtils.getSessionTTLKey(tenant);
+
+        if (access_token) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
+            return access_token;
+        }
+
+        if (bearerToken) {
+            const { PORTA_API_KEY = Math.random().toString() } = req.context.getSettings<IPortaApplicationSetting>();
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, PORTA_API_KEY === bearerToken ? eTokenType.DIRECT_API : eTokenType.BEARER_TOKEN);
+            return bearerToken;
+        }
+
+        if (client_id && client_secret) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
+            return JSON.stringify({ client_id, client_secret });
+        }
+
+        if (account && password) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
+            return JSON.stringify({ client_id: account, client_secret: password });
+        }
+
+        if (sessionKey) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
+            return this.getCookieToken(this.getCookieToken(sessionKey, req), req);
+        }
+
+        if (anonLogoutToken) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
+            return anonLogoutToken;
+        }
     }
 
     /**
@@ -190,53 +233,53 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @returns {Promise<string>}
      * @memberof PortaSelfAuthenticationModule
      */
-    protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
-        const { sig = undefined } = (await keySignatureProvider.getKeySignature(req)) || {};
-        const {
-            access_token = undefined,
-            client_id = undefined,
-            client_secret = undefined
-        } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string }>();
+    // protected async zgetSessionTokenFromRequest(req: HttpRequest): Promise<string> {
+    //     const { sig = undefined } = (await keySignatureProvider.getKeySignature(req)) || {};
+    //     const {
+    //         access_token = undefined,
+    //         client_id = undefined,
+    //         client_secret = undefined
+    //     } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string; }>();
 
-        const bearerToken = this.getBearerToken(req) || undefined;
-        const cookieToken = sig ? this.getCookieToken(sig, req) : undefined;
-        const anonLogoutToken = this.getAnonymusLogoutURLToken(req);
-        const { account: basic_account, password: basic_password } = this.getBasicAuthCredentials(req);
-        let clientSecretParams =
-            !isNullOrUndef(client_id) && !isNullOrUndef(client_secret) ? { client_id, client_secret } : undefined;
+    //     const bearerToken = this.getBearerToken(req) || undefined;
+    //     const cookieToken = sig ? this.getCookieToken(sig, req) : undefined;
+    //     const anonLogoutToken = this.getAnonymusLogoutURLToken(req);
+    //     const { account: basic_account, password: basic_password } = this.getBasicAuthCredentials(req);
+    //     let clientSecretParams =
+    //         !isNullOrUndef(client_id) && !isNullOrUndef(client_secret) ? { client_id, client_secret } : undefined;
 
-        if (bearerToken || access_token) {
-            const { PORTA_API_KEY = undefined } = req.context.getSettings<IPortaApplicationSetting>();
-            if (bearerToken === PORTA_API_KEY && !isNullOrUndef(PORTA_API_KEY)) {
-                req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.DIRECT_API);
-            } else {
-                req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
-            }
-        }
+    //     if (bearerToken || access_token) {
+    //         const { PORTA_API_KEY = undefined } = req.context.getSettings<IPortaApplicationSetting>();
+    //         if (bearerToken === PORTA_API_KEY && !isNullOrUndef(PORTA_API_KEY)) {
+    //             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.DIRECT_API);
+    //         } else {
+    //             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
+    //         }
+    //     }
 
-        if (!isNullOrUndef(basic_account) && !isNullOrUndef(basic_password)) {
-            clientSecretParams = {
-                client_id: basic_account,
-                client_secret: basic_password
-            };
-        }
+    //     if (!isNullOrUndef(basic_account) && !isNullOrUndef(basic_password)) {
+    //         clientSecretParams = {
+    //             client_id: basic_account,
+    //             client_secret: basic_password
+    //         };
+    //     }
 
-        if (clientSecretParams) {
-            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
-        }
+    //     if (clientSecretParams) {
+    //         req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
+    //     }
 
-        if (cookieToken) {
-            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.COOKIE_TOKEN);
-        }
+    //     if (cookieToken) {
+    //         req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.COOKIE_TOKEN);
+    //     }
 
-        if (anonLogoutToken) {
-            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
-        }
+    //     if (anonLogoutToken) {
+    //         req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.ANONYMOUS_LOGOUT_TOKEN);
+    //     }
 
-        await req.context.getLogger().debug("getSessionTokenFromRequest",{access_token,bearerToken,cookieToken,clientSecretParams,anonLogoutToken,sig,tenant:commonUtils.getTenantFromRequest(req)})
+    //     await req.context.getLogger().debug("getSessionTokenFromRequest", { access_token, bearerToken, cookieToken, clientSecretParams, anonLogoutToken, sig, tenant: commonUtils.getTenantFromRequest(req) });
 
-        return access_token || bearerToken || cookieToken || clientSecretParams || anonLogoutToken;
-    }
+    //     return access_token || bearerToken || clientSecretParams || cookieToken || anonLogoutToken;
+    // }
 
     /**
      * @protected

@@ -466,7 +466,7 @@ export class TokenEndpointController extends EndpointController {
     }): Promise<IToken> {
         const { privateKey } = await databaseUtils.getJWKSigningKeys(tenant);
 
-        const { auth_time, roles, permissions, expire_at, user, access_token, ttl } = accessTokenStorage;
+        const { auth_time, expire_at, user, access_token, ttl } = accessTokenStorage;
         const {
             refresh_token,
             ttl: refresh_token_expires_in,
@@ -482,33 +482,7 @@ export class TokenEndpointController extends EndpointController {
         const { session_id: sid } = sessionStorage;
 
         const id_token = await new jose.SignJWT({
-            "urn:acl:roles": roles
-                .filter((r) => {
-                    return r.is_active === true;
-                })
-                .map((r) => {
-                    return {
-                        role_id: r.id,
-                        role: r.name
-                    };
-                }),
-            "urn:acl:permissions": permissions
-                .filter((r) => {
-                    return r.is_active === true;
-                })
-                .map((r) => {
-                    return {
-                        permission_id: r.permission_id,
-                        permission: r.code
-                    };
-                }),
-            tenant: {
-                ...tenant,
-                allow_registration: undefined,
-                allow_reset_password: undefined,
-                database: undefined,
-                is_active: undefined
-            } as ISysTenant,
+            ten: tenant?.name,
             nonce,
             state,
             auth_time,
@@ -563,7 +537,7 @@ export class TokenEndpointController extends EndpointController {
     }: {
         cachedFlow: ICachedFlowInformation;
         tokenRequest: ITokenRequest;
-    }): Promise<{ token: IToken; errors: any[] }> {
+    }): Promise<{ token: IToken; errors: any[]; }> {
         const errors: string[] = [];
 
         const { authRecord, flowId, tenantRecord: cachedTenantRecord, authRequest } = cachedFlow;

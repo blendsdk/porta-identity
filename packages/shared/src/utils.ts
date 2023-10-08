@@ -20,10 +20,8 @@ export class PortaAuthUtils {
     /**
      * Creates a per tenant access token key signature
      *
-     * @param {string} tenant
-     * @param {string} system
-     * @param {eKeySignatureType} type
-     * @returns
+     * @param {IPortaUtilsGetKeySignature} { type, tenant, client, system }
+     * @return {*}
      * @memberof PortaAuthUtils
      */
     public getKeySignature({ type, tenant, client, system }: IPortaUtilsGetKeySignature) {

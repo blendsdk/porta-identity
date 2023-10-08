@@ -1,6 +1,5 @@
 import { sha256Verify } from "@blendsdk/crypto";
-import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
-import { SESSION_KEY } from "@blendsdk/webafx-auth";
+import { CRC32, errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
@@ -15,9 +14,9 @@ errorParserRegistry.push((data: IErrorResponseParams) => {
     const { error, error_description } = data || {};
     return error
         ? {
-              message: error,
-              cause: error_description
-          }
+            message: error,
+            cause: error_description
+        }
         : undefined;
 });
 
@@ -172,7 +171,7 @@ class CommonUtils {
      * @memberof CommonUtils
      */
     public getTenantFromRequest(req: HttpRequest) {
-        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>() || {};
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>() || {};
         return tenant;
     }
 
@@ -181,9 +180,11 @@ class CommonUtils {
      * @returns {Promise<string>}
      * @memberof CommonUtils
      */
-    public async getSessionTTLKey(_req: HttpRequest): Promise<string> {
-        //TODO: refactor to support multi tenant client session
-        return SESSION_KEY;
+    public getSessionTTLKey(tenant: string) {
+        return {
+            sessionKey: CRC32<string>([tenant, "session"].join("-"), { hexOutput: true }),
+            sessionTTLKey: CRC32<string>([tenant, "ttl"].join("-"), { hexOutput: true })
+        };
     }
 }
 

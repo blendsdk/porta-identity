@@ -50,7 +50,7 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
         req: HttpRequest
     ): Promise<AuthorizationParameters> {
         return {
-            scope: "openid email profile offline_access",
+            scope: "openid offline_access acl",
             state: `hello-${Date.now()}`,
             ui_locales: "nl-NL",
             resource: req.context.getServerURL()
@@ -79,7 +79,7 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
      */
     protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         //return `https://dev.portaidentity.com/registry/oauth2`;
-        const { tenant } = req.context.getParameters<{ tenant: string }>();
+        const { tenant } = req.context.getParameters<{ tenant: string; }>();
         return `https://porta.local/${tenant}/oauth2`;
     }
 
@@ -106,7 +106,10 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
             tenant: oidcData.claims.tenant,
             locale: oidcData.ui_locales,
             first_name: oidcData.userInfo.nickname,
-            last_name: oidcData.userInfo.family_name
+            last_name: oidcData.userInfo.family_name,
+            oidc: {
+                oidcData
+            }
         };
     }
 

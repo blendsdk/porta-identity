@@ -1,5 +1,5 @@
 import { base64Decode } from "@blendsdk/stdlib";
-import { INewAccessOrRefreshToken, JWTTokenProvider, SESSION_KEY } from "@blendsdk/webafx-auth";
+import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
@@ -9,36 +9,14 @@ import {
 import { HttpRequest } from "@blendsdk/webafx-common";
 import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 import { databaseUtils } from "../../../utils";
-import { keySignatureProvider } from "./keysignature";
 
 export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
-    /**
-     * @protected
-     * @param {INewAccessOrRefreshToken} params
-     * @param {HttpRequest<{}>} req
-     * @returns {Promise<string>}
-     * @memberof PortaSelfAuthTokenAuthenticationModule
-     */
-    protected async newAccessToken(params: INewAccessOrRefreshToken, req: HttpRequest<{}>): Promise<string> {
 
-        const { expireAt, userStorage } = params || {};
-        const { tenant } = req.context.getParameters<{ tenant: string; }>();
-        const { tenantRecord } = await databaseUtils.getTenantDataSource(tenant);
-        const { publicKey, privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
-
-        const { userInfo, claims, } = (userStorage as IOpenIDAuthenticationResult);
-
-        const tokenProvider = new JWTTokenProvider({ privateKey, publicKey });
-        const { access_token } = await tokenProvider.newJWTAccessToken({
-            audience: req.context.getServerURL(),
-            expirationTime: expireAt,
-            subject: userInfo.sub,
-            issuer: claims.iss,
-            claims: {},
-            jti: Date.now().toString()
-
-        });
-        return access_token;
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
+    protected getKeySignature(_req: HttpRequest<{}>): Promise<string> {
+        throw new Error("Method not implemented.");
     }
 
     /**
@@ -47,11 +25,9 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @returns
      * @memberof PortaSelfAuthenticationModule
      */
-    // protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
-    //     // only the SESSION_TTL_KEY was supposed to be passes here but is is being
-    //     // takes care of by `installLocalCookies`
-    //     return null;
-    // }
+    protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
+        return null;
+    }
 
     /**
      * @override
@@ -155,14 +131,4 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         return SESSION_KEY + "hllo";
     }
 
-    /**
-     * @protected
-     * @param {HttpRequest<{}>} req
-     * @returns {Promise<string>}
-     * @memberof PortaSelfAuthTokenAuthenticationModule
-     */
-    protected async getKeySignature(req: HttpRequest<{}>): Promise<string> {
-        const { sig } = await keySignatureProvider.getKeySignature(req);
-        return sig;
-    }
 }
