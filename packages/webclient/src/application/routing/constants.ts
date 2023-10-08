@@ -9,11 +9,11 @@ export const eAppRoutes = {
     },
     forgotPassword: {
         key: "forgotPassword",
-        path: "/fe/forgot-password"
+        path: "/fe/auth/forgot-password"
     },
     resetPassword: {
         key: "resetPassword",
-        path: "/fe/reset-password/:flow/t"
+        path: "/fe/auth/reset-password/:flow/t"
     },
     root: {
         key: "root",
@@ -21,6 +21,6 @@ export const eAppRoutes = {
     },
     noValidSession: {
         key: "no-valid-session",
-        path: "/fe/session-expired"
+        path: "/fe/auth/session-expired"
     }
 };
