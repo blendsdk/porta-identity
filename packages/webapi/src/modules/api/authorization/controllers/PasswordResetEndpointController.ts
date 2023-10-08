@@ -41,7 +41,7 @@ export class PasswordResetEndpointController extends EndpointController {
             account = undefined,
             authRecord = undefined,
             tenantRecord = undefined
-        } = (await cache.getValue<{ account: string; authRecord: ISysAuthorizationView; tenantRecord: ISysTenant }>(
+        } = (await cache.getValue<{ account: string; authRecord: ISysAuthorizationView; tenantRecord: ISysTenant; }>(
             `reset-password-request:${flow}`
         )) || {};
         if (check) {
@@ -198,7 +198,7 @@ export class PasswordResetEndpointController extends EndpointController {
                         html: trans.translate("mail_reset_password_body", {
                             ...profileRecord,
                             ...tenantRecord,
-                            url: `${this.getServerURL()}/fe/reset-password/${stateKey}/t`,
+                            url: `${this.getServerURL()}/fe/auth/reset-password/${stateKey}/t`,
                             ttl: Math.trunc(AUTH_FLOW_TTL / 60)
                         })
                     });

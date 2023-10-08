@@ -335,7 +335,7 @@ export class DatabaseSeed {
                     client_id: await sha256Hash(`porta_ui_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     redirect_uri: `${serverURL}/oidc/${tenant.name}/signin/callback`,
-                    post_logout_redirect_uri: `${serverURL}/fe/${tenant.name}/signout/complete`
+                    post_logout_redirect_uri: `${serverURL}/fe/auth/${tenant.name}/signout/complete`
                 },
                 tenantRecord
             );
@@ -374,7 +374,7 @@ export class DatabaseSeed {
      * @returns
      * @memberof DatabaseSeed
      */
-    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean }) {
+    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean; }) {
         const defaultDataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(eDatabaseType.system);
         const { DB_USER, DB_HOST, DB_PORT, DB_PASSWORD } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings

@@ -21,24 +21,24 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      */
     protected async newAccessToken(params: INewAccessOrRefreshToken, req: HttpRequest<{}>): Promise<string> {
 
-        const {expireAt,userStorage} = params || {}
-        const {tenant} = req.context.getParameters<{tenant:string}>();
-        const {tenantRecord} = await databaseUtils.getTenantDataSource(tenant);
-        const {publicKey,privateKey} = await databaseUtils.getJWKSigningKeys(tenantRecord)
+        const { expireAt, userStorage } = params || {};
+        const { tenant } = req.context.getParameters<{ tenant: string; }>();
+        const { tenantRecord } = await databaseUtils.getTenantDataSource(tenant);
+        const { publicKey, privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
 
-        const {userInfo,claims,} = (userStorage as IOpenIDAuthenticationResult)
+        const { userInfo, claims, } = (userStorage as IOpenIDAuthenticationResult);
 
-        const tokenProvider = new JWTTokenProvider({privateKey,publicKey})
-        const {access_token} = await tokenProvider.newJWTAccessToken({
-            audience:req.context.getServerURL(),
-            expirationTime:expireAt,
-            subject:userInfo.sub,
-            issuer:claims.iss,
-            claims:{},
-            jti:Date.now().toString()
+        const tokenProvider = new JWTTokenProvider({ privateKey, publicKey });
+        const { access_token } = await tokenProvider.newJWTAccessToken({
+            audience: req.context.getServerURL(),
+            expirationTime: expireAt,
+            subject: userInfo.sub,
+            issuer: claims.iss,
+            claims: {},
+            jti: Date.now().toString()
 
         });
-        return access_token
+        return access_token;
     }
 
     /**
@@ -66,7 +66,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         const { redirect_uri } = super.getRedirectURI(tenant, req);
         return {
             redirect_uri,
-            post_logout_redirect_uris: [`${serverURL}/fe/${tenant}/signout/complete`]
+            post_logout_redirect_uris: [`${serverURL}/fe/auth/${tenant}/signout/complete`]
         };
     }
 
@@ -81,7 +81,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         req: HttpRequest<IOpenIDHTTPRequestContext>,
         _logout?: boolean
     ): Promise<ILandingURLConfig> {
-        const { state } = req.context.getParameters<{ state: string }>();
+        const { state } = req.context.getParameters<{ state: string; }>();
         const { location = undefined } = JSON.parse(state ? base64Decode(state) : "{}" || "{}");
         return {
             url: location || req.context.getServerURL()
@@ -101,7 +101,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         _client: BaseClient,
         req: HttpRequest<{}>
     ): Promise<AuthorizationParameters> {
-        const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string }>();
+        const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string; }>();
         return {
             scope: "profile address openid email phone acl",
             state,
@@ -152,7 +152,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
-        return SESSION_KEY+"hllo";
+        return SESSION_KEY + "hllo";
     }
 
     /**
@@ -162,7 +162,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async getKeySignature(req: HttpRequest<{}>): Promise<string> {
-        const {sig} = await  keySignatureProvider.getKeySignature(req);
+        const { sig } = await keySignatureProvider.getKeySignature(req);
         return sig;
     }
 }

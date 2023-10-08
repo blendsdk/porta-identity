@@ -62,7 +62,7 @@ export const SPARoutes = (): IRouter => {
                     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
                     url.searchParams.append(
                         "state",
-                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/${tenant}/me` }))
+                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/auth/${tenant}/me` }))
                     );
                     if (locale) {
                         url.searchParams.append("locale", locale);
