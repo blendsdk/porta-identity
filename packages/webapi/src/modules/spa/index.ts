@@ -38,7 +38,7 @@ export const SPARoutes = (): IRouter => {
                     if (locale) {
                         url.searchParams.append("locale", locale);
                     }
-                    res.cookie("_manage", tenant);
+                    //res.cookie("_manage", tenant);
                     res.send(renderGetRedirect(url.toString()));
                 }
             },

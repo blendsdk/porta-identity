@@ -16,7 +16,7 @@ export const BFFRoutes = (): IRouter => {
                 url: "/login",
                 public: true,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
-                    res.send(renderGetRedirect(`${req.context.getServerURL()}/oidc/devreg/signin`));
+                    res.send(renderGetRedirect(`${req.context.getServerURL()}/oidc/bff/signin`));
                 }
             },
             {
@@ -25,7 +25,7 @@ export const BFFRoutes = (): IRouter => {
                 public: false,
                 handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
                     //const { user } = req.context.getParameters<any>();
-                    const url = new URL(`${req.context.getServerURL()}/oidc/devreg/signout`);
+                    const url = new URL(`${req.context.getServerURL()}/oidc/bff/signout`);
                     //url.searchParams.append("logout_hint", user);
                     res.send(renderGetRedirect(url.toString()));
                 }

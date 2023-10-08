@@ -1,5 +1,5 @@
 import { base64Decode } from "@blendsdk/stdlib";
-import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
+import { INewAccessOrRefreshToken, JWTTokenProvider, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
@@ -19,8 +19,26 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @returns {Promise<string>}
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
-    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
-        throw new Error("Method not implemented.");
+    protected async newAccessToken(params: INewAccessOrRefreshToken, req: HttpRequest<{}>): Promise<string> {
+
+        const {expireAt,userStorage} = params || {}
+        const {tenant} = req.context.getParameters<{tenant:string}>();
+        const {tenantRecord} = await databaseUtils.getTenantDataSource(tenant);
+        const {publicKey,privateKey} = await databaseUtils.getJWKSigningKeys(tenantRecord)
+
+        const {userInfo,claims,} = (userStorage as IOpenIDAuthenticationResult)
+
+        const tokenProvider = new JWTTokenProvider({privateKey,publicKey})
+        const {access_token} = await tokenProvider.newJWTAccessToken({
+            audience:req.context.getServerURL(),
+            expirationTime:expireAt,
+            subject:userInfo.sub,
+            issuer:claims.iss,
+            claims:{},
+            jti:Date.now().toString()
+
+        });
+        return access_token
     }
 
     /**
@@ -29,11 +47,11 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @returns
      * @memberof PortaSelfAuthenticationModule
      */
-    protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
-        // only the SESSION_TTL_KEY was supposed to be passes here but is is being
-        // takes care of by `installLocalCookies`
-        return null;
-    }
+    // protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
+    //     // only the SESSION_TTL_KEY was supposed to be passes here but is is being
+    //     // takes care of by `installLocalCookies`
+    //     return null;
+    // }
 
     /**
      * @override
@@ -134,7 +152,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
     protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
-        return SESSION_KEY;
+        return SESSION_KEY+"hllo";
     }
 
     /**
@@ -143,7 +161,8 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @returns {Promise<string>}
      * @memberof PortaSelfAuthTokenAuthenticationModule
      */
-    protected getKeySignature(req: HttpRequest<{}>): Promise<string> {
-        return keySignatureProvider.getKeySignature(req);
+    protected async getKeySignature(req: HttpRequest<{}>): Promise<string> {
+        const {sig} = await  keySignatureProvider.getKeySignature(req);
+        return sig;
     }
 }

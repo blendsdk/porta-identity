@@ -55,7 +55,7 @@ export class KeySignatureProvider {
         if (tenant) {
             const tenantRecord = await databaseUtils.findTenant(tenant);
             if (tenantRecord) {
-                const { client_id } = req.context.getParameters<{ client_id: string }>();
+                const { client_id } = (req.context as any).openid?.client || {};
                 if (!client_id) {
                     req.context.getLogger().warn(`NO CLIENT_ID in getKeySignature for ${req.context.getRoute().url}`);
                 }
