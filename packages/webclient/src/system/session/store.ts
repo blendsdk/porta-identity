@@ -22,8 +22,12 @@ export class SessionStore extends SessionStoreBase {
             case eAppRoutes.resetPassword.key:
             case eAppRoutes.noValidSession.key:
             case eAppRoutes.forgotPassword.key:
+            case eAppRoutes.signoutComplete.key:
                 return true;
             default:
+                console.log({
+                    name: router.getRouteName()
+                });
                 return false;
         }
     }

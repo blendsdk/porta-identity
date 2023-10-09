@@ -22,5 +22,9 @@ export const eAppRoutes = {
     tenantDashboard: {
         key: "tenant-dashboard",
         path: "/fe/manage/:tenant/dashboard"
+    },
+    signoutComplete: {
+        key: "signout-complete",
+        path: "/fe/auth/:tenant/signout/complete"
     }
 };

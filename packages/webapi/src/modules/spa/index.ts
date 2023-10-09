@@ -11,9 +11,9 @@ import { renderGetRedirect } from "../auth/utils";
 let indexFile: string = null;
 let versionInfo = null;
 
-const createSignIn = (req: HttpRequest, state: any) => {
+const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => {
     const { tenant, locale } = req.context.getParameters<{ locale: string, tenant: string; }>();
-    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
+    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/${endpoint}`);
     if (state) {
         url.searchParams.append(
             "state",
@@ -46,9 +46,29 @@ export const SPARoutes = (): IRouter => {
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
                     const tenant = commonUtils.getTenantFromRequest(req);
-                    const url = createSignIn(req, {
+                    const url = createOIDCRedirect("signin", req, {
                         location: `${req.context.getServerURL()}/fe/manage/${tenant}/dashboard`
                     });
+                    res.send(renderGetRedirect(url.toString()));
+                }
+            },
+            {
+                method: "get",
+                public: true,
+                url: "/:tenant/signout",
+                request: {
+                    properties: {
+                        tenant: {
+                            type: eJsonSchemaType.string
+                        },
+                        locale: {
+                            type: eJsonSchemaType.string,
+                            location: eParameterLocation.query
+                        }
+                    }
+                },
+                handlers: (req: HttpRequest, res: HttpResponse) => {
+                    const url = createOIDCRedirect("signout", req);
                     res.send(renderGetRedirect(url.toString()));
                 }
             },

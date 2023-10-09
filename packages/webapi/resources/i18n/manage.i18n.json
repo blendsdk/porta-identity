@@ -22,5 +22,9 @@
     "session_expired_message": {
         "en": "Your session is expired! Please sign-in again.",
         "nl": "Uw sessie is verlopen! Meld u opnieuw aan."
+    },
+    "signout_complete": {
+        "en": "You have been successfully signed out. You can close this browser tab or window.",
+        "nl": "U bent succesvol afgemeld. U kunt dit browsertabblad of -venster sluiten."
     }
 }
