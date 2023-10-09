@@ -323,29 +323,29 @@
   resolved "https://pak.truesoftware.net/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@blendsdk/clientkit@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/clientkit/-/clientkit-3.2.342.tgz#995991a7d2e87cec91b54221dc3a207803ad214e"
-  integrity sha512-N+mqRb7q0wwFl8xrqzMdo3rXve2tjVssF2DUCmg4gVKUS+ipfwFS7ApE+gW8CoAPGpszOYW3aBmgdY8vhX/H5A==
+"@blendsdk/clientkit@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/clientkit/-/clientkit-3.2.343.tgz#df687ef7e0e08c1dcc2335981e0c0d05e54c0cae"
+  integrity sha512-mTUJ2ZLRG7CkQqY85i5mYTKiZ4yi3aH8IUium8AMLLo6sZZH02yHqVSNg6/7vCxja0zjxT0t+9DaiFE5NW1LzQ==
   dependencies:
-    "@blendsdk/crypto" "3.2.342"
-    "@blendsdk/expression" "3.2.342"
-    "@blendsdk/jsonschema" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/crypto" "3.2.343"
+    "@blendsdk/expression" "3.2.343"
+    "@blendsdk/jsonschema" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     path-to-regexp "^6.2.1"
     tslib "^2.6.2"
 
-"@blendsdk/codegen@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/codegen/-/codegen-3.2.342.tgz#531a7608682dec6e29edcacf5530bd0fd1d30491"
-  integrity sha512-jSPzlUQonZSwJgC3oTMS363NqJarOX/QUgr0pgZ00lE+lzpUJD85ytOlx6imuv1UlYxwzj9ZHHIMDsaO1KDMvw==
+"@blendsdk/codegen@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/codegen/-/codegen-3.2.343.tgz#3b65d9ce1fbcf468a6992126aec9787029fbc527"
+  integrity sha512-X9ANSFnUSIZNKITGBSVLuRFG6DAKEbSe97uPRnrunlvc5n0j4qexr14mSb01SQ2KEkwEOQgI/QQSOxvDoFNIyw==
   dependencies:
-    "@blendsdk/datakit" "3.2.342"
-    "@blendsdk/filesystem" "3.2.342"
-    "@blendsdk/jsonschema" "3.2.342"
-    "@blendsdk/logger" "3.2.342"
-    "@blendsdk/postgresql" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/datakit" "3.2.343"
+    "@blendsdk/filesystem" "3.2.343"
+    "@blendsdk/jsonschema" "3.2.343"
+    "@blendsdk/logger" "3.2.343"
+    "@blendsdk/postgresql" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     chalk "^5.3.0"
     eol "^0.9.1"
     path-to-regexp "^6.2.1"
@@ -353,197 +353,197 @@
     shelljs "^0.8.5"
     tslib "^2.6.2"
 
-"@blendsdk/crypto@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/crypto/-/crypto-3.2.342.tgz#160fa9e62081a94246d7c73b6a612282f97b67d3"
-  integrity sha512-Er86U9zuEwRWVsGscyKl9qRzyQ6ftXNeJcm/85i/j6fj6kbDoDwZ1FvUhZ23obgXFdyOUNh6+5jWZzVFEmN14Q==
+"@blendsdk/crypto@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/crypto/-/crypto-3.2.343.tgz#054e9b95ca440883a31dd4fab3f27e565276c3a8"
+  integrity sha512-lr/fh5oSejvTs7OlvZQjAb/XxlvwUJ2fuk8v9MT1BEH9g6M6m0rIgjlx78uRy/p1kqAKs4zmnEqcZDsxglnDbA==
   dependencies:
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/stdlib" "3.2.343"
     "@types/bcryptjs" "^2.4.4"
     bcryptjs "^2.4.3"
 
-"@blendsdk/datakit@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/datakit/-/datakit-3.2.342.tgz#9081303f0a73339aa33154a60428fa9a63992817"
-  integrity sha512-PvXtuAknOdKsdh7W36giXRX7JxUf1zzNYlNC+JgHM6FAER0rBsoDMvRfprbmo5MBzA1sVWHqdcsTEKOd4Omiag==
+"@blendsdk/datakit@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/datakit/-/datakit-3.2.343.tgz#66fc0a1e55675a18077ae07c6ae8857b8e9b55d2"
+  integrity sha512-XLJC98HZZACHfl5pnEUkfmrIfPlngG0y30E9GUhfuMLwTsMruhQZA6jMtXZ0T0D74k0z08Tj5T0nfZU+g5W+hg==
   dependencies:
-    "@blendsdk/expression" "3.2.342"
-    "@blendsdk/logger" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/expression" "3.2.343"
+    "@blendsdk/logger" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     tslib "^2.6.2"
 
-"@blendsdk/expression@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/expression/-/expression-3.2.342.tgz#9e5977261c5471a0a2c66040cb6319e3fdfe846c"
-  integrity sha512-dCjr1yJCvLJJ/oR50PDks8OkX34VB4CV9sMTU6U+gbPjmkmQicaiK7yji9tSdQJNQgRcjbKx3vHeOF83HhrW/w==
+"@blendsdk/expression@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/expression/-/expression-3.2.343.tgz#21bad939522a5d51554123fc552a549c295a1985"
+  integrity sha512-kO0bhxcIzz/pchEMNCESn2zy0/8kJlSNsU5DgGg6cNUYFkK8+WPl7L5pqIAvk+jBW28qCkMXKL/WjejowL3xhQ==
   dependencies:
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/stdlib" "3.2.343"
 
-"@blendsdk/filesystem@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/filesystem/-/filesystem-3.2.342.tgz#1075d89259b2fc061dc5d5ef4edfa4391ba84ccf"
-  integrity sha512-zBmy877q35nTNcURjbcnns+qqgk+sS0OYQ5+aIveraJMEb+e369ebYJX0HPbZdD24AQa9L8jkBU0tBO5pNdIQw==
+"@blendsdk/filesystem@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/filesystem/-/filesystem-3.2.343.tgz#6b25887a7624d5b4155663b528104dcb3f4c60d6"
+  integrity sha512-H1SjRaSnsUkCEG/lph8mXk9b6K18bk8fer61x4snWpFdHzjd0G2g4x7prQGom/m0b/Rnk6mTIych3w8nNt0Z1Q==
   dependencies:
-    "@blendsdk/logger" "3.2.342"
+    "@blendsdk/logger" "3.2.343"
     "@types/node" "^20.8.0"
     glob "^10.3.10"
     mkdirp "^3.0.1"
 
-"@blendsdk/fluentrc@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/fluentrc/-/fluentrc-3.2.342.tgz#4bdc4d9d732fe0ff4e479be631253e4b2984d162"
-  integrity sha512-DkdqcPsnZMS1LrgR/Nomb/UPivuDJpi+sBQflSN9bwcydrRCrC3IwmlPbiPdNOBJB7Z8HsBdQUiIc8XAMUMxQw==
+"@blendsdk/fluentrc@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/fluentrc/-/fluentrc-3.2.343.tgz#ca23f2d6a4c23273deb7a293ae8910f48d333c25"
+  integrity sha512-Ai/0yxKLqAjj9F5P1hBP2HXuQuFMhjLryMeq0SgRXod/v7ZA8LHv4Q0w4Y0sa1nrmsgvZBr6TL2sbLcK+1291w==
   dependencies:
-    "@blendsdk/i18n" "3.2.342"
-    "@blendsdk/react" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/i18n" "3.2.343"
+    "@blendsdk/react" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
 
-"@blendsdk/i18n@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/i18n/-/i18n-3.2.342.tgz#4c4325cb14d1f68519bd208472c55a484ad84d06"
-  integrity sha512-5pZdAISSiYNvkO3nY8uf/2BVzAzRBUnp9kGVHk9mRfVO9QzUhLge0kbFNHt378zwpz5jcqInHV/5Ro8up7G2yQ==
+"@blendsdk/i18n@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/i18n/-/i18n-3.2.343.tgz#866d0961125a9ea7649306b36d028cf3d630fe0e"
+  integrity sha512-Ginx9ZckThL4V6OxfsoyQM3oWZHxLrtIdmRdeutO1PM6PvtyOTfG8+CDIVa9jlspVG1oMnTqpbzs/1L5IZf4Yw==
   dependencies:
-    "@blendsdk/logger" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/logger" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     "@types/js-cookie" "^3.0.4"
     js-cookie "^3.0.5"
     tslib "^2.6.2"
 
-"@blendsdk/jsonschema@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/jsonschema/-/jsonschema-3.2.342.tgz#5a5fbfad17433d1dd600587ad194f3cdb7ee46bf"
-  integrity sha512-k7PV3eIjC33SNHCjxo0Q1s0dYZDNStaxMF82YbkUcCtuWRBnJNAXbSurCDF8wXYfpDhbWnyI/h8S5gxuyjzrHw==
+"@blendsdk/jsonschema@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/jsonschema/-/jsonschema-3.2.343.tgz#a419c6e80681de2dcbd5e6e3c8578e515850c305"
+  integrity sha512-XRwdpWoMFHffYQc0tPx9zsTqVnKLal96aLKJ0vq2mVwV4hXvwsmoKjrhj656V3u7Ma1mC8z4DVIGQO+t1FVZUQ==
   dependencies:
-    "@blendsdk/i18n" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/i18n" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     tslib "^2.6.2"
 
-"@blendsdk/logger@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/logger/-/logger-3.2.342.tgz#9ea096ea3a17618857d656513a777927b20622d8"
-  integrity sha512-IWXNO9+Q3ihkJoCaSAvL32IkOs+YrDATDDJLjsJalvsRWwXG86ARbXbJ3wBPjnnTl4TeYO1cjI61p4iMLilIDA==
+"@blendsdk/logger@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/logger/-/logger-3.2.343.tgz#c9522b8b31215a0d8424ae306a73af6db9ffea3e"
+  integrity sha512-QhvEK4JAy/XzxTcrt8IDECtJIhYJHMxJnp7Uf+zSFNxwHinoRbIk2DN0TfSns0riLfdFmzDFdVp65f4TkaVzlw==
 
-"@blendsdk/postgresql@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/postgresql/-/postgresql-3.2.342.tgz#5386b19a7cf87eb8a91af4b101ac35400b3cd28e"
-  integrity sha512-T8FvhNVbrRyzl2W8ygDApvH6g2BrgCM0M103uChoKztfROzcE+gjwstpVbp09yIf25oCai8FgbA6w9SQXdjn+Q==
+"@blendsdk/postgresql@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/postgresql/-/postgresql-3.2.343.tgz#6f59170edbd73344c163982078138df23f92e2ec"
+  integrity sha512-i7KGegJheWniliFfkcWz+iKCM8hT/WHhNbKBiQWp02QV+kfizyBIm7ngYaGZjkwsSvp8xp3zZ2mE1XBctzQx4A==
   dependencies:
-    "@blendsdk/datakit" "3.2.342"
-    "@blendsdk/expression" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/datakit" "3.2.343"
+    "@blendsdk/expression" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     "@types/pg" "^8.10.3"
     pg "^8.11.3"
     tslib "^2.6.2"
     yesql "^7.0.0"
 
-"@blendsdk/rbac@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/rbac/-/rbac-3.2.342.tgz#419b70405298b6230b0ab61aefe7812cde2945e6"
-  integrity sha512-YdF6EaxlK1C7u1AEcn5NGUQNkoL+9f6HcT7PD7OT09GRAy9w5s/UasY7G16HSjDzr1K5cPo5eN3y6/tdzuQokA==
+"@blendsdk/rbac@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/rbac/-/rbac-3.2.343.tgz#e3d6132980947cb70c6df09ec026e5513a51b001"
+  integrity sha512-5i5iwd1zkmaeAwmztZ265tTLdLMrg6/GL0wLNrk0Ve+Ajt9rOz4dSSoIjpnMXpEDyVDr6QTWSkZkOBI2+nQdyg==
   dependencies:
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/stdlib" "3.2.343"
 
-"@blendsdk/react@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/react/-/react-3.2.342.tgz#12566da39a4d758e961da1a1a2c7827e7badfd52"
-  integrity sha512-rWnI6Z8iZD+GMKkmYvlOarBAYKWXY8N+PwsR9676KnikYefVOtU1P3yJuia63uhxJ9PEzCT9IsfMHjsv7YJMqQ==
+"@blendsdk/react@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/react/-/react-3.2.343.tgz#ddf78d0258a279b5a53f2383a39448c423ba6078"
+  integrity sha512-I8yQ17/duGPAYkA9J8irJFQT2R40ytWu3xK+x2/GzXM+QuAcvKVYGt8j+vHk//76Lg9xp0YcCOzqo+MWlAIiow==
   dependencies:
-    "@blendsdk/clientkit" "3.2.342"
-    "@blendsdk/i18n" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/clientkit" "3.2.343"
+    "@blendsdk/i18n" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     history "^5.3.0"
     js-cookie "^3.0.5"
     path-to-regexp "^6.2.1"
 
-"@blendsdk/stdlib@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.342.tgz#45bea6af89bda572148a65f9c159740d3cf4eef3"
-  integrity sha512-BGO34/XU9ydNXJLNQxHEUqI5CNKTyOZJ6DASwbzuzB+IvWs8nRCXURqyoi4b7vqK02CECVDkSiiGD7Zc9XFNlw==
+"@blendsdk/stdlib@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.343.tgz#a2abc17c96f29f6eea84fdc8a061786db0fae6f6"
+  integrity sha512-jO55XY26+StzNjVpZCLPWoPOeVixE5cI7E9nvCpAO0ZiFfLscjY+fC2BYyayvTmq/ibMYVbUsRydOs6teh5VEA==
 
-"@blendsdk/webafx-auth-oidc@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth-oidc/-/webafx-auth-oidc-3.2.342.tgz#e97c330021cc182520bc3c7855d3171643497143"
-  integrity sha512-vPi/xkapRHIh9YrTFB5f1lzZKVesVyPGCWrslPXhfRetjB4lytwkJDJ+kcMjUEzZmNtTbNhUj3i9wcYXG8i02Q==
+"@blendsdk/webafx-auth-oidc@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth-oidc/-/webafx-auth-oidc-3.2.343.tgz#f5902271a240b527c6176f4c578f3968cd4c4d10"
+  integrity sha512-xukglgk0c2Bk26mnw7W/RZ71d2gpRBN9X5TeA222oNOeY2ewfkOYToYRMDAblxPs5OpuqnAauiMLsCPgvH5oPg==
   dependencies:
-    "@blendsdk/crypto" "3.2.342"
-    "@blendsdk/jsonschema" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx-auth" "3.2.342"
-    "@blendsdk/webafx-common" "3.2.342"
+    "@blendsdk/crypto" "3.2.343"
+    "@blendsdk/jsonschema" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx-auth" "3.2.343"
+    "@blendsdk/webafx-common" "3.2.343"
     jsonwebtoken "^9.0.2"
     openid-client "^5.5.0"
 
-"@blendsdk/webafx-auth@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth/-/webafx-auth-3.2.342.tgz#399cf101ff178951c390ebb3a46723e365221708"
-  integrity sha512-bIfOBmtU2vcEU9zRO2gkFN7AxoldfiOG8lLtSf/nve0TlEZeH+a/DrWWvSLkIMHpI1gZoxEkmUJ/ib1dUVf5Ug==
+"@blendsdk/webafx-auth@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth/-/webafx-auth-3.2.343.tgz#fcb4d807e6b9254212507dad3868d3f2aa87fc3b"
+  integrity sha512-mrXrHcxihYLbxGh6ISceu/0UllG2c2kymVeEExQcrKkZAxqabyud+rVV3Hk14v9pdBl6/B0/1vhgs+4cyJQtCw==
   dependencies:
-    "@blendsdk/crypto" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx" "3.2.342"
-    "@blendsdk/webafx-common" "3.2.342"
-    "@blendsdk/webafx-i18n" "3.2.342"
+    "@blendsdk/crypto" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx" "3.2.343"
+    "@blendsdk/webafx-common" "3.2.343"
+    "@blendsdk/webafx-i18n" "3.2.343"
 
-"@blendsdk/webafx-cache-memory@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-memory/-/webafx-cache-memory-3.2.342.tgz#09f6214377bfe8d1e7633928709f071e58f81871"
-  integrity sha512-/0e5GGpNM/LdnFXmf5LxXDd7O2PALXQwojRshRBI+QnZSz3IPmrhmYFaWojpa6lhsXGW+29RyjRZ0LBqueds2Q==
+"@blendsdk/webafx-cache-memory@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-memory/-/webafx-cache-memory-3.2.343.tgz#d6acf53c5811abbfca9bbf5ad0f77ac4381c3230"
+  integrity sha512-AplVFhq3PwQsTrYwgKXCBmMjzxZNmy2uejNbs+m5KrrEOdWjLEHtMV7bokmXwp8a+QJ9iW+50vci8cgoYTr8Rg==
   dependencies:
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx" "3.2.342"
-    "@blendsdk/webafx-common" "3.2.342"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx" "3.2.343"
+    "@blendsdk/webafx-common" "3.2.343"
 
-"@blendsdk/webafx-cache-redis@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-redis/-/webafx-cache-redis-3.2.342.tgz#13e3dd6605d8a95bbdb75af86ec1a01d03ab8fdb"
-  integrity sha512-jB1Q0s0obuhdyi39/iT8BIN9tr4WKLT5+OqK9ahoVmkB4PH4kX+Y7Y0l/vCxJuB+OHRIUWJcOSlQGR60tATMOg==
+"@blendsdk/webafx-cache-redis@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-redis/-/webafx-cache-redis-3.2.343.tgz#5d4fd6d97a87ff94d50e74d2503cba9fc1d4b4b3"
+  integrity sha512-tCvVeSPGWRpr/xOOeBNutay/KWeOInjk+VEh48wnQaqnZx7H+fVFxxo3olSWdCF53I52GqMvBc+wvUXYnJa4cA==
   dependencies:
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx" "3.2.342"
-    "@blendsdk/webafx-common" "3.2.342"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx" "3.2.343"
+    "@blendsdk/webafx-common" "3.2.343"
     redis "^4.6.10"
 
-"@blendsdk/webafx-common@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-common/-/webafx-common-3.2.342.tgz#a5515ca8aa48b61647c5672d3f96c9096101882a"
-  integrity sha512-EB7SiEaVDu+T/tDnYyJKq7ePFTeQK1sBLQ+LStzcNwQXX1o5j/myUuSR+Y7gU3r0CdhBGi2DftmIsuBOotcjQg==
+"@blendsdk/webafx-common@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-common/-/webafx-common-3.2.343.tgz#ea3ec08f80be9a810b6f2a4b10ae0fe370646606"
+  integrity sha512-Qu9cv8Qks7HSbLvhGuqmjuXb/CpwgamNBhftSmC5lWEUJkN3LbDGzwpD+3V3s7iTIv6vHhLX3kLyFfZVIyR+4A==
   dependencies:
-    "@blendsdk/jsonschema" "3.2.342"
-    "@blendsdk/logger" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
+    "@blendsdk/jsonschema" "3.2.343"
+    "@blendsdk/logger" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
     "@types/express" "^4.17.18"
     express "^4.18.2"
 
-"@blendsdk/webafx-i18n@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-i18n/-/webafx-i18n-3.2.342.tgz#08fd2711834d634335038e88ca2014240595d656"
-  integrity sha512-Gg4y/GbgmfoN5KLMJQobho899RiKQSg/1lxjMhOz8x39i7Jedy8y/WqHDn3H+2adt40iSBNB8PzIw1O0nBL5wg==
+"@blendsdk/webafx-i18n@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-i18n/-/webafx-i18n-3.2.343.tgz#3670dc12485128e4b7c6150aa11a755bd7a0ad68"
+  integrity sha512-5xs9rRGat+jo5t+3IFUrQ2+kqGNrtBO2h4tQqJ0Z4szSFwqZ4qrhRhRB3djhID70S/SGHOh51Y8QdYGx95ZtvQ==
   dependencies:
-    "@blendsdk/filesystem" "3.2.342"
-    "@blendsdk/i18n" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx" "3.2.342"
+    "@blendsdk/filesystem" "3.2.343"
+    "@blendsdk/i18n" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx" "3.2.343"
 
-"@blendsdk/webafx-mailer@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-mailer/-/webafx-mailer-3.2.342.tgz#bf0f268d103224b5272332e0b6e911531f611732"
-  integrity sha512-usMO9cbEa4ZQeIpv+BMLvImydDVc6996TC4Rx1jaHrOffpKJCem18FWjZPbtaRYkcqswbYSel1OQqzr2FjR6Fg==
+"@blendsdk/webafx-mailer@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-mailer/-/webafx-mailer-3.2.343.tgz#765fec93a26189247a5b5d0d5e82f867fad36b30"
+  integrity sha512-CCrdfeKDWNpx4rsRi1aBLmc7jWBBxfnu17p+Y1rM10YIMGjR9C54GLGNLjS/48Wt4z0Ff0vqwYOi+DzoPSjzxw==
   dependencies:
-    "@blendsdk/webafx" "3.2.342"
+    "@blendsdk/webafx" "3.2.343"
     "@types/nodemailer" "^6.4.8"
     nodemailer "^6.9.5"
 
-"@blendsdk/webafx@3.2.342":
-  version "3.2.342"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx/-/webafx-3.2.342.tgz#d8161f957a50614cbe39407d6a2a1bbc31d4fa4e"
-  integrity sha512-2w1pqFqFhupIz4eS7r8jSrpqPtl8+hMWpVkN6C4+jHU17628XqR1ZDo05WxhXwAio7tDuPcpbauaJqTHtEiaHA==
+"@blendsdk/webafx@3.2.343":
+  version "3.2.343"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx/-/webafx-3.2.343.tgz#89a451b5896c23416b767f3352c90ecaf1eba05f"
+  integrity sha512-2CspN6irwGbl31+YJHdY2NxMbSgoTnHdARxTByGuAcPMVABge/itxw8UylnuudkTeQ/67FrqHv0D2MGU9hbntA==
   dependencies:
-    "@blendsdk/crypto" "3.2.342"
-    "@blendsdk/filesystem" "3.2.342"
-    "@blendsdk/jsonschema" "3.2.342"
-    "@blendsdk/logger" "3.2.342"
-    "@blendsdk/stdlib" "3.2.342"
-    "@blendsdk/webafx-common" "3.2.342"
+    "@blendsdk/crypto" "3.2.343"
+    "@blendsdk/filesystem" "3.2.343"
+    "@blendsdk/jsonschema" "3.2.343"
+    "@blendsdk/logger" "3.2.343"
+    "@blendsdk/stdlib" "3.2.343"
+    "@blendsdk/webafx-common" "3.2.343"
     compression "^1.7.4"
     cookie-parser "^1.4.6"
     cors "^2.8.5"
@@ -4312,9 +4312,9 @@ ejs@^3.1.7, ejs@^3.1.9:
     jake "^10.8.5"
 
 electron-to-chromium@^1.4.535:
-  version "1.4.545"
-  resolved "https://pak.truesoftware.net/electron-to-chromium/-/electron-to-chromium-1.4.545.tgz#ab55fcd18796f26e2d124181792ca8b3f013c4b1"
-  integrity sha512-G1HKumUw+y5yxMjewGfKz0XrqG6O+Tb4zrlC/Vs1+9riRXBuFlO0hOEXP3xeI+ltlJkbVUuLkYdmjHYH6Jkiow==
+  version "1.4.546"
+  resolved "https://pak.truesoftware.net/electron-to-chromium/-/electron-to-chromium-1.4.546.tgz#673ff64862859b1593cebfbacc5fb6aebef7c457"
+  integrity sha512-cz9bBM26ZqoEmGHkdHXU3LP7OofVyEzRoMqfALQ9Au9WlB4rogAHzqj/NkNvw2JJjy4xuxS1me+pP2lbCD5Mfw==
 
 emittery@^0.13.1:
   version "0.13.1"
