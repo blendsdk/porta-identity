@@ -37,7 +37,7 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
     const router = useRouter();
     const appTitle = useMemo(() => {
         if (refData?.userProfile?.tenant) {
-            return t(`${Strings.APPLICATION_NAME} (\${organization})`, refData.userProfile.tenant);
+            return t(`${Strings.APPLICATION_NAME} (\${organization})`, refData.userProfile?.tenant);
         } else {
             return Strings.APPLICATION_NAME;
         }
@@ -45,7 +45,7 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
 
     const launcherItems = useMemo<AppLauncherModuleItem[]>(() => {
 
-        const tenant = refData.userProfile.tenant.name;
+        const tenant = refData.userProfile?.tenant?.name;
 
         const result = [
             {

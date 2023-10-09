@@ -30,5 +30,17 @@
     "tenants": {
         "en": "Tenants",
         "nl": "Tenants"
+    },
+    "access_denied": {
+        "en": "Access denied!",
+        "nl": "Toegang geweigerd!"
+    },
+    "no_permissions1": {
+        "en": "You don't have permission to use this resource.",
+        "nl": "U heeft geen toestemming om deze bron te gebruiken."
+    },
+    "no_permissions2": {
+        "en": "Please contract your administrator for assistance.",
+        "nl": "Vraag uw beheerder om hulp."
     }
 }

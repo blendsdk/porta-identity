@@ -1,14 +1,22 @@
 import { eAclRuleType } from "@blendsdk/rbac";
-import { Router, SessionProvider, SystemError, getCurrentLocale } from "@blendsdk/react";
-import { Body2, FluentProvider } from "@fluentui/react-components";
+import { AccessDeniedIcon, Router, SessionProvider, SystemError, getCurrentLocale } from "@blendsdk/react";
+import { Body2, FluentProvider, Subtitle2 } from "@fluentui/react-components";
 import { useEffect } from "react";
-import { AccessDeniedIcon } from "../application/common/AccessDeniedIcon";
 import { appRbacTable } from "../application/common/rbac";
 import { appRoutes } from "../application/routing";
 import { useReferenceData } from "../lib";
 import { useTranslation } from "./i18n";
 import "./session";
 import { useAppTheme, useRouter, useSystemError } from "./session";
+
+const AccessDeniedContent = () => {
+    const { t } = useTranslation();
+    return <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Subtitle2 align="center">{t("access_denied")}</Subtitle2>
+        <Body2 align="center">{t("no_permissions1")}</Body2>
+        <Body2 align="center">{t("no_permissions2")}</Body2>
+    </div>;
+};
 
 /**
  * Index component that is going to load the application component
@@ -19,7 +27,6 @@ export const Startup = () => {
     const { catchSystemError } = useSystemError();
     const { translationStore } = useTranslation();
     const router = useRouter();
-    const { t } = useTranslation();
     const referenceData = useReferenceData();
 
     // This is safe
@@ -58,7 +65,8 @@ export const Startup = () => {
                 <SystemError>
                     <Router
                         routes={appRoutes}
-                        unAuthorizedAccessView={<AccessDeniedIcon text={<Body2>{t("access_denied")}</Body2>} />}
+                        unAuthorizedAccessView={
+                            <AccessDeniedIcon text={<AccessDeniedContent />} />}
                         onHandleAccessControl={(route) => {
                             return appRbacTable.check(route, referenceData.userProfile?.permissions || [], eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
                         }}
