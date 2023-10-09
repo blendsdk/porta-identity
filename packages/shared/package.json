@@ -1,6 +1,6 @@
 {
     "name": "@porta/shared",
-    "version": "1.0.237",
+    "version": "1.0.238",
     "main": "dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
