@@ -1,8 +1,12 @@
 import { errorObjectInfo, ucFirst } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { ICreateTenantRequest, IInitializeRequest, IInitializeResponse, IOpsResponse } from "@porta/shared";
-import { commonUtils } from "../../../utils";
+import { ICreateTenantRequest, IGetUserProfileRequest, IGetUserProfileResponse, IInitializeRequest, IInitializeResponse, IOpsResponse } from "@porta/shared";
+import { SysAccessTokenViewDataService } from "../../../dataservices/SysAccessTokenViewDataService";
+import { SysUserDataService } from "../../../dataservices/SysUserDataService";
+import { SysUserProfileDataService } from "../../../dataservices/SysUserProfileDataService";
+import { commonUtils, databaseUtils, neutralAvatar } from "../../../utils";
 import { DatabaseSeed } from "../../../utils/DatabaseSeed";
+import { Claims } from "../authorization/Claims";
 import { ApplicationControllerBase } from "./ApplicationControllerBase";
 
 /**
@@ -12,6 +16,55 @@ import { ApplicationControllerBase } from "./ApplicationControllerBase";
  * @extends {ApplicationControllerBase}
  */
 export class ApplicationController extends ApplicationControllerBase {
+
+    public async getUserProfile(_params: IGetUserProfileRequest): Promise<Response<IGetUserProfileResponse>> {
+        const { user_id, id } = this.request.context.getUser<{ user_id: string; id: string; }>();
+        const tenant = commonUtils.getTenantFromRequest(this.request);
+        const { dataSource } = await databaseUtils.getTenantDataSource(tenant);
+
+        const userDs = new SysUserDataService({ dataSource });
+        const accessTokenViewDs = new SysAccessTokenViewDataService({ dataSource });
+        const profileDs = new SysUserProfileDataService({ dataSource });
+
+        const user = await userDs.findSysUserById({ id: user_id });
+        const profile = await profileDs.findUserProfileByUserId({ user_id });
+        const accessTokenView = await accessTokenViewDs.findAccessTokenById({ id });
+        const accessTokenStorage = await databaseUtils.findAccessTokenByTenant({
+            tenant,
+            check_validity: true,
+            token_reference: undefined,
+            access_token: accessTokenView.access_token
+        });
+
+
+        let accessClaims: any = undefined;
+
+        if (profile && !profile.avatar) {
+            profile.avatar = neutralAvatar;
+        }
+
+        if (user) {
+            const claims = new Claims(accessTokenStorage, this.getServerURL(), tenant);
+            accessClaims = claims.getClaims();
+        }
+
+        return new SuccessResponse({
+            tenant: {
+                ...accessTokenStorage.tenant, id: undefined,
+                allow_reset_password: undefined,
+                database: undefined,
+                is_active: undefined
+            },
+            user,
+            profile,
+            roles: accessClaims?.roles,
+            permissions: accessClaims?.permissions,
+            signout_url: accessClaims?.signout_url
+
+        });
+    }
+
+
     /**
      * @param {ICreateTenantRequest} params
      * @returns {Promise<Response<IOpsResponse>>}

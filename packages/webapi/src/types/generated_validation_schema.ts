@@ -1507,6 +1507,30 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "name", "email", "password", "allow_registration", "allow_reset_password", "organization"]
+		},
+		get_user_profile_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		get_user_profile: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user: {
+					$ref: "#/definitions/sys_user",
+					type: eJsonSchemaType.object
+				},
+				profile: {
+					$ref: "#/definitions/sys_user_profile",
+					type: eJsonSchemaType.object
+				}
+			},
+			required: ["user", "profile"]
 		}
 	}
 };

@@ -26,3 +26,15 @@ export interface ISysAccessTokenViewDataServiceFindAccessTokenByReferenceParams 
 	 */
 	token_reference: string;
 }
+
+/**
+ * @export
+ * @interface ISysAccessTokenViewDataServiceFindAccessTokenByIdParams
+ */
+export interface ISysAccessTokenViewDataServiceFindAccessTokenByIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenViewDataServiceFindAccessTokenByIdParams
+	 */
+	id: string;
+}

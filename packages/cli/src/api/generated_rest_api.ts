@@ -54,7 +54,9 @@ import {
 	IInitializeRequest,
 	IInitializeResponse,
 	ICreateTenantRequest,
-	IOpsResponse
+	IOpsResponse,
+	IGetUserProfileRequest,
+	IGetUserProfileResponse
 } from "@porta/shared";
 
 /**
@@ -98,6 +100,7 @@ export interface IPortaApi {
 	application: {
 		initialize: THttpRequest<IInitializeRequest, IInitializeResponse>;
 		createTenant: THttpRequest<ICreateTenantRequest, IOpsResponse>;
+		getUserProfile: THttpRequest<IGetUserProfileRequest, IGetUserProfileResponse>;
 	};
 }
 
@@ -186,7 +189,8 @@ export const PortaApi = createHttpApi<IPortaApi>({
 				method: "post",
 				url: "/api/:tenant/tenant",
 				parameters: { tenant: eParameterLocation.query }
-			})
+			}),
+			getUserProfile: defineEndpoint({ method: "get", url: "/:tenant/user_profile" })
 		}
 	}
 });

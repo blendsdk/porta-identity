@@ -11,15 +11,11 @@ export const MyProfile = () => {
     return (
         <WithSession>
             <div>
-                <ApplicationBar launcher={false} />
+                <ApplicationBar launcher={true} />
                 <PageContainer>
                     <Body2>{t("my_profile")}</Body2>
                     {refData.userProfile && (
-                        <>
-
-                            <pre>{JSON.stringify(refData.userProfile, null, 4)}</pre>
-                            <img src={refData.userProfile.picture} />
-                        </>
+                        <pre>{JSON.stringify(refData.userProfile, null, 4)}</pre>
                     )}
                 </PageContainer>
             </div>

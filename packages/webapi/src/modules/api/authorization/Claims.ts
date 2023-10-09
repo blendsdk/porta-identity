@@ -279,11 +279,11 @@ export class Claims {
     /**
      * Get claims by scope or individual claims
      *
-     * @param {{ scope?: string; claims?: IDictionaryOf<IClaim> }} { scope, claims }
-     * @returns
+     * @param {string[]} [customScopes]
+     * @return {*}
      * @memberof Claims
      */
-    public getClaims() {
+    public getClaims(customScopes?: string[]) {
         const { auth_request_params } = this.accessTokenStorage || {};
         const { claims, scope } = auth_request_params || {};
 
@@ -318,7 +318,7 @@ export class Claims {
             this.handlers.push(handler);
         });
 
-        const scopeList = [scope, Object.keys(claimsObj)].filter(Boolean).join(" ");
+        const scopeList = Array.from(new Set([...(customScopes || []), ...[scope, Object.keys(claimsObj)].filter(Boolean)])).join(" ").trim();
 
         // find all handler by scope
         Object.keys(commonUtils.parseSeparatedTokens(scopeList)).forEach((scopeName) => {
@@ -327,7 +327,11 @@ export class Claims {
                     return wrapInArray<string>(item.scope).includes(scopeName);
                 })
                 .forEach((handler) => {
-                    result[handler.claim] = handler.handler({});
+                    try {
+                        result[handler.claim] = handler.handler({});
+                    } catch (err) {
+                        debugger;
+                    }
                 });
         });
 

@@ -6,6 +6,7 @@
 import { IErrorData } from "./generated_types";
 
 import { IAuthenticationFlowState } from "./generated_types";
+import { ISysUser, ISysUserProfile } from "./generated_database_types";
 
 /**
  * @export
@@ -1191,4 +1192,45 @@ export interface ICreateTenantRequest {
 	 * @memberOf ICreateTenantRequest
 	 */
 	organization: string;
+}
+
+/**
+ * @export
+ * @interface IGetUserProfileRequest
+ */
+export interface IGetUserProfileRequest {
+	/**
+	 * @type string
+	 * @memberOf IGetUserProfileRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IGetUserProfile
+ */
+export interface IGetUserProfile {
+	/**
+	 * @type ISysUser
+	 * @memberOf IGetUserProfile
+	 */
+	user: ISysUser;
+	/**
+	 * @type ISysUserProfile
+	 * @memberOf IGetUserProfile
+	 */
+	profile: ISysUserProfile;
+}
+
+/**
+ * @export
+ * @interface IGetUserProfileResponse
+ */
+export interface IGetUserProfileResponse {
+	/**
+	 * @type IGetUserProfile
+	 * @memberOf IGetUserProfileResponse
+	 */
+	data: IGetUserProfile;
 }

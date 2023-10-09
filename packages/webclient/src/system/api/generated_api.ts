@@ -1,4 +1,4 @@
-// Generated on 2023-10-04T08:41:56.727Z
+// Generated on 2023-10-09T18:26:26.294Z
 
 import { I18NKeys } from "@porta/shared";
 import { IPortaApi, PortaApi } from "../../application/api";

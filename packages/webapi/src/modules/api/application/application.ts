@@ -20,6 +20,11 @@ export const ApplicationModule = (): IRouter => {
 				dispatch: "create_tenant",
 				controller: ApplicationController,
 				route: routeDefinitions.application.create_tenant
+			}),
+			defineControllerRoute({
+				dispatch: "get_user_profile",
+				controller: ApplicationController,
+				route: routeDefinitions.application.get_user_profile
 			})
 		]
 	};

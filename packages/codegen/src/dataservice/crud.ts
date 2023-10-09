@@ -93,6 +93,20 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                 },
                 returnType: view.getName()
             });
+            svc.defineMethod({
+                name: "find_access_token_by_id",
+                query: "select * from sys_access_token_view where id = :id",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("id");
+                    return suggestedTypeName;
+                },
+                returnType: view.getName()
+            });
         }
 
         if (view.getName() === "sys_refresh_token_view") {

@@ -40,4 +40,24 @@ export function defineCustomApi(builder: ApiBuilder) {
                 .addString("organization");
         }
     });
+
+    builder.defineApi({
+        id: "get_user_profile",
+        url: "/:tenant/user_profile",
+        group: "application",
+        method: "get",
+        public: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addRefType("user", refType("sys_user"))
+                .addRefType("profile", refType("sys_user_profile"));
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
 }

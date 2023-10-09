@@ -1,10 +1,18 @@
 import { makeGlobalStore } from "@blendsdk/react";
+import { ISysGroup, ISysPermission, ISysTenant, ISysUser, ISysUserProfile } from "@porta/shared";
 import { ApplicationApi } from "../system/api";
 import { StoreBase } from "./storebase";
 
 export class ReferenceDataStore extends StoreBase {
     //TODO: type this
-    public userProfile: any;
+    public userProfile: {
+        user: ISysUser,
+        profile: ISysUserProfile;
+        roles: ISysGroup[],
+        permissions: ISysPermission[],
+        signout_url: string;
+        tenant: ISysTenant;
+    };
 
     /**
      * Creates an instance of ReferenceDataStore.
@@ -21,9 +29,10 @@ export class ReferenceDataStore extends StoreBase {
      * @memberof ReferenceDataStore
      */
     protected async loadUserProfile() {
-        const data = (await ApplicationApi.authorization.userInfoPost({
+        const data = (await ApplicationApi.application.getUserProfile({
             tenant: this.getCurrentTenant()
         })) as any;
+        console.log(data);
         this.userProfile = data;
     }
 

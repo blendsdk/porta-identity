@@ -26,7 +26,7 @@ export const routeDefinitions: {
 		authentication_logout: IRouteBase;
 		authentication_login: IRouteBase;
 	};
-	application: { initialize: IRouteBase; create_tenant: IRouteBase };
+	application: { initialize: IRouteBase; create_tenant: IRouteBase; get_user_profile: IRouteBase };
 } = {
 	blend: {
 		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
@@ -88,6 +88,7 @@ export const routeDefinitions: {
 	},
 	application: {
 		initialize: { id: "initialize", method: "post", url: "/api/initialize", public: false },
-		create_tenant: { id: "create_tenant", method: "post", url: "/api/:tenant/tenant" }
+		create_tenant: { id: "create_tenant", method: "post", url: "/api/:tenant/tenant" },
+		get_user_profile: { id: "get_user_profile", method: "get", url: "/:tenant/user_profile", public: false }
 	}
 };

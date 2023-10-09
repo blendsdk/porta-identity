@@ -9,18 +9,19 @@ import {
     AppLauncherModuleItem,
     AppTitle
 } from "@blendsdk/fluentrc";
-import { Button, Subtitle1 } from "@fluentui/react-components";
+import { Button, Persona, Subtitle1 } from "@fluentui/react-components";
 import {
     ContentView32Regular,
     Desktop32Regular,
     People32Regular,
     PeopleCommunity32Regular,
     Person32Regular,
-    Settings24Regular
 } from "@fluentui/react-icons";
 import React, { useMemo } from "react";
 import { Strings, useReferenceData } from "../../lib";
 import { useTranslation } from "../../system/i18n";
+import { useRouter } from "../../system/session";
+import { eAppRoutes } from "../routing";
 
 export interface IApplicationBar {
     launcher?: boolean;
@@ -29,6 +30,7 @@ export interface IApplicationBar {
 export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
     const { t } = useTranslation();
     const refData = useReferenceData();
+    const router = useRouter();
 
     const appTitle = useMemo(() => {
         if (refData?.userProfile?.tenant) {
@@ -43,31 +45,35 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             {
                 caption: t("dashboard_btn"),
                 icon: Desktop32Regular,
-                onClick: () => {}
+                onClick: () => { }
             },
             {
                 caption: t("applications"),
                 icon: ContentView32Regular,
-                onClick: () => {}
+                onClick: () => { }
             },
             {
                 caption: t("users"),
                 icon: People32Regular,
-                onClick: () => {}
+                onClick: () => { }
             },
             {
                 caption: t("roles"),
                 icon: PeopleCommunity32Regular,
-                onClick: () => {}
+                onClick: () => { }
             },
             {
                 caption: t("my_account"),
                 icon: Person32Regular,
-                onClick: () => {}
+                onClick: () => {
+                    router.go(eAppRoutes.myProfile.key, {
+                        tenant: refData.userProfile.tenant.name
+                    }, true);
+                }
             }
         ];
         return result;
-    }, [t]);
+    }, [refData.userProfile.tenant.name, router, t]);
 
     return (
         <AppBar>
@@ -80,12 +86,12 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             <AppBarSpacer />
             {refData.userProfile && (
                 <AppBarTabList>
-                    <AppBarTab icon={<Settings24Regular />}>
+                    <AppBarTab icon={<Persona avatar={{ image: { src: refData.userProfile.profile.avatar } }} />}>
                         <AppBarTabHeader addBottomSpacing>
                             <Subtitle1>Settings</Subtitle1>
                         </AppBarTabHeader>
-                        <Button appearance="primary" onClick={()=>{
-                            window.location.href = refData.userProfile.signout_url
+                        <Button appearance="primary" onClick={() => {
+                            window.location.href = refData.userProfile.signout_url;
                         }}>{t("logout")}</Button>
                     </AppBarTab>
                 </AppBarTabList>

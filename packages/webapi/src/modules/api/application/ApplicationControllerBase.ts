@@ -4,7 +4,14 @@
  */
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
-import { IInitializeRequest, IInitializeResponse, ICreateTenantRequest, IOpsResponse } from "@porta/shared";
+import {
+	IInitializeRequest,
+	IInitializeResponse,
+	ICreateTenantRequest,
+	IOpsResponse,
+	IGetUserProfileRequest,
+	IGetUserProfileResponse
+} from "@porta/shared";
 
 /**
  * @export
@@ -32,4 +39,12 @@ export abstract class ApplicationControllerBase<
 	 * @memberof ApplicationControllerBase
 	 */
 	public abstract createTenant(params: ICreateTenantRequest): Promise<Response<IOpsResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/user_profile
+	 * @abstract
+	 * @param {IGetUserProfileRequest} params
+	 * @returns {Promise<Response<IGetUserProfileResponse>>}
+	 * @memberof ApplicationControllerBase
+	 */
+	public abstract getUserProfile(params: IGetUserProfileRequest): Promise<Response<IGetUserProfileResponse>>;
 }

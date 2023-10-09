@@ -15,7 +15,9 @@ export class SysUserDataService extends SysUserDataServiceBase {
         /**
          * Remove the password
          */
-        record.password = undefined;
+        if (record) {
+            record.password = undefined;
+        }
         return record;
     }
 
@@ -28,7 +30,9 @@ export class SysUserDataService extends SysUserDataServiceBase {
         /**
          * Remove the password
          */
-        record.password = undefined;
+        if (record) {
+            record.password = undefined;
+        }
         return record;
     }
 
