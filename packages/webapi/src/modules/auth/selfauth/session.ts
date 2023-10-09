@@ -1,8 +1,9 @@
 import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { SessionProviderModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
 import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
+import { portaAuthUtils } from "@porta/shared";
 import { IAccessToken, IPortaApplicationSetting, eOAuthGrantType } from "../../../types";
-import { commonUtils, databaseUtils } from "../../../utils";
+import { databaseUtils } from "../../../utils";
 import { TokenEndpointController } from "../../api/authorization/controllers/TokenEndpointController";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
@@ -74,7 +75,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @protected
      * @template SessionStorageType
      * @param {string} token
-     * @param {HttpRequest<{}>} req
+     * @param {HttpRequest} req
      * @returns {Promise<SessionStorageType>}
      * @memberof PortaSelfAuthenticationModule
      */
@@ -191,7 +192,7 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
         } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string; }>();
         const { account, password } = this.getBasicAuthCredentials(req);
         const anonLogoutToken = this.getAnonymusLogoutURLToken(req);
-        const { sessionKey } = commonUtils.getSessionTTLKey(tenant);
+        const { sessionKey } = portaAuthUtils.getSessionTTLKeys(tenant);
 
         if (access_token) {
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
@@ -285,14 +286,14 @@ export class PortaSelfAuthSessionProviderModule extends SessionProviderModuleBas
      * @protected
      * @param {*} sessionStorage
      * @param {IRoute} _route
-     * @param {HttpRequest<{}>} _reg
+     * @param {HttpRequest} _reg
      * @returns {Promise<TGetUserMethod>}
      * @memberof PortaSelfAuthenticationModule
      */
     protected async createRequestContextGetUserMethod(
         sessionStorage: any,
         _route: IRoute,
-        _req: HttpRequest<{}>
+        _req: HttpRequest
     ): Promise<TGetUserMethod> {
         return () => {
             return { ...sessionStorage, _cacheKey: sessionStorage.cacheKey, _sub: sessionStorage.user_id };

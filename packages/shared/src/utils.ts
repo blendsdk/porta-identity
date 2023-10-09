@@ -29,6 +29,18 @@ export class PortaAuthUtils {
         const key = [type, tenant, client, url.hostname].join("-");
         return CRC32<string>(key, { hexOutput: true });
     }
+
+    /**
+     * @param {string} tenant
+     * @return {*}
+     * @memberof PortaAuthUtils
+     */
+    public getSessionTTLKeys(tenant: string) {
+        return {
+            sessionKey: CRC32<string>([tenant, "session"].join("-"), { hexOutput: true }),
+            sessionTTLKey: CRC32<string>([tenant, "ttl"].join("-"), { hexOutput: true })
+        };
+    }
 }
 
 /**

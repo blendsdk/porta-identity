@@ -277,7 +277,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         //     sameSite: "lax" // only send to this endpoint
         // });
 
-        const { sessionKey, sessionTTLKey } = commonUtils.getSessionTTLKey(tenant);
+        const { sessionKey, sessionTTLKey } = portaAuthUtils.getSessionTTLKeys(tenant);
 
         // readable from client
         this.setCookie(sessionTTLKey, new Date(expire_at).getTime(), {
@@ -501,7 +501,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const cookies = this.request.cookies;
         const signedCookies = this.request.signedCookies;
         const skip = ["lang", "locale", "ui_locales"];
-        const { sessionKey, sessionTTLKey } = await commonUtils.getSessionTTLKey(tenant);
+        const { sessionKey, sessionTTLKey } = await portaAuthUtils.getSessionTTLKeys(tenant);
         const deleteKeys: string[] = ["_l", "_t", "_ls", "_lf", sessionKey, sessionTTLKey];
 
         Object.entries(eKeySignatureType).forEach(([_k, type]) => {

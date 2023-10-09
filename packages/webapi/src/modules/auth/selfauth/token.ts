@@ -1,5 +1,5 @@
 import { base64Decode } from "@blendsdk/stdlib";
-import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
+import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
 import {
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
@@ -12,10 +12,15 @@ import { databaseUtils } from "../../../utils";
 
 export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
 
-    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
+    protected getSessionTTLKey(_req: HttpRequest): Promise<string> {
         throw new Error("Method not implemented.");
     }
-    protected getKeySignature(_req: HttpRequest<{}>): Promise<string> {
+
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
+
+    protected getKeySignature(_req: HttpRequest): Promise<string> {
         throw new Error("Method not implemented.");
     }
 
@@ -26,6 +31,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @memberof PortaSelfAuthenticationModule
      */
     protected async createResponseAuthorized(_params: ICreateResponseAuthorizedParams) {
+        // This returning null basically disabled the three no-implemented methods
         return null;
     }
 
@@ -68,14 +74,14 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
      * @protected
      * @param {string} _tenant
      * @param {BaseClient} _client
-     * @param {HttpRequest<{}>} req
+     * @param {HttpRequest} req
      * @returns {Promise<AuthorizationParameters>}
      * @memberof PortaSelfAuthenticationModule
      */
     protected async getAuthorizationParameters(
         _tenant: string,
         _client: BaseClient,
-        req: HttpRequest<{}>
+        req: HttpRequest
     ): Promise<AuthorizationParameters> {
         const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string; }>();
         return {
@@ -120,15 +126,4 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
     ): Promise<any> {
         return oidcData;
     }
-
-    /**
-     * @protected
-     * @param {HttpRequest<{}>} req
-     * @returns {Promise<string>}
-     * @memberof PortaSelfAuthTokenAuthenticationModule
-     */
-    protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
-        return SESSION_KEY + "hllo";
-    }
-
 }

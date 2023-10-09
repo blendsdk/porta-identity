@@ -5,12 +5,12 @@ import { getKeySignature } from "./common";
 export class CliSessionProvider extends SessionProviderModuleBase {
     protected async findSessionStorageByToken<SessionStorageType = any>(
         token: string,
-        req: HttpRequest<{}>
+        req: HttpRequest
     ): Promise<SessionStorageType> {
         return req.context.getCache().getValue([await getKeySignature(req), token].join(":"));
     }
 
-    protected async getSessionTokenFromRequest(req: HttpRequest<{}>): Promise<string> {
+    protected async getSessionTokenFromRequest(req: HttpRequest): Promise<string> {
         const cookie_token = this.getCookieToken(await getKeySignature(req), req);
         return cookie_token;
     }
@@ -18,7 +18,7 @@ export class CliSessionProvider extends SessionProviderModuleBase {
     protected async createRequestContextGetUserMethod(
         sessionStorage: any,
         _route: IRoute,
-        _req: HttpRequest<{}>
+        _req: HttpRequest
     ): Promise<TGetUserMethod> {
         return () => {
             const { user } = sessionStorage;

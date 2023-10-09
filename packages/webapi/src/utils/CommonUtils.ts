@@ -1,5 +1,5 @@
 import { sha256Verify } from "@blendsdk/crypto";
-import { CRC32, errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
+import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import * as x509 from "@peculiar/x509";
 import * as crypto from "crypto";
@@ -173,18 +173,6 @@ class CommonUtils {
     public getTenantFromRequest(req: HttpRequest) {
         const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>() || {};
         return tenant;
-    }
-
-    /**
-     * @param {HttpRequest} req
-     * @returns {Promise<string>}
-     * @memberof CommonUtils
-     */
-    public getSessionTTLKey(tenant: string) {
-        return {
-            sessionKey: CRC32<string>([tenant, "session"].join("-"), { hexOutput: true }),
-            sessionTTLKey: CRC32<string>([tenant, "ttl"].join("-"), { hexOutput: true })
-        };
     }
 }
 

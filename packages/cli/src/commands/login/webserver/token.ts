@@ -30,7 +30,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
     protected async getAuthorizationParameters(
         _tenant: string,
         _client: BaseClient,
-        req: HttpRequest<{}>
+        req: HttpRequest
     ): Promise<AuthorizationParameters> {
         return {
             prompt: "login",
@@ -48,7 +48,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
     }
 
     protected async getDiscoveryURL(tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
-        const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string }>();
+        const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string; }>();
         return `${PORTA_HOST}/${tenant}/oauth2`;
     }
 
@@ -59,15 +59,15 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
         return oidcData;
     }
 
-    protected async getSessionTTLKey(_req: HttpRequest<{}>): Promise<string> {
+    protected async getSessionTTLKey(_req: HttpRequest): Promise<string> {
         return SESSION_KEY;
     }
 
-    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
+    protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest): Promise<string> {
         return CRC32(new Date().toUTCString());
     }
 
-    protected async getKeySignature(req: HttpRequest<{}>): Promise<string> {
+    protected async getKeySignature(req: HttpRequest): Promise<string> {
         return getKeySignature(req);
     }
 }
