@@ -124,7 +124,7 @@ export class Claims {
                     scope: "profile",
                     claim: "profile",
                     handler: this.handleClaim(() => {
-                        return `${serverUrl}/${tenantName}/profile/me`;
+                        return `${serverUrl}/${tenantName}/me`;
                     })
                 },
                 {

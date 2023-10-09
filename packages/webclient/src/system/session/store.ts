@@ -17,6 +17,7 @@ export class SessionStore extends SessionStoreBase {
     protected skipSessionCheck() {
         const router = this.getRouter();
         switch (router.getRouteName()) {
+            case "fallback":
             case eAppRoutes.signout.key:
             case eAppRoutes.signin.key:
             case eAppRoutes.resetPassword.key:
