@@ -3,6 +3,7 @@ import { LoginView, LogoutView } from "../authentication";
 import { ForgotPassword } from "../authentication/ForgotPassword";
 import { ResetPassword } from "../authentication/ResetPassword";
 import { DashboardOverview } from "../dashboard/DashboardView";
+import { MyProfile } from "../dashboard/MyProfile";
 import { SessionExpiredView } from "../dashboard/SessionExpred";
 import { SignoutComplete } from "../dashboard/SignoutComplete";
 import { eAppRoutes } from "./constants";
@@ -42,5 +43,10 @@ export const appRoutes: IRoute[] = [
         name: eAppRoutes.signoutComplete.key,
         path: eAppRoutes.signoutComplete.path,
         component: SignoutComplete
+    },
+    {
+        name: eAppRoutes.myProfile.key,
+        path: eAppRoutes.myProfile.path,
+        component: MyProfile
     }
 ];

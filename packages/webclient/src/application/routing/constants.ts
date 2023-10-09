@@ -26,5 +26,10 @@ export const eAppRoutes = {
     signoutComplete: {
         key: "signout-complete",
         path: "/fe/auth/:tenant/signout/complete"
+    },
+    myProfile: {
+        key: "me",
+        path: "/fe/auth/:tenant/me"
     }
+
 };

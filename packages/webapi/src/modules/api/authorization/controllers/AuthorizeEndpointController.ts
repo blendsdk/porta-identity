@@ -382,7 +382,7 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async getCurrentlyAuthenticatedUserToken(
         tenant: ISysTenant,
         client_id: string
-    ): Promise<{ token: string; accessTokenStorage: IAccessToken }> {
+    ): Promise<{ token: string; accessTokenStorage: IAccessToken; }> {
         const accessTokenKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
             client: client_id,
@@ -390,7 +390,24 @@ export class AuthorizeEndpointController extends EndpointController {
             type: eKeySignatureType.access_token
         });
         // we first get the token from the cookie
-        const accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
+        let accessTokenFromCookie = this.getCookie(accessTokenKeySignature, true) || undefined;
+
+        /**
+         * Edge case:
+         * If the authorization flow was started from a local source (oidc/login)
+         * Then any previous authorization by the same tenant should be accepted
+         */
+        if (!accessTokenFromCookie) {
+            const referer = this.request.headers.referer || undefined;
+            if (referer) {
+                const refUrl = new URL(referer);
+                if (refUrl.pathname.indexOf(`/oidc/${tenant.name}/`) !== -1) {
+                    const { sessionKey } = portaAuthUtils.getSessionTTLKeys(tenant.name);
+                    accessTokenFromCookie = this.getCookie(this.getCookie(sessionKey, true), true);
+                }
+            }
+        }
+
 
         let accessTokenRecord = await databaseUtils.findAccessTokenByTenant({
             tenant: tenant.id,
