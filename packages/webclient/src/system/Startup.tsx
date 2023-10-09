@@ -1,6 +1,9 @@
+import { eAclRuleType } from "@blendsdk/rbac";
 import { Router, SessionProvider, SystemError, getCurrentLocale } from "@blendsdk/react";
-import { FluentProvider } from "@fluentui/react-components";
+import { Body2, FluentProvider } from "@fluentui/react-components";
 import { useEffect } from "react";
+import { AccessDeniedIcon } from "../application/common/AccessDeniedIcon";
+import { appRbacTable } from "../application/common/rbac";
 import { appRoutes } from "../application/routing";
 import { useReferenceData } from "../lib";
 import { useTranslation } from "./i18n";
@@ -16,6 +19,7 @@ export const Startup = () => {
     const { catchSystemError } = useSystemError();
     const { translationStore } = useTranslation();
     const router = useRouter();
+    const { t } = useTranslation();
     const referenceData = useReferenceData();
 
     // This is safe
@@ -37,8 +41,8 @@ export const Startup = () => {
     return (
         <FluentProvider theme={theme}>
             <SessionProvider
-                onBeforeStart={() => {
-                    return translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
+                onBeforeStart={async () => {
+                    await translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
                 }}
                 onSessionStarted={() => {
                     return new Promise<void>(async (resolve) => {
@@ -54,11 +58,10 @@ export const Startup = () => {
                 <SystemError>
                     <Router
                         routes={appRoutes}
-                        // unAuthorizedAccessView={<UNA />}
-                        // onHandleAccessControl={(route, params) => {
-                        //     console.log(ses.hasValidSession);
-                        //     return route === eAppRoutes.suppliersOverview.key ? false : true;
-                        // }}
+                        unAuthorizedAccessView={<AccessDeniedIcon text={<Body2>{t("access_denied")}</Body2>} />}
+                        onHandleAccessControl={(route) => {
+                            return appRbacTable.check(route, referenceData.userProfile?.permissions || [], eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
+                        }}
                     />
                 </SystemError>
             </SessionProvider>

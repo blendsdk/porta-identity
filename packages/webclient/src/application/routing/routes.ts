@@ -6,9 +6,15 @@ import { DashboardOverview } from "../dashboard/DashboardView";
 import { MyProfile } from "../dashboard/MyProfile";
 import { SessionExpiredView } from "../dashboard/SessionExpred";
 import { SignoutComplete } from "../dashboard/SignoutComplete";
+import { TenantsOverview } from "../tenants";
 import { eAppRoutes } from "./constants";
 
 export const appRoutes: IRoute[] = [
+    {
+        name: eAppRoutes.tenants.key,
+        path: eAppRoutes.tenants.path,
+        component: TenantsOverview
+    },
     {
         name: eAppRoutes.signin.key,
         path: eAppRoutes.signin.path,

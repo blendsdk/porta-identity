@@ -32,7 +32,6 @@ export class ReferenceDataStore extends StoreBase {
         const data = (await ApplicationApi.application.getUserProfile({
             tenant: this.getCurrentTenant()
         })) as any;
-        console.log(data);
         this.userProfile = data;
     }
 

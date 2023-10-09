@@ -436,7 +436,7 @@
     tslib "^2.6.2"
     yesql "^7.0.0"
 
-"@blendsdk/rbac@3.2.340":
+"@blendsdk/rbac@3.2.340", "@blendsdk/rbac@^3.2.340":
   version "3.2.340"
   resolved "https://pak.truesoftware.net/@blendsdk/rbac/-/rbac-3.2.340.tgz#78e3099b5859958c6137c9f360b731bf8f9ab6fb"
   integrity sha512-lHxyghJPIzaPEakpFHRLDaqud64al1EYkahsBi1c/3A87VtyYa0xmUJjRLBtTU5/ArNw6+0MtMY7HnqIZra+Mg==

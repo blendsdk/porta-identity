@@ -26,5 +26,9 @@
     "signout_complete": {
         "en": "You have been successfully signed out. You can close this browser tab or window.",
         "nl": "U bent succesvol afgemeld. U kunt dit browsertabblad of -venster sluiten."
+    },
+    "tenants": {
+        "en": "Tenants",
+        "nl": "Tenants"
     }
 }

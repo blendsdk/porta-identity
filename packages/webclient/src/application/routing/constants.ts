@@ -30,6 +30,9 @@ export const eAppRoutes = {
     myProfile: {
         key: "me",
         path: "/fe/auth/:tenant/me"
+    },
+    tenants: {
+        key: "tenants-admin",
+        path: "/fe/manage/:tenant/tenants"
     }
-
 };
