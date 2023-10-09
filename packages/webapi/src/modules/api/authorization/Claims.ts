@@ -2,6 +2,7 @@ import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/s
 import { eDefaultPermissions } from "@porta/shared";
 import { IAccessToken } from "../../../types";
 import { commonUtils } from "../../../utils";
+import { neutralAvatar } from "../../../utils/resources";
 
 /**
  * Interface describing a claim
@@ -131,7 +132,7 @@ export class Claims {
                     scope: "profile",
                     claim: "picture",
                     handler: this.handleClaim(() => {
-                        return profile.avatar ? profile.avatar : "n/a";
+                        return profile.avatar ? profile.avatar : neutralAvatar;
                     })
                 },
                 {

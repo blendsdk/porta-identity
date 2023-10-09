@@ -7,14 +7,20 @@ import { PageContainer } from "../common/PageContainer";
 
 export const MyProfile = () => {
     const { t } = useTranslation();
-    const refData = useReferenceData()
+    const refData = useReferenceData();
     return (
         <WithSession>
             <div>
                 <ApplicationBar launcher={false} />
                 <PageContainer>
                     <Body2>{t("my_profile")}</Body2>
-                    <pre>{JSON.stringify(refData.userProfile,null,4)}</pre>
+                    {refData.userProfile && (
+                        <>
+
+                            <pre>{JSON.stringify(refData.userProfile, null, 4)}</pre>
+                            <img src={refData.userProfile.picture} />
+                        </>
+                    )}
                 </PageContainer>
             </div>
         </WithSession>

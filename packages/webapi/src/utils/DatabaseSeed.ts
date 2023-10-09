@@ -119,7 +119,7 @@ export class DatabaseSeed {
             firstname: ucFirst(tenant.name),
             lastname: "Administrator",
             email,
-            avatar: "n/a"
+            avatar: ""
         });
 
         return adminUser;
