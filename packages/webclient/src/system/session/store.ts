@@ -1,7 +1,11 @@
 import { SessionStoreBase, useGlobalSystemError } from "@blendsdk/react";
+import { portaAuthUtils } from "@porta/shared";
 import Cookies from "js-cookie";
 import { eAppRoutes } from "../../application/routing";
 import { ApplicationApi } from "../api";
+import { IRouterCommonParams } from "./types";
+
+
 
 /**
  * @export
@@ -65,8 +69,13 @@ export class SessionStore extends SessionStoreBase {
     }
 
     protected onGetSessionTTL(): Promise<number> {
+        const { tenant } = this.getRouter().getParameters<IRouterCommonParams>();
+        const { sessionTTLKey } = portaAuthUtils.getSessionTTLKeys(tenant);
+        if (!sessionTTLKey) {
+            throw new Error(`Unable to determine sessionKey for tenant: ${tenant}`);
+        }
         return new Promise((resolve) => {
-            resolve(this.getTTLFromCookie("_session"));
+            resolve(this.getTTLFromCookie(sessionTTLKey));
         });
     }
 }

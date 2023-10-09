@@ -15,12 +15,12 @@ export const eAppRoutes = {
         key: "resetPassword",
         path: "/fe/auth/reset-password/:flow/t"
     },
-    root: {
-        key: "root",
-        path: "/fe/"
-    },
     noValidSession: {
         key: "no-valid-session",
         path: "/fe/auth/session-expired"
+    },
+    tenantDashboard: {
+        key: "tenant-dashboard",
+        path: "/fe/manage/:tenant/dashboard"
     }
 };

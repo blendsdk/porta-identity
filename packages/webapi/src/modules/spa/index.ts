@@ -5,10 +5,26 @@ import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { commonUtils } from "../../utils";
 import { renderGetRedirect } from "../auth/utils";
 
 let indexFile: string = null;
 let versionInfo = null;
+
+const createSignIn = (req: HttpRequest, state: any) => {
+    const { tenant, locale } = req.context.getParameters<{ locale: string, tenant: string; }>();
+    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
+    if (state) {
+        url.searchParams.append(
+            "state",
+            base64Encode(JSON.stringify(state))
+        );
+    }
+    if (locale) {
+        url.searchParams.append("locale", locale);
+    }
+    return url.toString();
+};
 
 export const SPARoutes = (): IRouter => {
     return {
@@ -16,7 +32,7 @@ export const SPARoutes = (): IRouter => {
             {
                 method: "get",
                 public: true,
-                url: "/:tenant/manage",
+                url: "/:tenant/signin",
                 request: {
                     properties: {
                         tenant: {
@@ -29,16 +45,10 @@ export const SPARoutes = (): IRouter => {
                     }
                 },
                 handlers: (req: HttpRequest, res: HttpResponse) => {
-                    const { tenant, locale } = req.context.getParameters<any>();
-                    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
-                    url.searchParams.append(
-                        "state",
-                        base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/` }))
-                    );
-                    if (locale) {
-                        url.searchParams.append("locale", locale);
-                    }
-                    //res.cookie("_manage", tenant);
+                    const tenant = commonUtils.getTenantFromRequest(req);
+                    const url = createSignIn(req, {
+                        location: `${req.context.getServerURL()}/fe/manage/${tenant}/dashboard`
+                    });
                     res.send(renderGetRedirect(url.toString()));
                 }
             },

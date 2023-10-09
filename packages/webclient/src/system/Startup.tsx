@@ -17,6 +17,10 @@ export const Startup = () => {
     const { translationStore } = useTranslation();
     const router = useRouter();
     const referenceData = useReferenceData();
+
+    // This is safe
+    referenceData.serRouter(router);
+
     useEffect(() => {
         const worker = new Promise<void>(async (resolve, reject) => {
             try {

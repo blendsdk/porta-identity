@@ -28,13 +28,13 @@ export const appRoutes: IRoute[] = [
         component: ResetPassword
     },
     {
-        name: eAppRoutes.root.key,
-        path: eAppRoutes.root.path,
-        component: DashboardOverview
-    },
-    {
         name: eAppRoutes.noValidSession.key,
         path: eAppRoutes.noValidSession.path,
         component: SessionExpiredView
+    },
+    {
+        name: eAppRoutes.tenantDashboard.key,
+        path: eAppRoutes.tenantDashboard.path,
+        component: DashboardOverview
     }
 ];
