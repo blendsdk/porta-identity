@@ -68,7 +68,14 @@ export const Startup = () => {
                         unAuthorizedAccessView={
                             <AccessDeniedIcon text={<AccessDeniedContent />} />}
                         onHandleAccessControl={(route) => {
-                            return appRbacTable.check(route, referenceData.userProfile?.permissions || [], eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
+                            return appRbacTable.check(
+                                route,
+                                referenceData.userProfile?.permissions || [],
+                                eAclRuleType.permission,
+                                {
+                                    allRequired: true,
+                                    passWhenNoRulePresent: true
+                                });
                         }}
                     />
                 </SystemError>
