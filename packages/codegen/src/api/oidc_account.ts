@@ -1,6 +1,5 @@
-import { ApiBuilder, refType } from "@blendsdk/codegen";
+import { ApiBuilder, createSecureCrudAPI, eCrudAPI, refType } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
-import { createSecureCrudAPI, eCrudAPI } from "./crudapi";
 
 export function createOpenIDAccountAPI(builder: ApiBuilder) {
     createSecureCrudAPI({
