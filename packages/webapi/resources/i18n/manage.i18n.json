@@ -42,5 +42,17 @@
     "no_permissions2": {
         "en": "Please contract your administrator for assistance.",
         "nl": "Vraag uw beheerder om hulp."
+    },
+    "permissions": {
+        "en": "Permissions",
+        "nl": "Rechten"
+    },
+    "integrations": {
+        "en": "Integrations",
+        "nl": "Integraties"
+    },
+    "admin": {
+        "en": "Admin",
+        "nl": "Beheer"
     }
 }

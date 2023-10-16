@@ -34,5 +34,9 @@ export const eAppRoutes = {
     tenants: {
         key: "tenants-admin",
         path: "/fe/manage/:tenant/tenants"
+    },
+    admin: {
+        key: "admin",
+        path: "/fe/manage/:tenant/admin"
     }
 };

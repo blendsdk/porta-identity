@@ -12,14 +12,14 @@ import { IAccessToken, routeDefinitions } from "../../types";
 
 export const RoleBasedAccessHandler = (): IRouter => {
     const rbacTable = new RoleBasedAccessTable({
-        rules:[
+        rules: [
             {
-                subject:routeDefinitions.application.create_tenant.url,
-                type:eAclRuleType.permission,
-                check:(tokens:ISysUserPermissionView[])=>{
-                    return tokens.find(t=>{
-                        return t.code === eDefaultPermissions.CAN_CREATE_TENANT.code
-                    }) !== undefined
+                subject: routeDefinitions.application.create_tenant.url,
+                type: eAclRuleType.permission,
+                check: (tokens: ISysUserPermissionView[]) => {
+                    return tokens.find(t => {
+                        return t.code === eDefaultPermissions.CAN_MANAGE_TENANTS.code;
+                    }) !== undefined;
                 }
             }
         ]
@@ -32,7 +32,7 @@ export const RoleBasedAccessHandler = (): IRouter => {
                 const { permissions = [] } = req.context.getUser<IAccessToken>() || {};
 
                 if (
-                    rbacTable.check(url,permissions,eAclRuleType.permission,{passWhenNoRulePresent:true,allRequired:false})
+                    rbacTable.check(url, permissions, eAclRuleType.permission, { passWhenNoRulePresent: true, allRequired: false })
                 ) {
                     next();
                 } else {

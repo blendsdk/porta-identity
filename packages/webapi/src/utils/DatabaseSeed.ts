@@ -308,7 +308,7 @@ export class DatabaseSeed {
 
             await asyncForEach(Object.entries(eDefaultPermissions), async ([code, perm]) => {
                 switch (code) {
-                    case eDefaultPermissions.CAN_CREATE_TENANT.code:
+                    case eDefaultPermissions.CAN_MANAGE_TENANTS.code:
                         if (isRegistry) {
                             await this.createPermission(perm, tenantRecord);
                         }
@@ -319,8 +319,14 @@ export class DatabaseSeed {
             });
 
             if (isRegistry) {
-                await this.assignGroupPermission(adminGroup, eDefaultPermissions.CAN_CREATE_TENANT, tenantRecord);
+                await this.assignGroupPermission(adminGroup, eDefaultPermissions.CAN_MANAGE_TENANTS, tenantRecord);
             }
+
+            asyncForEach(Object.entries(eDefaultPermissions), async ([_key, perm]) => {
+                if (perm.code !== eDefaultPermissions.CAN_MANAGE_TENANTS.code) {
+                    await this.assignGroupPermission(adminGroup, perm, tenantRecord);
+                }
+            });
 
             // Creating ROLE/GROUP membership permissions to each group
             // so it runs out as roles on the Claims

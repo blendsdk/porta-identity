@@ -1,4 +1,5 @@
 import { IRoute } from "@blendsdk/react";
+import { AdminOverview } from "../admin";
 import { LoginView, LogoutView } from "../authentication";
 import { ForgotPassword } from "../authentication/ForgotPassword";
 import { ResetPassword } from "../authentication/ResetPassword";
@@ -10,6 +11,11 @@ import { TenantsOverview } from "../tenants";
 import { eAppRoutes } from "./constants";
 
 export const appRoutes: IRoute[] = [
+    {
+        name: eAppRoutes.admin.key,
+        path: eAppRoutes.admin.path,
+        component: AdminOverview
+    },
     {
         name: eAppRoutes.tenants.key,
         path: eAppRoutes.tenants.path,

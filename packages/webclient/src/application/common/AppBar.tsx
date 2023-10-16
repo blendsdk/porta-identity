@@ -10,16 +10,12 @@ import {
     AppTitle
 } from "@blendsdk/fluentrc";
 import { eAclRuleType } from "@blendsdk/rbac";
-import { Button, Persona, Subtitle1 } from "@fluentui/react-components";
+import { Avatar, Button, Subtitle1 } from "@fluentui/react-components";
 import {
     ContentView32Regular,
-    Desktop32Regular,
-    HomeDatabase32Regular,
-    People32Regular,
-    PeopleCommunity32Regular,
-    Person32Regular
+    Desktop32Regular, Person32Regular
 } from "@fluentui/react-icons";
-import { eDefaultPermissions } from "@porta/shared";
+import { eDefaultSystemGroups } from "@porta/shared";
 import React, { useMemo } from "react";
 import { Strings, useReferenceData } from "../../lib";
 import { useTranslation } from "../../system/i18n";
@@ -51,33 +47,19 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             {
                 caption: t("dashboard_btn"),
                 icon: Desktop32Regular,
+                id: eAppRoutes.tenantDashboard.key,
                 onClick: () => { }
             },
             {
-                id: "launcher_tenants",
-                caption: t("tenants"),
-                icon: HomeDatabase32Regular,
-                permissions: [eDefaultPermissions.CAN_CREATE_TENANT.code],
+                caption: t("admin"),
+                icon: ContentView32Regular,
+                id: eAppRoutes.admin.key,
+                roles: [eDefaultSystemGroups.ADMINISTRATORS_GROUP],
                 onClick: () => {
-                    router.go(eAppRoutes.tenants.key, {
+                    router.go(eAppRoutes.admin.key, {
                         tenant
                     });
                 }
-            },
-            {
-                caption: t("applications"),
-                icon: ContentView32Regular,
-                onClick: () => { }
-            },
-            {
-                caption: t("users"),
-                icon: People32Regular,
-                onClick: () => { }
-            },
-            {
-                caption: t("roles"),
-                icon: PeopleCommunity32Regular,
-                onClick: () => { }
             },
             {
                 caption: t("my_account"),
@@ -91,14 +73,12 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
         ];
         return result.filter(menu => {
             if (menu.id && refData.userProfile) {
-                return appRbacTable.check(menu.id,
-                    refData.userProfile.permissions,
-                    eAclRuleType.permission,
-                    {
-                        allRequired: true,
-                        passWhenNoRulePresent: true
-                    }
-                );
+
+                const hasPermission = appRbacTable.check(menu.id, refData.userProfile.permissions, eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
+                const hasRole = appRbacTable.check(menu.id, refData.userProfile.roles, eAclRuleType.role, { allRequired: true, passWhenNoRulePresent: true });
+
+                // Check for role and permission per route id
+                return hasRole && hasPermission;
             } else {
                 return true;
             }
@@ -116,7 +96,7 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             <AppBarSpacer />
             {refData.userProfile && (
                 <AppBarTabList>
-                    <AppBarTab icon={<Persona avatar={{ image: { src: refData.userProfile.profile.avatar } }} />}>
+                    <AppBarTab icon={<Avatar image={{ src: refData.userProfile.profile.avatar }} />}>
                         <AppBarTabHeader addBottomSpacing>
                             <Subtitle1>Settings</Subtitle1>
                         </AppBarTabHeader>
