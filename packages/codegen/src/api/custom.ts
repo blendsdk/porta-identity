@@ -1,5 +1,6 @@
 import { ApiBuilder, refType } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
+import { createSecureCrudAPI } from "./crudapi";
 
 export function defineCustomApi(builder: ApiBuilder) {
     builder.defineApi({
@@ -57,6 +58,17 @@ export function defineCustomApi(builder: ApiBuilder) {
                 .addRefType("user", refType("sys_user"))
                 .addRefType("profile", refType("sys_user_profile"));
 
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    createSecureCrudAPI({
+        builder,
+        entityName: "tenant",
+        openApi: true,
+        onCreateTypes: ({ payload_type, request_type, response_type, typeSchema }) => {
+            typeSchema.createAppendType(request_type);
+            typeSchema.createAppendType(payload_type);
             typeSchema.createResponseType(response_type, payload_type);
         }
     });
