@@ -1480,7 +1480,43 @@ export const validationSchema = {
 			},
 			required: ["status"]
 		},
-		create_tenant_request: {
+		get_user_profile_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		get_user_profile: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user: {
+					$ref: "#/definitions/sys_user",
+					type: eJsonSchemaType.object
+				},
+				profile: {
+					$ref: "#/definitions/sys_user_profile",
+					type: eJsonSchemaType.object
+				}
+			},
+			required: ["user", "profile"]
+		},
+		list_open_id_tenant_request: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_tenant: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_tenant_request: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_tenant: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_tenant_request: {
 			type: eJsonSchemaType.object,
 			properties: {
 				tenant: {
@@ -1508,29 +1544,137 @@ export const validationSchema = {
 			},
 			required: ["tenant", "name", "email", "password", "allow_registration", "allow_reset_password", "organization"]
 		},
-		get_user_profile_request: {
-			type: eJsonSchemaType.object,
-			properties: {
-				tenant: {
-					type: eJsonSchemaType.string,
-					location: eParameterLocation.params
-				}
-			},
-			required: ["tenant"]
+		update_open_id_tenant_request: {
+			type: eJsonSchemaType.object
 		},
-		get_user_profile: {
-			type: eJsonSchemaType.object,
-			properties: {
-				user: {
-					$ref: "#/definitions/sys_user",
-					type: eJsonSchemaType.object
-				},
-				profile: {
-					$ref: "#/definitions/sys_user_profile",
-					type: eJsonSchemaType.object
-				}
-			},
-			required: ["user", "profile"]
+		update_open_id_tenant: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_tenant_request: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_tenant: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_client_request: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_client: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_client_request: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_client: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_client_request: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_client: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_client_request: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_client: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_client_request: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_client: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_role_request: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_role: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_role_request: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_role: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_role_request: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_role: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_role_request: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_role: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_role_request: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_role: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_account_request: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_account: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_account_request: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_account: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_account_request: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_account: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_account_request: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_account: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_account_request: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_account: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_permission_request: {
+			type: eJsonSchemaType.object
+		},
+		list_open_id_permission: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_permission_request: {
+			type: eJsonSchemaType.object
+		},
+		get_open_id_permission: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_permission_request: {
+			type: eJsonSchemaType.object
+		},
+		create_open_id_permission: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_permission_request: {
+			type: eJsonSchemaType.object
+		},
+		update_open_id_permission: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_permission_request: {
+			type: eJsonSchemaType.object
+		},
+		delete_open_id_permission: {
+			type: eJsonSchemaType.object
 		}
 	}
 };

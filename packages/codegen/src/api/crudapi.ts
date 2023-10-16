@@ -1,41 +1,62 @@
 import { ApiBuilder, IApiOptions, IApiOptionsBuilder } from "@blendsdk/codegen";
 import { IDictionaryOf } from "@blendsdk/stdlib";
 
+export interface ICreateURLParams {
+    name: string;
+    defaultValue: string;
+}
+
 export interface ICreateCRUDApiOptions {
     entityName: string;
     builder: ApiBuilder;
     openApi?: boolean;
-    onCreateTypes?: (params: IApiOptionsBuilder & { name: string }) => void;
+    onCreateTypes?: (params: IApiOptionsBuilder & { name: eCrudAPI }) => void;
+    onCreateURL: (partams: ICreateURLParams) => string;
+    endpoints?: IDictionaryOf<Partial<IApiOptions>>;
+}
+
+export enum eCrudAPI {
+    list = "list",
+    get = "get",
+    create = "create",
+    update = "update",
+    delete = "delete"
 }
 
 export function createSecureCrudAPI(params: ICreateCRUDApiOptions) {
-    const { entityName, builder, openApi = false, onCreateTypes } = params;
+    let { entityName, builder, openApi = false, onCreateTypes, onCreateURL, endpoints = {} } = params;
+    onCreateURL =
+        onCreateURL ||
+        (({ defaultValue }) => {
+            return defaultValue;
+        });
     const endpointNames: IDictionaryOf<Partial<IApiOptions>> = {
-        list: {
+        [eCrudAPI.list]: {
             method: "get",
             url: `/api/${entityName}/list`,
             id: `list_${entityName}`
         },
-        get: {
+        [eCrudAPI.get]: {
             method: "get",
             url: `/api/${entityName}/:id`,
             id: `get_${entityName}`
         },
-        create: {
+        [eCrudAPI.create]: {
             method: "post",
             url: `/api/${entityName}`,
             id: `create_${entityName}`
         },
-        update: {
+        [eCrudAPI.update]: {
             method: "patch",
             url: `/api/${entityName}/:id`,
             id: `update_${entityName}`
         },
-        delete: {
+        [eCrudAPI.delete]: {
             method: "delete",
             url: `/api/${entityName}/:id`,
             id: `delete_${entityName}`
-        }
+        },
+        ...endpoints
     };
     Object.entries(endpointNames).forEach(([name, endpoint]) => {
         const { method, url, id } = endpoint;
@@ -44,10 +65,10 @@ export function createSecureCrudAPI(params: ICreateCRUDApiOptions) {
             public: false,
             openApi,
             method,
-            url,
+            url: onCreateURL({ name, defaultValue: url }),
             group: entityName,
             createTypes: (params) => {
-                onCreateTypes({ name, ...params });
+                onCreateTypes({ name: name as eCrudAPI, ...params });
             }
         });
     });

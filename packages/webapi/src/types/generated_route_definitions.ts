@@ -26,7 +26,42 @@ export const routeDefinitions: {
 		authentication_logout: IRouteBase;
 		authentication_login: IRouteBase;
 	};
-	application: { initialize: IRouteBase; create_tenant: IRouteBase; get_user_profile: IRouteBase };
+	application: { initialize: IRouteBase; get_user_profile: IRouteBase };
+	open_id_tenant: {
+		list_open_id_tenant: IRouteBase;
+		get_open_id_tenant: IRouteBase;
+		create_open_id_tenant: IRouteBase;
+		update_open_id_tenant: IRouteBase;
+		delete_open_id_tenant: IRouteBase;
+	};
+	open_id_client: {
+		list_open_id_client: IRouteBase;
+		get_open_id_client: IRouteBase;
+		create_open_id_client: IRouteBase;
+		update_open_id_client: IRouteBase;
+		delete_open_id_client: IRouteBase;
+	};
+	open_id_role: {
+		list_open_id_role: IRouteBase;
+		get_open_id_role: IRouteBase;
+		create_open_id_role: IRouteBase;
+		update_open_id_role: IRouteBase;
+		delete_open_id_role: IRouteBase;
+	};
+	open_id_account: {
+		list_open_id_account: IRouteBase;
+		get_open_id_account: IRouteBase;
+		create_open_id_account: IRouteBase;
+		update_open_id_account: IRouteBase;
+		delete_open_id_account: IRouteBase;
+	};
+	open_id_permission: {
+		list_open_id_permission: IRouteBase;
+		get_open_id_permission: IRouteBase;
+		create_open_id_permission: IRouteBase;
+		update_open_id_permission: IRouteBase;
+		delete_open_id_permission: IRouteBase;
+	};
 } = {
 	blend: {
 		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
@@ -88,7 +123,91 @@ export const routeDefinitions: {
 	},
 	application: {
 		initialize: { id: "initialize", method: "post", url: "/api/initialize", public: false },
-		create_tenant: { id: "create_tenant", method: "post", url: "/api/:tenant/tenant" },
 		get_user_profile: { id: "get_user_profile", method: "get", url: "/:tenant/user_profile", public: false }
+	},
+	open_id_tenant: {
+		list_open_id_tenant: { id: "list_open_id_tenant", method: "get", url: "/api/:tenant/list/list", public: false },
+		get_open_id_tenant: { id: "get_open_id_tenant", method: "get", url: "/api/:tenant/get/:id", public: false },
+		create_open_id_tenant: { id: "create_open_id_tenant", method: "post", url: "/api/:tenant/create", public: false },
+		update_open_id_tenant: {
+			id: "update_open_id_tenant",
+			method: "patch",
+			url: "/api/:tenant/update/:id",
+			public: false
+		},
+		delete_open_id_tenant: {
+			id: "delete_open_id_tenant",
+			method: "delete",
+			url: "/api/:tenant/delete/:id",
+			public: false
+		}
+	},
+	open_id_client: {
+		list_open_id_client: { id: "list_open_id_client", method: "get", url: "/api/:tenant/list/list", public: false },
+		get_open_id_client: { id: "get_open_id_client", method: "get", url: "/api/:tenant/get/:id", public: false },
+		create_open_id_client: { id: "create_open_id_client", method: "post", url: "/api/:tenant/create", public: false },
+		update_open_id_client: {
+			id: "update_open_id_client",
+			method: "patch",
+			url: "/api/:tenant/update/:id",
+			public: false
+		},
+		delete_open_id_client: {
+			id: "delete_open_id_client",
+			method: "delete",
+			url: "/api/:tenant/delete/:id",
+			public: false
+		}
+	},
+	open_id_role: {
+		list_open_id_role: { id: "list_open_id_role", method: "get", url: "/api/:tenant/list/list", public: false },
+		get_open_id_role: { id: "get_open_id_role", method: "get", url: "/api/:tenant/get/:id", public: false },
+		create_open_id_role: { id: "create_open_id_role", method: "post", url: "/api/:tenant/create", public: false },
+		update_open_id_role: { id: "update_open_id_role", method: "patch", url: "/api/:tenant/update/:id", public: false },
+		delete_open_id_role: { id: "delete_open_id_role", method: "delete", url: "/api/:tenant/delete/:id", public: false }
+	},
+	open_id_account: {
+		list_open_id_account: { id: "list_open_id_account", method: "get", url: "/api/:tenant/list/list", public: false },
+		get_open_id_account: { id: "get_open_id_account", method: "get", url: "/api/:tenant/get/:id", public: false },
+		create_open_id_account: { id: "create_open_id_account", method: "post", url: "/api/:tenant/create", public: false },
+		update_open_id_account: {
+			id: "update_open_id_account",
+			method: "patch",
+			url: "/api/:tenant/update/:id",
+			public: false
+		},
+		delete_open_id_account: {
+			id: "delete_open_id_account",
+			method: "delete",
+			url: "/api/:tenant/delete/:id",
+			public: false
+		}
+	},
+	open_id_permission: {
+		list_open_id_permission: {
+			id: "list_open_id_permission",
+			method: "get",
+			url: "/api/:tenant/list/list",
+			public: false
+		},
+		get_open_id_permission: { id: "get_open_id_permission", method: "get", url: "/api/:tenant/get/:id", public: false },
+		create_open_id_permission: {
+			id: "create_open_id_permission",
+			method: "post",
+			url: "/api/:tenant/create",
+			public: false
+		},
+		update_open_id_permission: {
+			id: "update_open_id_permission",
+			method: "patch",
+			url: "/api/:tenant/update/:id",
+			public: false
+		},
+		delete_open_id_permission: {
+			id: "delete_open_id_permission",
+			method: "delete",
+			url: "/api/:tenant/delete/:id",
+			public: false
+		}
 	}
 };

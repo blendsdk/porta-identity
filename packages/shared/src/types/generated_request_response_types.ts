@@ -7,6 +7,7 @@ import { IErrorData } from "./generated_types";
 
 import { IAuthenticationFlowState } from "./generated_types";
 import { ISysUser, ISysUserProfile } from "./generated_database_types";
+import { ISysTenant } from "./generated_database_types";
 
 /**
  * @export
@@ -1154,48 +1155,6 @@ export interface IInitializeResponse {
 
 /**
  * @export
- * @interface ICreateTenantRequest
- */
-export interface ICreateTenantRequest {
-	/**
-	 * @type string
-	 * @memberOf ICreateTenantRequest
-	 */
-	tenant: string;
-	/**
-	 * @type string
-	 * @memberOf ICreateTenantRequest
-	 */
-	name: string;
-	/**
-	 * @type string
-	 * @memberOf ICreateTenantRequest
-	 */
-	email: string;
-	/**
-	 * @type string
-	 * @memberOf ICreateTenantRequest
-	 */
-	password: string;
-	/**
-	 * @type boolean
-	 * @memberOf ICreateTenantRequest
-	 */
-	allow_registration: boolean;
-	/**
-	 * @type boolean
-	 * @memberOf ICreateTenantRequest
-	 */
-	allow_reset_password: boolean;
-	/**
-	 * @type string
-	 * @memberOf ICreateTenantRequest
-	 */
-	organization: string;
-}
-
-/**
- * @export
  * @interface IGetUserProfileRequest
  */
 export interface IGetUserProfileRequest {
@@ -1233,4 +1192,634 @@ export interface IGetUserProfileResponse {
 	 * @memberOf IGetUserProfileResponse
 	 */
 	data: IGetUserProfile;
+}
+
+/**
+ * @export
+ * @interface IListOpenIdTenantRequest
+ */
+export interface IListOpenIdTenantRequest {}
+
+/**
+ * @export
+ * @interface IListOpenIdTenant
+ */
+export interface IListOpenIdTenant {}
+
+/**
+ * @export
+ * @interface IListOpenIdTenantResponse
+ */
+export interface IListOpenIdTenantResponse {
+	/**
+	 * @type IListOpenIdTenant
+	 * @memberOf IListOpenIdTenantResponse
+	 */
+	data: IListOpenIdTenant;
+}
+
+/**
+ * @export
+ * @interface IGetOpenIdTenantRequest
+ */
+export interface IGetOpenIdTenantRequest {}
+
+/**
+ * @export
+ * @interface IGetOpenIdTenant
+ */
+export interface IGetOpenIdTenant {}
+
+/**
+ * @export
+ * @interface IGetOpenIdTenantResponse
+ */
+export interface IGetOpenIdTenantResponse {
+	/**
+	 * @type IGetOpenIdTenant
+	 * @memberOf IGetOpenIdTenantResponse
+	 */
+	data: IGetOpenIdTenant;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdTenantRequest
+ */
+export interface ICreateOpenIdTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	name: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	email: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	password: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	allow_registration: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	allow_reset_password: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICreateOpenIdTenantRequest
+	 */
+	organization: string;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdTenantResponse
+ */
+export interface ICreateOpenIdTenantResponse {
+	/**
+	 * @type ISysTenant
+	 * @memberOf ICreateOpenIdTenantResponse
+	 */
+	data: ISysTenant;
+}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdTenantRequest
+ */
+export interface IUpdateOpenIdTenantRequest {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdTenant
+ */
+export interface IUpdateOpenIdTenant {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdTenantResponse
+ */
+export interface IUpdateOpenIdTenantResponse {
+	/**
+	 * @type IUpdateOpenIdTenant
+	 * @memberOf IUpdateOpenIdTenantResponse
+	 */
+	data: IUpdateOpenIdTenant;
+}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdTenantRequest
+ */
+export interface IDeleteOpenIdTenantRequest {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdTenant
+ */
+export interface IDeleteOpenIdTenant {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdTenantResponse
+ */
+export interface IDeleteOpenIdTenantResponse {
+	/**
+	 * @type IDeleteOpenIdTenant
+	 * @memberOf IDeleteOpenIdTenantResponse
+	 */
+	data: IDeleteOpenIdTenant;
+}
+
+/**
+ * @export
+ * @interface IListOpenIdClientRequest
+ */
+export interface IListOpenIdClientRequest {}
+
+/**
+ * @export
+ * @interface IListOpenIdClient
+ */
+export interface IListOpenIdClient {}
+
+/**
+ * @export
+ * @interface IListOpenIdClientResponse
+ */
+export interface IListOpenIdClientResponse {
+	/**
+	 * @type IListOpenIdClient
+	 * @memberOf IListOpenIdClientResponse
+	 */
+	data: IListOpenIdClient;
+}
+
+/**
+ * @export
+ * @interface IGetOpenIdClientRequest
+ */
+export interface IGetOpenIdClientRequest {}
+
+/**
+ * @export
+ * @interface IGetOpenIdClient
+ */
+export interface IGetOpenIdClient {}
+
+/**
+ * @export
+ * @interface IGetOpenIdClientResponse
+ */
+export interface IGetOpenIdClientResponse {
+	/**
+	 * @type IGetOpenIdClient
+	 * @memberOf IGetOpenIdClientResponse
+	 */
+	data: IGetOpenIdClient;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdClientRequest
+ */
+export interface ICreateOpenIdClientRequest {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdClient
+ */
+export interface ICreateOpenIdClient {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdClientResponse
+ */
+export interface ICreateOpenIdClientResponse {
+	/**
+	 * @type ICreateOpenIdClient
+	 * @memberOf ICreateOpenIdClientResponse
+	 */
+	data: ICreateOpenIdClient;
+}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdClientRequest
+ */
+export interface IUpdateOpenIdClientRequest {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdClient
+ */
+export interface IUpdateOpenIdClient {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdClientResponse
+ */
+export interface IUpdateOpenIdClientResponse {
+	/**
+	 * @type IUpdateOpenIdClient
+	 * @memberOf IUpdateOpenIdClientResponse
+	 */
+	data: IUpdateOpenIdClient;
+}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdClientRequest
+ */
+export interface IDeleteOpenIdClientRequest {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdClient
+ */
+export interface IDeleteOpenIdClient {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdClientResponse
+ */
+export interface IDeleteOpenIdClientResponse {
+	/**
+	 * @type IDeleteOpenIdClient
+	 * @memberOf IDeleteOpenIdClientResponse
+	 */
+	data: IDeleteOpenIdClient;
+}
+
+/**
+ * @export
+ * @interface IListOpenIdRoleRequest
+ */
+export interface IListOpenIdRoleRequest {}
+
+/**
+ * @export
+ * @interface IListOpenIdRole
+ */
+export interface IListOpenIdRole {}
+
+/**
+ * @export
+ * @interface IListOpenIdRoleResponse
+ */
+export interface IListOpenIdRoleResponse {
+	/**
+	 * @type IListOpenIdRole
+	 * @memberOf IListOpenIdRoleResponse
+	 */
+	data: IListOpenIdRole;
+}
+
+/**
+ * @export
+ * @interface IGetOpenIdRoleRequest
+ */
+export interface IGetOpenIdRoleRequest {}
+
+/**
+ * @export
+ * @interface IGetOpenIdRole
+ */
+export interface IGetOpenIdRole {}
+
+/**
+ * @export
+ * @interface IGetOpenIdRoleResponse
+ */
+export interface IGetOpenIdRoleResponse {
+	/**
+	 * @type IGetOpenIdRole
+	 * @memberOf IGetOpenIdRoleResponse
+	 */
+	data: IGetOpenIdRole;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdRoleRequest
+ */
+export interface ICreateOpenIdRoleRequest {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdRole
+ */
+export interface ICreateOpenIdRole {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdRoleResponse
+ */
+export interface ICreateOpenIdRoleResponse {
+	/**
+	 * @type ICreateOpenIdRole
+	 * @memberOf ICreateOpenIdRoleResponse
+	 */
+	data: ICreateOpenIdRole;
+}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdRoleRequest
+ */
+export interface IUpdateOpenIdRoleRequest {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdRole
+ */
+export interface IUpdateOpenIdRole {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdRoleResponse
+ */
+export interface IUpdateOpenIdRoleResponse {
+	/**
+	 * @type IUpdateOpenIdRole
+	 * @memberOf IUpdateOpenIdRoleResponse
+	 */
+	data: IUpdateOpenIdRole;
+}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdRoleRequest
+ */
+export interface IDeleteOpenIdRoleRequest {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdRole
+ */
+export interface IDeleteOpenIdRole {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdRoleResponse
+ */
+export interface IDeleteOpenIdRoleResponse {
+	/**
+	 * @type IDeleteOpenIdRole
+	 * @memberOf IDeleteOpenIdRoleResponse
+	 */
+	data: IDeleteOpenIdRole;
+}
+
+/**
+ * @export
+ * @interface IListOpenIdAccountRequest
+ */
+export interface IListOpenIdAccountRequest {}
+
+/**
+ * @export
+ * @interface IListOpenIdAccount
+ */
+export interface IListOpenIdAccount {}
+
+/**
+ * @export
+ * @interface IListOpenIdAccountResponse
+ */
+export interface IListOpenIdAccountResponse {
+	/**
+	 * @type IListOpenIdAccount
+	 * @memberOf IListOpenIdAccountResponse
+	 */
+	data: IListOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface IGetOpenIdAccountRequest
+ */
+export interface IGetOpenIdAccountRequest {}
+
+/**
+ * @export
+ * @interface IGetOpenIdAccount
+ */
+export interface IGetOpenIdAccount {}
+
+/**
+ * @export
+ * @interface IGetOpenIdAccountResponse
+ */
+export interface IGetOpenIdAccountResponse {
+	/**
+	 * @type IGetOpenIdAccount
+	 * @memberOf IGetOpenIdAccountResponse
+	 */
+	data: IGetOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdAccountRequest
+ */
+export interface ICreateOpenIdAccountRequest {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdAccount
+ */
+export interface ICreateOpenIdAccount {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdAccountResponse
+ */
+export interface ICreateOpenIdAccountResponse {
+	/**
+	 * @type ICreateOpenIdAccount
+	 * @memberOf ICreateOpenIdAccountResponse
+	 */
+	data: ICreateOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdAccountRequest
+ */
+export interface IUpdateOpenIdAccountRequest {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdAccount
+ */
+export interface IUpdateOpenIdAccount {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdAccountResponse
+ */
+export interface IUpdateOpenIdAccountResponse {
+	/**
+	 * @type IUpdateOpenIdAccount
+	 * @memberOf IUpdateOpenIdAccountResponse
+	 */
+	data: IUpdateOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdAccountRequest
+ */
+export interface IDeleteOpenIdAccountRequest {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdAccount
+ */
+export interface IDeleteOpenIdAccount {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdAccountResponse
+ */
+export interface IDeleteOpenIdAccountResponse {
+	/**
+	 * @type IDeleteOpenIdAccount
+	 * @memberOf IDeleteOpenIdAccountResponse
+	 */
+	data: IDeleteOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface IListOpenIdPermissionRequest
+ */
+export interface IListOpenIdPermissionRequest {}
+
+/**
+ * @export
+ * @interface IListOpenIdPermission
+ */
+export interface IListOpenIdPermission {}
+
+/**
+ * @export
+ * @interface IListOpenIdPermissionResponse
+ */
+export interface IListOpenIdPermissionResponse {
+	/**
+	 * @type IListOpenIdPermission
+	 * @memberOf IListOpenIdPermissionResponse
+	 */
+	data: IListOpenIdPermission;
+}
+
+/**
+ * @export
+ * @interface IGetOpenIdPermissionRequest
+ */
+export interface IGetOpenIdPermissionRequest {}
+
+/**
+ * @export
+ * @interface IGetOpenIdPermission
+ */
+export interface IGetOpenIdPermission {}
+
+/**
+ * @export
+ * @interface IGetOpenIdPermissionResponse
+ */
+export interface IGetOpenIdPermissionResponse {
+	/**
+	 * @type IGetOpenIdPermission
+	 * @memberOf IGetOpenIdPermissionResponse
+	 */
+	data: IGetOpenIdPermission;
+}
+
+/**
+ * @export
+ * @interface ICreateOpenIdPermissionRequest
+ */
+export interface ICreateOpenIdPermissionRequest {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdPermission
+ */
+export interface ICreateOpenIdPermission {}
+
+/**
+ * @export
+ * @interface ICreateOpenIdPermissionResponse
+ */
+export interface ICreateOpenIdPermissionResponse {
+	/**
+	 * @type ICreateOpenIdPermission
+	 * @memberOf ICreateOpenIdPermissionResponse
+	 */
+	data: ICreateOpenIdPermission;
+}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdPermissionRequest
+ */
+export interface IUpdateOpenIdPermissionRequest {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdPermission
+ */
+export interface IUpdateOpenIdPermission {}
+
+/**
+ * @export
+ * @interface IUpdateOpenIdPermissionResponse
+ */
+export interface IUpdateOpenIdPermissionResponse {
+	/**
+	 * @type IUpdateOpenIdPermission
+	 * @memberOf IUpdateOpenIdPermissionResponse
+	 */
+	data: IUpdateOpenIdPermission;
+}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdPermissionRequest
+ */
+export interface IDeleteOpenIdPermissionRequest {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdPermission
+ */
+export interface IDeleteOpenIdPermission {}
+
+/**
+ * @export
+ * @interface IDeleteOpenIdPermissionResponse
+ */
+export interface IDeleteOpenIdPermissionResponse {
+	/**
+	 * @type IDeleteOpenIdPermission
+	 * @memberOf IDeleteOpenIdPermissionResponse
+	 */
+	data: IDeleteOpenIdPermission;
 }

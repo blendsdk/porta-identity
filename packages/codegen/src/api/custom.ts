@@ -1,6 +1,10 @@
 import { ApiBuilder, refType } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
-import { createSecureCrudAPI } from "./crudapi";
+import { createOpenIDAccountAPI } from "./oidc_account";
+import { createOpenIDClientAPI } from "./oidc_client";
+import { createOpenIDPermissionAPI } from "./oidc_permission";
+import { createOpenIDRoleAPI } from "./oidc_role";
+import { createOpenIDTenantAPI } from "./oidc_tenant";
 
 export function defineCustomApi(builder: ApiBuilder) {
     builder.defineApi({
@@ -24,25 +28,6 @@ export function defineCustomApi(builder: ApiBuilder) {
     });
 
     builder.defineApi({
-        id: "create_tenant",
-        url: "/api/:tenant/tenant",
-        group: "application",
-        method: "post",
-        response_type: refType("ops_response"),
-        createTypes: ({ request_type, typeSchema }) => {
-            typeSchema //
-                .createAppendType(request_type)
-                .addString("tenant", { location: eParameterLocation.query })
-                .addString("name")
-                .addString("email")
-                .addString("password")
-                .addBoolean("allow_registration")
-                .addBoolean("allow_reset_password")
-                .addString("organization");
-        }
-    });
-
-    builder.defineApi({
         id: "get_user_profile",
         url: "/:tenant/user_profile",
         group: "application",
@@ -62,14 +47,9 @@ export function defineCustomApi(builder: ApiBuilder) {
         }
     });
 
-    createSecureCrudAPI({
-        builder,
-        entityName: "tenant",
-        openApi: true,
-        onCreateTypes: ({ payload_type, request_type, response_type, typeSchema }) => {
-            typeSchema.createAppendType(request_type);
-            typeSchema.createAppendType(payload_type);
-            typeSchema.createResponseType(response_type, payload_type);
-        }
-    });
+    createOpenIDTenantAPI(builder);
+    createOpenIDClientAPI(builder);
+    createOpenIDRoleAPI(builder);
+    createOpenIDAccountAPI(builder);
+    createOpenIDPermissionAPI(builder);
 }

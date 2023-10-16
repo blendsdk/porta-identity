@@ -53,10 +53,58 @@ import {
 	IAuthenticationLoginResponse,
 	IInitializeRequest,
 	IInitializeResponse,
-	ICreateTenantRequest,
-	IOpsResponse,
 	IGetUserProfileRequest,
-	IGetUserProfileResponse
+	IGetUserProfileResponse,
+	IListOpenIdTenantRequest,
+	IListOpenIdTenantResponse,
+	IGetOpenIdTenantRequest,
+	IGetOpenIdTenantResponse,
+	ICreateOpenIdTenantRequest,
+	ICreateOpenIdTenantResponse,
+	IUpdateOpenIdTenantRequest,
+	IUpdateOpenIdTenantResponse,
+	IDeleteOpenIdTenantRequest,
+	IDeleteOpenIdTenantResponse,
+	IListOpenIdClientRequest,
+	IListOpenIdClientResponse,
+	IGetOpenIdClientRequest,
+	IGetOpenIdClientResponse,
+	ICreateOpenIdClientRequest,
+	ICreateOpenIdClientResponse,
+	IUpdateOpenIdClientRequest,
+	IUpdateOpenIdClientResponse,
+	IDeleteOpenIdClientRequest,
+	IDeleteOpenIdClientResponse,
+	IListOpenIdRoleRequest,
+	IListOpenIdRoleResponse,
+	IGetOpenIdRoleRequest,
+	IGetOpenIdRoleResponse,
+	ICreateOpenIdRoleRequest,
+	ICreateOpenIdRoleResponse,
+	IUpdateOpenIdRoleRequest,
+	IUpdateOpenIdRoleResponse,
+	IDeleteOpenIdRoleRequest,
+	IDeleteOpenIdRoleResponse,
+	IListOpenIdAccountRequest,
+	IListOpenIdAccountResponse,
+	IGetOpenIdAccountRequest,
+	IGetOpenIdAccountResponse,
+	ICreateOpenIdAccountRequest,
+	ICreateOpenIdAccountResponse,
+	IUpdateOpenIdAccountRequest,
+	IUpdateOpenIdAccountResponse,
+	IDeleteOpenIdAccountRequest,
+	IDeleteOpenIdAccountResponse,
+	IListOpenIdPermissionRequest,
+	IListOpenIdPermissionResponse,
+	IGetOpenIdPermissionRequest,
+	IGetOpenIdPermissionResponse,
+	ICreateOpenIdPermissionRequest,
+	ICreateOpenIdPermissionResponse,
+	IUpdateOpenIdPermissionRequest,
+	IUpdateOpenIdPermissionResponse,
+	IDeleteOpenIdPermissionRequest,
+	IDeleteOpenIdPermissionResponse
 } from "@porta/shared";
 
 /**
@@ -99,8 +147,42 @@ export interface IPortaApi {
 	};
 	application: {
 		initialize: THttpRequest<IInitializeRequest, IInitializeResponse>;
-		createTenant: THttpRequest<ICreateTenantRequest, IOpsResponse>;
 		getUserProfile: THttpRequest<IGetUserProfileRequest, IGetUserProfileResponse>;
+	};
+	open_id_tenant: {
+		listOpenIdTenant: THttpRequest<IListOpenIdTenantRequest | void, IListOpenIdTenantResponse>;
+		getOpenIdTenant: THttpRequest<IGetOpenIdTenantRequest | void, IGetOpenIdTenantResponse>;
+		createOpenIdTenant: THttpRequest<ICreateOpenIdTenantRequest, ICreateOpenIdTenantResponse>;
+		updateOpenIdTenant: THttpRequest<IUpdateOpenIdTenantRequest | void, IUpdateOpenIdTenantResponse>;
+		deleteOpenIdTenant: THttpRequest<IDeleteOpenIdTenantRequest | void, IDeleteOpenIdTenantResponse>;
+	};
+	open_id_client: {
+		listOpenIdClient: THttpRequest<IListOpenIdClientRequest | void, IListOpenIdClientResponse>;
+		getOpenIdClient: THttpRequest<IGetOpenIdClientRequest | void, IGetOpenIdClientResponse>;
+		createOpenIdClient: THttpRequest<ICreateOpenIdClientRequest | void, ICreateOpenIdClientResponse>;
+		updateOpenIdClient: THttpRequest<IUpdateOpenIdClientRequest | void, IUpdateOpenIdClientResponse>;
+		deleteOpenIdClient: THttpRequest<IDeleteOpenIdClientRequest | void, IDeleteOpenIdClientResponse>;
+	};
+	open_id_role: {
+		listOpenIdRole: THttpRequest<IListOpenIdRoleRequest | void, IListOpenIdRoleResponse>;
+		getOpenIdRole: THttpRequest<IGetOpenIdRoleRequest | void, IGetOpenIdRoleResponse>;
+		createOpenIdRole: THttpRequest<ICreateOpenIdRoleRequest | void, ICreateOpenIdRoleResponse>;
+		updateOpenIdRole: THttpRequest<IUpdateOpenIdRoleRequest | void, IUpdateOpenIdRoleResponse>;
+		deleteOpenIdRole: THttpRequest<IDeleteOpenIdRoleRequest | void, IDeleteOpenIdRoleResponse>;
+	};
+	open_id_account: {
+		listOpenIdAccount: THttpRequest<IListOpenIdAccountRequest | void, IListOpenIdAccountResponse>;
+		getOpenIdAccount: THttpRequest<IGetOpenIdAccountRequest | void, IGetOpenIdAccountResponse>;
+		createOpenIdAccount: THttpRequest<ICreateOpenIdAccountRequest | void, ICreateOpenIdAccountResponse>;
+		updateOpenIdAccount: THttpRequest<IUpdateOpenIdAccountRequest | void, IUpdateOpenIdAccountResponse>;
+		deleteOpenIdAccount: THttpRequest<IDeleteOpenIdAccountRequest | void, IDeleteOpenIdAccountResponse>;
+	};
+	open_id_permission: {
+		listOpenIdPermission: THttpRequest<IListOpenIdPermissionRequest | void, IListOpenIdPermissionResponse>;
+		getOpenIdPermission: THttpRequest<IGetOpenIdPermissionRequest | void, IGetOpenIdPermissionResponse>;
+		createOpenIdPermission: THttpRequest<ICreateOpenIdPermissionRequest | void, ICreateOpenIdPermissionResponse>;
+		updateOpenIdPermission: THttpRequest<IUpdateOpenIdPermissionRequest | void, IUpdateOpenIdPermissionResponse>;
+		deleteOpenIdPermission: THttpRequest<IDeleteOpenIdPermissionRequest | void, IDeleteOpenIdPermissionResponse>;
 	};
 }
 
@@ -185,12 +267,46 @@ export const PortaApi = createHttpApi<IPortaApi>({
 		},
 		application: {
 			initialize: defineEndpoint({ method: "post", url: "/api/initialize" }),
-			createTenant: defineEndpoint({
+			getUserProfile: defineEndpoint({ method: "get", url: "/:tenant/user_profile" })
+		},
+		open_id_tenant: {
+			listOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
+			getOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			createOpenIdTenant: defineEndpoint({
 				method: "post",
-				url: "/api/:tenant/tenant",
+				url: "/api/:tenant/create",
 				parameters: { tenant: eParameterLocation.query }
 			}),
-			getUserProfile: defineEndpoint({ method: "get", url: "/:tenant/user_profile" })
+			updateOpenIdTenant: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
+			deleteOpenIdTenant: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+		},
+		open_id_client: {
+			listOpenIdClient: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
+			getOpenIdClient: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			createOpenIdClient: defineEndpoint({ method: "post", url: "/api/:tenant/create" }),
+			updateOpenIdClient: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
+			deleteOpenIdClient: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+		},
+		open_id_role: {
+			listOpenIdRole: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
+			getOpenIdRole: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			createOpenIdRole: defineEndpoint({ method: "post", url: "/api/:tenant/create" }),
+			updateOpenIdRole: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
+			deleteOpenIdRole: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+		},
+		open_id_account: {
+			listOpenIdAccount: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
+			getOpenIdAccount: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			createOpenIdAccount: defineEndpoint({ method: "post", url: "/api/:tenant/create" }),
+			updateOpenIdAccount: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
+			deleteOpenIdAccount: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+		},
+		open_id_permission: {
+			listOpenIdPermission: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
+			getOpenIdPermission: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			createOpenIdPermission: defineEndpoint({ method: "post", url: "/api/:tenant/create" }),
+			updateOpenIdPermission: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
+			deleteOpenIdPermission: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
 		}
 	}
 });
