@@ -8,6 +8,7 @@ import { IErrorData } from "./generated_types";
 import { IAuthenticationFlowState } from "./generated_types";
 import { ISysUser, ISysUserProfile } from "./generated_database_types";
 import { ISysTenant } from "./generated_database_types";
+import { IOpsResponse } from "./generated_types";
 
 /**
  * @export
@@ -1702,6 +1703,40 @@ export interface IDeleteOpenIdAccountResponse {
 	 * @memberOf IDeleteOpenIdAccountResponse
 	 */
 	data: IDeleteOpenIdAccount;
+}
+
+/**
+ * @export
+ * @interface IChangeAccountPasswordRequest
+ */
+export interface IChangeAccountPasswordRequest {
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountPasswordRequest
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountPasswordRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountPasswordRequest
+	 */
+	password: string;
+}
+
+/**
+ * @export
+ * @interface IChangeAccountPasswordResponse
+ */
+export interface IChangeAccountPasswordResponse {
+	/**
+	 * @type IOpsResponse
+	 * @memberOf IChangeAccountPasswordResponse
+	 */
+	data: IOpsResponse;
 }
 
 /**

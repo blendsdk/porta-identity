@@ -1646,6 +1646,23 @@ export const validationSchema = {
 		delete_open_id_account: {
 			type: eJsonSchemaType.object
 		},
+		change_account_password_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				password: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["id", "tenant", "password"]
+		},
 		list_open_id_permission_request: {
 			type: eJsonSchemaType.object
 		},

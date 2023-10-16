@@ -54,6 +54,7 @@ export const routeDefinitions: {
 		create_open_id_account: IRouteBase;
 		update_open_id_account: IRouteBase;
 		delete_open_id_account: IRouteBase;
+		change_account_password: IRouteBase;
 	};
 	open_id_permission: {
 		list_open_id_permission: IRouteBase;
@@ -181,7 +182,8 @@ export const routeDefinitions: {
 			method: "delete",
 			url: "/api/:tenant/delete/:id",
 			public: false
-		}
+		},
+		change_account_password: { id: "change_account_password", method: "patch", url: "/api/:tenant/change_password/:id" }
 	},
 	open_id_permission: {
 		list_open_id_permission: {

@@ -95,6 +95,8 @@ import {
 	IUpdateOpenIdAccountResponse,
 	IDeleteOpenIdAccountRequest,
 	IDeleteOpenIdAccountResponse,
+	IChangeAccountPasswordRequest,
+	IChangeAccountPasswordResponse,
 	IListOpenIdPermissionRequest,
 	IListOpenIdPermissionResponse,
 	IGetOpenIdPermissionRequest,
@@ -176,6 +178,7 @@ export interface IPortaApi {
 		createOpenIdAccount: THttpRequest<ICreateOpenIdAccountRequest | void, ICreateOpenIdAccountResponse>;
 		updateOpenIdAccount: THttpRequest<IUpdateOpenIdAccountRequest | void, IUpdateOpenIdAccountResponse>;
 		deleteOpenIdAccount: THttpRequest<IDeleteOpenIdAccountRequest | void, IDeleteOpenIdAccountResponse>;
+		changeAccountPassword: THttpRequest<IChangeAccountPasswordRequest, IChangeAccountPasswordResponse>;
 	};
 	open_id_permission: {
 		listOpenIdPermission: THttpRequest<IListOpenIdPermissionRequest | void, IListOpenIdPermissionResponse>;
@@ -299,7 +302,12 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getOpenIdAccount: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
 			createOpenIdAccount: defineEndpoint({ method: "post", url: "/api/:tenant/create" }),
 			updateOpenIdAccount: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
-			deleteOpenIdAccount: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+			deleteOpenIdAccount: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" }),
+			changeAccountPassword: defineEndpoint({
+				method: "patch",
+				url: "/api/:tenant/change_password/:id",
+				parameters: { id: eParameterLocation.query, tenant: eParameterLocation.query }
+			})
 		},
 		open_id_permission: {
 			listOpenIdPermission: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),

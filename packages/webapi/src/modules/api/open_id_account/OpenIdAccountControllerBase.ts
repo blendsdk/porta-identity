@@ -14,7 +14,9 @@ import {
 	IUpdateOpenIdAccountRequest,
 	IUpdateOpenIdAccountResponse,
 	IDeleteOpenIdAccountRequest,
-	IDeleteOpenIdAccountResponse
+	IDeleteOpenIdAccountResponse,
+	IChangeAccountPasswordRequest,
+	IChangeAccountPasswordResponse
 } from "@porta/shared";
 
 /**
@@ -73,4 +75,14 @@ export abstract class OpenIdAccountControllerBase<
 	public abstract deleteOpenIdAccount(
 		params: IDeleteOpenIdAccountRequest
 	): Promise<Response<IDeleteOpenIdAccountResponse>>;
+	/**
+	 * Method for handling [PATCH] /api/:tenant/change_password/:id
+	 * @abstract
+	 * @param {IChangeAccountPasswordRequest} params
+	 * @returns {Promise<Response<IChangeAccountPasswordResponse>>}
+	 * @memberof OpenIdAccountControllerBase
+	 */
+	public abstract changeAccountPassword(
+		params: IChangeAccountPasswordRequest
+	): Promise<Response<IChangeAccountPasswordResponse>>;
 }

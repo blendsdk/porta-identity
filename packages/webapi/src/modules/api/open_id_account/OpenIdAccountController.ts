@@ -1,5 +1,7 @@
 import { Response } from "@blendsdk/webafx-common";
 import {
+    IChangeAccountPasswordRequest,
+    IChangeAccountPasswordResponse,
     ICreateOpenIdAccountRequest,
     ICreateOpenIdAccountResponse,
     IDeleteOpenIdAccountRequest,
@@ -20,6 +22,11 @@ import { OpenIdAccountControllerBase } from "./OpenIdAccountControllerBase";
  * @extends {OpenIdAccountControllerBase}
  */
 export class OpenIdAccountController extends OpenIdAccountControllerBase {
+    public changeAccountPassword(
+        _params: IChangeAccountPasswordRequest
+    ): Promise<Response<IChangeAccountPasswordResponse>> {
+        throw new Error("Method not implemented.");
+    }
     public listOpenIdAccount(_params: IListOpenIdAccountRequest): Promise<Response<IListOpenIdAccountResponse>> {
         throw new Error("Method not implemented.");
     }

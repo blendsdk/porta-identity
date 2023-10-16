@@ -35,6 +35,11 @@ export const OpenIdAccountModule = (): IRouter => {
 				dispatch: "delete_open_id_account",
 				controller: OpenIdAccountController,
 				route: routeDefinitions.open_id_account.delete_open_id_account
+			}),
+			defineControllerRoute({
+				dispatch: "change_account_password",
+				controller: OpenIdAccountController,
+				route: routeDefinitions.open_id_account.change_account_password
 			})
 		]
 	};
