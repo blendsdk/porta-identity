@@ -272,7 +272,7 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
         url: "/:tenant/oauth2/logout",
         group: "authorization",
         method: "get",
-        public: false,
+        public: true,
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //

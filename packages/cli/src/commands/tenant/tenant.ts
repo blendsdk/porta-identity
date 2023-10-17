@@ -63,7 +63,7 @@ export function createTenantCommand(): CommandModule {
                     req.headers["Authorization"] = `Bearer ${token.token}`;
                 });
                 try {
-                    const result = await PortaApi.application.createTenant({
+                    const result = await PortaApi.open_id_tenant.createOpenIdTenant({
                         name: answers.name,
                         allow_registration: answers.allow_registration,
                         allow_reset_password: answers.allow_reset_password,

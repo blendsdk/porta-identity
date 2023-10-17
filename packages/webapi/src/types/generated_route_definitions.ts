@@ -90,7 +90,7 @@ export const routeDefinitions: {
 		},
 		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false },
 		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
-		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: false },
+		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: true },
 		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
 		logout_flow_info: { id: "logout_flow_info", method: "get", url: "/lf/flow_info", public: true },
 		forgot_password_flow_info: { id: "forgot_password_flow_info", method: "post", url: "/fp/flow_info", public: true },

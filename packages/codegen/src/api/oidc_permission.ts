@@ -1,5 +1,4 @@
-import { ApiBuilder } from "@blendsdk/codegen";
-import { createSecureCrudAPI, eCrudAPI } from "./crudapi";
+import { ApiBuilder, createSecureCrudAPI, eCrudAPI } from "@blendsdk/codegen";
 
 export function createOpenIDPermissionAPI(builder: ApiBuilder) {
     createSecureCrudAPI({
