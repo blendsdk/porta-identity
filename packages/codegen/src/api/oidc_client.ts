@@ -6,16 +6,20 @@ export function createOpenIDClientAPI(builder: ApiBuilder) {
         entityName: "open_id_client",
         openApi: true,
         onCreateURL: ({ name }) => {
+            let url: string = undefined;
             switch (name) {
                 case eCrudAPI.list:
-                    return `/api/:tenant/${name}/list`;
+                    url = `/api/:tenant/${name}/list`;
                 case eCrudAPI.create:
-                    return `/api/:tenant/${name}`;
+                    url = `/api/:tenant/${name}`;
                 case eCrudAPI.get:
                 case eCrudAPI.delete:
                 case eCrudAPI.update:
-                    return `/api/:tenant/${name}/:id`;
+                    url = `/api/:tenant/${name}/:id`;
             }
+            return {
+                url
+            };
         },
         onCreateTypes: ({ name, payload_type, request_type, response_type, typeSchema }) => {
             switch (name) {
