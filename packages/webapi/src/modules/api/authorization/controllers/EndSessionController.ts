@@ -307,6 +307,16 @@ export class EndSessionController extends EndpointController {
                     sessionByAccessToken,
                     state
                 );
+            } else if (post_logout_redirect_uri) {
+                // This is to handle an edge case for when the user has
+                // ended their session from one browser and wants logout from
+                // a different browser. We send the user back to the requestor
+                // so they can also end their session
+                const url = new URL(post_logout_redirect_uri);
+                if (state) {
+                    url.searchParams.append("state", state);
+                }
+                return new SuccessResponse(renderGetRedirect(url.toString()));
             } else {
                 return this.responseWithError(
                     {
