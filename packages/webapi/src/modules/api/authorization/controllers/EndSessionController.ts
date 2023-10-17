@@ -16,7 +16,7 @@ import { expireSecondsFromNow, renderGetRedirect } from "../../../auth/utils";
 import { EndpointController } from "./EndpointControllerBase";
 import { AUTH_FLOW_TTL } from "./constants";
 
-interface ISessionStorage extends ISysSessionView { }
+interface ISessionStorage extends ISysSessionView {}
 
 export class EndSessionController extends EndpointController {
     /**
@@ -33,7 +33,7 @@ export class EndSessionController extends EndpointController {
         tenant: string,
         id_token: string,
         client_id: string
-    ): Promise<{ idToken: any; errors: string[]; }> {
+    ): Promise<{ idToken: any; errors: string[] }> {
         if (id_token) {
             const { publicKey } = await this.getJWKKey(tenant);
 
@@ -72,9 +72,9 @@ export class EndSessionController extends EndpointController {
             const sessionDs = new SysSessionViewDataService({ dataSource });
             return logout_hint && client_id
                 ? sessionDs.findSessionByOidcClientAndSubject({
-                    client_id,
-                    sub_claim: logout_hint
-                })
+                      client_id,
+                      sub_claim: logout_hint
+                  })
                 : null;
         } else {
             return null;
@@ -244,7 +244,7 @@ export class EndSessionController extends EndpointController {
     protected async handleInitialRequest(tenantRecord: ISysTenant, params: ISessionLogoutGetRequest) {
         let logoutFlowId: string = undefined;
         const { state, tenant, id_token_hint, client_id, logout_hint, post_logout_redirect_uri } = params || {};
-        const { anonymus_logout = false } = this.request.context.getSessionStorage<{ anonymus_logout: boolean; }>();
+        const { anonymus_logout = true } = this.request.context.getSessionStorage<{ anonymus_logout: boolean }>() || {};
         const { idToken, errors } = await this.validateIDToken(tenant, id_token_hint, client_id);
 
         // find a session based on the client_id and logout_hint
