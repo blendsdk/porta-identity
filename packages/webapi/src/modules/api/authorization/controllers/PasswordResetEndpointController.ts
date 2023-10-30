@@ -1,4 +1,5 @@
 import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
+import { expireSecondsFromNow } from "@blendsdk/webafx-auth-oidc";
 import { BadRequestResponse, Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -41,7 +42,7 @@ export class PasswordResetEndpointController extends EndpointController {
             account = undefined,
             authRecord = undefined,
             tenantRecord = undefined
-        } = (await cache.getValue<{ account: string; authRecord: ISysAuthorizationView; tenantRecord: ISysTenant; }>(
+        } = (await cache.getValue<{ account: string; authRecord: ISysAuthorizationView; tenantRecord: ISysTenant }>(
             `reset-password-request:${flow}`
         )) || {};
         if (check) {
@@ -203,7 +204,7 @@ export class PasswordResetEndpointController extends EndpointController {
                         })
                     });
 
-                    const expire = Date.now() + AUTH_FLOW_TTL * 1000;
+                    const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
 
                     this.getCache().setValue(`reset-password-request-check:${account}`, stateKey, {
                         expire

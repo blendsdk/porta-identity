@@ -108,7 +108,10 @@ async function generate() {
         writeFileSync(
             outFile,
             [
-                `// Generated on ${new Date().toISOString()}`,
+                `/**`,
+                ` * DO NOT CHANGE THIS FILE`,
+                ` * THIS FILE IS AUTO GENERATED`,
+                ` */`,
                 ``,
                 `import { I18NKeys } from "${packageScope}/shared";`,
                 `import { ${variableInterfaceName}, ${variableName} } from "../../application/api";`,

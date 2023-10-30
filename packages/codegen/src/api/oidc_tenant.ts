@@ -11,12 +11,15 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
             switch (name) {
                 case eCrudAPI.list:
                     url = `/api/:tenant/${name}/list`;
+                    break;
                 case eCrudAPI.create:
                     url = `/api/:tenant/${name}`;
+                    break;
                 case eCrudAPI.get:
                 case eCrudAPI.delete:
                 case eCrudAPI.update:
                     url = `/api/:tenant/${name}/:id`;
+                    break;
             }
             return {
                 url

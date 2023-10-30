@@ -60,7 +60,7 @@ export const renderGetRedirect = (url: string, delay?: number) => {
 
           /* Rest of page style*/
           body{
-            background:#fcfcfc;
+            background:#ffffff;
             font-family: 'Open Sans', sans-serif;
             -webkit-font-smoothing: antialiased;
             color:#c9c9c9;

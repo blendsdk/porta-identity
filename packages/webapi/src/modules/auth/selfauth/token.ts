@@ -1,6 +1,7 @@
 import { base64Decode } from "@blendsdk/stdlib";
 import { ICreateResponseAuthorizedParams, INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
 import {
+    IGetRefreshTokenFromUserCache,
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
     IOpenIDHTTPRequestContext,
@@ -11,6 +12,22 @@ import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-clie
 import { databaseUtils } from "../../../utils";
 
 export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
+    /**
+     * TODO: Implement protected getRefreshTokenFromUserCache(
+
+     *
+     * @protected
+     * @param {string} _tenant
+     * @param {HttpRequest<{}>} _req
+     * @return {*}  {Promise<IGetRefreshTokenFromUserCache>}
+     * @memberof PortaSelfAuthTokenAuthenticationModule
+     */
+    protected getRefreshTokenFromUserCache(
+        _tenant: string,
+        _req: HttpRequest<{}>
+    ): Promise<IGetRefreshTokenFromUserCache> {
+        throw new Error("Method not implemented.");
+    }
 
     protected getSessionTTLKey(_req: HttpRequest): Promise<string> {
         throw new Error("Method not implemented.");
@@ -63,7 +80,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         req: HttpRequest<IOpenIDHTTPRequestContext>,
         _logout?: boolean
     ): Promise<ILandingURLConfig> {
-        const { state } = req.context.getParameters<{ state: string; }>();
+        const { state } = req.context.getParameters<{ state: string }>();
         const { location = undefined } = JSON.parse(state ? base64Decode(state) : "{}" || "{}");
         return {
             url: location || req.context.getServerURL()
@@ -83,7 +100,7 @@ export class PortaSelfAuthTokenAuthenticationModule extends MultiTenantOpenIDTok
         _client: BaseClient,
         req: HttpRequest
     ): Promise<AuthorizationParameters> {
-        const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string; }>();
+        const { ui_locales, state } = req.context.getParameters<{ ui_locales: string; state: string }>();
         return {
             scope: "profile address openid email phone acl",
             state,
