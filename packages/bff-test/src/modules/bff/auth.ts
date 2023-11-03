@@ -1,6 +1,7 @@
 import { CRC32 } from "@blendsdk/stdlib";
 import { INewAccessOrRefreshToken } from "@blendsdk/webafx-auth";
 import {
+    IGetRefreshTokenFromUserCache,
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
     IOpenIDHTTPRequestContext,
@@ -10,6 +11,13 @@ import { HttpRequest } from "@blendsdk/webafx-common";
 import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-client";
 
 export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenticationModule {
+    protected getRefreshTokenFromUserCache(
+        _tenant: string,
+        _req: HttpRequest<{}>
+    ): Promise<IGetRefreshTokenFromUserCache> {
+        throw new Error("Method not implemented.");
+    }
+
     protected newAccessToken(_params: INewAccessOrRefreshToken, _req: HttpRequest<{}>): Promise<string> {
         return CRC32(new Date().toString());
     }
@@ -79,7 +87,7 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
      */
     protected async getDiscoveryURL(_tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         //return `https://dev.portaidentity.com/registry/oauth2`;
-        const { tenant } = req.context.getParameters<{ tenant: string; }>();
+        const { tenant } = req.context.getParameters<{ tenant: string }>();
         return `https://porta.local/${tenant}/oauth2`;
     }
 

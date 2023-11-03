@@ -10,6 +10,6 @@
         "watch": "tsc -w"
     },
     "dependencies": {
-        "@blendsdk/stdlib": "3.2.371"
+        "@blendsdk/stdlib": "3.2.373"
     }
 }

@@ -10,12 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blendsdk/clientkit": "3.2.371",
-    "@blendsdk/crypto": "3.2.371",
-    "@blendsdk/fluentrc": "3.2.371",
-    "@blendsdk/rbac": "3.2.371",
-    "@blendsdk/react": "3.2.371",
-    "@blendsdk/stdlib": "3.2.371",
+    "@blendsdk/clientkit": "3.2.373",
+    "@blendsdk/crypto": "3.2.373",
+    "@blendsdk/fluentrc": "3.2.373",
+    "@blendsdk/rbac": "3.2.373",
+    "@blendsdk/react": "3.2.373",
+    "@blendsdk/stdlib": "3.2.373",
     "@fluentui/react-components": "^9.33.0",
     "@porta/shared": "1.0.245",
     "dayjs": "^1.11.10",

@@ -185,6 +185,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id: clientRecord.id });
         await accessTokenDs.deleteSysAccessTokenByUserIdAndClientId({ user_id, client_id: clientRecord.id });
+        //TODO: this is duplicate, delete it
         await sessionDs.deleteSysSessionByUserIdAndClientId({ user_id, client_id: clientRecord.id });
     }
 
@@ -463,7 +464,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected findFlowID(): string {
-        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string; }>().af || undefined;
+        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string }>().af || undefined;
     }
 
     /**
@@ -474,7 +475,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected findLogoutFlowID(): string {
-        return this.getCookie("_lf", true) || this.request.context.getParameters<{ lf: string; }>().lf || undefined;
+        return this.getCookie("_lf", true) || this.request.context.getParameters<{ lf: string }>().lf || undefined;
     }
 
     /**
@@ -748,7 +749,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         };
     }
 
-    protected async getJWKKey(tenant: string): Promise<{ publicKey: string; privateKey: string; }> {
+    protected async getJWKKey(tenant: string): Promise<{ publicKey: string; privateKey: string }> {
         const { dataSource } = await databaseUtils.getTenantDataSource(tenant);
         const keyDs = new SysKeyDataService({ dataSource });
         const { data } = (await keyDs.findJwkKeys())[0];

@@ -201,6 +201,7 @@ class DatabaseUtils {
             client_id
         });
 
+        // A session is per use and tenant! remove the client!
         // or create a new session
         sessionRecord =
             sessionRecord ||

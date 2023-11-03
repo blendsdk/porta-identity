@@ -286,7 +286,7 @@ export class AuthorizeEndpointController extends EndpointController {
         }
         return {
             errors,
-            returningAuthorization: currentUserToken !== undefined,
+            returningAuthorization: currentUserToken !== undefined, // can also be true when we have a session for this user on a different client
             flowId,
             currentUserToken,
             accessTokenStorage
@@ -382,7 +382,7 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async getCurrentlyAuthenticatedUserToken(
         tenant: ISysTenant,
         client_id: string
-    ): Promise<{ token: string; accessTokenStorage: IAccessToken; }> {
+    ): Promise<{ token: string; accessTokenStorage: IAccessToken }> {
         const accessTokenKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
             client: client_id,
@@ -407,7 +407,6 @@ export class AuthorizeEndpointController extends EndpointController {
                 }
             }
         }
-
 
         let accessTokenRecord = await databaseUtils.findAccessTokenByTenant({
             tenant: tenant.id,
