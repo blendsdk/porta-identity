@@ -1,9 +1,17 @@
+DROP VIEW IF EXISTS sys_client_view CASCADE;
+CREATE OR REPLACE VIEW sys_client_view AS select
+    c.*,
+    a.application_name,
+    a.logo
+from
+    sys_client c
+    inner join sys_application a on a.id = c.application_id;
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
     sc.*,
     row_to_json(su) as client_credentials_user
 from
-    sys_client sc
+    sys_client_view sc
     left outer join sys_user su on sc.client_credentials_user_id = su.id
 where
     (
@@ -24,35 +32,52 @@ from
     sys_user_mfa um
     inner join sys_mfa sm on sm.id = um.mfa_id
     inner join sys_user su on su.id = um.user_id;
-DROP VIEW IF EXISTS sys_groups_by_user_view CASCADE;
-CREATE OR REPLACE VIEW sys_groups_by_user_view AS select
+DROP VIEW IF EXISTS sys_roles_by_user_view CASCADE;
+CREATE OR REPLACE VIEW sys_roles_by_user_view AS select
     sg.*,
     sug.user_id
 from
-    sys_user_group sug
-    inner join sys_group sg on sg.id = sug.group_id;
+    sys_user_role sug
+    inner join sys_role sg on sg.id = sug.role_id;
 DROP VIEW IF EXISTS sys_user_permission_view CASCADE;
 CREATE OR REPLACE VIEW sys_user_permission_view AS select
-    sug.user_id,
-    sgp.permission_id,
-    sug.group_id,
-    sp.code,
-    sp.is_active,
-    sg."name" as group_name,
-    sg.description as group_description,
-    sp.description as permission_description,
-    sg.is_active as group_is_active
+    a.id as application_id,
+    c.id as client_id,
+    c.client_id as oidc_client_id,
+    ur.user_id,
+    rp.permission_id,
+    ur.role_id,
+    p.permission,
+    p.is_active,
+    r.role,
+    r.description as role_description,
+    p.description as permission_description,
+    r.is_active as role_is_active
 from
-    sys_user_group sug
-    inner join sys_group sg on sg.id = sug.group_id
-    inner join sys_group_permission sgp on sgp.group_id = sg.id
-    inner join sys_permission sp on sp.id = sgp.permission_id;
+    sys_user_role ur
+    inner join sys_role r on r.id = ur.role_id
+    inner join sys_role_permission rp on rp.role_id = r.id
+    inner join sys_permission p on p.id = rp.permission_id
+    inner join sys_application a on a.id = p.application_id
+    inner join sys_client c on c.application_id = a.id;
 DROP VIEW IF EXISTS sys_access_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_access_token_view AS select
 	ttl as default_ttl,
 	refresh_ttl as default_refresh_ttl,
-	trunc(extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now())) as ttl,
-	trunc(extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now())) as refresh_ttl,
+	trunc(
+		extract(
+			'epoch'
+			from
+				sat.date_created + (ttl || ' seconds') :: interval - now()
+		)
+	) as ttl,
+	trunc(
+		extract(
+			'epoch'
+			from
+				sat.date_created + (refresh_ttl || ' seconds') :: interval - now()
+		)
+	) as refresh_ttl,
 	sat.id,
 	sat.auth_time,
 	sat.date_created,
@@ -62,8 +87,16 @@ CREATE OR REPLACE VIEW sys_access_token_view AS select
 	sat.user_id,
 	sat.client_id,
 	sat.tenant_id,
-	extract('epoch' from sat.date_created + (ttl || ' seconds') :: interval - now()) < 0 as is_expired,
-	extract('epoch' from sat.date_created + (refresh_ttl || ' seconds') :: interval - now()) < 0 as is_revoke,
+	extract(
+		'epoch'
+		from
+			sat.date_created + (ttl || ' seconds') :: interval - now()
+	) < 0 as is_expired,
+	extract(
+		'epoch'
+		from
+			sat.date_created + (refresh_ttl || ' seconds') :: interval - now()
+	) < 0 as is_revoke,
 	sat.date_created + (ttl || ' seconds') :: interval as expire_at,
 	sat.date_created + (refresh_ttl || ' seconds') :: interval as revoke_at,
 	row_to_json(su) as user,
@@ -75,7 +108,7 @@ from
 	sys_access_token sat
 	inner join sys_user su on sat.user_id = su.id
 	inner join sys_user_profile sup on sup.user_id = su.id
-	inner join sys_client sc on sc.id = sat.client_id
+	inner join sys_client_view sc on sc.id = sat.client_id
 	inner join sys_tenant st on st.id = sat.tenant_id
 	inner join sys_session se on se.id = sat.session_id
 where
@@ -99,10 +132,10 @@ CREATE OR REPLACE VIEW sys_session_view AS select
     cl.client_id as oidc_client_id,
     cl.post_logout_redirect_uri,
     cl.is_back_channel_post_logout,
-    us.id::text as oidc_sub_claim,
+    us.id :: text as oidc_sub_claim,
     row_to_json(cl) as client,
     row_to_json(us) as user
 from
     sys_session se
-    inner join sys_client cl on cl.id = se.client_id
+    inner join sys_client_view cl on cl.id = se.client_id
     inner join sys_user us on us.id = se.user_id

@@ -3,12 +3,8 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { IErrorData } from "./generated_types";
-
-import { IAuthenticationFlowState } from "./generated_types";
-import { ISysUser, ISysUserProfile } from "./generated_database_types";
-import { ISysTenant } from "./generated_database_types";
-import { IOpsResponse } from "./generated_types";
+import { IErrorData, IAuthenticationFlowState, IOpsResponse } from "./generated_types";
+import { ISysUser, ISysUserProfile, ISysTenant } from "./generated_database_types";
 
 /**
  * @export

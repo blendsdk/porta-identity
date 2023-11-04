@@ -1,5 +1,5 @@
 import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/stdlib";
-import { eDefaultPermissions } from "@porta/shared";
+import { eApiPermissions } from "@porta/shared";
 import { IAccessToken } from "../../../types";
 import { commonUtils } from "../../../utils";
 import { neutralAvatar } from "../../../utils/resources";
@@ -242,7 +242,7 @@ export class Claims {
                             .map((r) => {
                                 return {
                                     role_id: r.id,
-                                    role: r.name
+                                    role: r.role
                                 };
                             });
                         return tmp.filter((obj, index) => {
@@ -257,12 +257,12 @@ export class Claims {
                         const tmp = permissions
                             .filter((r) => {
                                 // Here we filter the GROUP_PERMISSION since it is for handling Role based access only
-                                return r.is_active === true && r.code !== eDefaultPermissions.GROUP_PERMISSION.code;
+                                return r.is_active === true && r.permission !== eApiPermissions.ROLE_PERMISSION;
                             })
                             .map((r) => {
                                 return {
                                     permission_id: r.permission_id,
-                                    permission: r.code
+                                    permission: r.permission
                                 };
                             });
                         return tmp.filter((obj, index) => {
@@ -318,7 +318,11 @@ export class Claims {
             this.handlers.push(handler);
         });
 
-        const scopeList = Array.from(new Set([...(customScopes || []), ...[scope, Object.keys(claimsObj)].filter(Boolean)])).join(" ").trim();
+        const scopeList = Array.from(
+            new Set([...(customScopes || []), ...[scope, Object.keys(claimsObj)].filter(Boolean)])
+        )
+            .join(" ")
+            .trim();
 
         // find all handler by scope
         Object.keys(commonUtils.parseSeparatedTokens(scopeList)).forEach((scopeName) => {

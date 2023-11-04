@@ -391,6 +391,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const sessionStorage = await databaseUtils.createOrGetSession(tenant.id, authRecord.id, user_id);
         const sessionKeySignature = portaAuthUtils.getKeySignature({
             tenant: tenant.name,
+            //TODO: Replace client_id with user_id since the session is per user and tenant
             client: authRecord.client_id,
             system: this.getServerURL(),
             type: eKeySignatureType.session_id

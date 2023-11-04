@@ -1,15 +1,20 @@
 select
-    sug.user_id,
-    sgp.permission_id,
-    sug.group_id,
-    sp.code,
-    sp.is_active,
-    sg."name" as group_name,
-    sg.description as group_description,
-    sp.description as permission_description,
-    sg.is_active as group_is_active
+    a.id as application_id,
+    c.id as client_id,
+    c.client_id as oidc_client_id,
+    ur.user_id,
+    rp.permission_id,
+    ur.role_id,
+    p.permission,
+    p.is_active,
+    r.role,
+    r.description as role_description,
+    p.description as permission_description,
+    r.is_active as role_is_active
 from
-    sys_user_group sug
-    inner join sys_group sg on sg.id = sug.group_id
-    inner join sys_group_permission sgp on sgp.group_id = sg.id
-    inner join sys_permission sp on sp.id = sgp.permission_id
+    sys_user_role ur
+    inner join sys_role r on r.id = ur.role_id
+    inner join sys_role_permission rp on rp.role_id = r.id
+    inner join sys_permission p on p.id = rp.permission_id
+    inner join sys_application a on a.id = p.application_id
+    inner join sys_client c on c.application_id = a.id

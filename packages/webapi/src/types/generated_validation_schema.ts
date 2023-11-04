@@ -63,7 +63,7 @@ export const validationSchema = {
 			},
 			required: ["ui_locales", "claims", "acr_values", "resource", "token_reference", "scope"]
 		},
-		sys_authorization_view: {
+		sys_client_view: {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
@@ -74,12 +74,6 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				client_type: {
-					type: eJsonSchemaType.string
-				},
-				logo: {
-					type: eJsonSchemaType.string
-				},
-				application_name: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
@@ -114,6 +108,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
 				post_logout_redirect_uri: {
 					type: eJsonSchemaType.string
 				},
@@ -122,6 +120,98 @@ export const validationSchema = {
 				},
 				is_system_client: {
 					type: eJsonSchemaType.boolean
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: [
+				"id",
+				"client_id",
+				"client_type",
+				"is_active",
+				"description",
+				"secret",
+				"access_token_ttl",
+				"refresh_token_ttl",
+				"valid_from",
+				"valid_until",
+				"redirect_uri",
+				"client_credentials_user_id",
+				"application_id",
+				"post_logout_redirect_uri",
+				"is_back_channel_post_logout",
+				"is_system_client",
+				"application_name",
+				"logo"
+			]
+		},
+		sys_authorization_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				secret: {
+					type: eJsonSchemaType.string
+				},
+				access_token_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_token_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				valid_from: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				valid_until: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				is_system_client: {
+					type: eJsonSchemaType.boolean
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				logo: {
+					type: eJsonSchemaType.string
 				},
 				client_credentials_user: {
 					type: eJsonSchemaType.string,
@@ -132,8 +222,6 @@ export const validationSchema = {
 				"id",
 				"client_id",
 				"client_type",
-				"logo",
-				"application_name",
 				"is_active",
 				"description",
 				"secret",
@@ -143,9 +231,12 @@ export const validationSchema = {
 				"valid_until",
 				"redirect_uri",
 				"client_credentials_user_id",
+				"application_id",
 				"post_logout_redirect_uri",
 				"is_back_channel_post_logout",
 				"is_system_client",
+				"application_name",
+				"logo",
 				"client_credentials_user"
 			]
 		},
@@ -170,20 +261,20 @@ export const validationSchema = {
 			},
 			required: ["user_id", "mfa_id", "mfa_name", "mfa_settings"]
 		},
-		sys_groups_by_user_view: {
+		sys_roles_by_user_view: {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				name: {
+				role: {
 					type: eJsonSchemaType.string
 				},
 				description: {
 					type: eJsonSchemaType.string
 				},
-				group_type: {
+				role_type: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
@@ -194,11 +285,22 @@ export const validationSchema = {
 					format: "uuid"
 				}
 			},
-			required: ["id", "name", "description", "group_type", "is_active", "user_id"]
+			required: ["id", "role", "description", "role_type", "is_active", "user_id"]
 		},
 		sys_user_permission_view: {
 			type: eJsonSchemaType.object,
 			properties: {
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				oidc_client_id: {
+					type: eJsonSchemaType.string
+				},
 				user_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
@@ -207,39 +309,42 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				group_id: {
+				role_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				code: {
+				permission: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
 					type: eJsonSchemaType.boolean
 				},
-				group_name: {
+				role: {
 					type: eJsonSchemaType.string
 				},
-				group_description: {
+				role_description: {
 					type: eJsonSchemaType.string
 				},
 				permission_description: {
 					type: eJsonSchemaType.string
 				},
-				group_is_active: {
+				role_is_active: {
 					type: eJsonSchemaType.boolean
 				}
 			},
 			required: [
+				"application_id",
+				"client_id",
+				"oidc_client_id",
 				"user_id",
 				"permission_id",
-				"group_id",
-				"code",
+				"role_id",
+				"permission",
 				"is_active",
-				"group_name",
-				"group_description",
+				"role",
+				"role_description",
 				"permission_description",
-				"group_is_active"
+				"role_is_active"
 			]
 		},
 		sys_access_token_view: {
@@ -529,29 +634,29 @@ export const validationSchema = {
 			},
 			required: ["firstname", "lastname", "user_id"]
 		},
-		sys_group: {
+		sys_role: {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				name: {
+				role: {
 					type: eJsonSchemaType.string
 				},
 				description: {
 					type: eJsonSchemaType.string
 				},
-				group_type: {
+				role_type: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["name", "description"]
+			required: ["role"]
 		},
-		sys_user_group: {
+		sys_user_role: {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
@@ -562,12 +667,12 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				group_id: {
+				role_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				}
 			},
-			required: ["user_id", "group_id"]
+			required: ["user_id", "role_id"]
 		},
 		sys_permission: {
 			type: eJsonSchemaType.object,
@@ -576,7 +681,51 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				code: {
+				permission: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["permission", "application_id"]
+		},
+		sys_role_permission: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				role_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["role_id", "permission_id"]
+		},
+		sys_application: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
 					type: eJsonSchemaType.string
 				},
 				description: {
@@ -586,25 +735,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["code", "description"]
-		},
-		sys_group_permission: {
-			type: eJsonSchemaType.object,
-			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				group_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				permission_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				}
-			},
-			required: ["group_id", "permission_id"]
+			required: ["application_name"]
 		},
 		sys_client: {
 			type: eJsonSchemaType.object,
@@ -617,12 +748,6 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				client_type: {
-					type: eJsonSchemaType.string
-				},
-				logo: {
-					type: eJsonSchemaType.string
-				},
-				application_name: {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
@@ -657,6 +782,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
 				post_logout_redirect_uri: {
 					type: eJsonSchemaType.string
 				},
@@ -667,7 +796,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["client_id", "client_type", "application_name"]
+			required: ["client_id", "client_type", "application_id"]
 		},
 		sys_session: {
 			type: eJsonSchemaType.object,

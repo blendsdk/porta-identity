@@ -19,7 +19,7 @@ module.exports = {
     PORTA_SIGNIN_URI: "https://porta.local/fe/auth/signin",
     PORTA_PUBLIC_DOMAIN: "porta.local", // NO <---------------
     PORTA_SSO_COMMON_NAME: "porta_development",
-    PORTA_REGISTRY_TENANT: "devreg",
+    PORTA_REGISTRY_TENANT: "registry2",
     PORTA_API_KEY: "YFmDkzFRhyuKwL9L0OdB9XGX6SbwytqI6gL3rEupc1NlAaBePXpPh4LEGKTAqoT1",
     ENFORCE_PKCE: false,
     MFA_EMAIL_FROM: "no-reply@truesoftware.nl"

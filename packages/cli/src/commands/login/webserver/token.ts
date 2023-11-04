@@ -2,6 +2,7 @@ import { sha256Hash } from "@blendsdk/crypto";
 import { CRC32 } from "@blendsdk/stdlib";
 import { INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
+    IGetRefreshTokenFromUserCache,
     ILandingURLConfig,
     IOpenIDAuthenticationResult,
     IOpenIDHTTPRequestContext,
@@ -12,6 +13,21 @@ import { AuthorizationParameters, BaseClient, ClientMetadata } from "openid-clie
 import { getKeySignature } from "./common";
 
 export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
+    /**
+     *
+     *
+     * @protected
+     * @param {string} tenant
+     * @param {HttpRequest<{}>} req
+     * @return {*}  {Promise<IGetRefreshTokenFromUserCache>}
+     * @memberof CliTokenAuth
+     */
+    protected getRefreshTokenFromUserCache(
+        _tenant: string,
+        _req: HttpRequest<{}>
+    ): Promise<IGetRefreshTokenFromUserCache> {
+        throw new Error("Method not implemented.");
+    }
     protected async getLandingURL(
         req: HttpRequest<IOpenIDHTTPRequestContext>,
         logout?: boolean | undefined
@@ -48,7 +64,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
     }
 
     protected async getDiscoveryURL(tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
-        const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string; }>();
+        const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string }>();
         return `${PORTA_HOST}/${tenant}/oauth2`;
     }
 

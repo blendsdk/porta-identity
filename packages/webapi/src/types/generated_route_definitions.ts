@@ -1,3 +1,8 @@
+/**
+ * DO NOT CHANGE.
+ * THIS FILE IS AUTO GENERATED
+ */
+
 import { IRouteBase } from "@blendsdk/stdlib";
 export const routeDefinitions: {
 	blend: { get_translations: IRouteBase; get_app_version: IRouteBase };
@@ -129,7 +134,13 @@ export const routeDefinitions: {
 	open_id_tenant: {
 		list_open_id_tenant: { id: "list_open_id_tenant", method: "get", url: "/api/:tenant/list/list", public: false },
 		get_open_id_tenant: { id: "get_open_id_tenant", method: "get", url: "/api/:tenant/get/:id", public: false },
-		create_open_id_tenant: { id: "create_open_id_tenant", method: "post", url: "/api/:tenant/create", public: false },
+		create_open_id_tenant: {
+			id: "create_open_id_tenant",
+			method: "post",
+			url: "/api/:tenant/create",
+			public: false,
+			access: { permissions: ["CAN_CREATE_TENANT"] }
+		},
 		update_open_id_tenant: {
 			id: "update_open_id_tenant",
 			method: "patch",

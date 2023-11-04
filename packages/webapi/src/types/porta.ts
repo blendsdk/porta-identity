@@ -5,8 +5,9 @@ import {
     ISysAccessTokenView,
     ISysAuthorizationView,
     ISysClient,
-    ISysGroup,
-    ISysGroupsByUserView,
+    ISysClientView,
+    ISysRole,
+    ISysRolesByUserView,
     ISysSession,
     ISysSessionView,
     ISysTenant,
@@ -70,7 +71,7 @@ export interface IPortaUserMetaData {
     scope: string;
     claims: string;
     auth_time: number;
-    roles: ISysGroupsByUserView[];
+    roles: ISysRolesByUserView[];
     permissions: ISysUserPermissionView[];
 }
 
@@ -90,7 +91,7 @@ export interface IAccessToken
     tenant: ISysTenant;
     session: ISysSession;
     permissions: Partial<ISysUserPermissionView>[];
-    roles: Partial<ISysGroup>[];
+    roles: Partial<ISysRole>[];
     auth_request_params: IAuthRequestParams;
     anonymus_logout?: boolean;
 }
@@ -108,7 +109,7 @@ export interface IPortaApplicationSetting {
 }
 
 export interface ILogoutFlowStorage extends Omit<ISysSessionView, "user" | "client"> {
-    client: ISysClient;
+    client: ISysClientView;
     user: ISysUser;
     tenant: string;
     flowState?: eLogoutFlowState;

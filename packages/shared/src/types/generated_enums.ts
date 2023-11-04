@@ -60,17 +60,15 @@ export type eSysAccessTokenAuthRequestParams =
 	(typeof eSysAccessTokenAuthRequestParams)[keyof typeof eSysAccessTokenAuthRequestParams];
 
 /**
- * Enum of the type sys_authorization_view
+ * Enum of the type sys_client_view
  * @export
  * @enum
  */
-export const eSysAuthorizationView = {
-	$name: "sys_authorization_view",
+export const eSysClientView = {
+	$name: "sys_client_view",
 	ID: "id",
 	CLIENT_ID: "client_id",
 	CLIENT_TYPE: "client_type",
-	LOGO: "logo",
-	APPLICATION_NAME: "application_name",
 	IS_ACTIVE: "is_active",
 	DESCRIPTION: "description",
 	SECRET: "secret",
@@ -80,9 +78,40 @@ export const eSysAuthorizationView = {
 	VALID_UNTIL: "valid_until",
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
+	APPLICATION_ID: "application_id",
 	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
 	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
 	IS_SYSTEM_CLIENT: "is_system_client",
+	APPLICATION_NAME: "application_name",
+	LOGO: "logo"
+} as const;
+export type eSysClientView = (typeof eSysClientView)[keyof typeof eSysClientView];
+
+/**
+ * Enum of the type sys_authorization_view
+ * @export
+ * @enum
+ */
+export const eSysAuthorizationView = {
+	$name: "sys_authorization_view",
+	ID: "id",
+	CLIENT_ID: "client_id",
+	CLIENT_TYPE: "client_type",
+	IS_ACTIVE: "is_active",
+	DESCRIPTION: "description",
+	SECRET: "secret",
+	ACCESS_TOKEN_TTL: "access_token_ttl",
+	REFRESH_TOKEN_TTL: "refresh_token_ttl",
+	VALID_FROM: "valid_from",
+	VALID_UNTIL: "valid_until",
+	REDIRECT_URI: "redirect_uri",
+	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
+	APPLICATION_ID: "application_id",
+	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
+	IS_SYSTEM_CLIENT: "is_system_client",
+	APPLICATION_NAME: "application_name",
+	LOGO: "logo",
 	CLIENT_CREDENTIALS_USER: "client_credentials_user"
 } as const;
 export type eSysAuthorizationView = (typeof eSysAuthorizationView)[keyof typeof eSysAuthorizationView];
@@ -102,20 +131,20 @@ export const eSysUserMfaView = {
 export type eSysUserMfaView = (typeof eSysUserMfaView)[keyof typeof eSysUserMfaView];
 
 /**
- * Enum of the type sys_groups_by_user_view
+ * Enum of the type sys_roles_by_user_view
  * @export
  * @enum
  */
-export const eSysGroupsByUserView = {
-	$name: "sys_groups_by_user_view",
+export const eSysRolesByUserView = {
+	$name: "sys_roles_by_user_view",
 	ID: "id",
-	NAME: "name",
+	ROLE: "role",
 	DESCRIPTION: "description",
-	GROUP_TYPE: "group_type",
+	ROLE_TYPE: "role_type",
 	IS_ACTIVE: "is_active",
 	USER_ID: "user_id"
 } as const;
-export type eSysGroupsByUserView = (typeof eSysGroupsByUserView)[keyof typeof eSysGroupsByUserView];
+export type eSysRolesByUserView = (typeof eSysRolesByUserView)[keyof typeof eSysRolesByUserView];
 
 /**
  * Enum of the type sys_user_permission_view
@@ -124,15 +153,18 @@ export type eSysGroupsByUserView = (typeof eSysGroupsByUserView)[keyof typeof eS
  */
 export const eSysUserPermissionView = {
 	$name: "sys_user_permission_view",
+	APPLICATION_ID: "application_id",
+	CLIENT_ID: "client_id",
+	OIDC_CLIENT_ID: "oidc_client_id",
 	USER_ID: "user_id",
 	PERMISSION_ID: "permission_id",
-	GROUP_ID: "group_id",
-	CODE: "code",
+	ROLE_ID: "role_id",
+	PERMISSION: "permission",
 	IS_ACTIVE: "is_active",
-	GROUP_NAME: "group_name",
-	GROUP_DESCRIPTION: "group_description",
+	ROLE: "role",
+	ROLE_DESCRIPTION: "role_description",
 	PERMISSION_DESCRIPTION: "permission_description",
-	GROUP_IS_ACTIVE: "group_is_active"
+	ROLE_IS_ACTIVE: "role_is_active"
 } as const;
 export type eSysUserPermissionView = (typeof eSysUserPermissionView)[keyof typeof eSysUserPermissionView];
 
@@ -257,32 +289,32 @@ export const eSysUserProfile = {
 export type eSysUserProfile = (typeof eSysUserProfile)[keyof typeof eSysUserProfile];
 
 /**
- * Enum of the type sys_group
+ * Enum of the type sys_role
  * @export
  * @enum
  */
-export const eSysGroup = {
-	$name: "sys_group",
+export const eSysRole = {
+	$name: "sys_role",
 	ID: "id",
-	NAME: "name",
+	ROLE: "role",
 	DESCRIPTION: "description",
-	GROUP_TYPE: "group_type",
+	ROLE_TYPE: "role_type",
 	IS_ACTIVE: "is_active"
 } as const;
-export type eSysGroup = (typeof eSysGroup)[keyof typeof eSysGroup];
+export type eSysRole = (typeof eSysRole)[keyof typeof eSysRole];
 
 /**
- * Enum of the type sys_user_group
+ * Enum of the type sys_user_role
  * @export
  * @enum
  */
-export const eSysUserGroup = {
-	$name: "sys_user_group",
+export const eSysUserRole = {
+	$name: "sys_user_role",
 	ID: "id",
 	USER_ID: "user_id",
-	GROUP_ID: "group_id"
+	ROLE_ID: "role_id"
 } as const;
-export type eSysUserGroup = (typeof eSysUserGroup)[keyof typeof eSysUserGroup];
+export type eSysUserRole = (typeof eSysUserRole)[keyof typeof eSysUserRole];
 
 /**
  * Enum of the type sys_permission
@@ -292,24 +324,40 @@ export type eSysUserGroup = (typeof eSysUserGroup)[keyof typeof eSysUserGroup];
 export const eSysPermission = {
 	$name: "sys_permission",
 	ID: "id",
-	CODE: "code",
+	PERMISSION: "permission",
 	DESCRIPTION: "description",
+	APPLICATION_ID: "application_id",
 	IS_ACTIVE: "is_active"
 } as const;
 export type eSysPermission = (typeof eSysPermission)[keyof typeof eSysPermission];
 
 /**
- * Enum of the type sys_group_permission
+ * Enum of the type sys_role_permission
  * @export
  * @enum
  */
-export const eSysGroupPermission = {
-	$name: "sys_group_permission",
+export const eSysRolePermission = {
+	$name: "sys_role_permission",
 	ID: "id",
-	GROUP_ID: "group_id",
+	ROLE_ID: "role_id",
 	PERMISSION_ID: "permission_id"
 } as const;
-export type eSysGroupPermission = (typeof eSysGroupPermission)[keyof typeof eSysGroupPermission];
+export type eSysRolePermission = (typeof eSysRolePermission)[keyof typeof eSysRolePermission];
+
+/**
+ * Enum of the type sys_application
+ * @export
+ * @enum
+ */
+export const eSysApplication = {
+	$name: "sys_application",
+	ID: "id",
+	LOGO: "logo",
+	APPLICATION_NAME: "application_name",
+	DESCRIPTION: "description",
+	IS_ACTIVE: "is_active"
+} as const;
+export type eSysApplication = (typeof eSysApplication)[keyof typeof eSysApplication];
 
 /**
  * Enum of the type sys_client
@@ -321,8 +369,6 @@ export const eSysClient = {
 	ID: "id",
 	CLIENT_ID: "client_id",
 	CLIENT_TYPE: "client_type",
-	LOGO: "logo",
-	APPLICATION_NAME: "application_name",
 	IS_ACTIVE: "is_active",
 	DESCRIPTION: "description",
 	SECRET: "secret",
@@ -332,6 +378,7 @@ export const eSysClient = {
 	VALID_UNTIL: "valid_until",
 	REDIRECT_URI: "redirect_uri",
 	CLIENT_CREDENTIALS_USER_ID: "client_credentials_user_id",
+	APPLICATION_ID: "application_id",
 	POST_LOGOUT_REDIRECT_URI: "post_logout_redirect_uri",
 	IS_BACK_CHANNEL_POST_LOGOUT: "is_back_channel_post_logout",
 	IS_SYSTEM_CLIENT: "is_system_client"

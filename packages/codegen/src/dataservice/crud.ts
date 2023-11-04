@@ -303,14 +303,15 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         if (table.getName() === "sys_permission") {
             svc.defineMethod({
-                name: "find_permissions_by_user_id",
-                query: "select * from sys_user_permission_view where user_id = :user_id",
+                name: "find_permissions_by_user_id_and_client_id",
+                query: "select * from sys_user_permission_view where user_id = :user_id and client_id = :client_id",
                 recordSet: true,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
                 inputType: ({ suggestedTypeName, typeSchema }) => {
                     typeSchema
                         .createAppendType(suggestedTypeName) //
+                        .addString("client_id")
                         .addString("user_id");
                     return suggestedTypeName;
                 },

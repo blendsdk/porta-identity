@@ -3,7 +3,7 @@ import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { IDictionaryOf, isString } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
-import { ISysAuthorizationView, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
+import { ISysAuthorizationView, ISysClient, ISysRefreshTokenView, ISysSession, ISysTenant } from "@porta/shared";
 import * as jose from "jose";
 import { ClientMetadata } from "openid-client";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
@@ -196,6 +196,7 @@ class DatabaseUtils {
         const session_id = await sha256Hash([tenant_id, user_id].join(""));
 
         // try finding an existing session
+        //TODO: This should be changed to user_id and tenant
         sessionRecord = await sessionDs.findSysSessionByUserIdAndClientId({
             user_id,
             client_id
@@ -372,21 +373,27 @@ class DatabaseUtils {
         const permissionsDs = new SysPermissionDataService({ dataSource });
 
         if (accessToken) {
-            const isValid = check_validity === true ? !accessToken.is_expired : true;
+            //TODO: Should be type fixed
+            const clientRecord = accessToken.client as any as ISysClient;
 
-            const permissions = (await permissionsDs.findPermissionsByUserId({ user_id: accessToken.user_id })) || [];
+            const isValid = check_validity === true ? !accessToken.is_expired : true;
+            const permissions =
+                (await permissionsDs.findPermissionsByUserIdAndClientId({
+                    user_id: accessToken.user_id,
+                    client_id: clientRecord.id
+                })) || [];
             const result = {
                 ...(accessToken as any),
                 roles: permissions
                     .filter((p) => {
-                        return p.group_is_active === true;
+                        return p.role_is_active === true;
                     })
                     .map((p) => {
-                        const { group_id: id, group_name: name, group_is_active } = p;
+                        const { role_id: id, role, role_is_active } = p;
                         return {
                             id,
-                            name,
-                            is_active: group_is_active
+                            role,
+                            is_active: role_is_active
                         };
                     }),
                 permissions: permissions
@@ -394,10 +401,10 @@ class DatabaseUtils {
                         return p.is_active === true;
                     })
                     .map((p) => {
-                        const { permission_id, code, is_active } = p;
+                        const { permission_id, permission, is_active } = p;
                         return {
                             permission_id,
-                            code,
+                            permission,
                             is_active
                         };
                     })

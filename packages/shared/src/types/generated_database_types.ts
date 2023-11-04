@@ -3,8 +3,104 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysAccessTokenAuthRequestParams } from "./generated_types";
-import { ISysMfaSettings } from "./generated_types";
+import { ISysAccessTokenAuthRequestParams, ISysMfaSettings } from "./generated_types";
+
+/**
+ * @export
+ * @interface ISysClientView
+ */
+export interface ISysClientView {
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	client_type: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysClientView
+	 */
+	is_active: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	secret: string;
+	/**
+	 * @type number
+	 * @memberOf ISysClientView
+	 */
+	access_token_ttl: number;
+	/**
+	 * @type number
+	 * @memberOf ISysClientView
+	 */
+	refresh_token_ttl: number;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	valid_from: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	valid_until: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	client_credentials_user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	post_logout_redirect_uri: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysClientView
+	 */
+	is_back_channel_post_logout: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ISysClientView
+	 */
+	is_system_client: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClientView
+	 */
+	logo: string;
+}
 
 /**
  * @export
@@ -26,16 +122,6 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	client_type: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	logo: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	application_name: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysAuthorizationView
@@ -85,6 +171,11 @@ export interface ISysAuthorizationView {
 	 * @type string
 	 * @memberOf ISysAuthorizationView
 	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
 	post_logout_redirect_uri: string;
 	/**
 	 * @type boolean
@@ -96,6 +187,16 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	is_system_client: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	logo: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView
@@ -132,37 +233,37 @@ export interface ISysUserMfaView {
 
 /**
  * @export
- * @interface ISysGroupsByUserView
+ * @interface ISysRolesByUserView
  */
-export interface ISysGroupsByUserView {
+export interface ISysRolesByUserView {
 	/**
 	 * @type string
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
 	id: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
-	name: string;
+	role: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
 	description: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
-	group_type: string;
+	role_type: string;
 	/**
 	 * @type boolean
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
 	is_active: boolean;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupsByUserView
+	 * @memberOf ISysRolesByUserView
 	 */
 	user_id: string;
 }
@@ -172,6 +273,21 @@ export interface ISysGroupsByUserView {
  * @interface ISysUserPermissionView
  */
 export interface ISysUserPermissionView {
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	oidc_client_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysUserPermissionView
@@ -186,12 +302,12 @@ export interface ISysUserPermissionView {
 	 * @type string
 	 * @memberOf ISysUserPermissionView
 	 */
-	group_id: string;
+	role_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysUserPermissionView
 	 */
-	code: string;
+	permission: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysUserPermissionView
@@ -201,12 +317,12 @@ export interface ISysUserPermissionView {
 	 * @type string
 	 * @memberOf ISysUserPermissionView
 	 */
-	group_name: string;
+	role: string;
 	/**
 	 * @type string
 	 * @memberOf ISysUserPermissionView
 	 */
-	group_description: string;
+	role_description: string;
 	/**
 	 * @type string
 	 * @memberOf ISysUserPermissionView
@@ -216,7 +332,7 @@ export interface ISysUserPermissionView {
 	 * @type boolean
 	 * @memberOf ISysUserPermissionView
 	 */
-	group_is_active: boolean;
+	role_is_active: boolean;
 }
 
 /**
@@ -563,56 +679,56 @@ export interface ISysUserProfile {
 
 /**
  * @export
- * @interface ISysGroup
+ * @interface ISysRole
  */
-export interface ISysGroup {
+export interface ISysRole {
 	/**
 	 * @type string
-	 * @memberOf ISysGroup
+	 * @memberOf ISysRole
 	 */
 	id?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroup
+	 * @memberOf ISysRole
 	 */
-	name: string;
+	role: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroup
+	 * @memberOf ISysRole
 	 */
-	description: string;
+	description?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroup
+	 * @memberOf ISysRole
 	 */
-	group_type?: string;
+	role_type?: string;
 	/**
 	 * @type boolean
-	 * @memberOf ISysGroup
+	 * @memberOf ISysRole
 	 */
 	is_active?: boolean;
 }
 
 /**
  * @export
- * @interface ISysUserGroup
+ * @interface ISysUserRole
  */
-export interface ISysUserGroup {
+export interface ISysUserRole {
 	/**
 	 * @type string
-	 * @memberOf ISysUserGroup
+	 * @memberOf ISysUserRole
 	 */
 	id?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysUserGroup
+	 * @memberOf ISysUserRole
 	 */
 	user_id: string;
 	/**
 	 * @type string
-	 * @memberOf ISysUserGroup
+	 * @memberOf ISysUserRole
 	 */
-	group_id: string;
+	role_id: string;
 }
 
 /**
@@ -629,12 +745,17 @@ export interface ISysPermission {
 	 * @type string
 	 * @memberOf ISysPermission
 	 */
-	code: string;
+	permission: string;
 	/**
 	 * @type string
 	 * @memberOf ISysPermission
 	 */
-	description: string;
+	description?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysPermission
+	 */
+	application_id: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysPermission
@@ -644,24 +765,56 @@ export interface ISysPermission {
 
 /**
  * @export
- * @interface ISysGroupPermission
+ * @interface ISysRolePermission
  */
-export interface ISysGroupPermission {
+export interface ISysRolePermission {
 	/**
 	 * @type string
-	 * @memberOf ISysGroupPermission
+	 * @memberOf ISysRolePermission
 	 */
 	id?: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupPermission
+	 * @memberOf ISysRolePermission
 	 */
-	group_id: string;
+	role_id: string;
 	/**
 	 * @type string
-	 * @memberOf ISysGroupPermission
+	 * @memberOf ISysRolePermission
 	 */
 	permission_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysApplication
+ */
+export interface ISysApplication {
+	/**
+	 * @type string
+	 * @memberOf ISysApplication
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysApplication
+	 */
+	logo?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysApplication
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysApplication
+	 */
+	description?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysApplication
+	 */
+	is_active?: boolean;
 }
 
 /**
@@ -684,16 +837,6 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	client_type: string;
-	/**
-	 * @type string
-	 * @memberOf ISysClient
-	 */
-	logo?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysClient
-	 */
-	application_name: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysClient
@@ -739,6 +882,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	client_credentials_user_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClient
+	 */
+	application_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysClient

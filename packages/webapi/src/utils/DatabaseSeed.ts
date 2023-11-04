@@ -4,26 +4,28 @@ import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { IDictionaryOf, MD5, asyncForEach, isNullOrUndef, ucFirst } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import {
+    ISysApplication,
     ISysClient,
-    ISysGroup,
     ISysPermission,
+    ISysRole,
     ISysTenant,
     ISysUser,
-    eDefaultPermissions,
-    eDefaultSystemGroups
+    eApiPermissions,
+    eApiRoles
 } from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
+import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysClientDataService } from "../dataservices/SysClientDataService";
-import { SysGroupDataService } from "../dataservices/SysGroupDataService";
-import { SysGroupPermissionDataService } from "../dataservices/SysGroupPermissionDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysPermissionDataService } from "../dataservices/SysPermissionDataService";
+import { SysRoleDataService } from "../dataservices/SysRoleDataService";
+import { SysRolePermissionDataService } from "../dataservices/SysRolePermissionDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
-import { SysUserGroupDataService } from "../dataservices/SysUserGroupDataService";
 import { SysUserProfileDataService } from "../dataservices/SysUserProfileDataService";
+import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
 import { application } from "../modules/application";
 import { IPortaApplicationSetting, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
@@ -37,7 +39,7 @@ export const eDefaultClients: IDictionaryOf<ISysClient> = {
         is_active: true,
         is_system_client: true,
         client_id: "porta_ui_client",
-        application_name: undefined
+        application_id: undefined
     },
     API_CLIENT: {
         id: MD5("porta_api_client"),
@@ -46,7 +48,7 @@ export const eDefaultClients: IDictionaryOf<ISysClient> = {
         is_active: true,
         is_system_client: true,
         client_id: "porta_api_client",
-        application_name: undefined
+        application_id: undefined
     },
     CLI_CLIENT: {
         id: MD5("porta_cli_client"),
@@ -55,7 +57,7 @@ export const eDefaultClients: IDictionaryOf<ISysClient> = {
         is_active: true,
         is_system_client: true,
         client_id: "porta_cli_client",
-        application_name: undefined
+        application_id: undefined
     }
 };
 
@@ -126,17 +128,31 @@ export class DatabaseSeed {
     }
 
     /**
+     * Creates a application record for a given tenant
+     *
+     * @protected
+     * @param {ISysApplication} application
+     * @param {ISysTenant} tenant
+     * @return {*}
+     * @memberof DatabaseSeed
+     */
+    protected async createApplication(application: ISysApplication, tenant: ISysTenant) {
+        const applicationDs = new SysApplicationDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
+        return applicationDs.insertIntoSysApplication(application);
+    }
+
+    /**
      * Create a group
      *
      * @protected
-     * @param {Partial<ISysGroup>} group
+     * @param {Partial<ISysRole>} group
      * @param {ISysTenant} tenant
      * @returns
      * @memberof DatabaseSeed
      */
-    protected createGroup(group: Partial<ISysGroup>, tenant: ISysTenant) {
-        const groupDs = new SysGroupDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
-        return groupDs.insertIntoSysGroup(group as ISysGroup);
+    protected createRole(group: Partial<ISysRole>, tenant: ISysTenant) {
+        const groupDs = new SysRoleDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
+        return groupDs.insertIntoSysRole(group as ISysRole);
     }
 
     /**
@@ -144,15 +160,15 @@ export class DatabaseSeed {
      *
      * @protected
      * @param {ISysUser} user
-     * @param {ISysGroup} group
+     * @param {ISysRole} group
      * @param {ISysTenant} tenant
      * @returns
      * @memberof DatabaseSeed
      */
-    protected assignUserToGroup(user: ISysUser, group: ISysGroup, tenant: ISysTenant) {
-        const userGroupDs = new SysUserGroupDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
-        return userGroupDs.insertIntoSysUserGroup({
-            group_id: group.id,
+    protected assignUserToGroup(user: ISysUser, group: ISysRole, tenant: ISysTenant) {
+        const userGroupDs = new SysUserRoleDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
+        return userGroupDs.insertIntoSysUserRole({
+            role_id: group.id,
             user_id: user.id
         });
     }
@@ -175,18 +191,18 @@ export class DatabaseSeed {
      * Assign permission to a group
      *
      * @protected
-     * @param {ISysGroup} group
+     * @param {ISysRole} group
      * @param {ISysPermission} perm
      * @param {ISysTenant} tenant
      * @returns
      * @memberof DatabaseSeed
      */
-    protected assignGroupPermission(group: ISysGroup, perm: ISysPermission, tenant: ISysTenant) {
-        const groupPermDs = new SysGroupPermissionDataService({
+    protected assignRolePermission(group: ISysRole, perm: ISysPermission, tenant: ISysTenant) {
+        const groupPermDs = new SysRolePermissionDataService({
             tenantId: databaseUtils.getTenantDataSourceID(tenant)
         });
-        return groupPermDs.insertIntoSysGroupPermission({
-            group_id: group.id,
+        return groupPermDs.insertIntoSysRolePermission({
+            role_id: group.id,
             permission_id: perm.id
         });
     }
@@ -287,6 +303,15 @@ export class DatabaseSeed {
             // create keys
             await this.createJWKKeys(tenantRecord);
 
+            const adminApp = await this.createApplication(
+                {
+                    application_name: `${ucFirst(tenant.name)} Admin`,
+                    description: `${tenantRecord.organization} Admin`,
+                    is_active: true
+                },
+                tenantRecord
+            );
+
             // admin user
             const adminUser = await this.createAdminUser(username.trim(), password.trim(), email.trim(), tenantRecord);
             const apiUser = await this.createAdminUser(
@@ -297,47 +322,99 @@ export class DatabaseSeed {
             );
 
             // default groups
-            const usersGroup = await this.createGroup(eDefaultSystemGroups.USERS_GROUP, tenantRecord);
-            const adminGroup = await this.createGroup(eDefaultSystemGroups.ADMINISTRATORS_GROUP, tenantRecord);
-            const apiGroup = await this.createGroup(eDefaultSystemGroups.API_GROUP, tenantRecord);
+            const usersGroup = await this.createRole(
+                {
+                    role: eApiRoles.SYSTEM_USERS,
+                    role_type: "S"
+                },
+                tenantRecord
+            );
+            const adminGroup = await this.createRole(
+                {
+                    role: eApiRoles.SYSTEM_ADMINS,
+                    role_type: "S"
+                },
+                tenantRecord
+            );
+            const apiGroup = await this.createRole(
+                {
+                    role: eApiRoles.SYSTEM_API,
+                    role_type: "S"
+                },
+                tenantRecord
+            );
 
             // assign the admin user to the system groups
             await this.assignUserToGroup(adminUser, usersGroup, tenantRecord);
             await this.assignUserToGroup(adminUser, adminGroup, tenantRecord);
             await this.assignUserToGroup(apiUser, apiGroup, tenantRecord);
 
-            await asyncForEach(Object.entries(eDefaultPermissions), async ([code, perm]) => {
-                switch (code) {
-                    case eDefaultPermissions.CAN_MANAGE_TENANTS.code:
+            await asyncForEach(Object.entries(eApiPermissions), async ([_, perm]) => {
+                switch (perm) {
+                    case eApiPermissions.CAN_CREATE_TENANT:
                         if (isRegistry) {
-                            await this.createPermission(perm, tenantRecord);
+                            await this.createPermission(
+                                {
+                                    id: MD5(perm),
+                                    application_id: adminApp.id,
+                                    description: "permissions_to_create_tenant",
+                                    permission: eApiPermissions.CAN_CREATE_TENANT,
+                                    is_active: true
+                                },
+                                tenantRecord
+                            );
                         }
                         break;
                     default:
-                        await this.createPermission(perm, tenantRecord);
+                        await this.createPermission(
+                            {
+                                id: MD5(perm),
+                                application_id: adminApp.id,
+                                permission: perm.toString(),
+                                is_active: true,
+                                description: undefined
+                            },
+                            tenantRecord
+                        );
                 }
             });
 
             if (isRegistry) {
-                await this.assignGroupPermission(adminGroup, eDefaultPermissions.CAN_MANAGE_TENANTS, tenantRecord);
+                await this.assignRolePermission(
+                    adminGroup,
+                    { id: MD5(eApiPermissions.CAN_CREATE_TENANT) } as any,
+                    tenantRecord
+                );
             }
 
-            asyncForEach(Object.entries(eDefaultPermissions), async ([_key, perm]) => {
-                if (perm.code !== eDefaultPermissions.CAN_MANAGE_TENANTS.code) {
-                    await this.assignGroupPermission(adminGroup, perm, tenantRecord);
+            asyncForEach(Object.entries(eApiPermissions), async ([_key, perm]) => {
+                if (perm == eApiPermissions.CAN_MANAGE_TENANTS) {
+                    await this.assignRolePermission(
+                        adminGroup,
+                        {
+                            id: MD5(perm)
+                        } as any,
+                        tenantRecord
+                    );
                 }
             });
 
             // Creating ROLE/GROUP membership permissions to each group
             // so it runs out as roles on the Claims
             await asyncForEach([usersGroup, adminGroup, apiGroup], async (group) => {
-                await this.assignGroupPermission(group, eDefaultPermissions.GROUP_PERMISSION, tenantRecord);
+                await this.assignRolePermission(
+                    group,
+                    {
+                        id: MD5(eApiPermissions.ROLE_PERMISSION)
+                    } as any,
+                    tenantRecord
+                );
             });
 
             await this.createClient(
                 {
                     ...eDefaultClients.UI_CLIENT,
-                    application_name: `${ucFirst(tenant.name)} Admin`,
+                    application_id: adminApp.id,
                     client_id: await sha256Hash(`porta_ui_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     redirect_uri: `${serverURL}/oidc/${tenant.name}/signin/callback`,
@@ -349,7 +426,7 @@ export class DatabaseSeed {
             await this.createClient(
                 {
                     ...eDefaultClients.API_CLIENT,
-                    application_name: `${ucFirst(tenant.name)} API`,
+                    application_id: adminApp.id,
                     client_id: await sha256Hash(`porta_api_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     client_credentials_user_id: apiUser.id
@@ -360,7 +437,7 @@ export class DatabaseSeed {
             await this.createClient(
                 {
                     ...eDefaultClients.CLI_CLIENT,
-                    application_name: `${ucFirst(tenant.name)} CLI`,
+                    application_id: adminApp.id,
                     client_id: await sha256Hash(`porta_cli_${tenant.name}`),
                     secret: await sha256Hash(generateRandomUUID()),
                     redirect_uri: `http://localhost:9090/oidc/${tenant.name}/signin/callback`
@@ -380,7 +457,7 @@ export class DatabaseSeed {
      * @returns
      * @memberof DatabaseSeed
      */
-    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean; }) {
+    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean }) {
         const defaultDataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(eDatabaseType.system);
         const { DB_USER, DB_HOST, DB_PORT, DB_PASSWORD } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings

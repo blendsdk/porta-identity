@@ -72,6 +72,33 @@ async function generate() {
 
     apiBuilder.writeOut(path.join(WebApiRoot, "src", "modules", "api"));
 
+    const permissions = await apiBuilder.getPermissionsAbdRoles({
+        roles: [
+            {
+                role: "system_users"
+            },
+            {
+                role: "system_admins"
+            },
+            {
+                role: "system_api"
+            }
+        ],
+        permissions: [
+            {
+                permission: "ROLE_PERMISSION",
+                description: "internal_role_permission"
+            },
+            {
+                permission: "CAN_MANAGE_TENANTS",
+                description: "permission_to_manage_tenants"
+            }
+        ]
+    });
+    if (permissions) {
+        writeFileSync(path.join(SharedRoot, "src", "types", `generated_permissions.ts`), permissions);
+    }
+
     // Create route definitions
     writeFileSync(
         path.join(WebApiRoot, "src", "types", `generated_route_definitions.ts`),

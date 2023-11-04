@@ -10,10 +10,11 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const tenant = database.addTable("sys_tenant");
     const user = database.addTable("sys_user");
     const user_profile = database.addTable("sys_user_profile");
-    const group = database.addTable("sys_group");
-    const user_group = database.addTable("sys_user_group");
+    const role = database.addTable("sys_role");
+    const user_role = database.addTable("sys_user_role");
     const permission = database.addTable("sys_permission");
-    const group_permission = database.addTable("sys_group_permission");
+    const role_permission = database.addTable("sys_role_permission");
+    const application = database.addTable("sys_application");
     const client = database.addTable("sys_client");
     const session = database.addTable("sys_session");
     const access_token = database.addTable("sys_access_token");
@@ -32,6 +33,13 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("allow_registration", { default: "false" })
         .stringColumn("organization");
 
+    application //
+        .primaryKeyColumn("id", true)
+        .stringColumn("logo", { required: false }) // base64 encoded image data
+        .stringColumn("application_name")
+        .stringColumn("description", { required: false })
+        .booleanColumn("is_active", { default: "true" });
+
     user.primaryKeyColumn("id", true) //
         .stringColumn("username", { unique: true })
         .stringColumn("password")
@@ -45,34 +53,34 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("firstname")
         .stringColumn("lastname")
         .stringColumn("avatar", { required: false })
-        .referenceColumn("user_id", user, "id")
+        .referenceColumnAuto("user_id", user)
         .dateColumn("date_created", { default: "now()" })
         .dateColumn("date_changed", { default: "now()" }); //	Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from 1970-01-01T0:0:0Z as measured in UTC until the date/time.
 
-    group //
-        .primaryKeyColumn("id", true)
-        .stringColumn("name", { unique: true })
-        .stringColumn("description")
-        .stringColumn("group_type", { default: "'A'" })
+    role.primaryKeyColumn("id", true) //
+        .stringColumn("role", { unique: true })
+        .stringColumn("description", { required: false })
+        .stringColumn("role_type", { default: "'A'" })
         .booleanColumn("is_active", { default: "true" });
 
-    user_group //
+    user_role //
         .primaryKeyColumn("id", true)
-        .referenceColumn("user_id", user, "id")
-        .referenceColumn("group_id", group, "id")
-        .uniqueConstraint(["user_id", "group_id"]);
+        .referenceColumnAuto("user_id", user)
+        .referenceColumnAuto("role_id", role)
+        .uniqueConstraint(["user_id", "role_id"]);
 
     permission //
         .primaryKeyColumn("id", true)
-        .stringColumn("code", { unique: true })
-        .stringColumn("description")
+        .stringColumn("permission", { unique: true })
+        .stringColumn("description", { required: false })
+        .referenceColumnAuto("application_id", application)
         .booleanColumn("is_active", { default: "true" });
 
-    group_permission //
+    role_permission //
         .primaryKeyColumn("id", true)
-        .referenceColumn("group_id", group, "id")
-        .referenceColumn("permission_id", permission, "id")
-        .uniqueConstraint(["group_id", "permission_id"]);
+        .referenceColumnAuto("role_id", role)
+        .referenceColumnAuto("permission_id", permission)
+        .uniqueConstraint(["role_id", "permission_id"]);
 
     mfa.primaryKeyColumn("id", true) //
         .stringColumn("name")
@@ -87,8 +95,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
 
     user_mfa //
         .primaryKeyColumn("id", true)
-        .referenceColumn("user_id", user, "id")
-        .referenceColumn("mfa_id", mfa, "id");
+        .referenceColumnAuto("user_id", user)
+        .referenceColumnAuto("mfa_id", mfa);
 
     key.primaryKeyColumn("id", true) //
         .stringColumn("key_type")
@@ -99,8 +107,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true) //
         .stringColumn("client_id", { unique: true })
         .stringColumn("client_type") // Public = SPA/Native/Desktop, Confidential = WebApp / API, Service = MachineToMachine
-        .stringColumn("logo", { required: false }) // base64 encoded image data
-        .stringColumn("application_name")
         .booleanColumn("is_active", { default: "true" })
         .stringColumn("description", { required: false })
         .stringColumn("secret", { default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')" })
@@ -109,7 +115,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("valid_from", { required: false, default: "now()" })
         .dateTimeColumn("valid_until", { required: false })
         .stringColumn("redirect_uri", { required: false })
-        .referenceColumn("client_credentials_user_id", user, "id", undefined, { required: false })
+        .referenceColumnAuto("client_credentials_user_id", user, undefined, { required: false })
+        .referenceColumnAuto("application_id", application)
         .stringColumn("post_logout_redirect_uri", { required: false })
         .booleanColumn("is_back_channel_post_logout", { default: "false" })
         .booleanColumn("is_system_client", { default: "false" });
@@ -117,11 +124,11 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     session
         .primaryKeyColumn("id", true)
         .stringColumn("session_id")
-        .referenceColumn("user_id", user, "id", {
+        .referenceColumnAuto("user_id", user, {
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
-        .referenceColumn("client_id", client, "id", {
+        .referenceColumnAuto("client_id", client, {
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
@@ -155,19 +162,19 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
         })
-        .referenceColumn("session_id", session, "id", {
+        .referenceColumnAuto("session_id", session, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         })
-        .referenceColumn("user_id", user, "id", {
+        .referenceColumnAuto("user_id", user, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         })
-        .referenceColumn("client_id", client, "id", {
+        .referenceColumnAuto("client_id", client, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         })
-        .referenceColumn("tenant_id", tenant, "id", {
+        .referenceColumnAuto("tenant_id", tenant, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         });
@@ -181,14 +188,15 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
         })
-        .referenceColumn("access_token_id", access_token, "id", {
+        .referenceColumnAuto("access_token_id", access_token, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         });
 
+    database.addView("sys_client_view", path.join(resourcesRoot, "client_view.sql"), 99);
     database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
     database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);
-    database.addView("sys_groups_by_user_view", path.join(resourcesRoot, "groups_by_user_view.sql"), 102);
+    database.addView("sys_roles_by_user_view", path.join(resourcesRoot, "roles_by_user_view.sql"), 102);
     database.addView("sys_user_permission_view", path.join(resourcesRoot, "user_permission_view.sql"), 102);
     database.addView("sys_access_token_view", path.join(resourcesRoot, "access_token_view.sql"), 103);
     database.addView("sys_refresh_token_view", path.join(resourcesRoot, "refresh_token_view.sql"), 103);

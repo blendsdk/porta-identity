@@ -1,4 +1,4 @@
-import { ApiBuilder, createSecureCrudAPI, eCrudAPI, refType } from "@blendsdk/codegen";
+import { ApiBuilder, IApiAccessDescription, createSecureCrudAPI, eCrudAPI, refType } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createOpenIDTenantAPI(builder: ApiBuilder) {
@@ -8,12 +8,21 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
         openApi: true,
         onCreateURL: ({ name }) => {
             let url: string = undefined;
+            let access: IApiAccessDescription = undefined;
             switch (name) {
                 case eCrudAPI.list:
                     url = `/api/:tenant/${name}/list`;
                     break;
                 case eCrudAPI.create:
                     url = `/api/:tenant/${name}`;
+                    access = {
+                        permissions: [
+                            {
+                                permission: "CAN_CREATE_TENANT",
+                                description: "permission_to_create_tenant"
+                            }
+                        ]
+                    };
                     break;
                 case eCrudAPI.get:
                 case eCrudAPI.delete:
@@ -22,7 +31,8 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
                     break;
             }
             return {
-                url
+                url,
+                access
             };
         },
         onCreateTypes: ({ name, payload_type, request_type, response_type, typeSchema }) => {
