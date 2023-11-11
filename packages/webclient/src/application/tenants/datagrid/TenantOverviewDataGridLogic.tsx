@@ -1,9 +1,10 @@
 import { useObjectState, useRunOnce } from "@blendsdk/react";
-import { useCallback, useMemo } from "react";
+import { DataGridProps } from "@fluentui/react-components";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "../../../system";
 import { ApplicationApi } from "../../../system/api";
 import { ITenantOverviewDataGridItem, createTenantOverviewDataGridColumnDefinition } from "./TenantOverviewDataGridModel";
-import { useTenantOverviewDataGridStyles } from "./TenantOverviewDataGridStyles";
+import { useTenantOverviewDataGridSizeStyles, useTenantOverviewDataGridStyles } from "./TenantOverviewDataGridStyles";
 import { ITenantOverviewDataGridProps, ITenantOverviewDataGridState } from "./TenantOverviewDataGridTypes";
 
 /**
@@ -15,7 +16,20 @@ import { ITenantOverviewDataGridProps, ITenantOverviewDataGridState } from "./Te
  */
 export function useTenantOverviewDataGrid(params: ITenantOverviewDataGridProps) {
 	const css = useTenantOverviewDataGridStyles();
+	const sizeCss = useTenantOverviewDataGridSizeStyles();
+
 	const { t } = useTranslation();
+
+	const [sortState, setSortState] = useState<
+		Parameters<NonNullable<DataGridProps["onSortChange"]>>[1]
+	>({
+		sortColumn: "name",
+		sortDirection: "ascending",
+	});
+	const onSortChange: DataGridProps["onSortChange"] = (_e, nextSortState) => {
+		setSortState(nextSortState);
+	};
+
 
 	const [state, setState] = useObjectState<Partial<ITenantOverviewDataGridState>>(() => ({
 		items: [],
@@ -53,5 +67,5 @@ export function useTenantOverviewDataGrid(params: ITenantOverviewDataGridProps) 
 		});
 	});
 
-	return { css, state, setState, columnDefinition, params };
+	return { css, state, setState, columnDefinition, params, sortState, onSortChange, sizeCss };
 }

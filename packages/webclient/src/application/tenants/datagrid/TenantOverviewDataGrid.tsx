@@ -4,7 +4,9 @@ import {
 	DataGridCell,
 	DataGridHeader,
 	DataGridHeaderCell,
-	DataGridProps, DataGridRow, Spinner
+	DataGridRow,
+	Spinner,
+	mergeClasses,
 } from "@fluentui/react-components";
 import React from "react";
 import { useTenantOverviewDataGrid } from "./TenantOverviewDataGridLogic";
@@ -16,17 +18,8 @@ import { ITenantOverviewDataGridProps } from "./TenantOverviewDataGridTypes";
  * @export
  */
 export const TenantOverviewDataGrid: React.FC<ITenantOverviewDataGridProps> = props => {
-	const { columnDefinition, state, css } = useTenantOverviewDataGrid(props);
+	const { columnDefinition, state, sortState, onSortChange, sizeCss, css } = useTenantOverviewDataGrid(props);
 
-	const [sortState, setSortState] = React.useState<
-		Parameters<NonNullable<DataGridProps["onSortChange"]>>[1]
-	>({
-		sortColumn: "name",
-		sortDirection: "ascending",
-	});
-	const onSortChange: DataGridProps["onSortChange"] = (_e, nextSortState) => {
-		setSortState(nextSortState);
-	};
 
 	return state.loading ? (<Spinner />) : (<DataGrid
 		items={state.items}
@@ -37,7 +30,7 @@ export const TenantOverviewDataGrid: React.FC<ITenantOverviewDataGridProps> = pr
 		sortable
 		sortState={sortState}
 		onSortChange={onSortChange}
-		style={{ maxHeight: "calc(100vh - 250px)", display: "flex", flexDirection: "column" }}
+		className={mergeClasses(css.root, sizeCss.dataGrid)}
 	>
 		<DataGridHeader>
 			<pre>{state.currentId}</pre>
@@ -45,10 +38,9 @@ export const TenantOverviewDataGrid: React.FC<ITenantOverviewDataGridProps> = pr
 				{({ renderHeaderCell }) => <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}
 			</DataGridRow>
 		</DataGridHeader>
-		<DataGridBody<ITenantOverviewDataGridItem> style={{ flex: 1, overflow: "auto" }}
-		>
+		<DataGridBody<ITenantOverviewDataGridItem> className={sizeCss.dataGridBody}>
 			{({ item, rowId }) => (
-				<DataGridRow<ITenantOverviewDataGridItem> appearance="none" className={css.inactive} key={rowId}>
+				<DataGridRow<ITenantOverviewDataGridItem> appearance="none" key={rowId} className={sizeCss.dataGridRow}>
 					{({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
 				</DataGridRow>
 			)}
