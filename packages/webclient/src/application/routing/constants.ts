@@ -19,10 +19,6 @@ export const eAppRoutes = {
         key: "no-valid-session",
         path: "/fe/auth/session-expired"
     },
-    tenantDashboard: {
-        key: "tenant-dashboard",
-        path: "/fe/manage/:tenant/dashboard"
-    },
     signoutComplete: {
         key: "signout-complete",
         path: "/fe/auth/:tenant/signout/complete"
@@ -31,6 +27,10 @@ export const eAppRoutes = {
         key: "me",
         path: "/fe/auth/:tenant/me"
     },
+    tenantDashboard: {
+        key: "tenant-dashboard",
+        path: "/fe/manage/:tenant/dashboard"
+    },
     tenants: {
         key: "tenants-admin",
         path: "/fe/manage/:tenant/tenants"
@@ -38,5 +38,17 @@ export const eAppRoutes = {
     admin: {
         key: "admin",
         path: "/fe/manage/:tenant/admin"
+    },
+    applications: {
+        key: "tenant-applications",
+        path: "/fe/manage/:tenant/admin/applications"
+    },
+    roles: {
+        key: "tenant-applications",
+        path: "/fe/manage/:tenant/admin/roles"
+    },
+    permissions: {
+        key: "tenant-applications",
+        path: "/fe/manage/:tenant/admin/permissions"
     }
 };

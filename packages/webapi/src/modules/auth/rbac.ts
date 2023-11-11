@@ -76,7 +76,10 @@ export const RoleBasedAccessHandler = (): IRouter => {
                 ) {
                     next();
                 } else {
-                    sendResponse(new UnAuthorizedAccessResponse(new Error("UNAUTHORIZED_ACCESS_TO_ENDPOINT")), res);
+                    sendResponse(
+                        new UnAuthorizedAccessResponse(new Error("UNAUTHORIZED_ACCESS_TO_ENDPOINTBY_RBAC")),
+                        res
+                    );
                 }
             }
         }

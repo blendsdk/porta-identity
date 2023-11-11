@@ -5,6 +5,10 @@ import { defineCustomApi } from "./custom";
 
 export function createAPISchema(typeSchema: TypeSchema, typeBuilder: TypeBuilder) {
     const builder = new ApiBuilder({
+        requestConfigHandler: {
+            handlerFunction: "onInterceptRequestParameters",
+            importFrom: "../../lib"
+        },
         typeSchema,
         typeBuilder,
         logger: consoleLogger,

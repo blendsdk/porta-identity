@@ -10,6 +10,7 @@ import {
     Button,
     ButtonProps,
     makeStyles,
+    shorthands,
 } from "@fluentui/react-components";
 import { BuildingTownhouse32Regular, DocumentLock32Regular, People32Regular, Person32Regular, WindowApps32Regular } from "@fluentui/react-icons";
 import { PropsWithChildren, useMemo } from "react";
@@ -30,7 +31,8 @@ const useStyles = makeStyles({
         bottom: 0,
         right: 0,
         display: "flex",
-        flexDirection: "column"
+        flexDirection: "column",
+        ...shorthands.overflow("clip")
     }, columnLayout: {
         display: "flex",
         flexDirection: "column",
@@ -57,24 +59,27 @@ const SidePanelNavigation = () => {
                 },
                 {
                     title: t("roles"),
-                    icon: <People32Regular />
+                    icon: <People32Regular />,
+                    id: eAppRoutes.roles.key
                 },
                 {
                     title: t("permissions"),
-                    icon: <DocumentLock32Regular />
+                    icon: <DocumentLock32Regular />,
+                    id: eAppRoutes.permissions.key
                 },
             ],
             integrations: [
                 {
                     title: t("applications"),
-                    icon: <WindowApps32Regular />
+                    icon: <WindowApps32Regular />,
+                    id: eAppRoutes.applications.key
                 },
                 {
                     title: t("tenants"),
                     icon: <BuildingTownhouse32Regular />,
                     id: eAppRoutes.tenants.key,
                     onClick: () => {
-                        router.go(eAppRoutes.tenants.key, { tenant }, true);
+                        router.go(eAppRoutes.tenants.key, { tenant });
                     }
                 }
             ]

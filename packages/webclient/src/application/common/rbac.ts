@@ -1,5 +1,5 @@
 import { RoleBasedAccessTable, eAclRuleType } from "@blendsdk/rbac";
-import { eDefaultPermissions, eDefaultSystemGroups } from "@porta/shared";
+import { eApiPermissions, eApiRoles } from "@porta/shared";
 import { ReferenceDataStore } from "../../lib";
 import { eAppRoutes } from "../routing";
 
@@ -11,7 +11,7 @@ export const appRbacTable = new RoleBasedAccessTable({
             check: (tokens: { permission: string }[]) => {
                 return (
                     tokens.find((t) => {
-                        return t.permission === eDefaultPermissions.CAN_MANAGE_TENANTS.code;
+                        return t.permission === eApiPermissions.CAN_MANAGE_TENANTS;
                     }) !== undefined
                 );
             }
@@ -22,7 +22,7 @@ export const appRbacTable = new RoleBasedAccessTable({
             check: (tokens: { permission: string }[]) => {
                 return (
                     tokens.find((t) => {
-                        return t.permission === eDefaultPermissions.CAN_MANAGE_TENANTS.code;
+                        return t.permission === eApiPermissions.CAN_MANAGE_TENANTS;
                     }) !== undefined
                 );
             }
@@ -33,8 +33,19 @@ export const appRbacTable = new RoleBasedAccessTable({
             check: (tokens: { role: string }[]) => {
                 return (
                     tokens.find((t) => {
-                        return t.role === eDefaultSystemGroups.ADMINISTRATORS_GROUP.name;
+                        return t.role === eApiRoles.SYSTEM_ADMINS;
                     }) !== undefined
+                );
+            }
+        },
+        {
+            subject: [eAppRoutes.applications.key, eAppRoutes.roles.key, eAppRoutes.permissions.key],
+            type: eAclRuleType.permission,
+            check: (tokens: { permission: string }[]) => {
+                return (
+                    tokens.find((t) => {
+                        return t.permission === eApiPermissions.CAN_MANAGE_TENANTS;
+                    }) === undefined // must not have this one
                 );
             }
         }

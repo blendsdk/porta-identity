@@ -1,5 +1,5 @@
 import { sha256Hash } from "@blendsdk/crypto";
-import { dataSourceManager } from "@blendsdk/datakit";
+import { dataSourceManager, expression } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { IDictionaryOf, isString } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
@@ -445,6 +445,12 @@ class DatabaseUtils {
     public async findTenant(tenant: string): Promise<ISysTenant> {
         const tenantDs = new SysTenantDataService({ tenantId: eDatabaseType.registry });
         return await tenantDs.findByNameOrId({ name: tenant });
+    }
+
+    public async listTenants(): Promise<ISysTenant[]> {
+        const tenantDs = new SysTenantDataService({ tenantId: eDatabaseType.registry });
+        const e = expression();
+        return await tenantDs.listSysTenantByExpression(e.createRenderer());
     }
 
     /**

@@ -11,10 +11,10 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
             let access: IApiAccessDescription = undefined;
             switch (name) {
                 case eCrudAPI.list:
-                    url = `/api/:tenant/${name}/list`;
+                    url = `/api/:tenant/tenant/${name}/list`;
                     break;
                 case eCrudAPI.create:
-                    url = `/api/:tenant/${name}`;
+                    url = `/api/:tenant/tenant/${name}`;
                     access = {
                         permissions: [
                             {
@@ -27,7 +27,7 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
                 case eCrudAPI.get:
                 case eCrudAPI.delete:
                 case eCrudAPI.update:
-                    url = `/api/:tenant/${name}/:id`;
+                    url = `/api/:tenant/tenant/${name}/:id`;
                     break;
             }
             return {
@@ -40,7 +40,7 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
                 case eCrudAPI.create:
                     typeSchema //
                         .createAppendType(request_type)
-                        .addString("tenant", { location: eParameterLocation.query })
+                        .addString("tenant", { location: eParameterLocation.params })
                         .addString("name")
                         .addString("email")
                         .addString("password")
@@ -48,6 +48,19 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
                         .addBoolean("allow_reset_password")
                         .addString("organization");
                     typeSchema.createResponseType(response_type, refType("sys_tenant"));
+                    break;
+                case eCrudAPI.get:
+                    typeSchema //
+                        .createAppendType(request_type)
+                        .addString("tenant", { location: eParameterLocation.params })
+                        .addString("id", { location: eParameterLocation.params });
+                    typeSchema.createResponseType(response_type, refType("sys_tenant"));
+                    break;
+                case eCrudAPI.list:
+                    typeSchema //
+                        .createAppendType(request_type)
+                        .addString("tenant", { location: eParameterLocation.params });
+                    typeSchema.createResponseType(response_type, refType("sys_tenant"), { array: true });
                     break;
                 default:
                     typeSchema.createAppendType(request_type);

@@ -132,25 +132,30 @@ export const routeDefinitions: {
 		get_user_profile: { id: "get_user_profile", method: "get", url: "/:tenant/user_profile", public: false }
 	},
 	open_id_tenant: {
-		list_open_id_tenant: { id: "list_open_id_tenant", method: "get", url: "/api/:tenant/list/list", public: false },
-		get_open_id_tenant: { id: "get_open_id_tenant", method: "get", url: "/api/:tenant/get/:id", public: false },
+		list_open_id_tenant: {
+			id: "list_open_id_tenant",
+			method: "get",
+			url: "/api/:tenant/tenant/list/list",
+			public: false
+		},
+		get_open_id_tenant: { id: "get_open_id_tenant", method: "get", url: "/api/:tenant/tenant/get/:id", public: false },
 		create_open_id_tenant: {
 			id: "create_open_id_tenant",
 			method: "post",
-			url: "/api/:tenant/create",
+			url: "/api/:tenant/tenant/create",
 			public: false,
 			access: { permissions: ["CAN_CREATE_TENANT"] }
 		},
 		update_open_id_tenant: {
 			id: "update_open_id_tenant",
 			method: "patch",
-			url: "/api/:tenant/update/:id",
+			url: "/api/:tenant/tenant/update/:id",
 			public: false
 		},
 		delete_open_id_tenant: {
 			id: "delete_open_id_tenant",
 			method: "delete",
-			url: "/api/:tenant/delete/:id",
+			url: "/api/:tenant/tenant/delete/:id",
 			public: false
 		}
 	},

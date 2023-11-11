@@ -1,15 +1,15 @@
 import { makeGlobalStore } from "@blendsdk/react";
-import { ISysGroup, ISysPermission, ISysTenant, ISysUser, ISysUserProfile } from "@porta/shared";
+import { ISysPermission, ISysRole, ISysTenant, ISysUser, ISysUserProfile } from "@porta/shared";
 import { ApplicationApi } from "../system/api";
 import { StoreBase } from "./storebase";
 
 export class ReferenceDataStore extends StoreBase {
     //TODO: type this
     public userProfile: {
-        user: ISysUser,
+        user: ISysUser;
         profile: ISysUserProfile;
-        roles: ISysGroup[],
-        permissions: ISysPermission[],
+        roles: ISysRole[];
+        permissions: ISysPermission[];
         signout_url: string;
         tenant: ISysTenant;
     };

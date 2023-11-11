@@ -28,7 +28,7 @@ export abstract class OpenIdTenantControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
 	/**
-	 * Method for handling [GET] /api/:tenant/list/list
+	 * Method for handling [GET] /api/:tenant/tenant/list/list
 	 * @abstract
 	 * @param {IListOpenIdTenantRequest} params
 	 * @returns {Promise<Response<IListOpenIdTenantResponse>>}
@@ -36,7 +36,7 @@ export abstract class OpenIdTenantControllerBase<
 	 */
 	public abstract listOpenIdTenant(params: IListOpenIdTenantRequest): Promise<Response<IListOpenIdTenantResponse>>;
 	/**
-	 * Method for handling [GET] /api/:tenant/get/:id
+	 * Method for handling [GET] /api/:tenant/tenant/get/:id
 	 * @abstract
 	 * @param {IGetOpenIdTenantRequest} params
 	 * @returns {Promise<Response<IGetOpenIdTenantResponse>>}
@@ -44,7 +44,7 @@ export abstract class OpenIdTenantControllerBase<
 	 */
 	public abstract getOpenIdTenant(params: IGetOpenIdTenantRequest): Promise<Response<IGetOpenIdTenantResponse>>;
 	/**
-	 * Method for handling [POST] /api/:tenant/create
+	 * Method for handling [POST] /api/:tenant/tenant/create
 	 * @abstract
 	 * @param {ICreateOpenIdTenantRequest} params
 	 * @returns {Promise<Response<ICreateOpenIdTenantResponse>>}
@@ -54,7 +54,7 @@ export abstract class OpenIdTenantControllerBase<
 		params: ICreateOpenIdTenantRequest
 	): Promise<Response<ICreateOpenIdTenantResponse>>;
 	/**
-	 * Method for handling [PATCH] /api/:tenant/update/:id
+	 * Method for handling [PATCH] /api/:tenant/tenant/update/:id
 	 * @abstract
 	 * @param {IUpdateOpenIdTenantRequest} params
 	 * @returns {Promise<Response<IUpdateOpenIdTenantResponse>>}
@@ -64,7 +64,7 @@ export abstract class OpenIdTenantControllerBase<
 		params: IUpdateOpenIdTenantRequest
 	): Promise<Response<IUpdateOpenIdTenantResponse>>;
 	/**
-	 * Method for handling [DELETE] /api/:tenant/delete/:id
+	 * Method for handling [DELETE] /api/:tenant/tenant/delete/:id
 	 * @abstract
 	 * @param {IDeleteOpenIdTenantRequest} params
 	 * @returns {Promise<Response<IDeleteOpenIdTenantResponse>>}

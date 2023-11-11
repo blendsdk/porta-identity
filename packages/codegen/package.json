@@ -11,6 +11,7 @@
     "build": "rm -fR ./dist ./temp && tsc",
     "watch": "rm -fR ./dist && tsc -w",
     "test": "jest --detectOpenHandles --passWithNoTests",
+    "cli": "codegen",
     "generate": "yarn build && LOG_LEVEL=INFO node ./dist/index.js start",
     "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
   },
@@ -19,13 +20,13 @@
     "tslib": "^2.6.2"
   },
   "dependencies": {
-    "@blendsdk/codegen": "3.2.377",
-    "@blendsdk/datakit": "3.2.377",
-    "@blendsdk/filesystem": "3.2.377",
-    "@blendsdk/jsonschema": "3.2.377",
-    "@blendsdk/logger": "3.2.377",
-    "@blendsdk/postgresql": "3.2.377",
-    "@blendsdk/stdlib": "3.2.377",
+    "@blendsdk/codegen": "3.2.391",
+    "@blendsdk/datakit": "3.2.391",
+    "@blendsdk/filesystem": "3.2.391",
+    "@blendsdk/jsonschema": "3.2.391",
+    "@blendsdk/logger": "3.2.391",
+    "@blendsdk/postgresql": "3.2.391",
+    "@blendsdk/stdlib": "3.2.391",
     "jose": "^4.15.1"
   }
 }

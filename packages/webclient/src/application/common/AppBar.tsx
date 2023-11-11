@@ -9,19 +9,18 @@ import {
     AppLauncherModuleItem,
     AppTitle
 } from "@blendsdk/fluentrc";
-import { eAclRuleType } from "@blendsdk/rbac";
 import { Avatar, Button, Subtitle1 } from "@fluentui/react-components";
 import {
-    ContentView32Regular,
-    Desktop32Regular, Person32Regular
+    ContentViewRegular,
+    DesktopRegular, PersonRegular
 } from "@fluentui/react-icons";
-import { eDefaultSystemGroups } from "@porta/shared";
+import { eApiRoles } from "@porta/shared";
 import React, { useMemo } from "react";
 import { Strings, useReferenceData } from "../../lib";
 import { useTranslation } from "../../system/i18n";
 import { useRouter } from "../../system/session";
 import { eAppRoutes } from "../routing";
-import { appRbacTable } from "./rbac";
+import { createRbacFilter } from "./rbac";
 
 export interface IApplicationBar {
     launcher?: boolean;
@@ -29,32 +28,37 @@ export interface IApplicationBar {
 
 export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
     const { t } = useTranslation();
-    const refData = useReferenceData();
+    const referenceData = useReferenceData();
     const router = useRouter();
+
     const appTitle = useMemo(() => {
-        if (refData?.userProfile?.tenant) {
-            return t(`${Strings.APPLICATION_NAME} (\${organization})`, refData.userProfile?.tenant);
+        if (referenceData?.userProfile?.tenant) {
+            return t(`${Strings.APPLICATION_NAME} (\${organization})`, referenceData.userProfile?.tenant);
         } else {
             return Strings.APPLICATION_NAME;
         }
-    }, [refData?.userProfile?.tenant, t]);
+    }, [referenceData?.userProfile?.tenant, t]);
+
+    const rbacFilter = useMemo(() => {
+        return createRbacFilter(referenceData);
+    }, [referenceData]);
 
     const launcherItems = useMemo<AppLauncherModuleItem[]>(() => {
 
-        const tenant = refData.userProfile?.tenant?.name;
+        const tenant = referenceData.userProfile?.tenant?.name;
 
         const result = [
             {
                 caption: t("dashboard_btn"),
-                icon: Desktop32Regular,
+                icon: DesktopRegular,
                 id: eAppRoutes.tenantDashboard.key,
                 onClick: () => { }
             },
             {
                 caption: t("admin"),
-                icon: ContentView32Regular,
+                icon: ContentViewRegular,
                 id: eAppRoutes.admin.key,
-                roles: [eDefaultSystemGroups.ADMINISTRATORS_GROUP],
+                roles: [eApiRoles.SYSTEM_ADMINS],
                 onClick: () => {
                     router.go(eAppRoutes.admin.key, {
                         tenant
@@ -63,7 +67,7 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             },
             {
                 caption: t("my_account"),
-                icon: Person32Regular,
+                icon: PersonRegular,
                 onClick: () => {
                     router.go(eAppRoutes.myProfile.key, {
                         tenant
@@ -71,19 +75,21 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
                 }
             }
         ];
-        return result.filter(menu => {
-            if (menu.id && refData.userProfile) {
 
-                const hasPermission = appRbacTable.check(menu.id, refData.userProfile.permissions, eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
-                const hasRole = appRbacTable.check(menu.id, refData.userProfile.roles, eAclRuleType.role, { allRequired: true, passWhenNoRulePresent: true });
+        return result.filter(rbacFilter);
+        // return result.filter(menu => {
+        //     if (menu.id && referenceData.userProfile) {
 
-                // Check for role and permission per route id
-                return hasRole && hasPermission;
-            } else {
-                return true;
-            }
-        });
-    }, [refData.userProfile, router, t]);
+        //         const hasPermission = appRbacTable.check(menu.id, referenceData.userProfile.permissions, eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
+        //         const hasRole = appRbacTable.check(menu.id, referenceData.userProfile.roles, eAclRuleType.role, { allRequired: true, passWhenNoRulePresent: true });
+
+        //         // Check for role and permission per route id
+        //         return hasRole && hasPermission;
+        //     } else {
+        //         return true;
+        //     }
+        // });
+    }, [rbacFilter, referenceData.userProfile?.tenant?.name, router, t]);
 
     return (
         <AppBar>
@@ -94,14 +100,14 @@ export const ApplicationBar: React.FC<IApplicationBar> = ({ launcher }) => {
             )}
             <AppTitle>{appTitle}</AppTitle>
             <AppBarSpacer />
-            {refData.userProfile && (
+            {referenceData.userProfile && (
                 <AppBarTabList>
-                    <AppBarTab icon={<Avatar image={{ src: refData.userProfile.profile.avatar }} />}>
+                    <AppBarTab icon={<Avatar image={{ src: referenceData.userProfile.profile.avatar }} />}>
                         <AppBarTabHeader addBottomSpacing>
                             <Subtitle1>Settings</Subtitle1>
                         </AppBarTabHeader>
                         <Button appearance="primary" onClick={() => {
-                            window.location.href = refData.userProfile.signout_url;
+                            window.location.href = referenceData.userProfile.signout_url;
                         }}>{t("logout")}</Button>
                     </AppBarTab>
                 </AppBarTabList>

@@ -108,7 +108,7 @@ import {
 	IDeleteOpenIdPermissionRequest,
 	IDeleteOpenIdPermissionResponse
 } from "@porta/shared";
-
+import { onInterceptRequestParameters } from "../../lib";
 /**
  * Interface describing the Backend REST API client
  * @export
@@ -152,8 +152,8 @@ export interface IPortaApi {
 		getUserProfile: THttpRequest<IGetUserProfileRequest, IGetUserProfileResponse>;
 	};
 	openIdTenant: {
-		listOpenIdTenant: THttpRequest<IListOpenIdTenantRequest | void, IListOpenIdTenantResponse>;
-		getOpenIdTenant: THttpRequest<IGetOpenIdTenantRequest | void, IGetOpenIdTenantResponse>;
+		listOpenIdTenant: THttpRequest<IListOpenIdTenantRequest, IListOpenIdTenantResponse>;
+		getOpenIdTenant: THttpRequest<IGetOpenIdTenantRequest, IGetOpenIdTenantResponse>;
 		createOpenIdTenant: THttpRequest<ICreateOpenIdTenantRequest, ICreateOpenIdTenantResponse>;
 		updateOpenIdTenant: THttpRequest<IUpdateOpenIdTenantRequest | void, IUpdateOpenIdTenantResponse>;
 		deleteOpenIdTenant: THttpRequest<IDeleteOpenIdTenantRequest | void, IDeleteOpenIdTenantResponse>;
@@ -188,7 +188,6 @@ export interface IPortaApi {
 		deleteOpenIdPermission: THttpRequest<IDeleteOpenIdPermissionRequest | void, IDeleteOpenIdPermissionResponse>;
 	};
 }
-
 /**
  * Backend REST API client
  * @export
@@ -273,15 +272,15 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getUserProfile: defineEndpoint({ method: "get", url: "/:tenant/user_profile" })
 		},
 		openIdTenant: {
-			listOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
-			getOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/get/:id" }),
+			listOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/tenant/list/list" }),
+			getOpenIdTenant: defineEndpoint({ method: "get", url: "/api/:tenant/tenant/get/:id" }),
 			createOpenIdTenant: defineEndpoint({
 				method: "post",
-				url: "/api/:tenant/create",
-				parameters: { tenant: eParameterLocation.query }
+				url: "/api/:tenant/tenant/create",
+				parameters: { tenant: eParameterLocation.params }
 			}),
-			updateOpenIdTenant: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
-			deleteOpenIdTenant: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
+			updateOpenIdTenant: defineEndpoint({ method: "patch", url: "/api/:tenant/tenant/update/:id" }),
+			deleteOpenIdTenant: defineEndpoint({ method: "delete", url: "/api/:tenant/tenant/delete/:id" })
 		},
 		openIdClient: {
 			listOpenIdClient: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),
@@ -316,5 +315,6 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			updateOpenIdPermission: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
 			deleteOpenIdPermission: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
 		}
-	}
+	},
+	requestConfig: onInterceptRequestParameters
 });

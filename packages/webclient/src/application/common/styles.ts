@@ -19,5 +19,8 @@ export const useCommonStyles = makeStyles({
         display: "flex",
         flexDirection: "column",
         ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalNone)
+    },
+    padded: {
+        ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM)
     }
 });

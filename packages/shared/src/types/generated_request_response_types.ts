@@ -1195,13 +1195,13 @@ export interface IGetUserProfileResponse {
  * @export
  * @interface IListOpenIdTenantRequest
  */
-export interface IListOpenIdTenantRequest {}
-
-/**
- * @export
- * @interface IListOpenIdTenant
- */
-export interface IListOpenIdTenant {}
+export interface IListOpenIdTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf IListOpenIdTenantRequest
+	 */
+	tenant: string;
+}
 
 /**
  * @export
@@ -1209,23 +1209,28 @@ export interface IListOpenIdTenant {}
  */
 export interface IListOpenIdTenantResponse {
 	/**
-	 * @type IListOpenIdTenant
+	 * @type ISysTenant[]
 	 * @memberOf IListOpenIdTenantResponse
 	 */
-	data: IListOpenIdTenant;
+	data: ISysTenant[];
 }
 
 /**
  * @export
  * @interface IGetOpenIdTenantRequest
  */
-export interface IGetOpenIdTenantRequest {}
-
-/**
- * @export
- * @interface IGetOpenIdTenant
- */
-export interface IGetOpenIdTenant {}
+export interface IGetOpenIdTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf IGetOpenIdTenantRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IGetOpenIdTenantRequest
+	 */
+	id: string;
+}
 
 /**
  * @export
@@ -1233,10 +1238,10 @@ export interface IGetOpenIdTenant {}
  */
 export interface IGetOpenIdTenantResponse {
 	/**
-	 * @type IGetOpenIdTenant
+	 * @type ISysTenant
 	 * @memberOf IGetOpenIdTenantResponse
 	 */
-	data: IGetOpenIdTenant;
+	data: ISysTenant;
 }
 
 /**

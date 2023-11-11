@@ -1634,23 +1634,35 @@ export const validationSchema = {
 			required: ["user", "profile"]
 		},
 		list_open_id_tenant_request: {
-			type: eJsonSchemaType.object
-		},
-		list_open_id_tenant: {
-			type: eJsonSchemaType.object
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
 		},
 		get_open_id_tenant_request: {
-			type: eJsonSchemaType.object
-		},
-		get_open_id_tenant: {
-			type: eJsonSchemaType.object
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant", "id"]
 		},
 		create_open_id_tenant_request: {
 			type: eJsonSchemaType.object,
 			properties: {
 				tenant: {
 					type: eJsonSchemaType.string,
-					location: eParameterLocation.query
+					location: eParameterLocation.params
 				},
 				name: {
 					type: eJsonSchemaType.string

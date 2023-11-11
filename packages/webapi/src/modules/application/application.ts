@@ -5,6 +5,7 @@ import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
 import { ApplicationModule } from "../api/application";
 import { AuthorizationModule } from "../api/authorization";
+import { OpenIdTenantModule } from "../api/open_id_tenant";
 import { RoleBasedAccessHandler } from "../auth/rbac";
 import { PortaSelfAuthSessionProviderModule } from "../auth/selfauth/session";
 import { PortaSelfAuthTokenAuthenticationModule } from "../auth/selfauth/token";
@@ -34,6 +35,7 @@ const application = new Application({
         AuthorizationModule(),
         ApplicationModule(),
         RoleBasedAccessHandler(),
+        OpenIdTenantModule(),
         SPARoutes()
     ]
 }).addModule([

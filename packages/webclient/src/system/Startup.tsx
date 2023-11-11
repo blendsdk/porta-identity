@@ -1,8 +1,7 @@
-import { eAclRuleType } from "@blendsdk/rbac";
 import { AccessDeniedIcon, Router, SessionProvider, SystemError, getCurrentLocale } from "@blendsdk/react";
 import { Body2, FluentProvider, Subtitle2 } from "@fluentui/react-components";
-import { useEffect } from "react";
-import { appRbacTable } from "../application/common/rbac";
+import { useEffect, useMemo } from "react";
+import { createRbacFilter } from "../application/common/rbac";
 import { appRoutes } from "../application/routing";
 import { useReferenceData } from "../lib";
 import { useTranslation } from "./i18n";
@@ -45,21 +44,19 @@ export const Startup = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const rbacFilter = useMemo(() => {
+        return createRbacFilter(referenceData);
+    }, [referenceData]);
+
+
     return (
         <FluentProvider theme={theme}>
             <SessionProvider
                 onBeforeStart={async () => {
                     await translationStore.initialize(getCurrentLocale(router)).catch(catchSystemError);
                 }}
-                onSessionStarted={() => {
-                    return new Promise<void>(async (resolve) => {
-                        try {
-                            await referenceData.load();
-                            resolve();
-                        } catch (err: any) {
-                            catchSystemError(err);
-                        }
-                    });
+                onSessionStarted={async () => {
+                    await referenceData.load().catch(catchSystemError);
                 }}
             >
                 <SystemError>
@@ -68,9 +65,7 @@ export const Startup = () => {
                         unAuthorizedAccessView={
                             !referenceData.userProfile ? <div /> : <AccessDeniedIcon text={<AccessDeniedContent />} />}
                         onHandleAccessControl={(route) => {
-                            const hasPermission = appRbacTable.check(route, referenceData.userProfile?.permissions || [], eAclRuleType.permission, { allRequired: true, passWhenNoRulePresent: true });
-                            const hasRole = appRbacTable.check(route, referenceData.userProfile?.roles || [], eAclRuleType.role, { allRequired: true, passWhenNoRulePresent: true });
-                            return hasPermission && hasRole;
+                            return [route].filter(rbacFilter).length !== 0;
                         }}
                     />
                 </SystemError>
