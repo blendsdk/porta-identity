@@ -25,10 +25,6 @@ export const TenantsOverview = () => {
     return (
         <AdminWrapper>
             <div className={mergeClasses(cs.flexColumn, cs.formGap, cs.flexFill)}>
-
-                {state.editorOpen && (<TenantEditorDialog onClose={function (): void {
-                    setState({ editorOpen: false });
-                }} />)}
                 <Toolbar style={{ backgroundColor: tokens.colorNeutralBackground3 }}>
                     <ToolbarButton
                         appearance="subtle"
@@ -43,6 +39,9 @@ export const TenantsOverview = () => {
                     <TenantOverviewDataGrid />
                 </div>
             </div>
+            <TenantEditorDialog open={state.editorOpen} onClose={function (): void {
+                setState({ editorOpen: false });
+            }} />
         </AdminWrapper>
     );
 };

@@ -2,8 +2,8 @@ import { useObjectState, useRunOnce } from "@blendsdk/react";
 import { DataGridProps } from "@fluentui/react-components";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "../../../system";
-import { ApplicationApi } from "../../../system/api";
 import { ITenantOverviewDataGridItem, createTenantOverviewDataGridColumnDefinition } from "./TenantOverviewDataGridModel";
+import { tenantOverviewDataGridStore } from "./TenantOverviewDataGridStore";
 import { useTenantOverviewDataGridSizeStyles, useTenantOverviewDataGridStyles } from "./TenantOverviewDataGridStyles";
 import { ITenantOverviewDataGridProps, ITenantOverviewDataGridState } from "./TenantOverviewDataGridTypes";
 
@@ -50,22 +50,18 @@ export function useTenantOverviewDataGrid(params: ITenantOverviewDataGridProps) 
 	}, [onDeleteConfirmAction, t]);
 
 	useRunOnce((done) => {
-		setState({ loading: true });
-		ApplicationApi.openIdTenant.listOpenIdTenant({ tenant: undefined }).then(({ data }) => {
-			setState({
-				loading: false,
-				items: data.map(({ id, name, organization, is_active }) => {
-					return {
-						id,
-						name,
-						organization,
-						is_active
-					};
-				})
-			});
-			done();
-		});
+		tenantOverviewDataGridStore.loadAll().then(done);
 	});
 
-	return { css, state, setState, columnDefinition, params, sortState, onSortChange, sizeCss };
+	return {
+		css,
+		state,
+		setState,
+		columnDefinition,
+		params,
+		sortState,
+		onSortChange,
+		sizeCss,
+		dataStore: tenantOverviewDataGridStore
+	};
 }

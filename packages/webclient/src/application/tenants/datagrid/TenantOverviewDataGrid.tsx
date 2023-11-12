@@ -18,11 +18,10 @@ import { ITenantOverviewDataGridProps } from "./TenantOverviewDataGridTypes";
  * @export
  */
 export const TenantOverviewDataGrid: React.FC<ITenantOverviewDataGridProps> = props => {
-	const { columnDefinition, state, sortState, onSortChange, sizeCss, css } = useTenantOverviewDataGrid(props);
+	const { columnDefinition, state, sortState, onSortChange, sizeCss, css, dataStore } = useTenantOverviewDataGrid(props);
 
-
-	return state.loading ? (<Spinner />) : (<DataGrid
-		items={state.items}
+	return dataStore.fetching ? (<Spinner />) : (<DataGrid
+		items={dataStore.records}
 		columns={columnDefinition}
 		resizableColumns
 		getRowId={(item: ITenantOverviewDataGridItem) => item.id}

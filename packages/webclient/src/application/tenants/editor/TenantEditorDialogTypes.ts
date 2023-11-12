@@ -5,6 +5,7 @@
  * @interface ITenantEditorDialog
  */
 export interface ITenantEditorDialogProps {
+    open: boolean;
     onClose: () => void;
     tenantId?: string;
 }

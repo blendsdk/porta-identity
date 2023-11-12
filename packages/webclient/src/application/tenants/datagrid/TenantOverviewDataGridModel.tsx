@@ -43,12 +43,14 @@ export function createTenantOverviewDataGridColumnDefinition(params: ICreateTena
 					},
 					renderCell: (item) => {
 						return (
-							<Stack horizontal gap="0.5rem" style={{ padding: "0.5rem" }}>
-								<Button size="small" appearance="subtle" icon={<EditRegular />} onClick={() => {
-									onDeleteConfirmAction(item);
-								}} />
-								<Button size="small" appearance="subtle" icon={<DeleteRegular />} />
-							</Stack>
+							<TableCellLayout>
+								<Stack horizontal gap="0.5rem" style={{ padding: "0.5rem" }}>
+									<Button size="small" appearance="subtle" icon={<EditRegular />} onClick={() => {
+										onDeleteConfirmAction(item);
+									}} />
+									<Button size="small" appearance="subtle" icon={<DeleteRegular />} />
+								</Stack>
+							</TableCellLayout>
 						);
 					},
 				});

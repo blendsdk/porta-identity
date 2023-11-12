@@ -32,13 +32,13 @@ function useValidateOn(form: ReturnType<ReturnType<typeof makeForm>>) {
  * Implements the TenantEditorDialog
  * @export
  */
-export const TenantEditorDialog: React.FC<ITenantEditorDialogProps> = params => {
-	const { dlgCss, state, t, form } = useTenantEditorDialog(params);
+export const TenantEditorDialog: React.FC<ITenantEditorDialogProps> = props => {
+	const { dlgCss, state, t, form, } = useTenantEditorDialog(props);
 	const validate = useValidateOn(form);
 
 	return (
 		<form onSubmit={form.handleSubmit}>
-			<Dialog open>
+			<Dialog open={props.open}>
 				<DialogSurface className={dlgCss.dialogSurface}>
 					{state.saving ? (
 						<Stack alignItems="center" className={dlgCss.dialogContentNoPadding} justifyContent="center" flex="1">
@@ -59,7 +59,7 @@ export const TenantEditorDialog: React.FC<ITenantEditorDialogProps> = params => 
 								</Stack>
 							</DialogContent>
 							<DialogActions fluid>
-								<Button appearance="secondary" onClick={() => params.onClose()}>
+								<Button appearance="secondary" onClick={() => props.onClose()}>
 									{t("close")}
 								</Button>
 								<Button appearance="primary" onClick={() => form.submitForm()}>
