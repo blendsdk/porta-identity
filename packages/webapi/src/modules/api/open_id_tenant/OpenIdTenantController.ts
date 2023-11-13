@@ -12,7 +12,7 @@ import {
     IUpdateOpenIdTenantRequest,
     IUpdateOpenIdTenantResponse
 } from "@porta/shared";
-import { databaseUtils } from "../../../utils";
+import { commonUtils, databaseUtils } from "../../../utils";
 import { DatabaseSeed } from "../../../utils/DatabaseSeed";
 import { OpenIdTenantControllerBase } from "./OpenIdTenantControllerBase";
 
@@ -31,7 +31,13 @@ export class OpenIdTenantController extends OpenIdTenantControllerBase {
     public async listOpenIdTenant(_params: IListOpenIdTenantRequest): Promise<Response<IListOpenIdTenantResponse>> {
         try {
             const data = await databaseUtils.listTenants();
-            return new SuccessResponse<IListOpenIdTenantResponse>({ data });
+            const registry = commonUtils.getPortaRegistryTenant();
+            // filter the registry tenant
+            return new SuccessResponse<IListOpenIdTenantResponse>({
+                data: data.filter((r) => {
+                    return r.name !== registry;
+                })
+            });
         } catch (err) {
             this.getLogger().error(err.message, errorObjectInfo(err));
             return new ServerErrorResponse(err);
@@ -85,7 +91,27 @@ export class OpenIdTenantController extends OpenIdTenantControllerBase {
     public updateOpenIdTenant(_params: IUpdateOpenIdTenantRequest): Promise<Response<IUpdateOpenIdTenantResponse>> {
         throw new Error("Method not implemented.");
     }
-    public deleteOpenIdTenant(_params: IDeleteOpenIdTenantRequest): Promise<Response<IDeleteOpenIdTenantResponse>> {
-        throw new Error("Method not implemented.");
+
+    /**
+     * @param {IDeleteOpenIdTenantRequest} params
+     * @return {*}  {Promise<Response<IDeleteOpenIdTenantResponse>>}
+     * @memberof OpenIdTenantController
+     */
+    public async deleteOpenIdTenant(
+        params: IDeleteOpenIdTenantRequest
+    ): Promise<Response<IDeleteOpenIdTenantResponse>> {
+        try {
+            const { id } = params;
+            const success = await databaseUtils.deleteTenant(id);
+            return new SuccessResponse<IDeleteOpenIdTenantResponse>({
+                data: {
+                    message: undefined,
+                    success
+                }
+            });
+        } catch (err) {
+            this.getLogger().error(err.message, errorObjectInfo(err));
+            return new ServerErrorResponse(err);
+        }
     }
 }

@@ -41,15 +41,18 @@ export function useTenantEditorDialog(props: ITenantEditorDialogProps) {
 		}),
 		validationSchema: () => validationSchema(router),
 		onSubmit: async (values) => {
-			setState({ saving: true });
-			ApplicationApi.openIdTenant.createOpenIdTenant({
-				tenant: undefined,
-				...values
-			} as any).then(() => {
+			try {
+				setState({ saving: true });
+				await ApplicationApi.openIdTenant.createOpenIdTenant({
+					tenant: undefined,
+					...values
+				} as any);
+				setState({ saving: false });
 				props.onClose();
-			}).catch(err => {
+			} catch (err) {
 				catchSystemError(err);
-			});
+			}
+
 		}
 	});
 	return { form, css, dlgCss, t, router, state, setState };

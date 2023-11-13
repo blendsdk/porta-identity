@@ -30,16 +30,21 @@ export function useTenantOverviewDataGrid(params: ITenantOverviewDataGridProps) 
 		setSortState(nextSortState);
 	};
 
-
 	const [state, setState] = useObjectState<Partial<ITenantOverviewDataGridState>>(() => ({
 		items: [],
 		currentId: undefined,
-		loading: false,
+		showConfirmDelete: false
 	}));
 
 	const onDeleteConfirmAction = useCallback((item: ITenantOverviewDataGridItem) => {
-		setState({ currentId: item.id });
+		setState({ currentItem: item, showConfirmDelete: true });
 	}, [setState]);
+
+	const onDeleteAction = useCallback(async () => {
+		await tenantOverviewDataGridStore.deleteTenant(state.currentItem.id);
+		await tenantOverviewDataGridStore.loadAll();
+		setState({ showConfirmDelete: false });
+	}, [setState, state.currentItem]);
 
 	const columnDefinition = useMemo(() => {
 		console.log("re-do");
@@ -54,10 +59,12 @@ export function useTenantOverviewDataGrid(params: ITenantOverviewDataGridProps) 
 	});
 
 	return {
+		t,
 		css,
 		state,
 		setState,
 		columnDefinition,
+		onDeleteAction,
 		params,
 		sortState,
 		onSortChange,

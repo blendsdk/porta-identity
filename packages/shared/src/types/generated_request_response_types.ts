@@ -1326,13 +1326,18 @@ export interface IUpdateOpenIdTenantResponse {
  * @export
  * @interface IDeleteOpenIdTenantRequest
  */
-export interface IDeleteOpenIdTenantRequest {}
-
-/**
- * @export
- * @interface IDeleteOpenIdTenant
- */
-export interface IDeleteOpenIdTenant {}
+export interface IDeleteOpenIdTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf IDeleteOpenIdTenantRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IDeleteOpenIdTenantRequest
+	 */
+	id: string;
+}
 
 /**
  * @export
@@ -1340,10 +1345,10 @@ export interface IDeleteOpenIdTenant {}
  */
 export interface IDeleteOpenIdTenantResponse {
 	/**
-	 * @type IDeleteOpenIdTenant
+	 * @type IOpsResponse
 	 * @memberOf IDeleteOpenIdTenantResponse
 	 */
-	data: IDeleteOpenIdTenant;
+	data: IOpsResponse;
 }
 
 /**

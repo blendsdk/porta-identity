@@ -49,6 +49,13 @@ export function createOpenIDTenantAPI(builder: ApiBuilder) {
                         .addString("organization");
                     typeSchema.createResponseType(response_type, refType("sys_tenant"));
                     break;
+                case eCrudAPI.delete:
+                    typeSchema //
+                        .createAppendType(request_type)
+                        .addString("tenant", { location: eParameterLocation.params })
+                        .addString("id", { location: eParameterLocation.params });
+                    typeSchema.createResponseType(response_type, refType("ops_response"));
+                    break;
                 case eCrudAPI.get:
                     typeSchema //
                         .createAppendType(request_type)

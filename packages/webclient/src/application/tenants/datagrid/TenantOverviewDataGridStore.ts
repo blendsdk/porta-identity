@@ -19,6 +19,13 @@ export class TenantOverviewDataGridStore extends DataStoreBase {
             this.doneFetching();
         });
     }
+
+    public deleteTenant(id: string) {
+        this.beginFetching();
+        return ApplicationApi.openIdTenant.deleteOpenIdTenant({ id, tenant: undefined }).then(() => {
+            this.doneFetching();
+        });
+    }
 }
 
 export const tenantOverviewDataGridStore = new TenantOverviewDataGridStore();

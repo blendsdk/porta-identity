@@ -155,7 +155,7 @@ export interface IPortaApi {
         getOpenIdTenant: THttpRequest<IGetOpenIdTenantRequest, IGetOpenIdTenantResponse>;
         createOpenIdTenant: THttpRequest<ICreateOpenIdTenantRequest, ICreateOpenIdTenantResponse>;
         updateOpenIdTenant: THttpRequest<IUpdateOpenIdTenantRequest | void, IUpdateOpenIdTenantResponse>;
-        deleteOpenIdTenant: THttpRequest<IDeleteOpenIdTenantRequest | void, IDeleteOpenIdTenantResponse>;
+        deleteOpenIdTenant: THttpRequest<IDeleteOpenIdTenantRequest, IDeleteOpenIdTenantResponse>;
     };
     openIdClient: {
         listOpenIdClient: THttpRequest<IListOpenIdClientRequest | void, IListOpenIdClientResponse>;
@@ -279,7 +279,11 @@ export const PortaApi = createHttpApi<IPortaApi>({
                 parameters: { tenant: eParameterLocation.params }
             }),
             updateOpenIdTenant: defineEndpoint({ method: "patch", url: "/api/:tenant/tenant/update/:id" }),
-            deleteOpenIdTenant: defineEndpoint({ method: "delete", url: "/api/:tenant/tenant/delete/:id" })
+            deleteOpenIdTenant: defineEndpoint({
+                method: "delete",
+                url: "/api/:tenant/tenant/delete/:id",
+                parameters: { tenant: eParameterLocation.params, id: eParameterLocation.params }
+            })
         },
         openIdClient: {
             listOpenIdClient: defineEndpoint({ method: "get", url: "/api/:tenant/list/list" }),

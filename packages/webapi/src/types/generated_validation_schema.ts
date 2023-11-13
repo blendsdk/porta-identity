@@ -1692,10 +1692,18 @@ export const validationSchema = {
 			type: eJsonSchemaType.object
 		},
 		delete_open_id_tenant_request: {
-			type: eJsonSchemaType.object
-		},
-		delete_open_id_tenant: {
-			type: eJsonSchemaType.object
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant", "id"]
 		},
 		list_open_id_client_request: {
 			type: eJsonSchemaType.object

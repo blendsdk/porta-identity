@@ -6,6 +6,7 @@ import { useTranslation } from "../../system/i18n";
 import { AdminWrapper } from "../common/admin";
 import { useCommonStyles } from "../common/styles";
 import { TenantOverviewDataGrid } from "./datagrid";
+import { tenantOverviewDataGridStore } from "./datagrid/TenantOverviewDataGridStore";
 import { TenantEditorDialog } from "./editor";
 
 interface ITenantsOverviewState {
@@ -39,7 +40,8 @@ export const TenantsOverview = () => {
                     <TenantOverviewDataGrid />
                 </div>
             </div>
-            <TenantEditorDialog open={state.editorOpen} onClose={function (): void {
+            <TenantEditorDialog open={state.editorOpen} onClose={async () => {
+                await tenantOverviewDataGridStore.loadAll();
                 setState({ editorOpen: false });
             }} />
         </AdminWrapper>
