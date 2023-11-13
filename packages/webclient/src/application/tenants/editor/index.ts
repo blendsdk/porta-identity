@@ -1,2 +1,2 @@
-export * from "./TenantEditorDialog";
-export * from "./TenantEditorDialog";
+export * from "./TenantEditor";
+export * from "./TenantEditor";

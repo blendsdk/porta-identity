@@ -197,5 +197,29 @@
     "reset_password_btn": {
         "en": "Reset Password",
         "nl": "Wachtwoord wijzigen"
+    },
+    "new_tenant": {
+        "en": "New Tenant",
+        "nl": "Tenant aanmaken"
+    },
+    "is_active_true": {
+        "en": "Yes",
+        "nl": "Ja"
+    },
+    "is_active_false": {
+        "en": "No",
+        "nl": "Nee"
+    },
+    "is_active_undefined": {
+        "en": "No set",
+        "nl": "Onbekend"
+    },
+    "delete_tenant": {
+        "en": "Delete ${name}",
+        "nl": "${name} verwijderen"
+    },
+    "confirm_delete_tenant_text": {
+        "en": "Are you sure you want to delete tenant ${name}? This operation cannot be reverted!",
+        "nl": "Weet u zeker dat u tenant ${name} wilt verwijderen? Deze bewerking kan niet ongedaan worden gemaakt!"
     }
 }

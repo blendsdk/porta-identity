@@ -1,2 +1,2 @@
-export * from "./TenantOverviewDataGrid";
-export * from "./TenantOverviewDataGridTypes";
+export * from "./TenantGrid";
+export * from "./TenantGridTypes";
