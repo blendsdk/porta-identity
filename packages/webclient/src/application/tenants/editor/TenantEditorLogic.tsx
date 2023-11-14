@@ -42,7 +42,7 @@ export function useTenantEditor(params: ITenantEditorProps) {
 		}),
 		validationSchema: () => validationSchema(router, isNew),
 		onSubmit: async (values) => {
-			params.onClose(values, isNew);
+			params.onClose(values, isNew, false);
 		}
 	});
 

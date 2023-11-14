@@ -8,7 +8,7 @@ import { ITenantEditorModel } from "./TenantEditorForm";
  * @interface ITenantEditor
  */
 export interface ITenantEditorProps {
-    onClose: (values: ITenantEditorModel, isNew: boolean) => void;
+    onClose: (values: ITenantEditorModel, isNew: boolean, cancel: boolean) => void;
     open: boolean;
     tenantId?: string;
 }

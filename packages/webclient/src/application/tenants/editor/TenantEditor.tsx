@@ -37,7 +37,7 @@ export const TenantEditor: React.FC<ITenantEditorProps> = props => {
 						</Stack>
 					</DialogContent>
 					<DialogActions fluid>
-						<Button appearance="secondary" onClick={() => props.onClose(undefined, undefined)}>
+						<Button appearance="secondary" onClick={() => props.onClose(undefined, undefined, true)}>
 							{t("close")}
 						</Button>
 						<Button appearance="primary" onClick={() => form.submitForm()}>

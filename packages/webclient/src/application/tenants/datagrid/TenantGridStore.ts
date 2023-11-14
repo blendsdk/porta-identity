@@ -21,6 +21,16 @@ export class TenantGridStore extends DataStoreBase {
         })[0];
     }
 
+    public async deleteTenant(id: string) {
+        this.beginFetching();
+        await ApplicationApi.openIdTenant.deleteOpenIdTenant({
+            id,
+            tenant: undefined
+        });
+        await this.loadAll();
+        this.doneFetching();
+    }
+
     public async createTenant(values: ITenantEditorModel, isNew: boolean) {
         this.beginFetching();
         if (isNew) {

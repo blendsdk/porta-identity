@@ -1,4 +1,4 @@
-import { ConfirmDialog, Stack } from "@blendsdk/fluentrc";
+import { AppBarSpacer, ConfirmDialog, Stack } from "@blendsdk/fluentrc";
 import { useObjectState } from "@blendsdk/react";
 import { Body1, Portal, Title2, Toolbar, ToolbarButton, tokens } from "@fluentui/react-components";
 import { BuildingTownhouse32Regular, Delete32Regular } from "@fluentui/react-icons";
@@ -17,6 +17,7 @@ interface ITenantsOverviewState {
     editorOpen: boolean;
     confirmDeleteOpen: boolean;
     currentRecord: Partial<ISysTenant>;
+    isNew: boolean;
 }
 
 export const TenantsOverview = () => {
@@ -26,35 +27,51 @@ export const TenantsOverview = () => {
     const [state, setState] = useObjectState<Partial<ITenantsOverviewState>>(() => ({
         editorOpen: false,
         confirmDeleteOpen: false,
-        currentRecord: undefined
+        currentRecord: undefined,
+        isNew: false
     }));
 
     const { t } = useTranslation();
     const cs = useCommonStyles();
 
-    const onSaveTenant = useCallback((values: ITenantEditorModel, isNew: boolean) => {
+    const onSaveTenant = useCallback((values: ITenantEditorModel, isNew: boolean, cancel: boolean) => {
         setState({ editorOpen: false });
-        gridDataStore.createTenant(values, isNew).catch(catchSystemError);
+        if (!cancel) {
+            gridDataStore.createTenant(values, isNew).catch(catchSystemError);
+        }
     }, [catchSystemError, gridDataStore, setState]);
+
+    const onDeleteTenant = useCallback((confirm: boolean) => {
+        setState({ confirmDeleteOpen: false });
+        if (confirm) {
+            gridDataStore.deleteTenant(state.currentRecord.id);
+        }
+    }, [gridDataStore, setState, state.currentRecord?.id]);
 
     return (
         <AdminWrapper>
             <Stack className={cs.flexFill}>
                 <Toolbar style={{ backgroundColor: tokens.colorNeutralBackground3 }}>
                     <ToolbarButton
+                        disabled={gridDataStore.fetching}
                         appearance="subtle"
                         icon={<BuildingTownhouse32Regular />}
                         onClick={() => {
-                            setState({ editorOpen: true, currentRecord: undefined });
+                            setState({ editorOpen: true, isNew: true });
                         }}
                     >{t("new_tenant")}</ToolbarButton>
-                    {state.currentRecord && (<ToolbarButton
-                        appearance="subtle"
-                        icon={<Delete32Regular />}
-                        onClick={() => {
-                            setState({ confirmDeleteOpen: true });
-                        }}
-                    >{t("delete_tenant", state.currentRecord)}</ToolbarButton>
+                    <AppBarSpacer />
+                    {state.currentRecord && (
+                        <ToolbarButton
+                            disabled={gridDataStore.fetching}
+                            appearance="subtle"
+                            icon={
+                                <Delete32Regular />
+                            }
+                            onClick={() => {
+                                setState({ confirmDeleteOpen: true });
+                            }}
+                        >{t("delete_tenant", state.currentRecord)}</ToolbarButton>
                     )}
                 </Toolbar>
                 <Stack className={cs.padded}>
@@ -70,13 +87,11 @@ export const TenantsOverview = () => {
                     title={t("delete_tenant_title")}
                     buttonConfirmText={t("btn_delete_tenant_confirm")}
                     buttonDeclineText={t("btn_delete_tenant_cancel")}
-                    onClose={(confirm) => {
-                        setState({ confirmDeleteOpen: false });
-                    }}
+                    onClose={onDeleteTenant}
                 >
                     <Body1>{t("confirm_delete_tenant_text", state.currentRecord || {})}</Body1>
                 </ConfirmDialog>
-                <TenantEditor tenantId={state.currentRecord?.id} open={state.editorOpen} onClose={onSaveTenant} />
+                <TenantEditor tenantId={state.isNew ? undefined : state.currentRecord?.id} open={state.editorOpen} onClose={onSaveTenant} />
             </Portal>
         </AdminWrapper>
     );
