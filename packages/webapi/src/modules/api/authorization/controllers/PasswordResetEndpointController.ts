@@ -1,3 +1,4 @@
+import { generateRandomUUID } from "@blendsdk/crypto";
 import { errorObjectInfo, isNullOrUndef } from "@blendsdk/stdlib";
 import { expireSecondsFromNow } from "@blendsdk/webafx-auth-oidc";
 import { BadRequestResponse, Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
@@ -178,7 +179,7 @@ export class PasswordResetEndpointController extends EndpointController {
             const { authRecord = undefined, tenantRecord = undefined } = await this.getCurrentAuthenticationFlow();
             if (authRecord && tenantRecord && account) {
                 try {
-                    const stateKey = crypto.randomUUID().replace(/\-/gi, "");
+                    const stateKey = generateRandomUUID();
 
                     const userDs = new SysUserDataService({
                         tenantId: databaseUtils.getTenantDataSourceID(tenantRecord)
