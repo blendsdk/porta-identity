@@ -280,7 +280,9 @@ export class EndSessionController extends EndpointController {
                 logoutFlowId = await this.createLogoutFlow(
                     tenant,
                     hintedSession as any,
-                    post_logout_redirect_uri ? post_logout_redirect_uri : hintedSession.post_logout_redirect_uri,
+                    post_logout_redirect_uri
+                        ? post_logout_redirect_uri
+                        : commonUtils.parseToArray(hintedSession.post_logout_redirect_uri)[0], // take the first item in the logout array if non was provided
                     uriErrors,
                     sessionByAccessToken,
                     state
