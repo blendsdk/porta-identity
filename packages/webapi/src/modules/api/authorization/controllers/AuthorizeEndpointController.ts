@@ -1,4 +1,4 @@
-import { sha256Hash } from "@blendsdk/crypto";
+import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { apply, isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import {
@@ -9,7 +9,6 @@ import {
     eKeySignatureType,
     portaAuthUtils
 } from "@porta/shared";
-import * as crypto from "crypto";
 import {
     IAccessToken,
     IPortaApplicationSetting,
@@ -315,7 +314,7 @@ export class AuthorizeEndpointController extends EndpointController {
         confidentialClient: boolean
     ): Promise<string> {
         // Create a flo ID
-        const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
+        const flowId = generateRandomUUID();
 
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
         const expireAt = new Date(expire);

@@ -48,7 +48,7 @@ export class OIDCDiscoveryEndpointController extends EndpointController {
             } as any);
         } else {
             return new BadRequestResponse({
-                message: "INVALID_REQUEST",
+                message: "INVALID_REQUEST_UNKNOWN_TENANT",
                 cause: `Invalid tenant ${tenant}`
             });
         }
