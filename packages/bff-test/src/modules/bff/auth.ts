@@ -58,7 +58,7 @@ export class BffTokenAuthenticationModule extends MultiTenantOpenIDTokenAuthenti
         req: HttpRequest
     ): Promise<AuthorizationParameters> {
         return {
-            scope: "openid offline_access acl",
+            scope: "openid profile offline_access acl",
             state: `hello-${Date.now()}`,
             ui_locales: "nl-NL",
             resource: req.context.getServerURL()
