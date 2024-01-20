@@ -42,7 +42,7 @@ import {
     eOAuthGrantType,
     eOAuthResponseMode
 } from "../../../../types";
-import { commonUtils, databaseUtils } from "../../../../utils";
+import { commonUtils, databaseUtils, eCookie } from "../../../../utils";
 import { Claims } from "../Claims";
 import { formPostTemplate } from "../FormPostTemplate";
 
@@ -465,7 +465,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected findFlowID(): string {
-        return this.getCookie("_af", true) || this.request.context.getParameters<{ af: string }>().af || undefined;
+        return (
+            this.getCookie(eCookie.AUTHORIZATION_FLOW, true) ||
+            this.request.context.getParameters<{ af: string }>().af ||
+            undefined
+        );
     }
 
     /**
@@ -569,7 +573,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             await this.getCache().deleteValue(`${flowId}:user`);
             await this.getCache().deleteValue(`${flowId}:access_token`);
         } else {
-            this.setCookie("_af", "", { maxAge: -1 });
+            this.setCookie(eCookie.AUTHORIZATION_FLOW, "", { maxAge: -1 });
         }
     }
 

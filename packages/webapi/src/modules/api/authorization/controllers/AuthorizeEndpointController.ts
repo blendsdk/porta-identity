@@ -20,7 +20,7 @@ import {
     eOAuthResponseMode,
     eOAuthResponseType
 } from "../../../../types";
-import { databaseUtils } from "../../../../utils";
+import { databaseUtils, eCookie } from "../../../../utils";
 import { expireSecondsFromNow } from "../../../auth/utils";
 import { EndpointController, eFlow } from "./EndpointControllerBase";
 import { AUTH_FLOW_TTL, NONCE_TTL } from "./constants";
@@ -341,7 +341,7 @@ export class AuthorizeEndpointController extends EndpointController {
 
         if (!confidentialClient) {
             // send the authentication flow cookie
-            this.setCookie("_af", flowId, {
+            this.setCookie(eCookie.AUTHORIZATION_FLOW, flowId, {
                 expires: expireAt,
                 signed: true,
                 secure: this.request.protocol !== "http",

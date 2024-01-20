@@ -10,6 +10,10 @@ x509.cryptoProvider.set(crypto);
 
 export const PORTA_REGISTRY = "porta";
 
+export enum eCookie {
+    AUTHORIZATION_FLOW = "_af"
+}
+
 errorParserRegistry.push((data: IErrorResponseParams) => {
     const { error, error_description } = data || {};
     return error
