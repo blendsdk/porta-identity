@@ -21,7 +21,6 @@ export interface I18NKeys {
  * @export
  * @enum
  */
-export const eI18NKeys = {
-	LOGIN: "login"
-} as const;
-export type eI18NKeys = (typeof eI18NKeys)[keyof typeof eI18NKeys];
+export enum eI18NKeys {
+	LOGIN = "login"
+}

@@ -108,7 +108,6 @@ import {
 	IDeleteOpenIdPermissionRequest,
 	IDeleteOpenIdPermissionResponse
 } from "@porta/shared";
-import { onInterceptRequestParameters } from "../../lib";
 /**
  * Interface describing the Backend REST API client
  * @export
@@ -319,6 +318,5 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			updateOpenIdPermission: defineEndpoint({ method: "patch", url: "/api/:tenant/update/:id" }),
 			deleteOpenIdPermission: defineEndpoint({ method: "delete", url: "/api/:tenant/delete/:id" })
 		}
-	},
-	requestConfig: onInterceptRequestParameters
+	}
 });

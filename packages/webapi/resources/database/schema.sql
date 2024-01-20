@@ -1,5 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION btree_gin;
+CREATE EXTENSION unaccent;
 DROP TABLE IF EXISTS sys_tenant CASCADE;
 DROP TABLE IF EXISTS sys_user CASCADE;
 DROP TABLE IF EXISTS sys_user_profile CASCADE;
@@ -162,4 +164,21 @@ ALTER TABLE sys_access_token ADD FOREIGN KEY (client_id) REFERENCES sys_client (
 ALTER TABLE sys_access_token ADD FOREIGN KEY (tenant_id) REFERENCES sys_tenant (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_refresh_token ADD FOREIGN KEY (access_token_id) REFERENCES sys_access_token (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_user_mfa ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
-ALTER TABLE sys_user_mfa ADD FOREIGN KEY (mfa_id) REFERENCES sys_mfa (id) ON UPDATE CASCADE ON DELETE CASCADE
+ALTER TABLE sys_user_mfa ADD FOREIGN KEY (mfa_id) REFERENCES sys_mfa (id) ON UPDATE CASCADE ON DELETE CASCADE;
+CREATE INDEX gin_sys_user_profile_user_id ON sys_user_profile USING GIN (user_id);
+CREATE INDEX gin_sys_user_role_user_id ON sys_user_role USING GIN (user_id);
+CREATE INDEX gin_sys_user_role_role_id ON sys_user_role USING GIN (role_id);
+CREATE INDEX gin_sys_permission_application_id ON sys_permission USING GIN (application_id);
+CREATE INDEX gin_sys_role_permission_role_id ON sys_role_permission USING GIN (role_id);
+CREATE INDEX gin_sys_role_permission_permission_id ON sys_role_permission USING GIN (permission_id);
+CREATE INDEX gin_sys_client_client_credentials_user_id ON sys_client USING GIN (client_credentials_user_id);
+CREATE INDEX gin_sys_client_application_id ON sys_client USING GIN (application_id);
+CREATE INDEX gin_sys_session_user_id ON sys_session USING GIN (user_id);
+CREATE INDEX gin_sys_session_client_id ON sys_session USING GIN (client_id);
+CREATE INDEX gin_sys_access_token_session_id ON sys_access_token USING GIN (session_id);
+CREATE INDEX gin_sys_access_token_user_id ON sys_access_token USING GIN (user_id);
+CREATE INDEX gin_sys_access_token_client_id ON sys_access_token USING GIN (client_id);
+CREATE INDEX gin_sys_access_token_tenant_id ON sys_access_token USING GIN (tenant_id);
+CREATE INDEX gin_sys_refresh_token_access_token_id ON sys_refresh_token USING GIN (access_token_id);
+CREATE INDEX gin_sys_user_mfa_user_id ON sys_user_mfa USING GIN (user_id);
+CREATE INDEX gin_sys_user_mfa_mfa_id ON sys_user_mfa USING GIN (mfa_id)

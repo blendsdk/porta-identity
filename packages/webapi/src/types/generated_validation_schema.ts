@@ -559,13 +559,16 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				allow_reset_password: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				allow_registration: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				organization: {
 					type: eJsonSchemaType.string
@@ -587,15 +590,18 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				},
 				date_changed: {
 					type: eJsonSchemaType.string,
-					format: "date"
+					format: "date",
+					acceptNullValue: true
 				}
 			},
 			required: ["username", "password"]
@@ -608,7 +614,8 @@ export const validationSchema = {
 					format: "uuid"
 				},
 				email: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				firstname: {
 					type: eJsonSchemaType.string
@@ -617,7 +624,8 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				avatar: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				user_id: {
 					type: eJsonSchemaType.string,
@@ -625,11 +633,13 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "date"
+					format: "date",
+					acceptNullValue: true
 				},
 				date_changed: {
 					type: eJsonSchemaType.string,
-					format: "date"
+					format: "date",
+					acceptNullValue: true
 				}
 			},
 			required: ["firstname", "lastname", "user_id"]
@@ -645,13 +655,16 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				description: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				role_type: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				}
 			},
 			required: ["role"]
@@ -685,14 +698,16 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				description: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				application_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				}
 			},
 			required: ["permission", "application_id"]
@@ -723,16 +738,19 @@ export const validationSchema = {
 					format: "uuid"
 				},
 				logo: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				application_name: {
 					type: eJsonSchemaType.string
 				},
 				description: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				}
 			},
 			required: ["application_name"]
@@ -751,49 +769,61 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				},
 				is_active: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				description: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				secret: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				access_token_ttl: {
 					type: eJsonSchemaType.integer,
-					format: "int32"
+					format: "int32",
+					acceptNullValue: true
 				},
 				refresh_token_ttl: {
 					type: eJsonSchemaType.integer,
-					format: "int32"
+					format: "int32",
+					acceptNullValue: true
 				},
 				valid_from: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				},
 				valid_until: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				},
 				redirect_uri: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				client_credentials_user_id: {
 					type: eJsonSchemaType.string,
-					format: "uuid"
+					format: "uuid",
+					acceptNullValue: true
 				},
 				application_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
 				post_logout_redirect_uri: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				is_back_channel_post_logout: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				},
 				is_system_client: {
-					type: eJsonSchemaType.boolean
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				}
 			},
 			required: ["client_id", "client_type", "application_id"]
@@ -818,7 +848,8 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				}
 			},
 			required: ["session_id", "user_id", "client_id"]
@@ -844,14 +875,17 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				},
 				auth_request_params: {
 					type: eJsonSchemaType.object,
-					$ref: "#/definitions/sys_access_token_auth_request_params"
+					$ref: "#/definitions/sys_access_token_auth_request_params",
+					acceptNullValue: true
 				},
 				access_token: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				session_id: {
 					type: eJsonSchemaType.string,
@@ -885,10 +919,12 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz"
+					format: "datetime-tz",
+					acceptNullValue: true
 				},
 				refresh_token: {
-					type: eJsonSchemaType.string
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				access_token_id: {
 					type: eJsonSchemaType.string,
@@ -909,7 +945,8 @@ export const validationSchema = {
 				},
 				settings: {
 					type: eJsonSchemaType.object,
-					$ref: "#/definitions/sys_mfa_settings"
+					$ref: "#/definitions/sys_mfa_settings",
+					acceptNullValue: true
 				}
 			},
 			required: ["name"]
@@ -990,6 +1027,10 @@ export const validationSchema = {
 				locale: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.params
+				},
+				options: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
 				},
 				save: {
 					type: eJsonSchemaType.boolean,

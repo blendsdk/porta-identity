@@ -34,6 +34,11 @@ export interface IGetTranslationsRequest {
 	 */
 	locale?: string;
 	/**
+	 * @type string
+	 * @memberOf IGetTranslationsRequest
+	 */
+	options?: string;
+	/**
 	 * @type boolean
 	 * @memberOf IGetTranslationsRequest
 	 */

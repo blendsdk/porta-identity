@@ -1,6 +1,6 @@
 import { ensureFilePath, fileExists, joinPath, lineLogger, readFileSync, writeFileSync } from "@blendsdk/filesystem";
 import { base64Decode, base64Encode } from "@blendsdk/stdlib";
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 export interface ICacheStorage {
     token: string;
