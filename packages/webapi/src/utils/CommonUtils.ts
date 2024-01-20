@@ -1,11 +1,11 @@
-import { sha256Verify } from "@blendsdk/crypto";
-import { errorParserRegistry, IDictionaryOf } from "@blendsdk/stdlib";
+import { generateRandomUUID, sha256Verify } from "@blendsdk/crypto";
+import { IDictionaryOf, errorParserRegistry } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
+import { Crypto } from "@peculiar/webcrypto";
 import * as x509 from "@peculiar/x509";
-import * as crypto from "crypto";
-import { eOAuthPKCECodeChallengeMethod, IErrorResponseParams, IPortaApplicationSetting } from "../types";
+import { IErrorResponseParams, IPortaApplicationSetting, eOAuthPKCECodeChallengeMethod } from "../types";
 
-//const crypto = new Crypto();
+const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
 
 export const PORTA_REGISTRY = "porta";
@@ -14,9 +14,9 @@ errorParserRegistry.push((data: IErrorResponseParams) => {
     const { error, error_description } = data || {};
     return error
         ? {
-            message: error,
-            cause: error_description
-        }
+              message: error,
+              cause: error_description
+          }
         : undefined;
 });
 
@@ -64,7 +64,8 @@ class CommonUtils {
      */
     public getUUID() {
         // random bytes length is arbitrary
-        return crypto.createHash("sha256").update(crypto.randomBytes(32).toString("hex")).digest("hex");
+        return generateRandomUUID();
+        //return crypto.createHash("sha256").update(crypto.randomBytes(32).toString("hex")).digest("hex");
     }
 
     /**
@@ -171,7 +172,7 @@ class CommonUtils {
      * @memberof CommonUtils
      */
     public getTenantFromRequest(req: HttpRequest) {
-        const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>() || {};
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string }>() || {};
         return tenant;
     }
 }

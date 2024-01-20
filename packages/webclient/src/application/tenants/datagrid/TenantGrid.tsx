@@ -24,7 +24,7 @@ export const TenantGrid: React.FC<ITenantGridProps> = props => {
 			selectionMode="single"
 			resizableColumns
 			getRowId={(item: ITenantGridItem) => item.id}
-			onSelectionChange={(e, data) => onSelectionChange(data.selectedItems)}
+			onSelectionChange={(_e, data) => onSelectionChange(data.selectedItems)}
 			selectionAppearance="brand"
 			focusMode="none"
 		>
