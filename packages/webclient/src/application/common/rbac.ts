@@ -1,7 +1,6 @@
 import { RoleBasedAccessTable, eAclRuleType } from "@blendsdk/rbac";
 import { eApiPermissions, eApiRoles } from "@porta/shared";
 import { ReferenceDataStore } from "../../lib";
-import { eAppRoutes } from "../routing";
 
 export const appRbacTable = new RoleBasedAccessTable({
     rules: [
@@ -17,7 +16,7 @@ export const appRbacTable = new RoleBasedAccessTable({
             }
         },
         {
-            subject: eAppRoutes.tenants.key,
+            subject: " eAppRoutes.tenants.key",
             type: eAclRuleType.permission,
             check: (tokens: { permission: string }[]) => {
                 return (
@@ -28,7 +27,7 @@ export const appRbacTable = new RoleBasedAccessTable({
             }
         },
         {
-            subject: eAppRoutes.admin.key,
+            subject: " eAppRoutes.admin.key",
             type: eAclRuleType.role,
             check: (tokens: { role: string }[]) => {
                 return (
@@ -39,7 +38,7 @@ export const appRbacTable = new RoleBasedAccessTable({
             }
         },
         {
-            subject: [eAppRoutes.applications.key, eAppRoutes.roles.key, eAppRoutes.permissions.key],
+            subject: "[eAppRoutes.applications.key, eAppRoutes.roles.key, eAppRoutes.permissions.key]",
             type: eAclRuleType.permission,
             check: (tokens: { permission: string }[]) => {
                 return (

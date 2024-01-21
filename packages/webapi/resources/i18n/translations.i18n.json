@@ -1,4 +1,12 @@
 {
+    "username": {
+        "en": "Account",
+        "nl": "Account"
+    },
+    "password": {
+        "en": "Password",
+        "nl": "Wachtwoord"
+    },
     "password_is_required": {
         "en": "Password is required",
         "nl": "Een wachtwoord is verplicht"

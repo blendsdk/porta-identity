@@ -17,12 +17,6 @@ export default defineConfig({
         "process.env": {}
     },
     server: {
-        port: 3000,
-        proxy: {
-            "/auth": {
-                target: "https://ont.digi-v.nl",
-                changeOrigin: true
-            }
-        }
+        port: 3000
     }
 });

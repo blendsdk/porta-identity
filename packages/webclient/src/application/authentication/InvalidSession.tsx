@@ -1,46 +1,29 @@
-import { Body1, makeStyles, shorthands, Subtitle1, tokens } from "@fluentui/react-components";
-import { Warning24Regular } from "@fluentui/react-icons";
+import { Body1, Layout, Subtitle1, tokens } from "@blendsdk/fui8";
+import { FontIcon } from "@fluentui/react";
+import { makeStyles } from "@griffel/react";
 import React from "react";
-import { useTranslation } from "../../system/i18n";
+import { useTranslation } from "../../system";
 
 const useStyles = makeStyles({
-    root: {
-        display: "flex",
-        flexDirection: "column",
-        ...shorthands.gap(tokens.spacingVerticalL)
-    },
-    header: {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        ...shorthands.gap(tokens.spacingVerticalL),
-        "& .subtitle": {
-            ...shorthands.flex(1)
-        }
-    },
-    body: {
-        //...shorthands.margin(tokens.spacingVerticalL, 0),
-        ...shorthands.padding("0.2rem", "0.3rem"),
+    text: {
         textAlign: "center"
     },
-    warnIcon: {
-        color: tokens.colorPaletteRedForeground1,
-        width: "2.5rem",
-        height: "2.5rem"
+    icon: {
+        textAlign: "center",
+        fontSize: "8rem",
+        color: tokens.paletteRed
     }
 });
 
-export const InvalidSession: React.FC<{ caption: string; message: string }> = ({ message, caption }) => {
+export const InvalidSession: React.FC<{ caption: string; message: string; }> = ({ message, caption }) => {
     const { t } = useTranslation();
     const styles = useStyles();
 
     return (
-        <div className={styles.root}>
-            <div className={styles.header}>
-                <Warning24Regular className={styles.warnIcon} />
-                <Subtitle1 className="subtitle">{t(caption)}</Subtitle1>
-            </div>
-            <Body1 className={styles.body}>{t(message)}</Body1>
-        </div>
+        <Layout display="flex" flexDirection="column" gap={tokens.spacingL1}>
+            <FontIcon className={styles.icon} iconName="Warning" />
+            <Subtitle1 className={styles.text}>{t(caption)}</Subtitle1>
+            <Body1 className={styles.text}>{t(message)}</Body1>
+        </Layout>
     );
 };

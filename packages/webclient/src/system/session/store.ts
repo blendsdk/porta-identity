@@ -5,28 +5,30 @@ import { eAppRoutes } from "../../application/routing";
 import { ApplicationApi } from "../api";
 import { IRouterCommonParams } from "./types";
 
-
-
 /**
  * @export
  * @class SessionStore
  * @extends {SessionStoreBase}
  */
 export class SessionStore extends SessionStoreBase {
-
     protected skipSessionCheck() {
         const router = this.getRouter();
         switch (router.getRouteName()) {
             case "fallback":
-            case eAppRoutes.signout.key:
             case eAppRoutes.signin.key:
-            case eAppRoutes.resetPassword.key:
-            case eAppRoutes.noValidSession.key:
-            case eAppRoutes.forgotPassword.key:
-            case eAppRoutes.signoutComplete.key:
                 return true;
             default:
                 return false;
+            // case "fallback":
+            // case eAppRoutes.signout.key:
+            // case eAppRoutes.signin.key:
+            // case eAppRoutes.resetPassword.key:
+            // case eAppRoutes.noValidSession.key:
+            // case eAppRoutes.forgotPassword.key:
+            // case eAppRoutes.signoutComplete.key:
+            //     return true;
+            // default:
+            //     return false;
         }
     }
 
@@ -45,7 +47,8 @@ export class SessionStore extends SessionStoreBase {
         } else {
             //TODO maybe change this _session
             Cookies.remove("_session");
-            this.getRouter().go(eAppRoutes.noValidSession.key, undefined, true);
+            alert("noValidSession");
+            //this.getRouter().go(eAppRoutes.noValidSession.key, undefined, true);
         }
     }
 

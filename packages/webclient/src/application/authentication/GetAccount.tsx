@@ -1,34 +1,53 @@
-import { Body1, Input, Subtitle1 } from "@fluentui/react-components";
+import { Body1, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
+import { Link } from "@blendsdk/react";
+import { PrimaryButton } from "@fluentui/react";
+import { makeStyles, shorthands } from "@griffel/react";
+import { IFlowInfo } from "@porta/shared";
 import { FormikProps } from "formik";
-import React, { Fragment } from "react";
+import React from "react";
+import { useRouter } from "../../system";
 import { useTranslation } from "../../system/i18n";
-import { FIELD_SIZE, IAuthenticationDialogModel } from "./lib";
-import { useCheckFlowStore } from "./store";
-import { useStyles } from "./styles";
+import { eAppRoutes } from "../routing";
+import { IAuthenticationDialogModel } from "./types";
 
 export interface IGetAccount {
     form: FormikProps<IAuthenticationDialogModel>;
+    flowInfo: IFlowInfo;
+    disabled?: boolean;
 }
 
-export const GetAccount: React.FC<IGetAccount> = ({ form }) => {
+const useStyles = makeStyles({
+    root: {
+        "& a": {
+            ...shorthands.textDecoration("none"),
+            ":hover": {
+                ...shorthands.textDecoration("underline"),
+            }
+        }
+    }
+});
+
+export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowInfo }) => {
     const { t } = useTranslation();
+    const router = useRouter();
     const styles = useStyles();
-    const checkFlow = useCheckFlowStore();
 
     return (
-        <Fragment>
-            <Subtitle1>{t("signin_caption")}</Subtitle1>
-            <Input
-                size={FIELD_SIZE}
-                id="username"
-                name="username"
-                disabled={checkFlow.fetching}
-                autoFocus
-                onChange={form.handleChange}
-                value={form.values.username}
-                placeholder={t("login_text_placeholder")}
-            ></Input>
-            {form.errors?.username && <Body1 className={styles.validation}>{t(form.errors?.username)}</Body1>}
-        </Fragment>
+        <Layout className={styles.root} display="flex" flexDirection="column" gap={tokens.spacingS1}>
+            <FormTextField form={form} t={t} fieldName="username" />
+            <FormTextField form={form} t={t} fieldName="password" type="password" />
+            <ToolbarSpacer flex={1} />
+            <Layout display="flex" flexDirection="row" justifyContent="flex-end" alignItems="center" gap={tokens.spacingM}>
+                {flowInfo?.allow_reset_password && (
+                    <>
+                        <Link to={router.generateUrl(eAppRoutes.forgotPassword.path)} reload>
+                            <Body1>{t("forgot_password_link")}</Body1>
+                        </Link>
+                        <ToolbarSpacer />
+                    </>
+                )}
+                <PrimaryButton text={t("btn_signin")} disabled={disabled || !form.isValid} style={{ flex: flowInfo?.allow_reset_password ? 1 : "none" }} />
+            </Layout>
+        </Layout>
     );
 };
