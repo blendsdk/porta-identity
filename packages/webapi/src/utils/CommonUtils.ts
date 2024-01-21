@@ -67,9 +67,7 @@ class CommonUtils {
      * @memberof CommonUtils
      */
     public getUUID() {
-        // random bytes length is arbitrary
         return generateRandomUUID();
-        //return crypto.createHash("sha256").update(crypto.randomBytes(32).toString("hex")).digest("hex");
     }
 
     /**

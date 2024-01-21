@@ -1,3 +1,4 @@
+import { generateRandomUUID } from "@blendsdk/crypto";
 import { createErrorObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
@@ -8,7 +9,6 @@ import {
     ISysSessionView,
     ISysTenant
 } from "@porta/shared";
-import * as crypto from "crypto";
 import { SysSessionViewDataService } from "../../../../dataservices/SysSessionViewDataService";
 import { IAccessToken, ILogoutFlowStorage, eErrorType, eLogoutFlowState } from "../../../../types";
 import { commonUtils, databaseUtils } from "../../../../utils";
@@ -89,7 +89,7 @@ export class EndSessionController extends EndpointController {
         accessToken: IAccessToken,
         state: string
     ) {
-        const flowId = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
+        const flowId = generateRandomUUID();
         const expire = expireSecondsFromNow(AUTH_FLOW_TTL);
         let post_logout_redirect_uri_list: string[] = [];
         let post_logout_redirect_uri_matched = undefined;
