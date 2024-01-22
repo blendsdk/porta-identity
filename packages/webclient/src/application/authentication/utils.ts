@@ -21,3 +21,12 @@ export const isFlowExpired = (key: string) => {
 
     return expire - Date.now() <= 0;
 };
+
+export const validateData = (data: any, validator: (data: any) => void) => {
+    try {
+        validator(data);
+        return undefined;
+    } catch (err: any) {
+        return err.message;
+    }
+};

@@ -5,6 +5,7 @@ export enum eFlowState {
 }
 
 export interface IAuthenticationDialogModel {
+    rememberMe: boolean;
     username: string;
     password: string;
     mfa: string;

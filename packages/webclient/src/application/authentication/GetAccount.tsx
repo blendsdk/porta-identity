@@ -1,4 +1,4 @@
-import { Body1, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
+import { Body1, FormCheckboxField, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
 import { Link } from "@blendsdk/react";
 import { PrimaryButton } from "@fluentui/react";
 import { makeStyles, shorthands } from "@griffel/react";
@@ -33,9 +33,10 @@ export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowInfo }) 
     const styles = useStyles();
 
     return (
-        <Layout className={styles.root} display="flex" flexDirection="column" gap={tokens.spacingS1}>
+        <Layout className={styles.root} display="flex" flexDirection="column" gap={tokens.spacingM}>
             <FormTextField form={form} t={t} fieldName="username" />
             <FormTextField form={form} t={t} fieldName="password" type="password" />
+            <FormCheckboxField form={form} t={t} fieldName="rememberMe" />
             <ToolbarSpacer flex={1} />
             <Layout display="flex" flexDirection="row" justifyContent="flex-end" alignItems="center" gap={tokens.spacingM}>
                 {flowInfo?.allow_reset_password && (
@@ -46,7 +47,12 @@ export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowInfo }) 
                         <ToolbarSpacer />
                     </>
                 )}
-                <PrimaryButton text={t("btn_signin")} disabled={disabled || !form.isValid} style={{ flex: flowInfo?.allow_reset_password ? 1 : "none" }} />
+                <PrimaryButton
+                    onClick={() => { form.submitForm(); }}
+                    text={t("btn_signin")}
+                    disabled={disabled || !form.isValid}
+                    style={{ flex: flowInfo?.allow_reset_password ? 1 : "none" }}
+                />
             </Layout>
         </Layout>
     );

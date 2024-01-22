@@ -1,10 +1,12 @@
 import { Loading } from "@blendsdk/fui8";
 import { SessionLoadingView, useObjectState } from "@blendsdk/react";
+import { base64Encode, filterObject } from "@blendsdk/stdlib";
 import { SpinnerSize } from "@fluentui/react";
 import { IFlowInfo } from "@porta/shared";
 import { useFormik } from "formik";
 import Cookies from "js-cookie";
 import { useEffect, useMemo } from "react";
+import * as yup from "yup";
 import LogoImage from "../../resources/logo.svg";
 import { ApplicationApi } from "../../system/api";
 import { useTranslation } from "../../system/i18n";
@@ -13,7 +15,7 @@ import { GetAccount } from "./GetAccount";
 import { InvalidSession } from "./InvalidSession";
 import { useStyles } from "./styles";
 import { IAuthenticationDialogModel, eFlowState } from "./types";
-import { isFlowExpired } from "./utils";
+import { isFlowExpired, validateData } from "./utils";
 interface ILoginViewState {
     flowInfo: IFlowInfo;
     flowState: eFlowState;
@@ -36,17 +38,45 @@ export const LoginView = () => {
 
     const form = useFormik<IAuthenticationDialogModel>({
         validateOnMount: false,
-        validateOnChange: false,
+        validateOnChange: true,
+        validateOnBlur: true,
         initialValues: {
-            username: "",
+            rememberMe: window.localStorage.getItem("_ll") ? true : false,
+            username: window.localStorage.getItem("_ll") || "",
             password: "",
             mfa: ""
         },
         validate: (values) => {
+            if (state.flowState === eFlowState.GET_ACCOUNT) {
+                const val = {
+                    username: validateData(values.username, (data) => {
+                        yup.string().required("username_is_required").validateSync(data);
+                    }),
+                    password: validateData(values.password, (data) => {
+                        yup.string().required("password_is_required").validateSync(data);
+                    })
+                };
+                return filterObject(val, { undefinedValues: true });
+            }
         },
-        onSubmit: (values, { validateForm }) => {
+        onSubmit: (values) => {
+            if (values.rememberMe) {
+                window.localStorage.setItem("_ll", values.rememberMe ? values.username : "");
+            } else {
+                window.localStorage.removeItem("_ll");
+            }
+            if (state.flowState === eFlowState.GET_ACCOUNT) {
+                setState({ fetching: true });
+                ApplicationApi.authorization.checkFlow({
+                    state: eFlowState[state.flowState],
+                    options: base64Encode(JSON.stringify(values))
+                })
+                    .catch(catchSystemError);
+            }
         }
     });
+
+    console.log(form.isValid);
 
     useEffect(() => {
         const checker = setInterval(() => {

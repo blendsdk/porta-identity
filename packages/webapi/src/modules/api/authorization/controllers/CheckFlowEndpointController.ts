@@ -1,5 +1,5 @@
 import { verifyStringSync } from "@blendsdk/crypto";
-import { IDictionaryOf, asyncForEach, errorObjectInfo } from "@blendsdk/stdlib";
+import { IDictionaryOf, asyncForEach, base64Decode, errorObjectInfo } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -36,11 +36,12 @@ export class CheckFlowEndpointController extends EndpointController {
      */
     public async handleRequest({ state, options }: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
         try {
+            options = JSON.parse(base64Decode(options));
             let { tenantRecord = undefined } = await this.getCurrentAuthenticationFlow();
             // get the latest tenant record
             const tenantDs = new SysTenantDataService();
             tenantRecord = await tenantDs.findSysTenantById({ id: tenantRecord.id });
-            if (state == "check_account") {
+            if (state == "GET_ACCOUNT") {
                 return this.checkAccountFlow(tenantRecord, options);
             } else if (state === "check_pwd") {
                 return this.checkPasswordFlow(tenantRecord, options);
@@ -97,10 +98,31 @@ export class CheckFlowEndpointController extends EndpointController {
      * @returns
      * @memberof AuthorizationController
      */
-    protected async checkAccountFlow(tenantRecord: ISysTenant, username: string) {
+    protected async checkAccountFlow(tenantRecord: ISysTenant, username: string, password: string) {
         // get the user from the tenant db
         const userDs = new SysUserDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenantRecord) });
         const userRecord = await userDs.findByUsernameNonService({ username: username?.toLocaleLowerCase() });
+
+        const isPasswordValid = userRecord ? verifyStringSync(password, userRecord.password) : false;
+
+        return new SuccessResponse({
+            data: {
+                success: isPasswordValid,
+                message: isPasswordValid ? undefined :  "INVALID_USERNAME_OR_PASSWORD",
+                next: 
+            }
+        });
+
+        if (userRecord && isPasswordValid) {
+
+        } else {
+            return new SuccessResponse({
+                data: {
+                    success: false,
+                    message: "INVALID_USERNAME_OR_PASSWORD"
+                }
+            });
+        }
 
         // we are not allowed to login login with a service user
         const mfa_list = userRecord ? await this.getMFAList(userDs, userRecord) : [];

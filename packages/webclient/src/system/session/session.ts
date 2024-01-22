@@ -1,4 +1,3 @@
-import { ErrorDialog } from "@blendsdk/fui8";
 import { DefaultSystemErrorStore, makeRouter, makeSession, makeSystemError } from "@blendsdk/react";
 import { ApplicationApi } from "../api";
 import { SessionStore } from "./store";
@@ -24,7 +23,7 @@ ApplicationApi.setSigningKey(() => {
 });
 
 export const useSystemError = makeSystemError(DefaultSystemErrorStore, {
-    CustomErrorDialog: ErrorDialog
+    //CustomErrorDialog: ErrorDialog
 });
 
 export const useRouter = makeRouter();
