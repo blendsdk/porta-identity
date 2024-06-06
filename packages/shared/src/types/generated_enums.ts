@@ -44,6 +44,32 @@ export enum eSysKey {
 }
 
 /**
+ * Enum of the type sys_user
+ * @export
+ * @enum
+ */
+export enum eSysUser {
+	$name = "sys_user",
+	ID = "id",
+	USERNAME = "username",
+	PASSWORD = "password",
+	IS_ACTIVE = "is_active",
+	DATE_CREATED = "date_created",
+	DATE_CHANGED = "date_changed"
+}
+
+/**
+ * Enum of the type porta_account
+ * @export
+ * @enum
+ */
+export enum ePortaAccount {
+	$name = "porta_account",
+	USER = "user",
+	TENANT = "tenant"
+}
+
+/**
  * Enum of the type error_data
  * @export
  * @enum

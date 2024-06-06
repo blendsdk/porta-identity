@@ -4,6 +4,7 @@ CREATE EXTENSION btree_gin;
 CREATE EXTENSION unaccent;
 DROP TABLE IF EXISTS sys_tenant CASCADE;
 DROP TABLE IF EXISTS sys_key CASCADE;
+DROP TABLE IF EXISTS sys_user CASCADE;
 CREATE TABLE sys_tenant();
 ALTER TABLE sys_tenant ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_tenant ADD COLUMN name varchar NOT NULL;
@@ -21,4 +22,13 @@ ALTER TABLE sys_key ADD COLUMN key_type varchar NOT NULL;
 ALTER TABLE sys_key ADD COLUMN key_id varchar NOT NULL;
 ALTER TABLE sys_key ADD COLUMN data varchar NOT NULL;
 ALTER TABLE sys_key ADD PRIMARY KEY (id);
-ALTER TABLE sys_key ADD UNIQUE (key_id)
+ALTER TABLE sys_key ADD UNIQUE (key_id);
+CREATE TABLE sys_user();
+ALTER TABLE sys_user ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
+ALTER TABLE sys_user ADD COLUMN username varchar NOT NULL;
+ALTER TABLE sys_user ADD COLUMN password varchar NOT NULL;
+ALTER TABLE sys_user ADD COLUMN is_active boolean  DEFAULT true;
+ALTER TABLE sys_user ADD COLUMN date_created timestamp with time zone  DEFAULT now();
+ALTER TABLE sys_user ADD COLUMN date_changed date  DEFAULT now();
+ALTER TABLE sys_user ADD PRIMARY KEY (id);
+ALTER TABLE sys_user ADD UNIQUE (username)

@@ -1,4 +1,4 @@
-import { createMethodName, Database, RdbDataServiceBuilder } from "@blendsdk/codegen";
+import { createMethodName, Database, eReturnValue, RdbDataServiceBuilder } from "@blendsdk/codegen";
 
 /**
  * Creates CRUD DataServices for all tables in the database
@@ -242,26 +242,26 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         // }
 
-        // if (table.getName() === "sys_tenant") {
-        //     svc.defineListByExpressionMethod({
-        //         table: table.getName()
-        //     });
+        if (table.getName() === "sys_tenant") {
+            svc.defineListByExpressionMethod({
+                table: table.getName()
+            });
 
-        //     svc.defineMethod({
-        //         name: "find_by_name_or_id",
-        //         query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("name");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: "sys_tenant"
-        //     });
-        // }
+            svc.defineMethod({
+                name: "find_by_name_or_id",
+                query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("name");
+                    return suggestedTypeName;
+                },
+                returnType: "sys_tenant"
+            });
+        }
 
         // if (table.getName() === "sys_user_profile") {
         //     svc.defineMethod({

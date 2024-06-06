@@ -57,6 +57,50 @@ export const validationSchema = {
 			},
 			required: ["key_type", "key_id", "data"]
 		},
+		sys_user: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				username: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				},
+				date_changed: {
+					type: eJsonSchemaType.string,
+					format: "date",
+					acceptNullValue: true
+				}
+			},
+			required: ["username", "password"]
+		},
+		porta_account: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user: {
+					$ref: "#/definitions/sys_user",
+					type: eJsonSchemaType.object
+				},
+				tenant: {
+					$ref: "#/definitions/sys_tenant",
+					type: eJsonSchemaType.object
+				}
+			},
+			required: ["user", "tenant"]
+		},
 		error_data: {
 			type: eJsonSchemaType.object,
 			properties: {

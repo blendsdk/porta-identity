@@ -71,3 +71,40 @@ export interface ISysKey {
 	 */
 	data: string;
 }
+
+/**
+ * @export
+ * @interface ISysUser
+ */
+export interface ISysUser {
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	username: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	password: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysUser
+	 */
+	is_active?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	date_created?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	date_changed?: string;
+}

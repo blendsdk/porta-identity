@@ -18,10 +18,10 @@ export function createCustomTypes(order: number) {
             .addString("message")
             .addBoolean("success");
     } else {
-        // typeSchema
-        //     .createAppendType("porta_account") //
-        //     .addRefType("user", "#/definitions/sys_user")
-        //     .addRefType("profile", "#/definitions/sys_user_profile")
-        //     .addRefType("tenant", "#/definitions/sys_tenant");
+        typeSchema
+            .createAppendType("porta_account")
+            .addRefType("user", "#/definitions/sys_user")
+            // .addRefType("profile", "#/definitions/sys_user_profile")
+            .addRefType("tenant", "#/definitions/sys_tenant");
     }
 }

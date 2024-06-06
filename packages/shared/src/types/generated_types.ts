@@ -3,6 +3,8 @@
  * THIS FILE IS AUTO GENERATED
  */
 
+import { ISysUser, ISysTenant } from "./generated_database_types";
+
 /**
  * @export
  * @interface IOpsResponse
@@ -18,6 +20,23 @@ export interface IOpsResponse {
 	 * @memberOf IOpsResponse
 	 */
 	success: boolean;
+}
+
+/**
+ * @export
+ * @interface IPortaAccount
+ */
+export interface IPortaAccount {
+	/**
+	 * @type ISysUser
+	 * @memberOf IPortaAccount
+	 */
+	user: ISysUser;
+	/**
+	 * @type ISysTenant
+	 * @memberOf IPortaAccount
+	 */
+	tenant: ISysTenant;
 }
 
 /**

@@ -1,11 +1,13 @@
+import { ISysTenant } from "@porta/shared";
+import { TExpressionRenderer } from "@blendsdk/expression";
 import {
+	ISysTenantDataServiceFindByNameOrIdParams,
 	ISysTenantDataServiceFindSysTenantByIdParams,
 	ISysTenantDataServiceDeleteSysTenantByIdFilter,
 	ISysTenantDataServiceUpdateSysTenantByIdFilter,
 	ISysTenantDataServiceFindSysTenantByNameParams,
 	ISysTenantDataServiceFindSysTenantByDatabaseParams
 } from "./types";
-import { ISysTenant } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
 import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/postgresql";
 
@@ -17,6 +19,33 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * List a sys_tenant by expression syntax
+	 * @param {void}
+	 * @returns {ISysTenant[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysTenantByExpression(params: TExpressionRenderer): Promise<ISysTenant[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysTenant[]>(`sys_tenant`, params, { single: false });
+		return result.data;
+	}
+
+	/**
+	 * @param {ISysTenantDataServiceFindByNameOrIdParams}
+	 * @returns {ISysTenant}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async findByNameOrId(params: ISysTenantDataServiceFindByNameOrIdParams): Promise<ISysTenant> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindByNameOrIdParams>(
+			`SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name`,
+			params,
+			{ single: true }
+		);
+		return result.data;
+	}
+
 	/**
 	 * Find a sys_tenant record by
 	 * @param {ISysTenantDataServiceFindSysTenantByIdParams}

@@ -1,6 +1,7 @@
 import { DataServicesBase as CoreDataServicesBase } from "@blendsdk/datakit";
 import { SysTenantDataService } from "../SysTenantDataService";
 import { SysKeyDataService } from "../SysKeyDataService";
+import { SysUserDataService } from "../SysUserDataService";
 import { PostgreSQLExecutionContext, PostgreSQLDataSource } from "@blendsdk/postgresql";
 
 export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLExecutionContext, PostgreSQLDataSource> {
@@ -20,5 +21,14 @@ export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLEx
 	 */
 	public sysKeyDataService(): SysKeyDataService {
 		return new SysKeyDataService({ sharedContext: this.sharedContext });
+	}
+
+	/**
+	 * Returns a new instance of SysUserDataService
+	 * @return {*}  {SysUserDataService}
+	 * @memberof DataServicesBase
+	 */
+	public sysUserDataService(): SysUserDataService {
+		return new SysUserDataService({ sharedContext: this.sharedContext });
 	}
 }

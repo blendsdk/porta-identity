@@ -10,7 +10,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const tenant = database.addTable("sys_tenant");
     const key = database.addTable("sys_key");
 
-    // const user = database.addTable("sys_user");
+    const user = database.addTable("sys_user");
     // const user_profile = database.addTable("sys_user_profile");
     // const role = database.addTable("sys_role");
     // const user_role = database.addTable("sys_user_role");
@@ -42,12 +42,12 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     //     .stringColumn("description", { required: false })
     //     .booleanColumn("is_active", { default: "true" });
 
-    // user.primaryKeyColumn("id", true) //
-    //     .stringColumn("username", { unique: true })
-    //     .stringColumn("password")
-    //     .booleanColumn("is_active", { default: "true" })
-    //     .dateTimeColumn("date_created", { default: "now()" })
-    //     .dateColumn("date_changed", { default: "now()" });
+    user.primaryKeyColumn("id", true) //
+        .stringColumn("username", { unique: true })
+        .stringColumn("password")
+        .booleanColumn("is_active", { default: "true" })
+        .dateTimeColumn("date_created", { default: "now()" })
+        .dateColumn("date_changed", { default: "now()" });
 
     // user_profile //
     //     .primaryKeyColumn("id", true)

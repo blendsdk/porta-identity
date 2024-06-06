@@ -5,6 +5,18 @@
 
 /**
  * @export
+ * @interface ISysTenantDataServiceFindByNameOrIdParams
+ */
+export interface ISysTenantDataServiceFindByNameOrIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceFindByNameOrIdParams
+	 */
+	name: string;
+}
+
+/**
+ * @export
  * @interface ISysTenantDataServiceFindSysTenantByIdParams
  */
 export interface ISysTenantDataServiceFindSysTenantByIdParams {
