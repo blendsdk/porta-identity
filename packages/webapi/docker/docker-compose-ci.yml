@@ -1,0 +1,19 @@
+services:
+    db:
+        hostname: db
+        container_name: porta_db
+        image: postgres
+        ports:
+            - 5010:5432
+        environment:
+            - POSTGRES_PASSWORD=postgres
+            - TZ=Europe/Amsterdam
+            - PGTZ=Europe/Amsterdam
+        volumes:
+            - ./postgres:/docker-entrypoint-initdb.d
+    redis:
+        image: redis:alpine
+        container_name: porta_cache
+        command: redis-server --requirepass secret
+        ports:
+            - 16385:6379
