@@ -17,11 +17,11 @@ jobs:
               if: always()
               run: work_queue queue ${{ github.event.organization.login }}_${{ github.event.repository.name }}
 
-            # - name: Building the Project
-            #   run: |
-            #       cp ./packages/webclient/vite.config.cicd.ts ./packages/webclient/vite.config.ts
-            #       yarn
-            #       yarn build
+            - name: Building the Project
+              run: |
+                  cp ./packages/webclient/vite.config.cicd.ts ./packages/webclient/vite.config.ts
+                  yarn
+                  yarn build
 
             # - name: Testing the project
             #   run: |
