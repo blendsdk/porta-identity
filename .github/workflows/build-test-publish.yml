@@ -19,13 +19,10 @@ jobs:
               if: always()
               run: work_queue queue ${{ github.event.organization.login }}_${{ github.event.repository.name }}
 
-            - name: Installing Packages
-              run: |
-                  yarn install
-
             - name: Building the Project
               run: |
                   cp ./packages/webclient/vite.config.cicd.ts ./packages/webclient/vite.config.ts
+                  yarn
                   yarn build
 
             # - name: Testing the project
@@ -51,14 +48,18 @@ jobs:
               run: |
                   cd ./bundler && bun install && bun create:bundle
 
-            - name: Development Deploy
-              if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
-              run: |
-                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
-                  rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
-                  ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
+            - name: Next Deploy
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover')
+              run: ./deploy.sh truesoftware@docker-prod-1 next
+    
+            # - name: Development Deploy
+            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
+            #   run: |
+            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
+            #       rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
+            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
 
-                  # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
+            #       # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
 
             - name: clear work
               if: always()
