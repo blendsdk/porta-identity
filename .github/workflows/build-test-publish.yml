@@ -2,9 +2,7 @@ name: BuildTestDeploy
 on:
     push:
         branches:
-            - "master" # matches every branch that doesn't contain a '/'
-            - "develop" # matches every branch containing a single '/'
-            - "beta" # matches every branch
+            - "*" # matches every branch that doesn't contain a '/'
 env:
     BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
 
