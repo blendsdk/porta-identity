@@ -3,8 +3,6 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysUser, ISysUserProfile, ISysTenant } from "./generated_database_types";
-
 /**
  * @export
  * @interface IOpsResponse
@@ -20,71 +18,6 @@ export interface IOpsResponse {
 	 * @memberOf IOpsResponse
 	 */
 	success: boolean;
-}
-
-/**
- * @export
- * @interface ISysMfaSettings
- */
-export interface ISysMfaSettings {}
-
-/**
- * @export
- * @interface ISysAccessTokenAuthRequestParams
- */
-export interface ISysAccessTokenAuthRequestParams {
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	ui_locales: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	claims: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	acr_values: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	resource: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	token_reference: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAccessTokenAuthRequestParams
-	 */
-	scope: string;
-}
-
-/**
- * @export
- * @interface IPortaAccount
- */
-export interface IPortaAccount {
-	/**
-	 * @type ISysUser
-	 * @memberOf IPortaAccount
-	 */
-	user: ISysUser;
-	/**
-	 * @type ISysUserProfile
-	 * @memberOf IPortaAccount
-	 */
-	profile: ISysUserProfile;
-	/**
-	 * @type ISysTenant
-	 * @memberOf IPortaAccount
-	 */
-	tenant: ISysTenant;
 }
 
 /**
