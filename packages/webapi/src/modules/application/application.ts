@@ -3,6 +3,9 @@ import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
+import { AuthorizationModule } from "../api/authorization";
+import { InitializeModule } from "../api/initialize";
+import { RedirectRoutes } from "../redirects";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
@@ -26,6 +29,9 @@ const application = new Application({
     router: [
         //
         ValidationSchema(),
+        InitializeModule(),
+        AuthorizationModule(),
+        RedirectRoutes(),
         SPARoutes()
     ]
 }).addModule([

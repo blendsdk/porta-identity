@@ -20,7 +20,10 @@
         "test:fast": "BYPASS=true TEST=true jest --passWithNoTests --detectOpenHandles",
         "cache:start": "docker compose -f ./docker/docker-compose.yml up -d redis",
         "cache:stop": "docker compose -f ./docker/docker-compose.yml rm -fsv redis && docker container prune --force",
-        "cache:restart": "yarn cache:stop && sleep 5 && yarn cache:start"
+        "cache:restart": "yarn cache:stop && sleep 5 && yarn cache:start",
+        "proxy:start": "docker compose -f ./docker/docker-compose.yml up -d proxy",
+        "proxy:stop": "docker compose -f ./docker/docker-compose.yml rm -fsv proxy && docker container prune --force",
+        "proxy:restart": "yarn proxy:stop && sleep 5 && yarn proxy:start"
     },
     "dependencies": {
         "@blendsdk/clientkit": "3.2.452",

@@ -95,3 +95,78 @@ export interface IGetAppVersionResponse {
 	 */
 	data: IGetAppVersion;
 }
+
+/**
+ * @export
+ * @interface IDiscoveryRequest
+ */
+export interface IDiscoveryRequest {
+	/**
+	 * @type string
+	 * @memberOf IDiscoveryRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IDiscovery
+ */
+export interface IDiscovery {}
+
+/**
+ * @export
+ * @interface IDiscoveryResponse
+ */
+export interface IDiscoveryResponse {}
+
+/**
+ * @export
+ * @interface IInitializeRequest
+ */
+export interface IInitializeRequest {
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	email: string;
+}
+
+/**
+ * @export
+ * @interface IInitialize
+ */
+export interface IInitialize {
+	/**
+	 * @type string
+	 * @memberOf IInitialize
+	 */
+	error?: string;
+	/**
+	 * @type boolean
+	 * @memberOf IInitialize
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface IInitializeResponse
+ */
+export interface IInitializeResponse {
+	/**
+	 * @type IInitialize
+	 * @memberOf IInitializeResponse
+	 */
+	data: IInitialize;
+}

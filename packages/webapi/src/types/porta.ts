@@ -10,6 +10,39 @@ export interface IPortaApplicationSetting {
     MFA_EMAIL_FROM: string;
 }
 
+export enum eOAuthTokenEndpointAuthMethods {
+    client_secret_post = "client_secret_post",
+    client_secret_basic = "client_secret_basic"
+}
+
+export enum eOAuthSigningAlg {
+    RS256 = "RS256"
+}
+
+export enum eOAuthScope {
+    openid = "openid",
+    profile = "profile",
+    email = "email",
+    address = "address",
+    phone = "phone",
+    offline_access = "offline_access"
+}
+
+export enum eOAuthGrantType {
+    authorization_code = "authorization_code",
+    client_credentials = "client_credentials",
+    refresh_token = "refresh_token"
+}
+
+export enum eOAuthResponseType {
+    code = "code"
+}
+
+export enum eOAuthClaims {
+    sub = "sub",
+    iss = "iss"
+}
+
 export enum eDatabaseType {
     system = "system",
     registry = "registry"
