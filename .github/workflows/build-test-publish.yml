@@ -49,7 +49,7 @@ jobs:
                   cd ./bundler && bun install && bun create:bundle
 
             - name: Next Deploy
-              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover')
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover1')
               run: ./deploy.sh truesoftware@docker-prod-1 next
     
             # - name: Development Deploy
