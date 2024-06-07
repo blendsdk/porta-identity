@@ -37,8 +37,4 @@ export abstract class ServiceBase {
         }
         return dataSource;
     }
-
-    protected async getTenantDataSource(tenant: string) {
-        return dataSourceManager.getDataSource(tenant);
-    }
 }
