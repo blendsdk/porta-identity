@@ -9,8 +9,18 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
 
     const tenant = database.addTable("sys_tenant");
     const key = database.addTable("sys_key");
+    const application = database.addTable("sys_application");
+    const secret = database.addTable("sys_secret");
+    const client = database.addTable("sys_client");
 
     const user = database.addTable("sys_user");
+    const profile = database.addTable("sys_profile");
+
+    const role = database.addTable("sys_role");
+    const permission = database.addTable("sys_permission");
+    const user_role = database.addTable("sys_user_role");
+    const role_permission = database.addTable("sys_role_permission");
+
     // const user_profile = database.addTable("sys_user_profile");
     // const role = database.addTable("sys_role");
     // const user_role = database.addTable("sys_user_role");
@@ -25,6 +35,23 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     // const mfa = database.addTable("sys_mfa");
     // const user_mfa = database.addTable("sys_user_mfa");
 
+    user.primaryKeyColumn("id", true) //
+        .stringColumn("username", { unique: true })
+        .stringColumn("password")
+        .booleanColumn("is_active", { default: "true" })
+        .booleanColumn("is_system", { default: "false" })
+        .dateTimeColumn("date_created", { default: "now()" })
+        .dateColumn("date_changed", { default: "now()" });
+
+    profile //
+        .primaryKeyColumn("id", true)
+        .stringColumn("email", { required: false })
+        .stringColumn("firstname")
+        .stringColumn("lastname")
+        .stringColumn("avatar", { required: false })
+        .referenceColumnAuto("user_id", user)
+        .dateColumn("date_created", { default: "now()" })
+        .dateColumn("date_modified", { default: "now()" });
 
     tenant //
         .primaryKeyColumn("id", true)
@@ -35,54 +62,66 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("allow_registration", { default: "false" })
         .stringColumn("organization");
 
-    // application //
-    //     .primaryKeyColumn("id", true)
-    //     .stringColumn("logo", { required: false }) // base64 encoded image data
-    //     .stringColumn("application_name")
-    //     .stringColumn("description", { required: false })
-    //     .booleanColumn("is_active", { default: "true" });
+    application //
+        .primaryKeyColumn("id", true)
+        .stringColumn("logo", { required: false }) // base64 encoded image data
+        .stringColumn("application_name")
+        .stringColumn("client_id", { unique: true })
+        .stringColumn("description", { required: false })
+        .booleanColumn("is_system", { default: "false" })
+        .booleanColumn("is_active", { default: "true" });
 
-    user.primaryKeyColumn("id", true) //
-        .stringColumn("username", { unique: true })
-        .stringColumn("password")
+    secret  //
+        .primaryKeyColumn("id")
+        .stringColumn("secret")
+        .stringColumn("description", { required: false })
+        .integerColumn("valid_from")
+        .integerColumn("valid_to")
+        .booleanColumn("is_system", { default: "false" })
+        .referenceColumnAuto("application_id", application);
+
+    client //
+        .primaryKeyColumn("id")
+        .stringColumn("client_type", { default: "'C'" })
+        .stringColumn("redirect_uri", { required: false })
+        .stringColumn("post_logout_redirect_uri", { required: false })
+        .booleanColumn("is_back_channel_post_logout", { default: "false" })
+        .booleanColumn("is_system", { default: "false" })
         .booleanColumn("is_active", { default: "true" })
-        .dateTimeColumn("date_created", { default: "now()" })
-        .dateColumn("date_changed", { default: "now()" });
+        .integerColumn("access_token_length")
+        .integerColumn("refresh_token_length")
+        .referenceColumnAuto("application_id", application);
 
-    // user_profile //
-    //     .primaryKeyColumn("id", true)
-    //     .stringColumn("email", { required: false })
-    //     .stringColumn("firstname")
-    //     .stringColumn("lastname")
-    //     .stringColumn("avatar", { required: false })
-    //     .referenceColumnAuto("user_id", user)
-    //     .dateColumn("date_created", { default: "now()" })
-    //     .dateColumn("date_changed", { default: "now()" }); //	Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from 1970-01-01T0:0:0Z as measured in UTC until the date/time.
+    key.primaryKeyColumn("id", true) //
+        .stringColumn("key_type")
+        .stringColumn("key_id", { unique: true })
+        .stringColumn("data");
 
-    // role.primaryKeyColumn("id", true) //
-    //     .stringColumn("role", { unique: true })
-    //     .stringColumn("description", { required: false })
-    //     .stringColumn("role_type", { default: "'A'" })
-    //     .booleanColumn("is_active", { default: "true" });
+    role.primaryKeyColumn("id", true) //
+        .stringColumn("role", { unique: true })
+        .stringColumn("description", { required: false })
+        .booleanColumn("is_system", { default: "false" })
+        .booleanColumn("is_active", { default: "true" });
 
-    // user_role //
-    //     .primaryKeyColumn("id", true)
-    //     .referenceColumnAuto("user_id", user)
-    //     .referenceColumnAuto("role_id", role)
-    //     .uniqueConstraint(["user_id", "role_id"]);
+    user_role //
+        .primaryKeyColumn("id", true)
+        .referenceColumnAuto("user_id", user)
+        .referenceColumnAuto("role_id", role)
+        .uniqueConstraint(["user_id", "role_id"]);
 
-    // permission //
-    //     .primaryKeyColumn("id", true)
-    //     .stringColumn("permission", { unique: true })
-    //     .stringColumn("description", { required: false })
-    //     .referenceColumnAuto("application_id", application)
-    //     .booleanColumn("is_active", { default: "true" });
+    permission //
+        .primaryKeyColumn("id", true)
+        .stringColumn("permission")
+        .stringColumn("description", { required: false })
+        .referenceColumnAuto("application_id", application)
+        .booleanColumn("is_system", { default: "false" })
+        .booleanColumn("is_active", { default: "true" });
 
-    // role_permission //
-    //     .primaryKeyColumn("id", true)
-    //     .referenceColumnAuto("role_id", role)
-    //     .referenceColumnAuto("permission_id", permission)
-    //     .uniqueConstraint(["role_id", "permission_id"]);
+    role_permission //
+        .primaryKeyColumn("id", true)
+        .referenceColumnAuto("role_id", role)
+        .referenceColumnAuto("permission_id", permission)
+        .uniqueConstraint(["role_id", "permission_id"]);
 
     // mfa.primaryKeyColumn("id", true) //
     //     .stringColumn("name")
@@ -99,11 +138,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     //     .primaryKeyColumn("id", true)
     //     .referenceColumnAuto("user_id", user)
     //     .referenceColumnAuto("mfa_id", mfa);
-
-    key.primaryKeyColumn("id", true) //
-        .stringColumn("key_type")
-        .stringColumn("key_id", { unique: true })
-        .stringColumn("data");
 
     // client //
     //     .primaryKeyColumn("id", true) //

@@ -24,7 +24,7 @@ export class InitializeController extends InitializeControllerBase {
 
             const databaseSeed = new DatabaseSeed();
 
-            const tenantRecord = await databaseSeed.initializeTenant({
+            const registry = await databaseSeed.initializeTenant({
                 allow_registration: false,
                 allow_reset_password: true,
                 databaseName: commonUtils.getPortaRegistryTenant(),
@@ -37,9 +37,11 @@ export class InitializeController extends InitializeControllerBase {
             });
 
             return new SuccessResponse({
-                status: tenantRecord ? true : false,
-                error: tenantRecord ? undefined : "Porta is already initialized!",
-                ...(tenantRecord || {})
+                status: registry ? true : false,
+                error: registry ? undefined : "Porta is already initialized!",
+                tenants: {
+                    registry: registry || {},
+                }
             } as any);
         } catch (err) {
             this.getLogger().error(err.message, errorObjectInfo(err));

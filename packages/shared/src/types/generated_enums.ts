@@ -44,6 +44,57 @@ export enum eSysKey {
 }
 
 /**
+ * Enum of the type sys_application
+ * @export
+ * @enum
+ */
+export enum eSysApplication {
+	$name = "sys_application",
+	ID = "id",
+	LOGO = "logo",
+	APPLICATION_NAME = "application_name",
+	CLIENT_ID = "client_id",
+	DESCRIPTION = "description",
+	IS_SYSTEM = "is_system",
+	IS_ACTIVE = "is_active"
+}
+
+/**
+ * Enum of the type sys_secret
+ * @export
+ * @enum
+ */
+export enum eSysSecret {
+	$name = "sys_secret",
+	ID = "id",
+	SECRET = "secret",
+	DESCRIPTION = "description",
+	VALID_FROM = "valid_from",
+	VALID_TO = "valid_to",
+	IS_SYSTEM = "is_system",
+	APPLICATION_ID = "application_id"
+}
+
+/**
+ * Enum of the type sys_client
+ * @export
+ * @enum
+ */
+export enum eSysClient {
+	$name = "sys_client",
+	ID = "id",
+	CLIENT_TYPE = "client_type",
+	REDIRECT_URI = "redirect_uri",
+	POST_LOGOUT_REDIRECT_URI = "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
+	IS_SYSTEM = "is_system",
+	IS_ACTIVE = "is_active",
+	ACCESS_TOKEN_LENGTH = "access_token_length",
+	REFRESH_TOKEN_LENGTH = "refresh_token_length",
+	APPLICATION_ID = "application_id"
+}
+
+/**
  * Enum of the type sys_user
  * @export
  * @enum
@@ -54,8 +105,79 @@ export enum eSysUser {
 	USERNAME = "username",
 	PASSWORD = "password",
 	IS_ACTIVE = "is_active",
+	IS_SYSTEM = "is_system",
 	DATE_CREATED = "date_created",
 	DATE_CHANGED = "date_changed"
+}
+
+/**
+ * Enum of the type sys_profile
+ * @export
+ * @enum
+ */
+export enum eSysProfile {
+	$name = "sys_profile",
+	ID = "id",
+	EMAIL = "email",
+	FIRSTNAME = "firstname",
+	LASTNAME = "lastname",
+	AVATAR = "avatar",
+	USER_ID = "user_id",
+	DATE_CREATED = "date_created",
+	DATE_MODIFIED = "date_modified"
+}
+
+/**
+ * Enum of the type sys_role
+ * @export
+ * @enum
+ */
+export enum eSysRole {
+	$name = "sys_role",
+	ID = "id",
+	ROLE = "role",
+	DESCRIPTION = "description",
+	IS_SYSTEM = "is_system",
+	IS_ACTIVE = "is_active"
+}
+
+/**
+ * Enum of the type sys_permission
+ * @export
+ * @enum
+ */
+export enum eSysPermission {
+	$name = "sys_permission",
+	ID = "id",
+	PERMISSION = "permission",
+	DESCRIPTION = "description",
+	APPLICATION_ID = "application_id",
+	IS_SYSTEM = "is_system",
+	IS_ACTIVE = "is_active"
+}
+
+/**
+ * Enum of the type sys_user_role
+ * @export
+ * @enum
+ */
+export enum eSysUserRole {
+	$name = "sys_user_role",
+	ID = "id",
+	USER_ID = "user_id",
+	ROLE_ID = "role_id"
+}
+
+/**
+ * Enum of the type sys_role_permission
+ * @export
+ * @enum
+ */
+export enum eSysRolePermission {
+	$name = "sys_role_permission",
+	ID = "id",
+	ROLE_ID = "role_id",
+	PERMISSION_ID = "permission_id"
 }
 
 /**

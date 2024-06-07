@@ -10,6 +10,14 @@ export interface IPortaApplicationSetting {
     MFA_EMAIL_FROM: string;
 }
 
+export enum eClientType {
+    public = "P",
+    confidential = "C",
+    service = "S",
+    device = "D"
+}
+
+
 export enum eOAuthTokenEndpointAuthMethods {
     client_secret_post = "client_secret_post",
     client_secret_basic = "client_secret_basic"

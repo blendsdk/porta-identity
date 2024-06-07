@@ -57,6 +57,117 @@ export const validationSchema = {
 			},
 			required: ["key_type", "key_id", "data"]
 		},
+		sys_application: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				logo: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				}
+			},
+			required: ["application_name", "client_id"]
+		},
+		sys_secret: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				secret: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				valid_from: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				valid_to: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["secret", "valid_from", "valid_to", "application_id"]
+		},
+		sys_client: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				client_type: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				access_token_length: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				refresh_token_length: {
+					type: eJsonSchemaType.integer,
+					format: "int32"
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["access_token_length", "refresh_token_length", "application_id"]
+		},
 		sys_user: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -74,6 +185,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
 				date_created: {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz",
@@ -86,6 +201,134 @@ export const validationSchema = {
 				}
 			},
 			required: ["username", "password"]
+		},
+		sys_profile: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				email: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				firstname: {
+					type: eJsonSchemaType.string
+				},
+				lastname: {
+					type: eJsonSchemaType.string
+				},
+				avatar: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "date",
+					acceptNullValue: true
+				},
+				date_modified: {
+					type: eJsonSchemaType.string,
+					format: "date",
+					acceptNullValue: true
+				}
+			},
+			required: ["firstname", "lastname", "user_id"]
+		},
+		sys_role: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				role: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				}
+			},
+			required: ["role"]
+		},
+		sys_permission: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				}
+			},
+			required: ["permission", "application_id"]
+		},
+		sys_user_role: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				role_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["user_id", "role_id"]
+		},
+		sys_role_permission: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				role_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["role_id", "permission_id"]
 		},
 		porta_account: {
 			type: eJsonSchemaType.object,

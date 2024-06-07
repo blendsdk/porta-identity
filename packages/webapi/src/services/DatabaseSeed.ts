@@ -1,18 +1,25 @@
-import { sha256Hash } from "@blendsdk/crypto";
+import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
+import { MD5, asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { Crypto } from "@peculiar/webcrypto";
 import * as x509 from "@peculiar/x509";
-import { ISysTenant } from "@porta/shared";
+import { ISysRole, ISysTenant } from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
+import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
+import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
+import { SysProfileDataService } from "../dataservices/SysProfileDataService";
+import { SysRoleDataService } from "../dataservices/SysRoleDataService";
+import { SysSecretDataService } from "../dataservices/SysSecretDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
+import { SysUserDataService } from "../dataservices/SysUserDataService";
+import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
 import { application } from "../modules/application/application";
-import { IPortaApplicationSetting, eDatabaseType } from "../types";
+import { IPortaApplicationSetting, eClientType, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
 
 const crypto = new Crypto();
@@ -192,30 +199,16 @@ export class DatabaseSeed {
         });
     }
 
+
     /**
-     * Initializes a tenant
-     *
-     * @param {IInitializeTenant} {
-     *         tenantName,
-     *         databaseName,
-     *         organization,
-     *         allow_registration,
-     *         allow_reset_password,
-     *         username,
-     *         password,
-     *         email,
-     *         serverURL
-     *     }
-     * @returns
+     * @param {IInitializeTenant} params
+     * @return {*} 
      * @memberof DatabaseSeed
      */
-    public async initializeTenant({
-        tenantName,
-        databaseName,
-        organization,
-        allow_registration,
-        allow_reset_password,
-    }: IInitializeTenant) {
+    public async initializeTenant(params: IInitializeTenant) {
+
+        let { allow_registration, allow_reset_password, databaseName, email, organization, password, tenantName, username, serverURL } = params || {};
+
         // is registry flag
         const isRegistry = tenantName === commonUtils.getPortaRegistryTenant();
 
@@ -252,8 +245,110 @@ export class DatabaseSeed {
         if (tenantRecord) {
             // create keys
             await this.createJWKKeys(tenantRecord);
+            const { userRole, adminRole } = await this.createRoles(tenantRecord);
+            await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
+            await this.createApplication(tenantRecord, serverURL);
         }
 
         return tenantRecord;
+    }
+
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {string} serverURL
+     * @memberof DatabaseSeed
+     */
+    protected async createApplication(tenantRecord: ISysTenant, serverURL: string) {
+        const appDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
+        const clientDs = new SysClientDataService({ tenantId: tenantRecord.id });
+
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
+            IPortaApplicationSetting & IDatabaseAppSettings
+        >();
+
+        const cliApp = await appDs.insertIntoSysApplication({
+            id: MD5(`porta_cli_${tenantRecord.id}`),
+            application_name: "CLI",
+            client_id: generateRandomUUID(),
+            description: "CLI Application",
+            is_system: true,
+        });
+
+        await clientDs.insertIntoSysClient({
+            client_type: eClientType.public,
+            application_id: cliApp.id,
+            redirect_uri: `${serverURL}/oidc/${tenantRecord.id}/signin/callback`,
+            post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+            access_token_length: ACCESS_TOKEN_TTL,
+            refresh_token_length: REFRESH_TOKEN_TTL,
+            is_system: true,
+            is_back_channel_post_logout: false
+        });
+
+        if (process.env.DEBUG) {
+            //OIDC conformance test
+            const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
+            await secretDs
+        }
+    }
+
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysRole} userRole
+     * @param {ISysRole} adminRole
+     * @param {string} username
+     * @param {string} password
+     * @param {string} email
+     * @memberof DatabaseSeed
+     */
+    protected async createUsers(tenantRecord: ISysTenant, userRole: ISysRole, adminRole: ISysRole, username: string, password: string, email: string) {
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+        const userRoleDs = new SysUserRoleDataService({ tenantId: tenantRecord.id });
+
+        const adminUser = await userDs.insertIntoSysUser({
+            username,
+            password,
+            is_system: true
+        });
+
+        await profileDs.insertIntoSysProfile({
+            firstname: tenantRecord.name,
+            lastname: "Administrator",
+            email,
+            user_id: adminUser.id
+        });
+
+        await userRoleDs.insertIntoSysUserRole({
+            role_id: userRole.id,
+            user_id: adminUser.id
+        });
+        await userRoleDs.insertIntoSysUserRole({
+            role_id: adminRole.id,
+            user_id: adminUser.id
+        });
+    }
+
+    /**
+     * @param tenantRecord 
+     * @returns 
+     */
+    protected async createRoles(tenantRecord: ISysTenant) {
+        const roleDs = new SysRoleDataService({ tenantId: tenantRecord.id });
+        const userRole = await roleDs.insertIntoSysRole({
+            role: "USER",
+            description: "System Users",
+            is_active: true,
+            is_system: true
+        });
+        const adminRole = await roleDs.insertIntoSysRole({
+            role: "ADMINISTRATOR",
+            description: "System Administrators",
+            is_active: true,
+            is_system: true
+        });
+        return { userRole, adminRole };
     }
 }
