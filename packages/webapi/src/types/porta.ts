@@ -1,3 +1,30 @@
+// How log a nonce is locked before it can be reused
+export const NONCE_TTL = 86400 * 1; // 1 day
+
+export enum eErrorType {
+    interaction_required = "interaction_required",
+    login_required = "login_required",
+    account_selection_required = "account_selection_required",
+    consent_required = "consent_required",
+    invalid_request_uri = "invalid_request_uri",
+    invalid_request = "invalid_request",
+    invalid_grant = "invalid_grant",
+    invalid_request_object = "invalid_request_object",
+    request_not_supported = "request_not_supported",
+    request_uri_not_supported = "request_uri_not_supported",
+    registration_not_supported = "registration_not_supported",
+    invalid_tenant = "invalid_tenant"
+}
+
+export interface IErrorResponseParams {
+    error: eErrorType;
+    error_description: string;
+    redirect_uri?: string;
+    state?: any;
+    error_uri?: string;
+    response_mode?: string;
+}
+
 export interface IPortaApplicationSetting {
     PORTA_SIGNIN_URI: string;
     PORTA_SSO_COMMON_NAME: string;
@@ -17,6 +44,9 @@ export enum eClientType {
     device = "D"
 }
 
+export enum eOAuthPKCECodeChallengeMethod {
+    S256 = "S256"
+}
 
 export enum eOAuthTokenEndpointAuthMethods {
     client_secret_post = "client_secret_post",
@@ -54,4 +84,23 @@ export enum eOAuthClaims {
 export enum eDatabaseType {
     system = "system",
     registry = "registry"
+}
+
+export enum eOAuthDisplayModes {
+    page = "page",
+    popup = "popup",
+    touch = "touch",
+    wap = "wap"
+}
+
+export enum eOAuthResponseMode {
+    query = "query",
+    form_post = "form_post"
+}
+
+export enum eOAuthPrompt {
+    none = "none",
+    login = "login",
+    consent = "consent",
+    select_account = "select_account"
 }

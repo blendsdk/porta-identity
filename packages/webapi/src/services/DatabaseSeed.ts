@@ -14,7 +14,6 @@ import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRoleDataService } from "../dataservices/SysRoleDataService";
-import { SysSecretDataService } from "../dataservices/SysSecretDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
 import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
@@ -288,8 +287,7 @@ export class DatabaseSeed {
 
         if (process.env.DEBUG) {
             //OIDC conformance test
-            const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
-            await secretDs
+            //const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
         }
     }
 

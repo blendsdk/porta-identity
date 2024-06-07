@@ -24,10 +24,19 @@ export class JWKSEndpointController extends EndpointController {
      * @returns {Promise<Response<IOidcDiscoveryKeysResponse>>}
      * @memberof JWKSEndpointController
      */
-    public handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+    public async handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+
+        const tenantRecord = await this.getTenantRecord(tenant);
+
+        if (!tenantRecord) {
+            return new BadRequestResponse({
+                message: "INVALID_REQUEST_UNKNOWN_TENANT",
+                cause: `Invalid tenant ${tenant}`
+            });
+        }
+
         const ds = new DataServices(tenant, this.request, true); // no user no assertion
         return ds.withTransaction(async () => {
-            const tenantRecord = await ds.getTenant(tenant);
             if (tenantRecord) {
                 const sysKeys = await ds.sysKeyDataService().findJwkKeys();
                 const jwks = [];

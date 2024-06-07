@@ -26,10 +26,19 @@ export class DiscoveryEndpointController extends EndpointController {
      * @return {*}  {Promise<Response<IDiscoveryResponse>>}
      * @memberof DiscoveryEndpointController
      */
-    public handleRequest({ tenant }: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>> {
+    public async handleRequest({ tenant }: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>> {
+
+        const tenantRecord = await this.getTenantRecord(tenant);
+        
+        if (!tenantRecord) {
+            return new BadRequestResponse({
+                message: "INVALID_REQUEST_UNKNOWN_TENANT",
+                cause: `Invalid tenant ${tenant}`
+            });
+        }
+
         const ds = new DataServices(tenant, this.request, true); // no user no assertion test
         return ds.withTransaction(async () => {
-            const tenantRecord = await ds.sysTenantDataService().findByNameOrId({ name: tenant });
             if (tenantRecord) {
                 return new SuccessResponse<IDiscoveryResponse>({
                     authorization_endpoint: `${this.getServerURL()}/${tenant}/oauth2/authorize`,

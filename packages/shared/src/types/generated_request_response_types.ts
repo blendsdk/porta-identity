@@ -146,6 +146,121 @@ export interface IDiscoveryResponse {}
 
 /**
  * @export
+ * @interface IAuthorizeRequest
+ */
+export interface IAuthorizeRequest {
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	response_type?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	scope: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	nonce?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	response_mode?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	code_challenge?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	code_challenge_method?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	ui_locales?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	request?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	acr_values?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	claims?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	prompt?: string;
+	/**
+	 * @type number
+	 * @memberOf IAuthorizeRequest
+	 */
+	max_age?: number;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	display?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
+	resource?: string;
+}
+
+/**
+ * @export
+ * @interface IAuthorize
+ */
+export interface IAuthorize {}
+
+/**
+ * @export
+ * @interface IAuthorizeResponse
+ */
+export interface IAuthorizeResponse {
+	/**
+	 * @type IAuthorize
+	 * @memberOf IAuthorizeResponse
+	 */
+	data: IAuthorize;
+}
+
+/**
+ * @export
  * @interface IInitializeRequest
  */
 export interface IInitializeRequest {

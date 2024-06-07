@@ -39,6 +39,44 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
             typeSchema.createAppendType(response_type);
         }
     });
+
+    // oauth authorization request
+    builder.defineApi({
+        id: "authorize",
+        url: "/:tenant/oauth2/authorize",
+        group: "authorization",
+        method: "get",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("response_type", { location: eParameterLocation.query, optional: true })
+                .addString("client_id", { location: eParameterLocation.query })
+                .addString("redirect_uri", { location: eParameterLocation.query, acceptNullValue: true })
+                .addString("scope", { location: eParameterLocation.query })
+                .addString("nonce", { location: eParameterLocation.query, optional: true }) // only for OIDC scope
+                .addString("response_mode", { location: eParameterLocation.query, optional: true })
+                .addString("state", { location: eParameterLocation.query, optional: true })
+                .addString("code_challenge", { location: eParameterLocation.query, optional: true })
+                .addString("code_challenge_method", { location: eParameterLocation.query, optional: true })
+                .addString("ui_locales", { location: eParameterLocation.query, optional: true })
+                .addString("request", { location: eParameterLocation.query, optional: true })
+                .addString("acr_values", { location: eParameterLocation.query, optional: true })
+                // Don't validate and pass it as it is. The validation will be done in the Claims class
+                .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
+                .addString("prompt", { location: eParameterLocation.query, optional: true })
+                .addNumber("max_age", { location: eParameterLocation.query, optional: true })
+                .addString("display", { location: eParameterLocation.query, optional: true })
+                .addString("resource", { location: eParameterLocation.query, optional: true });
+
+            typeSchema.createAppendType(payload_type); //
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+
 }
 
 // /**

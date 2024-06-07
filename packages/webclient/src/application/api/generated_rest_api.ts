@@ -13,6 +13,8 @@ import {
 	IDiscoveryKeysResponse,
 	IDiscoveryRequest,
 	IDiscoveryResponse,
+	IAuthorizeRequest,
+	IAuthorizeResponse,
 	IInitializeRequest,
 	IInitializeResponse
 } from "@porta/shared";
@@ -29,6 +31,7 @@ export interface IPortaApi {
 	authorization: {
 		discoveryKeys: THttpRequest<IDiscoveryKeysRequest, IDiscoveryKeysResponse>;
 		discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse>;
+		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
 	};
 	initialize: { initialize: THttpRequest<IInitializeRequest, IInitializeResponse> };
 }
@@ -44,7 +47,8 @@ export const PortaApi = createHttpApi<IPortaApi>({
 		},
 		authorization: {
 			discoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
-			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" })
+			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
+			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" })
 		},
 		initialize: { initialize: defineEndpoint({ method: "post", url: "/api/initialize" }) }
 	}

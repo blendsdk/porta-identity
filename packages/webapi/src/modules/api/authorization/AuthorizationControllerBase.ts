@@ -4,7 +4,14 @@
  */
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
-import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
+import {
+	IDiscoveryKeysRequest,
+	IDiscoveryKeysResponse,
+	IDiscoveryRequest,
+	IDiscoveryResponse,
+	IAuthorizeRequest,
+	IAuthorizeResponse
+} from "@porta/shared";
 
 /**
  * @export
@@ -32,4 +39,12 @@ export abstract class AuthorizationControllerBase<
 	 * @memberof AuthorizationControllerBase
 	 */
 	public abstract discovery(params: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/authorize
+	 * @abstract
+	 * @param {IAuthorizeRequest} params
+	 * @returns {Promise<Response<IAuthorizeResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>>;
 }

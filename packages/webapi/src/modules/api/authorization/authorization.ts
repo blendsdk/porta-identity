@@ -20,6 +20,11 @@ export const AuthorizationModule = (): IRouter => {
 				dispatch: "discovery",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.discovery
+			}),
+			defineControllerRoute({
+				dispatch: "authorize",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.authorize
 			})
 		]
 	};

@@ -420,6 +420,89 @@ export const validationSchema = {
 		discovery: {
 			type: eJsonSchemaType.object
 		},
+		authorize_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				response_type: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true,
+					location: eParameterLocation.query
+				},
+				scope: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				nonce: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				response_mode: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				state: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				code_challenge: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				code_challenge_method: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				ui_locales: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				request: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				acr_values: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				claims: {
+					type: eJsonSchemaType.string,
+					validate: false,
+					location: eParameterLocation.query
+				},
+				prompt: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				max_age: {
+					type: eJsonSchemaType.number,
+					location: eParameterLocation.query
+				},
+				display: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				resource: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				}
+			},
+			required: ["tenant", "client_id", "redirect_uri", "scope"]
+		},
+		authorize: {
+			type: eJsonSchemaType.object
+		},
 		initialize_request: {
 			type: eJsonSchemaType.object,
 			properties: {

@@ -14,6 +14,24 @@ class CommonUtils {
         }
         return PORTA_REGISTRY_TENANT;
     }
+
+    /**
+     * @param {number} seconds
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public secondsToMilliseconds(seconds: number) {
+        return seconds * 1000;
+    }
+
+    /**
+     * @param {number} seconds
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public expireSecondsFromNow(seconds: number) {
+        return Date.now() + this.secondsToMilliseconds(seconds);
+    };
 }
 
 export const commonUtils = new CommonUtils();
