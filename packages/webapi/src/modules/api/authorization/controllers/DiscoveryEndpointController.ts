@@ -1,6 +1,7 @@
 import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 import { DataServices } from "../../../../dataservices/DataServices";
+import { EndpointController } from "../../../../services";
 import {
     eOAuthClaims,
     eOAuthGrantType,
@@ -9,7 +10,6 @@ import {
     eOAuthSigningAlg,
     eOAuthTokenEndpointAuthMethods
 } from "../../../../types";
-import { EndpointController } from "./EndpointControllerBase";
 
 /**
  * Handler for the discovery endpoint

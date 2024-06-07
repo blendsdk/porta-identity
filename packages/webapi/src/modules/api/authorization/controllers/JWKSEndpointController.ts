@@ -3,8 +3,8 @@ import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-
 import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, ISysKey } from "@porta/shared";
 import * as jose from "jose";
 import { DataServices } from "../../../../dataservices/DataServices";
+import { EndpointController } from "../../../../services";
 import { eOAuthSigningAlg } from "../../../../types";
-import { EndpointController } from "./EndpointControllerBase";
 interface IJwkKey {
     privateKey: string;
     publicKey: string;
