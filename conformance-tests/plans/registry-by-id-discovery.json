@@ -6,7 +6,7 @@
     },
     "alias": "discovery-test",
     "server": {
-        "discoveryUrl": "https://porta.local/30b48b5a-1e93-42fb-8199-3c85b7cb4349/oauth2/.well-known/openid-configuration"
+        "discoveryUrl": "https://porta.local/registry1/oauth2/.well-known/openid-configuration"
     },
     "client_secret_post": {
         "client_id": "test",
