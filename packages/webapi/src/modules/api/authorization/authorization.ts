@@ -12,6 +12,11 @@ export const AuthorizationModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
+				dispatch: "discovery_keys",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.discovery_keys
+			}),
+			defineControllerRoute({
 				dispatch: "discovery",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.discovery

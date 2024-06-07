@@ -3,6 +3,7 @@ import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
+import { PortaAuthSessionProviderModule } from "../../services";
 import { AuthorizationModule } from "../api/authorization";
 import { InitializeModule } from "../api/initialize";
 import { RedirectRoutes } from "../redirects";
@@ -45,6 +46,9 @@ const application = new Application({
             path.join(process.cwd(), "resources", "i18n", "*.html")
         ]
     }),
+    (config) => {
+        return new PortaAuthSessionProviderModule({ ...config });
+    },
     (config) => {
         return new DatabaseModule({ ...config });
     },

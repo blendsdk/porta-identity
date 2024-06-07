@@ -280,17 +280,17 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     });
         // }
 
-        // if (table.getName() === "sys_key") {
-        //     svc.defineMethod({
-        //         name: "find_jwk_keys",
-        //         query: "select * from sys_key where UPPER(key_type) = 'JWK'",
-        //         recordSet: true,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: null,
-        //         returnType: "sys_key"
-        //     });
-        // }
+        if (table.getName() === "sys_key") {
+            svc.defineMethod({
+                name: "find_jwk_keys",
+                query: "select * from sys_key where UPPER(key_type) = 'JWK'",
+                recordSet: true,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: null,
+                returnType: "sys_key"
+            });
+        }
 
         // if (table.getName() === "sys_user_group") {
         //     svc.defineMethod({

@@ -36,7 +36,7 @@ export class DatabaseUtils extends ServiceBase {
      * @param {HttpRequest} req
      * @memberof DatabaseUtils
      */
-    public assetTenant(tenant: string, req: HttpRequest) {
+    public assertTenant(tenant: string, req: HttpRequest) {
         const { tenant: sessionTenant } = req.context.getUser<IPortaAccount>();
         if (tenant !== sessionTenant.id) {
             throw new Error("Invalid or mismatch tenant");

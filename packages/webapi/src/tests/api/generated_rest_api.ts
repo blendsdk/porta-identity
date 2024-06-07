@@ -9,6 +9,8 @@ import {
 	IGetTranslationsResponse,
 	IGetAppVersionRequest,
 	IGetAppVersionResponse,
+	IDiscoveryKeysRequest,
+	IDiscoveryKeysResponse,
 	IDiscoveryRequest,
 	IDiscoveryResponse,
 	IInitializeRequest,
@@ -24,7 +26,10 @@ export interface IPortaApi {
 		getTranslations: THttpRequest<IGetTranslationsRequest, IGetTranslationsResponse>;
 		getAppVersion: THttpRequest<IGetAppVersionRequest | void, IGetAppVersionResponse>;
 	};
-	authorization: { discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse> };
+	authorization: {
+		discoveryKeys: THttpRequest<IDiscoveryKeysRequest, IDiscoveryKeysResponse>;
+		discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse>;
+	};
 	initialize: { initialize: THttpRequest<IInitializeRequest, IInitializeResponse> };
 }
 /**
@@ -38,6 +43,7 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
 		authorization: {
+			discoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
 			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" })
 		},
 		initialize: { initialize: defineEndpoint({ method: "post", url: "/api/initialize" }) }

@@ -6,12 +6,30 @@ export function defineAuthenticationAPI(builder: ApiBuilder) {
      * Check the account for its state and status
      */
     builder.defineApi({
+        id: "discovery_keys",
+        url: "/:tenant/oauth2/discovery/keys",
+        group: "authorization",
+        method: "get",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    /**
+     * Check the account for its state and status
+     */
+    builder.defineApi({
         id: "discovery",
         url: "/:tenant/oauth2/.well-known/openid-configuration",
         group: "authorization",
         method: "get",
         public: true,
-
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //

@@ -98,6 +98,30 @@ export interface IGetAppVersionResponse {
 
 /**
  * @export
+ * @interface IDiscoveryKeysRequest
+ */
+export interface IDiscoveryKeysRequest {
+	/**
+	 * @type string
+	 * @memberOf IDiscoveryKeysRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IDiscoveryKeys
+ */
+export interface IDiscoveryKeys {}
+
+/**
+ * @export
+ * @interface IDiscoveryKeysResponse
+ */
+export interface IDiscoveryKeysResponse {}
+
+/**
+ * @export
  * @interface IDiscoveryRequest
  */
 export interface IDiscoveryRequest {

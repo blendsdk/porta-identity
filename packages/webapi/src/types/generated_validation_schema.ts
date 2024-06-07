@@ -151,6 +151,19 @@ export const validationSchema = {
 			},
 			required: ["webclient", "webapi", "mobileclient"]
 		},
+		discovery_keys_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		discovery_keys: {
+			type: eJsonSchemaType.object
+		},
 		discovery_request: {
 			type: eJsonSchemaType.object,
 			properties: {

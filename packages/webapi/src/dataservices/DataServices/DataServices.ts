@@ -1,6 +1,5 @@
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IPortaAccount } from "@porta/shared";
 import { databaseUtils } from "../../services";
 import { DataServicesBase } from "./DataServicesBase";
 
@@ -55,34 +54,25 @@ export class DataServices extends DataServicesBase {
     }
 
     /**
+     * @param {string} tenantNameOrId
+     * @return {*} 
+     * @memberof DataServices
+     */
+    public getTenant(tenantNameOrId: string) {
+        return databaseUtils.findTenant(tenantNameOrId);
+    }
+
+    /**
      * @protected
      * @return {*}  {Promise<PostgreSQLDataSource>}
      * @memberof DataServices
      */
     protected async initDataSource(): Promise<PostgreSQLDataSource> {
-
         const dataSource = await databaseUtils.initDataSource(this.tenant, this.request);
-
         if (this.assert) {
-            databaseUtils.assetTenant(this.tenant, this.request);
+            databaseUtils.assertTenant(this.tenant, this.request);
         }
-
         return dataSource;
-    }
-
-    /**
-     * Check if the given tenant is also from this session
-     *
-     * @protected
-     * @param {string} tenant
-     * @param {HttpRequest} req
-     * @memberof DataServices
-     */
-    protected assetTenant(tenant: string, req: HttpRequest) {
-        const { tenant: sessionTenant } = req.context.getUser<IPortaAccount>();
-        if (tenant !== sessionTenant.name) {
-            throw new Error("Invalid or mismatch tenant");
-        }
     }
 }
 

@@ -4,7 +4,7 @@
  */
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
-import { IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
+import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 
 /**
  * @export
@@ -16,6 +16,14 @@ import { IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/discovery/keys
+	 * @abstract
+	 * @param {IDiscoveryKeysRequest} params
+	 * @returns {Promise<Response<IDiscoveryKeysResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract discoveryKeys(params: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>>;
 	/**
 	 * Method for handling [GET] /:tenant/oauth2/.well-known/openid-configuration
 	 * @abstract

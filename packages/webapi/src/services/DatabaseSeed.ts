@@ -3,6 +3,7 @@ import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
+import { Crypto } from "@peculiar/webcrypto";
 import * as x509 from "@peculiar/x509";
 import { ISysTenant } from "@porta/shared";
 import fs from "fs";
@@ -10,9 +11,12 @@ import path from "path";
 import util from "util";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
-import { application } from "../modules";
+import { application } from "../modules/application/application";
 import { IPortaApplicationSetting, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
+
+const crypto = new Crypto();
+x509.cryptoProvider.set(crypto);
 
 /**
  * @export
@@ -33,7 +37,7 @@ export interface IInitializeTenant {
 /**
  * @class DatabaseSeed
  */
-class DatabaseSeed {
+export class DatabaseSeed {
 
     /**
      * @protected
@@ -155,6 +159,19 @@ class DatabaseSeed {
         // insert the same tenant record from the master database to the tenant database
         const tenantDs = new SysTenantDataService({ tenantId });
         tenant = await tenantDs.insertIntoSysTenant(tenant);
+
+        if (isRegistry) {
+            dataSourceManager.registerDataSource(() => {
+                return new PostgreSQLDataSource({
+                    host: DB_HOST,
+                    port: DB_PORT,
+                    user: DB_USER,
+                    password: DB_PASSWORD,
+                    database: tenant.database
+                });
+            }, tenant.id);
+        }
+
         return tenant;
     }
 
@@ -240,5 +257,3 @@ class DatabaseSeed {
         return tenantRecord;
     }
 }
-
-export const databaseSeed = new DatabaseSeed();

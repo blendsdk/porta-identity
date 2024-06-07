@@ -1,10 +1,10 @@
+import { ISysKey } from "@porta/shared";
 import {
 	ISysKeyDataServiceFindSysKeyByIdParams,
 	ISysKeyDataServiceDeleteSysKeyByIdFilter,
 	ISysKeyDataServiceUpdateSysKeyByIdFilter,
 	ISysKeyDataServiceFindSysKeyByKeyIdParams
 } from "./types";
-import { ISysKey } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
 import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/postgresql";
 
@@ -16,6 +16,21 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysKeyDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * @param {void}
+	 * @returns {ISysKey[]}
+	 * @memberof SysKeyDataServiceBase
+	 */
+	public async findJwkKeys(): Promise<ISysKey[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysKey[], void>(
+			`select * from sys_key where UPPER(key_type) = 'JWK'`,
+			undefined,
+			{ single: false }
+		);
+		return result.data;
+	}
+
 	/**
 	 * Find a sys_key record by
 	 * @param {ISysKeyDataServiceFindSysKeyByIdParams}

@@ -1,7 +1,8 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
+import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointController";
+import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 
 
 /**
@@ -11,6 +12,15 @@ import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointCont
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    /**
+     * @param {IDiscoveryKeysRequest} params
+     * @return {*}  {Promise<Response<IDiscoveryKeysResponse>>}
+     * @memberof AuthorizationController
+     */
+    public discoveryKeys(params: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+        const subController = new JWKSEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
     /**
      * @param {IDiscoveryRequest} params
      * @return {*}  {Promise<Response<IDiscoveryResponse>>}

@@ -1,8 +1,7 @@
 import { errorObjectInfo } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { IInitializeRequest, IInitializeResponse } from "@porta/shared";
-import { commonUtils } from "../../../services";
-import { databaseSeed } from "../../../services/DatabaseSeed";
+import { DatabaseSeed, commonUtils } from "../../../services";
 import { InitializeControllerBase } from "./InitializeControllerBase";
 
 /**
@@ -22,6 +21,8 @@ export class InitializeController extends InitializeControllerBase {
             let { email, password, username } = params;
 
             username = username || email;
+
+            const databaseSeed = new DatabaseSeed();
 
             const tenantRecord = await databaseSeed.initializeTenant({
                 allow_registration: false,
