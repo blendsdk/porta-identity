@@ -24,34 +24,35 @@ export class JWKSEndpointController extends EndpointController {
      * @returns {Promise<Response<IOidcDiscoveryKeysResponse>>}
      * @memberof JWKSEndpointController
      */
-    public async handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+    public handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+        const ds = new DataServices(tenant, this.request, true); // no user no assertion
+        return ds.withTransaction(async () => {
+            const tenantRecord = await ds.getTenant(tenant);
+            if (tenantRecord) {
+                const sysKeys = await ds.sysKeyDataService().findJwkKeys();
+                const jwks = [];
+                await asyncForEach<ISysKey>(sysKeys, async (record) => {
+                    const { certificate, publicKey } = JSON.parse(record.data) as IJwkKey;
 
-        const ds = new DataServices(tenant, this.request);
-        const tenantRecord = await ds.getTenant(tenant);
-        if (tenantRecord) {
-            const sysKeys = await ds.sysKeyDataService().findJwkKeys();
-            const jwks = [];
-            await asyncForEach<ISysKey>(sysKeys, async (record) => {
-                const { certificate, publicKey } = JSON.parse(record.data) as IJwkKey;
-
-                const pubKey = await jose.importSPKI(publicKey, "ES256");
-                const jwk = await jose.exportJWK(pubKey);
-                jwk.use = "sig";
-                jwk.alg = eOAuthSigningAlg.RS256;
-                jwk.kid = record.key_id;
-                jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
-                jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
-                jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
-                (jwks as any[]).push(jwk);
-            });
-            return new SuccessResponse({
-                keys: jwks
-            });
-        } else {
-            return new BadRequestResponse({
-                message: "INVALID_REQUEST",
-                cause: `Invalid tenant ${tenant}`
-            });
-        }
+                    const pubKey = await jose.importSPKI(publicKey, "ES256");
+                    const jwk = await jose.exportJWK(pubKey);
+                    jwk.use = "sig";
+                    jwk.alg = eOAuthSigningAlg.RS256;
+                    jwk.kid = record.key_id;
+                    jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
+                    jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
+                    jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
+                    (jwks as any[]).push(jwk);
+                });
+                return new SuccessResponse({
+                    keys: jwks
+                });
+            } else {
+                return new BadRequestResponse({
+                    message: "INVALID_REQUEST",
+                    cause: `Invalid tenant ${tenant}`
+                });
+            }
+        });
     }
 }

@@ -16,17 +16,21 @@ export abstract class ServiceBase {
         if (!dataSource) {
             const tenantRecord = await databaseUtils.findTenant(tenant);
             if (tenantRecord) {
-                dataSourceManager.registerDataSource(() => {
-                    const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = req.context.getSettings<IDatabaseAppSettings>();
-                    return new PostgreSQLDataSource({
-                        host: DB_HOST,
-                        port: DB_PORT,
-                        user: DB_USER,
-                        password: DB_PASSWORD,
-                        database: tenantRecord.database
-                    });
-                }, tenantRecord.id);
-                dataSource = dataSourceManager.getDataSource(tenant);
+                // now check to fint the datasource by its id. this is because `tenant` could be the name
+                dataSource = dataSourceManager.getDataSource(tenantRecord.id);
+                if (!dataSource) {
+                    dataSourceManager.registerDataSource(() => {
+                        const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD } = req.context.getSettings<IDatabaseAppSettings>();
+                        return new PostgreSQLDataSource({
+                            host: DB_HOST,
+                            port: DB_PORT,
+                            user: DB_USER,
+                            password: DB_PASSWORD,
+                            database: tenantRecord.database
+                        });
+                    }, tenantRecord.id);
+                    dataSource = dataSourceManager.getDataSource(tenant) || dataSourceManager.getDataSource(tenantRecord.id);
+                }
             } else {
                 throw new Error("UNKNOWN_TENANT");
             }

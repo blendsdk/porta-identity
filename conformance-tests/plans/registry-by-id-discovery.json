@@ -1,0 +1,19 @@
+{
+    "client": {
+        "client_id": "test",
+        "client_secret": "secret",
+        "redirect_uri": "test1"
+    },
+    "alias": "discovery-test",
+    "server": {
+        "discoveryUrl": "https://porta.local/30b48b5a-1e93-42fb-8199-3c85b7cb4349/oauth2/.well-known/openid-configuration"
+    },
+    "client_secret_post": {
+        "client_id": "test",
+        "client_secret": "secret"
+    },
+    "client2": {
+        "client_id": "test2",
+        "client_secret": "secret2"
+    }
+}
