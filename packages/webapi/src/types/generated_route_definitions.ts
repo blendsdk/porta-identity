@@ -10,7 +10,7 @@ export const routeDefinitions: {
 	initialize: { initialize: IRouteBase };
 	reference_data: { get_reference_data: IRouteBase };
 	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
-	authorization: { discovery_keys: IRouteBase; discovery: IRouteBase; authorize: IRouteBase };
+	authorization: { get_flow: IRouteBase; discovery_keys: IRouteBase; discovery: IRouteBase; authorize: IRouteBase };
 } = {
 	blend: {
 		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
@@ -27,6 +27,7 @@ export const routeDefinitions: {
 		save_user_state: { id: "save_user_state", method: "post", url: "/api/:tenant/user_state", public: false }
 	},
 	authorization: {
+		get_flow: { id: "get_flow", method: "get", url: "/:tenant/oauth2/:flow_id/flow", public: true },
 		discovery_keys: { id: "discovery_keys", method: "get", url: "/:tenant/oauth2/discovery/keys", public: true },
 		discovery: {
 			id: "discovery",

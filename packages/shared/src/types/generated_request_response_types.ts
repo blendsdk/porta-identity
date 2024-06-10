@@ -4,7 +4,7 @@
  */
 
 import { IErrorData, IPortaAccount, IOpsResponse } from "./generated_types";
-import { ISysExtension } from "./generated_database_types";
+import { ISysExtension, ISysAuthorizationView } from "./generated_database_types";
 
 /**
  * @export
@@ -283,6 +283,30 @@ export interface ISaveUserStateResponse {
 	 * @memberOf ISaveUserStateResponse
 	 */
 	data: IOpsResponse;
+}
+
+/**
+ * @export
+ * @interface IGetFlowRequest
+ */
+export interface IGetFlowRequest {
+	/**
+	 * @type string
+	 * @memberOf IGetFlowRequest
+	 */
+	flow_id: string;
+}
+
+/**
+ * @export
+ * @interface IGetFlowResponse
+ */
+export interface IGetFlowResponse {
+	/**
+	 * @type ISysAuthorizationView
+	 * @memberOf IGetFlowResponse
+	 */
+	data: ISysAuthorizationView;
 }
 
 /**

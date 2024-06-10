@@ -1,8 +1,6 @@
 import { ITranslationDatabase } from "@blendsdk/i18n";
 import { TranslationStoreBase, makeTranslator } from "@blendsdk/react";
-import { base64Encode } from "@blendsdk/stdlib";
 import { ApplicationApi } from "../api";
-import { getTenant } from "../lib";
 
 const isLocalhost = true;
 //TODO: Don't forget to remove this
@@ -59,10 +57,7 @@ export class I18TranslationStore extends TranslationStoreBase {
     load(locale?: string): Promise<ITranslationDatabase> {
         return new Promise((resolve, reject) => {
             ApplicationApi.blend
-                .getTranslations({
-                    locale,
-                    options: base64Encode(JSON.stringify(getTenant()))
-                })
+                .getTranslations({ locale })
                 .then(({ data }) => {
                     resolve(data);
                 })

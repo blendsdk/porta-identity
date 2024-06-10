@@ -21,6 +21,8 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
+	IGetFlowRequest,
+	IGetFlowResponse,
 	IDiscoveryKeysRequest,
 	IDiscoveryKeysResponse,
 	IDiscoveryRequest,
@@ -47,6 +49,7 @@ export interface IPortaApi {
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
 	authorization: {
+		getFlow: THttpRequest<IGetFlowRequest, IGetFlowResponse>;
 		discoveryKeys: THttpRequest<IDiscoveryKeysRequest, IDiscoveryKeysResponse>;
 		discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse>;
 		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
@@ -81,6 +84,7 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			})
 		},
 		authorization: {
+			getFlow: defineEndpoint({ method: "get", url: "/:tenant/oauth2/:flow_id/flow" }),
 			discoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
 			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
 			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" })

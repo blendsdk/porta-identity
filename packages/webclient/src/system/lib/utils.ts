@@ -14,7 +14,6 @@ export const getBaseUrl = () => {
 export function getTenant() {
 
     const router = getGlobalRouter();
-    debugger;
 
     if (router) {
         const { tenant } = router.getParameters<{ tenant: string; }>();

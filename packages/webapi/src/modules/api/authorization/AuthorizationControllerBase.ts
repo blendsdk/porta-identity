@@ -5,6 +5,8 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	IGetFlowRequest,
+	IGetFlowResponse,
 	IDiscoveryKeysRequest,
 	IDiscoveryKeysResponse,
 	IDiscoveryRequest,
@@ -23,6 +25,14 @@ import {
 export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/:flow_id/flow
+	 * @abstract
+	 * @param {IGetFlowRequest} params
+	 * @returns {Promise<Response<IGetFlowResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract getFlow(params: IGetFlowRequest): Promise<Response<IGetFlowResponse>>;
 	/**
 	 * Method for handling [GET] /:tenant/oauth2/discovery/keys
 	 * @abstract

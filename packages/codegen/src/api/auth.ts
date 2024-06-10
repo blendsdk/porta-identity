@@ -1,7 +1,24 @@
-import { ApiBuilder } from "@blendsdk/codegen";
+import { ApiBuilder, refType } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createAuthenticationAPI(builder: ApiBuilder) {
+
+    builder.defineApi({
+        id: "get_flow",
+        url: "/:tenant/oauth2/:flow_id/flow",
+        group: "authorization",
+        method: "get",
+        public: true,
+        payload_type: refType("sys_authorization_view"),
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("flow_id", { location: eParameterLocation.params });
+
+            typeSchema.createResponseType(response_type, payload_type); //
+        }
+    });
+
     /**
      * Check the account for its state and status
      */

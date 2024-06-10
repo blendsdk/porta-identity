@@ -50,7 +50,7 @@ export class AuthorizeEndpointController extends EndpointController {
             if (errors.length === 0 && flowId) {
                 // here we decide on the sign in URL. It is either from the webclient or 
                 // an existing user.
-                let signinURL = this.createFrontendSignInUrl(flowId, authRequest);
+                let signinURL = this.createFrontendSignInUrl(flowId, authRequest, tenantRecord);
                 return new RedirectResponse({ url: signinURL });
             } else {
                 return this.responseWithError(
@@ -74,8 +74,8 @@ export class AuthorizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof AuthorizeEndpointController
      */
-    protected createFrontendSignInUrl(flowId: string, authRequest: IAuthorizeRequest) {
-        let signinURL = `${this.getServerURL()}/fe/auth/${flowId}/signin`;
+    protected createFrontendSignInUrl(flowId: string, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+        let signinURL = `${this.getServerURL()}/fe/auth/${tenantRecord.id}/${flowId}/signin`;
         const url = new URL(signinURL);
         if (authRequest.ui_locales) {
             url.searchParams.append("ui_locals", authRequest.ui_locales);

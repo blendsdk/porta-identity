@@ -78,7 +78,14 @@ export const Startup: React.FC = () => {
     appData.setRouter(router);
 
     const loadTranslation = useCallback(() => {
-        return translationStore.initialize(getCurrentLocale());
+        const url = new URL(window.location.href);
+        const key = "ui_locales";
+        const search_ui_locales = url.searchParams.get(key);
+        const last_ui_locales = window.localStorage.getItem(key);
+        if (!last_ui_locales && search_ui_locales) {
+            window.localStorage.setItem(key, search_ui_locales);
+        }
+        return translationStore.initialize(search_ui_locales || last_ui_locales || getCurrentLocale());
     }, [translationStore]);
 
     const rbacFilter = useMemo(() => {

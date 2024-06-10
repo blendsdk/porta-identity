@@ -618,6 +618,16 @@ export const validationSchema = {
 			},
 			required: ["tenant", "user_state"]
 		},
+		get_flow_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				flow_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["flow_id"]
+		},
 		discovery_keys_request: {
 			type: eJsonSchemaType.object,
 			properties: {
