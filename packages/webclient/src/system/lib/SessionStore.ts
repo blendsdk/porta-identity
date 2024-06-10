@@ -1,8 +1,8 @@
 import { SessionStoreBase, useGlobalSystemError } from "@blendsdk/react";
 import Cookies from "js-cookie";
-import { eSystemRoutes } from "./routing";
-import { ApplicationApi } from "./api";
-import { getTenant } from "./lib";
+import { getTenant } from ".";
+import { ApplicationApi } from "../api";
+import { eSystemRoutes } from "../routing";
 
 /**
  * @export

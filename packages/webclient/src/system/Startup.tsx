@@ -3,13 +3,12 @@ import { mergeStyles } from "@fluentui/react";
 import { useCallback, useEffect, useMemo } from "react";
 import { applicationRoutes, createRbacFilter } from "../application";
 import { useApplication } from "../application/lib";
-import { AccessDeniedContent } from "./AccessDeniedContent";
 import { ApplicationApi } from "./api";
 import { useTranslation } from "./i18n";
-import { useRouter, useSystemError } from "./init";
-import { getBaseUrl } from "./lib";
+import { AccessDeniedContent, getBaseUrl } from "./lib";
+import { useRouter, useSystemError } from "./lib/init";
 import { systemRoutes } from "./routing";
-import { useAppTheme } from "./theme/themes";
+import { useAppTheme } from "./theme";
 
 ApplicationApi.setBaseUrl(getBaseUrl());
 
@@ -73,12 +72,10 @@ export const Startup: React.FC = () => {
     const router = useRouter();
     const appData = useApplication();
 
-
     setTheme(getThemeName());
 
     // This is safe
     appData.setRouter(router);
-
 
     const loadTranslation = useCallback(() => {
         return translationStore.initialize(getCurrentLocale());

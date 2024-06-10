@@ -1,6 +1,6 @@
 import { IRoute } from "@blendsdk/react";
-import { eSystemRoutes } from "./constants";
 import { LoginView } from "../../application";
+import { eSystemRoutes } from "./constants";
 
 export const systemRoutes: IRoute[] = [
     {

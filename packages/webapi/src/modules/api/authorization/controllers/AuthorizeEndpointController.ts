@@ -75,7 +75,7 @@ export class AuthorizeEndpointController extends EndpointController {
      * @memberof AuthorizeEndpointController
      */
     protected createFrontendSignInUrl(flowId: string, authRequest: IAuthorizeRequest) {
-        let signinURL = `${this.getServerURL()}/fe/${flowId}/signin`;
+        let signinURL = `${this.getServerURL()}/fe/auth/${flowId}/signin`;
         const url = new URL(signinURL);
         if (authRequest.ui_locales) {
             url.searchParams.append("ui_locals", authRequest.ui_locales);

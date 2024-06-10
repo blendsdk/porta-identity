@@ -1,0 +1,15 @@
+* {
+    box-sizing: border-box;
+}
+
+.yarl__root {
+    z-index: 999999999 !important;
+}
+
+.casting_drawer nav {
+    margin-top: 0px;
+}
+
+.casting_drawer .ms-Nav-groupContent {
+    margin-bottom: 4px;
+}

@@ -159,6 +159,7 @@ export const SPARoutes = (): IRouter => {
                     if (req.url === "/" || req.url.startsWith("/fe")) {
                         res.send(indexFile);
                     } else {
+                        req.context.getLogger().error(req.url);
                         res.redirect("/fe/not-found");
                     }
                 }

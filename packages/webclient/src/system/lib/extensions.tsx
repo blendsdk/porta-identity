@@ -3,8 +3,8 @@ import * as fluentui from "@fluentui/react";
 import Cookie from "js-cookie";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ApplicationApi } from "./api";
-import { getTenant } from "./lib/utils";
+import { ApplicationApi } from "../api";
+import { getTenant } from "./utils";
 
 /**
  * Loads the extension into the application
