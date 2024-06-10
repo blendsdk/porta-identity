@@ -8,185 +8,20 @@ import { createMethodName, Database, eReturnValue, RdbDataServiceBuilder } from 
  * @param {RdbDataServiceBuilder} builder
  */
 export function createCrudDataServices(databaseSchema: Database, builder: RdbDataServiceBuilder) {
-    // databaseSchema.getViews().forEach((view) => {
-    //     const serviceName = createMethodName(`${view.getName()}_data_service`, false);
-    //     const svc = builder.createService(
-    //         serviceName,
-    //         `Provides functionality to get data from ${view.getName()} view`
-    //     );
-
-    //     // if (view.getName() === "sys_session_view") {
-    //     //     svc.defineMethod({
-    //     //         name: "find_session_by_oidc_client_and_subject",
-    //     //         query: "select * from sys_session_view where oidc_sub_claim = :sub_claim and oidc_client_id = :client_id",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("sub_claim")
-    //     //                 .addString("client_id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-
-    //     //     svc.defineMethod({
-    //     //         name: "find_session_by_client_and_user",
-    //     //         query: "select * from sys_session_view where user_id = :user_id and client_id = :client_id",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("user_id")
-    //     //                 .addString("client_id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-
-    //     //     svc.defineMethod({
-    //     //         name: "find_session_by_session_id",
-    //     //         query: "select * from sys_session_view where id = :id",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     // }
-
-    //     // if (view.getName() === "sys_access_token_view") {
-    //     //     svc.defineMethod({
-    //     //         name: "find_access_token",
-    //     //         query: "select * from sys_access_token_view where access_token = :access_token",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("access_token");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     //     svc.defineMethod({
-    //     //         name: "find_access_token_by_reference",
-    //     //         query: "select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("token_reference");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     //     svc.defineMethod({
-    //     //         name: "find_access_token_by_id",
-    //     //         query: "select * from sys_access_token_view where id = :id",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     // }
-
-    //     // if (view.getName() === "sys_refresh_token_view") {
-    //     //     svc.defineMethod({
-    //     //         name: "find_refresh_token",
-    //     //         query: "select * from sys_refresh_token_view where refresh_token = :refresh_token",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("refresh_token");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-
-    //     //     svc.defineMethod({
-    //     //         name: "find_refresh_token_by_access_token",
-    //     //         query: "select * from sys_refresh_token_view where access_token = :access_token",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("access_token");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     // }
-
-    //     // if (view.getName() === "sys_authorization_view") {
-    //     //     svc.defineMethod({
-    //     //         name: "find_by_client_id_and_redirect_uri",
-    //     //         query: "select * from sys_authorization_view where client_id = :client_id and client_type <> 'S'",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("client_id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-
-    //     //     svc.defineMethod({
-    //     //         name: "find_by_client_id_only",
-    //     //         query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'",
-    //     //         recordSet: false,
-    //     //         returnValue: eReturnValue.dataOnly,
-    //     //         type: "query",
-    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
-    //     //             typeSchema
-    //     //                 .createAppendType(suggestedTypeName) //
-    //     //                 .addString("client_id");
-    //     //             return suggestedTypeName;
-    //     //         },
-    //     //         returnType: view.getName()
-    //     //     });
-    //     // }
-    // });
-
     databaseSchema.getTables().forEach((table) => {
-        const serviceName = createMethodName(`${table.getName()}_data_service`, false);
+        const tableName = table.getName();
+        const serviceName = createMethodName(`${tableName}_data_service`, false);
         const svc = builder.createService(
             serviceName,
-            `Provides functionality to manipulate the ${table.getName()} table`
+            `Provides functionality to manipulate the ${tableName} table`
         );
 
         const { has_list_by_expression } = table.getMetaData();
 
-        // if (table.getName() === "sys_refresh_token") {
+        // if (tableName === "sys_refresh_token") {
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "refresh_token";
@@ -194,10 +29,10 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         // }
 
-        // if (table.getName() === "sys_session") {
+        // if (tableName === "sys_session") {
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "user_id";
@@ -205,7 +40,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "user_id" || c.getName() === "client_id";
@@ -213,10 +48,10 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         // }
 
-        // if (table.getName() === "sys_access_token") {
+        // if (tableName === "sys_access_token") {
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "access_token";
@@ -224,7 +59,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "user_id";
@@ -232,7 +67,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         //     svc.defineDeleteByColumnMethod(
         //         {
-        //             table: table.getName()
+        //             table: tableName
         //         },
         //         table.getColumns().filter((c) => {
         //             return c.getName() === "user_id" || c.getName() === "client_id";
@@ -240,7 +75,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     );
         // }
 
-        if (table.getName() === "sys_tenant") {
+        if (tableName === "sys_tenant") {
 
             svc.defineListByExpressionMethod({
                 table: "sys_authorization_view"
@@ -251,7 +86,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             });
 
             svc.defineListByExpressionMethod({
-                table: table.getName()
+                table: tableName
             });
 
             svc.defineMethod({
@@ -270,24 +105,24 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             });
         }
 
-        // if (table.getName() === "sys_user_profile") {
-        //     svc.defineMethod({
-        //         name: "find_user_profile_by_user_id",
-        //         query: "SELECT * FROM sys_user_profile WHERE user_id = :user_id::uuid",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("user_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: "sys_user_profile"
-        //     });
-        // }
+        if (tableName === "sys_profile") {
+            svc.defineMethod({
+                name: "find_profile_by_user_id",
+                query: "SELECT * FROM sys_profile WHERE user_id = :user_id",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("user_id");
+                    return suggestedTypeName;
+                },
+                returnType: tableName
+            });
+        }
 
-        if (table.getName() === "sys_key") {
+        if (tableName === "sys_key") {
             svc.defineMethod({
                 name: "find_jwk_keys",
                 query: "select * from sys_key where UPPER(key_type) = 'JWK'",
@@ -299,7 +134,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             });
         }
 
-        // if (table.getName() === "sys_user_group") {
+        // if (tableName === "sys_user_group") {
         //     svc.defineMethod({
         //         name: "find_groups_by_user_id",
         //         query: "select * from sys_groups_by_user_view where user_id = :user_id",
@@ -316,7 +151,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     });
         // }
 
-        // if (table.getName() === "sys_permission") {
+        // if (tableName === "sys_permission") {
         //     svc.defineMethod({
         //         name: "find_permissions_by_user_id_and_client_id",
         //         query: "select * from sys_user_permission_view where user_id = :user_id and client_id = :client_id",
@@ -334,11 +169,11 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         //     });
         // }
 
-        if (table.getName() === "sys_user") {
-            svc.defineInsertMethod({ table: table.getName(), inConverter: true, outConverter: true });
-            svc.defineUpdateByPrimaryKeyMethod({ table: table.getName(), inConverter: true, outConverter: true });
-            svc.defineFindByPrimaryKeyMethod({ table: table.getName(), outConverter: true });
-            svc.defineDeleteByPrimaryKeyMethod({ table: table.getName() });
+        if (tableName === "sys_user") {
+            svc.defineInsertMethod({ table: tableName, inConverter: true, outConverter: true });
+            svc.defineUpdateByPrimaryKeyMethod({ table: tableName, inConverter: true, outConverter: true });
+            svc.defineFindByPrimaryKeyMethod({ table: tableName, outConverter: true });
+            svc.defineDeleteByPrimaryKeyMethod({ table: tableName });
 
             // svc.defineMethod({
             //     name: "find_mfa_by_user_id",
@@ -383,14 +218,14 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             // });
         } else {
             // create CRUD
-            svc.defineFindByPrimaryKeyMethod({ table: table.getName() });
-            svc.defineInsertMethod({ table: table.getName() });
-            svc.defineDeleteByPrimaryKeyMethod({ table: table.getName() });
-            svc.defineUpdateByPrimaryKeyMethod({ table: table.getName() });
-            svc.defineFindByUniqueColumnMethod({ table: table.getName() });
-            svc.defineFindByUniqueConstraintMethod({ table: table.getName() });
+            svc.defineFindByPrimaryKeyMethod({ table: tableName });
+            svc.defineInsertMethod({ table: tableName });
+            svc.defineDeleteByPrimaryKeyMethod({ table: tableName });
+            svc.defineUpdateByPrimaryKeyMethod({ table: tableName });
+            svc.defineFindByUniqueColumnMethod({ table: tableName });
+            svc.defineFindByUniqueConstraintMethod({ table: tableName });
             if (has_list_by_expression) {
-                svc.defineListByExpressionMethod({ table: table.getName() });
+                svc.defineListByExpressionMethod({ table: tableName });
             }
         }
     });

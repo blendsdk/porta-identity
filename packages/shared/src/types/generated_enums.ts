@@ -133,6 +133,23 @@ export enum eSysClient {
 }
 
 /**
+ * Enum of the type sys_extension
+ * @export
+ * @enum
+ */
+export enum eSysExtension {
+	$name = "sys_extension",
+	EXTENSION_ID = "extension_id",
+	NAME = "name",
+	VERSION = "version",
+	DESCRIPTION = "description",
+	SOURCE = "source",
+	OPTIONS = "options",
+	IS_ACTIVE = "is_active",
+	DATE_CREATED = "date_created"
+}
+
+/**
  * Enum of the type sys_user
  * @export
  * @enum
@@ -162,6 +179,7 @@ export enum eSysProfile {
 	AVATAR = "avatar",
 	USER_ID = "user_id",
 	DATE_CREATED = "date_created",
+	USER_STATE = "user_state",
 	DATE_MODIFIED = "date_modified"
 }
 
@@ -226,6 +244,7 @@ export enum eSysRolePermission {
 export enum ePortaAccount {
 	$name = "porta_account",
 	USER = "user",
+	PROFILE = "profile",
 	TENANT = "tenant"
 }
 

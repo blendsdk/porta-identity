@@ -1,3 +1,4 @@
+import { getGlobalRouter } from "@blendsdk/react";
 
 export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;
@@ -11,6 +12,19 @@ export const getBaseUrl = () => {
  * @return {*}
  */
 export function getTenant() {
+
+    const router = getGlobalRouter();
+
+    if (router) {
+        const { tenant } = router.getParameters<{ tenant: string; }>();
+        if (tenant) {
+            return {
+                tenant,
+                version: tenant
+            };
+        }
+    }
+
     const url = new URL(window.location.href);
     const hostName = (url.hostname || url.host || "").toLocaleLowerCase();
     const parts = hostName.split(".");

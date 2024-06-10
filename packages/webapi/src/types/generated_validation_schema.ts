@@ -262,6 +262,41 @@ export const validationSchema = {
 			},
 			required: ["access_token_length", "refresh_token_length", "application_id"]
 		},
+		sys_extension: {
+			type: eJsonSchemaType.object,
+			properties: {
+				extension_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				name: {
+					type: eJsonSchemaType.string
+				},
+				version: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				source: {
+					type: eJsonSchemaType.string
+				},
+				options: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				}
+			},
+			required: ["name", "version", "description", "source"]
+		},
 		sys_user: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -324,6 +359,10 @@ export const validationSchema = {
 				date_created: {
 					type: eJsonSchemaType.string,
 					format: "date",
+					acceptNullValue: true
+				},
+				user_state: {
+					type: eJsonSchemaType.string,
 					acceptNullValue: true
 				},
 				date_modified: {
@@ -431,12 +470,16 @@ export const validationSchema = {
 					$ref: "#/definitions/sys_user",
 					type: eJsonSchemaType.object
 				},
+				profile: {
+					$ref: "#/definitions/sys_profile",
+					type: eJsonSchemaType.object
+				},
 				tenant: {
 					$ref: "#/definitions/sys_tenant",
 					type: eJsonSchemaType.object
 				}
 			},
-			required: ["user", "tenant"]
+			required: ["user", "profile", "tenant"]
 		},
 		error_data: {
 			type: eJsonSchemaType.object,
@@ -487,6 +530,93 @@ export const validationSchema = {
 				}
 			},
 			required: ["webclient", "webapi", "mobileclient"]
+		},
+		list_extension_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		initialize_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				username: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				email: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["password", "email"]
+		},
+		initialize: {
+			type: eJsonSchemaType.object,
+			properties: {
+				error: {
+					type: eJsonSchemaType.string
+				},
+				status: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["status"]
+		},
+		get_reference_data: {
+			type: eJsonSchemaType.object
+		},
+		get_reference_data_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		get_user_profile_request: {
+			type: eJsonSchemaType.object
+		},
+		get_user_state_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		get_user_state: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user_state: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["user_state"]
+		},
+		save_user_state_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				user_state: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true,
+					validate: false
+				}
+			},
+			required: ["tenant", "user_state"]
 		},
 		discovery_keys_request: {
 			type: eJsonSchemaType.object,
@@ -596,33 +726,6 @@ export const validationSchema = {
 		},
 		authorize: {
 			type: eJsonSchemaType.object
-		},
-		initialize_request: {
-			type: eJsonSchemaType.object,
-			properties: {
-				username: {
-					type: eJsonSchemaType.string
-				},
-				password: {
-					type: eJsonSchemaType.string
-				},
-				email: {
-					type: eJsonSchemaType.string
-				}
-			},
-			required: ["password", "email"]
-		},
-		initialize: {
-			type: eJsonSchemaType.object,
-			properties: {
-				error: {
-					type: eJsonSchemaType.string
-				},
-				status: {
-					type: eJsonSchemaType.boolean
-				}
-			},
-			required: ["status"]
 		}
 	}
 };

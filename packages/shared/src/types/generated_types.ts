@@ -3,7 +3,7 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysUser, ISysTenant } from "./generated_database_types";
+import { ISysUser, ISysProfile, ISysTenant } from "./generated_database_types";
 
 /**
  * @export
@@ -32,6 +32,11 @@ export interface IPortaAccount {
 	 * @memberOf IPortaAccount
 	 */
 	user: ISysUser;
+	/**
+	 * @type ISysProfile
+	 * @memberOf IPortaAccount
+	 */
+	profile: ISysProfile;
 	/**
 	 * @type ISysTenant
 	 * @memberOf IPortaAccount

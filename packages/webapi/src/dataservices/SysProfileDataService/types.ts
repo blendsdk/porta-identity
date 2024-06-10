@@ -5,6 +5,18 @@
 
 /**
  * @export
+ * @interface ISysProfileDataServiceFindProfileByUserIdParams
+ */
+export interface ISysProfileDataServiceFindProfileByUserIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysProfileDataServiceFindProfileByUserIdParams
+	 */
+	user_id: string;
+}
+
+/**
+ * @export
  * @interface ISysProfileDataServiceFindSysProfileByIdParams
  */
 export interface ISysProfileDataServiceFindSysProfileByIdParams {

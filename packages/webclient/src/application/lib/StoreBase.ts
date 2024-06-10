@@ -15,7 +15,7 @@ export class StoreBase extends DataStoreBase {
      * @param {RouterStore} router
      * @memberof StoreBase
      */
-    public serRouter(router: RouterStore) {
+    public setRouter(router: RouterStore) {
         if (!this.router) {
             this.router = router;
         }

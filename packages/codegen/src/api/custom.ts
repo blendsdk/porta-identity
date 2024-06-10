@@ -11,5 +11,4 @@ export function defineCustomApi(builder: ApiBuilder) {
     createReferenceDataAPI(builder);
     createUserProfileAPI(builder);
     createAuthenticationAPI(builder);
-
 }

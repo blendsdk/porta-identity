@@ -12,6 +12,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const application = database.addTable("sys_application");
     const secret = database.addTable("sys_secret");
     const client = database.addTable("sys_client");
+    const sys_extension = database.addTable("sys_extension").setMetaData({ has_list_by_expression: true });
 
     const user = database.addTable("sys_user");
     const profile = database.addTable("sys_profile");
@@ -35,6 +36,17 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     // const mfa = database.addTable("sys_mfa");
     // const user_mfa = database.addTable("sys_user_mfa");
 
+    sys_extension
+        .primaryKeyColumn("extension_id", true)
+        .stringColumn("name")
+        .stringColumn("version")
+        .stringColumn("description")
+        .stringColumn("source")
+        .stringColumn("options", { default: "'{}'" })
+        .booleanColumn("is_active", { default: "false" })
+        .dateTimeColumn("date_created", { default: "now()" })
+        .uniqueConstraint(["name", "version"]);
+
     user.primaryKeyColumn("id", true) //
         .stringColumn("username", { unique: true })
         .stringColumn("password")
@@ -51,6 +63,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("avatar", { required: false })
         .referenceColumnAuto("user_id", user)
         .dateColumn("date_created", { default: "now()" })
+        .stringColumn("user_state", { required: false })
         .dateColumn("date_modified", { default: "now()" });
 
     tenant //

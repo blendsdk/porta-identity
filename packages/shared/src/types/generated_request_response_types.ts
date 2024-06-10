@@ -3,7 +3,8 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { IErrorData } from "./generated_types";
+import { IErrorData, IPortaAccount, IOpsResponse } from "./generated_types";
+import { ISysExtension } from "./generated_database_types";
 
 /**
  * @export
@@ -94,6 +95,194 @@ export interface IGetAppVersionResponse {
 	 * @memberOf IGetAppVersionResponse
 	 */
 	data: IGetAppVersion;
+}
+
+/**
+ * @export
+ * @interface IListExtensionRequest
+ */
+export interface IListExtensionRequest {
+	/**
+	 * @type string
+	 * @memberOf IListExtensionRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IListExtensionResponse
+ */
+export interface IListExtensionResponse {
+	/**
+	 * @type ISysExtension[]
+	 * @memberOf IListExtensionResponse
+	 */
+	data: ISysExtension[];
+}
+
+/**
+ * @export
+ * @interface IInitializeRequest
+ */
+export interface IInitializeRequest {
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf IInitializeRequest
+	 */
+	email: string;
+}
+
+/**
+ * @export
+ * @interface IInitialize
+ */
+export interface IInitialize {
+	/**
+	 * @type string
+	 * @memberOf IInitialize
+	 */
+	error?: string;
+	/**
+	 * @type boolean
+	 * @memberOf IInitialize
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface IInitializeResponse
+ */
+export interface IInitializeResponse {
+	/**
+	 * @type IInitialize
+	 * @memberOf IInitializeResponse
+	 */
+	data: IInitialize;
+}
+
+/**
+ * @export
+ * @interface IGetReferenceData
+ */
+export interface IGetReferenceData {}
+
+/**
+ * @export
+ * @interface IGetReferenceDataRequest
+ */
+export interface IGetReferenceDataRequest {
+	/**
+	 * @type string
+	 * @memberOf IGetReferenceDataRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IGetReferenceDataResponse
+ */
+export interface IGetReferenceDataResponse {
+	/**
+	 * @type IGetReferenceData
+	 * @memberOf IGetReferenceDataResponse
+	 */
+	data: IGetReferenceData;
+}
+
+/**
+ * @export
+ * @interface IGetUserProfileRequest
+ */
+export interface IGetUserProfileRequest {}
+
+/**
+ * @export
+ * @interface IGetUserProfileResponse
+ */
+export interface IGetUserProfileResponse {
+	/**
+	 * @type IPortaAccount
+	 * @memberOf IGetUserProfileResponse
+	 */
+	data: IPortaAccount;
+}
+
+/**
+ * @export
+ * @interface IGetUserStateRequest
+ */
+export interface IGetUserStateRequest {
+	/**
+	 * @type string
+	 * @memberOf IGetUserStateRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IGetUserState
+ */
+export interface IGetUserState {
+	/**
+	 * @type string
+	 * @memberOf IGetUserState
+	 */
+	user_state: string;
+}
+
+/**
+ * @export
+ * @interface IGetUserStateResponse
+ */
+export interface IGetUserStateResponse {
+	/**
+	 * @type IGetUserState
+	 * @memberOf IGetUserStateResponse
+	 */
+	data: IGetUserState;
+}
+
+/**
+ * @export
+ * @interface ISaveUserStateRequest
+ */
+export interface ISaveUserStateRequest {
+	/**
+	 * @type string
+	 * @memberOf ISaveUserStateRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ISaveUserStateRequest
+	 */
+	user_state: string;
+}
+
+/**
+ * @export
+ * @interface ISaveUserStateResponse
+ */
+export interface ISaveUserStateResponse {
+	/**
+	 * @type IOpsResponse
+	 * @memberOf ISaveUserStateResponse
+	 */
+	data: IOpsResponse;
 }
 
 /**
@@ -257,55 +446,4 @@ export interface IAuthorizeResponse {
 	 * @memberOf IAuthorizeResponse
 	 */
 	data: IAuthorize;
-}
-
-/**
- * @export
- * @interface IInitializeRequest
- */
-export interface IInitializeRequest {
-	/**
-	 * @type string
-	 * @memberOf IInitializeRequest
-	 */
-	username?: string;
-	/**
-	 * @type string
-	 * @memberOf IInitializeRequest
-	 */
-	password: string;
-	/**
-	 * @type string
-	 * @memberOf IInitializeRequest
-	 */
-	email: string;
-}
-
-/**
- * @export
- * @interface IInitialize
- */
-export interface IInitialize {
-	/**
-	 * @type string
-	 * @memberOf IInitialize
-	 */
-	error?: string;
-	/**
-	 * @type boolean
-	 * @memberOf IInitialize
-	 */
-	status: boolean;
-}
-
-/**
- * @export
- * @interface IInitializeResponse
- */
-export interface IInitializeResponse {
-	/**
-	 * @type IInitialize
-	 * @memberOf IInitializeResponse
-	 */
-	data: IInitialize;
 }

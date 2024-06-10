@@ -27,7 +27,7 @@ export class AuthorizeEndpointController extends EndpointController {
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];
 
-        const { tenant, redirect_uri, response_mode, state, ui_locales } = authRequest;
+        const { tenant, redirect_uri, response_mode, state } = authRequest;
 
         const tenantRecord = await this.getTenantRecord(tenant);
 

@@ -1,4 +1,5 @@
 import {
+	ISysProfileDataServiceFindProfileByUserIdParams,
 	ISysProfileDataServiceFindSysProfileByIdParams,
 	ISysProfileDataServiceDeleteSysProfileByIdFilter,
 	ISysProfileDataServiceUpdateSysProfileByIdFilter
@@ -15,6 +16,21 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysProfileDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * @param {ISysProfileDataServiceFindProfileByUserIdParams}
+	 * @returns {ISysProfile}
+	 * @memberof SysProfileDataServiceBase
+	 */
+	public async findProfileByUserId(params: ISysProfileDataServiceFindProfileByUserIdParams): Promise<ISysProfile> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysProfile, ISysProfileDataServiceFindProfileByUserIdParams>(
+			`SELECT * FROM sys_profile WHERE user_id = :user_id`,
+			params,
+			{ single: true }
+		);
+		return result.data;
+	}
+
 	/**
 	 * Find a sys_profile record by
 	 * @param {ISysProfileDataServiceFindSysProfileByIdParams}
