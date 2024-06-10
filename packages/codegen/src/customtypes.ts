@@ -1,4 +1,20 @@
-import { typeSchema } from "./lib";
+import { refType } from "@blendsdk/codegen";
+import { database, typeSchema } from "./lib";
+export const refOpsResponse = refType("ops_response");
+
+export const ref_types = () => {
+    const data = database
+        .getTables()
+        .filter((table) => {
+            const { is_reference_table } = table.getMetaData();
+            return is_reference_table === true;
+        })
+        .map((item) => {
+            return item.getName();
+        })
+        .filter(Boolean);
+    return data;
+};
 
 export function createCustomTypes(order: number) {
     if (order === 0) {

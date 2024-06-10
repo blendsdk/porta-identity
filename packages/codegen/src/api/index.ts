@@ -1,6 +1,5 @@
 import { ApiBuilder, TypeBuilder, TypeSchema } from "@blendsdk/codegen";
 import { consoleLogger } from "../lib";
-import { defineAuthenticationAPI } from "./auth";
 import { defineCustomApi } from "./custom";
 
 export function createAPISchema(typeSchema: TypeSchema, typeBuilder: TypeBuilder) {
@@ -30,9 +29,6 @@ export function createAPISchema(typeSchema: TypeSchema, typeBuilder: TypeBuilder
 
     // Add version API
     builder.defineAppVersionApi(true);
-
-    // Create the authentication API
-    defineAuthenticationAPI(builder); //disable for now for experimenting with OIDC
 
     // Define application API
     defineCustomApi(builder);

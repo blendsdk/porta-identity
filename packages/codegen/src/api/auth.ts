@@ -1,7 +1,7 @@
 import { ApiBuilder } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
 
-export function defineAuthenticationAPI(builder: ApiBuilder) {
+export function createAuthenticationAPI(builder: ApiBuilder) {
     /**
      * Check the account for its state and status
      */
