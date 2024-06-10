@@ -8,173 +8,171 @@ import { createMethodName, Database, eReturnValue, RdbDataServiceBuilder } from 
  * @param {RdbDataServiceBuilder} builder
  */
 export function createCrudDataServices(databaseSchema: Database, builder: RdbDataServiceBuilder) {
-    databaseSchema.getViews().forEach((view) => {
-        const serviceName = createMethodName(`${view.getName()}_data_service`, false);
-        const svc = builder.createService(
-            serviceName,
-            `Provides functionality to get data from ${view.getName()} view`
-        );
+    // databaseSchema.getViews().forEach((view) => {
+    //     const serviceName = createMethodName(`${view.getName()}_data_service`, false);
+    //     const svc = builder.createService(
+    //         serviceName,
+    //         `Provides functionality to get data from ${view.getName()} view`
+    //     );
 
-        console.log(svc === null);
+    //     // if (view.getName() === "sys_session_view") {
+    //     //     svc.defineMethod({
+    //     //         name: "find_session_by_oidc_client_and_subject",
+    //     //         query: "select * from sys_session_view where oidc_sub_claim = :sub_claim and oidc_client_id = :client_id",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("sub_claim")
+    //     //                 .addString("client_id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
 
-        // if (view.getName() === "sys_session_view") {
-        //     svc.defineMethod({
-        //         name: "find_session_by_oidc_client_and_subject",
-        //         query: "select * from sys_session_view where oidc_sub_claim = :sub_claim and oidc_client_id = :client_id",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("sub_claim")
-        //                 .addString("client_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
+    //     //     svc.defineMethod({
+    //     //         name: "find_session_by_client_and_user",
+    //     //         query: "select * from sys_session_view where user_id = :user_id and client_id = :client_id",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("user_id")
+    //     //                 .addString("client_id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
 
-        //     svc.defineMethod({
-        //         name: "find_session_by_client_and_user",
-        //         query: "select * from sys_session_view where user_id = :user_id and client_id = :client_id",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("user_id")
-        //                 .addString("client_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
+    //     //     svc.defineMethod({
+    //     //         name: "find_session_by_session_id",
+    //     //         query: "select * from sys_session_view where id = :id",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     // }
 
-        //     svc.defineMethod({
-        //         name: "find_session_by_session_id",
-        //         query: "select * from sys_session_view where id = :id",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        // }
+    //     // if (view.getName() === "sys_access_token_view") {
+    //     //     svc.defineMethod({
+    //     //         name: "find_access_token",
+    //     //         query: "select * from sys_access_token_view where access_token = :access_token",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("access_token");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     //     svc.defineMethod({
+    //     //         name: "find_access_token_by_reference",
+    //     //         query: "select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("token_reference");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     //     svc.defineMethod({
+    //     //         name: "find_access_token_by_id",
+    //     //         query: "select * from sys_access_token_view where id = :id",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     // }
 
-        // if (view.getName() === "sys_access_token_view") {
-        //     svc.defineMethod({
-        //         name: "find_access_token",
-        //         query: "select * from sys_access_token_view where access_token = :access_token",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("access_token");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        //     svc.defineMethod({
-        //         name: "find_access_token_by_reference",
-        //         query: "select * from sys_access_token_view where auth_request_params ->> 'token_reference' = :token_reference",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("token_reference");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        //     svc.defineMethod({
-        //         name: "find_access_token_by_id",
-        //         query: "select * from sys_access_token_view where id = :id",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        // }
+    //     // if (view.getName() === "sys_refresh_token_view") {
+    //     //     svc.defineMethod({
+    //     //         name: "find_refresh_token",
+    //     //         query: "select * from sys_refresh_token_view where refresh_token = :refresh_token",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("refresh_token");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
 
-        // if (view.getName() === "sys_refresh_token_view") {
-        //     svc.defineMethod({
-        //         name: "find_refresh_token",
-        //         query: "select * from sys_refresh_token_view where refresh_token = :refresh_token",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("refresh_token");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
+    //     //     svc.defineMethod({
+    //     //         name: "find_refresh_token_by_access_token",
+    //     //         query: "select * from sys_refresh_token_view where access_token = :access_token",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("access_token");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     // }
 
-        //     svc.defineMethod({
-        //         name: "find_refresh_token_by_access_token",
-        //         query: "select * from sys_refresh_token_view where access_token = :access_token",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("access_token");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        // }
+    //     // if (view.getName() === "sys_authorization_view") {
+    //     //     svc.defineMethod({
+    //     //         name: "find_by_client_id_and_redirect_uri",
+    //     //         query: "select * from sys_authorization_view where client_id = :client_id and client_type <> 'S'",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("client_id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
 
-        // if (view.getName() === "sys_authorization_view") {
-        //     svc.defineMethod({
-        //         name: "find_by_client_id_and_redirect_uri",
-        //         query: "select * from sys_authorization_view where client_id = :client_id and client_type <> 'S'",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("client_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-
-        //     svc.defineMethod({
-        //         name: "find_by_client_id_only",
-        //         query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'",
-        //         recordSet: false,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("client_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: view.getName()
-        //     });
-        // }
-    });
+    //     //     svc.defineMethod({
+    //     //         name: "find_by_client_id_only",
+    //     //         query: "select * from sys_authorization_view where client_id = :client_id and redirect_uri is null and client_type = 'S'",
+    //     //         recordSet: false,
+    //     //         returnValue: eReturnValue.dataOnly,
+    //     //         type: "query",
+    //     //         inputType: ({ suggestedTypeName, typeSchema }) => {
+    //     //             typeSchema
+    //     //                 .createAppendType(suggestedTypeName) //
+    //     //                 .addString("client_id");
+    //     //             return suggestedTypeName;
+    //     //         },
+    //     //         returnType: view.getName()
+    //     //     });
+    //     // }
+    // });
 
     databaseSchema.getTables().forEach((table) => {
         const serviceName = createMethodName(`${table.getName()}_data_service`, false);
@@ -183,7 +181,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             `Provides functionality to manipulate the ${table.getName()} table`
         );
 
-        console.log(svc === null);
+        const { has_list_by_expression } = table.getMetaData();
 
         // if (table.getName() === "sys_refresh_token") {
         //     svc.defineDeleteByColumnMethod(
@@ -243,6 +241,15 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         // }
 
         if (table.getName() === "sys_tenant") {
+
+            svc.defineListByExpressionMethod({
+                table: "sys_authorization_view"
+            });
+
+            svc.defineListByExpressionMethod({
+                table: "sys_secret_view"
+            });
+
             svc.defineListByExpressionMethod({
                 table: table.getName()
             });
@@ -382,6 +389,9 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             svc.defineUpdateByPrimaryKeyMethod({ table: table.getName() });
             svc.defineFindByUniqueColumnMethod({ table: table.getName() });
             svc.defineFindByUniqueConstraintMethod({ table: table.getName() });
+            if (has_list_by_expression) {
+                svc.defineListByExpressionMethod({ table: table.getName() });
+            }
         }
     });
 }

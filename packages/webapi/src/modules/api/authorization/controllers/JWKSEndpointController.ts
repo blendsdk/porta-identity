@@ -1,10 +1,10 @@
 import { asyncForEach } from "@blendsdk/stdlib";
-import { BadRequestResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, ISysKey } from "@porta/shared";
 import * as jose from "jose";
 import { DataServices } from "../../../../dataservices/DataServices";
 import { EndpointController } from "../../../../services";
-import { eOAuthSigningAlg } from "../../../../types";
+import { eErrorType, eOAuthSigningAlg } from "../../../../types";
 interface IJwkKey {
     privateKey: string;
     publicKey: string;
@@ -29,39 +29,32 @@ export class JWKSEndpointController extends EndpointController {
         const tenantRecord = await this.getTenantRecord(tenant);
 
         if (!tenantRecord) {
-            return new BadRequestResponse({
-                message: "INVALID_REQUEST_UNKNOWN_TENANT",
-                cause: `Invalid tenant ${tenant}`
-            });
+            return this.responseWithError({
+                error: eErrorType.invalid_tenant,
+                error_description: tenant
+            }, true);
         }
 
         const ds = new DataServices(tenant, this.request, true); // no user no assertion
         return ds.withTransaction(async () => {
-            if (tenantRecord) {
-                const sysKeys = await ds.sysKeyDataService().findJwkKeys();
-                const jwks = [];
-                await asyncForEach<ISysKey>(sysKeys, async (record) => {
-                    const { certificate, publicKey } = JSON.parse(record.data) as IJwkKey;
+            const sysKeys = await ds.sysKeyDataService().findJwkKeys();
+            const jwks = [];
+            await asyncForEach<ISysKey>(sysKeys, async (record) => {
+                const { certificate, publicKey } = JSON.parse(record.data) as IJwkKey;
 
-                    const pubKey = await jose.importSPKI(publicKey, "ES256");
-                    const jwk = await jose.exportJWK(pubKey);
-                    jwk.use = "sig";
-                    jwk.alg = eOAuthSigningAlg.RS256;
-                    jwk.kid = record.key_id;
-                    jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
-                    jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
-                    jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
-                    (jwks as any[]).push(jwk);
-                });
-                return new SuccessResponse({
-                    keys: jwks
-                });
-            } else {
-                return new BadRequestResponse({
-                    message: "INVALID_REQUEST",
-                    cause: `Invalid tenant ${tenant}`
-                });
-            }
+                const pubKey = await jose.importSPKI(publicKey, "ES256");
+                const jwk = await jose.exportJWK(pubKey);
+                jwk.use = "sig";
+                jwk.alg = eOAuthSigningAlg.RS256;
+                jwk.kid = record.key_id;
+                jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
+                jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
+                jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
+                (jwks as any[]).push(jwk);
+            });
+            return new SuccessResponse({
+                keys: jwks
+            });
         });
     }
 }

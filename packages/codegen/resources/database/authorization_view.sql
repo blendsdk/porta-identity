@@ -1,15 +1,18 @@
 select
-    sc.*,
-    row_to_json(su) as client_credentials_user
+	sc.application_id,
+	sa.logo,
+	sa.application_name,
+	sa.client_id,
+	sc.client_type,
+	sc.redirect_uri,
+	sc.post_logout_redirect_uri,
+	sc.is_back_channel_post_logout,
+	sc.access_token_length,
+	sc.refresh_token_length,
+	sc.client_credentials_user_id
 from
-    sys_client_view sc
-    left outer join sys_user su on sc.client_credentials_user_id = su.id
+	sys_application sa
+	inner join sys_client sc on sc.application_id = sa.id
 where
-    (
-        valid_from is null
-        or now() >= valid_from
-    )
-    and (
-        valid_until is null
-        or now() < valid_until
-    )
+	sa.is_active is true and
+	sc.is_active is true

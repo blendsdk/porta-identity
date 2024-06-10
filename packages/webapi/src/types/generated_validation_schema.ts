@@ -7,6 +7,95 @@ import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 export const validationSchema = {
 	type: eJsonSchemaType.object,
 	definitions: {
+		sys_secret_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				secret: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				valid_from: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				valid_to: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				is_expired: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["id", "secret", "description", "valid_from", "valid_to", "is_system", "client_id", "is_expired"]
+		},
+		sys_authorization_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				access_token_length: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_token_length: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: [
+				"application_id",
+				"logo",
+				"application_name",
+				"client_id",
+				"client_type",
+				"redirect_uri",
+				"post_logout_redirect_uri",
+				"is_back_channel_post_logout",
+				"access_token_length",
+				"refresh_token_length",
+				"client_credentials_user_id"
+			]
+		},
 		sys_tenant: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -93,8 +182,8 @@ export const validationSchema = {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
-					type: eJsonSchemaType.integer,
-					format: "int32"
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				},
 				secret: {
 					type: eJsonSchemaType.string
@@ -104,30 +193,30 @@ export const validationSchema = {
 					acceptNullValue: true
 				},
 				valid_from: {
-					type: eJsonSchemaType.integer,
-					format: "int32"
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
 				},
 				valid_to: {
-					type: eJsonSchemaType.integer,
-					format: "int32"
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
 				},
 				is_system: {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
-				application_id: {
+				client_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				}
 			},
-			required: ["secret", "valid_from", "valid_to", "application_id"]
+			required: ["secret", "valid_from", "valid_to", "client_id"]
 		},
 		sys_client: {
 			type: eJsonSchemaType.object,
 			properties: {
 				id: {
-					type: eJsonSchemaType.integer,
-					format: "int32"
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				},
 				client_type: {
 					type: eJsonSchemaType.string,
@@ -164,6 +253,11 @@ export const validationSchema = {
 				application_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
+				},
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid",
+					acceptNullValue: true
 				}
 			},
 			required: ["access_token_length", "refresh_token_length", "application_id"]

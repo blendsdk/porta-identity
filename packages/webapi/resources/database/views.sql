@@ -1,0 +1,25 @@
+DROP VIEW IF EXISTS sys_secret_view CASCADE;
+CREATE OR REPLACE VIEW sys_secret_view AS select
+	*,
+	((now() >= valid_from) is true) and ((now() < valid_to) is false) as is_expired    
+from
+	sys_secret;
+DROP VIEW IF EXISTS sys_authorization_view CASCADE;
+CREATE OR REPLACE VIEW sys_authorization_view AS select
+	sc.application_id,
+	sa.logo,
+	sa.application_name,
+	sa.client_id,
+	sc.client_type,
+	sc.redirect_uri,
+	sc.post_logout_redirect_uri,
+	sc.is_back_channel_post_logout,
+	sc.access_token_length,
+	sc.refresh_token_length,
+	sc.client_credentials_user_id
+from
+	sys_application sa
+	inner join sys_client sc on sc.application_id = sa.id
+where
+	sa.is_active is true and
+	sc.is_active is true

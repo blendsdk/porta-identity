@@ -1,4 +1,4 @@
-import { Database, PostgreSQLTypeFromQuery } from "@blendsdk/codegen";
+import { Database, PostgreSQLTypeFromQuery, eDBForeignKeyAction } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
 import path from "path";
 import { dataSourceConfig } from "./config";
@@ -71,17 +71,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_system", { default: "false" })
         .booleanColumn("is_active", { default: "true" });
 
-    secret  //
-        .primaryKeyColumn("id")
-        .stringColumn("secret")
-        .stringColumn("description", { required: false })
-        .integerColumn("valid_from")
-        .integerColumn("valid_to")
-        .booleanColumn("is_system", { default: "false" })
-        .referenceColumnAuto("application_id", application);
-
     client //
-        .primaryKeyColumn("id")
+        .primaryKeyColumn("id", true)
         .stringColumn("client_type", { default: "'C'" })
         .stringColumn("redirect_uri", { required: false })
         .stringColumn("post_logout_redirect_uri", { required: false })
@@ -90,7 +81,17 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_active", { default: "true" })
         .integerColumn("access_token_length")
         .integerColumn("refresh_token_length")
-        .referenceColumnAuto("application_id", application);
+        .referenceColumnAuto("application_id", application)
+        .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
+
+    secret  //
+        .primaryKeyColumn("id", true)
+        .stringColumn("secret")
+        .stringColumn("description", { required: false })
+        .dateTimeColumn("valid_from", { withTimeZone: true })
+        .dateTimeColumn("valid_to", { withTimeZone: true })
+        .booleanColumn("is_system", { default: "false" })
+        .referenceColumnAuto("client_id", client);
 
     key.primaryKeyColumn("id", true) //
         .stringColumn("key_type")
@@ -229,8 +230,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     //         onUpdate: eDBForeignKeyAction.cascade
     //     });
 
-    // database.addView("sys_client_view", path.join(resourcesRoot, "client_view.sql"), 99);
-    // database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
+    database.addView("sys_secret_view", path.join(resourcesRoot, "secret_view.sql"), 99);
+    database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
     // database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);
     // database.addView("sys_roles_by_user_view", path.join(resourcesRoot, "roles_by_user_view.sql"), 102);
     // database.addView("sys_user_permission_view", path.join(resourcesRoot, "user_permission_view.sql"), 102);

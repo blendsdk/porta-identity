@@ -9,10 +9,10 @@
  */
 export interface ISysClientDataServiceFindSysClientByIdParams {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysClientDataServiceFindSysClientByIdParams
 	 */
-	id: number;
+	id: string;
 }
 
 /**
@@ -21,10 +21,10 @@ export interface ISysClientDataServiceFindSysClientByIdParams {
  */
 export interface ISysClientDataServiceDeleteSysClientByIdFilter {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysClientDataServiceDeleteSysClientByIdFilter
 	 */
-	id: number;
+	id: string;
 }
 
 /**
@@ -33,8 +33,8 @@ export interface ISysClientDataServiceDeleteSysClientByIdFilter {
  */
 export interface ISysClientDataServiceUpdateSysClientByIdFilter {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysClientDataServiceUpdateSysClientByIdFilter
 	 */
-	id: number;
+	id: string;
 }

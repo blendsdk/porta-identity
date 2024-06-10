@@ -9,10 +9,10 @@
  */
 export interface ISysSecretDataServiceFindSysSecretByIdParams {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecretDataServiceFindSysSecretByIdParams
 	 */
-	id: number;
+	id: string;
 }
 
 /**
@@ -21,10 +21,10 @@ export interface ISysSecretDataServiceFindSysSecretByIdParams {
  */
 export interface ISysSecretDataServiceDeleteSysSecretByIdFilter {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecretDataServiceDeleteSysSecretByIdFilter
 	 */
-	id: number;
+	id: string;
 }
 
 /**
@@ -33,8 +33,8 @@ export interface ISysSecretDataServiceDeleteSysSecretByIdFilter {
  */
 export interface ISysSecretDataServiceUpdateSysSecretByIdFilter {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecretDataServiceUpdateSysSecretByIdFilter
 	 */
-	id: number;
+	id: string;
 }

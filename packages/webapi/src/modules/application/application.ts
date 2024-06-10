@@ -17,7 +17,6 @@ import { ValidationSchema } from "./validations";
 const getTestConfig = () => {
     const cfg = require(path.join(process.cwd(), "config", "app.config.js"));
     cfg.PORT = 4010;
-    cfg.PORTA_SIGNIN_URI = "http://localhost:4020/fe/auth/signin";
     return cfg;
 };
 

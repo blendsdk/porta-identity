@@ -26,11 +26,12 @@ class CommonUtils {
 
     /**
      * @param {number} seconds
+     * @param {number} [now]
      * @return {*} 
      * @memberof CommonUtils
      */
-    public expireSecondsFromNow(seconds: number) {
-        return Date.now() + this.secondsToMilliseconds(seconds);
+    public expireSecondsFromNow(seconds: number, now?: number) {
+        return (now || Date.now()) + this.secondsToMilliseconds(seconds);
     };
 }
 

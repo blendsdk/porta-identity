@@ -25,8 +25,18 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         return `${this.getServerURL()}/${tenant}/oauth2`;
     }
 
-    protected getTenantRecord(tenant: string) {
-        return databaseUtils.findTenant(tenant);
+    /**
+     * @protected
+     * @param {string} tenant
+     * @param {boolean} [checkActive]
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async getTenantRecord(tenant: string, checkActive?: boolean) {
+        const tenantRecord = await databaseUtils.findTenant(tenant);
+        checkActive = checkActive === false ? false : true;
+        const isActive = tenantRecord ? checkActive ? tenantRecord.is_active : true : false;
+        return tenantRecord && isActive ? tenantRecord : undefined;
     }
 
     /**
@@ -59,6 +69,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         } else if (response_mode === eOAuthResponseMode.form_post) {
             return new SuccessResponse(formPostTemplate({ redirect_uri, data: params }));
         } else {
+            // response_mode === eOAuthResponseMode.query
             return new RedirectResponse({
                 url: `${redirect_uri}?${new URLSearchParams(params).toString()}`
             });

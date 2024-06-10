@@ -1,10 +1,11 @@
-import { sha256Hash } from "@blendsdk/crypto";
+import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
+import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse } from "@porta/shared";
-import { DataServices } from "../../../../dataservices/DataServices";
+import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant, eSysAuthorizationView } from "@porta/shared";
+import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { EndpointController, commonUtils } from "../../../../services";
-import { IPortaApplicationSetting, NONCE_TTL, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
+import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
 
 /**
  * Handler for the authorize endpoint
@@ -26,7 +27,7 @@ export class AuthorizeEndpointController extends EndpointController {
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];
 
-        const { tenant, redirect_uri, response_mode, state } = authRequest;
+        const { tenant, redirect_uri, response_mode, state, ui_locales } = authRequest;
 
         const tenantRecord = await this.getTenantRecord(tenant);
 
@@ -40,21 +41,107 @@ export class AuthorizeEndpointController extends EndpointController {
             });
         }
 
-        const ds = new DataServices(tenant, this.request, true); // no user no assertion test
-        return ds.withTransaction(async () => {
-
-            // validate the authorization request
-            const validationResult = await this.validateAuthorizationRequest(authRequest);
-
-            if (!isNullOrUndef(validationResult)) {
-                // something is wrong with the request
-                return validationResult;
+        const validationResult = await this.validateAuthorizationRequest(authRequest);
+        if (!isNullOrUndef(validationResult)) {
+            // something is wrong with the request
+            return validationResult;
+        } else {
+            const { errors, flowId } = await this.prepareAuthorization(authRequest, tenantRecord);
+            if (errors.length === 0 && flowId) {
+                // here we decide on the sign in URL. It is either from the webclient or 
+                // an existing user.
+                let signinURL = this.createFrontendSignInUrl(flowId, authRequest);
+                return new RedirectResponse({ url: signinURL });
             } else {
-                
-                return new RedirectResponse({ url: "https://truesoftware.nl" });
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: errors.join(","),
+                        state,
+                        redirect_uri,
+                        response_mode
+                    },
+                    true
+                );
             }
+        }
+    }
 
-        });
+    /**
+     * @protected
+     * @param {string} flowId
+     * @param {IAuthorizeRequest} authRequest
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
+    protected createFrontendSignInUrl(flowId: string, authRequest: IAuthorizeRequest) {
+        let signinURL = `${this.getServerURL()}/fe/${flowId}/signin`;
+        const url = new URL(signinURL);
+        if (authRequest.ui_locales) {
+            url.searchParams.append("ui_locals", authRequest.ui_locales);
+        }
+        return url.toString();
+    }
+
+    protected async prepareAuthorization(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+
+        // Find the auth record based on the auth request from the database
+        const authRecord = await this.findAuthorizationRecord(authRequest, tenantRecord);
+
+        const errors: string[] = [];
+
+        let flowId: string = undefined;
+
+        if (authRecord.length === 1) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
+            flowId = await this.createAuthorizationFlow(authRecord[0], authRequest);
+        } else {
+            errors.push("invalid_authorization");
+        }
+        return { errors, flowId };
+    }
+
+    /**
+     * @protected
+     * @param {ISysAuthorizationView} authRecord
+     * @param {IAuthorizeRequest} authRequest
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
+    protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest) {
+        const flowId = generateRandomUUID();
+        const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
+        await this.getCache().setValue<IAuthorizationFlow>(
+            `auth_flow:${flowId}`,
+            {
+                authRecord: authRecord[0], // the first one
+                authRequest,
+                flowId,
+                expire
+            },
+            {
+                expire
+            }
+        );
+        return flowId;
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizeRequest} authRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
+    protected findAuthorizationRecord(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const { client_id, redirect_uri } = authRequest;
+        const e = expression();
+        return tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri)
+            )
+        ));
     }
 
     /**
@@ -163,7 +250,7 @@ export class AuthorizeEndpointController extends EndpointController {
             const result = await this.getCache().getValue(key);
             if (!result) {
                 await this.getCache().setValue(key, true, {
-                    expire: commonUtils.expireSecondsFromNow(NONCE_TTL)
+                    expire: commonUtils.expireSecondsFromNow(CONST_NONCE_TTL)
                 });
                 return true;
             } else {

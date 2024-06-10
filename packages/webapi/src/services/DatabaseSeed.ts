@@ -5,7 +5,7 @@ import { MD5, asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { Crypto } from "@peculiar/webcrypto";
 import * as x509 from "@peculiar/x509";
-import { ISysRole, ISysTenant } from "@porta/shared";
+import { ISysApplication, ISysClient, ISysRole, ISysSecret, ISysTenant } from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -14,6 +14,7 @@ import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRoleDataService } from "../dataservices/SysRoleDataService";
+import { SysSecretDataService } from "../dataservices/SysSecretDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
 import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
@@ -23,6 +24,8 @@ import { commonUtils } from "./CommonUtils";
 
 const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
+
+const DAY_IN_SECONDS = 60 * 60 * 24;
 
 /**
  * @export
@@ -246,10 +249,57 @@ export class DatabaseSeed {
             await this.createJWKKeys(tenantRecord);
             const { userRole, adminRole } = await this.createRoles(tenantRecord);
             await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
-            await this.createApplication(tenantRecord, serverURL);
+            await this.createCLIApplication(tenantRecord, serverURL);
+            await this.createConformanceTestApplication(tenantRecord, serverURL);
         }
 
         return tenantRecord;
+    }
+
+    protected async createConformanceTestApplication(tenantRecord: ISysTenant, serverURL: string) {
+
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
+            IPortaApplicationSetting & IDatabaseAppSettings
+        >();
+
+
+        if (!process.env.DEBUG) {
+            return;
+        }
+
+        const app = await this.createApplication(
+            {
+                application_name: "OIDC Conformance Test Suite",
+                client_id: generateRandomUUID(),
+                description: "Demo Application",
+            },
+            tenantRecord
+        );
+
+        const client = await this.createClient(
+            {
+                client_type: eClientType.confidential,
+                application_id: app.id,
+                redirect_uri: `https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback`,
+                post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                access_token_length: ACCESS_TOKEN_TTL,
+                refresh_token_length: REFRESH_TOKEN_TTL,
+            },
+            app,
+            tenantRecord
+        );
+
+        const now = Date.now();
+        await this.createSecret(
+            {
+                secret: "secret",
+                valid_from: new Date(now).toISOString(),
+                valid_to: new Date(commonUtils.expireSecondsFromNow(DAY_IN_SECONDS * 365, now)).toISOString(),
+                client_id: client.id
+            },
+            client,
+            tenantRecord
+        );
     }
 
     /**
@@ -258,37 +308,79 @@ export class DatabaseSeed {
      * @param {string} serverURL
      * @memberof DatabaseSeed
      */
-    protected async createApplication(tenantRecord: ISysTenant, serverURL: string) {
-        const appDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
-        const clientDs = new SysClientDataService({ tenantId: tenantRecord.id });
-
+    protected async createCLIApplication(tenantRecord: ISysTenant, serverURL: string) {
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
         >();
 
-        const cliApp = await appDs.insertIntoSysApplication({
-            id: MD5(`porta_cli_${tenantRecord.id}`),
-            application_name: "CLI",
-            client_id: generateRandomUUID(),
-            description: "CLI Application",
-            is_system: true,
-        });
+        const app = await this.createApplication(
+            {
+                id: MD5(`porta_cli_${tenantRecord.id}`),
+                application_name: "CLI",
+                client_id: generateRandomUUID(),
+                description: "CLI Application",
+                is_system: true,
+            },
+            tenantRecord
+        );
 
-        await clientDs.insertIntoSysClient({
-            client_type: eClientType.public,
-            application_id: cliApp.id,
-            redirect_uri: `${serverURL}/oidc/${tenantRecord.id}/signin/callback`,
-            post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
-            access_token_length: ACCESS_TOKEN_TTL,
-            refresh_token_length: REFRESH_TOKEN_TTL,
-            is_system: true,
-            is_back_channel_post_logout: false
-        });
+        await this.createClient(
+            {
+                client_type: eClientType.public,
+                application_id: app.id,
+                redirect_uri: `${serverURL}/oidc/${tenantRecord.id}/signin/callback`,
+                post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                access_token_length: ACCESS_TOKEN_TTL,
+                refresh_token_length: REFRESH_TOKEN_TTL,
+                is_system: true,
+                is_back_channel_post_logout: false
+            },
+            app,
+            tenantRecord
+        );
+    }
 
-        if (process.env.DEBUG) {
-            //OIDC conformance test
-            //const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
-        }
+    /**
+     * @param {ISysSecret} record
+     * @param {ISysApplication} app
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseSeed
+     */
+    public createSecret(record: ISysSecret, client: ISysClient, tenantRecord: ISysTenant) {
+        const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
+        return secretDs.insertIntoSysSecret({
+            ...record,
+            client_id: client.id
+        });
+    }
+
+    /**
+     * @protected
+     * @param {ISysClient} record
+     * @param {ISysApplication} app
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseSeed
+     */
+    protected createClient(record: ISysClient, app: ISysApplication, tenantRecord: ISysTenant) {
+        const clientDs = new SysClientDataService({ tenantId: tenantRecord.id });
+        return clientDs.insertIntoSysClient({
+            ...record,
+            application_id: app.id
+        });
+    }
+
+    /**
+     * @protected
+     * @param {ISysApplication} record
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseSeed
+     */
+    protected createApplication(record: ISysApplication, tenantRecord: ISysTenant,) {
+        const appDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
+        return appDs.insertIntoSysApplication(record);
     }
 
     /**

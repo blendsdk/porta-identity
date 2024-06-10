@@ -15,6 +15,43 @@ export enum eOpsResponse {
 }
 
 /**
+ * Enum of the type sys_secret_view
+ * @export
+ * @enum
+ */
+export enum eSysSecretView {
+	$name = "sys_secret_view",
+	ID = "id",
+	SECRET = "secret",
+	DESCRIPTION = "description",
+	VALID_FROM = "valid_from",
+	VALID_TO = "valid_to",
+	IS_SYSTEM = "is_system",
+	CLIENT_ID = "client_id",
+	IS_EXPIRED = "is_expired"
+}
+
+/**
+ * Enum of the type sys_authorization_view
+ * @export
+ * @enum
+ */
+export enum eSysAuthorizationView {
+	$name = "sys_authorization_view",
+	APPLICATION_ID = "application_id",
+	LOGO = "logo",
+	APPLICATION_NAME = "application_name",
+	CLIENT_ID = "client_id",
+	CLIENT_TYPE = "client_type",
+	REDIRECT_URI = "redirect_uri",
+	POST_LOGOUT_REDIRECT_URI = "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
+	ACCESS_TOKEN_LENGTH = "access_token_length",
+	REFRESH_TOKEN_LENGTH = "refresh_token_length",
+	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id"
+}
+
+/**
  * Enum of the type sys_tenant
  * @export
  * @enum
@@ -72,7 +109,7 @@ export enum eSysSecret {
 	VALID_FROM = "valid_from",
 	VALID_TO = "valid_to",
 	IS_SYSTEM = "is_system",
-	APPLICATION_ID = "application_id"
+	CLIENT_ID = "client_id"
 }
 
 /**
@@ -91,7 +128,8 @@ export enum eSysClient {
 	IS_ACTIVE = "is_active",
 	ACCESS_TOKEN_LENGTH = "access_token_length",
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
-	APPLICATION_ID = "application_id"
+	APPLICATION_ID = "application_id",
+	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id"
 }
 
 /**

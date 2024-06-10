@@ -5,6 +5,115 @@
 
 /**
  * @export
+ * @interface ISysSecretView
+ */
+export interface ISysSecretView {
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	secret: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	valid_from: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	valid_to: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysSecretView
+	 */
+	is_system: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	client_id: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysSecretView
+	 */
+	is_expired: boolean;
+}
+
+/**
+ * @export
+ * @interface ISysAuthorizationView
+ */
+export interface ISysAuthorizationView {
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_type: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	post_logout_redirect_uri: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	is_back_channel_post_logout: boolean;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	access_token_length: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	refresh_token_length: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_credentials_user_id: string;
+}
+
+/**
+ * @export
  * @interface ISysTenant
  */
 export interface ISysTenant {
@@ -120,10 +229,10 @@ export interface ISysApplication {
  */
 export interface ISysSecret {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecret
 	 */
-	id?: number;
+	id?: string;
 	/**
 	 * @type string
 	 * @memberOf ISysSecret
@@ -135,15 +244,15 @@ export interface ISysSecret {
 	 */
 	description?: string;
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecret
 	 */
-	valid_from: number;
+	valid_from: string;
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysSecret
 	 */
-	valid_to: number;
+	valid_to: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysSecret
@@ -153,7 +262,7 @@ export interface ISysSecret {
 	 * @type string
 	 * @memberOf ISysSecret
 	 */
-	application_id: string;
+	client_id: string;
 }
 
 /**
@@ -162,10 +271,10 @@ export interface ISysSecret {
  */
 export interface ISysClient {
 	/**
-	 * @type number
+	 * @type string
 	 * @memberOf ISysClient
 	 */
-	id?: number;
+	id?: string;
 	/**
 	 * @type string
 	 * @memberOf ISysClient
@@ -211,6 +320,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClient
+	 */
+	client_credentials_user_id?: string;
 }
 
 /**

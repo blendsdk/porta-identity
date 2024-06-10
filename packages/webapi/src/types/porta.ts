@@ -1,5 +1,15 @@
+import { IAuthorizeRequest, ISysAuthorizationView } from "@porta/shared";
+
 // How log a nonce is locked before it can be reused
-export const NONCE_TTL = 86400 * 1; // 1 day
+export const CONST_NONCE_TTL = 86400 * 1; // 1 day
+export const CONST_AUTH_FLOW_TTL = 60 * 5; // 5 mins
+
+export interface IAuthorizationFlow {
+    authRequest: IAuthorizeRequest;
+    authRecord: ISysAuthorizationView;
+    flowId: string;
+    expire: number;
+}
 
 export enum eErrorType {
     interaction_required = "interaction_required",
@@ -26,7 +36,6 @@ export interface IErrorResponseParams {
 }
 
 export interface IPortaApplicationSetting {
-    PORTA_SIGNIN_URI: string;
     PORTA_SSO_COMMON_NAME: string;
     PORTA_PUBLIC_DOMAIN: string;
     PORTA_REGISTRY_TENANT: string;
