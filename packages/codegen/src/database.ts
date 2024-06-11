@@ -1,4 +1,4 @@
-import { Database, PostgreSQLTypeFromQuery, eDBForeignKeyAction } from "@blendsdk/codegen";
+import { Database, PostgreSQLTypeFromQuery, eDBForeignKeyAction, refType } from "@blendsdk/codegen";
 import { asyncForEach } from "@blendsdk/stdlib";
 import path from "path";
 import { dataSourceConfig } from "./config";
@@ -33,8 +33,13 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     // const access_token = database.addTable("sys_access_token");
     // const refresh_token = database.addTable("sys_refresh_token");
 
-    // const mfa = database.addTable("sys_mfa");
-    // const user_mfa = database.addTable("sys_user_mfa");
+    const mfa = database.addTable("sys_mfa");
+    //const user_mfa = database.addTable("sys_user_mfa");
+
+    mfa
+        .primaryKeyColumn("id", true)
+        .stringColumn("name", { unique: true })
+        .jsonColumn("settings", refType("mfa_settings"), { required: false, default: "'{}'" });
 
     sys_extension
         .primaryKeyColumn("extension_id", true)
@@ -95,7 +100,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .integerColumn("access_token_length")
         .integerColumn("refresh_token_length")
         .referenceColumnAuto("application_id", application)
-        .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
+        .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false })
+        .referenceColumn("mfa_id", mfa, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
 
     secret  //
         .primaryKeyColumn("id", true)

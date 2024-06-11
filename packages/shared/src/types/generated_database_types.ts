@@ -3,6 +3,8 @@
  * THIS FILE IS AUTO GENERATED
  */
 
+import { IMfaSettings } from "./generated_types";
+
 /**
  * @export
  * @interface ISysSecretView
@@ -110,6 +112,16 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	client_credentials_user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa_settings: string;
 }
 
 /**
@@ -325,6 +337,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	client_credentials_user_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysClient
+	 */
+	mfa_id?: string;
 }
 
 /**
@@ -579,4 +596,26 @@ export interface ISysRolePermission {
 	 * @memberOf ISysRolePermission
 	 */
 	permission_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysMfa
+ */
+export interface ISysMfa {
+	/**
+	 * @type string
+	 * @memberOf ISysMfa
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysMfa
+	 */
+	name: string;
+	/**
+	 * @type IMfaSettings
+	 * @memberOf ISysMfa
+	 */
+	settings?: IMfaSettings;
 }

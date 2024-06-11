@@ -1,5 +1,11 @@
 import { CRC32 } from "@blendsdk/stdlib";
 
+export const COOKIE_AUTH_FLOW = "_af";
+export const COOKIE_TENANT = "_tn";
+export const COOKIE_AUTH_FLOW_TTL = "_aft";
+export const MFA_RESEND_REQUEST = "resend";
+export const FLOW_ERROR_INVALID = 'invalid_sign_in_flow';
+
 export enum eKeySignatureType {
     access_token = "access_token",
     refresh_token = "refresh_token",

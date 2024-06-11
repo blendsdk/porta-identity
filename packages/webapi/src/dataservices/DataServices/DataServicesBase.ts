@@ -11,6 +11,7 @@ import { SysRoleDataService } from "../SysRoleDataService";
 import { SysPermissionDataService } from "../SysPermissionDataService";
 import { SysUserRoleDataService } from "../SysUserRoleDataService";
 import { SysRolePermissionDataService } from "../SysRolePermissionDataService";
+import { SysMfaDataService } from "../SysMfaDataService";
 import { PostgreSQLExecutionContext, PostgreSQLDataSource } from "@blendsdk/postgresql";
 
 export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLExecutionContext, PostgreSQLDataSource> {
@@ -120,5 +121,14 @@ export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLEx
 	 */
 	public sysRolePermissionDataService(): SysRolePermissionDataService {
 		return new SysRolePermissionDataService({ sharedContext: this.sharedContext });
+	}
+
+	/**
+	 * Returns a new instance of SysMfaDataService
+	 * @return {*}  {SysMfaDataService}
+	 * @memberof DataServicesBase
+	 */
+	public sysMfaDataService(): SysMfaDataService {
+		return new SysMfaDataService({ sharedContext: this.sharedContext });
 	}
 }

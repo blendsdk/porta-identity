@@ -7,6 +7,15 @@ import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 export const validationSchema = {
 	type: eJsonSchemaType.object,
 	definitions: {
+		mfa_settings: {
+			type: eJsonSchemaType.object,
+			properties: {
+				"[key:string]": {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["[key:string]"]
+		},
 		sys_secret_view: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -80,6 +89,13 @@ export const validationSchema = {
 				client_credentials_user_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
+				},
+				mfa: {
+					type: eJsonSchemaType.string
+				},
+				mfa_settings: {
+					type: eJsonSchemaType.string,
+					format: "json"
 				}
 			},
 			required: [
@@ -93,7 +109,9 @@ export const validationSchema = {
 				"is_back_channel_post_logout",
 				"access_token_length",
 				"refresh_token_length",
-				"client_credentials_user_id"
+				"client_credentials_user_id",
+				"mfa",
+				"mfa_settings"
 			]
 		},
 		sys_tenant: {
@@ -255,6 +273,11 @@ export const validationSchema = {
 					format: "uuid"
 				},
 				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid",
+					acceptNullValue: true
+				},
+				mfa_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid",
 					acceptNullValue: true
@@ -463,6 +486,24 @@ export const validationSchema = {
 			},
 			required: ["role_id", "permission_id"]
 		},
+		sys_mfa: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				name: {
+					type: eJsonSchemaType.string
+				},
+				settings: {
+					type: eJsonSchemaType.object,
+					$ref: "#/definitions/mfa_settings",
+					acceptNullValue: true
+				}
+			},
+			required: ["name"]
+		},
 		porta_account: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -530,16 +571,6 @@ export const validationSchema = {
 				}
 			},
 			required: ["webclient", "webapi", "mobileclient"]
-		},
-		list_extension_request: {
-			type: eJsonSchemaType.object,
-			properties: {
-				tenant: {
-					type: eJsonSchemaType.string,
-					location: eParameterLocation.params
-				}
-			},
-			required: ["tenant"]
 		},
 		initialize_request: {
 			type: eJsonSchemaType.object,
@@ -618,15 +649,46 @@ export const validationSchema = {
 			},
 			required: ["tenant", "user_state"]
 		},
-		get_flow_request: {
+		check_set_flow_request: {
 			type: eJsonSchemaType.object,
 			properties: {
-				flow_id: {
+				update: {
 					type: eJsonSchemaType.string,
-					location: eParameterLocation.params
+					acceptNullValue: true
+				},
+				username: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				password: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				}
+			}
+		},
+		check_set_flow: {
+			type: eJsonSchemaType.object,
+			properties: {
+				error: {
+					type: eJsonSchemaType.boolean
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				tenant_name: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				allow_reset_password: {
+					type: eJsonSchemaType.boolean
+				},
+				resp: {
+					type: eJsonSchemaType.string
 				}
 			},
-			required: ["flow_id"]
+			required: ["resp"]
 		},
 		discovery_keys_request: {
 			type: eJsonSchemaType.object,

@@ -7,6 +7,9 @@ export const CONST_AUTH_FLOW_TTL = 60 * 5; // 5 mins
 export interface IAuthorizationFlow {
     authRequest: IAuthorizeRequest;
     authRecord: ISysAuthorizationView;
+    account_state: boolean;
+    mfa_state: boolean;
+    mfa_request: string;
     flowId: string;
     expire: number;
 }

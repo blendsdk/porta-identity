@@ -1,10 +1,10 @@
 export const eSystemRoutes = {
     login: {
-        path: "/fe/auth/:tenant/:flow_id/signin",
+        path: "/fe/auth/signin",
         key: "login"
     },
     logout: {
         key: "logout",
-        path: "/fe/auth/:tenant/signout"
+        path: "/fe/auth/signout"
     }
 };

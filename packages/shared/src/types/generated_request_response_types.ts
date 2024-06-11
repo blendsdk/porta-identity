@@ -4,7 +4,6 @@
  */
 
 import { IErrorData, IPortaAccount, IOpsResponse } from "./generated_types";
-import { ISysExtension, ISysAuthorizationView } from "./generated_database_types";
 
 /**
  * @export
@@ -95,30 +94,6 @@ export interface IGetAppVersionResponse {
 	 * @memberOf IGetAppVersionResponse
 	 */
 	data: IGetAppVersion;
-}
-
-/**
- * @export
- * @interface IListExtensionRequest
- */
-export interface IListExtensionRequest {
-	/**
-	 * @type string
-	 * @memberOf IListExtensionRequest
-	 */
-	tenant: string;
-}
-
-/**
- * @export
- * @interface IListExtensionResponse
- */
-export interface IListExtensionResponse {
-	/**
-	 * @type ISysExtension[]
-	 * @memberOf IListExtensionResponse
-	 */
-	data: ISysExtension[];
 }
 
 /**
@@ -287,26 +262,78 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
- * @interface IGetFlowRequest
+ * @interface ICheckSetFlowRequest
  */
-export interface IGetFlowRequest {
+export interface ICheckSetFlowRequest {
 	/**
 	 * @type string
-	 * @memberOf IGetFlowRequest
+	 * @memberOf ICheckSetFlowRequest
 	 */
-	flow_id: string;
+	update?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	password?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	mfa_response?: string;
 }
 
 /**
  * @export
- * @interface IGetFlowResponse
+ * @interface ICheckSetFlow
  */
-export interface IGetFlowResponse {
+export interface ICheckSetFlow {
 	/**
-	 * @type ISysAuthorizationView
-	 * @memberOf IGetFlowResponse
+	 * @type boolean
+	 * @memberOf ICheckSetFlow
 	 */
-	data: ISysAuthorizationView;
+	error?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
+	logo?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
+	tenant_name?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
+	application_name?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICheckSetFlow
+	 */
+	allow_reset_password?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
+	resp: string;
+}
+
+/**
+ * @export
+ * @interface ICheckSetFlowResponse
+ */
+export interface ICheckSetFlowResponse {
+	/**
+	 * @type ICheckSetFlow
+	 * @memberOf ICheckSetFlowResponse
+	 */
+	data: ICheckSetFlow;
 }
 
 /**

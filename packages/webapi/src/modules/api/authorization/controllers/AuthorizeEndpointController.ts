@@ -2,7 +2,7 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant, eSysAuthorizationView } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant, eSysAuthorizationView } from "@porta/shared";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { EndpointController, commonUtils } from "../../../../services";
 import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
@@ -50,7 +50,7 @@ export class AuthorizeEndpointController extends EndpointController {
             if (errors.length === 0 && flowId) {
                 // here we decide on the sign in URL. It is either from the webclient or 
                 // an existing user.
-                let signinURL = this.createFrontendSignInUrl(flowId, authRequest, tenantRecord);
+                let signinURL = this.createFrontendSignInUrl(authRequest);
                 return new RedirectResponse({ url: signinURL });
             } else {
                 return this.responseWithError(
@@ -74,8 +74,8 @@ export class AuthorizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof AuthorizeEndpointController
      */
-    protected createFrontendSignInUrl(flowId: string, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
-        let signinURL = `${this.getServerURL()}/fe/auth/${tenantRecord.id}/${flowId}/signin`;
+    protected createFrontendSignInUrl(authRequest: IAuthorizeRequest) {
+        let signinURL = `${this.getServerURL()}/fe/auth/signin`;
         const url = new URL(signinURL);
         if (authRequest.ui_locales) {
             url.searchParams.append("ui_locals", authRequest.ui_locales);
@@ -93,7 +93,7 @@ export class AuthorizeEndpointController extends EndpointController {
         let flowId: string = undefined;
 
         if (authRecord.length === 1) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
-            flowId = await this.createAuthorizationFlow(authRecord[0], authRequest);
+            flowId = await this.createAuthorizationFlow(authRecord[0], authRequest, tenantRecord);
         } else {
             errors.push("invalid_authorization");
         }
@@ -107,7 +107,7 @@ export class AuthorizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof AuthorizeEndpointController
      */
-    protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest) {
+    protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
         await this.getCache().setValue<IAuthorizationFlow>(
@@ -116,13 +116,48 @@ export class AuthorizeEndpointController extends EndpointController {
                 authRecord: authRecord[0], // the first one
                 authRequest,
                 flowId,
-                expire
+                expire,
+                account_state: false,
+                mfa_state: !isNullOrUndef(authRecord.mfa) ? false : true, // check if we have an MFA record bound to this client                 
+                mfa_request: undefined
             },
             {
                 expire
             }
         );
+        this.setCookie(COOKIE_AUTH_FLOW, flowId, {
+            expires: new Date(expire),
+            secure: true,
+            httpOnly: true,
+            sameSite: "strict"
+        });
+
+        this.setCookie(COOKIE_TENANT, tenantRecord.id, {
+            expires: new Date(expire),
+            secure: true,
+            httpOnly: true,
+            sameSite: "strict",
+        });
+
+        this.setCookie(COOKIE_AUTH_FLOW_TTL, generateRandomUUID(), {
+            expires: new Date(expire),
+            secure: true,
+            sameSite: "strict",
+        });
         return flowId;
+    }
+
+    /**
+     * @memberof AuthorizeEndpointController
+     */
+    public clearAuthenticationFlowCookies() {
+        this.setCookie(COOKIE_AUTH_FLOW, "-", {
+            expires: new Date(-1),
+        });
+
+        this.setCookie(COOKIE_TENANT, "-", {
+            expires: new Date(-1),
+        });
     }
 
     /**

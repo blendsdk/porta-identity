@@ -21,6 +21,7 @@ export class SessionStore extends SessionStoreBase {
             case "fallback":
             case eSystemRoutes.login.key:
             case eSystemRoutes.logout.key:
+                this.stopChecking();
                 return true;
             default:
                 return false;

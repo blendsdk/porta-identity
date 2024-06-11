@@ -30,6 +30,10 @@ export function createCustomTypes(order: number) {
 
         typeSchema
             //
+            .createAppendDictionary("mfa_settings", "string");
+
+        typeSchema
+            //
             .createAppendType("ops_response")
             .addString("message")
             .addBoolean("success");

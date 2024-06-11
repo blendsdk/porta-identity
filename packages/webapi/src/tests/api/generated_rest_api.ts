@@ -9,8 +9,6 @@ import {
 	IGetTranslationsResponse,
 	IGetAppVersionRequest,
 	IGetAppVersionResponse,
-	IListExtensionRequest,
-	IListExtensionResponse,
 	IInitializeRequest,
 	IInitializeResponse,
 	IGetReferenceDataRequest,
@@ -21,8 +19,8 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
-	IGetFlowRequest,
-	IGetFlowResponse,
+	ICheckSetFlowRequest,
+	ICheckSetFlowResponse,
 	IDiscoveryKeysRequest,
 	IDiscoveryKeysResponse,
 	IDiscoveryRequest,
@@ -40,7 +38,6 @@ export interface IPortaApi {
 		getTranslations: THttpRequest<IGetTranslationsRequest, IGetTranslationsResponse>;
 		getAppVersion: THttpRequest<IGetAppVersionRequest | void, IGetAppVersionResponse>;
 	};
-	extension: { listExtension: THttpRequest<IListExtensionRequest, IListExtensionResponse> };
 	initialize: { initialize: THttpRequest<IInitializeRequest, IInitializeResponse> };
 	referenceData: { getReferenceData: THttpRequest<IGetReferenceDataRequest, IGetReferenceDataResponse> };
 	profile: {
@@ -49,7 +46,7 @@ export interface IPortaApi {
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
 	authorization: {
-		getFlow: THttpRequest<IGetFlowRequest, IGetFlowResponse>;
+		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
 		discoveryKeys: THttpRequest<IDiscoveryKeysRequest, IDiscoveryKeysResponse>;
 		discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse>;
 		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
@@ -65,7 +62,6 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getTranslations: defineEndpoint({ method: "get", url: "/api/i18n/:locale?" }),
 			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
-		extension: { listExtension: defineEndpoint({ method: "get", url: "/api/:tenant/extensions/list" }) },
 		initialize: { initialize: defineEndpoint({ method: "post", url: "/api/initialize" }) },
 		referenceData: {
 			getReferenceData: defineEndpoint({
@@ -84,7 +80,7 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			})
 		},
 		authorization: {
-			getFlow: defineEndpoint({ method: "get", url: "/:tenant/oauth2/:flow_id/flow" }),
+			checkSetFlow: defineEndpoint({ method: "post", url: "/api/flow" }),
 			discoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
 			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
 			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" })

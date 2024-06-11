@@ -7,6 +7,18 @@ import { ISysUser, ISysProfile, ISysTenant } from "./generated_database_types";
 
 /**
  * @export
+ * @interface IMfaSettings
+ */
+export interface IMfaSettings {
+	/**
+	 * @type string
+	 * @memberOf IMfaSettings
+	 */
+	[key: string]: string;
+}
+
+/**
+ * @export
  * @interface IOpsResponse
  */
 export interface IOpsResponse {

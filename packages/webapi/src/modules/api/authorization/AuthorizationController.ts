@@ -1,9 +1,10 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
 import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointController";
+import { FlowEndpointController } from "./controllers/FlowEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
+import { ICheckSetFlowRequest, ICheckSetFlowResponse, IAuthorizeRequest, IAuthorizeResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
 
 
 /**
@@ -13,6 +14,16 @@ import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+
+    /**
+     * @param {ICheckSetFlowRequest} params
+     * @return {*}  {Promise<Response<ICheckSetFlowResponse>>}
+     * @memberof AuthorizationController
+     */
+    public checkSetFlow(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>> {
+        const subController = new FlowEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
     /**
      * @param {IAuthorizeRequest} params
      * @return {*}  {Promise<Response<IAuthorizeResponse>>}

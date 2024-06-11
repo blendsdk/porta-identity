@@ -1,19 +1,30 @@
-import { ApiBuilder, refType } from "@blendsdk/codegen";
+import { ApiBuilder } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
-        id: "get_flow",
-        url: "/:tenant/oauth2/:flow_id/flow",
+        id: "check_set_flow",
+        url: "/api/flow",
         group: "authorization",
-        method: "get",
+        method: "post",
         public: true,
-        payload_type: refType("sys_authorization_view"),
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
-                .addString("flow_id", { location: eParameterLocation.params });
+                .addString("update", { optional: true, acceptNullValue: true })
+                .addString("username", { optional: true, acceptNullValue: true })
+                .addString("password", { optional: true, acceptNullValue: true })
+                .addString("mfa_response", { optional: true, acceptNullValue: true });
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addBoolean("error", { optional: true })
+                .addString("logo", { optional: true })
+                .addString("tenant_name", { optional: true })
+                .addString("application_name", { optional: true })
+                .addBoolean("allow_reset_password", { optional: true })
+                .addString("resp");
 
             typeSchema.createResponseType(response_type, payload_type); //
         }

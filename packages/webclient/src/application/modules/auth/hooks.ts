@@ -1,27 +1,25 @@
 import { useObjectState } from "@blendsdk/react";
+import { ICheckSetFlow } from "@porta/shared";
 import { useEffect } from "react";
-import { useRouter } from "../../../system";
+import { ApplicationApi } from "../../../system";
 
-export interface IUseAuthenticationFlowState {
-    flowId: string;
+export interface IUseAuthenticationFlowState extends ICheckSetFlow {
     fetching: boolean;
 }
 
 export const useAuthenticationFlow = () => {
+
     const [state, setState] = useObjectState<Partial<IUseAuthenticationFlowState>>(() => ({
-        flowId: null,
-        fetching: true
+        fetching: true,
     }));
-    const router = useRouter();
 
     useEffect(() => {
-
         setState({ fetching: true });
-        const { flow_id } = router.getParameters<{ flow_id: string; }>();
-        setTimeout(() => {
-            setState({ fetching: false, flowId: flow_id });
-        }, 2000);
-
+        ApplicationApi.authorization.checkSetFlow({}).then(({ data }) => {
+            setState({ fetching: false, ...data });
+        }).catch(err => {
+            setState({ fetching: false, ...err });
+        });
     }, []);
     return state;
 };

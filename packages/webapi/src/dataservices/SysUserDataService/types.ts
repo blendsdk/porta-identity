@@ -38,3 +38,15 @@ export interface ISysUserDataServiceDeleteSysUserByIdFilter {
 	 */
 	id: string;
 }
+
+/**
+ * @export
+ * @interface ISysUserDataServiceFindByUsernameNonServiceParams
+ */
+export interface ISysUserDataServiceFindByUsernameNonServiceParams {
+	/**
+	 * @type string
+	 * @memberOf ISysUserDataServiceFindByUsernameNonServiceParams
+	 */
+	username: string;
+}

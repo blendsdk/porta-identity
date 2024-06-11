@@ -4,6 +4,15 @@
  */
 
 /**
+ * Enum of the type mfa_settings
+ * @export
+ * @enum
+ */
+export enum eMfaSettings {
+	$name = "mfa_settings"
+}
+
+/**
  * Enum of the type ops_response
  * @export
  * @enum
@@ -48,7 +57,9 @@ export enum eSysAuthorizationView {
 	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
 	ACCESS_TOKEN_LENGTH = "access_token_length",
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
-	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id"
+	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
+	MFA = "mfa",
+	MFA_SETTINGS = "mfa_settings"
 }
 
 /**
@@ -129,7 +140,8 @@ export enum eSysClient {
 	ACCESS_TOKEN_LENGTH = "access_token_length",
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
 	APPLICATION_ID = "application_id",
-	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id"
+	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
+	MFA_ID = "mfa_id"
 }
 
 /**
@@ -234,6 +246,18 @@ export enum eSysRolePermission {
 	ID = "id",
 	ROLE_ID = "role_id",
 	PERMISSION_ID = "permission_id"
+}
+
+/**
+ * Enum of the type sys_mfa
+ * @export
+ * @enum
+ */
+export enum eSysMfa {
+	$name = "sys_mfa",
+	ID = "id",
+	NAME = "name",
+	SETTINGS = "settings"
 }
 
 /**
