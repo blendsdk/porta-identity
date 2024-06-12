@@ -1,8 +1,10 @@
-import { IAuthorizeRequest, ISysAuthorizationView, ISysProfile, ISysUser } from "@porta/shared";
+import { IAuthorizeRequest, ISysAuthorizationView, ISysProfile, ISysTenant, ISysUser } from "@porta/shared";
 
 // How log a nonce is locked before it can be reused
 export const CONST_NONCE_TTL = 86400 * 1; // 1 day
 export const CONST_AUTH_FLOW_TTL = 60 * 5; // 5 mins
+
+export const MFA_TYPE_PORTAMAIL = "portamail";
 
 export interface IAuthorizationFlow {
     authRequest: IAuthorizeRequest;
@@ -14,6 +16,7 @@ export interface IAuthorizationFlow {
     mfa_request: string;
     flowId: string;
     expire: number;
+    tenantRecord: ISysTenant;
 }
 
 export enum eErrorType {

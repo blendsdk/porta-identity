@@ -1,9 +1,12 @@
 import { verifyStringSync } from "@blendsdk/crypto";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { II18NRequestContext } from "@blendsdk/webafx-i18n";
+import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST } from "@porta/shared";
+import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { EndpointController } from "../../../../services";
-import { IAuthorizationFlow } from "../../../../types";
+import { EmailMFAProvider, EndpointController } from "../../../../services";
+import { IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class FlowEndpointController extends EndpointController {
 
@@ -54,6 +57,8 @@ export class FlowEndpointController extends EndpointController {
         if (!error) {
             if (update === "account") {
                 const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+                const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+
                 const userRecord = await userDs.findByUsernameNonService({
                     username
                 });
@@ -62,6 +67,8 @@ export class FlowEndpointController extends EndpointController {
                     const isPasswordValid = verifyStringSync(password, userRecord.password);
                     if (isPasswordValid) {
                         flow.account_state = true;
+                        flow.user = userRecord;
+                        flow.profile = await profileDs.findProfileByUserId({ user_id: userRecord.id });
                         await this.getCache().setValue(flowCacheKey, flow);
                     } else {
                         error = true;
@@ -88,7 +95,7 @@ export class FlowEndpointController extends EndpointController {
                     // account state is true here            
                     if (flow.mfa_state === false) {
                         if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined) {
-                            flow.mfa_request = "1234";
+                            flow.mfa_request = await this.createMFARequest(flow);
                             await this.getCache().setValue(flowCacheKey, flow);
                         }
                         // send mfa code
@@ -114,5 +121,27 @@ export class FlowEndpointController extends EndpointController {
                 mfa_type
             }
         });
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FlowEndpointController
+     */
+    protected createMFARequest(flow: IAuthorizationFlow) {
+        switch (flow.authRecord.mfa) {
+            case MFA_TYPE_PORTAMAIL: {
+                const mailer = new EmailMFAProvider({
+                    flow,
+                    mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
+                    settings: this.request.context.getSettings(),
+                    trans: ((this as any).context as II18NRequestContext).getTranslator(),
+                });
+                return mailer.send();
+            }
+            default:
+                throw new Error(`No MFA request provider for ${flow.authRecord.mfa}`);
+        }
     }
 }

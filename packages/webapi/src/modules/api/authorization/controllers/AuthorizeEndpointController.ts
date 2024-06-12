@@ -121,7 +121,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 mfa_state: !isNullOrUndef(authRecord.mfa) ? false : true, // check if we have an MFA record bound to this client                 
                 mfa_request: undefined,
                 profile: undefined,
-                user: undefined
+                user: undefined,
+                tenantRecord
             },
             {
                 expire
