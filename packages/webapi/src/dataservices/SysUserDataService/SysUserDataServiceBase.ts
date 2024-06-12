@@ -153,6 +153,7 @@ export abstract class SysUserDataServiceBase extends DataService<PostgreSQLExecu
                             su.*
                         from
                             sys_user su
+                            inner join sys_profile up on su.id = up.user_id
                             left join sys_client sc on su.id = sc.client_credentials_user_id
                         where
                             sc.id is null and

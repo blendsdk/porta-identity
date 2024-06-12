@@ -15,7 +15,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("update", { optional: true, acceptNullValue: true })
                 .addString("username", { optional: true, acceptNullValue: true })
                 .addString("password", { optional: true, acceptNullValue: true })
-                .addString("mfa_response", { optional: true, acceptNullValue: true });
+                .addString("mfa_result", { optional: true, acceptNullValue: true });
 
             typeSchema
                 .createAppendType(payload_type) //
@@ -23,7 +23,9 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("logo", { optional: true })
                 .addString("tenant_name", { optional: true })
                 .addString("application_name", { optional: true })
+                .addString("mfa_type", { optional: true })
                 .addBoolean("allow_reset_password", { optional: true })
+                .addNumber("expires_in")
                 .addString("resp");
 
             typeSchema.createResponseType(response_type, payload_type); //

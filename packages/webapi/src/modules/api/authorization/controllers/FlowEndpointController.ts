@@ -16,8 +16,10 @@ export class FlowEndpointController extends EndpointController {
         let tenant_name: string = undefined;
         let application_name: string = undefined;
         let allow_reset_password: boolean = undefined;
+        let expires_in: number = 0;
+        let mfa_type: string = undefined;
 
-        const { update, password, mfa_response, username } = params;
+        const { update, password, mfa_result, username } = params;
 
         const tenant = this.getCookie(COOKIE_TENANT);
         const flowId = this.getCookie(COOKIE_AUTH_FLOW);
@@ -33,12 +35,16 @@ export class FlowEndpointController extends EndpointController {
         // if we have a flow the check the tenant
         if (!error) {
             tenantRecord = await this.getTenantRecord(tenant);
+
+            expires_in = flow.expire - Date.now();
+
             if (!tenantRecord) {
                 resp = FLOW_ERROR_INVALID;
                 error = true;
             } else {
                 tenant_name = tenantRecord.organization;
                 application_name = flow.authRecord.application_name;
+                mfa_type = flow.authRecord.mfa;
                 logo = flow.authRecord.logo;
                 allow_reset_password = true;
             }
@@ -67,10 +73,10 @@ export class FlowEndpointController extends EndpointController {
                 }
 
             } else if (update === "mfa") {
-                flow.mfa_state = mfa_response === flow.mfa_request;
-                if (mfa_response !== MFA_RESEND_REQUEST && !flow.mfa_state) {
+                flow.mfa_state = mfa_result === flow.mfa_request;
+                if (mfa_result !== MFA_RESEND_REQUEST && !flow.mfa_state) {
                     error = true;
-                    resp = "invalid_mfa_response";
+                    resp = `invalid_mfa_${mfa_type}`;
                 }
                 await this.getCache().setValue(flowCacheKey, flow);
             }
@@ -81,13 +87,15 @@ export class FlowEndpointController extends EndpointController {
                 } else {
                     // account state is true here            
                     if (flow.mfa_state === false) {
-                        if (mfa_response === MFA_RESEND_REQUEST) {
-                            // send mfa
+                        if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined) {
+                            flow.mfa_request = "1234";
+                            await this.getCache().setValue(flowCacheKey, flow);
                         }
                         // send mfa code
                         resp = "mfa";
                     } else {
                         // mfa state is true
+                        this.clearAuthenticationFlowCookies();
                         resp = `${this.getServerURL()}/api/finalize`;
                     }
                 }
@@ -101,7 +109,9 @@ export class FlowEndpointController extends EndpointController {
                 logo,
                 tenant_name,
                 resp,
-                error
+                error,
+                expires_in,
+                mfa_type
             }
         });
     }

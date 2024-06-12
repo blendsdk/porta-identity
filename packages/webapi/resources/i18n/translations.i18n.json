@@ -12,19 +12,19 @@
         "nl": "Een wachtwoord is verplicht"
     },
     "invalid_mfa_portamail": {
-        "en": "Invalid Validation Code!",
-        "nl": "Verificatiecode is niet geldig!"
+        "en": "Invalid Verification Code!",
+        "nl": "Ongeldige verificatie code!"
     },
     "mfa_email_subject": {
         "en": "${organization} Verification Code",
         "nl": "${organization} Verificatiecode"
     },
     "mfa_caption": {
-        "en": "Validation Code",
-        "nl": "Validatiecode"
+        "en": "Verification Code",
+        "nl": "Verificatie code"
     },
     "mfa_portamail_text_placeholder": {
-        "en": "Enter validation code",
+        "en": "Enter verification code",
         "nl": "Voer validatiecode in"
     },
     "mfa_portamail_is_required": {
@@ -64,8 +64,8 @@
         "nl": "Maak nu een account aan."
     },
     "btn_next": {
-        "en": "Next",
-        "nl": "Volgende"
+        "en": "Verify",
+        "nl": "Verifiëren"
     },
     "btn_signin": {
         "en": "Sign In",
@@ -79,21 +79,9 @@
         "en": "Your password",
         "nl": "Uw wachtwoord"
     },
-    "not_a_valid_account": {
-        "en": "Please provide a valid account.",
-        "nl": "Geef een geldig account op a.u.b."
-    },
-    "account_not_found": {
-        "en": "This account is unknown.",
-        "nl": "Dit account is niet bekend bij ons."
-    },
-    "invalid_password": {
-        "en": "This password is invalid.",
-        "nl": "Dit wachtwoord is ongeldig."
-    },
-    "use_another_account": {
-        "en": "Use another account",
-        "nl": "Een ander account gebruiken"
+    "invalid_username_or_password": {
+        "en": "Invalid username or password",
+        "nl": "Ongeldige gebruikersnaam of wachtwoord"
     },
     "invalid_logout_session_caption": {
         "en": "A timeout occurred while signing out",

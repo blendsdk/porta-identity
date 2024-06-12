@@ -1,4 +1,4 @@
-import { IAuthorizeRequest, ISysAuthorizationView } from "@porta/shared";
+import { IAuthorizeRequest, ISysAuthorizationView, ISysProfile, ISysUser } from "@porta/shared";
 
 // How log a nonce is locked before it can be reused
 export const CONST_NONCE_TTL = 86400 * 1; // 1 day
@@ -7,6 +7,8 @@ export const CONST_AUTH_FLOW_TTL = 60 * 5; // 5 mins
 export interface IAuthorizationFlow {
     authRequest: IAuthorizeRequest;
     authRecord: ISysAuthorizationView;
+    user: ISysUser,
+    profile: ISysProfile,
     account_state: boolean;
     mfa_state: boolean;
     mfa_request: string;

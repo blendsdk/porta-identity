@@ -284,7 +284,7 @@ export interface ICheckSetFlowRequest {
 	 * @type string
 	 * @memberOf ICheckSetFlowRequest
 	 */
-	mfa_response?: string;
+	mfa_result?: string;
 }
 
 /**
@@ -313,10 +313,20 @@ export interface ICheckSetFlow {
 	 */
 	application_name?: string;
 	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
+	mfa_type?: string;
+	/**
 	 * @type boolean
 	 * @memberOf ICheckSetFlow
 	 */
 	allow_reset_password?: boolean;
+	/**
+	 * @type number
+	 * @memberOf ICheckSetFlow
+	 */
+	expires_in: number;
 	/**
 	 * @type string
 	 * @memberOf ICheckSetFlow

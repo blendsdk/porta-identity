@@ -1,5 +1,6 @@
 import { deepCopy, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
 import { IErrorResponseParams, eOAuthResponseMode } from "../types";
 import { databaseUtils } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
@@ -23,6 +24,23 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     protected getIssuer(tenant: string) {
         return `${this.getServerURL()}/${tenant}/oauth2`;
+    }
+
+    /**
+     * @memberof AuthorizeEndpointController
+     */
+    public clearAuthenticationFlowCookies() {
+        this.setCookie(COOKIE_AUTH_FLOW, "-", {
+            expires: new Date(-1),
+        });
+
+        this.setCookie(COOKIE_TENANT, "-", {
+            expires: new Date(-1),
+        });
+
+        this.setCookie(COOKIE_AUTH_FLOW_TTL, "-", {
+            expires: new Date(-1),
+        });
     }
 
     /**

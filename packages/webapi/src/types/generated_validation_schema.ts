@@ -663,6 +663,10 @@ export const validationSchema = {
 				password: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
+				},
+				mfa_result: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				}
 			}
 		},
@@ -681,14 +685,20 @@ export const validationSchema = {
 				application_name: {
 					type: eJsonSchemaType.string
 				},
+				mfa_type: {
+					type: eJsonSchemaType.string
+				},
 				allow_reset_password: {
 					type: eJsonSchemaType.boolean
+				},
+				expires_in: {
+					type: eJsonSchemaType.number
 				},
 				resp: {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["resp"]
+			required: ["expires_in", "resp"]
 		},
 		discovery_keys_request: {
 			type: eJsonSchemaType.object,

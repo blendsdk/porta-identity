@@ -113,13 +113,15 @@ export class AuthorizeEndpointController extends EndpointController {
         await this.getCache().setValue<IAuthorizationFlow>(
             `auth_flow:${flowId}`,
             {
-                authRecord: authRecord[0], // the first one
+                authRecord,
                 authRequest,
                 flowId,
                 expire,
                 account_state: false,
                 mfa_state: !isNullOrUndef(authRecord.mfa) ? false : true, // check if we have an MFA record bound to this client                 
-                mfa_request: undefined
+                mfa_request: undefined,
+                profile: undefined,
+                user: undefined
             },
             {
                 expire
@@ -144,20 +146,8 @@ export class AuthorizeEndpointController extends EndpointController {
             secure: true,
             sameSite: "strict",
         });
+
         return flowId;
-    }
-
-    /**
-     * @memberof AuthorizeEndpointController
-     */
-    public clearAuthenticationFlowCookies() {
-        this.setCookie(COOKIE_AUTH_FLOW, "-", {
-            expires: new Date(-1),
-        });
-
-        this.setCookie(COOKIE_TENANT, "-", {
-            expires: new Date(-1),
-        });
     }
 
     /**
