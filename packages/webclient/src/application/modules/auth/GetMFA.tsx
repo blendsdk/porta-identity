@@ -32,8 +32,9 @@ export const GetMFA: React.FC<IGetMFA> = ({ form, disabled, flowState }) => {
             <FormTextField form={form} t={t} fieldName="mfa" placeholder={t(`mfa_${flowState.mfa_type}_text_placeholder`)} label={t("mfa_caption")} style={{ fontSize: "1.2rem", textAlign: "center" }} />
             <ToolbarSpacer flex={1} />
             {flowState.error && <Body1 style={{ color: tokens.paletteRed, textAlign: "center" }}>{t(flowState.resp)}</Body1>}
-            <Layout display="flex" flexDirection="row" justifyContent="flex-end" alignItems="center" gap={tokens.spacingM}>
+            <Layout display="flex" flexDirection="row" justifyContent="center" alignItems="center" gap={tokens.spacingM}>
                 <PrimaryButton
+                    style={{ flex: 1 }}
                     onClick={() => { form.submitForm(); }}
                     text={t("btn_next")}
                     disabled={disabled || !form.isValid}
