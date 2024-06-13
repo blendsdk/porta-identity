@@ -11,7 +11,8 @@ select
 	sc.refresh_token_length,
 	sc.client_credentials_user_id,
 	sm."name" as mfa,
-	sm.settings as mfa_settings
+	sm.settings as mfa_settings,
+	sc.mfa_bypass_ttl
 from
 	sys_application sa
 	inner join sys_client sc on sc.application_id = sa.id

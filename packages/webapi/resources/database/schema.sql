@@ -64,6 +64,7 @@ ALTER TABLE sys_client ADD COLUMN access_token_length integer NOT NULL;
 ALTER TABLE sys_client ADD COLUMN refresh_token_length integer NOT NULL;
 ALTER TABLE sys_client ADD COLUMN application_id uuid NOT NULL;
 ALTER TABLE sys_client ADD COLUMN client_credentials_user_id uuid;
+ALTER TABLE sys_client ADD COLUMN mfa_bypass_ttl integer  DEFAULT 0;
 ALTER TABLE sys_client ADD COLUMN mfa_id uuid;
 ALTER TABLE sys_client ADD PRIMARY KEY (id);
 CREATE TABLE sys_extension();

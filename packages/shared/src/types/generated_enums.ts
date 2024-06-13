@@ -59,7 +59,8 @@ export enum eSysAuthorizationView {
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
 	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
 	MFA = "mfa",
-	MFA_SETTINGS = "mfa_settings"
+	MFA_SETTINGS = "mfa_settings",
+	MFA_BYPASS_TTL = "mfa_bypass_ttl"
 }
 
 /**
@@ -141,6 +142,7 @@ export enum eSysClient {
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
 	APPLICATION_ID = "application_id",
 	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
+	MFA_BYPASS_TTL = "mfa_bypass_ttl",
 	MFA_ID = "mfa_id"
 }
 

@@ -110,15 +110,17 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
+        const mfa_state = !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client                 
         await this.getCache().setValue<IAuthorizationFlow>(
             `auth_flow:${flowId}`,
             {
+                complete: false,
                 authRecord,
                 authRequest,
                 flowId,
                 expire,
                 account_state: false,
-                mfa_state: !isNullOrUndef(authRecord.mfa) ? false : true, // check if we have an MFA record bound to this client                 
+                mfa_state,
                 mfa_request: undefined,
                 profile: undefined,
                 user: undefined,

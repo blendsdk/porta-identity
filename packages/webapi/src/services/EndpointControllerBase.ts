@@ -1,6 +1,6 @@
-import { deepCopy, isObject } from "@blendsdk/stdlib";
+import { deepCopy, isObject, wrapInArray } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, ISysAuthorizationView } from "@porta/shared";
 import { IErrorResponseParams, eOAuthResponseMode } from "../types";
 import { databaseUtils } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";

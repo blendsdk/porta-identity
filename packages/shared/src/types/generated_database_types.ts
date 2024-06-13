@@ -122,6 +122,11 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	mfa_settings: string;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa_bypass_ttl: number;
 }
 
 /**
@@ -337,6 +342,11 @@ export interface ISysClient {
 	 * @memberOf ISysClient
 	 */
 	client_credentials_user_id?: string;
+	/**
+	 * @type number
+	 * @memberOf ISysClient
+	 */
+	mfa_bypass_ttl?: number;
 	/**
 	 * @type string
 	 * @memberOf ISysClient

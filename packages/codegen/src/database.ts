@@ -101,6 +101,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .integerColumn("refresh_token_length")
         .referenceColumnAuto("application_id", application)
         .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false })
+        .integerColumn("mfa_bypass_ttl", { default: "0" }) // 0 = no bypass
         .referenceColumn("mfa_id", mfa, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
 
     secret  //

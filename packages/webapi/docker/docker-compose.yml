@@ -17,6 +17,16 @@ services:
     redis:
         image: redis:alpine
         container_name: porta_cache
+        hostname: porta_cache
         command: redis-server --requirepass secret
         ports:
             - 16385:6379
+    redis-commander:
+        container_name: porta_redis_commander
+        hostname: porta_redis-commander
+        image: ghcr.io/joeferner/redis-commander:latest
+        restart: always
+        environment:
+            - REDIS_HOSTS=local:porta_cache:6379:0:secret
+        ports:
+            - "8081:8081"

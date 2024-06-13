@@ -19,13 +19,11 @@ import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
 import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
 import { application } from "../modules/application/application";
-import { IPortaApplicationSetting, eClientType, eDatabaseType } from "../types";
+import { CONST_DAY_IN_SECONDS, IPortaApplicationSetting, eClientType, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
 
 const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
-
-const DAY_IN_SECONDS = 60 * 60 * 24;
 
 /**
  * @export
@@ -294,7 +292,7 @@ export class DatabaseSeed {
             {
                 secret: "secret",
                 valid_from: new Date(now).toISOString(),
-                valid_to: new Date(commonUtils.expireSecondsFromNow(DAY_IN_SECONDS * 365, now)).toISOString(),
+                valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
                 client_id: client.id
             },
             client,

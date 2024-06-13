@@ -96,6 +96,10 @@ export const validationSchema = {
 				mfa_settings: {
 					type: eJsonSchemaType.string,
 					format: "json"
+				},
+				mfa_bypass_ttl: {
+					type: eJsonSchemaType.number,
+					format: "integer"
 				}
 			},
 			required: [
@@ -111,7 +115,8 @@ export const validationSchema = {
 				"refresh_token_length",
 				"client_credentials_user_id",
 				"mfa",
-				"mfa_settings"
+				"mfa_settings",
+				"mfa_bypass_ttl"
 			]
 		},
 		sys_tenant: {
@@ -275,6 +280,11 @@ export const validationSchema = {
 				client_credentials_user_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid",
+					acceptNullValue: true
+				},
+				mfa_bypass_ttl: {
+					type: eJsonSchemaType.integer,
+					format: "int32",
 					acceptNullValue: true
 				},
 				mfa_id: {

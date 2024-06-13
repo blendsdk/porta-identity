@@ -1,12 +1,13 @@
 import { verifyStringSync } from "@blendsdk/crypto";
+import { MD5, wrapInArray } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST } from "@porta/shared";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { EmailMFAProvider, EndpointController } from "../../../../services";
-import { IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
+import { EmailMFAProvider, EndpointController, commonUtils } from "../../../../services";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
 
@@ -81,6 +82,13 @@ export class AuthenticateEndpointController extends EndpointController {
 
             } else if (update === "mfa") {
                 flow.mfa_state = mfa_result === flow.mfa_request;
+
+                if (flow.mfa_state && flow.authRecord.mfa_bypass_ttl !== 0) {
+                    await this.getCache().setValue(this.getMFABypassKey(flow), true, {
+                        expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_ttl)
+                    });
+                }
+
                 if (mfa_result !== MFA_RESEND_REQUEST && !flow.mfa_state) {
                     error = true;
                     resp = `invalid_mfa_${mfa_type}`;
@@ -92,7 +100,8 @@ export class AuthenticateEndpointController extends EndpointController {
                 if (flow.account_state === false) {
                     resp = "account";
                 } else {
-                    // account state is true here            
+                    // account state is true here
+                    await this.checkMFABypass(flow);
                     if (flow.mfa_state === false) {
                         if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined) {
                             flow.mfa_request = await this.createMFARequest(flow);
@@ -103,6 +112,9 @@ export class AuthenticateEndpointController extends EndpointController {
                     } else {
                         // mfa state is true
                         this.clearAuthenticationFlowCookies();
+                        // here is the authentication complete
+                        flow.complete = true;
+                        await this.getCache().setValue(flowCacheKey, flow);
                         resp = `${this.getServerURL()}/api/finalize`;
                     }
                 }
@@ -121,6 +133,27 @@ export class AuthenticateEndpointController extends EndpointController {
                 mfa_type
             }
         });
+    }
+
+    protected async checkMFABypass(flow: IAuthorizationFlow) {
+        if (flow.mfa_state === false) {
+            const bypass = await this.getCache().getValue(this.getMFABypassKey(flow));
+            flow.mfa_state = bypass !== undefined;
+        }
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof AuthenticateEndpointController
+     */
+    protected getMFABypassKey(flow: IAuthorizationFlow) {
+        const { authRecord, user } = flow;
+        const ipAddress = wrapInArray(
+            this.request.headers["x-forwarded-for"] || this.request.headers["x-real-ip"] || this.request.socket.remoteAddress
+        ).join("_").replace(/\:/gi, "_");
+        return `auth_mfa_bypass:${MD5([authRecord.client_id, ipAddress, user.id].join(""))}`;
     }
 
     /**
