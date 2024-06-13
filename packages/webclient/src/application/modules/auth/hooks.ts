@@ -1,8 +1,8 @@
 import { useObjectState } from "@blendsdk/react";
 import { filterObject } from "@blendsdk/stdlib";
-import { ICheckSetFlow, LOCAL_STORAGE_LAST_LOGIN, RESP_ACCOUNT, RESP_MFA } from "@porta/shared";
+import { ICheckSetFlow, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_MFA } from "@porta/shared";
 import { useFormik } from "formik";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
 import { ApplicationApi, useRouter, useSystemError, useTranslation } from "../../../system";
 
@@ -114,6 +114,22 @@ export const useAuthenticationFlow = () => {
         }
     });
 
+    const onResendMFA = useCallback(() => {
+        setState({ fetching: true });
+        ApplicationApi.authorization.checkSetFlow({
+            update: RESP_MFA,
+            mfa_result: MFA_RESEND_REQUEST
+        }).then(({ data }) => {
+            setState({
+                fetching: isFinalize(data.resp),
+                curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT ? data.resp : state.curState,
+                ...data
+            });
+        })
+            .catch(catchSystemError);
+
+    }, []);
+
     useEffect(() => {
         if (isFinalize(state.resp)) {
             const url = new URL(state.resp);
@@ -146,5 +162,5 @@ export const useAuthenticationFlow = () => {
         };
     }, [reCheck]);
 
-    return { state, form, t };
+    return { state, form, t, onResendMFA };
 };

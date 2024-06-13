@@ -16,7 +16,7 @@ export interface ILoginViewProps {
 
 export const LoginView: React.FC<ILoginViewProps> = () => {
     const styles = useStyles();
-    const { form, state, t } = useAuthenticationFlow();
+    const { form, state, t, onResendMFA } = useAuthenticationFlow();
 
     const isError = state?.error;
     const isInvalidFlow = isError && state?.resp == FLOW_ERROR_INVALID;
@@ -36,7 +36,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
                     {showLogo && <div className={styles.logo} style={{ backgroundImage: `url(${state?.logo || LogoImage})` }} />}
                     {showWaitSpinner && <Loading style={{ flex: 1 }} size={SpinnerSize.large} label={t("please_wait")} />}
                     {showGetAccount && <GetAccount form={form} flowState={state as IUseAuthenticationFlowState} />}
-                    {showGetMFA && <GetMFA form={form} flowState={state as IUseAuthenticationFlowState} />}
+                    {showGetMFA && <GetMFA form={form} flowState={state as IUseAuthenticationFlowState} onResend={onResendMFA} />}
                 </div>
             </form>
         </div>;

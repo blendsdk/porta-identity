@@ -8,7 +8,7 @@ import { SysUserDataService } from "../../../../dataservices/SysUserDataService"
 import { EmailMFAProvider, EndpointController } from "../../../../services";
 import { IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
-export class FlowEndpointController extends EndpointController {
+export class AuthenticateEndpointController extends EndpointController {
 
     public async handleRequest(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>> {
         let flow: IAuthorizationFlow = undefined;

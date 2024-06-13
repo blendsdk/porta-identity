@@ -1,8 +1,8 @@
 import { Body1, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
-import { PrimaryButton } from "@fluentui/react";
+import { DefaultButton, PrimaryButton } from "@fluentui/react";
 import { makeStyles, shorthands } from "@griffel/react";
 import { FormikProps } from "formik";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "../../../system";
 import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./hooks";
 
@@ -10,6 +10,7 @@ export interface IGetMFA {
     form: FormikProps<IAuthenticationDialogModel>;
     flowState: IUseAuthenticationFlowState;
     disabled?: boolean;
+    onResend: () => void;
 }
 
 const useStyles = makeStyles({
@@ -23,9 +24,17 @@ const useStyles = makeStyles({
     }
 });
 
-export const GetMFA: React.FC<IGetMFA> = ({ form, disabled, flowState }) => {
+export const GetMFA: React.FC<IGetMFA> = ({ form, disabled, flowState, onResend }) => {
     const { t } = useTranslation();
     const styles = useStyles();
+    const [showResend, setShowResend] = useState(false);
+
+    useEffect(() => {
+        const error = `invalid_mfa_${flowState.mfa_type}`;
+        if (flowState.error === true && flowState.resp === error) {
+            setShowResend(true);
+        }
+    }, [flowState.error]);
 
     return (
         <Layout className={styles.root} display="flex" flexDirection="column" gap={tokens.spacingM}>
@@ -33,6 +42,13 @@ export const GetMFA: React.FC<IGetMFA> = ({ form, disabled, flowState }) => {
             <ToolbarSpacer flex={1} />
             {flowState.error && <Body1 style={{ color: tokens.paletteRed, textAlign: "center" }}>{t(flowState.resp)}</Body1>}
             <Layout display="flex" flexDirection="row" justifyContent="center" alignItems="center" gap={tokens.spacingM}>
+                {showResend && <DefaultButton
+                    style={{ flex: 1 }}
+                    onClick={onResend}
+                    text={t("btn_resend")}
+                    disabled={disabled || !form.isValid}
+                />
+                }
                 <PrimaryButton
                     style={{ flex: 1 }}
                     onClick={() => { form.submitForm(); }}
