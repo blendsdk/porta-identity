@@ -2,8 +2,11 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysTenant, eSysAuthorizationView } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysTenant, ISysUser, eSysAuthorizationView } from "@porta/shared";
+import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
+import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { EndpointController, commonUtils } from "../../../../services";
 import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
 
@@ -48,9 +51,7 @@ export class AuthorizeEndpointController extends EndpointController {
         } else {
             const { errors, flowId } = await this.prepareAuthorization(authRequest, tenantRecord);
             if (errors.length === 0 && flowId) {
-                // here we decide on the sign in URL. It is either from the webclient or 
-                // an existing user.
-                let signinURL = this.createFrontendSignInUrl(authRequest);
+                const signinURL = this.createFrontendSignInUrl(authRequest);
                 return new RedirectResponse({ url: signinURL });
             } else {
                 return this.responseWithError(
@@ -90,14 +91,35 @@ export class AuthorizeEndpointController extends EndpointController {
 
         const errors: string[] = [];
 
-        let flowId: string = undefined;
+        let flow: { flowId: string, flowComplete: boolean; } = undefined;
 
         if (authRecord.length === 1) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
-            flowId = await this.createAuthorizationFlow(authRecord[0], authRequest, tenantRecord);
+            flow = await this.createAuthorizationFlow(authRecord[0], authRequest, tenantRecord);
         } else {
             errors.push("invalid_authorization");
         }
-        return { errors, flowId };
+        return { errors, ...flow };
+    }
+
+    protected async getReturningUser(tenantRecord: ISysTenant) {
+        const sessionDS = new SysSessionDataService({ tenantId: tenantRecord.id });
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+        let user: ISysUser = undefined;
+        let profile: ISysProfile = undefined;
+
+
+        const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
+        let currentSessionId = this.getCookie(cookieId);
+        if (currentSessionId) {
+            const sessionRecord = await sessionDS.findSysSessionById({ id: currentSessionId });
+            if (sessionRecord) {
+                user = await userDs.findSysUserById({ id: sessionRecord.user_id });
+                profile = await profileDs.findProfileByUserId({ user_id: user.id });
+            }
+        }
+
+        return { user, profile };
     }
 
     /**
@@ -110,20 +132,25 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
-        const mfa_state = !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client                 
+
+        const { user, profile } = await this.getReturningUser(tenantRecord);
+        const complete = user && profile ? true : false;
+
+        let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
+
         await this.getCache().setValue<IAuthorizationFlow>(
             `auth_flow:${flowId}`,
             {
-                complete: false,
+                complete,
                 authRecord,
                 authRequest,
                 flowId,
                 expire,
-                account_state: false,
+                account_state: complete,
                 mfa_state,
                 mfa_request: undefined,
-                profile: undefined,
-                user: undefined,
+                profile,
+                user,
                 tenantRecord
             },
             {
@@ -150,7 +177,7 @@ export class AuthorizeEndpointController extends EndpointController {
             sameSite: "strict",
         });
 
-        return flowId;
+        return { flowId, flowComplete: complete };
     }
 
     /**
@@ -167,7 +194,8 @@ export class AuthorizeEndpointController extends EndpointController {
         return tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
             e.And(
                 e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
-                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri)
+                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
+                e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
             )
         ));
     }

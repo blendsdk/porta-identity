@@ -1,9 +1,10 @@
 import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysTenant } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysTenant, ISysUser } from "@porta/shared";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils } from "../../../../services";
-import { IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../types";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../types";
 
 /**
  * @export
@@ -12,6 +13,11 @@ import { IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../
  */
 export class FinalizeEndpointController extends EndpointController {
 
+    /**
+     * @param {IFinalizeRequest} _params
+     * @return {*}  {Promise<Response<IFinalizeResponse>>}
+     * @memberof FinalizeEndpointController
+     */
     public async handleRequest(_params: IFinalizeRequest): Promise<Response<IFinalizeResponse>> {
         let flow: IAuthorizationFlow = undefined;
 
@@ -26,7 +32,7 @@ export class FinalizeEndpointController extends EndpointController {
             }, true);
         }
 
-        const { authRequest } = flow;
+        const { authRequest, user } = flow;
 
         const response_types = this.parseResponseType(authRequest.response_type);
         const response: IDictionaryOf<string> = {};
@@ -42,7 +48,7 @@ export class FinalizeEndpointController extends EndpointController {
             }
         });
 
-        this.createSSOSession(flow.tenantRecord);
+        await this.createOrUpdateSession(flow.tenantRecord, user);
         this.clearAuthenticationFlowCookies();
         this.setNoCacheResponse();
 
@@ -53,14 +59,55 @@ export class FinalizeEndpointController extends EndpointController {
         );
     }
 
-    protected createSSOSession(tenantRecord: ISysTenant) {
+    protected async cleanExpiredSessions() {
+        return null;
+    }
+
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysUser} user
+     * @memberof FinalizeEndpointController
+     */
+    protected async createOrUpdateSession(tenantRecord: ISysTenant, user: ISysUser) {
+
+        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
         const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
-        this.setCookie(cookieId, "hello", {
-            expires: new Date(commonUtils.expireSecondsFromNow(60)),
+        let currentSessionId = this.getCookie(cookieId);
+        let date_expire: Date = undefined;
+
+        let sessionLength = tenantRecord.auth_session_length_hours;
+
+        if (sessionLength === 0) {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365)); // 1 year
+        } else {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * sessionLength));
+        }
+
+        // This check is for when the session record is deleted but there is a cookie.
+        // Then we have to insert a new session record anyways
+        const currentSessionRecord = await sessionDs.findSysSessionById({ id: currentSessionId });
+
+        if (!currentSessionId || !currentSessionRecord) {
+            const sessionRecord = await sessionDs.insertIntoSysSession({
+                user_id: user.id,
+                date_expire: date_expire ? date_expire.toISOString() : undefined
+            });
+            currentSessionId = sessionRecord.id;
+        } else {
+            await sessionDs.updateSysSessionById({
+                date_expire: date_expire.toISOString()
+            }, { id: currentSessionId });
+        }
+
+        this.setCookie(cookieId, currentSessionId, {
+            expires: date_expire,
             httpOnly: true,
             secure: true,
-            sameSite: "strict"
+            sameSite: "lax"
         });
+
+        this.cleanExpiredSessions();
     }
 
     /**
@@ -87,8 +134,6 @@ export class FinalizeEndpointController extends EndpointController {
         Object.entries(response).forEach(([key, value]) => {
             url.searchParams.append(key, value);
         });
-
-        this.getLogger().debug("response_uri", { url: url.toString() });
 
         return url.toString();
     }

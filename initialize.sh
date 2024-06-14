@@ -32,6 +32,10 @@ fi
 
 echo -e "\n"
 
+cd ./packages/webapi && \
+yarn db:restart && \
+docker exec -it porta_db psql -U postgres -c "DROP DATABASE IF EXISTS registry1" && \
+cd ../../
 
 curl -sS -k -X POST "${HOST}/api/initialize" \
     -H "Content-Type: application/x-www-form-urlencoded" \

@@ -12,6 +12,7 @@ import util from "util";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
+import { SysMfaDataService } from "../dataservices/SysMfaDataService";
 import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRoleDataService } from "../dataservices/SysRoleDataService";
 import { SysSecretDataService } from "../dataservices/SysSecretDataService";
@@ -207,6 +208,11 @@ export class DatabaseSeed {
      */
     public async initializeTenant(params: IInitializeTenant) {
 
+        const { AUTH_SESSION_LENGTH_HOURS = 0 } = application.getSettings<
+            IPortaApplicationSetting & IDatabaseAppSettings
+        >();
+
+
         let { allow_registration, allow_reset_password, databaseName, email, organization, password, tenantName, username, serverURL } = params || {};
 
         // is registry flag
@@ -226,7 +232,8 @@ export class DatabaseSeed {
                 organization,
                 allow_registration: false,
                 allow_reset_password: true,
-                is_active: true
+                is_active: true,
+                auth_session_length_hours: AUTH_SESSION_LENGTH_HOURS
             };
         } else if (!dbInitialized) {
             tenant = {
@@ -235,7 +242,8 @@ export class DatabaseSeed {
                 organization,
                 allow_registration,
                 allow_reset_password,
-                is_active: true
+                is_active: true,
+                auth_session_length_hours: AUTH_SESSION_LENGTH_HOURS
             };
         }
 
@@ -249,9 +257,17 @@ export class DatabaseSeed {
             await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
             await this.createCLIApplication(tenantRecord, serverURL);
             await this.createConformanceTestApplication(tenantRecord, serverURL);
+            await this.createMFAProviders(tenantRecord);
         }
 
         return tenantRecord;
+    }
+
+    protected createMFAProviders(tenantRecord) {
+        const mfaDs = new SysMfaDataService({ tenantId: tenantRecord.id });
+        return mfaDs.insertIntoSysMfa({
+            name: "portamail"
+        });
     }
 
     protected async createConformanceTestApplication(tenantRecord: ISysTenant, serverURL: string) {
@@ -267,8 +283,9 @@ export class DatabaseSeed {
 
         const app = await this.createApplication(
             {
+                tenant_id: tenantRecord.id,
                 application_name: "OIDC Conformance Test Suite",
-                client_id: generateRandomUUID(),
+                client_id: "097c6871-fa61-47c8-9840-93482a126b21",
                 description: "Demo Application",
             },
             tenantRecord
@@ -282,6 +299,7 @@ export class DatabaseSeed {
                 post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
                 access_token_length: ACCESS_TOKEN_TTL,
                 refresh_token_length: REFRESH_TOKEN_TTL,
+                mfa_bypass_days: 1
             },
             app,
             tenantRecord
@@ -307,17 +325,18 @@ export class DatabaseSeed {
      * @memberof DatabaseSeed
      */
     protected async createCLIApplication(tenantRecord: ISysTenant, serverURL: string) {
-        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, BYPASS_MFA_DAYS = 1, } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
         >();
 
         const app = await this.createApplication(
             {
+                tenant_id: tenantRecord.id,
                 id: MD5(`porta_cli_${tenantRecord.id}`),
                 application_name: "CLI",
                 client_id: generateRandomUUID(),
                 description: "CLI Application",
-                is_system: true,
+                is_system: true
             },
             tenantRecord
         );
@@ -331,7 +350,8 @@ export class DatabaseSeed {
                 access_token_length: ACCESS_TOKEN_TTL,
                 refresh_token_length: REFRESH_TOKEN_TTL,
                 is_system: true,
-                is_back_channel_post_logout: false
+                is_back_channel_post_logout: false,
+                mfa_bypass_days: BYPASS_MFA_DAYS
             },
             app,
             tenantRecord

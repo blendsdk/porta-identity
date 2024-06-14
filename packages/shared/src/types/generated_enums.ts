@@ -60,7 +60,9 @@ export enum eSysAuthorizationView {
 	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
 	MFA = "mfa",
 	MFA_SETTINGS = "mfa_settings",
-	MFA_BYPASS_TTL = "mfa_bypass_ttl"
+	MFA_BYPASS_DAYS = "mfa_bypass_days",
+	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
+	TENANT_ID = "tenant_id"
 }
 
 /**
@@ -76,6 +78,7 @@ export enum eSysTenant {
 	IS_ACTIVE = "is_active",
 	ALLOW_RESET_PASSWORD = "allow_reset_password",
 	ALLOW_REGISTRATION = "allow_registration",
+	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
 	ORGANIZATION = "organization"
 }
 
@@ -105,7 +108,8 @@ export enum eSysApplication {
 	CLIENT_ID = "client_id",
 	DESCRIPTION = "description",
 	IS_SYSTEM = "is_system",
-	IS_ACTIVE = "is_active"
+	IS_ACTIVE = "is_active",
+	TENANT_ID = "tenant_id"
 }
 
 /**
@@ -142,7 +146,7 @@ export enum eSysClient {
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
 	APPLICATION_ID = "application_id",
 	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
-	MFA_BYPASS_TTL = "mfa_bypass_ttl",
+	MFA_BYPASS_DAYS = "mfa_bypass_days",
 	MFA_ID = "mfa_id"
 }
 
@@ -248,6 +252,18 @@ export enum eSysRolePermission {
 	ID = "id",
 	ROLE_ID = "role_id",
 	PERMISSION_ID = "permission_id"
+}
+
+/**
+ * Enum of the type sys_session
+ * @export
+ * @enum
+ */
+export enum eSysSession {
+	$name = "sys_session",
+	ID = "id",
+	USER_ID = "user_id",
+	DATE_EXPIRE = "date_expire"
 }
 
 /**

@@ -19,10 +19,13 @@ CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.client_credentials_user_id,
 	sm."name" as mfa,
 	sm.settings as mfa_settings,
-	sc.mfa_bypass_ttl
+	sc.mfa_bypass_days,
+	st.auth_session_length_hours,
+	st.id as tenant_id
 from
 	sys_application sa
 	inner join sys_client sc on sc.application_id = sa.id
+	inner join sys_tenant st on st.id = sa.tenant_id
 	left outer join sys_mfa sm on sm.id = sc.mfa_id
 where
 	sa.is_active is true and

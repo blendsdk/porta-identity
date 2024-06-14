@@ -78,6 +78,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("allow_reset_password", { default: "false" })
         .booleanColumn("allow_registration", { default: "false" })
+        .integerColumn("auth_session_length_hours", { default: "0" }) // indefinate session
         .stringColumn("organization");
 
     application //
@@ -87,7 +88,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("client_id", { unique: true })
         .stringColumn("description", { required: false })
         .booleanColumn("is_system", { default: "false" })
-        .booleanColumn("is_active", { default: "true" });
+        .booleanColumn("is_active", { default: "true" })
+        .referenceColumnAuto("tenant_id", tenant);
 
     client //
         .primaryKeyColumn("id", true)
@@ -101,7 +103,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .integerColumn("refresh_token_length")
         .referenceColumnAuto("application_id", application)
         .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false })
-        .integerColumn("mfa_bypass_ttl", { default: "0" }) // 0 = no bypass
+        .integerColumn("mfa_bypass_days", { default: "0" }) // 0 = no bypass
         .referenceColumn("mfa_id", mfa, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
 
     secret  //
@@ -150,7 +152,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
-        .dateTimeColumn("date_created", { default: "now()" })
+        .dateTimeColumn("date_expire", { default: "now()" });
 
     // mfa.primaryKeyColumn("id", true) //
     //     .stringColumn("name")

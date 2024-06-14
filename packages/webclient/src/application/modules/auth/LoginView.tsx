@@ -26,9 +26,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
     const showGetAccount = showControls && (state.resp === RESP_ACCOUNT || state.curState === RESP_ACCOUNT);
     const showGetMFA = showControls && (state.resp === RESP_MFA || state.curState === RESP_MFA);
 
-    console.log(state.resp);
-
-    return state.initializing ? <SessionLoadingView /> :
+    return state.initializing || state.returningUser ? <SessionLoadingView /> :
         <div className={styles.wrapper}>
             <form onSubmit={form.handleSubmit}>
                 <div className={styles.authView}>

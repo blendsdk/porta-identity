@@ -24,6 +24,7 @@ export interface IAuthenticationDialogModel {
 
 export interface IUseAuthenticationFlowState extends ICheckSetFlow {
     initializing: boolean;
+    returningUser: boolean;
     fetching: boolean;
     curState: string;
 }
@@ -150,7 +151,14 @@ export const useAuthenticationFlow = () => {
                     setReCheck(reCheck + 1);
                 }, data.expires_in);
             }
-            setState({ initializing: false, ...data, curState: data.resp });
+            setState(
+                {
+                    initializing: false,
+                    ...data,
+                    curState: data.resp,
+                    returningUser: isFinalize(data.resp)
+                }
+            );
         }).catch(err => {
             setState({ initializing: false, ...err });
         });

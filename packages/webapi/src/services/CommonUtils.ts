@@ -56,7 +56,7 @@ class CommonUtils {
      * @memberof CommonUtils
      */
     public createSessionCookieID(tenantRecord: ISysTenant, request: HttpRequest) {
-        return MD5([tenantRecord.id, this.getRemoteIP(request)].join(""));
+        return MD5(["porta", tenantRecord.id, this.getRemoteIP(request)].join(""));
     }
 
 }

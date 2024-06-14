@@ -97,9 +97,17 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "json"
 				},
-				mfa_bypass_ttl: {
+				mfa_bypass_days: {
 					type: eJsonSchemaType.number,
 					format: "integer"
+				},
+				auth_session_length_hours: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				}
 			},
 			required: [
@@ -116,7 +124,9 @@ export const validationSchema = {
 				"client_credentials_user_id",
 				"mfa",
 				"mfa_settings",
-				"mfa_bypass_ttl"
+				"mfa_bypass_days",
+				"auth_session_length_hours",
+				"tenant_id"
 			]
 		},
 		sys_tenant: {
@@ -142,6 +152,11 @@ export const validationSchema = {
 				},
 				allow_registration: {
 					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				auth_session_length_hours: {
+					type: eJsonSchemaType.integer,
+					format: "int32",
 					acceptNullValue: true
 				},
 				organization: {
@@ -197,9 +212,13 @@ export const validationSchema = {
 				is_active: {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				}
 			},
-			required: ["application_name", "client_id"]
+			required: ["application_name", "client_id", "tenant_id"]
 		},
 		sys_secret: {
 			type: eJsonSchemaType.object,
@@ -282,7 +301,7 @@ export const validationSchema = {
 					format: "uuid",
 					acceptNullValue: true
 				},
-				mfa_bypass_ttl: {
+				mfa_bypass_days: {
 					type: eJsonSchemaType.integer,
 					format: "int32",
 					acceptNullValue: true
@@ -495,6 +514,25 @@ export const validationSchema = {
 				}
 			},
 			required: ["role_id", "permission_id"]
+		},
+		sys_session: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				date_expire: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				}
+			},
+			required: ["user_id"]
 		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,

@@ -16,6 +16,8 @@ module.exports = {
     DB_DATABASE: "postgres",
     ACCESS_TOKEN_TTL: 60 * 60 * 3, // 4 hours
     REFRESH_TOKEN_TTL: 60 * 60 * 24 * 7, // one week,
+    BYPASS_MFA_DAYS: 1, // 1 Day
+    AUTH_SESSION_LENGTH_HOURS: 24,
     PORTA_PUBLIC_DOMAIN: "porta.local", // NO <---------------
     PORTA_SSO_COMMON_NAME: "porta_development",
     PORTA_REGISTRY_TENANT: "registry1",

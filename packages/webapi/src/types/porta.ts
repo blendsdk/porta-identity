@@ -52,8 +52,10 @@ export interface IPortaApplicationSetting {
     PORTA_API_KEY: string;
     ACCESS_TOKEN_TTL: number;
     REFRESH_TOKEN_TTL: number;
+    BYPASS_MFA_DAYS: number;
     ENFORCE_PKCE: boolean;
     MFA_EMAIL_FROM: string;
+    AUTH_SESSION_LENGTH_HOURS: number;
 }
 
 export enum eClientType {

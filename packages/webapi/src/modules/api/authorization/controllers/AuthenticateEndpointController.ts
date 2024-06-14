@@ -88,7 +88,7 @@ export class AuthenticateEndpointController extends EndpointController {
                 flow.mfa_state = mfa_result === flow.mfa_request;
 
                 // check and set the bypass by IP and client_id if possible
-                if (flow.mfa_state && flow.authRecord.mfa_bypass_ttl !== 0) {
+                if (flow.mfa_state && flow.authRecord.mfa_bypass_days !== 0) {
                     await this.registerMFABypass(flow);
                 }
 
@@ -145,7 +145,7 @@ export class AuthenticateEndpointController extends EndpointController {
      */
     protected async registerMFABypass(flow: IAuthorizationFlow) {
         return await this.getCache().setValue(this.getMFABypassKey(flow), true, {
-            expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_ttl)
+            expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_days)
         });
     }
 

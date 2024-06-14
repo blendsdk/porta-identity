@@ -126,7 +126,17 @@ export interface ISysAuthorizationView {
 	 * @type number
 	 * @memberOf ISysAuthorizationView
 	 */
-	mfa_bypass_ttl: number;
+	mfa_bypass_days: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	auth_session_length_hours: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	tenant_id: string;
 }
 
 /**
@@ -164,6 +174,11 @@ export interface ISysTenant {
 	 * @memberOf ISysTenant
 	 */
 	allow_registration?: boolean;
+	/**
+	 * @type number
+	 * @memberOf ISysTenant
+	 */
+	auth_session_length_hours?: number;
 	/**
 	 * @type string
 	 * @memberOf ISysTenant
@@ -238,6 +253,11 @@ export interface ISysApplication {
 	 * @memberOf ISysApplication
 	 */
 	is_active?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysApplication
+	 */
+	tenant_id: string;
 }
 
 /**
@@ -346,7 +366,7 @@ export interface ISysClient {
 	 * @type number
 	 * @memberOf ISysClient
 	 */
-	mfa_bypass_ttl?: number;
+	mfa_bypass_days?: number;
 	/**
 	 * @type string
 	 * @memberOf ISysClient
@@ -606,6 +626,28 @@ export interface ISysRolePermission {
 	 * @memberOf ISysRolePermission
 	 */
 	permission_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysSession
+ */
+export interface ISysSession {
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	date_expire?: string;
 }
 
 /**
