@@ -1,3 +1,6 @@
+import { MD5, wrapInArray } from "@blendsdk/stdlib";
+import { HttpRequest } from "@blendsdk/webafx-common";
+import { ISysTenant } from "@porta/shared";
 import { IPortaApplicationSetting } from "../types";
 
 class CommonUtils {
@@ -33,6 +36,29 @@ class CommonUtils {
     public expireSecondsFromNow(seconds: number, now?: number) {
         return (now || Date.now()) + this.secondsToMilliseconds(seconds);
     };
+
+
+    /**
+     * @param {HttpRequest} request
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public getRemoteIP(request: HttpRequest) {
+        return wrapInArray(
+            request.headers["x-forwarded-for"] || request.headers["x-real-ip"] || request.socket.remoteAddress
+        ).join("_").replace(/\:/gi, "_");
+    }
+
+    /**
+     * @param {ISysTenant} tenantRecord
+     * @param {HttpRequest} request
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public createSessionCookieID(tenantRecord: ISysTenant, request: HttpRequest) {
+        return MD5([tenantRecord.id, this.getRemoteIP(request)].join(""));
+    }
+
 }
 
 export const commonUtils = new CommonUtils();

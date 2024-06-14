@@ -1,9 +1,10 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
+import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
 import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointController";
+import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 
 
@@ -14,6 +15,16 @@ import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+
+    /**
+     * @param {IFinalizeRequest} params
+     * @return {*}  {Promise<Response<IFinalizeResponse>>}
+     * @memberof AuthorizationController
+     */
+    public finalize(params: IFinalizeRequest): Promise<Response<IFinalizeResponse>> {
+        const subController = new FinalizeEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
 
     /**
      * @param {ICheckSetFlowRequest} params

@@ -20,13 +20,7 @@ import {
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
 	ICheckSetFlowRequest,
-	ICheckSetFlowResponse,
-	IDiscoveryKeysRequest,
-	IDiscoveryKeysResponse,
-	IDiscoveryRequest,
-	IDiscoveryResponse,
-	IAuthorizeRequest,
-	IAuthorizeResponse
+	ICheckSetFlowResponse
 } from "@porta/shared";
 /**
  * Interface describing the Backend REST API client
@@ -45,12 +39,7 @@ export interface IPortaApi {
 		getUserState: THttpRequest<IGetUserStateRequest, IGetUserStateResponse>;
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
-	authorization: {
-		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
-		discoveryKeys: THttpRequest<IDiscoveryKeysRequest, IDiscoveryKeysResponse>;
-		discovery: THttpRequest<IDiscoveryRequest, IDiscoveryResponse>;
-		authorize: THttpRequest<IAuthorizeRequest, IAuthorizeResponse>;
-	};
+	authorization: { checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse> };
 }
 /**
  * Backend REST API client
@@ -79,11 +68,6 @@ export const PortaApi = createHttpApi<IPortaApi>({
 				parameters: { tenant: eParameterLocation.params }
 			})
 		},
-		authorization: {
-			checkSetFlow: defineEndpoint({ method: "post", url: "/api/flow" }),
-			discoveryKeys: defineEndpoint({ method: "get", url: "/:tenant/oauth2/discovery/keys" }),
-			discovery: defineEndpoint({ method: "get", url: "/:tenant/oauth2/.well-known/openid-configuration" }),
-			authorize: defineEndpoint({ method: "get", url: "/:tenant/oauth2/authorize" })
-		}
+		authorization: { checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" }) }
 	}
 });

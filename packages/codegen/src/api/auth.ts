@@ -4,8 +4,22 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
+        id: "finalize",
+        url: "/af/finalize",
+        group: "authorization",
+        method: "get",
+        generate: "backend-only",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema.createAppendType(request_type);
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "check_set_flow",
-        url: "/api/flow",
+        url: "/af/flow",
         group: "authorization",
         method: "post",
         public: true,
@@ -41,6 +55,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
+        generate: "backend-only",
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -60,6 +75,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
+        generate: "backend-only",
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //
@@ -77,6 +93,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
         group: "authorization",
         method: "get",
         public: true,
+        generate: "backend-only",
         createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
             typeSchema
                 .createAppendType(request_type) //

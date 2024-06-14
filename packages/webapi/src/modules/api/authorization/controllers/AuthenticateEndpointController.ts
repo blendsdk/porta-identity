@@ -1,5 +1,5 @@
 import { verifyStringSync } from "@blendsdk/crypto";
-import { MD5, wrapInArray } from "@blendsdk/stdlib";
+import { MD5 } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -11,6 +11,11 @@ import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "..
 
 export class AuthenticateEndpointController extends EndpointController {
 
+    /**
+     * @param {ICheckSetFlowRequest} params
+     * @return {*}  {Promise<Response<ICheckSetFlowResponse>>}
+     * @memberof AuthenticateEndpointController
+     */
     public async handleRequest(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>> {
         let flow: IAuthorizationFlow = undefined;
         let resp: string = undefined;
@@ -27,10 +32,9 @@ export class AuthenticateEndpointController extends EndpointController {
 
         const tenant = this.getCookie(COOKIE_TENANT);
         const flowId = this.getCookie(COOKIE_AUTH_FLOW);
-        const flowCacheKey = `auth_flow:${flowId}`;
 
         // read the flow first
-        flow = await this.getCache().getValue<IAuthorizationFlow>(flowCacheKey);
+        flow = await this.getAuthenticationFlow(flowId);
         if (!flow) {
             resp = FLOW_ERROR_INVALID;
             error = true;
@@ -70,7 +74,7 @@ export class AuthenticateEndpointController extends EndpointController {
                         flow.account_state = true;
                         flow.user = userRecord;
                         flow.profile = await profileDs.findProfileByUserId({ user_id: userRecord.id });
-                        await this.getCache().setValue(flowCacheKey, flow);
+                        await this.updateFlow(flow);
                     } else {
                         error = true;
                         resp = "invalid_username_or_password";
@@ -83,17 +87,16 @@ export class AuthenticateEndpointController extends EndpointController {
             } else if (update === "mfa") {
                 flow.mfa_state = mfa_result === flow.mfa_request;
 
+                // check and set the bypass by IP and client_id if possible
                 if (flow.mfa_state && flow.authRecord.mfa_bypass_ttl !== 0) {
-                    await this.getCache().setValue(this.getMFABypassKey(flow), true, {
-                        expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_ttl)
-                    });
+                    await this.registerMFABypass(flow);
                 }
 
                 if (mfa_result !== MFA_RESEND_REQUEST && !flow.mfa_state) {
                     error = true;
                     resp = `invalid_mfa_${mfa_type}`;
                 }
-                await this.getCache().setValue(flowCacheKey, flow);
+                await this.updateFlow(flow);
             }
 
             if (!error) {
@@ -105,17 +108,16 @@ export class AuthenticateEndpointController extends EndpointController {
                     if (flow.mfa_state === false) {
                         if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined) {
                             flow.mfa_request = await this.createMFARequest(flow);
-                            await this.getCache().setValue(flowCacheKey, flow);
+                            await this.updateFlow(flow);
                         }
                         // send mfa code
                         resp = "mfa";
                     } else {
                         // mfa state is true
-                        this.clearAuthenticationFlowCookies();
                         // here is the authentication complete
                         flow.complete = true;
-                        await this.getCache().setValue(flowCacheKey, flow);
-                        resp = `${this.getServerURL()}/api/finalize`;
+                        await this.updateFlow(flow);
+                        resp = `${this.getServerURL()}/af/finalize`;
                     }
                 }
             }
@@ -135,6 +137,35 @@ export class AuthenticateEndpointController extends EndpointController {
         });
     }
 
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof AuthenticateEndpointController
+     */
+    protected async registerMFABypass(flow: IAuthorizationFlow) {
+        return await this.getCache().setValue(this.getMFABypassKey(flow), true, {
+            expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_ttl)
+        });
+    }
+
+    /**
+     * @protected
+     * @param {string} flowCacheKey
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof AuthenticateEndpointController
+     */
+    protected async updateFlow(flow: IAuthorizationFlow) {
+        const flowCacheKey = `auth_flow:${flow.flowId}`;
+        return this.getCache().setValue(flowCacheKey, flow, { expire: flow.expire });
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @memberof AuthenticateEndpointController
+     */
     protected async checkMFABypass(flow: IAuthorizationFlow) {
         if (flow.mfa_state === false) {
             const bypass = await this.getCache().getValue(this.getMFABypassKey(flow));
@@ -150,10 +181,7 @@ export class AuthenticateEndpointController extends EndpointController {
      */
     protected getMFABypassKey(flow: IAuthorizationFlow) {
         const { authRecord, user } = flow;
-        const ipAddress = wrapInArray(
-            this.request.headers["x-forwarded-for"] || this.request.headers["x-real-ip"] || this.request.socket.remoteAddress
-        ).join("_").replace(/\:/gi, "_");
-        return `auth_mfa_bypass:${MD5([authRecord.client_id, ipAddress, user.id].join(""))}`;
+        return `auth_mfa_bypass:${MD5([authRecord.client_id, commonUtils.getRemoteIP(this.request), user.id].join(""))}`;
     }
 
     /**

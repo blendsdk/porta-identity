@@ -659,6 +659,12 @@ export const validationSchema = {
 			},
 			required: ["tenant", "user_state"]
 		},
+		finalize_request: {
+			type: eJsonSchemaType.object
+		},
+		finalize: {
+			type: eJsonSchemaType.object
+		},
 		check_set_flow_request: {
 			type: eJsonSchemaType.object,
 			properties: {

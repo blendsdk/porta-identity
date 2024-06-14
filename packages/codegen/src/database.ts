@@ -29,7 +29,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     // const role_permission = database.addTable("sys_role_permission");
     // const application = database.addTable("sys_application");
     // const client = database.addTable("sys_client");
-    // const session = database.addTable("sys_session");
+    const session = database.addTable("sys_session");
     // const access_token = database.addTable("sys_access_token");
     // const refresh_token = database.addTable("sys_refresh_token");
 
@@ -143,6 +143,14 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .referenceColumnAuto("role_id", role)
         .referenceColumnAuto("permission_id", permission)
         .uniqueConstraint(["role_id", "permission_id"]);
+
+    session
+        .primaryKeyColumn("id", true)
+        .referenceColumnAuto("user_id", user, {
+            onUpdate: eDBForeignKeyAction.cascade,
+            onDelete: eDBForeignKeyAction.cascade
+        })
+        .dateTimeColumn("date_created", { default: "now()" })
 
     // mfa.primaryKeyColumn("id", true) //
     //     .stringColumn("name")

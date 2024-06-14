@@ -10,6 +10,7 @@ export const routeDefinitions: {
 	reference_data: { get_reference_data: IRouteBase };
 	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
 	authorization: {
+		finalize: IRouteBase;
 		check_set_flow: IRouteBase;
 		discovery_keys: IRouteBase;
 		discovery: IRouteBase;
@@ -30,7 +31,8 @@ export const routeDefinitions: {
 		save_user_state: { id: "save_user_state", method: "post", url: "/api/:tenant/user_state", public: false }
 	},
 	authorization: {
-		check_set_flow: { id: "check_set_flow", method: "post", url: "/api/flow", public: true },
+		finalize: { id: "finalize", method: "get", url: "/af/finalize", public: true },
+		check_set_flow: { id: "check_set_flow", method: "post", url: "/af/flow", public: true },
 		discovery_keys: { id: "discovery_keys", method: "get", url: "/:tenant/oauth2/discovery/keys", public: true },
 		discovery: {
 			id: "discovery",

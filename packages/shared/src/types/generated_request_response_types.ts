@@ -262,6 +262,30 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
+ * @interface IFinalizeRequest
+ */
+export interface IFinalizeRequest {}
+
+/**
+ * @export
+ * @interface IFinalize
+ */
+export interface IFinalize {}
+
+/**
+ * @export
+ * @interface IFinalizeResponse
+ */
+export interface IFinalizeResponse {
+	/**
+	 * @type IFinalize
+	 * @memberOf IFinalizeResponse
+	 */
+	data: IFinalize;
+}
+
+/**
+ * @export
  * @interface ICheckSetFlowRequest
  */
 export interface ICheckSetFlowRequest {

@@ -1,7 +1,7 @@
 import { deepCopy, isObject, wrapInArray } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, ISysAuthorizationView } from "@porta/shared";
-import { IErrorResponseParams, eOAuthResponseMode } from "../types";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
+import { IAuthorizationFlow, IErrorResponseParams, eOAuthResponseMode, eOAuthResponseType } from "../types";
 import { databaseUtils } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
 
@@ -41,6 +41,36 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         this.setCookie(COOKIE_AUTH_FLOW_TTL, "-", {
             expires: new Date(-1),
         });
+    }
+
+    /**
+     * @protected
+     * @param {string} flowId
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected getAuthenticationFlow(flowId: string) {
+        const flowCacheKey = `auth_flow:${flowId}`;
+        return this.getCache().getValue<IAuthorizationFlow>(flowCacheKey);
+    }
+
+    /**
+     * Parses the response_type
+     *
+     * @protected
+     * @param {string} data
+     * @returns
+     * @memberof AuthorizationController
+     */
+    protected parseResponseType(data: string) {
+        const codes = (data || "").split(" ");
+        return codes
+            .map((item) => {
+                return eOAuthResponseType[item.trim()] || undefined;
+            })
+            .filter(Boolean).length === codes.length
+            ? codes
+            : [];
     }
 
     /**
@@ -98,5 +128,14 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 url: `${redirect_uri}?${new URLSearchParams(params).toString()}`
             });
         }
+    }
+
+    protected setNoCacheResponse() {
+        this.response.set({
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Surrogate-Control": "no-store"
+        });
     }
 }

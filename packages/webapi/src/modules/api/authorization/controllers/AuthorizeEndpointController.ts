@@ -227,9 +227,29 @@ export class AuthorizeEndpointController extends EndpointController {
                 error_description: "invalid_response_mode",
                 response_mode
             });
+        } else if (!this.isSupportedResponseType(response_types)) {
+            return this.responseWithError({
+                error: eErrorType.invalid_request,
+                redirect_uri,
+                state,
+                error_description: "unsupported_response_type_combination",
+                response_mode
+            });
         } else {
             return null;
         }
+    }
+
+    /**
+     * @protected
+     * @param {string[]} response_types
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
+    protected isSupportedResponseType(response_types: string[]) {
+        return response_types.filter(type => {
+            return eOAuthResponseType[type] === undefined;
+        }).length === 0;
     }
 
     /**
@@ -285,24 +305,5 @@ export class AuthorizeEndpointController extends EndpointController {
                 return false;
             }
         }
-    }
-
-    /**
-     * Parses the response_type
-     *
-     * @protected
-     * @param {string} data
-     * @returns
-     * @memberof AuthorizationController
-     */
-    protected parseResponseType(data: string) {
-        const codes = (data || "").split(" ");
-        return codes
-            .map((item) => {
-                return eOAuthResponseType[item.trim()] || undefined;
-            })
-            .filter(Boolean).length === codes.length
-            ? codes
-            : [];
     }
 }

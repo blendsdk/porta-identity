@@ -5,6 +5,8 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	IFinalizeRequest,
+	IFinalizeResponse,
 	ICheckSetFlowRequest,
 	ICheckSetFlowResponse,
 	IDiscoveryKeysRequest,
@@ -26,7 +28,15 @@ export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
 	/**
-	 * Method for handling [POST] /api/flow
+	 * Method for handling [GET] /af/finalize
+	 * @abstract
+	 * @param {IFinalizeRequest} params
+	 * @returns {Promise<Response<IFinalizeResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract finalize(params: IFinalizeRequest): Promise<Response<IFinalizeResponse>>;
+	/**
+	 * Method for handling [POST] /af/flow
 	 * @abstract
 	 * @param {ICheckSetFlowRequest} params
 	 * @returns {Promise<Response<ICheckSetFlowResponse>>}
