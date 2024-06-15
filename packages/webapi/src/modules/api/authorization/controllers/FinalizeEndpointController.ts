@@ -1,10 +1,11 @@
+import { generateRandomUUID } from "@blendsdk/crypto";
 import { IDictionaryOf, asyncForEach } from "@blendsdk/stdlib";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysTenant, ISysUser } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../types";
+import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../types";
 
 /**
  * @export
@@ -39,17 +40,21 @@ export class FinalizeEndpointController extends EndpointController {
 
         await asyncForEach(response_types, async (type) => {
             switch (type) {
-                case eOAuthResponseType.code: {
-
-                }
+                case eOAuthResponseType.code:
+                    response[type] = await this.createOTACode(flow);
                     break;
                 default:
                     throw new Error(`Response Type ${type} is not implemented yet!`);
             }
         });
 
-        await this.createOrUpdateSession(flow.tenantRecord, user);
+        // Create or update the session for this flow
+        flow.session = await this.createOrUpdateSession(flow.tenantRecord, user);
+        await this.updateFlow(flow);
+
+        // After this point we don't need any auth cookies
         this.clearAuthenticationFlowCookies();
+        // Disable all caching        
         this.setNoCacheResponse();
 
         return new SuccessResponse(
@@ -57,6 +62,21 @@ export class FinalizeEndpointController extends EndpointController {
                 this.createRedirectUri(authRequest, response)
             )
         );
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async createOTACode(flow: IAuthorizationFlow) {
+        const code = generateRandomUUID();
+        const expire = commonUtils.expireSecondsFromNow(CONST_OTA_TTL);
+        await this.getCache().setValue(`auth_ota:${code}`, flow.flowId, {
+            expire
+        });
+        return code;
     }
 
     protected async cleanExpiredSessions() {
@@ -76,8 +96,9 @@ export class FinalizeEndpointController extends EndpointController {
         let currentSessionId = this.getCookie(cookieId);
         let date_expire: Date = undefined;
 
+        // Determine the expre_date of this session
+        // If the session time is set to 0 then we allow one year as indetinate session length
         let sessionLength = tenantRecord.auth_session_length_hours;
-
         if (sessionLength === 0) {
             date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365)); // 1 year
         } else {
@@ -86,16 +107,16 @@ export class FinalizeEndpointController extends EndpointController {
 
         // This check is for when the session record is deleted but there is a cookie.
         // Then we have to insert a new session record anyways
-        const currentSessionRecord = await sessionDs.findSysSessionById({ id: currentSessionId });
-
+        let currentSessionRecord = await sessionDs.findSysSessionById({ id: currentSessionId });
         if (!currentSessionId || !currentSessionRecord) {
             const sessionRecord = await sessionDs.insertIntoSysSession({
                 user_id: user.id,
                 date_expire: date_expire ? date_expire.toISOString() : undefined
             });
             currentSessionId = sessionRecord.id;
+            currentSessionRecord = sessionRecord;
         } else {
-            await sessionDs.updateSysSessionById({
+            currentSessionRecord = await sessionDs.updateSysSessionById({
                 date_expire: date_expire.toISOString()
             }, { id: currentSessionId });
         }
@@ -108,6 +129,8 @@ export class FinalizeEndpointController extends EndpointController {
         });
 
         this.cleanExpiredSessions();
+
+        return currentSessionRecord;
     }
 
     /**

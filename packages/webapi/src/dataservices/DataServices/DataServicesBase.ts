@@ -12,6 +12,8 @@ import { SysPermissionDataService } from "../SysPermissionDataService";
 import { SysUserRoleDataService } from "../SysUserRoleDataService";
 import { SysRolePermissionDataService } from "../SysRolePermissionDataService";
 import { SysSessionDataService } from "../SysSessionDataService";
+import { SysAccessTokenDataService } from "../SysAccessTokenDataService";
+import { SysRefreshTokenDataService } from "../SysRefreshTokenDataService";
 import { SysMfaDataService } from "../SysMfaDataService";
 import { PostgreSQLExecutionContext, PostgreSQLDataSource } from "@blendsdk/postgresql";
 
@@ -131,6 +133,24 @@ export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLEx
 	 */
 	public sysSessionDataService(): SysSessionDataService {
 		return new SysSessionDataService({ sharedContext: this.sharedContext });
+	}
+
+	/**
+	 * Returns a new instance of SysAccessTokenDataService
+	 * @return {*}  {SysAccessTokenDataService}
+	 * @memberof DataServicesBase
+	 */
+	public sysAccessTokenDataService(): SysAccessTokenDataService {
+		return new SysAccessTokenDataService({ sharedContext: this.sharedContext });
+	}
+
+	/**
+	 * Returns a new instance of SysRefreshTokenDataService
+	 * @return {*}  {SysRefreshTokenDataService}
+	 * @memberof DataServicesBase
+	 */
+	public sysRefreshTokenDataService(): SysRefreshTokenDataService {
+		return new SysRefreshTokenDataService({ sharedContext: this.sharedContext });
 	}
 
 	/**

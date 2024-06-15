@@ -19,7 +19,7 @@ export interface ISysSecretView {
 	 * @type string
 	 * @memberOf ISysSecretView
 	 */
-	secret: string;
+	client_secret: string;
 	/**
 	 * @type string
 	 * @memberOf ISysSecretView
@@ -40,6 +40,11 @@ export interface ISysSecretView {
 	 * @memberOf ISysSecretView
 	 */
 	is_system: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	sys_client_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysSecretView
@@ -137,6 +142,11 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	tenant_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	sys_client_id: string;
 }
 
 /**
@@ -460,7 +470,7 @@ export interface ISysUser {
 	 * @type string
 	 * @memberOf ISysUser
 	 */
-	date_changed?: string;
+	date_modified?: string;
 }
 
 /**
@@ -647,7 +657,81 @@ export interface ISysSession {
 	 * @type string
 	 * @memberOf ISysSession
 	 */
-	date_expire?: string;
+	date_expire: string;
+}
+
+/**
+ * @export
+ * @interface ISysAccessToken
+ */
+export interface ISysAccessToken {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	date_expire: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	auth_time: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	access_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	session_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	tenant_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysRefreshToken
+ */
+export interface ISysRefreshToken {
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	date_expire: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	refresh_token?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
+	access_token_id: string;
 }
 
 /**

@@ -1,9 +1,18 @@
 DROP VIEW IF EXISTS sys_secret_view CASCADE;
 CREATE OR REPLACE VIEW sys_secret_view AS select
-	*,
-	((now() >= valid_from) is true) and ((now() < valid_to) is false) as is_expired    
+	ss.id,
+	ss.secret as client_secret,
+	ss.description,
+	ss.valid_from,
+	ss.valid_to,
+	ss.is_system,
+	ss.client_id as sys_client_id,
+	sa.client_id,
+	((now() >= ss.valid_from) is true) and ((now() < ss.valid_to) is false) as is_expired    
 from
-	sys_secret;
+	sys_secret ss
+	inner join sys_client sc on sc.id  = ss.client_id
+	inner join sys_application sa on sa.id  = sc.application_id;
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.application_id,
@@ -21,7 +30,8 @@ CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sm.settings as mfa_settings,
 	sc.mfa_bypass_days,
 	st.auth_session_length_hours,
-	st.id as tenant_id
+	st.id as tenant_id,
+	sc.id as sys_client_id
 from
 	sys_application sa
 	inner join sys_client sc on sc.application_id = sa.id

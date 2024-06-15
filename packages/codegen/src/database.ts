@@ -30,8 +30,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     // const application = database.addTable("sys_application");
     // const client = database.addTable("sys_client");
     const session = database.addTable("sys_session");
-    // const access_token = database.addTable("sys_access_token");
-    // const refresh_token = database.addTable("sys_refresh_token");
+    const access_token = database.addTable("sys_access_token");
+    const refresh_token = database.addTable("sys_refresh_token");
 
     const mfa = database.addTable("sys_mfa");
     //const user_mfa = database.addTable("sys_user_mfa");
@@ -58,7 +58,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("is_system", { default: "false" })
         .dateTimeColumn("date_created", { default: "now()" })
-        .dateColumn("date_changed", { default: "now()" });
+        .dateTimeColumn("date_modified", { default: "now()" });
 
     profile //
         .primaryKeyColumn("id", true)
@@ -67,9 +67,9 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("lastname")
         .stringColumn("avatar", { required: false })
         .referenceColumnAuto("user_id", user)
-        .dateColumn("date_created", { default: "now()" })
+        .dateTimeColumn("date_created", { default: "now()" })
         .stringColumn("user_state", { required: false })
-        .dateColumn("date_modified", { default: "now()" });
+        .dateTimeColumn("date_modified", { default: "now()" });
 
     tenant //
         .primaryKeyColumn("id", true)
@@ -152,7 +152,46 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
-        .dateTimeColumn("date_expire", { default: "now()" });
+        .dateTimeColumn("date_expire");
+
+    access_token
+        //
+        .primaryKeyColumn("id", true)
+        .dateTimeColumn("date_expire")
+        .dateTimeColumn("auth_time")
+        .stringColumn("access_token", {
+            unique: true,
+            default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
+        })
+        .referenceColumnAuto("session_id", session, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumnAuto("user_id", user, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumnAuto("client_id", client, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumnAuto("tenant_id", tenant, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        });
+
+    refresh_token
+        //
+        .primaryKeyColumn("id", true)
+        .dateTimeColumn("date_expire")
+        .stringColumn("refresh_token", {
+            unique: true,
+            default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
+        })
+        .referenceColumnAuto("access_token_id", access_token, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        });
 
     // mfa.primaryKeyColumn("id", true) //
     //     .stringColumn("name")

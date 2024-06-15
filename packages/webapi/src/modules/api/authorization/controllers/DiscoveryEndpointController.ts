@@ -41,7 +41,7 @@ export class DiscoveryEndpointController extends EndpointController {
             authorization_endpoint: `${this.getServerURL()}/${tenant}/oauth2/authorize`,
             token_endpoint: `${this.getServerURL()}/${tenant}/oauth2/token`,
             grant_types_supported: Object.keys(eOAuthGrantType),
-            issuer: this.getIssuer(tenant),
+            issuer: this.getIssuer(tenantRecord.id),
             jwks_uri: `${this.getServerURL()}/${tenant}/oauth2/discovery/keys`,
             response_types_supported: Object.keys(eOAuthResponseType),
             id_token_signing_alg_values_supported: Object.keys(eOAuthSigningAlg),

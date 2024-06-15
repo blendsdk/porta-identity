@@ -1,7 +1,8 @@
-import { MD5, wrapInArray } from "@blendsdk/stdlib";
+import { sha256Verify } from "@blendsdk/crypto";
+import { IDictionaryOf, MD5, wrapInArray } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import { ISysTenant } from "@porta/shared";
-import { IPortaApplicationSetting } from "../types";
+import { IPortaApplicationSetting, eOAuthPKCECodeChallengeMethod } from "../types";
 
 class CommonUtils {
     /**
@@ -25,6 +26,15 @@ class CommonUtils {
      */
     public secondsToMilliseconds(seconds: number) {
         return seconds * 1000;
+    }
+
+    /**
+     * @param {number} milliseconds
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public millisecondsToSeconds(milliseconds: number) {
+        return Math.trunc(milliseconds / 1000);
     }
 
     /**
@@ -59,6 +69,54 @@ class CommonUtils {
         return MD5(["porta", tenantRecord.id, this.getRemoteIP(request)].join(""));
     }
 
+    /**
+     * Verifies PKCE
+     *
+     * @export
+     * @param {string} code_challenge_method
+     * @param {string} code_challenge
+     * @param {string} code_verifier
+     * @param {string[]} errors
+     * @returns
+     */
+    public async verifyPkce(
+        code_challenge_method: string,
+        code_challenge: string,
+        code_verifier: string,
+        errors: string[]
+    ) {
+        switch (code_challenge_method) {
+            case eOAuthPKCECodeChallengeMethod.S256:
+                return sha256Verify(code_verifier, code_challenge, "base64url");
+            default:
+                return new Promise((resolve) => {
+                    errors.push("code_challenge_method");
+                    resolve(false);
+                });
+        }
+    }
+
+
+    /**
+     * Parses a a string with spaces to an array
+     *
+     * @param {string} strTokens
+     * @param {boolean} [caseSensitive]
+     * @returns {IDictionaryOf<boolean>}
+     * @memberof CommonUtils
+     */
+    public parseSeparatedTokens(strTokens: string, caseSensitive?: boolean): IDictionaryOf<boolean> {
+        const data: IDictionaryOf<boolean> = {};
+        caseSensitive = caseSensitive === true ? true : false;
+        (strTokens || "")
+            .replace(/ /gi, ",")
+            .split(",")
+            .filter(Boolean)
+            .forEach((i) => {
+                data[caseSensitive ? i : i.toLocaleLowerCase()] = true;
+            });
+        return data;
+    }
 }
 
 export const commonUtils = new CommonUtils();

@@ -23,7 +23,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				secret: {
+				client_secret: {
 					type: eJsonSchemaType.string
 				},
 				description: {
@@ -40,15 +40,28 @@ export const validationSchema = {
 				is_system: {
 					type: eJsonSchemaType.boolean
 				},
-				client_id: {
+				sys_client_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
 				},
 				is_expired: {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["id", "secret", "description", "valid_from", "valid_to", "is_system", "client_id", "is_expired"]
+			required: [
+				"id",
+				"client_secret",
+				"description",
+				"valid_from",
+				"valid_to",
+				"is_system",
+				"sys_client_id",
+				"client_id",
+				"is_expired"
+			]
 		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
@@ -108,6 +121,10 @@ export const validationSchema = {
 				tenant_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
+				},
+				sys_client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
 				}
 			},
 			required: [
@@ -126,7 +143,8 @@ export const validationSchema = {
 				"mfa_settings",
 				"mfa_bypass_days",
 				"auth_session_length_hours",
-				"tenant_id"
+				"tenant_id",
+				"sys_client_id"
 			]
 		},
 		sys_tenant: {
@@ -375,9 +393,9 @@ export const validationSchema = {
 					format: "datetime-tz",
 					acceptNullValue: true
 				},
-				date_changed: {
+				date_modified: {
 					type: eJsonSchemaType.string,
-					format: "date",
+					format: "datetime-tz",
 					acceptNullValue: true
 				}
 			},
@@ -410,7 +428,7 @@ export const validationSchema = {
 				},
 				date_created: {
 					type: eJsonSchemaType.string,
-					format: "date",
+					format: "datetime-tz",
 					acceptNullValue: true
 				},
 				user_state: {
@@ -419,7 +437,7 @@ export const validationSchema = {
 				},
 				date_modified: {
 					type: eJsonSchemaType.string,
-					format: "date",
+					format: "datetime-tz",
 					acceptNullValue: true
 				}
 			},
@@ -528,11 +546,70 @@ export const validationSchema = {
 				},
 				date_expire: {
 					type: eJsonSchemaType.string,
-					format: "datetime-tz",
-					acceptNullValue: true
+					format: "datetime-tz"
 				}
 			},
-			required: ["user_id"]
+			required: ["user_id", "date_expire"]
+		},
+		sys_access_token: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				date_expire: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				auth_time: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				access_token: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				session_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["date_expire", "auth_time", "session_id", "user_id", "client_id", "tenant_id"]
+		},
+		sys_refresh_token: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				date_expire: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				access_token_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["date_expire", "access_token_id"]
 		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,
@@ -696,6 +773,88 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "user_state"]
+		},
+		token_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				grant_type: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				code: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				code_verifier: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_secret: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				state: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				nonce: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				scope: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				claims: {
+					type: eJsonSchemaType.string,
+					validate: false,
+					location: eParameterLocation.query
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				}
+			},
+			required: ["tenant", "grant_type"]
+		},
+		token: {
+			type: eJsonSchemaType.object,
+			properties: {
+				access_token: {
+					type: eJsonSchemaType.string
+				},
+				token_type: {
+					type: eJsonSchemaType.string
+				},
+				expires_in: {
+					type: eJsonSchemaType.number
+				},
+				id_token: {
+					type: eJsonSchemaType.string
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string
+				},
+				refresh_token_expires_in: {
+					type: eJsonSchemaType.number
+				},
+				refresh_token_expires_at: {
+					type: eJsonSchemaType.number
+				}
+			},
+			required: ["access_token", "token_type", "expires_in", "id_token"]
 		},
 		finalize_request: {
 			type: eJsonSchemaType.object

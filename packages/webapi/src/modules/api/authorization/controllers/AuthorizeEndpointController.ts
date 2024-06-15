@@ -2,7 +2,7 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysTenant, ISysUser, eSysAuthorizationView } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysSession, ISysTenant, ISysUser, eSysAuthorizationView } from "@porta/shared";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
@@ -101,25 +101,32 @@ export class AuthorizeEndpointController extends EndpointController {
         return { errors, ...flow };
     }
 
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
     protected async getReturningUser(tenantRecord: ISysTenant) {
         const sessionDS = new SysSessionDataService({ tenantId: tenantRecord.id });
         const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
         const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
         let user: ISysUser = undefined;
         let profile: ISysProfile = undefined;
+        let session: ISysSession = undefined;
 
 
         const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
         let currentSessionId = this.getCookie(cookieId);
         if (currentSessionId) {
-            const sessionRecord = await sessionDS.findSysSessionById({ id: currentSessionId });
-            if (sessionRecord) {
-                user = await userDs.findSysUserById({ id: sessionRecord.user_id });
+            session = await sessionDS.findSysSessionById({ id: currentSessionId });
+            if (session) {
+                user = await userDs.findSysUserById({ id: session.user_id });
                 profile = await profileDs.findProfileByUserId({ user_id: user.id });
             }
         }
 
-        return { user, profile };
+        return { user, profile, session };
     }
 
     /**
@@ -133,7 +140,7 @@ export class AuthorizeEndpointController extends EndpointController {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
 
-        const { user, profile } = await this.getReturningUser(tenantRecord);
+        const { user, profile, session } = await this.getReturningUser(tenantRecord);
         const complete = user && profile ? true : false;
 
         let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
@@ -151,7 +158,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 mfa_request: undefined,
                 profile,
                 user,
-                tenantRecord
+                tenantRecord,
+                session
             },
             {
                 expire

@@ -1,4 +1,4 @@
-import { deepCopy, isObject } from "@blendsdk/stdlib";
+import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
 import { IAuthorizationFlow, IErrorResponseParams, eOAuthResponseMode, eOAuthResponseType } from "../types";
@@ -14,6 +14,35 @@ import { formPostTemplate } from "./FormPostTemplate";
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
+
+    /**
+     *
+     *
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async updateFlow(flow: IAuthorizationFlow) {
+        const flowCacheKey = `auth_flow:${flow.flowId}`;
+        return this.getCache().setValue(flowCacheKey, flow, { expire: flow.expire });
+    }
+
+    protected getBasicAuthCredentialsFromRequestHeader() {
+        const [type, data] = (this.request.headers.authorization || "").split(" ");
+        if (data && type && type.toLocaleLowerCase() === "basic") {
+            const [client_id, client_secret] = base64Decode(data).split(":");
+            return {
+                client_id,
+                client_secret
+            };
+        }
+        return {
+            client_id: undefined,
+            client_secret: undefined
+        };
+    }
+
     /**
      * Creates an issuer
      *
@@ -90,7 +119,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         } else {
             return undefined;
         }
-        return tenantRecord && isActive ? tenantRecord : undefined;
     }
 
     /**
@@ -124,8 +152,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             return new SuccessResponse(formPostTemplate({ redirect_uri, data: params }));
         } else {
             // response_mode === eOAuthResponseMode.query
+            const url = new URL(redirect_uri);
+            Object.entries(params).forEach(([key, val]) => {
+                url.searchParams.append(key, val);
+            });
             return new RedirectResponse({
-                url: `${redirect_uri}?${new URLSearchParams(params).toString()}`
+                url: url.toString()
             });
         }
     }

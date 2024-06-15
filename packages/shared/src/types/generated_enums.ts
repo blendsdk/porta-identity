@@ -31,11 +31,12 @@ export enum eOpsResponse {
 export enum eSysSecretView {
 	$name = "sys_secret_view",
 	ID = "id",
-	SECRET = "secret",
+	CLIENT_SECRET = "client_secret",
 	DESCRIPTION = "description",
 	VALID_FROM = "valid_from",
 	VALID_TO = "valid_to",
 	IS_SYSTEM = "is_system",
+	SYS_CLIENT_ID = "sys_client_id",
 	CLIENT_ID = "client_id",
 	IS_EXPIRED = "is_expired"
 }
@@ -62,7 +63,8 @@ export enum eSysAuthorizationView {
 	MFA_SETTINGS = "mfa_settings",
 	MFA_BYPASS_DAYS = "mfa_bypass_days",
 	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
-	TENANT_ID = "tenant_id"
+	TENANT_ID = "tenant_id",
+	SYS_CLIENT_ID = "sys_client_id"
 }
 
 /**
@@ -180,7 +182,7 @@ export enum eSysUser {
 	IS_ACTIVE = "is_active",
 	IS_SYSTEM = "is_system",
 	DATE_CREATED = "date_created",
-	DATE_CHANGED = "date_changed"
+	DATE_MODIFIED = "date_modified"
 }
 
 /**
@@ -264,6 +266,36 @@ export enum eSysSession {
 	ID = "id",
 	USER_ID = "user_id",
 	DATE_EXPIRE = "date_expire"
+}
+
+/**
+ * Enum of the type sys_access_token
+ * @export
+ * @enum
+ */
+export enum eSysAccessToken {
+	$name = "sys_access_token",
+	ID = "id",
+	DATE_EXPIRE = "date_expire",
+	AUTH_TIME = "auth_time",
+	ACCESS_TOKEN = "access_token",
+	SESSION_ID = "session_id",
+	USER_ID = "user_id",
+	CLIENT_ID = "client_id",
+	TENANT_ID = "tenant_id"
+}
+
+/**
+ * Enum of the type sys_refresh_token
+ * @export
+ * @enum
+ */
+export enum eSysRefreshToken {
+	$name = "sys_refresh_token",
+	ID = "id",
+	DATE_EXPIRE = "date_expire",
+	REFRESH_TOKEN = "refresh_token",
+	ACCESS_TOKEN_ID = "access_token_id"
 }
 
 /**

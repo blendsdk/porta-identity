@@ -151,18 +151,6 @@ export class AuthenticateEndpointController extends EndpointController {
 
     /**
      * @protected
-     * @param {string} flowCacheKey
-     * @param {IAuthorizationFlow} flow
-     * @return {*} 
-     * @memberof AuthenticateEndpointController
-     */
-    protected async updateFlow(flow: IAuthorizationFlow) {
-        const flowCacheKey = `auth_flow:${flow.flowId}`;
-        return this.getCache().setValue(flowCacheKey, flow, { expire: flow.expire });
-    }
-
-    /**
-     * @protected
      * @param {IAuthorizationFlow} flow
      * @memberof AuthenticateEndpointController
      */

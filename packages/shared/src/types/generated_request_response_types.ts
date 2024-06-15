@@ -262,6 +262,127 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
+ * @interface ITokenRequest
+ */
+export interface ITokenRequest {
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	client_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	redirect_uri?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	grant_type: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	code?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	code_verifier?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	client_secret?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	nonce?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	scope?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	claims?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenRequest
+	 */
+	refresh_token?: string;
+}
+
+/**
+ * @export
+ * @interface IToken
+ */
+export interface IToken {
+	/**
+	 * @type string
+	 * @memberOf IToken
+	 */
+	access_token: string;
+	/**
+	 * @type string
+	 * @memberOf IToken
+	 */
+	token_type: string;
+	/**
+	 * @type number
+	 * @memberOf IToken
+	 */
+	expires_in: number;
+	/**
+	 * @type string
+	 * @memberOf IToken
+	 */
+	id_token: string;
+	/**
+	 * @type string
+	 * @memberOf IToken
+	 */
+	refresh_token?: string;
+	/**
+	 * @type number
+	 * @memberOf IToken
+	 */
+	refresh_token_expires_in?: number;
+	/**
+	 * @type number
+	 * @memberOf IToken
+	 */
+	refresh_token_expires_at?: number;
+}
+
+/**
+ * @export
+ * @interface ITokenResponse
+ */
+export interface ITokenResponse {
+	/**
+	 * @type IToken
+	 * @memberOf ITokenResponse
+	 */
+	data: IToken;
+}
+
+/**
+ * @export
  * @interface IFinalizeRequest
  */
 export interface IFinalizeRequest {}

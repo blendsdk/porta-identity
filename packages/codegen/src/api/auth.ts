@@ -4,6 +4,43 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
+        id: "token",
+        generate: "backend-only",
+        url: "/:tenant/oauth2/token",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("client_id", { location: eParameterLocation.body, optional: true }) // set to optional for oidc certification
+                .addString("redirect_uri", { location: eParameterLocation.body, optional: true })
+                .addString("grant_type", { location: eParameterLocation.body })
+                .addString("code", { location: eParameterLocation.body, optional: true })
+                .addString("code_verifier", { location: eParameterLocation.body, optional: true })
+                .addString("client_secret", { location: eParameterLocation.body, optional: true })
+                .addString("state", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
+                .addString("nonce", { location: eParameterLocation.body, optional: true }) // was added for client credentials / confidential clients
+                .addString("scope", { location: eParameterLocation.query, optional: true })
+                .addString("claims", { location: eParameterLocation.query, optional: true, validate: false })
+                .addString("refresh_token", { location: eParameterLocation.body, optional: true });
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("access_token")
+                .addString("token_type")
+                .addNumber("expires_in")
+                .addString("id_token")
+                .addString("refresh_token", { optional: true })
+                .addNumber("refresh_token_expires_in", { optional: true })
+                .addNumber("refresh_token_expires_at", { optional: true });
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "finalize",
         url: "/af/finalize",
         group: "authorization",
