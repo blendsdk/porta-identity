@@ -14,7 +14,8 @@ select
 	sm.settings as mfa_settings,
 	sc.mfa_bypass_days,
 	st.auth_session_length_hours,
-	st.id as tenant_id
+	st.id as tenant_id,
+	sc.id as sys_client_id
 from
 	sys_application sa
 	inner join sys_client sc on sc.application_id = sa.id
