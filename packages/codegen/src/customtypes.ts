@@ -1,4 +1,5 @@
 import { refType } from "@blendsdk/codegen";
+import { eJsonSchemaType } from "@blendsdk/jsonschema";
 import { database, typeSchema } from "./lib";
 export const refOpsResponse = refType("ops_response");
 
@@ -28,6 +29,8 @@ export function createCustomTypes(order: number) {
         //     .addString("mfa_state", { optional: true })
         //     .addString("mfa_list", { array: true, optional: true });
 
+        typeSchema.createAppendDictionary("any_index", eJsonSchemaType.anything);
+
         typeSchema
             //
             .createAppendDictionary("mfa_settings", "string");
@@ -42,6 +45,8 @@ export function createCustomTypes(order: number) {
             .createAppendType("porta_account")
             .addRefType("user", "#/definitions/sys_user")
             .addRefType("profile", "#/definitions/sys_profile")
-            .addRefType("tenant", "#/definitions/sys_tenant");
+            .addRefType("tenant", "#/definitions/sys_tenant")
+            .addRefType("roles", "#/definitions/sys_role", { array: true })
+            .addRefType("permissions", "#/definitions/sys_permission", { array: true });
     }
 }

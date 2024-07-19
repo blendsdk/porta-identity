@@ -4,6 +4,39 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
+        id: "user_info_post",
+        url: "/:tenant/oauth2/me",
+        group: "authorization",
+        method: "post",
+        public: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("access_token", { location: eParameterLocation.body, optional: true })
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
+        id: "user_info_get",
+        url: "/:tenant/oauth2/me",
+        group: "authorization",
+        method: "get",
+        public: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema
+                .createAppendType(request_type) //
+                .addString("tenant", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type);
+            typeSchema.createAppendType(response_type); //
+        }
+    });
+
+    builder.defineApi({
         id: "token",
         generate: "backend-only",
         url: "/:tenant/oauth2/token",

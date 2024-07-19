@@ -1,5 +1,5 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ITokenRequest, ITokenResponse } from "@porta/shared";
+import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -7,6 +7,7 @@ import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointCont
 import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
+import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
 
 
 /**
@@ -16,10 +17,35 @@ import { TokenEndpointController } from "./controllers/TokenEndpointController";
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+
+    /**
+     * @param {IAuthorizeRequest} params
+     * @return {*}  {Promise<Response<IAuthorizeRequest>>}
+     * @memberof AuthorizationController
+     */
+    public userInfoPost(params: IAuthorizeRequest): Promise<Response<IAuthorizeRequest>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {IUserInfoGetRequest} params
+     * @return {*}  {Promise<Response<IUserInfoGetResponse>>}
+     * @memberof AuthorizationController
+     */
+    public userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ITokenRequest} params
+     * @return {*}  {Promise<Response<ITokenResponse>>}
+     * @memberof AuthorizationController
+     */
     public token(params: ITokenRequest): Promise<Response<ITokenResponse>> {
         const subController = new TokenEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
-
     }
 
     /**

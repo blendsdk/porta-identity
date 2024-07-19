@@ -4,6 +4,15 @@
  */
 
 /**
+ * Enum of the type any_index
+ * @export
+ * @enum
+ */
+export enum eAnyIndex {
+	$name = "any_index"
+}
+
+/**
  * Enum of the type mfa_settings
  * @export
  * @enum
@@ -21,50 +30,6 @@ export enum eOpsResponse {
 	$name = "ops_response",
 	MESSAGE = "message",
 	SUCCESS = "success"
-}
-
-/**
- * Enum of the type sys_secret_view
- * @export
- * @enum
- */
-export enum eSysSecretView {
-	$name = "sys_secret_view",
-	ID = "id",
-	CLIENT_SECRET = "client_secret",
-	DESCRIPTION = "description",
-	VALID_FROM = "valid_from",
-	VALID_TO = "valid_to",
-	IS_SYSTEM = "is_system",
-	SYS_CLIENT_ID = "sys_client_id",
-	CLIENT_ID = "client_id",
-	IS_EXPIRED = "is_expired"
-}
-
-/**
- * Enum of the type sys_authorization_view
- * @export
- * @enum
- */
-export enum eSysAuthorizationView {
-	$name = "sys_authorization_view",
-	APPLICATION_ID = "application_id",
-	LOGO = "logo",
-	APPLICATION_NAME = "application_name",
-	CLIENT_ID = "client_id",
-	CLIENT_TYPE = "client_type",
-	REDIRECT_URI = "redirect_uri",
-	POST_LOGOUT_REDIRECT_URI = "post_logout_redirect_uri",
-	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
-	ACCESS_TOKEN_LENGTH = "access_token_length",
-	REFRESH_TOKEN_LENGTH = "refresh_token_length",
-	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
-	MFA = "mfa",
-	MFA_SETTINGS = "mfa_settings",
-	MFA_BYPASS_DAYS = "mfa_bypass_days",
-	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
-	TENANT_ID = "tenant_id",
-	SYS_CLIENT_ID = "sys_client_id"
 }
 
 /**
@@ -278,6 +243,7 @@ export enum eSysAccessToken {
 	ID = "id",
 	DATE_EXPIRE = "date_expire",
 	AUTH_TIME = "auth_time",
+	AUTH_REQUEST_PARAMS = "auth_request_params",
 	ACCESS_TOKEN = "access_token",
 	SESSION_ID = "session_id",
 	USER_ID = "user_id",
@@ -311,6 +277,83 @@ export enum eSysMfa {
 }
 
 /**
+ * Enum of the type sys_secret_view
+ * @export
+ * @enum
+ */
+export enum eSysSecretView {
+	$name = "sys_secret_view",
+	ID = "id",
+	CLIENT_SECRET = "client_secret",
+	DESCRIPTION = "description",
+	VALID_FROM = "valid_from",
+	VALID_TO = "valid_to",
+	IS_SYSTEM = "is_system",
+	SYS_CLIENT_ID = "sys_client_id",
+	CLIENT_ID = "client_id",
+	IS_EXPIRED = "is_expired"
+}
+
+/**
+ * Enum of the type sys_authorization_view
+ * @export
+ * @enum
+ */
+export enum eSysAuthorizationView {
+	$name = "sys_authorization_view",
+	APPLICATION_ID = "application_id",
+	LOGO = "logo",
+	APPLICATION_NAME = "application_name",
+	CLIENT_ID = "client_id",
+	CLIENT_TYPE = "client_type",
+	REDIRECT_URI = "redirect_uri",
+	POST_LOGOUT_REDIRECT_URI = "post_logout_redirect_uri",
+	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
+	ACCESS_TOKEN_LENGTH = "access_token_length",
+	REFRESH_TOKEN_LENGTH = "refresh_token_length",
+	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
+	MFA = "mfa",
+	MFA_SETTINGS = "mfa_settings",
+	MFA_BYPASS_DAYS = "mfa_bypass_days",
+	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
+	TENANT_ID = "tenant_id",
+	SYS_CLIENT_ID = "sys_client_id"
+}
+
+/**
+ * Enum of the type sys_access_token_view
+ * @export
+ * @enum
+ */
+export enum eSysAccessTokenView {
+	$name = "sys_access_token_view",
+	ID = "id",
+	ACCESS_TOKEN = "access_token",
+	AUTH_REQUEST_PARAMS = "auth_request_params",
+	SESSION = "session",
+	USER = "user",
+	PROFILE = "profile",
+	CLIENT = "client",
+	TENANT = "tenant",
+	IS_EXPIRED = "is_expired"
+}
+
+/**
+ * Enum of the type sys_user_permission_view
+ * @export
+ * @enum
+ */
+export enum eSysUserPermissionView {
+	$name = "sys_user_permission_view",
+	USER_ID = "user_id",
+	APPLICATION_ID = "application_id",
+	PERMISSION = "permission",
+	PERMISSION_ID = "permission_id",
+	ROLE = "role",
+	ROLE_ID = "role_id"
+}
+
+/**
  * Enum of the type porta_account
  * @export
  * @enum
@@ -319,7 +362,9 @@ export enum ePortaAccount {
 	$name = "porta_account",
 	USER = "user",
 	PROFILE = "profile",
-	TENANT = "tenant"
+	TENANT = "tenant",
+	ROLES = "roles",
+	PERMISSIONS = "permissions"
 }
 
 /**

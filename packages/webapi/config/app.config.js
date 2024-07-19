@@ -14,7 +14,7 @@ module.exports = {
     DB_USER: "postgres",
     DB_PASSWORD: "postgres",
     DB_DATABASE: "postgres",
-    ACCESS_TOKEN_TTL: 60 * 60 * 3, // 4 hours
+    ACCESS_TOKEN_TTL: 60 * 60 * 4, // 4 hours
     REFRESH_TOKEN_TTL: 60 * 60 * 24 * 7, // one week,
     BYPASS_MFA_DAYS: 1, // 1 Day
     AUTH_SESSION_LENGTH_HOURS: 24,

@@ -19,6 +19,10 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
+	IUserInfoPostRequest,
+	IUserInfoPostResponse,
+	IUserInfoGetRequest,
+	IUserInfoGetResponse,
 	ICheckSetFlowRequest,
 	ICheckSetFlowResponse
 } from "@porta/shared";
@@ -39,7 +43,11 @@ export interface IPortaApi {
 		getUserState: THttpRequest<IGetUserStateRequest, IGetUserStateResponse>;
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
-	authorization: { checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse> };
+	authorization: {
+		userInfoPost: THttpRequest<IUserInfoPostRequest, IUserInfoPostResponse>;
+		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
+		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
+	};
 }
 /**
  * Backend REST API client
@@ -68,6 +76,14 @@ export const PortaApi = createHttpApi<IPortaApi>({
 				parameters: { tenant: eParameterLocation.params }
 			})
 		},
-		authorization: { checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" }) }
+		authorization: {
+			userInfoPost: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/me",
+				parameters: { access_token: eParameterLocation.body, tenant: eParameterLocation.params }
+			}),
+			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me" }),
+			checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" })
+		}
 	}
 });

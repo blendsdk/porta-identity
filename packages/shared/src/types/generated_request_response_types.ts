@@ -262,6 +262,59 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
+ * @interface IUserInfoPostRequest
+ */
+export interface IUserInfoPostRequest {
+	/**
+	 * @type string
+	 * @memberOf IUserInfoPostRequest
+	 */
+	access_token?: string;
+	/**
+	 * @type string
+	 * @memberOf IUserInfoPostRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IUserInfoPost
+ */
+export interface IUserInfoPost {}
+
+/**
+ * @export
+ * @interface IUserInfoPostResponse
+ */
+export interface IUserInfoPostResponse {}
+
+/**
+ * @export
+ * @interface IUserInfoGetRequest
+ */
+export interface IUserInfoGetRequest {
+	/**
+	 * @type string
+	 * @memberOf IUserInfoGetRequest
+	 */
+	tenant: string;
+}
+
+/**
+ * @export
+ * @interface IUserInfoGet
+ */
+export interface IUserInfoGet {}
+
+/**
+ * @export
+ * @interface IUserInfoGetResponse
+ */
+export interface IUserInfoGetResponse {}
+
+/**
+ * @export
  * @interface ITokenRequest
  */
 export interface ITokenRequest {

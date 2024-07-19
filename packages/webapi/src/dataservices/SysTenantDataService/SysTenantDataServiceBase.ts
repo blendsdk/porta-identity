@@ -1,4 +1,10 @@
-import { ISysAuthorizationView, ISysSecretView, ISysTenant } from "@porta/shared";
+import {
+	ISysAccessTokenView,
+	ISysUserPermissionView,
+	ISysAuthorizationView,
+	ISysSecretView,
+	ISysTenant
+} from "@porta/shared";
 import { TExpressionRenderer } from "@blendsdk/expression";
 import {
 	ISysTenantDataServiceFindByNameOrIdParams,
@@ -19,6 +25,34 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * List a sys_access_token_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysAccessTokenView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysAccessTokenViewByExpression(params: TExpressionRenderer): Promise<ISysAccessTokenView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysAccessTokenView[]>(`sys_access_token_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_user_permission_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysUserPermissionView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysUserPermissionViewByExpression(params: TExpressionRenderer): Promise<ISysUserPermissionView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysUserPermissionView[]>(`sys_user_permission_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
 	/**
 	 * List a sys_authorization_view by expression syntax
 	 * @param {void}

@@ -1,4 +1,3 @@
-import { generateRandomUUID } from "@blendsdk/crypto";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
@@ -295,7 +294,7 @@ export class TokenEndpointController extends EndpointController {
 
     protected async createTokens(flow: IAuthorizationFlow, tokenRequest: ITokenRequest): Promise<IToken> {
 
-        const { authRecord, authRequest, tenantRecord, user, session, profile } = flow;
+        const { authRecord, authRequest, tenantRecord, user, session } = flow;
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
         let { access_token_length, refresh_token_length } = authRecord;
         const scope = tokenRequest.scope || authRequest.scope;
@@ -307,18 +306,12 @@ export class TokenEndpointController extends EndpointController {
         console.log(offline_access);
 
         const { access_token_record, date_expire } = await databaseUtils.newAccessToken({
-            client_id: tokenRequest.client_id,
             client_record_id: authRecord.sys_client_id,
-            issuer: this.getIssuer(tenantRecord.id),
             session_id: session.id,
             tenantRecord,
             ttl: access_token_length,
             user_id: user.id,
-            claims: {
-                rh: generateRandomUUID(),
-                ...(user ? { udc: new Date(user.date_modified).getTime() } : {}),
-                ...(profile ? { pdc: new Date(profile.date_modified).getTime() } : {})
-            }
+            authRequest
         });
 
         const id_token = await this.createIDToken({
@@ -332,7 +325,7 @@ export class TokenEndpointController extends EndpointController {
 
         return {
             access_token: access_token_record.access_token,
-            expires_in: date_expire.getTime(),
+            expires_in: date_expire.getTime() - Date.now(),
             token_type: "Bearer",
             id_token,
             refresh_token: null,

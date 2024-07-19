@@ -1,8 +1,5 @@
-import { Database, PostgreSQLTypeFromQuery, eDBForeignKeyAction, refType } from "@blendsdk/codegen";
-import { asyncForEach } from "@blendsdk/stdlib";
+import { Database, eDBForeignKeyAction, refType } from "@blendsdk/codegen";
 import path from "path";
-import { dataSourceConfig } from "./config";
-import { consoleLogger, typeSchema } from "./lib";
 
 export async function createDatabaseSchema(database: Database, resourcesRoot: string) {
     resourcesRoot = path.join(resourcesRoot, "database");
@@ -136,7 +133,15 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .stringColumn("permission")
         .stringColumn("description", { required: false })
-        .referenceColumnAuto("application_id", application)
+        .referenceColumnAuto("application_id", application,
+            {
+                onDelete: eDBForeignKeyAction.cascade,
+                onUpdate: eDBForeignKeyAction.cascade
+            },
+            {
+                required: false, default: "null"
+            }
+        )
         .booleanColumn("is_system", { default: "false" })
         .booleanColumn("is_active", { default: "true" });
 
@@ -159,6 +164,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .dateTimeColumn("date_expire")
         .dateTimeColumn("auth_time")
+        .jsonColumn("auth_request_params", refType("any_index"))
         .stringColumn("access_token", {
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
@@ -299,32 +305,4 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     //         onUpdate: eDBForeignKeyAction.cascade
     //     });
 
-    database.addView("sys_secret_view", path.join(resourcesRoot, "secret_view.sql"), 99);
-    database.addView("sys_authorization_view", path.join(resourcesRoot, "authorization_view.sql"), 100);
-    // database.addView("sys_user_mfa_view", path.join(resourcesRoot, "user_mfa_view.sql"), 101);
-    // database.addView("sys_roles_by_user_view", path.join(resourcesRoot, "roles_by_user_view.sql"), 102);
-    // database.addView("sys_user_permission_view", path.join(resourcesRoot, "user_permission_view.sql"), 102);
-    // database.addView("sys_access_token_view", path.join(resourcesRoot, "access_token_view.sql"), 103);
-    // database.addView("sys_refresh_token_view", path.join(resourcesRoot, "refresh_token_view.sql"), 103);
-    // database.addView("sys_session_view", path.join(resourcesRoot, "session_view.sql"), 104);
-
-    if (database.getViews().length !== 0) {
-        // Create a view to type builder
-        const view2Type = new PostgreSQLTypeFromQuery({
-            dataSourceConfig,
-            databaseSchema: database,
-            typeSchema,
-            logger: consoleLogger
-        });
-
-        // Create the types for the views
-        await asyncForEach(database.getViews(), async (view) => {
-            await view2Type.typeFromQuery({
-                name: view.getName(),
-                query: `SELECT * FROM ${view.getName()} LIMIT 1`
-            });
-        });
-
-        await view2Type.cleanupAndClose();
-    }
 }

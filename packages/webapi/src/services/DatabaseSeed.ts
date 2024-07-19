@@ -13,8 +13,10 @@ import { SysApplicationDataService } from "../dataservices/SysApplicationDataSer
 import { SysClientDataService } from "../dataservices/SysClientDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysMfaDataService } from "../dataservices/SysMfaDataService";
+import { SysPermissionDataService } from "../dataservices/SysPermissionDataService";
 import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRoleDataService } from "../dataservices/SysRoleDataService";
+import { SysRolePermissionDataService } from "../dataservices/SysRolePermissionDataService";
 import { SysSecretDataService } from "../dataservices/SysSecretDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
@@ -445,18 +447,42 @@ export class DatabaseSeed {
      */
     protected async createRoles(tenantRecord: ISysTenant) {
         const roleDs = new SysRoleDataService({ tenantId: tenantRecord.id });
+        const permissionDs = new SysPermissionDataService({ tenantId: tenantRecord.id });
+        const rolePermissionDs = new SysRolePermissionDataService({ tenantId: tenantRecord.id });
+
         const userRole = await roleDs.insertIntoSysRole({
             role: "USER",
             description: "System Users",
             is_active: true,
             is_system: true
         });
+
         const adminRole = await roleDs.insertIntoSysRole({
             role: "ADMINISTRATOR",
             description: "System Administrators",
             is_active: true,
             is_system: true
         });
+
+        const defaultPermission = await permissionDs.insertIntoSysPermission({
+            permission: "DEFAULT",
+            application_id: null,
+            description: "Default System Permission",
+            is_active: true,
+            is_system: true
+        });
+
+
+        await rolePermissionDs.insertIntoSysRolePermission({
+            permission_id: defaultPermission.id,
+            role_id: userRole.id
+        });
+
+        await rolePermissionDs.insertIntoSysRolePermission({
+            permission_id: defaultPermission.id,
+            role_id: adminRole.id
+        });
+
         return { userRole, adminRole };
     }
 }

@@ -39,4 +39,37 @@ from
 	left outer join sys_mfa sm on sm.id = sc.mfa_id
 where
 	sa.is_active is true and
-	sc.is_active is true
+	sc.is_active is true;
+DROP VIEW IF EXISTS sys_access_token_view CASCADE;
+CREATE OR REPLACE VIEW sys_access_token_view AS select
+	sat.id,
+	sat.access_token,
+	sat.auth_request_params,
+	row_to_json(ss.*) as session,
+	row_to_json(su.*) as user,
+	row_to_json(sp.*) as profile,
+	row_to_json(sc.*) as client,
+	row_to_json(st.*) as tenant, 
+	(now() > sat.date_expire) as is_expired
+from 
+	sys_access_token sat
+	inner join sys_session ss on ss.id = sat.session_id
+	inner join sys_user su on su.id  = sat.user_id 
+	inner join sys_client sc on sc.id = sat.client_id 
+	inner join sys_tenant st on st.id = sat.tenant_id 
+	inner join sys_profile sp on sp.user_id = su.id;
+DROP VIEW IF EXISTS sys_user_permission_view CASCADE;
+CREATE OR REPLACE VIEW sys_user_permission_view AS select
+	sur.user_id,
+	ap.id as application_id,
+	sp."permission",
+	sp.id as permission_id,
+	sr."role",
+	sr.id as role_id
+	--,*
+from 
+	sys_user_role sur 
+	inner join sys_role sr on sr.id  = sur.role_id 
+	inner join sys_role_permission srp on srp.role_id = sur.role_id
+	inner join sys_permission sp on sp.id = srp.permission_id
+	left outer join sys_application ap on ap.id = sp.application_id

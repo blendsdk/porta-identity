@@ -6,6 +6,7 @@ import { createDatabaseSchema } from "./database";
 import { createDataServices } from "./dataservice";
 import { consoleLogger, database, typeBuilder, typeSchema, writeFileSync } from "./lib";
 import { clean_generated } from "./lib/clean";
+import { createViewSchema } from "./views";
 
 const WebApiRoot: string = path.join(process.cwd(), "..", "webapi");
 const WebClientRoot: string = path.join(process.cwd(), "..", "webclient");
@@ -23,6 +24,8 @@ async function generate() {
 
     // Convert the database schema to json schema
     databaseToSchema(database, typeSchema);
+
+    await createViewSchema(database);
 
     createCustomTypes(1);
 

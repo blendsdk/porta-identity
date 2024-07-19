@@ -3,151 +3,7 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { IMfaSettings } from "./generated_types";
-
-/**
- * @export
- * @interface ISysSecretView
- */
-export interface ISysSecretView {
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	client_secret: string;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	description: string;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	valid_from: string;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	valid_to: string;
-	/**
-	 * @type boolean
-	 * @memberOf ISysSecretView
-	 */
-	is_system: boolean;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	sys_client_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	client_id: string;
-	/**
-	 * @type boolean
-	 * @memberOf ISysSecretView
-	 */
-	is_expired: boolean;
-}
-
-/**
- * @export
- * @interface ISysAuthorizationView
- */
-export interface ISysAuthorizationView {
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	application_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	logo: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	application_name: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	client_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	client_type: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	redirect_uri: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	post_logout_redirect_uri: string;
-	/**
-	 * @type boolean
-	 * @memberOf ISysAuthorizationView
-	 */
-	is_back_channel_post_logout: boolean;
-	/**
-	 * @type number
-	 * @memberOf ISysAuthorizationView
-	 */
-	access_token_length: number;
-	/**
-	 * @type number
-	 * @memberOf ISysAuthorizationView
-	 */
-	refresh_token_length: number;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	client_credentials_user_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	mfa: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	mfa_settings: string;
-	/**
-	 * @type number
-	 * @memberOf ISysAuthorizationView
-	 */
-	mfa_bypass_days: number;
-	/**
-	 * @type number
-	 * @memberOf ISysAuthorizationView
-	 */
-	auth_session_length_hours: number;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	tenant_id: string;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	sys_client_id: string;
-}
+import { IAnyIndex, IMfaSettings } from "./generated_types";
 
 /**
  * @export
@@ -581,7 +437,7 @@ export interface ISysPermission {
 	 * @type string
 	 * @memberOf ISysPermission
 	 */
-	application_id: string;
+	application_id?: string;
 	/**
 	 * @type boolean
 	 * @memberOf ISysPermission
@@ -681,6 +537,11 @@ export interface ISysAccessToken {
 	 */
 	auth_time: string;
 	/**
+	 * @type IAnyIndex
+	 * @memberOf ISysAccessToken
+	 */
+	auth_request_params: IAnyIndex;
+	/**
 	 * @type string
 	 * @memberOf ISysAccessToken
 	 */
@@ -754,4 +615,237 @@ export interface ISysMfa {
 	 * @memberOf ISysMfa
 	 */
 	settings?: IMfaSettings;
+}
+
+/**
+ * @export
+ * @interface ISysSecretView
+ */
+export interface ISysSecretView {
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	client_secret: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	description: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	valid_from: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	valid_to: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysSecretView
+	 */
+	is_system: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	sys_client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	client_id: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysSecretView
+	 */
+	is_expired: boolean;
+}
+
+/**
+ * @export
+ * @interface ISysAuthorizationView
+ */
+export interface ISysAuthorizationView {
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_type: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	post_logout_redirect_uri: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	is_back_channel_post_logout: boolean;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	access_token_length: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	refresh_token_length: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	client_credentials_user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa_settings: string;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	mfa_bypass_days: number;
+	/**
+	 * @type number
+	 * @memberOf ISysAuthorizationView
+	 */
+	auth_session_length_hours: number;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	tenant_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAuthorizationView
+	 */
+	sys_client_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysAccessTokenView
+ */
+export interface ISysAccessTokenView {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	access_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	auth_request_params: string;
+	/**
+	 * @type ISysSession
+	 * @memberOf ISysAccessTokenView
+	 */
+	session: ISysSession;
+	/**
+	 * @type ISysUser
+	 * @memberOf ISysAccessTokenView
+	 */
+	user: ISysUser;
+	/**
+	 * @type ISysProfile
+	 * @memberOf ISysAccessTokenView
+	 */
+	profile: ISysProfile;
+	/**
+	 * @type ISysClient
+	 * @memberOf ISysAccessTokenView
+	 */
+	client: ISysClient;
+	/**
+	 * @type ISysTenant
+	 * @memberOf ISysAccessTokenView
+	 */
+	tenant: ISysTenant;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAccessTokenView
+	 */
+	is_expired: boolean;
+}
+
+/**
+ * @export
+ * @interface ISysUserPermissionView
+ */
+export interface ISysUserPermissionView {
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	permission: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	permission_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	role: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUserPermissionView
+	 */
+	role_id: string;
 }

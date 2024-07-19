@@ -1,7 +1,8 @@
-import { base64Decode, deepCopy, isObject } from "@blendsdk/stdlib";
+import { base64Decode, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
-import { IAuthorizationFlow, IErrorResponseParams, eOAuthResponseMode, eOAuthResponseType } from "../types";
+import { eOAuthResponseMode, eOAuthResponseType, IAuthorizationFlow, IErrorResponseParams } from "../types";
+import { Claims } from "./Claims";
 import { databaseUtils } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
 
@@ -14,6 +15,24 @@ import { formPostTemplate } from "./FormPostTemplate";
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
+
+    /**
+     * Gets the OIDC claims by scope
+     *
+     * @protected
+     * @param {IAccessToken} accessTokenStorage
+     * @param {string} tenantName
+     * @returns
+     * @memberof EndpointController
+     */
+    protected getClaimsByScope(params: IDictionaryOf<any>) {
+        const claims = new Claims({
+            ...params,
+            serverUrl: this.getServerURL(),
+        } as any);
+        return claims.getClaims();
+    }
+
 
     /**
      *

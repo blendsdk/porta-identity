@@ -1,6 +1,8 @@
 import { SessionProviderModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
 import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
+import { IPortaAccount } from "@porta/shared";
 import { IPortaApplicationSetting } from "../types";
+import { databaseUtils } from "./DatabaseUtils";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
 
@@ -20,6 +22,20 @@ enum eTokenType {
  * @extends {SessionProviderModuleBase}
  */
 export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
+
+    /**
+     * Get the tenant from request
+     *
+     * @protected
+     * @param {HttpRequest} req
+     * @returns
+     * @memberof PortaSelfAuthenticationModule
+     */
+    protected getTenantFromRequest(req: HttpRequest) {
+        const { tenant = undefined } = req.context.getParameters<{ tenant: string; }>() || {};
+        return tenant;
+    }
+
     /**
      * @protected
      * @template SessionStorageType
@@ -28,7 +44,7 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
      * @return {*}  {Promise<SessionStorageType>}
      * @memberof PortaAuthSessionProviderModule
      */
-    protected async findSessionStorageByToken<SessionStorageType = any>(_token: string, req: HttpRequest): Promise<SessionStorageType> {
+    protected async findSessionStorageByToken<SessionStorageType = any>(token: string, req: HttpRequest): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
         switch (tokenType) {
             case eTokenType.DIRECT_API: {
@@ -37,6 +53,26 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
                     user: {},
                     cacheKey: null
                 } as SessionStorageType;
+            }
+            case eTokenType.BEARER_TOKEN: {
+                const tenentRecord = await databaseUtils.findTenant(this.getTenantFromRequest(req));
+                if (tenentRecord) {
+                    const { accessToken = undefined, roles = undefined, permissions = undefined, application } = await databaseUtils.findAccessTokenByTenantAndToken(token, tenentRecord);
+                    if (accessToken) {
+                        const { profile, tenant, user, client, auth_request_params } = accessToken;
+                        return {
+                            profile,
+                            tenant,
+                            user,
+                            roles,
+                            permissions,
+                            application,
+                            client,
+                            auth_request_params
+                        } as IPortaAccount as any;
+                    }
+                }
+                return undefined;
             }
             default:
                 req.context.getLogger().error("INVALID_TOKEN_TYPE", { tokenType });

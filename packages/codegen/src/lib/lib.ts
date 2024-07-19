@@ -10,6 +10,13 @@ export const database = new PostgreSQLDatabase({ typeSchema });
 export const typeBuilder = new TypeBuilder(consoleLogger);
 export const projectRoot = path.resolve(process.cwd(), "..");
 
+export interface ITableMetaData {
+    has_custom_fields: boolean;
+    has_list_by_expression?: boolean;
+    is_reference_table: boolean;
+    sort_column: string;
+}
+
 export function writeFileSync(fileName: string, data: string) {
     consoleLogger.info(`Writing ${fileName}`);
     ensureFilePath(fileName);

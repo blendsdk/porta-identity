@@ -24,8 +24,8 @@
         "rediscmdr:start": "docker compose -f ./docker/docker-compose.yml up -d redis-commander",
         "rediscmdr:stop": "docker compose -f ./docker/docker-compose.yml rm -fsv redis-commander && docker container prune --force",
         "rediscmdr:restart": "yarn rediscmdr:stop && sleep 5 && yarn rediscmdr:start",
-        "proxy:start": "docker compose -f ./docker/docker-compose.yml up -d proxy",
-        "proxy:stop": "docker compose -f ./docker/docker-compose.yml rm -fsv proxy && docker container prune --force",
+        "proxy:start": "docker compose -f ./docker/docker-compose.yml up -d redis",
+        "proxy:stop": "docker compose -f ./docker/docker-compose.yml rm -fsv redis && docker container prune --force",
         "proxy:restart": "yarn proxy:stop && sleep 5 && yarn proxy:start"
     },
     "dependencies": {

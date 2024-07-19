@@ -3,7 +3,19 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysUser, ISysProfile, ISysTenant } from "./generated_database_types";
+import { ISysUser, ISysProfile, ISysTenant, ISysRole, ISysPermission } from "./generated_database_types";
+
+/**
+ * @export
+ * @interface IAnyIndex
+ */
+export interface IAnyIndex {
+	/**
+	 * @type any
+	 * @memberOf IAnyIndex
+	 */
+	[key: string]: any;
+}
 
 /**
  * @export
@@ -54,6 +66,16 @@ export interface IPortaAccount {
 	 * @memberOf IPortaAccount
 	 */
 	tenant: ISysTenant;
+	/**
+	 * @type ISysRole[]
+	 * @memberOf IPortaAccount
+	 */
+	roles: ISysRole[];
+	/**
+	 * @type ISysPermission[]
+	 * @memberOf IPortaAccount
+	 */
+	permissions: ISysPermission[];
 }
 
 /**

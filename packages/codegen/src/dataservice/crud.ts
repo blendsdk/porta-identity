@@ -78,6 +78,14 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         if (tableName === "sys_tenant") {
 
             svc.defineListByExpressionMethod({
+                table: "sys_access_token_view"
+            });
+
+            svc.defineListByExpressionMethod({
+                table: "sys_user_permission_view"
+            });
+
+            svc.defineListByExpressionMethod({
                 table: "sys_authorization_view"
             });
 

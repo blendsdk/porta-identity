@@ -7,6 +7,15 @@ import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
 export const validationSchema = {
 	type: eJsonSchemaType.object,
 	definitions: {
+		any_index: {
+			type: eJsonSchemaType.object,
+			properties: {
+				"[key:string]": {
+					type: eJsonSchemaType.anything
+				}
+			},
+			required: ["[key:string]"]
+		},
 		mfa_settings: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -15,137 +24,6 @@ export const validationSchema = {
 				}
 			},
 			required: ["[key:string]"]
-		},
-		sys_secret_view: {
-			type: eJsonSchemaType.object,
-			properties: {
-				id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				client_secret: {
-					type: eJsonSchemaType.string
-				},
-				description: {
-					type: eJsonSchemaType.string
-				},
-				valid_from: {
-					type: eJsonSchemaType.string,
-					format: "datetime-tz"
-				},
-				valid_to: {
-					type: eJsonSchemaType.string,
-					format: "datetime-tz"
-				},
-				is_system: {
-					type: eJsonSchemaType.boolean
-				},
-				sys_client_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				client_id: {
-					type: eJsonSchemaType.string
-				},
-				is_expired: {
-					type: eJsonSchemaType.boolean
-				}
-			},
-			required: [
-				"id",
-				"client_secret",
-				"description",
-				"valid_from",
-				"valid_to",
-				"is_system",
-				"sys_client_id",
-				"client_id",
-				"is_expired"
-			]
-		},
-		sys_authorization_view: {
-			type: eJsonSchemaType.object,
-			properties: {
-				application_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				logo: {
-					type: eJsonSchemaType.string
-				},
-				application_name: {
-					type: eJsonSchemaType.string
-				},
-				client_id: {
-					type: eJsonSchemaType.string
-				},
-				client_type: {
-					type: eJsonSchemaType.string
-				},
-				redirect_uri: {
-					type: eJsonSchemaType.string
-				},
-				post_logout_redirect_uri: {
-					type: eJsonSchemaType.string
-				},
-				is_back_channel_post_logout: {
-					type: eJsonSchemaType.boolean
-				},
-				access_token_length: {
-					type: eJsonSchemaType.number,
-					format: "integer"
-				},
-				refresh_token_length: {
-					type: eJsonSchemaType.number,
-					format: "integer"
-				},
-				client_credentials_user_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				mfa: {
-					type: eJsonSchemaType.string
-				},
-				mfa_settings: {
-					type: eJsonSchemaType.string,
-					format: "json"
-				},
-				mfa_bypass_days: {
-					type: eJsonSchemaType.number,
-					format: "integer"
-				},
-				auth_session_length_hours: {
-					type: eJsonSchemaType.number,
-					format: "integer"
-				},
-				tenant_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				sys_client_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				}
-			},
-			required: [
-				"application_id",
-				"logo",
-				"application_name",
-				"client_id",
-				"client_type",
-				"redirect_uri",
-				"post_logout_redirect_uri",
-				"is_back_channel_post_logout",
-				"access_token_length",
-				"refresh_token_length",
-				"client_credentials_user_id",
-				"mfa",
-				"mfa_settings",
-				"mfa_bypass_days",
-				"auth_session_length_hours",
-				"tenant_id",
-				"sys_client_id"
-			]
 		},
 		sys_tenant: {
 			type: eJsonSchemaType.object,
@@ -484,7 +362,8 @@ export const validationSchema = {
 				},
 				application_id: {
 					type: eJsonSchemaType.string,
-					format: "uuid"
+					format: "uuid",
+					acceptNullValue: true
 				},
 				is_system: {
 					type: eJsonSchemaType.boolean,
@@ -495,7 +374,7 @@ export const validationSchema = {
 					acceptNullValue: true
 				}
 			},
-			required: ["permission", "application_id"]
+			required: ["permission"]
 		},
 		sys_user_role: {
 			type: eJsonSchemaType.object,
@@ -566,6 +445,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz"
 				},
+				auth_request_params: {
+					type: eJsonSchemaType.object,
+					$ref: "#/definitions/any_index"
+				},
 				access_token: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
@@ -587,7 +470,7 @@ export const validationSchema = {
 					format: "uuid"
 				}
 			},
-			required: ["date_expire", "auth_time", "session_id", "user_id", "client_id", "tenant_id"]
+			required: ["date_expire", "auth_time", "auth_request_params", "session_id", "user_id", "client_id", "tenant_id"]
 		},
 		sys_refresh_token: {
 			type: eJsonSchemaType.object,
@@ -629,6 +512,220 @@ export const validationSchema = {
 			},
 			required: ["name"]
 		},
+		sys_secret_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_secret: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				valid_from: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				valid_to: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
+				is_system: {
+					type: eJsonSchemaType.boolean
+				},
+				sys_client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				is_expired: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: [
+				"id",
+				"client_secret",
+				"description",
+				"valid_from",
+				"valid_to",
+				"is_system",
+				"sys_client_id",
+				"client_id",
+				"is_expired"
+			]
+		},
+		sys_authorization_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				access_token_length: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				refresh_token_length: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				client_credentials_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				mfa: {
+					type: eJsonSchemaType.string
+				},
+				mfa_settings: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				mfa_bypass_days: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				auth_session_length_hours: {
+					type: eJsonSchemaType.number,
+					format: "integer"
+				},
+				tenant_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				sys_client_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: [
+				"application_id",
+				"logo",
+				"application_name",
+				"client_id",
+				"client_type",
+				"redirect_uri",
+				"post_logout_redirect_uri",
+				"is_back_channel_post_logout",
+				"access_token_length",
+				"refresh_token_length",
+				"client_credentials_user_id",
+				"mfa",
+				"mfa_settings",
+				"mfa_bypass_days",
+				"auth_session_length_hours",
+				"tenant_id",
+				"sys_client_id"
+			]
+		},
+		sys_access_token_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				access_token: {
+					type: eJsonSchemaType.string
+				},
+				auth_request_params: {
+					type: eJsonSchemaType.string,
+					format: "json"
+				},
+				session: {
+					$ref: "#/definitions/sys_session",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				user: {
+					$ref: "#/definitions/sys_user",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				profile: {
+					$ref: "#/definitions/sys_profile",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				client: {
+					$ref: "#/definitions/sys_client",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				tenant: {
+					$ref: "#/definitions/sys_tenant",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				is_expired: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: [
+				"id",
+				"access_token",
+				"auth_request_params",
+				"session",
+				"user",
+				"profile",
+				"client",
+				"tenant",
+				"is_expired"
+			]
+		},
+		sys_user_permission_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				permission: {
+					type: eJsonSchemaType.string
+				},
+				permission_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				role: {
+					type: eJsonSchemaType.string
+				},
+				role_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["user_id", "application_id", "permission", "permission_id", "role", "role_id"]
+		},
 		porta_account: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -643,9 +740,21 @@ export const validationSchema = {
 				tenant: {
 					$ref: "#/definitions/sys_tenant",
 					type: eJsonSchemaType.object
+				},
+				roles: {
+					type: eJsonSchemaType.array,
+					items: {
+						$ref: "#/definitions/sys_role"
+					}
+				},
+				permissions: {
+					type: eJsonSchemaType.array,
+					items: {
+						$ref: "#/definitions/sys_permission"
+					}
 				}
 			},
-			required: ["user", "profile", "tenant"]
+			required: ["user", "profile", "tenant", "roles", "permissions"]
 		},
 		error_data: {
 			type: eJsonSchemaType.object,
@@ -773,6 +882,36 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "user_state"]
+		},
+		user_info_post_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				access_token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		user_info_post: {
+			type: eJsonSchemaType.object
+		},
+		user_info_get_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["tenant"]
+		},
+		user_info_get: {
+			type: eJsonSchemaType.object
 		},
 		token_request: {
 			type: eJsonSchemaType.object,
