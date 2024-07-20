@@ -2,7 +2,7 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysPermission, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysPermission, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
@@ -14,6 +14,96 @@ import { commonUtils } from "./CommonUtils";
 import { ServiceBase } from "./ServiceBase";
 
 export class DatabaseUtils extends ServiceBase {
+
+    /**
+     * Fins a refresh_token by tenant
+     *
+     * @param {string} tenant
+     * @param {string} refresh_token
+     * @returns {Promise<ISysRefreshTokenView>}
+     * @memberof DatabaseUtils
+     */
+    public async findRefreshTokenByTenant(params: { tenantRecord: ISysTenant, check_validity: boolean, refresh_token; }): Promise<ISysRefreshTokenView> {
+        let { tenantRecord, check_validity, refresh_token } = params;
+        check_validity = check_validity === false ? false : true;
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+
+        const e = expression();
+        const records = await tenantDs.listSysRefreshTokenViewByExpression(e.createRenderer(
+            e.Equal(eSysRefreshTokenView.REFRESH_TOKEN, refresh_token)
+        ));
+
+        if (records.length === 1) {
+            const isValid = check_validity === true ? !records[0].is_expired : true;
+            return isValid ? records[0] : undefined;
+        } else {
+            return undefined;
+        }
+    }
+
+    /**
+     * @param {ISysTenant} tenantRecord
+     * @param {string} client_id
+     * @param {string} secret
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async findSecretBySecretAndClientId(tenantRecord: ISysTenant, client_id: string, secret: string) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const e = expression();
+        const records = await tenantDs.listSysSecretViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysSecretView.CLIENT_ID, client_id),
+                e.Equal(eSysSecretView.CLIENT_SECRET, secret),
+                e.Equal(eSysSecretView.IS_EXPIRED, false)
+            )
+        ));
+        return records[0];
+    }
+
+    /**
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysRefreshTokenView} refreshTokenRecord
+     * @memberof DatabaseUtils
+     */
+    public async revokeRefreshToken(tenantRecord: ISysTenant, refreshTokenRecord: ISysRefreshTokenView) {
+        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
+        const refreshTokenDs = new SysRefreshTokenDataService({ tenantId: tenantRecord.id });
+        await refreshTokenDs.deleteSysRefreshTokenById({ id: refreshTokenRecord.id });
+        await accessTokenDs.deleteSysAccessTokenById({ id: refreshTokenRecord.access_token.id });
+    }
+
+    /**
+     * @param {string} otaOrAccessToken
+     * @param {ISysTenant} tenantRecord
+     * @memberof DatabaseUtils
+     */
+    public async revokeAccessToken(otaOrAccessToken: string, tenantRecord: ISysTenant) {
+        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
+        let accessTokenRecord = (await accessTokenDs.findSysAccessTokenByOta({ ota: otaOrAccessToken })) || (await accessTokenDs.findSysAccessTokenByAccessToken({ access_token: otaOrAccessToken }));
+        if (accessTokenRecord) {
+            await accessTokenDs.deleteSysAccessTokenById({ id: accessTokenRecord.id });
+        }
+    }
+
+    /**
+     * @param {string} access_token
+     * @param {string} ota
+     * @param {ISysTenant} tenantRecord
+     * @memberof DatabaseUtils
+     */
+    public async linkAccessTokenToOTA(access_token: string, ota: string, tenantRecord: ISysTenant) {
+        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
+        const accessTokenRecord = await accessTokenDs.findSysAccessTokenByAccessToken({ access_token });
+        if (accessTokenRecord) {
+            await accessTokenDs.updateSysAccessTokenById({
+                ota
+            }, {
+                id: accessTokenRecord.id
+            });
+        }
+    }
+
     /**
      * Find the tenant by Key
      *
@@ -146,6 +236,25 @@ export class DatabaseUtils extends ServiceBase {
         await sessionDs.updateSysSessionById({ last_token_auth_time: now.toISOString() }, { id: session.id });
 
         return { access_token_record, date_expire, date_created: now };
+    }
+
+    /**
+     * @param {IAuthorizeRequest} authRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public findAuthorizationRecord(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const { client_id, redirect_uri } = authRequest;
+        const e = expression();
+        return tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
+                e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
+            )
+        ));
     }
 
     /**

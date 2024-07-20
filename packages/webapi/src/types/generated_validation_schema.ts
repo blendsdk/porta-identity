@@ -764,6 +764,68 @@ export const validationSchema = {
 				"is_expired"
 			]
 		},
+		sys_refresh_token_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				refresh_token: {
+					type: eJsonSchemaType.string
+				},
+				access_token: {
+					$ref: "#/definitions/sys_access_token",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				session: {
+					$ref: "#/definitions/sys_session",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				user: {
+					$ref: "#/definitions/sys_user",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				profile: {
+					$ref: "#/definitions/sys_profile",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				client: {
+					$ref: "#/definitions/sys_client",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				tenant: {
+					$ref: "#/definitions/sys_tenant",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				application: {
+					$ref: "#/definitions/sys_application",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				is_expired: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: [
+				"id",
+				"refresh_token",
+				"access_token",
+				"session",
+				"user",
+				"profile",
+				"client",
+				"tenant",
+				"application",
+				"is_expired"
+			]
+		},
 		sys_user_permission_view: {
 			type: eJsonSchemaType.object,
 			properties: {

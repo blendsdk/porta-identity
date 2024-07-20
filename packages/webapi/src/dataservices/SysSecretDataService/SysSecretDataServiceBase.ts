@@ -1,7 +1,8 @@
 import {
 	ISysSecretDataServiceFindSysSecretByIdParams,
 	ISysSecretDataServiceDeleteSysSecretByIdFilter,
-	ISysSecretDataServiceUpdateSysSecretByIdFilter
+	ISysSecretDataServiceUpdateSysSecretByIdFilter,
+	ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
 } from "./types";
 import { ISysSecret } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -75,6 +76,24 @@ export abstract class SysSecretDataServiceBase extends DataService<PostgreSQLExe
 			Partial<ISysSecret>,
 			ISysSecretDataServiceUpdateSysSecretByIdFilter
 		>(`sys_secret`, params, filter, { single: true });
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_secret record by  and
+	 * @param {ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams}
+	 * @returns {ISysSecret}
+	 * @memberof SysSecretDataServiceBase
+	 */
+	public async findSysSecretBySecretAndClientId(
+		params: ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+	): Promise<ISysSecret> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysSecret, ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams>(
+			`SELECT * FROM sys_secret WHERE secret = :secret AND client_id = :client_id`,
+			params,
+			{ single: true }
+		);
 		return result.data;
 	}
 }

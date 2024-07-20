@@ -1,5 +1,6 @@
 import {
 	ISysAccessTokenView,
+	ISysRefreshTokenView,
 	ISysUserPermissionView,
 	ISysAuthorizationView,
 	ISysSecretView,
@@ -34,6 +35,20 @@ export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExe
 	public async listSysAccessTokenViewByExpression(params: TExpressionRenderer): Promise<ISysAccessTokenView[]> {
 		const ctx = await this.getContext();
 		const result = await ctx.listByExpression<ISysAccessTokenView[]>(`sys_access_token_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_refresh_token_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysRefreshTokenView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysRefreshTokenViewByExpression(params: TExpressionRenderer): Promise<ISysRefreshTokenView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysRefreshTokenView[]>(`sys_refresh_token_view`, params, {
 			single: false
 		});
 		return result.data;

@@ -355,6 +355,25 @@ export enum eSysAccessTokenView {
 }
 
 /**
+ * Enum of the type sys_refresh_token_view
+ * @export
+ * @enum
+ */
+export enum eSysRefreshTokenView {
+	$name = "sys_refresh_token_view",
+	ID = "id",
+	REFRESH_TOKEN = "refresh_token",
+	ACCESS_TOKEN = "access_token",
+	SESSION = "session",
+	USER = "user",
+	PROFILE = "profile",
+	CLIENT = "client",
+	TENANT = "tenant",
+	APPLICATION = "application",
+	IS_EXPIRED = "is_expired"
+}
+
+/**
  * Enum of the type sys_user_permission_view
  * @export
  * @enum

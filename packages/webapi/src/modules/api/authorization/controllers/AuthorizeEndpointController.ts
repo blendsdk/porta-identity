@@ -1,12 +1,10 @@
 import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
-import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysSession, ISysTenant, ISysUser, eSysAuthorizationView } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
 import * as jose from "jose";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
-import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
 import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg } from "../../../../types";
@@ -102,7 +100,7 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async prepareAuthorization(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
 
         // Find the auth record based on the auth request from the database
-        const authRecord = await this.findAuthorizationRecord(authRequest, tenantRecord);
+        const authRecord = await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord);
 
         const errors: string[] = [];
 
@@ -210,26 +208,6 @@ export class AuthorizeEndpointController extends EndpointController {
         });
 
         return { flowId, flowComplete: complete };
-    }
-
-    /**
-     * @protected
-     * @param {IAuthorizeRequest} authRequest
-     * @param {ISysTenant} tenantRecord
-     * @return {*} 
-     * @memberof AuthorizeEndpointController
-     */
-    protected findAuthorizationRecord(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
-        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
-        const { client_id, redirect_uri } = authRequest;
-        const e = expression();
-        return tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
-                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
-                e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
-            )
-        ));
     }
 
     /**

@@ -38,3 +38,20 @@ export interface ISysSecretDataServiceUpdateSysSecretByIdFilter {
 	 */
 	id: string;
 }
+
+/**
+ * @export
+ * @interface ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+ */
+export interface ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams {
+	/**
+	 * @type string
+	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+	 */
+	secret: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+	 */
+	client_id: string;
+}

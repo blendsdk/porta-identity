@@ -2,7 +2,6 @@ import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import * as jose from "jose";
-import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
 import { IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType, eOAuthSigningAlg } from "../../../../types";
 
@@ -20,18 +19,11 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected async getFlowByOTACode(code: string, tenantRecord: ISysTenant) {
-        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
         const cacheKey = `auth_ota:${code}`;
         const flowId = await this.getCache().getValue<string>(cacheKey);
-        const accessTokenRecord = await accessTokenDs.findSysAccessTokenByOta({ ota: code });
-
-        // Automatically revoke all previous access tokens by this code
-        if (accessTokenRecord) {
-            await accessTokenDs.deleteSysAccessTokenById({ id: accessTokenRecord.id });
-        }
-
+        // revoke any access token by this code
+        await databaseUtils.revokeAccessToken(code, tenantRecord);
         await this.getCache().deleteValue(cacheKey);
-
         return this.getCache().getValue<IAuthorizationFlow>(`auth_flow:${flowId}`);
     }
 
@@ -143,6 +135,41 @@ export class TokenEndpointController extends EndpointController {
         return errors;
     }
 
+    protected async getTokenByRefreshToken(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
+        const errors: string[] = [];
+        const { refresh_token } = tokenRequest;
+        if (!refresh_token) {
+            errors.push(eErrorType.invalid_request);
+        } else {
+            let refresh_token_record = await databaseUtils.findRefreshTokenByTenant({
+                tenantRecord,
+                refresh_token,
+                check_validity: false
+            });
+            if (!refresh_token_record) {
+                errors.push(eErrorType.invalid_request);
+            } else if (refresh_token_record && refresh_token_record.is_expired) {
+                // delete the access_token and the refresh_token
+                await databaseUtils.revokeRefreshToken(tenantRecord, refresh_token_record);
+                errors.push("refresh_token_expired");
+            } else {
+                const { application } = refresh_token_record;
+                const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+                const { client_secret: db_client_secret = undefined } = await databaseUtils.findSecretBySecretAndClientId(tenantRecord, client_id, client_secret) || {};
+                if (application.client_id === client_id && db_client_secret === client_secret && !isNullOrUndef(client_secret)) {
+
+                } else {
+                    errors.push("invalid_bound_client");
+                }
+            }
+
+        }
+        return {
+            errors,
+            token: null
+        };
+    }
+
     protected async getTokenByAuthorizationCode(flow: IAuthorizationFlow, tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
         const errors: string[] = [];
 
@@ -154,31 +181,12 @@ export class TokenEndpointController extends EndpointController {
         await this.checkAccessSecret(tokenRequest, flow.authRecord, flow.authRequest, tenantRecord, errors);
         const token = errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined;
         if (token) {
-            await this.linkAccessTokenToOTA(token.access_token, tokenRequest.code, tenantRecord);
+            await databaseUtils.linkAccessTokenToOTA(token.access_token, tokenRequest.code, tenantRecord);
         }
         return {
             errors,
             token
         };
-    }
-
-    /**
-     * @protected
-     * @param {string} access_token
-     * @param {string} ota
-     * @param {ISysTenant} tenantRecord
-     * @memberof TokenEndpointController
-     */
-    protected async linkAccessTokenToOTA(access_token: string, ota: string, tenantRecord: ISysTenant) {
-        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
-        const accessTokenRecord = await accessTokenDs.findSysAccessTokenByAccessToken({ access_token });
-        if (accessTokenRecord) {
-            await accessTokenDs.updateSysAccessTokenById({
-                ota
-            }, {
-                id: accessTokenRecord.id
-            });
-        }
     }
 
     /**
@@ -233,6 +241,7 @@ export class TokenEndpointController extends EndpointController {
                     );
                 }
             } else if (grant_type === eOAuthGrantType.client_credentials && isNullOrUndef(code)) {
+                debugger;
                 // /**
                 //  * Only when the grant type is client_credentials and we don't have a code
                 //  *
@@ -252,18 +261,17 @@ export class TokenEndpointController extends EndpointController {
                 //     );
                 // }
             } else if (grant_type === eOAuthGrantType.refresh_token) {
-                // const { errors, token: localToken } = await this.getTokenByRefreshToken(tokenRequest);
-                // token = localToken;
-
-                // if (errors.length !== 0) {
-                //     return this.responseWithError(
-                //         {
-                //             error: eErrorType.invalid_grant,
-                //             error_description: errors[0]
-                //         },
-                //         true
-                //     );
-                // }
+                const { errors, token: localToken } = await this.getTokenByRefreshToken(params, tenantRecord);
+                token = localToken;
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_grant,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
             } else {
                 return this.responseWithError(
                     {
@@ -289,6 +297,19 @@ export class TokenEndpointController extends EndpointController {
         return new SuccessResponse({ ...token, state });
     }
 
+    /**
+     * @protected
+     * @param {{
+     *         tenantRecord: ISysTenant,
+     *         tokenRequest: ITokenRequest,
+     *         accessToken: ISysAccessToken,
+     *         session: ISysSession,
+     *         authRequest: IAuthorizeRequest;
+     *         user_id: string;
+     *     }} params
+     * @return {*} 
+     * @memberof TokenEndpointController
+     */
     protected async createIDToken(params: {
         tenantRecord: ISysTenant,
         tokenRequest: ITokenRequest,
@@ -326,6 +347,13 @@ export class TokenEndpointController extends EndpointController {
             .sign(pKey);
     }
 
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {ITokenRequest} tokenRequest
+     * @return {*}  {Promise<IToken>}
+     * @memberof TokenEndpointController
+     */
     protected async createTokens(flow: IAuthorizationFlow, tokenRequest: ITokenRequest): Promise<IToken> {
 
         const { authRecord, authRequest, tenantRecord, user, session } = flow;

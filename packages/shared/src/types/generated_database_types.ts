@@ -895,6 +895,63 @@ export interface ISysAccessTokenView {
 
 /**
  * @export
+ * @interface ISysRefreshTokenView
+ */
+export interface ISysRefreshTokenView {
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	refresh_token: string;
+	/**
+	 * @type ISysAccessToken
+	 * @memberOf ISysRefreshTokenView
+	 */
+	access_token: ISysAccessToken;
+	/**
+	 * @type ISysSession
+	 * @memberOf ISysRefreshTokenView
+	 */
+	session: ISysSession;
+	/**
+	 * @type ISysUser
+	 * @memberOf ISysRefreshTokenView
+	 */
+	user: ISysUser;
+	/**
+	 * @type ISysProfile
+	 * @memberOf ISysRefreshTokenView
+	 */
+	profile: ISysProfile;
+	/**
+	 * @type ISysClient
+	 * @memberOf ISysRefreshTokenView
+	 */
+	client: ISysClient;
+	/**
+	 * @type ISysTenant
+	 * @memberOf ISysRefreshTokenView
+	 */
+	tenant: ISysTenant;
+	/**
+	 * @type ISysApplication
+	 * @memberOf ISysRefreshTokenView
+	 */
+	application: ISysApplication;
+	/**
+	 * @type boolean
+	 * @memberOf ISysRefreshTokenView
+	 */
+	is_expired: boolean;
+}
+
+/**
+ * @export
  * @interface ISysUserPermissionView
  */
 export interface ISysUserPermissionView {

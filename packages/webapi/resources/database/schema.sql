@@ -57,6 +57,7 @@ ALTER TABLE sys_secret ADD COLUMN valid_to timestamp with time zone NOT NULL;
 ALTER TABLE sys_secret ADD COLUMN is_system boolean  DEFAULT false;
 ALTER TABLE sys_secret ADD COLUMN client_id uuid NOT NULL;
 ALTER TABLE sys_secret ADD PRIMARY KEY (id);
+ALTER TABLE sys_secret ADD UNIQUE (secret,client_id);
 CREATE TABLE sys_client();
 ALTER TABLE sys_client ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_client ADD COLUMN client_type varchar  DEFAULT 'C';

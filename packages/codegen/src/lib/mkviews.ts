@@ -24,7 +24,7 @@ export async function createViews() {
             query: `SELECT * FROM ${view.getName()} LIMIT 1`,
             createMapping: ({ columnName }) => {
                 const viewName = view.getName();
-                if (viewName === "sys_access_token_view") {
+                if (viewName === "sys_access_token_view" || viewName === "sys_refresh_token_view") {
                     switch (columnName) {
                         case "session":
                             return refType("sys_session");
@@ -38,6 +38,14 @@ export async function createViews() {
                             return refType("sys_tenant");
                         case "auth_request_parameters":
                             return refType("any_index");
+                    }
+                }
+                if (viewName === "sys_refresh_token_view") {
+                    switch (columnName) {
+                        case "application":
+                            return refType("sys_application");
+                        case "access_token":
+                            return refType("sys_access_token");
                     }
                 }
                 return undefined;

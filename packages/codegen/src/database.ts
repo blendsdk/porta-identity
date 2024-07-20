@@ -123,7 +123,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("valid_from", { withTimeZone: true })
         .dateTimeColumn("valid_to", { withTimeZone: true })
         .booleanColumn("is_system", { default: "false" })
-        .referenceColumnAuto("client_id", client);
+        .referenceColumnAuto("client_id", client)
+        .uniqueConstraint(["client_id", "secret"]);
 
     key.primaryKeyColumn("id", true) //
         .stringColumn("key_type")
