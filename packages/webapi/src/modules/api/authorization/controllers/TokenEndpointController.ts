@@ -1,4 +1,4 @@
-import { isNullOrUndef } from "@blendsdk/stdlib";
+import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import * as jose from "jose";
@@ -337,8 +337,6 @@ export class TokenEndpointController extends EndpointController {
         access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
         refresh_token_length = parseFloat((refresh_token_length || REFRESH_TOKEN_TTL).toString());
 
-        console.log(offline_access);
-
         const { access_token_record, date_expire } = await databaseUtils.newAccessToken({
             client_record_id: authRecord.sys_client_id,
             session,
@@ -347,6 +345,20 @@ export class TokenEndpointController extends EndpointController {
             user_id: user.id,
             authRequest
         });
+
+
+        let reftesh_token: IDictionaryOf<any> = {};
+        if (offline_access) {
+            const { refresh_token_record, refreshtoken_date_expire } = await databaseUtils.newRefreshToken({
+                accessTokenRecord: access_token_record,
+                tenantRecord,
+                ttl: refresh_token_length
+            });
+            reftesh_token = {
+                refresh_token: refresh_token_record.refresh_token,
+                refresh_token_expires_in: refreshtoken_date_expire.getTime() - Date.now(),
+            };
+        }
 
         const id_token = await this.createIDToken({
             accessToken: access_token_record,
@@ -362,8 +374,7 @@ export class TokenEndpointController extends EndpointController {
             expires_in: date_expire.getTime() - Date.now(),
             token_type: "Bearer",
             id_token,
-            refresh_token: null,
-            refresh_token_expires_in: null
+            ...reftesh_token
         };
     }
 

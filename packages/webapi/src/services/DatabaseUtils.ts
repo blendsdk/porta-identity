@@ -2,10 +2,11 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysPermission, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysPermission, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
+import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { eOAuthPrompt } from "../types";
@@ -70,6 +71,30 @@ export class DatabaseUtils extends ServiceBase {
         if (tenant !== sessionTenant.id) {
             throw new Error("Invalid or mismatch tenant");
         }
+    }
+
+    /**
+     * @param {{
+     *         tenantRecord: ISysTenant,
+     *         accessTokenRecord: ISysAccessToken;
+     *         ttl: number;
+     *     }} params
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async newRefreshToken(params: {
+        tenantRecord: ISysTenant,
+        accessTokenRecord: ISysAccessToken;
+        ttl: number;
+    }) {
+        const { tenantRecord, accessTokenRecord, ttl } = params;
+        const refreshTokenDs = new SysRefreshTokenDataService({ tenantId: tenantRecord.id });
+        const date_expire = new Date(Date.now() + commonUtils.secondsToMilliseconds(ttl));
+        const refresh_token_record = await refreshTokenDs.insertIntoSysRefreshToken({
+            access_token_id: accessTokenRecord.id,
+            date_expire: date_expire.toISOString()
+        });
+        return { refresh_token_record, refreshtoken_date_expire: date_expire };
     }
 
     /**
