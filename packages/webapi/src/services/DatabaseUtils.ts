@@ -43,26 +43,6 @@ export class DatabaseUtils extends ServiceBase {
 
     /**
      * @param {ISysTenant} tenantRecord
-     * @param {string} client_id
-     * @param {string} secret
-     * @return {*} 
-     * @memberof DatabaseUtils
-     */
-    public async findSecretBySecretAndClientId(tenantRecord: ISysTenant, client_id: string, secret: string) {
-        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
-        const e = expression();
-        const records = await tenantDs.listSysSecretViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                e.Equal(eSysSecretView.CLIENT_SECRET, secret),
-                e.Equal(eSysSecretView.IS_EXPIRED, false)
-            )
-        ));
-        return records[0];
-    }
-
-    /**
-     * @param {ISysTenant} tenantRecord
      * @param {ISysRefreshTokenView} refreshTokenRecord
      * @memberof DatabaseUtils
      */
@@ -230,7 +210,7 @@ export class DatabaseUtils extends ServiceBase {
             session_id: session.id,
             auth_time: now.toISOString(),
             date_expire: date_expire.toISOString(),
-            auth_request_params: { claims: authRequest.claims, scope: authRequest.scope } // for security only include these two and nothing more!
+            auth_request_params: { ...authRequest }
         });
 
         await sessionDs.updateSysSessionById({ last_token_auth_time: now.toISOString() }, { id: session.id });

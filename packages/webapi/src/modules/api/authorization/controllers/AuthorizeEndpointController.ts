@@ -97,6 +97,13 @@ export class AuthorizeEndpointController extends EndpointController {
         return url.toString();
     }
 
+    /**
+     * @protected
+     * @param {IAuthorizeRequest} authRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
     protected async prepareAuthorization(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
 
         // Find the auth record based on the auth request from the database

@@ -283,41 +283,47 @@ export class DatabaseSeed {
             return;
         }
 
-        const app = await this.createApplication(
-            {
-                tenant_id: tenantRecord.id,
-                application_name: "OIDC Conformance Test Suite",
-                client_id: "097c6871-fa61-47c8-9840-93482a126b21",
-                description: "Demo Application",
-            },
-            tenantRecord
-        );
+        const sets = ["097c6871-fa61-47c8-9840-93482a126b21", "097c6871-fa61-47c8-9840-93482a126b22"];
+        await asyncForEach(sets, async (client_id: string, index: number) => {
 
-        const client = await this.createClient(
-            {
-                client_type: eClientType.confidential,
-                application_id: app.id,
-                redirect_uri: `https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback`,
-                post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
-                access_token_length: ACCESS_TOKEN_TTL,
-                refresh_token_length: REFRESH_TOKEN_TTL,
-                mfa_bypass_days: 1
-            },
-            app,
-            tenantRecord
-        );
+            const app = await this.createApplication(
+                {
+                    tenant_id: tenantRecord.id,
+                    application_name: "OIDC Conformance Test Suite " + index,
+                    client_id,
+                    description: "Demo Application " + index,
+                },
+                tenantRecord
+            );
 
-        const now = Date.now();
-        await this.createSecret(
-            {
-                secret: "secret",
-                valid_from: new Date(now).toISOString(),
-                valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
-                client_id: client.id
-            },
-            client,
-            tenantRecord
-        );
+            const client = await this.createClient(
+                {
+                    client_type: eClientType.confidential,
+                    application_id: app.id,
+                    redirect_uri: `https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback`,
+                    post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                    access_token_length: ACCESS_TOKEN_TTL,
+                    refresh_token_length: REFRESH_TOKEN_TTL,
+                    mfa_bypass_days: 1
+                },
+                app,
+                tenantRecord
+            );
+
+            const now = Date.now();
+            await this.createSecret(
+                {
+                    secret: "secret",
+                    valid_from: new Date(now).toISOString(),
+                    valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
+                    client_id: client.id
+                },
+                client,
+                tenantRecord
+            );
+
+        });
+
     }
 
     /**

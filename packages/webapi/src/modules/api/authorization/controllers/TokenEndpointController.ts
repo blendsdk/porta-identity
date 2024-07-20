@@ -138,6 +138,7 @@ export class TokenEndpointController extends EndpointController {
     protected async getTokenByRefreshToken(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
         const errors: string[] = [];
         const { refresh_token } = tokenRequest;
+        let token: IToken = undefined;
         if (!refresh_token) {
             errors.push(eErrorType.invalid_request);
         } else {
@@ -153,10 +154,33 @@ export class TokenEndpointController extends EndpointController {
                 await databaseUtils.revokeRefreshToken(tenantRecord, refresh_token_record);
                 errors.push("refresh_token_expired");
             } else {
-                const { application } = refresh_token_record;
+
+                const { application, session, profile, user, access_token } = refresh_token_record;
                 const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
-                const { client_secret: db_client_secret = undefined } = await databaseUtils.findSecretBySecretAndClientId(tenantRecord, client_id, client_secret) || {};
-                if (application.client_id === client_id && db_client_secret === client_secret && !isNullOrUndef(client_secret)) {
+                const isValidSecret = await databaseUtils.validateClientSecret(tenantRecord, client_id, client_secret);
+                const authRequest = access_token.auth_request_params as IAuthorizeRequest;
+
+                if (application.client_id === client_id && !isNullOrUndef(client_secret) && isValidSecret) {
+
+                    const authRecord = (await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord))[0];
+
+                    // construct a flow 
+                    const flow: IAuthorizationFlow = {
+                        account_state: true,
+                        complete: true,
+                        mfa_state: true,
+                        session,
+                        profile,
+                        user,
+                        tenantRecord,
+                        authRequest,
+                        authRecord,
+                        mfa_request: undefined,
+                        flowId: undefined,
+                        expire: undefined
+                    };
+
+                    token = await this.createTokens(flow, { ...tokenRequest, client_id });
 
                 } else {
                     errors.push("invalid_bound_client");
@@ -166,7 +190,7 @@ export class TokenEndpointController extends EndpointController {
         }
         return {
             errors,
-            token: null
+            token
         };
     }
 
@@ -317,9 +341,10 @@ export class TokenEndpointController extends EndpointController {
         session: ISysSession,
         authRequest: IAuthorizeRequest;
         user_id: string;
+        is_refresh_token_grant: boolean;
     }) {
 
-        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id } = params;
+        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id,is_refresh_token_grant } = params;
 
         const { nonce } = authRequest;
 
@@ -328,7 +353,9 @@ export class TokenEndpointController extends EndpointController {
 
         const acr = this.handleAcrClaims(authRequest.acr_values);
 
-        const auth_time = new Date(accessToken.auth_time).getTime();
+        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time
+
+        const auth_time = new Date(auth_time_src).getTime();
 
         const exp_time = new Date(accessToken.date_expire).getTime();
 
@@ -355,7 +382,6 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected async createTokens(flow: IAuthorizationFlow, tokenRequest: ITokenRequest): Promise<IToken> {
-
         const { authRecord, authRequest, tenantRecord, user, session } = flow;
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
         let { access_token_length, refresh_token_length } = authRecord;
@@ -394,7 +420,8 @@ export class TokenEndpointController extends EndpointController {
             session,
             tenantRecord,
             tokenRequest,
-            user_id: user.id
+            user_id: user.id,
+            is_refresh_token_grant: tokenRequest.grant_type === eOAuthGrantType.refresh_token
         });
 
         return {
