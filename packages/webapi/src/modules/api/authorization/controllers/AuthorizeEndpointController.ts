@@ -3,12 +3,14 @@ import { expression } from "@blendsdk/expression";
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { RedirectResponse, Response } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysSession, ISysTenant, ISysUser, eSysAuthorizationView } from "@porta/shared";
+import * as jose from "jose";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { EndpointController, commonUtils } from "../../../../services";
-import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
+import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
+import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg } from "../../../../types";
+
 
 /**
  * Handler for the authorize endpoint
@@ -30,7 +32,7 @@ export class AuthorizeEndpointController extends EndpointController {
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];
 
-        const { tenant, redirect_uri, response_mode, state } = authRequest;
+        const { tenant, redirect_uri, response_mode, state, prompt } = authRequest;
 
         const tenantRecord = await this.getTenantRecord(tenant);
 
@@ -44,25 +46,38 @@ export class AuthorizeEndpointController extends EndpointController {
             });
         }
 
-        const validationResult = await this.validateAuthorizationRequest(authRequest);
+        const validationResult = await this.validateAuthorizationRequest(authRequest, tenantRecord);
         if (!isNullOrUndef(validationResult)) {
             // something is wrong with the request
             return validationResult;
         } else {
-            const { errors, flowId } = await this.prepareAuthorization(authRequest, tenantRecord);
+            const { errors, flowId, flowComplete } = await this.prepareAuthorization(authRequest, tenantRecord);
+
+            let invalidPropmptRequest = prompt === eOAuthPrompt.none && !flowComplete;
+
+            // OIDC Conformance test rule!
+            if (invalidPropmptRequest) {
+                errors.push("prompt_none_when_flow_not_complete");
+            }
+
             if (errors.length === 0 && flowId) {
-                const signinURL = this.createFrontendSignInUrl(authRequest);
-                return new RedirectResponse({ url: signinURL });
+                let signinUrl: string = undefined;
+                if (prompt === eOAuthPrompt.login) {
+                    const flow = await this.getAuthenticationFlow(flowId);
+                    await this.updateFlow({ ...flow, complete: false, account_state: false });
+                }
+                signinUrl = this.createFrontendSignInUrl(authRequest);
+                return new RedirectResponse({ url: signinUrl });
             } else {
                 return this.responseWithError(
                     {
-                        error: eErrorType.invalid_request,
+                        error: invalidPropmptRequest ? eErrorType.login_required : eErrorType.invalid_request,
                         error_description: errors.join(","),
                         state,
                         redirect_uri,
                         response_mode
                     },
-                    true
+                    errors.findIndex(i => (i === eErrorType.invalid_authorization)) !== -1
                 );
             }
         }
@@ -96,7 +111,7 @@ export class AuthorizeEndpointController extends EndpointController {
         if (authRecord.length === 1) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
             flow = await this.createAuthorizationFlow(authRecord[0], authRequest, tenantRecord);
         } else {
-            errors.push("invalid_authorization");
+            errors.push(eErrorType.invalid_authorization);
         }
         return { errors, ...flow };
     }
@@ -107,17 +122,24 @@ export class AuthorizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof AuthorizeEndpointController
      */
-    protected async getReturningUser(tenantRecord: ISysTenant) {
+    protected async getReturningUser(tenantRecord: ISysTenant, authRequest: IAuthorizeRequest) {
         const sessionDS = new SysSessionDataService({ tenantId: tenantRecord.id });
         const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
         const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
         let user: ISysUser = undefined;
         let profile: ISysProfile = undefined;
         let session: ISysSession = undefined;
+        let currentSessionId: string = undefined;
 
+        // Get the current session id from the id_token_hint if possible
+        if (authRequest.id_token_hint) {
+            const [, sessionId] = authRequest.id_token_hint.split(":");
+            currentSessionId = sessionId;
+        } else {
+            const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
+            currentSessionId = this.getCookie(cookieId);
+        }
 
-        const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
-        let currentSessionId = this.getCookie(cookieId);
         if (currentSessionId) {
             session = await sessionDS.findSysSessionById({ id: currentSessionId });
             if (session) {
@@ -140,8 +162,10 @@ export class AuthorizeEndpointController extends EndpointController {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
 
-        const { user, profile, session } = await this.getReturningUser(tenantRecord);
-        const complete = user && profile ? true : false;
+        const { user, profile, session } = await this.getReturningUser(tenantRecord, authRequest);
+        const authenticated = !isNullOrUndef(session) && !isNullOrUndef(user) && !isNullOrUndef(profile);
+        const login_required = session ? commonUtils.checkLoginRequired(session, authRequest.max_age) : true;
+        const complete = authenticated ? login_required ? false : authenticated : authenticated;
 
         let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
 
@@ -210,12 +234,42 @@ export class AuthorizeEndpointController extends EndpointController {
 
     /**
      * @protected
+     * @param {string} id_token_hint
+     * @param {ISysTenant} tenantRecord
      * @param {IAuthorizeRequest} authRequest
      * @return {*} 
      * @memberof AuthorizeEndpointController
      */
-    protected async validateAuthorizationRequest(authRequest: IAuthorizeRequest) {
-        const { response_type, redirect_uri, state, response_mode } = authRequest || {};
+    protected async isValidIDTokenHint(id_token_hint: string, tenantRecord: ISysTenant, authRequest: IAuthorizeRequest) {
+        let is_valid: boolean = true;
+        if (id_token_hint) {
+            const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
+            const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
+
+            try {
+                const { payload } = await jose.jwtVerify(id_token_hint, pKey, {
+                    issuer: this.getIssuer(tenantRecord.id),
+                    audience: authRequest.client_id
+                });
+                is_valid = true;
+                const { sid } = payload as any;
+                authRequest.id_token_hint = sid;
+            } catch (err) {
+                this.getLogger().error("isValidIDTokenHint", { id_token_hint });
+                return is_valid = false;
+            }
+        }
+        return is_valid;
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizeRequest} authRequest
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
+    protected async validateAuthorizationRequest(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+        const { response_type, redirect_uri, state, response_mode, id_token_hint } = authRequest || {};
         // parse the response types. The response type can be an array of values!
         const response_types = this.parseResponseType(response_type);
         // check the nonce
@@ -261,6 +315,14 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_response_mode",
+                response_mode
+            });
+        } else if (!await this.isValidIDTokenHint(id_token_hint, tenantRecord, authRequest)) {
+            return this.responseWithError({
+                error: eErrorType.invalid_request,
+                redirect_uri,
+                state,
+                error_description: "invalid_id_token_hint",
                 response_mode
             });
         } else if (!this.isSupportedResponseType(response_types)) {

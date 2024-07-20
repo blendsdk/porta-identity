@@ -2,6 +2,7 @@ import {
 	ISysAccessTokenDataServiceFindSysAccessTokenByIdParams,
 	ISysAccessTokenDataServiceDeleteSysAccessTokenByIdFilter,
 	ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter,
+	ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams,
 	ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams
 } from "./types";
 import { ISysAccessToken } from "@porta/shared";
@@ -82,6 +83,24 @@ export abstract class SysAccessTokenDataServiceBase extends DataService<PostgreS
 			Partial<ISysAccessToken>,
 			ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter
 		>(`sys_access_token`, params, filter, { single: true });
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_access_token record by
+	 * @param {ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams}
+	 * @returns {ISysAccessToken}
+	 * @memberof SysAccessTokenDataServiceBase
+	 */
+	public async findSysAccessTokenByOta(
+		params: ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams
+	): Promise<ISysAccessToken> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysAccessToken, ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams>(
+			`SELECT * FROM sys_access_token WHERE ota = :ota`,
+			params,
+			{ single: true }
+		);
 		return result.data;
 	}
 

@@ -24,6 +24,7 @@ export interface IAuthorizationFlow {
 }
 
 export enum eErrorType {
+    invalid_authorization = "invalid_authorization",
     interaction_required = "interaction_required",
     login_required = "login_required",
     account_selection_required = "account_selection_required",

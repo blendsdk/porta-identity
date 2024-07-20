@@ -30,7 +30,7 @@ export class FinalizeEndpointController extends EndpointController {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 error_description: "invalid_af_flow",
-            }, true);
+            });
         }
 
         const { authRequest, user } = flow;
@@ -90,7 +90,6 @@ export class FinalizeEndpointController extends EndpointController {
      * @memberof FinalizeEndpointController
      */
     protected async createOrUpdateSession(tenantRecord: ISysTenant, user: ISysUser) {
-
         const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
         const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
         let currentSessionId = this.getCookie(cookieId);

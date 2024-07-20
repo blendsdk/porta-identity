@@ -578,6 +578,16 @@ export interface ISysSession {
 	 * @type string
 	 * @memberOf ISysSession
 	 */
+	date_created?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
+	last_token_auth_time?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSession
+	 */
 	date_expire: string;
 }
 
@@ -601,6 +611,11 @@ export interface ISysAccessToken {
 	 * @memberOf ISysAccessToken
 	 */
 	auth_time: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
+	ota?: string;
 	/**
 	 * @type IAnyIndex
 	 * @memberOf ISysAccessToken

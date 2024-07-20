@@ -170,6 +170,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
+        .dateTimeColumn("date_created", { default: 'now()' })
+        .dateTimeColumn("last_token_auth_time", { default: 'now()' })
         .dateTimeColumn("date_expire");
 
     access_token
@@ -177,6 +179,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .dateTimeColumn("date_expire")
         .dateTimeColumn("auth_time")
+        .stringColumn("ota", { unique: true, required: false })
         .jsonColumn("auth_request_params", refType("any_index"))
         .stringColumn("access_token", {
             unique: true,

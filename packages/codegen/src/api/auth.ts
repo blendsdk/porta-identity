@@ -185,6 +185,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("prompt", { location: eParameterLocation.query, optional: true })
                 .addNumber("max_age", { location: eParameterLocation.query, optional: true })
                 .addString("display", { location: eParameterLocation.query, optional: true })
+                .addString("id_token_hint", { location: eParameterLocation.query, optional: true })
                 .addString("resource", { location: eParameterLocation.query, optional: true });
 
             typeSchema.createAppendType(payload_type); //

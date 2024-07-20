@@ -475,6 +475,16 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				},
+				last_token_auth_time: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				},
 				date_expire: {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz"
@@ -496,6 +506,10 @@ export const validationSchema = {
 				auth_time: {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz"
+				},
+				ota: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
 				},
 				auth_request_params: {
 					type: eJsonSchemaType.object,
@@ -1200,6 +1214,10 @@ export const validationSchema = {
 					location: eParameterLocation.query
 				},
 				display: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				id_token_hint: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.query
 				},

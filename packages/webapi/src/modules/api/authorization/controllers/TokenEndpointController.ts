@@ -1,7 +1,8 @@
 import { isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
+import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import * as jose from "jose";
+import { SysAccessTokenDataService } from "../../../../dataservices/SysAccessTokenDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
 import { IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType, eOAuthSigningAlg } from "../../../../types";
 
@@ -18,10 +19,19 @@ export class TokenEndpointController extends EndpointController {
      * @return {*} 
      * @memberof TokenEndpointController
      */
-    protected async getFlowByOTACode(code: string) {
+    protected async getFlowByOTACode(code: string, tenantRecord: ISysTenant) {
+        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
         const cacheKey = `auth_ota:${code}`;
         const flowId = await this.getCache().getValue<string>(cacheKey);
+        const accessTokenRecord = await accessTokenDs.findSysAccessTokenByOta({ ota: code });
+
+        // Automatically revoke all previous access tokens by this code
+        if (accessTokenRecord) {
+            await accessTokenDs.deleteSysAccessTokenById({ id: accessTokenRecord.id });
+        }
+
         await this.getCache().deleteValue(cacheKey);
+
         return this.getCache().getValue<IAuthorizationFlow>(`auth_flow:${flowId}`);
     }
 
@@ -142,10 +152,33 @@ export class TokenEndpointController extends EndpointController {
 
         this.validateRequest(tokenRequest, flow.authRequest, errors);
         await this.checkAccessSecret(tokenRequest, flow.authRecord, flow.authRequest, tenantRecord, errors);
+        const token = errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined;
+        if (token) {
+            await this.linkAccessTokenToOTA(token.access_token, tokenRequest.code, tenantRecord);
+        }
         return {
             errors,
-            token: errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined
+            token
         };
+    }
+
+    /**
+     * @protected
+     * @param {string} access_token
+     * @param {string} ota
+     * @param {ISysTenant} tenantRecord
+     * @memberof TokenEndpointController
+     */
+    protected async linkAccessTokenToOTA(access_token: string, ota: string, tenantRecord: ISysTenant) {
+        const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
+        const accessTokenRecord = await accessTokenDs.findSysAccessTokenByAccessToken({ access_token });
+        if (accessTokenRecord) {
+            await accessTokenDs.updateSysAccessTokenById({
+                ota
+            }, {
+                id: accessTokenRecord.id
+            });
+        }
     }
 
     /**
@@ -170,7 +203,7 @@ export class TokenEndpointController extends EndpointController {
         if (eOAuthGrantType[grant_type] !== undefined) {
             // Only when the requested grant type is authorization_code and we have a OTA
             if (grant_type === eOAuthGrantType.authorization_code && !isNullOrUndef(code)) {
-                const flow = await this.getFlowByOTACode(code);
+                const flow = await this.getFlowByOTACode(code, tenantRecord);
                 if (flow) {
                     const { authRequest } = flow;
                     const { errors, token: localToken } = await this.getTokenByAuthorizationCode(flow, params, tenantRecord);
@@ -179,7 +212,7 @@ export class TokenEndpointController extends EndpointController {
                     if (errors.length !== 0) {
                         return this.responseWithError(
                             {
-                                error: eErrorType.invalid_request,
+                                error: eErrorType.invalid_grant,
                                 error_description: errors[0],
                                 redirect_uri,
                                 response_mode: authRequest?.response_mode,
@@ -260,12 +293,12 @@ export class TokenEndpointController extends EndpointController {
         tenantRecord: ISysTenant,
         tokenRequest: ITokenRequest,
         accessToken: ISysAccessToken,
-        session_id: string,
+        session: ISysSession,
         authRequest: IAuthorizeRequest;
         user_id: string;
     }) {
 
-        const { tenantRecord, tokenRequest, accessToken, session_id, authRequest, user_id } = params;
+        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id } = params;
 
         const { nonce } = authRequest;
 
@@ -275,13 +308,14 @@ export class TokenEndpointController extends EndpointController {
         const acr = this.handleAcrClaims(authRequest.acr_values);
 
         const auth_time = new Date(accessToken.auth_time).getTime();
+
         const exp_time = new Date(accessToken.date_expire).getTime();
 
         return await new jose.SignJWT({
             nonce,
             auth_time: commonUtils.millisecondsToSeconds(auth_time),
             acr,
-            sid: [tenantRecord.id, session_id].join(":")
+            sid: [tenantRecord.id, session.id].join(":")
         })
             .setProtectedHeader({ alg: eOAuthSigningAlg.RS256 })
             .setIssuedAt()
@@ -307,7 +341,7 @@ export class TokenEndpointController extends EndpointController {
 
         const { access_token_record, date_expire } = await databaseUtils.newAccessToken({
             client_record_id: authRecord.sys_client_id,
-            session_id: session.id,
+            session,
             tenantRecord,
             ttl: access_token_length,
             user_id: user.id,
@@ -317,7 +351,7 @@ export class TokenEndpointController extends EndpointController {
         const id_token = await this.createIDToken({
             accessToken: access_token_record,
             authRequest,
-            session_id: session.id,
+            session,
             tenantRecord,
             tokenRequest,
             user_id: user.id

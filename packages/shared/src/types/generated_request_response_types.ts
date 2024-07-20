@@ -686,6 +686,11 @@ export interface IAuthorizeRequest {
 	 * @type string
 	 * @memberOf IAuthorizeRequest
 	 */
+	id_token_hint?: string;
+	/**
+	 * @type string
+	 * @memberOf IAuthorizeRequest
+	 */
 	resource?: string;
 }
 

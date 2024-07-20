@@ -57,7 +57,7 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
             case eTokenType.BEARER_TOKEN: {
                 const tenentRecord = await databaseUtils.findTenant(this.getTenantFromRequest(req));
                 if (tenentRecord) {
-                    const { accessToken = undefined, roles = undefined, permissions = undefined, application } = await databaseUtils.findAccessTokenByTenantAndToken(token, tenentRecord);
+                    const { accessToken = undefined, roles = undefined, permissions = undefined, application } = await databaseUtils.findAccessTokenByTenantAndToken(token, tenentRecord) || {};
                     if (accessToken) {
                         const { profile, tenant, user, client, auth_request_params } = accessToken;
                         return {

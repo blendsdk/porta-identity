@@ -15,7 +15,6 @@ import { formPostTemplate } from "./FormPostTemplate";
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
-
     /**
      * Gets the OIDC claims by scope
      *

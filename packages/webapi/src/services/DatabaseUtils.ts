@@ -2,11 +2,13 @@ import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysPermission, ISysRole, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysPermission, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
+import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
+import { eOAuthPrompt } from "../types";
 import { commonUtils } from "./CommonUtils";
 import { ServiceBase } from "./ServiceBase";
 
@@ -86,30 +88,37 @@ export class DatabaseUtils extends ServiceBase {
     public async newAccessToken(params: {
         tenantRecord: ISysTenant,
         user_id: string,
-        session_id: string,
+        session: ISysSession,
         ttl: number,
         client_record_id: string;
         authRequest: IAuthorizeRequest;
     }) {
 
-        const { tenantRecord, user_id, session_id, ttl, client_record_id, authRequest } = params;
+        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest } = params;
 
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
+        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
 
-        const now = new Date(Math.trunc(new Date().getTime() / 1000) * 1000);
+        const isNewSession = commonUtils.checkLoginRequired(session, authRequest.max_age);
+
+        // OIDC conformance. When the prompt is none then we want to know the initial auth time.
+        // This is when the session was created first and not when the token is created!
+        const now = authRequest.prompt === eOAuthPrompt.none || (authRequest.max_age && !isNewSession) ? new Date(session.last_token_auth_time) : new Date();
+
         const date_expire = new Date(now.getTime() + commonUtils.secondsToMilliseconds(ttl));
-
 
         const access_token_record = await accessTokenDs.insertIntoSysAccessToken({
             access_token: await sha256Hash(generateRandomUUID()),
             tenant_id: tenantRecord.id,
             client_id: client_record_id,
             user_id,
-            session_id,
-            auth_time: now.toDateString(),
+            session_id: session.id,
+            auth_time: now.toISOString(),
             date_expire: date_expire.toISOString(),
             auth_request_params: { claims: authRequest.claims, scope: authRequest.scope } // for security only include these two and nothing more!
         });
+
+        await sessionDs.updateSysSessionById({ last_token_auth_time: now.toISOString() }, { id: session.id });
 
         return { access_token_record, date_expire, date_created: now };
     }

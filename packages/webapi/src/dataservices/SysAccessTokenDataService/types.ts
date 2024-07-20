@@ -41,6 +41,18 @@ export interface ISysAccessTokenDataServiceUpdateSysAccessTokenByIdFilter {
 
 /**
  * @export
+ * @interface ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams
+ */
+export interface ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams {
+	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenDataServiceFindSysAccessTokenByOtaParams
+	 */
+	ota: string;
+}
+
+/**
+ * @export
  * @interface ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams
  */
 export interface ISysAccessTokenDataServiceFindSysAccessTokenByAccessTokenParams {

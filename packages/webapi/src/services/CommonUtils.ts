@@ -1,7 +1,7 @@
 import { sha256Verify } from "@blendsdk/crypto";
 import { IDictionaryOf, MD5, wrapInArray } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { ISysTenant } from "@porta/shared";
+import { ISysSession, ISysTenant } from "@porta/shared";
 import { IPortaApplicationSetting, eOAuthPKCECodeChallengeMethod } from "../types";
 
 class CommonUtils {
@@ -116,6 +116,17 @@ class CommonUtils {
                 data[caseSensitive ? i : i.toLocaleLowerCase()] = true;
             });
         return data;
+    }
+
+    /**
+     * @param {ISysSession} session
+     * @param {number} max_age
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public checkLoginRequired(session: ISysSession, max_age: number) {
+        const date_created = new Date(session.date_created).getTime();
+        return max_age ? this.millisecondsToSeconds(Date.now() - date_created) > max_age : false;
     }
 }
 

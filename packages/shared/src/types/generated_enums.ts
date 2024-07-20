@@ -243,6 +243,8 @@ export enum eSysSession {
 	$name = "sys_session",
 	ID = "id",
 	USER_ID = "user_id",
+	DATE_CREATED = "date_created",
+	LAST_TOKEN_AUTH_TIME = "last_token_auth_time",
 	DATE_EXPIRE = "date_expire"
 }
 
@@ -256,6 +258,7 @@ export enum eSysAccessToken {
 	ID = "id",
 	DATE_EXPIRE = "date_expire",
 	AUTH_TIME = "auth_time",
+	OTA = "ota",
 	AUTH_REQUEST_PARAMS = "auth_request_params",
 	ACCESS_TOKEN = "access_token",
 	SESSION_ID = "session_id",
