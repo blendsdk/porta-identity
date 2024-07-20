@@ -91,7 +91,7 @@ export class Claims {
                     scope: ["userinfo", "profile"],
                     claim: "updated_at",
                     handler: this.handleClaim(() => {
-                        return new Date(user.date_modified).getTime();
+                        return commonUtils.millisecondsToSeconds(new Date(user.date_modified).getTime());
                     })
                 },
                 {
@@ -112,7 +112,7 @@ export class Claims {
                     scope: "profile",
                     claim: "middle_name",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.middle_name;
                     })
                 },
                 {
@@ -157,35 +157,35 @@ export class Claims {
                     scope: "profile",
                     claim: "website",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.website;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "gender",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.gender;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "birthdate",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.birthdate;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "zoneinfo",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.zoneinfo;
                     })
                 },
                 {
                     scope: "profile",
                     claim: "locale",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.locale;
                     })
                 },
                 {
@@ -199,7 +199,13 @@ export class Claims {
                     scope: "address",
                     claim: "address",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return {
+                            address: profile.address || "n/a",
+                            city: profile.city || "n/a",
+                            postalcode: profile.postalcode || "n/a",
+                            state: profile.state || "n/a",
+                            country: profile.country || "n/a",
+                        };
                     })
                 },
                 {
@@ -228,14 +234,14 @@ export class Claims {
                     scope: "phone",
                     claim: "phone_number",
                     handler: this.handleClaim(() => {
-                        return undefined;
+                        return profile.phone_number;
                     })
                 },
                 {
                     scope: "phone",
                     claim: "phone_number_verified",
                     handler: this.handleClaim(() => {
-                        return false;
+                        return profile.phone_number_verified;
                     })
                 },
                 {

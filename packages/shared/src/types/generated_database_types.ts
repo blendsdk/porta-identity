@@ -358,7 +358,72 @@ export interface ISysProfile {
 	 * @type string
 	 * @memberOf ISysProfile
 	 */
+	website?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	zoneinfo?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	birthdate?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	gender?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	middle_name?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	locale?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
 	avatar?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	address?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	postalcode?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	city?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	country?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysProfile
+	 */
+	phone_number?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysProfile
+	 */
+	phone_number_verified?: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysProfile

@@ -296,8 +296,60 @@ export const validationSchema = {
 				lastname: {
 					type: eJsonSchemaType.string
 				},
+				website: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				zoneinfo: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				birthdate: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				gender: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				middle_name: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				locale: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
 				avatar: {
 					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				address: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				postalcode: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				city: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				country: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				state: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				phone_number: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				phone_number_verified: {
+					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
 				user_id: {

@@ -428,6 +428,14 @@ export class DatabaseSeed {
             firstname: tenantRecord.name,
             lastname: "Administrator",
             email,
+            birthdate: new Date().getFullYear().toString(),
+            gender: "n/a",
+            middle_name: "n/a",
+            zoneinfo: "n/a",
+            locale: "en-US",
+            website: "n/a",
+            phone_number: "n/a",
+            phone_number_verified: false,
             user_id: adminUser.id
         });
 
