@@ -209,9 +209,8 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                         from
                             sys_user su
                             inner join sys_profile up on su.id = up.user_id
-                            left join sys_client sc on su.id = sc.client_credentials_user_id
                         where
-                            sc.id is null and
+                            su.service_application_id is null and
                             (
                                 UPPER(su.username) = UPPER(:username) or
                                 UPPER(up.email) = UPPER(:username)

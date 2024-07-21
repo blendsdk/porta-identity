@@ -9,7 +9,6 @@ select
 	sc.is_back_channel_post_logout,
 	sc.access_token_length,
 	sc.refresh_token_length,
-	sc.client_credentials_user_id,
 	sm."name" as mfa,
 	sm.settings as mfa_settings,
 	sc.mfa_bypass_days,

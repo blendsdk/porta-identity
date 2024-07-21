@@ -233,6 +233,53 @@ export class TokenEndpointController extends EndpointController {
         };
     }
 
+    public async getTokenByClientCredentials(
+        tokenRequest: ITokenRequest,
+        tenantRecord: ISysTenant
+    ) {
+        const errors: string[] = [];
+        let token: IToken;
+        const { client_id, client_secret } = tokenRequest;
+
+        const authRecord = await databaseUtils.findAuthorizationRecord({ client_id, redirect_uri: eOAuthGrantType.client_credentials }, tenantRecord);
+
+        if (authRecord) {
+            const secretRecord = await databaseUtils.findClientSecretForServiceAccount(tenantRecord, client_id, client_secret);
+            const { user, profile } = await databaseUtils.finUserAndProfile(secretRecord.client_credential_user_id, tenantRecord);
+            if (secretRecord) {
+                // construct a flow 
+                const flow: IAuthorizationFlow = {
+                    account_state: true,
+                    complete: true,
+                    mfa_state: true,
+                    session: null,
+                    profile,
+                    user,
+                    tenantRecord,
+                    authRequest: tokenRequest as any,
+                    authRecord,
+                    mfa_request: undefined,
+                    flowId: undefined,
+                    expire: undefined
+                };
+                token = errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined;
+            } else {
+                errors.push("invalid_secret");
+            }
+
+            console.log(JSON.stringify(authRecord, null, 4));
+
+        } else {
+            errors.push("invalid_request_auth_record");
+        }
+
+        return {
+            errors,
+            token
+        };
+
+    }
+
     /**
      * @param {ITokenRequest} _params
      * @return {*}  {Promise<Response<ITokenResponse>>}
@@ -285,25 +332,24 @@ export class TokenEndpointController extends EndpointController {
                     );
                 }
             } else if (grant_type === eOAuthGrantType.client_credentials && isNullOrUndef(code)) {
-                debugger;
-                // /**
-                //  * Only when the grant type is client_credentials and we don't have a code
-                //  *
-                //  * for this grant type we will find the service user bound to the the confidential client
-                //  * and try to login with that user
-                //  */
-                // const { errors, token: localToken } = await this.getTokenByClientCredentials(tokenRequest);
-                // token = localToken;
+                /**
+                 * Only when the grant type is client_credentials and we don't have a code
+                 *
+                 * for this grant type we will find the service user bound to the the confidential client
+                 * and try to login with that user
+                 */
+                const { errors, token: localToken } = await this.getTokenByClientCredentials(params, tenantRecord);
+                token = localToken;
 
-                // if (errors.length !== 0) {
-                //     return this.responseWithError(
-                //         {
-                //             error: eErrorType.invalid_request,
-                //             error_description: errors[0]
-                //         },
-                //         true
-                //     );
-                // }
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
             } else if (grant_type === eOAuthGrantType.refresh_token) {
                 const { errors, token: localToken } = await this.getTokenByRefreshToken(params, tenantRecord);
                 token = localToken;

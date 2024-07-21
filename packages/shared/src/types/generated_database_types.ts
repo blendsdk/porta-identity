@@ -224,11 +224,6 @@ export interface ISysClient {
 	 */
 	application_id: string;
 	/**
-	 * @type string
-	 * @memberOf ISysClient
-	 */
-	client_credentials_user_id?: string;
-	/**
 	 * @type number
 	 * @memberOf ISysClient
 	 */
@@ -327,6 +322,11 @@ export interface ISysUser {
 	 * @memberOf ISysUser
 	 */
 	date_modified?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysUser
+	 */
+	service_application_id?: string;
 }
 
 /**
@@ -748,6 +748,16 @@ export interface ISysSecretView {
 	 */
 	client_id: string;
 	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSecretView
+	 */
+	client_credential_user_id: string;
+	/**
 	 * @type boolean
 	 * @memberOf ISysSecretView
 	 */
@@ -809,11 +819,6 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	refresh_token_length: number;
-	/**
-	 * @type string
-	 * @memberOf ISysAuthorizationView
-	 */
-	client_credentials_user_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView

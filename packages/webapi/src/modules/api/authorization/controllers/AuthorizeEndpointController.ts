@@ -113,8 +113,8 @@ export class AuthorizeEndpointController extends EndpointController {
 
         let flow: { flowId: string, flowComplete: boolean; } = undefined;
 
-        if (authRecord.length === 1) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
-            flow = await this.createAuthorizationFlow(authRecord[0], authRequest, tenantRecord);
+        if (authRecord) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
+            flow = await this.createAuthorizationFlow(authRecord, authRequest, tenantRecord);
         } else {
             errors.push(eErrorType.invalid_authorization);
         }

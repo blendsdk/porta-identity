@@ -112,7 +112,6 @@ export enum eSysClient {
 	ACCESS_TOKEN_LENGTH = "access_token_length",
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
 	APPLICATION_ID = "application_id",
-	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
 	MFA_BYPASS_DAYS = "mfa_bypass_days",
 	MFA_ID = "mfa_id"
 }
@@ -147,7 +146,8 @@ export enum eSysUser {
 	IS_ACTIVE = "is_active",
 	IS_SYSTEM = "is_system",
 	DATE_CREATED = "date_created",
-	DATE_MODIFIED = "date_modified"
+	DATE_MODIFIED = "date_modified",
+	SERVICE_APPLICATION_ID = "service_application_id"
 }
 
 /**
@@ -308,6 +308,8 @@ export enum eSysSecretView {
 	VALID_TO = "valid_to",
 	IS_SYSTEM = "is_system",
 	CLIENT_ID = "client_id",
+	APPLICATION_ID = "application_id",
+	CLIENT_CREDENTIAL_USER_ID = "client_credential_user_id",
 	IS_EXPIRED = "is_expired"
 }
 
@@ -328,7 +330,6 @@ export enum eSysAuthorizationView {
 	IS_BACK_CHANNEL_POST_LOGOUT = "is_back_channel_post_logout",
 	ACCESS_TOKEN_LENGTH = "access_token_length",
 	REFRESH_TOKEN_LENGTH = "refresh_token_length",
-	CLIENT_CREDENTIALS_USER_ID = "client_credentials_user_id",
 	MFA = "mfa",
 	MFA_SETTINGS = "mfa_settings",
 	MFA_BYPASS_DAYS = "mfa_bypass_days",

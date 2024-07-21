@@ -74,6 +74,9 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
                 }
                 return undefined;
             }
+            case eTokenType.CLIENT_CREDENTIALS: {
+                debugger;
+            }
             default:
                 req.context.getLogger().error("INVALID_TOKEN_TYPE", { tokenType });
                 return undefined;

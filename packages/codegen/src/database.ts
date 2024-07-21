@@ -49,13 +49,34 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("date_created", { default: "now()" })
         .uniqueConstraint(["name", "version"]);
 
+    tenant //
+        .primaryKeyColumn("id", true)
+        .stringColumn("name", { unique: true })
+        .stringColumn("database", { unique: true })
+        .booleanColumn("is_active", { default: "true" })
+        .booleanColumn("allow_reset_password", { default: "false" })
+        .booleanColumn("allow_registration", { default: "false" })
+        .integerColumn("auth_session_length_hours", { default: "0" }) // indefinate session
+        .stringColumn("organization");
+
+    application //
+        .primaryKeyColumn("id", true)
+        .stringColumn("logo", { required: false }) // base64 encoded image data
+        .stringColumn("application_name")
+        .stringColumn("client_id", { unique: true })
+        .stringColumn("description", { required: false })
+        .booleanColumn("is_system", { default: "false" })
+        .booleanColumn("is_active", { default: "true" })
+        .referenceColumnAuto("tenant_id", tenant);
+
     user.primaryKeyColumn("id", true) //
         .stringColumn("username", { unique: true })
         .stringColumn("password")
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("is_system", { default: "false" })
         .dateTimeColumn("date_created", { default: "now()" })
-        .dateTimeColumn("date_modified", { default: "now()" });
+        .dateTimeColumn("date_modified", { default: "now()" })
+        .referenceColumnAuto("service_application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
 
     profile //
         .primaryKeyColumn("id", true)
@@ -81,26 +102,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("user_state", { required: false })
         .dateTimeColumn("date_modified", { default: "now()" });
 
-    tenant //
-        .primaryKeyColumn("id", true)
-        .stringColumn("name", { unique: true })
-        .stringColumn("database", { unique: true })
-        .booleanColumn("is_active", { default: "true" })
-        .booleanColumn("allow_reset_password", { default: "false" })
-        .booleanColumn("allow_registration", { default: "false" })
-        .integerColumn("auth_session_length_hours", { default: "0" }) // indefinate session
-        .stringColumn("organization");
-
-    application //
-        .primaryKeyColumn("id", true)
-        .stringColumn("logo", { required: false }) // base64 encoded image data
-        .stringColumn("application_name")
-        .stringColumn("client_id", { unique: true })
-        .stringColumn("description", { required: false })
-        .booleanColumn("is_system", { default: "false" })
-        .booleanColumn("is_active", { default: "true" })
-        .referenceColumnAuto("tenant_id", tenant);
-
     client //
         .primaryKeyColumn("id", true)
         .stringColumn("client_type", { default: "'C'" })
@@ -112,7 +113,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .integerColumn("access_token_length")
         .integerColumn("refresh_token_length")
         .referenceColumnAuto("application_id", application)
-        .referenceColumn("client_credentials_user_id", user, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false })
         .integerColumn("mfa_bypass_days", { default: "0" }) // 0 = no bypass
         .referenceColumn("mfa_id", mfa, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
 

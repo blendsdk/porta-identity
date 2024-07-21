@@ -1,18 +1,39 @@
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysPermission, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
+import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
-import { eOAuthPrompt } from "../types";
+import { SysUserDataService } from "../dataservices/SysUserDataService";
+import { eOAuthGrantType, eOAuthPrompt } from "../types";
 import { commonUtils } from "./CommonUtils";
 import { ServiceBase } from "./ServiceBase";
 
 export class DatabaseUtils extends ServiceBase {
+
+    /**
+     * @param {string} user_id
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async finUserAndProfile(user_id: string, tenantRecord: ISysTenant) {
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+        let user: ISysUser;
+        let profile: ISysProfile;
+
+        user = await userDs.findSysUserById({ id: user_id });
+        if (user) {
+            profile = await profileDs.findProfileByUserId({ user_id: user.id });
+        }
+        return { user, profile };
+    }
 
     /**
      * Fins a refresh_token by tenant
@@ -127,6 +148,19 @@ export class DatabaseUtils extends ServiceBase {
         return secrets.length === 1;
     }
 
+    public async findClientSecretForServiceAccount(tenantRecord: ISysTenant, client_id: string, secret: string) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const e = expression();
+        const secrets = await tenantDs.listSysSecretViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysSecretView.CLIENT_ID, client_id),
+                e.Equal(eSysSecretView.CLIENT_SECRET, secret),
+                e.Equal(eSysSecretView.IS_EXPIRED, false),
+                e.IsNotNull(eSysSecretView.CLIENT_CREDENTIAL_USER_ID)
+            )
+        ));
+        return secrets.length !== 0 ? secrets[0] : undefined;
+    }
 
     /**
      * Assets the tenant with the session tenant
@@ -232,22 +266,33 @@ export class DatabaseUtils extends ServiceBase {
     }
 
     /**
-     * @param {IAuthorizeRequest} authRequest
+     * @param {{ client_id: string, redirect_uri: string; }} params
      * @param {ISysTenant} tenantRecord
      * @return {*} 
      * @memberof DatabaseUtils
      */
-    public findAuthorizationRecord(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+    public async findAuthorizationRecord(params: { client_id: string, redirect_uri: string; }, tenantRecord: ISysTenant) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
-        const { client_id, redirect_uri } = authRequest;
+        const { client_id, redirect_uri } = params;
         const e = expression();
-        return tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
-                e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
-                e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
-            )
-        ));
+        let result: ISysAuthorizationView[] = [];
+        if (redirect_uri === eOAuthGrantType.client_credentials) {
+            result = await tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
+                e.And(
+                    e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                    e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
+                )
+            ));
+        } else {
+            result = await tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
+                e.And(
+                    e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                    e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
+                    e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
+                )
+            ));
+        }
+        return result.length !== 0 ? result[0] : undefined;
     }
 
     /**

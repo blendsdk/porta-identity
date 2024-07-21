@@ -258,9 +258,9 @@ export class DatabaseSeed {
             // create keys
             await this.createJWKKeys(tenantRecord);
             const { userRole, adminRole } = await this.createRoles(tenantRecord);
-            await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
             await this.createCLIApplication(tenantRecord, serverURL);
-            await this.createConformanceTestApplication(tenantRecord, serverURL);
+            await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
+            await this.createConformanceTestApplication(tenantRecord, serverURL, userRole);
             await this.createMFAProviders(tenantRecord);
         }
 
@@ -274,7 +274,7 @@ export class DatabaseSeed {
         });
     }
 
-    protected async createConformanceTestApplication(tenantRecord: ISysTenant, serverURL: string) {
+    protected async createConformanceTestApplication(tenantRecord: ISysTenant, serverURL: string, userRole: ISysRole) {
 
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
@@ -285,6 +285,7 @@ export class DatabaseSeed {
             return;
         }
 
+        let serviceUserCreated = false;
         const sets = ["097c6871-fa61-47c8-9840-93482a126b21", "097c6871-fa61-47c8-9840-93482a126b22"];
         await asyncForEach(sets, async (client_id: string, index: number) => {
 
@@ -297,6 +298,12 @@ export class DatabaseSeed {
                 },
                 tenantRecord
             );
+
+            if (!serviceUserCreated) {
+                await this.createServiceUsers(tenantRecord, app, userRole);
+                serviceUserCreated = true;
+            }
+
 
             const now = Date.now();
             await this.createSecret(
@@ -374,6 +381,8 @@ export class DatabaseSeed {
             app,
             tenantRecord
         );
+
+        return app;
     }
 
     /**
@@ -419,6 +428,32 @@ export class DatabaseSeed {
         return appDs.insertIntoSysApplication(record);
     }
 
+    protected async createServiceUsers(tenantRecord: ISysTenant, serviceApp: ISysApplication, userRole: ISysRole) {
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+        const userRoleDs = new SysUserRoleDataService({ tenantId: tenantRecord.id });
+
+        // service user
+        const serviceUser = await userDs.insertIntoSysUser({
+            username: `${serviceApp.application_name}@service`,
+            password: MD5(Date.now().toString()),
+            is_system: true,
+            service_application_id: serviceApp.id
+
+        });
+
+        await profileDs.insertIntoSysProfile({
+            firstname: serviceApp.application_name,
+            lastname: "Service",
+            user_id: serviceUser.id
+        });
+
+        await userRoleDs.insertIntoSysUserRole({
+            role_id: userRole.id,
+            user_id: serviceUser.id
+        });
+    }
+
     /**
      * @protected
      * @param {ISysTenant} tenantRecord
@@ -459,6 +494,7 @@ export class DatabaseSeed {
             role_id: userRole.id,
             user_id: adminUser.id
         });
+
         await userRoleDs.insertIntoSysUserRole({
             role_id: adminRole.id,
             user_id: adminUser.id

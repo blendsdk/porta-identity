@@ -7,10 +7,13 @@ CREATE OR REPLACE VIEW sys_secret_view AS select
 	ss.valid_to,
 	ss.is_system,
 	sa.client_id,
+	ss.application_id,
+	su.id as client_credential_user_id,
 	((now() >= ss.valid_from) is true) and ((now() < ss.valid_to) is false) as is_expired    
 from
 	sys_secret ss
-	inner join sys_application sa on sa.id = ss.application_id;
+	inner join sys_application sa on sa.id = ss.application_id
+	left outer join sys_user su on su.service_application_id = ss.application_id;
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.application_id,
@@ -23,7 +26,6 @@ CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.is_back_channel_post_logout,
 	sc.access_token_length,
 	sc.refresh_token_length,
-	sc.client_credentials_user_id,
 	sm."name" as mfa,
 	sm.settings as mfa_settings,
 	sc.mfa_bypass_days,

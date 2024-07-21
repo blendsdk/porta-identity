@@ -34,7 +34,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
 
             typeSchema.createResponseType(response_type, payload_type);
         }
-    });    
+    });
 
     builder.defineApi({
         id: "user_info_post",

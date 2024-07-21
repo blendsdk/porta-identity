@@ -192,11 +192,6 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
-				client_credentials_user_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid",
-					acceptNullValue: true
-				},
 				mfa_bypass_days: {
 					type: eJsonSchemaType.integer,
 					format: "int32",
@@ -274,6 +269,11 @@ export const validationSchema = {
 				date_modified: {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz",
+					acceptNullValue: true
+				},
+				service_application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid",
 					acceptNullValue: true
 				}
 			},
@@ -614,11 +614,30 @@ export const validationSchema = {
 				client_id: {
 					type: eJsonSchemaType.string
 				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_credential_user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
 				is_expired: {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["id", "client_secret", "description", "valid_from", "valid_to", "is_system", "client_id", "is_expired"]
+			required: [
+				"id",
+				"client_secret",
+				"description",
+				"valid_from",
+				"valid_to",
+				"is_system",
+				"client_id",
+				"application_id",
+				"client_credential_user_id",
+				"is_expired"
+			]
 		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
@@ -656,10 +675,6 @@ export const validationSchema = {
 					type: eJsonSchemaType.number,
 					format: "integer"
 				},
-				client_credentials_user_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
 				mfa: {
 					type: eJsonSchemaType.string
 				},
@@ -695,7 +710,6 @@ export const validationSchema = {
 				"is_back_channel_post_logout",
 				"access_token_length",
 				"refresh_token_length",
-				"client_credentials_user_id",
 				"mfa",
 				"mfa_settings",
 				"mfa_bypass_days",
