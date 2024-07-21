@@ -736,6 +736,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz"
 				},
+				token_reference: {
+					type: eJsonSchemaType.string
+				},
 				session: {
 					$ref: "#/definitions/sys_session",
 					type: eJsonSchemaType.object,
@@ -770,6 +773,7 @@ export const validationSchema = {
 				"access_token",
 				"auth_request_params",
 				"auth_time",
+				"token_reference",
 				"session",
 				"user",
 				"profile",

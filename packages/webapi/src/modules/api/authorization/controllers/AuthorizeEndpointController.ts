@@ -32,7 +32,7 @@ export class AuthorizeEndpointController extends EndpointController {
 
         const { tenant, redirect_uri, response_mode, state, prompt } = authRequest;
 
-        const tenantRecord = await this.getTenantRecord(tenant);
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
         if (!tenantRecord) {
             return this.responseWithError({

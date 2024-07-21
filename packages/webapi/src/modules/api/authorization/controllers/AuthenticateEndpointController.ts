@@ -42,7 +42,7 @@ export class AuthenticateEndpointController extends EndpointController {
 
         // if we have a flow the check the tenant
         if (!error) {
-            tenantRecord = await this.getTenantRecord(tenant);
+            tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
             expires_in = flow.expire - Date.now();
 

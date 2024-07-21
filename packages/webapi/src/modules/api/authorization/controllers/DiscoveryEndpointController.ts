@@ -1,6 +1,6 @@
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IDiscoveryRequest, IDiscoveryResponse } from "@porta/shared";
-import { EndpointController } from "../../../../services";
+import { commonUtils, EndpointController } from "../../../../services";
 import {
     eErrorType,
     eOAuthClaims,
@@ -28,7 +28,7 @@ export class DiscoveryEndpointController extends EndpointController {
      */
     public async handleRequest({ tenant }: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>> {
 
-        const tenantRecord = await this.getTenantRecord(tenant);
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
         if (!tenantRecord) {
             return this.responseWithError({

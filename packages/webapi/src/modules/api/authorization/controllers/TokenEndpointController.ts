@@ -310,9 +310,6 @@ export class TokenEndpointController extends EndpointController {
             } else {
                 errors.push("invalid_secret");
             }
-
-            console.log(JSON.stringify(authRecord, null, 4));
-
         } else {
             errors.push("invalid_request_auth_record");
         }
@@ -333,7 +330,7 @@ export class TokenEndpointController extends EndpointController {
         const { grant_type, state, tenant, redirect_uri, code = undefined } = params; // state is for client_credentials
         let token: IToken = undefined;
 
-        const tenantRecord = await this.getTenantRecord(tenant, true);
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
         if (!tenantRecord) {
             return this.responseWithError({
                 error: eErrorType.invalid_tenant,
@@ -508,7 +505,7 @@ export class TokenEndpointController extends EndpointController {
             ttl: access_token_length,
             user_id: user.id,
             authRequest,
-            token_reference: MD5([tokenRequest.client_id, tokenRequest.client_secret, this.request.headers['x-real-ip']]),
+            token_reference: commonUtils.createTokenReference(tokenRequest.client_id, tokenRequest.client_secret, this.request),
             tokenBuilder: async (date_created: Date, date_expire: Date) => {
                 return this.builJTWToken({
                     app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),

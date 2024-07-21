@@ -179,25 +179,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
     /**
      * @protected
-     * @param {string} tenant
-     * @param {boolean} [checkActive]
-     * @return {*} 
-     * @memberof EndpointController
-     */
-    protected async getTenantRecord(tenant: string, checkActive?: boolean) {
-        const tenantRecord = await databaseUtils.findTenant(tenant);
-        checkActive = checkActive === false ? false : true;
-        const isActive = tenantRecord ? checkActive ? tenantRecord.is_active : true : false;
-        if (tenantRecord && isActive) {
-            await databaseUtils.initDataSource(tenantRecord.id, this.request);
-            return tenantRecord;
-        } else {
-            return undefined;
-        }
-    }
-
-    /**
-     * @protected
      * @param {IErrorResponseParams} args
      * @param {boolean} [toUserAgent]
      * @return {*} 

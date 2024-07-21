@@ -3,7 +3,7 @@ import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IDiscoveryKeysRequest, IDiscoveryKeysResponse, ISysKey } from "@porta/shared";
 import * as jose from "jose";
 import { DataServices } from "../../../../dataservices/DataServices";
-import { EndpointController } from "../../../../services";
+import { commonUtils, EndpointController } from "../../../../services";
 import { eErrorType, eOAuthSigningAlg } from "../../../../types";
 interface IJwkKey {
     privateKey: string;
@@ -26,7 +26,7 @@ export class JWKSEndpointController extends EndpointController {
      */
     public async handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
 
-        const tenantRecord = await this.getTenantRecord(tenant);
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
         if (!tenantRecord) {
             return this.responseWithError({

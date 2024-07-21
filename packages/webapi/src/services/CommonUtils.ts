@@ -3,6 +3,7 @@ import { IDictionaryOf, MD5, wrapInArray } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import { ISysSession, ISysTenant } from "@porta/shared";
 import { IPortaApplicationSetting, eOAuthPKCECodeChallengeMethod } from "../types";
+import { databaseUtils } from "./DatabaseUtils";
 
 class CommonUtils {
     /**
@@ -93,6 +94,35 @@ class CommonUtils {
                     errors.push("code_challenge_method");
                     resolve(false);
                 });
+        }
+    }
+
+    /**
+     * @param {string} client_id
+     * @param {string} client_secret
+     * @param {HttpRequest} req
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public createTokenReference(client_id: string, client_secret: string, req: HttpRequest) {
+        return MD5([client_id, client_secret, req.url].filter(Boolean).join(""));
+    }
+
+    /**
+     * @param {string} tenant
+     * @param {boolean} [checkActive]
+     * @return {*} 
+     * @memberof CommonUtils
+     */
+    public async getTenantRecord(tenant: string, req: HttpRequest, checkActive?: boolean) {
+        const tenantRecord = await databaseUtils.findTenant(tenant);
+        checkActive = checkActive === false ? false : true;
+        const isActive = tenantRecord ? checkActive ? tenantRecord.is_active : true : false;
+        if (tenantRecord && isActive) {
+            await databaseUtils.initDataSource(tenantRecord.id, req);
+            return tenantRecord;
+        } else {
+            return undefined;
         }
     }
 

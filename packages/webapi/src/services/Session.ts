@@ -1,7 +1,9 @@
 import { SessionProviderModuleBase, TGetUserMethod } from "@blendsdk/webafx-auth";
-import { HttpRequest, IRoute } from "@blendsdk/webafx-common";
-import { IPortaAccount } from "@porta/shared";
-import { IPortaApplicationSetting } from "../types";
+import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
+import { IPortaAccount, ISysTenant } from "@porta/shared";
+import { TokenEndpointController } from "../modules/api/authorization/controllers/TokenEndpointController";
+import { eOAuthGrantType, IPortaApplicationSetting } from "../types";
+import { commonUtils } from "./CommonUtils";
 import { databaseUtils } from "./DatabaseUtils";
 
 const KEY_AUTH_TOKEN_TYPE = "_AUTH_TOKEN_TYPE_";
@@ -36,6 +38,25 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
         return tenant;
     }
 
+    protected async createSessionStorageByAccessToken(token: string, tenantRecord: ISysTenant, use_reference: boolean) {
+        const { accessToken = undefined, roles = undefined, permissions = undefined, application } =
+            await databaseUtils.findAccessTokenByTenantAndToken(token, tenantRecord, use_reference) || {};
+        if (accessToken) {
+            const { profile, tenant, user, client, auth_request_params } = accessToken;
+            return {
+                profile,
+                tenant,
+                user,
+                roles,
+                permissions,
+                application,
+                client,
+                auth_request_params
+            } as IPortaAccount as any;
+        }
+        return undefined;
+    }
+
     /**
      * @protected
      * @template SessionStorageType
@@ -44,7 +65,7 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
      * @return {*}  {Promise<SessionStorageType>}
      * @memberof PortaAuthSessionProviderModule
      */
-    protected async findSessionStorageByToken<SessionStorageType = any>(token: string, req: HttpRequest): Promise<SessionStorageType> {
+    protected async findSessionStorageByToken<SessionStorageType = any>(token: string, req: HttpRequest<IRequestContext>): Promise<SessionStorageType> {
         const tokenType = req.context.getService<eTokenType>(KEY_AUTH_TOKEN_TYPE);
         switch (tokenType) {
             case eTokenType.DIRECT_API: {
@@ -55,27 +76,33 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
                 } as SessionStorageType;
             }
             case eTokenType.BEARER_TOKEN: {
-                const tenentRecord = await databaseUtils.findTenant(this.getTenantFromRequest(req));
-                if (tenentRecord) {
-                    const { accessToken = undefined, roles = undefined, permissions = undefined, application } = await databaseUtils.findAccessTokenByTenantAndToken(token, tenentRecord) || {};
-                    if (accessToken) {
-                        const { profile, tenant, user, client, auth_request_params } = accessToken;
-                        return {
-                            profile,
-                            tenant,
-                            user,
-                            roles,
-                            permissions,
-                            application,
-                            client,
-                            auth_request_params
-                        } as IPortaAccount as any;
-                    }
+                const tenantRecord = await commonUtils.getTenantRecord(this.getTenantFromRequest(req), req);
+                if (tenantRecord) {
+                    return await this.createSessionStorageByAccessToken(token, tenantRecord, false);
                 }
                 return undefined;
             }
             case eTokenType.CLIENT_CREDENTIALS: {
-                debugger;
+                const { client_id, client_secret } = JSON.parse(token) || ({} as any);
+                const tenantRecord = await commonUtils.getTenantRecord(this.getTenantFromRequest(req), req);
+                if (tenantRecord) {
+                    const token_reference = commonUtils.createTokenReference(client_id, client_id, req);
+                    const result = await this.createSessionStorageByAccessToken(token_reference, tenantRecord, true);
+                    if (result) {
+                        return result;
+                    } else {
+                        const controller = new TokenEndpointController({ request: req, response: undefined });
+                        const { token: newToken, errors } = await controller.getTokenByClientCredentials({
+                            grant_type: eOAuthGrantType.client_credentials,
+                            tenant: tenantRecord.id,
+                            client_id,
+                            client_secret,
+                            scope: "openid email userinfo profile acl"
+                        }, tenantRecord);
+                        return errors.length === 0 ? await this.createSessionStorageByAccessToken(newToken.access_token, tenantRecord, false) : undefined;
+                    }
+                }
+                return undefined;
             }
             default:
                 req.context.getLogger().error("INVALID_TOKEN_TYPE", { tokenType });

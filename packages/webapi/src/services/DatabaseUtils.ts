@@ -301,12 +301,12 @@ export class DatabaseUtils extends ServiceBase {
      * @return {*} 
      * @memberof DatabaseUtils
      */
-    public async findAccessTokenByTenantAndToken(token: string, tenantRecord: ISysTenant) {
+    public async findAccessTokenByTenantAndToken(token: string, tenantRecord: ISysTenant, use_reference: boolean) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
         const result = await tenantDs.listSysAccessTokenViewByExpression(e.createRenderer(
             e.And(
-                e.Equal(eSysAccessTokenView.ACCESS_TOKEN, token),
+                e.Equal(use_reference ? eSysAccessTokenView.TOKEN_REFERENCE : eSysAccessTokenView.ACCESS_TOKEN, token),
                 e.Equal(eSysAccessTokenView.IS_EXPIRED, false)
             )
         ));

@@ -349,6 +349,7 @@ export enum eSysAccessTokenView {
 	ACCESS_TOKEN = "access_token",
 	AUTH_REQUEST_PARAMS = "auth_request_params",
 	AUTH_TIME = "auth_time",
+	TOKEN_REFERENCE = "token_reference",
 	SESSION = "session",
 	USER = "user",
 	PROFILE = "profile",

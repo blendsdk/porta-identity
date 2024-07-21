@@ -3,6 +3,7 @@ import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ITokenInfo, ITokenInfoRequest, ITokenInfoResponse } from "@porta/shared";
 import * as jose from "jose";
 import { commonUtils, databaseUtils, EndpointController } from "../../../../services";
+import { eErrorType } from "../../../../types";
 
 /**
  * Handler for the token_info endpoint
@@ -46,14 +47,14 @@ export class TokenInfoEndpointController extends EndpointController {
         let token_type: string = undefined;
         const errors: string[] = [];
         try {
-            const tenantRecord = await this.getTenantRecord(tenant, true);
+            const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request, true);
 
             if (tenantRecord) {
                 const { publicKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
                 const pKey = await jose.importSPKI(publicKey, "ES256");
 
                 // look for the access_token
-                let accessTokenStorage = await databaseUtils.findAccessTokenByTenantAndToken(token, tenantRecord);
+                let accessTokenStorage = await databaseUtils.findAccessTokenByTenantAndToken(token, tenantRecord, false);
 
                 // if not found then maybe it is a refresh token
                 if (!accessTokenStorage) {
@@ -63,7 +64,7 @@ export class TokenInfoEndpointController extends EndpointController {
                     if (refreshToken) {
                         token_type = "refresh_token";
                         resp = await this.getJWTInfo(token, pKey);
-                        accessTokenStorage = await databaseUtils.findAccessTokenByTenantAndToken(refreshToken.access_token.access_token, tenantRecord);
+                        accessTokenStorage = await databaseUtils.findAccessTokenByTenantAndToken(refreshToken.access_token.access_token, tenantRecord, false);
                     }
                 } else {
                     token_type = "access_token";
@@ -93,11 +94,15 @@ export class TokenInfoEndpointController extends EndpointController {
         }
 
         if (errors.length !== 0) {
-            await this.getLogger().warn("Invalid Toten", { token, errors });
-        }
+            return this.responseWithError({
+                error: eErrorType.invalid_request,
+                error_description: errors.join(", "),
+            }, true);
+        } else {
 
-        return new SuccessResponse({
-            ...(resp || { active: false })
-        });
+            return new SuccessResponse({
+                ...(resp || { active: false })
+            });
+        }
     }
 }

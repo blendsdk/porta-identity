@@ -46,6 +46,7 @@ CREATE OR REPLACE VIEW sys_access_token_view AS select
 	sat.access_token,
 	sat.auth_request_params,
 	sat.auth_time,
+	sat.token_reference,
 	row_to_json(ss.*) as session,
 	row_to_json(su.*) as user,
 	row_to_json(sp.*) as profile,

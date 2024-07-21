@@ -877,6 +877,11 @@ export interface ISysAccessTokenView {
 	 */
 	auth_time: string;
 	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	token_reference: string;
+	/**
 	 * @type ISysSession
 	 * @memberOf ISysAccessTokenView
 	 */
