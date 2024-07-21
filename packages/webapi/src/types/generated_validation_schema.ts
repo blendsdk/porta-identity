@@ -515,6 +515,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.object,
 					$ref: "#/definitions/any_index"
 				},
+				token_reference: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
 				access_token: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true

@@ -182,6 +182,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("auth_time")
         .stringColumn("ota", { unique: true, required: false })
         .jsonColumn("auth_request_params", refType("any_index"))
+        .stringColumn("token_reference", { required: false }) // This is only used for the client credentials!
         .stringColumn("access_token", {
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"

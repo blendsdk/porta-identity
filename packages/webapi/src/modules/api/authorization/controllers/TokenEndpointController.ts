@@ -1,4 +1,4 @@
-import { IDictionaryOf, isNullOrUndef } from "@blendsdk/stdlib";
+import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import * as jose from "jose";
@@ -418,6 +418,7 @@ export class TokenEndpointController extends EndpointController {
             ttl: access_token_length,
             user_id: user.id,
             authRequest,
+            token_reference: MD5([tokenRequest.client_id, tokenRequest.client_secret, this.request.headers['x-real-ip']]),
             tokenBuilder: async (date_created: Date, date_expire: Date) => {
                 return this.builJTWToken({
                     app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),
@@ -433,7 +434,6 @@ export class TokenEndpointController extends EndpointController {
                 });
             }
         });
-
 
         let reftesh_token: IDictionaryOf<any> = {};
         if (offline_access) {
@@ -467,6 +467,13 @@ export class TokenEndpointController extends EndpointController {
         };
     }
 
+    /**
+     * @TODO implement this correctly!
+     * @protected
+     * @param {string} acr_values
+     * @return {*} 
+     * @memberof TokenEndpointController
+     */
     protected handleAcrClaims(acr_values: string) {
         if (acr_values) {
             const acr_request = commonUtils.parseSeparatedTokens(acr_values, true);

@@ -92,8 +92,8 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
 
         const {
             access_token = undefined,
-            //client_id = undefined,
-            //client_secret = undefined
+            client_id = undefined,
+            client_secret = undefined
         } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string; }>();
 
         console.log(req.context.getParameters());
@@ -107,6 +107,11 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
             const { PORTA_API_KEY = Math.random().toString() } = req.context.getSettings<IPortaApplicationSetting>();
             req.context.addService(KEY_AUTH_TOKEN_TYPE, PORTA_API_KEY === bearerToken ? eTokenType.DIRECT_API : eTokenType.BEARER_TOKEN);
             return bearerToken;
+        }
+
+        if (client_id && client_secret) {
+            req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.CLIENT_CREDENTIALS);
+            return JSON.stringify({ client_id, client_secret });
         }
 
     }

@@ -13,18 +13,21 @@ if [ -z "${PORTA_API_KEY}" ]; then
 fi
 
 
-read -p 'Email: ' EMAIL
+read -p "Email: (${EMAIL}) :"
+EMAIL=${EMAIL:-$REPLY}
 if [ -z "${EMAIL}" ]; then
     echo An e-mail is required
     exit 1;
 fi
 
-read -p "Username: (${EMAIL})" USERNAME
-if [ -z "${USERNAME}" ]; then
-    USERNAME=${EMAIL}
-fi
+read -p "Username: (${EMAIL})"
+USERNAME=${REPLY:-$EMAIL}
+# if [ -z "${USERNAME}" ]; then
+#     USERNAME=${EMAIL}
+# fi
 
-read -sp 'Password: ' PASSWORD
+read -sp 'Password: '
+PASSWORD=${PASSWORD-$REPLY}
 if [ -z "${PASSWORD}" ]; then
     echo A passowrd is required
     exit 1;

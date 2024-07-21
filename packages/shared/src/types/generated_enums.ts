@@ -260,6 +260,7 @@ export enum eSysAccessToken {
 	AUTH_TIME = "auth_time",
 	OTA = "ota",
 	AUTH_REQUEST_PARAMS = "auth_request_params",
+	TOKEN_REFERENCE = "token_reference",
 	ACCESS_TOKEN = "access_token",
 	SESSION_ID = "session_id",
 	USER_ID = "user_id",

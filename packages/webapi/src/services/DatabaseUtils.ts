@@ -198,9 +198,10 @@ export class DatabaseUtils extends ServiceBase {
         client_record_id: string;
         authRequest: IAuthorizeRequest;
         tokenBuilder: (date_created: Date, date_expire: Date) => Promise<string>;
+        token_reference: string;
     }) {
 
-        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder } = params;
+        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder, token_reference } = params;
 
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
         const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
@@ -221,7 +222,8 @@ export class DatabaseUtils extends ServiceBase {
             session_id: session.id,
             auth_time: now.toISOString(),
             date_expire: date_expire.toISOString(),
-            auth_request_params: { ...authRequest }
+            auth_request_params: { ...authRequest },
+            token_reference
         });
 
         await sessionDs.updateSysSessionById({ last_token_auth_time: now.toISOString() }, { id: session.id });

@@ -159,6 +159,7 @@ ALTER TABLE sys_access_token ADD COLUMN date_expire timestamp with time zone NOT
 ALTER TABLE sys_access_token ADD COLUMN auth_time timestamp with time zone NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN ota varchar;
 ALTER TABLE sys_access_token ADD COLUMN auth_request_params jsonb NOT NULL;
+ALTER TABLE sys_access_token ADD COLUMN token_reference varchar;
 ALTER TABLE sys_access_token ADD COLUMN access_token varchar  DEFAULT encode(digest(md5(random()::text), 'sha1'::text),'hex');
 ALTER TABLE sys_access_token ADD COLUMN session_id uuid NOT NULL;
 ALTER TABLE sys_access_token ADD COLUMN user_id uuid NOT NULL;

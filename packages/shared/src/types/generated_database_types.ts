@@ -625,6 +625,11 @@ export interface ISysAccessToken {
 	 * @type string
 	 * @memberOf ISysAccessToken
 	 */
+	token_reference?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysAccessToken
+	 */
 	access_token?: string;
 	/**
 	 * @type string
