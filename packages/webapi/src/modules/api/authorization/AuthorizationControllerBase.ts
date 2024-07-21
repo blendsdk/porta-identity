@@ -5,6 +5,8 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	ITokenInfoRequest,
+	ITokenInfoResponse,
 	IUserInfoPostRequest,
 	IUserInfoPostResponse,
 	IUserInfoGetRequest,
@@ -33,6 +35,14 @@ import {
 export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [POST] /:tenant/oauth2/token_info
+	 * @abstract
+	 * @param {ITokenInfoRequest} params
+	 * @returns {Promise<Response<ITokenInfoResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract tokenInfo(params: ITokenInfoRequest): Promise<Response<ITokenInfoResponse>>;
 	/**
 	 * Method for handling [POST] /:tenant/oauth2/me
 	 * @abstract

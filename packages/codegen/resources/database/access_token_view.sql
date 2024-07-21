@@ -2,6 +2,7 @@ select
 	sat.id,
 	sat.access_token,
 	sat.auth_request_params,
+	sat.auth_time,
 	row_to_json(ss.*) as session,
 	row_to_json(su.*) as user,
 	row_to_json(sp.*) as profile,

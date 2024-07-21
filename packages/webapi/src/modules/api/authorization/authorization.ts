@@ -12,6 +12,11 @@ export const AuthorizationModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
+				dispatch: "token_info",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.token_info
+			}),
+			defineControllerRoute({
 				dispatch: "user_info_post",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.user_info_post

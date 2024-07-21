@@ -41,17 +41,17 @@ export interface ISysSecretDataServiceUpdateSysSecretByIdFilter {
 
 /**
  * @export
- * @interface ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+ * @interface ISysSecretDataServiceFindSysSecretBySecretAndApplicationIdParams
  */
-export interface ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams {
+export interface ISysSecretDataServiceFindSysSecretBySecretAndApplicationIdParams {
 	/**
 	 * @type string
-	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndApplicationIdParams
 	 */
 	secret: string;
 	/**
 	 * @type string
-	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndClientIdParams
+	 * @memberOf ISysSecretDataServiceFindSysSecretBySecretAndApplicationIdParams
 	 */
-	client_id: string;
+	application_id: string;
 }

@@ -4,6 +4,39 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
+        id: "token_info",
+        url: "/:tenant/oauth2/token_info",
+        group: "authorization",
+        method: "post",
+        public: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("token", { location: eParameterLocation.body })
+                .addString("client_id", { location: eParameterLocation.body, optional: true }) // this normally comes from auth header
+                .addString("client_secret", { location: eParameterLocation.body, optional: true }); // this normally comes from auth header
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addBoolean("active")
+                .addString("scope", { optional: true })
+                .addString("client_id", { optional: true })
+                .addString("username", { optional: true })
+                .addString("token_type", { optional: true })
+                .addNumber("exp", { optional: true })
+                .addNumber("iat", { optional: true })
+                .addNumber("nbf", { optional: true })
+                .addString("sub", { optional: true })
+                .addString("aud", { optional: true })
+                .addString("iss", { optional: true })
+                .addString("jti", { optional: true });
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });    
+
+    builder.defineApi({
         id: "user_info_post",
         url: "/:tenant/oauth2/me",
         group: "authorization",

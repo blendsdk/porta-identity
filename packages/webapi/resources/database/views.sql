@@ -6,13 +6,11 @@ CREATE OR REPLACE VIEW sys_secret_view AS select
 	ss.valid_from,
 	ss.valid_to,
 	ss.is_system,
-	ss.client_id as sys_client_id,
 	sa.client_id,
 	((now() >= ss.valid_from) is true) and ((now() < ss.valid_to) is false) as is_expired    
 from
 	sys_secret ss
-	inner join sys_client sc on sc.id  = ss.client_id
-	inner join sys_application sa on sa.id  = sc.application_id;
+	inner join sys_application sa on sa.id = ss.application_id;
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.application_id,
@@ -45,6 +43,7 @@ CREATE OR REPLACE VIEW sys_access_token_view AS select
 	sat.id,
 	sat.access_token,
 	sat.auth_request_params,
+	sat.auth_time,
 	row_to_json(ss.*) as session,
 	row_to_json(su.*) as user,
 	row_to_json(sp.*) as profile,
@@ -62,6 +61,7 @@ DROP VIEW IF EXISTS sys_refresh_token_view CASCADE;
 CREATE OR REPLACE VIEW sys_refresh_token_view AS select
 	srt.id,
 	srt.refresh_token,
+    srt.date_created,
 	row_to_json(sat.*) as access_token,
 	row_to_json(ss.*) as session,
 	row_to_json(su.*) as user,

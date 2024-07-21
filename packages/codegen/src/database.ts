@@ -123,8 +123,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("valid_from", { withTimeZone: true })
         .dateTimeColumn("valid_to", { withTimeZone: true })
         .booleanColumn("is_system", { default: "false" })
-        .referenceColumnAuto("client_id", client)
-        .uniqueConstraint(["client_id", "secret"]);
+        .referenceColumnAuto("application_id", application)
+        .uniqueConstraint(["application_id", "secret"]);
 
     key.primaryKeyColumn("id", true) //
         .stringColumn("key_type")
@@ -207,6 +207,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         //
         .primaryKeyColumn("id", true)
         .dateTimeColumn("date_expire")
+        .dateTimeColumn("date_created", { default: "now()" })
         .stringColumn("refresh_token", {
             unique: true,
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"

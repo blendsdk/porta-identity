@@ -92,7 +92,7 @@ export enum eSysSecret {
 	VALID_FROM = "valid_from",
 	VALID_TO = "valid_to",
 	IS_SYSTEM = "is_system",
-	CLIENT_ID = "client_id"
+	APPLICATION_ID = "application_id"
 }
 
 /**
@@ -276,6 +276,7 @@ export enum eSysRefreshToken {
 	$name = "sys_refresh_token",
 	ID = "id",
 	DATE_EXPIRE = "date_expire",
+	DATE_CREATED = "date_created",
 	REFRESH_TOKEN = "refresh_token",
 	ACCESS_TOKEN_ID = "access_token_id"
 }
@@ -305,7 +306,6 @@ export enum eSysSecretView {
 	VALID_FROM = "valid_from",
 	VALID_TO = "valid_to",
 	IS_SYSTEM = "is_system",
-	SYS_CLIENT_ID = "sys_client_id",
 	CLIENT_ID = "client_id",
 	IS_EXPIRED = "is_expired"
 }
@@ -346,6 +346,7 @@ export enum eSysAccessTokenView {
 	ID = "id",
 	ACCESS_TOKEN = "access_token",
 	AUTH_REQUEST_PARAMS = "auth_request_params",
+	AUTH_TIME = "auth_time",
 	SESSION = "session",
 	USER = "user",
 	PROFILE = "profile",
@@ -363,6 +364,7 @@ export enum eSysRefreshTokenView {
 	$name = "sys_refresh_token_view",
 	ID = "id",
 	REFRESH_TOKEN = "refresh_token",
+	DATE_CREATED = "date_created",
 	ACCESS_TOKEN = "access_token",
 	SESSION = "session",
 	USER = "user",

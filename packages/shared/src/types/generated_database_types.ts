@@ -165,7 +165,7 @@ export interface ISysSecret {
 	 * @type string
 	 * @memberOf ISysSecret
 	 */
-	client_id: string;
+	application_id: string;
 }
 
 /**
@@ -667,6 +667,11 @@ export interface ISysRefreshToken {
 	 * @type string
 	 * @memberOf ISysRefreshToken
 	 */
+	date_created?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshToken
+	 */
 	refresh_token?: string;
 	/**
 	 * @type string
@@ -732,11 +737,6 @@ export interface ISysSecretView {
 	 * @memberOf ISysSecretView
 	 */
 	is_system: boolean;
-	/**
-	 * @type string
-	 * @memberOf ISysSecretView
-	 */
-	sys_client_id: string;
 	/**
 	 * @type string
 	 * @memberOf ISysSecretView
@@ -862,6 +862,11 @@ export interface ISysAccessTokenView {
 	 */
 	auth_request_params: string;
 	/**
+	 * @type string
+	 * @memberOf ISysAccessTokenView
+	 */
+	auth_time: string;
+	/**
 	 * @type ISysSession
 	 * @memberOf ISysAccessTokenView
 	 */
@@ -908,6 +913,11 @@ export interface ISysRefreshTokenView {
 	 * @memberOf ISysRefreshTokenView
 	 */
 	refresh_token: string;
+	/**
+	 * @type string
+	 * @memberOf ISysRefreshTokenView
+	 */
+	date_created: string;
 	/**
 	 * @type ISysAccessToken
 	 * @memberOf ISysRefreshTokenView

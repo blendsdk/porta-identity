@@ -135,6 +135,13 @@ export class TokenEndpointController extends EndpointController {
         return errors;
     }
 
+    /**
+     * @protected
+     * @param {ITokenRequest} tokenRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof TokenEndpointController
+     */
     protected async getTokenByRefreshToken(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
         const errors: string[] = [];
         const { refresh_token } = tokenRequest;
@@ -156,7 +163,12 @@ export class TokenEndpointController extends EndpointController {
             } else {
 
                 const { application, session, profile, user, access_token } = refresh_token_record;
-                const { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+
+                let { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+
+                client_id = client_id || tokenRequest.client_id;
+                client_secret = client_secret || tokenRequest.client_secret;
+
                 const isValidSecret = await databaseUtils.validateClientSecret(tenantRecord, client_id, client_secret);
                 const authRequest = access_token.auth_request_params as IAuthorizeRequest;
 
@@ -194,6 +206,14 @@ export class TokenEndpointController extends EndpointController {
         };
     }
 
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {ITokenRequest} tokenRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof TokenEndpointController
+     */
     protected async getTokenByAuthorizationCode(flow: IAuthorizationFlow, tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
         const errors: string[] = [];
 
@@ -344,7 +364,7 @@ export class TokenEndpointController extends EndpointController {
         is_refresh_token_grant: boolean;
     }) {
 
-        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id,is_refresh_token_grant } = params;
+        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id, is_refresh_token_grant } = params;
 
         const { nonce } = authRequest;
 
@@ -353,7 +373,7 @@ export class TokenEndpointController extends EndpointController {
 
         const acr = this.handleAcrClaims(authRequest.acr_values);
 
-        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time
+        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time;
 
         const auth_time = new Date(auth_time_src).getTime();
 
@@ -382,7 +402,7 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected async createTokens(flow: IAuthorizationFlow, tokenRequest: ITokenRequest): Promise<IToken> {
-        const { authRecord, authRequest, tenantRecord, user, session } = flow;
+        const { authRecord, authRequest, tenantRecord, user, session, profile } = flow;
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
         let { access_token_length, refresh_token_length } = authRecord;
         const scope = tokenRequest.scope || authRequest.scope;
@@ -397,7 +417,21 @@ export class TokenEndpointController extends EndpointController {
             tenantRecord,
             ttl: access_token_length,
             user_id: user.id,
-            authRequest
+            authRequest,
+            tokenBuilder: async (date_created: Date, date_expire: Date) => {
+                return this.builJTWToken({
+                    app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),
+                    date_created,
+                    date_expire,
+                    session,
+                    tenantRecord,
+                    user,
+                    claims: {
+                        ...(user ? { udc: new Date(user.date_modified).getTime() } : {}),
+                        ...(profile ? { pdc: new Date(profile.date_modified).getTime() } : {})
+                    }
+                });
+            }
         });
 
 

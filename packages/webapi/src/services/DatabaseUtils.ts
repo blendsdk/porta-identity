@@ -1,4 +1,3 @@
-import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
@@ -168,6 +167,17 @@ export class DatabaseUtils extends ServiceBase {
     }
 
     /**
+     * @param {ISysTenant} tenantRecord
+     * @param {string} client_id
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public findApplicationByClientID(tenantRecord: ISysTenant, client_id: string) {
+        const appDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
+        return appDs.findSysApplicationByClientId({ client_id });
+    }
+
+    /**
      * Creates new JWT access token
      *
      * @param {string} tenant_id
@@ -187,9 +197,10 @@ export class DatabaseUtils extends ServiceBase {
         ttl: number,
         client_record_id: string;
         authRequest: IAuthorizeRequest;
+        tokenBuilder: (date_created: Date, date_expire: Date) => Promise<string>;
     }) {
 
-        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest } = params;
+        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder } = params;
 
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
         const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
@@ -203,7 +214,7 @@ export class DatabaseUtils extends ServiceBase {
         const date_expire = new Date(now.getTime() + commonUtils.secondsToMilliseconds(ttl));
 
         const access_token_record = await accessTokenDs.insertIntoSysAccessToken({
-            access_token: await sha256Hash(generateRandomUUID()),
+            access_token: await tokenBuilder(now, date_expire),
             tenant_id: tenantRecord.id,
             client_id: client_record_id,
             user_id,

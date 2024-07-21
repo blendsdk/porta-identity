@@ -229,6 +229,7 @@ export class DatabaseSeed {
 
         if (isRegistry && !dbInitialized) {
             tenant = {
+                id: MD5(tenantName),
                 database: databaseName,
                 name: tenantName,
                 organization,
@@ -239,6 +240,7 @@ export class DatabaseSeed {
             };
         } else if (!dbInitialized) {
             tenant = {
+                id: MD5(tenantName),
                 database: databaseName,
                 name: tenantName,
                 organization,
@@ -296,31 +298,39 @@ export class DatabaseSeed {
                 tenantRecord
             );
 
-            const client = await this.createClient(
-                {
-                    client_type: eClientType.confidential,
-                    application_id: app.id,
-                    redirect_uri: `https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback`,
-                    post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
-                    access_token_length: ACCESS_TOKEN_TTL,
-                    refresh_token_length: REFRESH_TOKEN_TTL,
-                    mfa_bypass_days: 1
-                },
-                app,
-                tenantRecord
-            );
-
             const now = Date.now();
             await this.createSecret(
                 {
                     secret: "secret",
                     valid_from: new Date(now).toISOString(),
                     valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
-                    client_id: client.id
+                    application_id: app.id
                 },
-                client,
+                app,
                 tenantRecord
             );
+
+
+            const clients = [
+                "https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback",
+                "https://psteniusubi.github.io/oidc-tester/authorization-code-flow.html"
+            ];
+
+            await asyncForEach(clients, async (redirect_uri) => {
+                await this.createClient(
+                    {
+                        client_type: eClientType.confidential,
+                        application_id: app.id,
+                        redirect_uri,
+                        post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                        access_token_length: ACCESS_TOKEN_TTL,
+                        refresh_token_length: REFRESH_TOKEN_TTL,
+                        mfa_bypass_days: 1
+                    },
+                    app,
+                    tenantRecord
+                );
+            });
 
         });
 
@@ -373,11 +383,11 @@ export class DatabaseSeed {
      * @return {*} 
      * @memberof DatabaseSeed
      */
-    public createSecret(record: ISysSecret, client: ISysClient, tenantRecord: ISysTenant) {
+    public createSecret(record: ISysSecret, application: ISysApplication, tenantRecord: ISysTenant) {
         const secretDs = new SysSecretDataService({ tenantId: tenantRecord.id });
         return secretDs.insertIntoSysSecret({
             ...record,
-            client_id: client.id
+            application_id: application.id
         });
     }
 

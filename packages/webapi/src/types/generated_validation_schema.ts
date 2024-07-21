@@ -142,12 +142,12 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
-				client_id: {
+				application_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				}
 			},
-			required: ["secret", "valid_from", "valid_to", "client_id"]
+			required: ["secret", "valid_from", "valid_to", "application_id"]
 		},
 		sys_client: {
 			type: eJsonSchemaType.object,
@@ -549,6 +549,11 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "datetime-tz"
 				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz",
+					acceptNullValue: true
+				},
 				refresh_token: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
@@ -602,10 +607,6 @@ export const validationSchema = {
 				is_system: {
 					type: eJsonSchemaType.boolean
 				},
-				sys_client_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
 				client_id: {
 					type: eJsonSchemaType.string
 				},
@@ -613,17 +614,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: [
-				"id",
-				"client_secret",
-				"description",
-				"valid_from",
-				"valid_to",
-				"is_system",
-				"sys_client_id",
-				"client_id",
-				"is_expired"
-			]
+			required: ["id", "client_secret", "description", "valid_from", "valid_to", "is_system", "client_id", "is_expired"]
 		},
 		sys_authorization_view: {
 			type: eJsonSchemaType.object,
@@ -723,6 +714,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "json"
 				},
+				auth_time: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
+				},
 				session: {
 					$ref: "#/definitions/sys_session",
 					type: eJsonSchemaType.object,
@@ -756,6 +751,7 @@ export const validationSchema = {
 				"id",
 				"access_token",
 				"auth_request_params",
+				"auth_time",
 				"session",
 				"user",
 				"profile",
@@ -773,6 +769,10 @@ export const validationSchema = {
 				},
 				refresh_token: {
 					type: eJsonSchemaType.string
+				},
+				date_created: {
+					type: eJsonSchemaType.string,
+					format: "datetime-tz"
 				},
 				access_token: {
 					$ref: "#/definitions/sys_access_token",
@@ -816,6 +816,7 @@ export const validationSchema = {
 			required: [
 				"id",
 				"refresh_token",
+				"date_created",
 				"access_token",
 				"session",
 				"user",
@@ -1010,6 +1011,70 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "user_state"]
+		},
+		token_info_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				token: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_secret: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				}
+			},
+			required: ["tenant", "token"]
+		},
+		token_info: {
+			type: eJsonSchemaType.object,
+			properties: {
+				active: {
+					type: eJsonSchemaType.boolean
+				},
+				scope: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				username: {
+					type: eJsonSchemaType.string
+				},
+				token_type: {
+					type: eJsonSchemaType.string
+				},
+				exp: {
+					type: eJsonSchemaType.number
+				},
+				iat: {
+					type: eJsonSchemaType.number
+				},
+				nbf: {
+					type: eJsonSchemaType.number
+				},
+				sub: {
+					type: eJsonSchemaType.string
+				},
+				aud: {
+					type: eJsonSchemaType.string
+				},
+				iss: {
+					type: eJsonSchemaType.string
+				},
+				jti: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["active"]
 		},
 		user_info_post_request: {
 			type: eJsonSchemaType.object,

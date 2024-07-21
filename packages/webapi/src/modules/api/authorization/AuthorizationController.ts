@@ -1,5 +1,5 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
+import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ITokenInfoRequest, ITokenInfoResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -7,6 +7,7 @@ import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointCont
 import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
+import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
 import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
 
 
@@ -17,6 +18,16 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+
+    /**
+     * @param {ITokenInfoRequest} params
+     * @return {*}  {Promise<Response<ITokenInfoResponse>>}
+     * @memberof AuthorizationController
+     */
+    public tokenInfo(params: ITokenInfoRequest): Promise<Response<ITokenInfoResponse>> {
+        const subController = new TokenInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
 
     /**
      * @param {IAuthorizeRequest} params

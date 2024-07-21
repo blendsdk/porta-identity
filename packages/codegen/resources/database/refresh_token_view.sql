@@ -1,6 +1,7 @@
 select
 	srt.id,
 	srt.refresh_token,
+    srt.date_created,
 	row_to_json(sat.*) as access_token,
 	row_to_json(ss.*) as session,
 	row_to_json(su.*) as user,

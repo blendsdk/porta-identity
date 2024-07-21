@@ -19,6 +19,8 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
+	ITokenInfoRequest,
+	ITokenInfoResponse,
 	IUserInfoPostRequest,
 	IUserInfoPostResponse,
 	IUserInfoGetRequest,
@@ -44,6 +46,7 @@ export interface IPortaApi {
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
 	authorization: {
+		tokenInfo: THttpRequest<ITokenInfoRequest, ITokenInfoResponse>;
 		userInfoPost: THttpRequest<IUserInfoPostRequest, IUserInfoPostResponse>;
 		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
 		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
@@ -77,6 +80,16 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			})
 		},
 		authorization: {
+			tokenInfo: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/token_info",
+				parameters: {
+					tenant: eParameterLocation.params,
+					token: eParameterLocation.body,
+					client_id: eParameterLocation.body,
+					client_secret: eParameterLocation.body
+				}
+			}),
 			userInfoPost: defineEndpoint({
 				method: "post",
 				url: "/:tenant/oauth2/me",

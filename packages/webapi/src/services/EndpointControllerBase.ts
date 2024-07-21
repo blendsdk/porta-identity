@@ -1,8 +1,10 @@
 import { base64Decode, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT } from "@porta/shared";
-import { eOAuthResponseMode, eOAuthResponseType, IAuthorizationFlow, IErrorResponseParams } from "../types";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, ISysApplication, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
+import * as jose from "jose";
+import { eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams } from "../types";
 import { Claims } from "./Claims";
+import { commonUtils } from "./CommonUtils";
 import { databaseUtils } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
 
@@ -15,6 +17,37 @@ import { formPostTemplate } from "./FormPostTemplate";
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
+
+    protected async builJTWToken(params:
+        {
+            tenantRecord: ISysTenant,
+            app: ISysApplication,
+            user: ISysUser,
+            session: ISysSession,
+            date_created: Date,
+            date_expire: Date,
+            claims: IDictionaryOf<any>;
+        }) {
+        const { tenantRecord, app, date_created, date_expire, claims, user, session } = params;
+        const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
+
+        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
+
+        return new jose.SignJWT({
+            client_id: app.client_id,
+            ten: tenantRecord.id,
+            ...claims
+        }) //
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
+            .setIssuer(this.getIssuer(tenantRecord.id))
+            .setExpirationTime(commonUtils.millisecondsToSeconds(date_expire.getTime()))
+            .setAudience(app.client_id)
+            .setSubject(user.id)
+            .setJti(session.id)
+            .setIssuedAt(commonUtils.millisecondsToSeconds(date_created.getTime()))
+            .sign(pKey);
+    }
+
     /**
      * Gets the OIDC claims by scope
      *
@@ -31,7 +64,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         } as any);
         return claims.getClaims();
     }
-
 
     /**
      *

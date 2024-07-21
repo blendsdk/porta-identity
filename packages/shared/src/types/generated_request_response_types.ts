@@ -262,6 +262,112 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
+ * @interface ITokenInfoRequest
+ */
+export interface ITokenInfoRequest {
+	/**
+	 * @type string
+	 * @memberOf ITokenInfoRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfoRequest
+	 */
+	token: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfoRequest
+	 */
+	client_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfoRequest
+	 */
+	client_secret?: string;
+}
+
+/**
+ * @export
+ * @interface ITokenInfo
+ */
+export interface ITokenInfo {
+	/**
+	 * @type boolean
+	 * @memberOf ITokenInfo
+	 */
+	active: boolean;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	scope?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	client_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	token_type?: string;
+	/**
+	 * @type number
+	 * @memberOf ITokenInfo
+	 */
+	exp?: number;
+	/**
+	 * @type number
+	 * @memberOf ITokenInfo
+	 */
+	iat?: number;
+	/**
+	 * @type number
+	 * @memberOf ITokenInfo
+	 */
+	nbf?: number;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	sub?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	aud?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	iss?: string;
+	/**
+	 * @type string
+	 * @memberOf ITokenInfo
+	 */
+	jti?: string;
+}
+
+/**
+ * @export
+ * @interface ITokenInfoResponse
+ */
+export interface ITokenInfoResponse {
+	/**
+	 * @type ITokenInfo
+	 * @memberOf ITokenInfoResponse
+	 */
+	data: ITokenInfo;
+}
+
+/**
+ * @export
  * @interface IUserInfoPostRequest
  */
 export interface IUserInfoPostRequest {
