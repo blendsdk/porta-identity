@@ -79,10 +79,6 @@ export class FinalizeEndpointController extends EndpointController {
         return code;
     }
 
-    protected async cleanExpiredSessions() {
-        return null;
-    }
-
     /**
      * @protected
      * @param {ISysTenant} tenantRecord
@@ -128,7 +124,7 @@ export class FinalizeEndpointController extends EndpointController {
         });
 
         this.cleanExpiredSessions();
-
+            
         return currentSessionRecord;
     }
 

@@ -18,6 +18,31 @@ import { formPostTemplate } from "./FormPostTemplate";
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
 
+    /**
+     * @protected
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async cleanExpiredSessions() {
+        //@TODO: implement this
+        return null;
+    }
+
+
+    /**
+     * @protected
+     * @param {{
+     *             tenantRecord: ISysTenant,
+     *             app: ISysApplication,
+     *             user: ISysUser,
+     *             session: ISysSession,
+     *             date_created: Date,
+     *             date_expire: Date,
+     *             claims: IDictionaryOf<any>;
+     *         }} params
+     * @return {*} 
+     * @memberof EndpointController
+     */
     protected async builJTWToken(params:
         {
             tenantRecord: ISysTenant,

@@ -1,9 +1,10 @@
 import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
+import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import * as jose from "jose";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
-import { IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType, eOAuthSigningAlg } from "../../../../types";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType, eOAuthSigningAlg } from "../../../../types";
 
 /**
  * @export
@@ -233,6 +234,48 @@ export class TokenEndpointController extends EndpointController {
         };
     }
 
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysUser} user
+     * @param {ITokenRequest} credentials
+     * @return {*} 
+     * @memberof TokenEndpointController
+     */
+    protected async createOrUpdateClientCredentialsSession(tenantRecord: ISysTenant, user: ISysUser, credentials: ITokenRequest) {
+        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
+        const { client_id, client_secret } = credentials;
+        const sessionId = MD5([client_id, client_secret, user.id].join(""));
+
+        this.cleanExpiredSessions();
+
+        let sessionRecord = await sessionDs.findSysSessionById({ id: sessionId });
+
+        let date_expire: Date = undefined;
+
+        // Determine the expre_date of this session
+        // If the session time is set to 0 then we allow one year as indetinate session length
+        let sessionLength = tenantRecord.auth_session_length_hours;
+        if (sessionLength === 0) {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365)); // 1 year
+        } else {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * sessionLength));
+        }
+
+        if (!sessionRecord) {
+            sessionRecord = await sessionDs.insertIntoSysSession({
+                user_id: user.id,
+                date_expire: date_expire.toISOString()
+            });
+        } else {
+            sessionRecord = await sessionDs.updateSysSessionById({
+                date_expire: date_expire.toISOString()
+            }, { id: sessionRecord.id });
+        }
+
+        return sessionRecord;
+    }
+
     public async getTokenByClientCredentials(
         tokenRequest: ITokenRequest,
         tenantRecord: ISysTenant
@@ -246,13 +289,14 @@ export class TokenEndpointController extends EndpointController {
         if (authRecord) {
             const secretRecord = await databaseUtils.findClientSecretForServiceAccount(tenantRecord, client_id, client_secret);
             const { user, profile } = await databaseUtils.finUserAndProfile(secretRecord.client_credential_user_id, tenantRecord);
+            const session = await this.createOrUpdateClientCredentialsSession(tenantRecord, user, tokenRequest);
             if (secretRecord) {
                 // construct a flow 
                 const flow: IAuthorizationFlow = {
                     account_state: true,
                     complete: true,
                     mfa_state: true,
-                    session: null,
+                    session,
                     profile,
                     user,
                     tenantRecord,
