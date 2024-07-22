@@ -1,10 +1,9 @@
 import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, ISysAccessToken, ISysAuthorizationView, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
-import * as jose from "jose";
+import { IAuthorizeRequest, ISysAuthorizationView, ISysTenant, ISysUser, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType, eOAuthSigningAlg } from "../../../../types";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType } from "../../../../types";
 
 /**
  * @export
@@ -430,59 +429,6 @@ export class TokenEndpointController extends EndpointController {
 
     /**
      * @protected
-     * @param {{
-     *         tenantRecord: ISysTenant,
-     *         tokenRequest: ITokenRequest,
-     *         accessToken: ISysAccessToken,
-     *         session: ISysSession,
-     *         authRequest: IAuthorizeRequest;
-     *         user_id: string;
-     *     }} params
-     * @return {*} 
-     * @memberof TokenEndpointController
-     */
-    protected async createIDToken(params: {
-        tenantRecord: ISysTenant,
-        tokenRequest: ITokenRequest,
-        accessToken: ISysAccessToken,
-        session: ISysSession,
-        authRequest: IAuthorizeRequest;
-        user_id: string;
-        is_refresh_token_grant: boolean;
-    }) {
-
-        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id, is_refresh_token_grant } = params;
-
-        const { nonce } = authRequest;
-
-        const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
-        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
-
-        const acr = this.handleAcrClaims(authRequest.acr_values);
-
-        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time;
-
-        const auth_time = new Date(auth_time_src).getTime();
-
-        const exp_time = new Date(accessToken.date_expire).getTime();
-
-        return await new jose.SignJWT({
-            nonce,
-            auth_time: commonUtils.millisecondsToSeconds(auth_time),
-            acr,
-            sid: [tenantRecord.id, session.id].join(":")
-        })
-            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256 })
-            .setIssuedAt()
-            .setIssuer(this.getIssuer(tenantRecord.id))
-            .setAudience(tokenRequest.client_id)
-            .setExpirationTime(commonUtils.millisecondsToSeconds(exp_time))
-            .setSubject(user_id)
-            .sign(pKey);
-    }
-
-    /**
-     * @protected
      * @param {IAuthorizationFlow} flow
      * @param {ITokenRequest} tokenRequest
      * @return {*}  {Promise<IToken>}
@@ -552,22 +498,5 @@ export class TokenEndpointController extends EndpointController {
             id_token,
             ...reftesh_token
         };
-    }
-
-    /**
-     * @TODO implement this correctly!
-     * @protected
-     * @param {string} acr_values
-     * @return {*} 
-     * @memberof TokenEndpointController
-     */
-    protected handleAcrClaims(acr_values: string) {
-        if (acr_values) {
-            const acr_request = commonUtils.parseSeparatedTokens(acr_values, true);
-            //TODO: need to be implemented in a later version
-            return Object.keys(acr_request)[0]; // just return something
-        } else {
-            return undefined;
-        }
     }
 }

@@ -97,7 +97,8 @@ export enum eOAuthGrantType {
 }
 
 export enum eOAuthResponseType {
-    code = "code"
+    code = "code",
+    id_token = "id_token"
 }
 
 export enum eOAuthClaims {

@@ -256,7 +256,10 @@ export class AuthorizeEndpointController extends EndpointController {
     protected async validateAuthorizationRequest(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
         const { response_type, redirect_uri, state, response_mode, id_token_hint } = authRequest || {};
         // parse the response types. The response type can be an array of values!
-        const response_types = this.parseResponseType(response_type);
+
+        const response_types_errors: string[] = [];
+        const response_types = this.parseResponseType(response_type, response_types_errors);
+
         // check the nonce
         const isNonceValid = await this.isValidNonce(authRequest, response_types);
         if (!redirect_uri) {
@@ -286,12 +289,12 @@ export class AuthorizeEndpointController extends EndpointController {
                 error_description: "invalid_nonce",
                 response_mode
             });
-        } else if (!response_type || response_types.length == 0) {
+        } else if (!response_type || response_types.length == 0 || response_types_errors.length !== 0) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 redirect_uri,
                 state,
-                error_description: "invalid_response_type",
+                error_description: response_types_errors.length != 0 ? response_types_errors.join(", ") : "invalid_response_type",
                 response_mode
             });
         } else if (!eOAuthResponseMode[response_mode]) {

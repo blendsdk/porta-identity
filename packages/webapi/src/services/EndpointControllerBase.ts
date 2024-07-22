@@ -1,7 +1,7 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { base64Decode, CRC32, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, ISysApplication, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ISysAccessToken, ISysApplication, ISysSession, ISysTenant, ISysUser, ITokenRequest } from "@porta/shared";
 import * as jose from "jose";
 import { eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams } from "../types";
 import { Claims } from "./Claims";
@@ -104,6 +104,28 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         return this.getCache().setValue(flowCacheKey, flow, { expire: flow.expire });
     }
 
+    /**
+     * @TODO implement this correctly!
+     * @protected
+     * @param {string} acr_values
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected handleAcrClaims(acr_values: string) {
+        if (acr_values) {
+            const acr_request = commonUtils.parseSeparatedTokens(acr_values, true);
+            //TODO: need to be implemented in a later version
+            return Object.keys(acr_request)[0]; // just return something
+        } else {
+            return undefined;
+        }
+    }
+
+    /**
+     * @protected
+     * @return {*} 
+     * @memberof EndpointController
+     */
     protected getBasicAuthCredentialsFromRequestHeader() {
         const [type, data] = (this.request.headers.authorization || "").split(" ");
         if (data && type && type.toLocaleLowerCase() === "basic") {
@@ -167,15 +189,17 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns
      * @memberof AuthorizationController
      */
-    protected parseResponseType(data: string) {
+    protected parseResponseType(data: string, errors: string[]) {
         const codes = (data || "").split(" ");
         return codes
             .map((item) => {
-                return eOAuthResponseType[item.trim()] || undefined;
+                const rType = eOAuthResponseType[item.trim()] || undefined;
+                if (!rType) {
+                    errors.push(`${item}_response_type_is_not_supported`);
+                }
+                return rType;
             })
-            .filter(Boolean).length === codes.length
-            ? codes
-            : [];
+            .filter(Boolean);
     }
 
     /**
@@ -226,5 +250,61 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             "Expires": "0",
             "Surrogate-Control": "no-store"
         });
+    }
+
+    /**
+     * @protected
+     * @param {({
+     *         tenantRecord: ISysTenant,
+     *         tokenRequest: ITokenRequest | IAuthorizeRequest,
+     *         accessToken: ISysAccessToken,
+     *         session: ISysSession,
+     *         authRequest: IAuthorizeRequest;
+     *         user_id: string;
+     *         is_refresh_token_grant: boolean;
+     *     })} params
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async createIDToken(params: {
+        tenantRecord: ISysTenant,
+        tokenRequest: ITokenRequest | IAuthorizeRequest,
+        accessToken: ISysAccessToken,
+        session: ISysSession,
+        authRequest: IAuthorizeRequest;
+        user_id: string;
+        is_refresh_token_grant: boolean;
+        payload?: IDictionaryOf<any>;
+    }) {
+
+        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id, is_refresh_token_grant, payload } = params;
+
+        const { nonce } = authRequest;
+
+        const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
+        const pKey = await jose.importPKCS8(privateKey, eOAuthSigningAlg.RS256);
+
+        const acr = this.handleAcrClaims(authRequest.acr_values);
+
+        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time;
+
+        const auth_time = new Date(auth_time_src).getTime();
+
+        const exp_time = new Date(accessToken.date_expire).getTime();
+
+        return await new jose.SignJWT({
+            nonce,
+            auth_time: commonUtils.millisecondsToSeconds(auth_time),
+            acr,
+            sid: [tenantRecord.id, session.id].join(":"),
+            ...(payload || {})
+        })
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256 })
+            .setIssuedAt()
+            .setIssuer(this.getIssuer(tenantRecord.id))
+            .setAudience(tokenRequest.client_id)
+            .setExpirationTime(commonUtils.millisecondsToSeconds(exp_time))
+            .setSubject(user_id)
+            .sign(pKey);
     }
 }
