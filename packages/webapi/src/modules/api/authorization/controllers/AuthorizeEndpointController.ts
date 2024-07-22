@@ -292,7 +292,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 response_mode,
                 response_type
             });
-        } else if (!eOAuthResponseType[response_type.replace(/\ /g, "_")]) {
+        } else if (!response_type || !eOAuthResponseType[response_type.replace(/\ /g, "_")]) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 redirect_uri,

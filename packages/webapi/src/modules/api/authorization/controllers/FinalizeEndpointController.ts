@@ -141,6 +141,18 @@ export class FinalizeEndpointController extends EndpointController {
             response = {
                 ...result
             };
+        } else if (response_type === eOAuthResponseType.id_token_token) {
+            fragmented = true;
+            const result = await this.createTokens(
+                {
+                    flow,
+                    tokenRequest: { ...authRequest, grant_type: undefined },
+                    includeAtHash: true
+                }
+            );
+            response = {
+                ...result
+            };
         } else {
             throw new Error(`Response Type ${response_type} is not implemented yet!`);
         }
@@ -157,7 +169,13 @@ export class FinalizeEndpointController extends EndpointController {
             ...response,
         };
 
-        if (fragmented) {
+        /**
+         * 3.2.2.5. Successful Authentication Response 
+         * When using the form_post response mode, the parameters are encoded as HTML
+         * form values that are auto-submitted in the User Agent using HTTP POST
+         * method to the Client's Redirection URI.
+         */
+        if (fragmented && authRequest.response_mode !== eOAuthResponseMode.form_post) {
             fragment = { ...response };
             response = {};
         }

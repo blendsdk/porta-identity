@@ -1,4 +1,4 @@
-import { IDictionaryOf } from "@blendsdk/stdlib";
+import { IDictionaryOf, isEmptyObject, isNullOrUndef } from "@blendsdk/stdlib";
 
 export interface IFormPostTemplate {
     redirect_uri: string;
@@ -23,7 +23,9 @@ export const formPostTemplate = ({ redirect_uri, data, query, fragment }: IFormP
 
     redirect_uri = url.toString();
 
-    const fields = Object.entries(data || {})
+    data = isNullOrUndef(data) || isEmptyObject(data) ? { _: Date.now(), state: "test21" } : data;
+
+    const fields = Object.entries(data)
         .map(([key, value]) => {
             return `<input type="hidden" name="${key}" value="${value}"/>`;
         })
