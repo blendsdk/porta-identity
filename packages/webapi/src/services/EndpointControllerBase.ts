@@ -1,4 +1,5 @@
-import { base64Decode, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
+import { generateRandomUUID } from "@blendsdk/crypto";
+import { base64Decode, CRC32, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, ISysApplication, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
 import * as jose from "jose";
@@ -63,7 +64,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             ten: tenantRecord.id,
             ...claims
         }) //
-            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT" })
+            .setProtectedHeader({ alg: eOAuthSigningAlg.RS256, typ: "at+JWT", rnd: CRC32(generateRandomUUID()) })
             .setIssuer(this.getIssuer(tenantRecord.id))
             .setExpirationTime(commonUtils.millisecondsToSeconds(date_expire.getTime()))
             .setAudience(app.client_id)

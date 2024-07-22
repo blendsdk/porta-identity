@@ -1,19 +1,20 @@
 {
     "client": {
-        "client_id": "test",
+        "client_id": "097c6871-fa61-47c8-9840-93482a126b21",
         "client_secret": "secret",
         "redirect_uri": "test1"
     },
     "alias": "discovery-test",
     "server": {
-        "discoveryUrl": "https://porta.local/registry1/oauth2/.well-known/openid-configuration"
+        "discoveryUrl": "https://porta.local/d688a663-ec2b-04a0-ff80-b4a900b9a41f/oauth2/.well-known/openid-configuration"
     },
     "client_secret_post": {
-        "client_id": "test",
+        "client_id": "097c6871-fa61-47c8-9840-93482a126b21",
         "client_secret": "secret"
     },
     "client2": {
-        "client_id": "test2",
-        "client_secret": "secret2"
-    }
+        "client_id": "097c6871-fa61-47c8-9840-93482a126b22",
+        "client_secret": "secret"
+    },
+    "browser_verbose": true
 }

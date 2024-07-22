@@ -175,7 +175,7 @@ export class TokenEndpointController extends EndpointController {
 
                 if (application.client_id === client_id && !isNullOrUndef(client_secret) && isValidSecret) {
 
-                    const authRecord = (await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord))[0];
+                    const authRecord = await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord);
 
                     // construct a flow 
                     const flow: IAuthorizationFlow = {
