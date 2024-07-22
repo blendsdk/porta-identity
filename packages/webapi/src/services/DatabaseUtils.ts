@@ -244,7 +244,7 @@ export class DatabaseUtils extends ServiceBase {
         const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder, token_reference } = params;
 
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
-        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
+
 
         const isNewSession = commonUtils.checkLoginRequired(session, authRequest.max_age);
 
@@ -266,9 +266,21 @@ export class DatabaseUtils extends ServiceBase {
             token_reference
         });
 
-        await sessionDs.updateSysSessionById({ last_token_auth_time: now.toISOString() }, { id: session.id });
+        await this.updateSessionLastTokenAuthTime(now, session, tenantRecord);
 
         return { access_token_record, date_expire, date_created: now };
+    }
+
+    /**
+     * @param {Date} when
+     * @param {ISysSession} session
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public updateSessionLastTokenAuthTime(when: Date, session: ISysSession, tenantRecord: ISysTenant) {
+        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
+        return sessionDs.updateSysSessionById({ last_token_auth_time: when.toISOString() }, { id: session.id });
     }
 
     /**

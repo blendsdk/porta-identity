@@ -105,10 +105,10 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         let id_token: string = undefined;
         if (includeIdToken) {
 
-            let payload = includeAtHash ? await this.createIdTokenHeaderHashForKey("at_hash", accessTokenResult.access_token_record.access_token) : {};
+            let payload = includeAtHash && accessTokenResult ? await this.createIdTokenHeaderHashForKey("at_hash", accessTokenResult.access_token_record.access_token) : {};
 
             id_token = await this.createIDToken({
-                lifeTime: accessTokenResult.access_token_record || idTokenLifeTime,
+                lifeTime: accessTokenResult ? accessTokenResult.access_token_record : idTokenLifeTime,
                 authRequest,
                 session,
                 tenantRecord,

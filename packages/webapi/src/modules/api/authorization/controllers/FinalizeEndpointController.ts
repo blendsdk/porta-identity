@@ -2,10 +2,10 @@ import { generateRandomUUID } from "@blendsdk/crypto";
 import { IDictionaryOf } from "@blendsdk/stdlib";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, IFinalizeRequest, IFinalizeResponse, ISysAuthorizationView, ISysTenant, ISysUser } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysAuthorizationView, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
-import { EndpointController, commonUtils, formPostTemplate } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
+import { EndpointController, commonUtils, databaseUtils, formPostTemplate } from "../../../../services";
+import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
 
 /**
  * @export
@@ -20,11 +20,14 @@ export class FinalizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof FinalizeEndpointController
      */
-    protected createIDTokenLifeTime(authRecord: ISysAuthorizationView) {
-        const now = new Date();
+    protected createIDTokenLifeTime(authRecord: ISysAuthorizationView, session: ISysSession, authRequest: IAuthorizeRequest) {
         const { ACCESS_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
         let { access_token_length } = authRecord;
         access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
+
+        const isNewSession = commonUtils.checkLoginRequired(session, authRequest.max_age);
+        const now = authRequest.prompt === eOAuthPrompt.none || (authRequest.max_age && !isNewSession) ? new Date(session.last_token_auth_time) : new Date();
+
         return {
             auth_time: now.toISOString(),
             date_expire: new Date(now.getTime() + commonUtils.secondsToMilliseconds(access_token_length)).toISOString()
@@ -56,6 +59,8 @@ export class FinalizeEndpointController extends EndpointController {
         // Create or update the session for this flow
         flow.session = await this.createOrUpdateSession(flow.tenantRecord, user);
         await this.updateFlow(flow);
+        const { session, tenantRecord, profile } = flow;
+
 
         let fragmented: boolean = false;
         let fragment: IDictionaryOf<any>;
@@ -68,13 +73,19 @@ export class FinalizeEndpointController extends EndpointController {
             // Create OTA and Id token (no access token)
             fragmented = true;
             const code = response[eOAuthResponseType.code] = await this.createOTACode(flow);
-            response[eOAuthResponseType.id_token] = await this.createTokens({
+            const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
+            const result = await this.createTokens({
                 flow,
                 tokenRequest: { ...authRequest, grant_type: undefined },
-                idTokenLifeTime: this.createIDTokenLifeTime(authRecord),
+                idTokenLifeTime,
                 includeAccessToken: false, // no access token,
                 idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code)
             });
+            await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
+            response = {
+                code,
+                ...result
+            };
         } else if (response_type === eOAuthResponseType.code_token) {
             // Include OTA and access token (no id token)
             fragmented = true;
@@ -103,6 +114,31 @@ export class FinalizeEndpointController extends EndpointController {
             );
             response = {
                 code,
+                ...result
+            };
+        } else if (response_type === eOAuthResponseType.id_token) {
+            // Implicit flow
+            fragmented = true;
+            const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
+            const result = await this.createTokens({
+                flow,
+                tokenRequest: { ...authRequest, grant_type: undefined },
+                idTokenLifeTime,
+                includeAccessToken: false, // no access token,
+                idTokenPayload: this.getClaimsByScope({
+                    auth_request_params: authRequest,
+                    user,
+                    profile,
+                    tenant: tenantRecord,
+                    permissions: [],
+                    roles: [],
+                    application: {}
+                })
+            });
+
+            // Since there is no access token to do this
+            await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
+            response = {
                 ...result
             };
         } else {
