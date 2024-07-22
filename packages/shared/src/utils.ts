@@ -9,6 +9,10 @@ export const FLOW_ERROR_INVALID = 'invalid_sign_in_flow';
 export const RESP_ACCOUNT = "account";
 export const RESP_MFA = "mfa";
 
+export interface ILifetime {
+    auth_time: string,
+    date_expire: string;
+}
 
 export enum eKeySignatureType {
     access_token = "access_token",

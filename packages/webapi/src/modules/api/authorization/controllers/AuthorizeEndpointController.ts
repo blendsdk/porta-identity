@@ -30,7 +30,7 @@ export class AuthorizeEndpointController extends EndpointController {
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
         authRequest.prompt = eOAuthPrompt[authRequest.prompt];
 
-        const { tenant, redirect_uri, response_mode, state, prompt } = authRequest;
+        const { tenant, redirect_uri, response_mode, state, prompt, response_type } = authRequest;
 
         const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
@@ -51,10 +51,10 @@ export class AuthorizeEndpointController extends EndpointController {
         } else {
             const { errors, flowId, flowComplete } = await this.prepareAuthorization(authRequest, tenantRecord);
 
-            let invalidPropmptRequest = prompt === eOAuthPrompt.none && !flowComplete;
+            let invalidPromptRequest = prompt === eOAuthPrompt.none && !flowComplete;
 
             // OIDC Conformance test rule!
-            if (invalidPropmptRequest) {
+            if (invalidPromptRequest) {
                 errors.push("prompt_none_when_flow_not_complete");
             }
 
@@ -69,11 +69,12 @@ export class AuthorizeEndpointController extends EndpointController {
             } else {
                 return this.responseWithError(
                     {
-                        error: invalidPropmptRequest ? eErrorType.login_required : eErrorType.invalid_request,
+                        error: invalidPromptRequest ? eErrorType.login_required : eErrorType.invalid_request,
                         error_description: errors.join(","),
                         state,
                         redirect_uri,
-                        response_mode
+                        response_mode,
+                        response_type
                     },
                     errors.findIndex(i => (i === eErrorType.invalid_authorization)) !== -1
                 );
@@ -91,6 +92,9 @@ export class AuthorizeEndpointController extends EndpointController {
     protected createFrontendSignInUrl(authRequest: IAuthorizeRequest) {
         let signinURL = `${this.getServerURL()}/fe/auth/signin`;
         const url = new URL(signinURL);
+
+        url.searchParams.append("display", authRequest.display);
+
         if (authRequest.ui_locales) {
             url.searchParams.append("ui_locals", authRequest.ui_locales);
         }
@@ -254,14 +258,10 @@ export class AuthorizeEndpointController extends EndpointController {
      * @memberof AuthorizeEndpointController
      */
     protected async validateAuthorizationRequest(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
-        const { response_type, redirect_uri, state, response_mode, id_token_hint } = authRequest || {};
-        // parse the response types. The response type can be an array of values!
-
-        const response_types_errors: string[] = [];
-        const response_types = this.parseResponseType(response_type, response_types_errors);
+        let { response_type, redirect_uri, state, response_mode, id_token_hint } = authRequest || {};
 
         // check the nonce
-        const isNonceValid = await this.isValidNonce(authRequest, response_types);
+        const isNonceValid = await this.isValidNonce(authRequest, response_type);
         if (!redirect_uri) {
             // When no redirect URI then we cannot even continue
             return this.responseWithError(
@@ -270,7 +270,8 @@ export class AuthorizeEndpointController extends EndpointController {
                     redirect_uri,
                     state,
                     error_description: "no_redirect_uri",
-                    response_mode
+                    response_mode,
+                    response_type
                 }
             );
         } else if (!this.isValidPKCERequest(authRequest)) {
@@ -279,7 +280,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_pkce_parameters",
-                response_mode
+                response_mode,
+                response_type
             });
         } else if (!isNonceValid) {
             return this.responseWithError({
@@ -287,15 +289,17 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_nonce",
-                response_mode
+                response_mode,
+                response_type
             });
-        } else if (!response_type || response_types.length == 0 || response_types_errors.length !== 0) {
+        } else if (!eOAuthResponseType[response_type.replace(/\ /g, "_")]) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 redirect_uri,
                 state,
-                error_description: response_types_errors.length != 0 ? response_types_errors.join(", ") : "invalid_response_type",
-                response_mode
+                error_description: "invalid_response_type",
+                response_mode,
+                response_type
             });
         } else if (!eOAuthResponseMode[response_mode]) {
             return this.responseWithError({
@@ -303,7 +307,8 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_response_mode",
-                response_mode
+                response_mode,
+                response_type
             });
         } else if (!await this.isValidIDTokenHint(id_token_hint, tenantRecord, authRequest)) {
             return this.responseWithError({
@@ -311,31 +316,12 @@ export class AuthorizeEndpointController extends EndpointController {
                 redirect_uri,
                 state,
                 error_description: "invalid_id_token_hint",
-                response_mode
-            });
-        } else if (!this.isSupportedResponseType(response_types)) {
-            return this.responseWithError({
-                error: eErrorType.invalid_request,
-                redirect_uri,
-                state,
-                error_description: "unsupported_response_type_combination",
-                response_mode
+                response_mode,
+                response_type
             });
         } else {
             return null;
         }
-    }
-
-    /**
-     * @protected
-     * @param {string[]} response_types
-     * @return {*} 
-     * @memberof AuthorizeEndpointController
-     */
-    protected isSupportedResponseType(response_types: string[]) {
-        return response_types.filter(type => {
-            return eOAuthResponseType[type] === undefined;
-        }).length === 0;
     }
 
     /**
@@ -370,12 +356,19 @@ export class AuthorizeEndpointController extends EndpointController {
      * @returns
      * @memberof AuthorizationController
      */
-    protected async isValidNonce(authRequest: IAuthorizeRequest, response_types) {
+    protected async isValidNonce(authRequest: IAuthorizeRequest, response_type: string) {
         const { nonce, client_id, redirect_uri } = authRequest;
 
         // https://bitbucket.org/openid/connect/issues/972/nonce-requirement-in-hybrid-auth-request%20/
         // nonce is not required for response type code
-        if (response_types.indexOf(eOAuthResponseType.code) !== -1) {
+
+        const skipNonceCheck = [
+            eOAuthResponseType.code,
+            eOAuthResponseType.code_token,
+            eOAuthResponseType.token
+        ].indexOf(response_type as any) !== -1;
+
+        if (skipNonceCheck) {
             return true;
         } else if (isNullOrUndef(nonce)) {
             return false;

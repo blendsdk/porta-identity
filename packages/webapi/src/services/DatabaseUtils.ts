@@ -14,6 +14,12 @@ import { eOAuthGrantType, eOAuthPrompt } from "../types";
 import { commonUtils } from "./CommonUtils";
 import { ServiceBase } from "./ServiceBase";
 
+export interface INewAccessTokenResult {
+    access_token_record: ISysAccessToken;
+    date_expire: Date;
+    date_created: Date;
+}
+
 export class DatabaseUtils extends ServiceBase {
 
     /**
@@ -233,7 +239,7 @@ export class DatabaseUtils extends ServiceBase {
         authRequest: IAuthorizeRequest;
         tokenBuilder: (date_created: Date, date_expire: Date) => Promise<string>;
         token_reference: string;
-    }) {
+    }): Promise<INewAccessTokenResult> {
 
         const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder, token_reference } = params;
 

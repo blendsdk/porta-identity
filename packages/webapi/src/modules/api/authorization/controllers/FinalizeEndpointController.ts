@@ -1,9 +1,8 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
-import { IDictionaryOf, asyncForEach, isEmptyObject } from "@blendsdk/stdlib";
+import { IDictionaryOf } from "@blendsdk/stdlib";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, IFinalizeRequest, IFinalizeResponse, ISysTenant, ISysUser } from "@porta/shared";
-import crypto from "node:crypto";
+import { COOKIE_AUTH_FLOW, IFinalizeRequest, IFinalizeResponse, ISysAuthorizationView, ISysTenant, ISysUser } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, formPostTemplate } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
@@ -17,14 +16,19 @@ export class FinalizeEndpointController extends EndpointController {
 
     /**
      * @protected
-     * @param {string} code
+     * @param {ISysAuthorizationView} authRecord
      * @return {*} 
      * @memberof FinalizeEndpointController
      */
-    protected async canculateCHash(code: string) {
-        const hash = crypto.createHash('sha256').update(code).digest();
-        const leftmostBits = hash.subarray(0, 16);
-        return leftmostBits.toString("base64url");
+    protected createIDTokenLifeTime(authRecord: ISysAuthorizationView) {
+        const now = new Date();
+        const { ACCESS_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
+        let { access_token_length } = authRecord;
+        access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
+        return {
+            auth_time: now.toISOString(),
+            date_expire: new Date(now.getTime() + commonUtils.secondsToMilliseconds(access_token_length)).toISOString()
+        };
     }
 
     /**
@@ -46,49 +50,64 @@ export class FinalizeEndpointController extends EndpointController {
             });
         }
 
-        const { authRequest, user, tenantRecord, authRecord } = flow;
-        const response_types = this.parseResponseType(authRequest.response_type, []);
+        const { authRequest, user, authRecord } = flow;
+        const { response_type } = authRequest;
 
         // Create or update the session for this flow
         flow.session = await this.createOrUpdateSession(flow.tenantRecord, user);
         await this.updateFlow(flow);
-        const { session } = flow;
 
         let fragmented: boolean = false;
         let fragment: IDictionaryOf<any>;
-        let response: IDictionaryOf<string> = {};
+        let response: IDictionaryOf<any> = {};
 
-        await asyncForEach(response_types, async (type) => {
-            switch (type) {
-                case eOAuthResponseType.code:
-                    response[type] = await this.createOTACode(flow);
-                    break;
-                case eOAuthResponseType.id_token:
-                    fragmented = true;
-                    const now = new Date();
-                    const { ACCESS_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
-                    let { access_token_length } = authRecord;
-                    access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
-                    response[type] = await this.createIDToken({
-                        accessToken: {
-                            auth_time: now.toISOString(),
-                            date_expire: new Date(now.getTime() + commonUtils.secondsToMilliseconds(access_token_length)).toISOString()
-                        } as any,
-                        authRequest,
-                        is_refresh_token_grant: false,
-                        session,
-                        tenantRecord,
-                        tokenRequest: authRequest,
-                        user_id: user.id,
-                        payload: {
-                            c_hash: await this.canculateCHash(response["code"])
-                        }
-                    });
-                    break;
-                default:
-                    throw new Error(`Response Type ${type} is not implemented yet!`);
-            }
-        });
+        if (response_type === eOAuthResponseType.code) {
+            // Just create the OTA
+            response[response_type] = await this.createOTACode(flow);
+        } else if (response_type === eOAuthResponseType.code_id_token) {
+            // Create OTA and Id token (no access token)
+            fragmented = true;
+            const code = response[eOAuthResponseType.code] = await this.createOTACode(flow);
+            response[eOAuthResponseType.id_token] = await this.createTokens({
+                flow,
+                tokenRequest: { ...authRequest, grant_type: undefined },
+                idTokenLifeTime: this.createIDTokenLifeTime(authRecord),
+                includeAccessToken: false, // no access token,
+                idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code)
+            });
+        } else if (response_type === eOAuthResponseType.code_token) {
+            // Include OTA and access token (no id token)
+            fragmented = true;
+            const code = await this.createOTACode(flow);
+            const result = await this.createTokens(
+                {
+                    flow,
+                    tokenRequest: { ...authRequest, grant_type: undefined },
+                    includeIdToken: false // no id token
+                }
+            );
+            response = {
+                code,
+                ...result
+            };
+        } else if (response_type === eOAuthResponseType.code_id_token_token) {
+            fragmented = true;
+            const code = response[eOAuthResponseType.code] = await this.createOTACode(flow);
+            const result = await this.createTokens(
+                {
+                    flow,
+                    tokenRequest: { ...authRequest, grant_type: undefined },
+                    idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code),
+                    includeAtHash: true
+                }
+            );
+            response = {
+                code,
+                ...result
+            };
+        } else {
+            throw new Error(`Response Type ${response_type} is not implemented yet!`);
+        }
 
         // After this point we don't need any auth cookies
         this.clearAuthenticationFlowCookies();
@@ -111,7 +130,6 @@ export class FinalizeEndpointController extends EndpointController {
 
         switch (authRequest.response_mode) {
             case eOAuthResponseMode.form_post: {
-
                 return new SuccessResponse(formPostTemplate({
                     redirect_uri,
                     data: response,
@@ -191,30 +209,5 @@ export class FinalizeEndpointController extends EndpointController {
         this.cleanExpiredSessions();
 
         return currentSessionRecord;
-    }
-
-    /**
-     * @protected
-     * @param {IAuthorizationFlow} flow
-     * @return {*} 
-     * @memberof FinalizeEndpointController
-     */
-    protected createRedirectUri(redirect_uri: string, response: IDictionaryOf<string>, fragment?: IDictionaryOf<any>) {
-
-        const url = new URL(redirect_uri);
-
-        Object.entries(response).forEach(([key, value]) => {
-            url.searchParams.append(key, encodeURIComponent(value));
-        });
-
-        if (!isEmptyObject(fragment || {})) {
-            url.hash = Object.entries(fragment).map(([k, v]) => {
-                return `${k}=${encodeURIComponent(v)}`;
-            }).join("&");
-        }
-
-        console.log(url.toString());
-
-        return url.toString();
     }
 }

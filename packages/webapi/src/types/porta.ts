@@ -46,6 +46,7 @@ export interface IErrorResponseParams {
     state?: any;
     error_uri?: string;
     response_mode?: string;
+    response_type?: string;
 }
 
 export interface IPortaApplicationSetting {
@@ -98,7 +99,12 @@ export enum eOAuthGrantType {
 
 export enum eOAuthResponseType {
     code = "code",
-    id_token = "id_token"
+    token = "token",
+    id_token = "id_token",
+    id_token_token = "id_token token",
+    code_id_token = "code id_token",
+    code_token = "code token",
+    code_id_token_token = "code id_token token"
 }
 
 export enum eOAuthClaims {

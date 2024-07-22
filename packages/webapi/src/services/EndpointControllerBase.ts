@@ -1,12 +1,13 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
-import { base64Decode, CRC32, deepCopy, IDictionaryOf, isObject } from "@blendsdk/stdlib";
+import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ISysAccessToken, ISysApplication, ISysSession, ISysTenant, ISysUser, ITokenRequest } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, ISysApplication, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
 import * as jose from "jose";
-import { eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams } from "../types";
+import crypto from "node:crypto";
+import { eOAuthGrantType, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
 import { Claims } from "./Claims";
 import { commonUtils } from "./CommonUtils";
-import { databaseUtils } from "./DatabaseUtils";
+import { databaseUtils, INewAccessTokenResult } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
 
 /**
@@ -21,6 +22,126 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
     /**
      * @protected
+     * @param {string} keyName
+     * @param {string} value
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async createIdTokenHeaderHashForKey(keyName: string, value: string) {
+        const hash = crypto.createHash('sha256').update(value).digest();
+        const leftmostBits = hash.subarray(0, 16);
+        return {
+            [keyName]: leftmostBits.toString("base64url")
+        };
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {ITokenRequest} tokenRequest
+     * @return {*}  {Promise<IToken>}
+     * @memberof TokenEndpointController
+     */
+    protected async createTokens(params: {
+        flow: IAuthorizationFlow,
+        tokenRequest: ITokenRequest,
+        idTokenPayload?: IDictionaryOf<any>,
+        includeIdToken?: boolean;
+        includeAccessToken?: boolean;
+        idTokenLifeTime?: ILifetime;
+        includeAtHash?: boolean;
+    }): Promise<IToken> {
+        const { flow, tokenRequest, idTokenPayload, includeIdToken = true, includeAccessToken = true, idTokenLifeTime, includeAtHash = false } = params;
+        const { authRecord, authRequest, tenantRecord, user, session, profile } = flow;
+        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
+        let { access_token_length, refresh_token_length } = authRecord;
+        const scope = tokenRequest.scope || authRequest.scope;
+
+        const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
+        access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
+        refresh_token_length = parseFloat((refresh_token_length || REFRESH_TOKEN_TTL).toString());
+
+        let accessTokenResult: INewAccessTokenResult = undefined;
+        let reftesh_token: IDictionaryOf<any> = {};
+
+        if (includeAccessToken) {
+            accessTokenResult = await databaseUtils.newAccessToken({
+                client_record_id: authRecord.sys_client_id,
+                session,
+                tenantRecord,
+                ttl: access_token_length,
+                user_id: user.id,
+                authRequest,
+                token_reference: commonUtils.createTokenReference(tokenRequest.client_id, tokenRequest.client_secret || "", this.request),
+                tokenBuilder: async (date_created: Date, date_expire: Date) => {
+                    return this.builJTWToken({
+                        app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),
+                        date_created,
+                        date_expire,
+                        session,
+                        tenantRecord,
+                        user,
+                        claims: {
+                            ...(user ? { udc: new Date(user.date_modified).getTime() } : {}),
+                            ...(profile ? { pdc: new Date(profile.date_modified).getTime() } : {})
+                        }
+                    });
+                }
+            });
+
+            if (offline_access) {
+                const { refresh_token_record, refreshtoken_date_expire } = await databaseUtils.newRefreshToken({
+                    accessTokenRecord: accessTokenResult.access_token_record,
+                    tenantRecord,
+                    ttl: refresh_token_length
+                });
+                reftesh_token = {
+                    refresh_token: refresh_token_record.refresh_token,
+                    refresh_token_expires_in: refreshtoken_date_expire.getTime() - Date.now(),
+                };
+            }
+        }
+
+        let id_token: string = undefined;
+        if (includeIdToken) {
+
+            let payload = includeAtHash ? await this.createIdTokenHeaderHashForKey("at_hash", accessTokenResult.access_token_record.access_token) : {};
+
+            id_token = await this.createIDToken({
+                lifeTime: accessTokenResult.access_token_record || idTokenLifeTime,
+                authRequest,
+                session,
+                tenantRecord,
+                tokenRequest,
+                user_id: user.id,
+                is_refresh_token_grant: tokenRequest.grant_type === eOAuthGrantType.refresh_token,
+                payload: { ...payload, ...idTokenPayload || {} }
+            });
+        }
+
+        let result: IToken = {} as any;
+        if (includeAccessToken) {
+            const { access_token_record, date_expire } = accessTokenResult;
+            result = {
+                access_token: access_token_record.access_token,
+                expires_in: date_expire.getTime() - Date.now(),
+                token_type: "Bearer",
+                ...reftesh_token,
+            };
+        }
+
+        if (includeIdToken) {
+            result = {
+                ...result,
+                id_token
+            };
+        }
+
+        return result;
+    }
+
+    /**
+     * @protected
      * @return {*} 
      * @memberof EndpointController
      */
@@ -28,7 +149,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         //@TODO: implement this
         return null;
     }
-
 
     /**
      * @protected
@@ -182,27 +302,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     }
 
     /**
-     * Parses the response_type
-     *
-     * @protected
-     * @param {string} data
-     * @returns
-     * @memberof AuthorizationController
-     */
-    protected parseResponseType(data: string, errors: string[]) {
-        const codes = (data || "").split(" ");
-        return codes
-            .map((item) => {
-                const rType = eOAuthResponseType[item.trim()] || undefined;
-                if (!rType) {
-                    errors.push(`${item}_response_type_is_not_supported`);
-                }
-                return rType;
-            })
-            .filter(Boolean);
-    }
-
-    /**
      * @protected
      * @param {IErrorResponseParams} args
      * @param {boolean} [toUserAgent]
@@ -211,9 +310,12 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     protected responseWithError(args: IErrorResponseParams, toUserAgent?: boolean) {
 
-        const { error, error_description, state, redirect_uri, error_uri, response_mode } = args;
+        const { error, error_description, state, redirect_uri, error_uri, response_mode, response_type = eOAuthResponseType.code } = args;
 
-        const params = deepCopy({
+        const fragmented = response_type !== eOAuthResponseType.code;
+        let fragment: IDictionaryOf<any> = {};
+
+        let params = deepCopy({
             error,
             error_description: isObject(error_description)
                 ? encodeURIComponent(JSON.stringify(error_description))
@@ -221,6 +323,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             error_uri,
             state
         });
+
+        if (fragmented && !toUserAgent) {
+            fragment = { ...params };
+            params = {} as any;
+        }
 
         this.getLogger().error(error, params);
 
@@ -230,17 +337,35 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 cause: params
             });
         } else if (response_mode === eOAuthResponseMode.form_post) {
-            return new SuccessResponse(formPostTemplate({ redirect_uri, data: params }));
+            return new SuccessResponse(formPostTemplate({ redirect_uri, data: params, fragment }));
         } else {
             // response_mode === eOAuthResponseMode.query
-            const url = new URL(redirect_uri);
-            Object.entries(params).forEach(([key, val]) => {
-                url.searchParams.append(key, val);
-            });
             return new RedirectResponse({
-                url: url.toString()
+                url: this.createRedirectUri(redirect_uri, params, fragment)
             });
         }
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected createRedirectUri(redirect_uri: string, response: IDictionaryOf<string>, fragment?: IDictionaryOf<any>) {
+
+        const url = new URL(redirect_uri);
+
+        Object.entries(response).forEach(([key, value]) => {
+            url.searchParams.append(key, encodeURIComponent(value));
+        });
+
+        if (!isEmptyObject(fragment || {})) {
+            url.hash = Object.entries(fragment).map(([k, v]) => {
+                return `${k}=${encodeURIComponent(v)}`;
+            }).join("&");
+        }
+        return url.toString();
     }
 
     protected setNoCacheResponse() {
@@ -269,7 +394,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     protected async createIDToken(params: {
         tenantRecord: ISysTenant,
         tokenRequest: ITokenRequest | IAuthorizeRequest,
-        accessToken: ISysAccessToken,
+        lifeTime: ILifetime,
         session: ISysSession,
         authRequest: IAuthorizeRequest;
         user_id: string;
@@ -277,7 +402,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         payload?: IDictionaryOf<any>;
     }) {
 
-        const { tenantRecord, tokenRequest, accessToken, session, authRequest, user_id, is_refresh_token_grant, payload } = params;
+        const { tenantRecord, tokenRequest, lifeTime, session, authRequest, user_id, is_refresh_token_grant, payload } = params;
 
         const { nonce } = authRequest;
 
@@ -286,11 +411,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
         const acr = this.handleAcrClaims(authRequest.acr_values);
 
-        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : accessToken.auth_time;
+        const auth_time_src = is_refresh_token_grant ? session.last_token_auth_time : lifeTime.auth_time;
 
         const auth_time = new Date(auth_time_src).getTime();
 
-        const exp_time = new Date(accessToken.date_expire).getTime();
+        const exp_time = new Date(lifeTime.date_expire).getTime();
 
         return await new jose.SignJWT({
             nonce,

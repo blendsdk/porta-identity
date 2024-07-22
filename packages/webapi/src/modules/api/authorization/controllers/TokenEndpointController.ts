@@ -1,9 +1,9 @@
-import { IDictionaryOf, MD5, isNullOrUndef } from "@blendsdk/stdlib";
+import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { IAuthorizeRequest, ISysAuthorizationView, ISysTenant, ISysUser, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, IPortaApplicationSetting, eClientType, eErrorType, eOAuthGrantType } from "../../../../types";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eClientType, eErrorType, eOAuthGrantType } from "../../../../types";
 
 /**
  * @export
@@ -192,7 +192,10 @@ export class TokenEndpointController extends EndpointController {
                         expire: undefined
                     };
 
-                    token = await this.createTokens(flow, { ...tokenRequest, client_id });
+                    token = await this.createTokens({
+                        flow,
+                        tokenRequest: { ...tokenRequest, client_id }
+                    });
 
                 } else {
                     errors.push("invalid_bound_client");
@@ -223,7 +226,7 @@ export class TokenEndpointController extends EndpointController {
 
         this.validateRequest(tokenRequest, flow.authRequest, errors);
         await this.checkAccessSecret(tokenRequest, flow.authRecord, flow.authRequest, tenantRecord, errors);
-        const token = errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined;
+        const token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
         if (token) {
             await databaseUtils.linkAccessTokenToOTA(token.access_token, tokenRequest.code, tenantRecord);
         }
@@ -305,7 +308,7 @@ export class TokenEndpointController extends EndpointController {
                     flowId: undefined,
                     expire: undefined
                 };
-                token = errors.length === 0 ? await this.createTokens(flow, tokenRequest) : undefined;
+                token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
             } else {
                 errors.push("invalid_secret");
             }
@@ -425,78 +428,5 @@ export class TokenEndpointController extends EndpointController {
             );
         }
         return new SuccessResponse({ ...token, state });
-    }
-
-    /**
-     * @protected
-     * @param {IAuthorizationFlow} flow
-     * @param {ITokenRequest} tokenRequest
-     * @return {*}  {Promise<IToken>}
-     * @memberof TokenEndpointController
-     */
-    protected async createTokens(flow: IAuthorizationFlow, tokenRequest: ITokenRequest): Promise<IToken> {
-        const { authRecord, authRequest, tenantRecord, user, session, profile } = flow;
-        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
-        let { access_token_length, refresh_token_length } = authRecord;
-        const scope = tokenRequest.scope || authRequest.scope;
-
-        const { offline_access = false } = commonUtils.parseSeparatedTokens(scope) || {};
-        access_token_length = parseFloat((access_token_length || ACCESS_TOKEN_TTL).toString());
-        refresh_token_length = parseFloat((refresh_token_length || REFRESH_TOKEN_TTL).toString());
-
-        const { access_token_record, date_expire } = await databaseUtils.newAccessToken({
-            client_record_id: authRecord.sys_client_id,
-            session,
-            tenantRecord,
-            ttl: access_token_length,
-            user_id: user.id,
-            authRequest,
-            token_reference: commonUtils.createTokenReference(tokenRequest.client_id, tokenRequest.client_secret, this.request),
-            tokenBuilder: async (date_created: Date, date_expire: Date) => {
-                return this.builJTWToken({
-                    app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),
-                    date_created,
-                    date_expire,
-                    session,
-                    tenantRecord,
-                    user,
-                    claims: {
-                        ...(user ? { udc: new Date(user.date_modified).getTime() } : {}),
-                        ...(profile ? { pdc: new Date(profile.date_modified).getTime() } : {})
-                    }
-                });
-            }
-        });
-
-        let reftesh_token: IDictionaryOf<any> = {};
-        if (offline_access) {
-            const { refresh_token_record, refreshtoken_date_expire } = await databaseUtils.newRefreshToken({
-                accessTokenRecord: access_token_record,
-                tenantRecord,
-                ttl: refresh_token_length
-            });
-            reftesh_token = {
-                refresh_token: refresh_token_record.refresh_token,
-                refresh_token_expires_in: refreshtoken_date_expire.getTime() - Date.now(),
-            };
-        }
-
-        const id_token = await this.createIDToken({
-            accessToken: access_token_record,
-            authRequest,
-            session,
-            tenantRecord,
-            tokenRequest,
-            user_id: user.id,
-            is_refresh_token_grant: tokenRequest.grant_type === eOAuthGrantType.refresh_token
-        });
-
-        return {
-            access_token: access_token_record.access_token,
-            expires_in: date_expire.getTime() - Date.now(),
-            token_type: "Bearer",
-            id_token,
-            ...reftesh_token
-        };
     }
 }

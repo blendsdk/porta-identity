@@ -97,7 +97,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("access_token")
                 .addString("token_type")
                 .addNumber("expires_in")
-                .addString("id_token")
+                .addString("id_token", { optional: true })
                 .addString("refresh_token", { optional: true })
                 .addNumber("refresh_token_expires_in", { optional: true })
                 .addNumber("refresh_token_expires_at", { optional: true });

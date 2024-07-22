@@ -1208,7 +1208,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.number
 				}
 			},
-			required: ["access_token", "token_type", "expires_in", "id_token"]
+			required: ["access_token", "token_type", "expires_in"]
 		},
 		finalize_request: {
 			type: eJsonSchemaType.object

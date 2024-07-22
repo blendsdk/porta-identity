@@ -510,7 +510,7 @@ export interface IToken {
 	 * @type string
 	 * @memberOf IToken
 	 */
-	id_token: string;
+	id_token?: string;
 	/**
 	 * @type string
 	 * @memberOf IToken
