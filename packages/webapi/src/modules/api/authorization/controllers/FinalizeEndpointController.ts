@@ -116,6 +116,7 @@ export class FinalizeEndpointController extends EndpointController {
         // Implicit flow
         const { authRequest, authRecord, session, user, profile, tenantRecord } = flow;
         const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
+        const { application, permissions, roles } = await databaseUtils.getUserRolesAndPermissions(user.id, authRecord.application_id, tenantRecord);
         const result = await this.createTokens({
             flow,
             tokenRequest: { ...authRequest, grant_type: undefined },
@@ -126,9 +127,9 @@ export class FinalizeEndpointController extends EndpointController {
                 user,
                 profile,
                 tenant: tenantRecord,
-                permissions: [],
-                roles: [],
-                application: {}
+                permissions,
+                roles,
+                application
             })
         });
 

@@ -314,6 +314,55 @@ export class DatabaseUtils extends ServiceBase {
     }
 
     /**
+     * @param {string} user_id
+     * @param {string} application_id
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async getUserRolesAndPermissions(user_id: string, application_id: string, tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const e = expression();
+        const userPermissionRecords = await tenantDs.listSysUserPermissionViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysUserPermissionView.USER_ID, user_id),
+                e.Or(
+                    e.Equal(eSysUserPermissionView.APPLICATION_ID, application_id),
+                    e.IsNull(eSysUserPermissionView.APPLICATION_ID)
+                )
+            )
+        ));
+
+        const roles: ISysRole[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "role_id"))
+            .map((r: ISysUserPermissionView) => {
+                return {
+                    role: r.role,
+                    id: r.role_id
+                };
+            });
+
+        // We don't want the default permission since it was only
+        // introduced to include the roles
+        const permissions: ISysPermission[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "permission_id"))
+            .filter((r: ISysPermission) => (r.permission !== "DEFAULT"))
+            .map((r: ISysUserPermissionView) => {
+                return {
+                    permission: r.permission,
+                    id: r.permission_id,
+                };
+            });
+
+        const applicationDs = new SysApplicationDataService();
+        const application = await applicationDs.findSysApplicationById({ id: application_id });
+
+        return {
+            roles,
+            permissions,
+            application
+        };
+    }
+
+    /**
      * @param {string} token
      * @param {ISysTenant} tenantRecord
      * @return {*} 
@@ -331,38 +380,7 @@ export class DatabaseUtils extends ServiceBase {
         const record = result[0];
         if (record) {
             const { client, user } = record;
-            const e = expression();
-            const userPermissionRecords = await tenantDs.listSysUserPermissionViewByExpression(e.createRenderer(
-                e.And(
-                    e.Equal(eSysUserPermissionView.USER_ID, user.id),
-                    e.Or(
-                        e.Equal(eSysUserPermissionView.APPLICATION_ID, client.application_id),
-                        e.IsNull(eSysUserPermissionView.APPLICATION_ID)
-                    )
-                )
-            ));
-
-            const roles: ISysRole[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "role_id")).map((r: ISysUserPermissionView) => {
-                return {
-                    role: r.role,
-                    id: r.role_id
-                };
-            });
-
-            // We don't want the default permission since it was only
-            // introduced to include the roles
-            const permissions: ISysPermission[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "permission_id"))
-                .filter((r: ISysPermission) => (r.permission !== "DEFAULT"))
-                .map((r: ISysUserPermissionView) => {
-                    return {
-                        permission: r.permission,
-                        id: r.permission_id,
-                    };
-                });
-
-            const applicationDs = new SysApplicationDataService();
-            const application = await applicationDs.findSysApplicationById({ id: client.application_id });
-
+            const { application, permissions, roles } = await this.getUserRolesAndPermissions(user.id, client.application_id, tenantRecord);
             return {
                 roles,
                 permissions,

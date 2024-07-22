@@ -245,7 +245,7 @@ export class Claims {
                     })
                 },
                 {
-                    scope: "acl",
+                    scope: ["openid", "acl"],
                     claim: "tenant",
                     handler: this.handleClaim(() => {
                         return {
@@ -256,14 +256,14 @@ export class Claims {
                     })
                 },
                 {
-                    scope: "acl",
+                    scope: ["openid", "acl"],
                     claim: "roles",
                     handler: this.handleClaim(() => {
                         return roles;
                     })
                 },
                 {
-                    scope: "acl",
+                    scope: ["openid", "acl"],
                     claim: "permissions",
                     handler: this.handleClaim(() => {
                         return permissions;
