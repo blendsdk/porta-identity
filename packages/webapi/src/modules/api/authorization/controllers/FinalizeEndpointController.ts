@@ -35,6 +35,30 @@ export class FinalizeEndpointController extends EndpointController {
     }
 
     /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async createCode_IdToken_Response(flow: IAuthorizationFlow) {
+        const { authRecord, authRequest, session, tenantRecord } = flow;
+        const code = await this.createOTACode(flow);
+        const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
+        const result = await this.createTokens({
+            flow,
+            tokenRequest: { ...authRequest, grant_type: undefined },
+            idTokenLifeTime,
+            includeAccessToken: false, // no access token,
+            idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code)
+        });
+        await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
+        return {
+            code,
+            ...result
+        };
+    }
+
+    /**
      * @param {IFinalizeRequest} _params
      * @return {*}  {Promise<Response<IFinalizeResponse>>}
      * @memberof FinalizeEndpointController
@@ -72,20 +96,7 @@ export class FinalizeEndpointController extends EndpointController {
         } else if (response_type === eOAuthResponseType.code_id_token) {
             // Create OTA and Id token (no access token)
             fragmented = true;
-            const code = response[eOAuthResponseType.code] = await this.createOTACode(flow);
-            const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
-            const result = await this.createTokens({
-                flow,
-                tokenRequest: { ...authRequest, grant_type: undefined },
-                idTokenLifeTime,
-                includeAccessToken: false, // no access token,
-                idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code)
-            });
-            await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
-            response = {
-                code,
-                ...result
-            };
+            response = await this.createCode_IdToken_Response(flow);
         } else if (response_type === eOAuthResponseType.code_token) {
             // Include OTA and access token (no id token)
             fragmented = true;
