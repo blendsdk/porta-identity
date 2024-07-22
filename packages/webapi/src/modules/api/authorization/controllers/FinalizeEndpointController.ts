@@ -40,7 +40,7 @@ export class FinalizeEndpointController extends EndpointController {
      * @return {*} 
      * @memberof FinalizeEndpointController
      */
-    protected async createCode_IdToken_Response(flow: IAuthorizationFlow) {
+    protected async create_Code_IdToken_Response(flow: IAuthorizationFlow) {
         const { authRecord, authRequest, session, tenantRecord } = flow;
         const code = await this.createOTACode(flow);
         const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
@@ -54,6 +54,107 @@ export class FinalizeEndpointController extends EndpointController {
         await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
         return {
             code,
+            ...result
+        };
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async create_Code_Token_Response(flow: IAuthorizationFlow) {
+        const code = await this.createOTACode(flow);
+        const { authRequest } = flow;
+
+        const result = await this.createTokens(
+            {
+                flow,
+                tokenRequest: { ...authRequest, grant_type: undefined },
+                includeIdToken: false // no id token
+            }
+        );
+        return {
+            code,
+            ...result
+        };
+    }
+
+    /**
+     *
+     *
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async create_Code_IdToken_Token_Response(flow: IAuthorizationFlow) {
+        const code = await this.createOTACode(flow);
+        const { authRequest } = flow;
+        const result = await this.createTokens(
+            {
+                flow,
+                tokenRequest: { ...authRequest, grant_type: undefined },
+                idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code),
+                includeAtHash: true
+            }
+        );
+        return {
+            code,
+            ...result
+        };
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async create_IdToken_Response(flow: IAuthorizationFlow) {
+        // Implicit flow
+        const { authRequest, authRecord, session, user, profile, tenantRecord } = flow;
+        const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
+        const result = await this.createTokens({
+            flow,
+            tokenRequest: { ...authRequest, grant_type: undefined },
+            idTokenLifeTime,
+            includeAccessToken: false, // no access token,
+            idTokenPayload: this.getClaimsByScope({
+                auth_request_params: authRequest,
+                user,
+                profile,
+                tenant: tenantRecord,
+                permissions: [],
+                roles: [],
+                application: {}
+            })
+        });
+
+        // Since there is no access token to do this
+        await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
+        return {
+            ...result
+        };
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*} 
+     * @memberof FinalizeEndpointController
+     */
+    protected async create_IdToken_Token_Response(flow: IAuthorizationFlow) {
+        const { authRequest } = flow;
+        const result = await this.createTokens(
+            {
+                flow,
+                tokenRequest: { ...authRequest, grant_type: undefined },
+                includeAtHash: true
+            }
+        );
+        return {
             ...result
         };
     }
@@ -77,95 +178,43 @@ export class FinalizeEndpointController extends EndpointController {
             });
         }
 
-        const { authRequest, user, authRecord } = flow;
+        const { authRequest, user } = flow;
         const { response_type } = authRequest;
 
         // Create or update the session for this flow
         flow.session = await this.createOrUpdateSession(flow.tenantRecord, user);
         await this.updateFlow(flow);
-        const { session, tenantRecord, profile } = flow;
-
 
         let fragmented: boolean = false;
         let fragment: IDictionaryOf<any>;
         let response: IDictionaryOf<any> = {};
 
-        if (response_type === eOAuthResponseType.code) {
-            // Just create the OTA
-            response[response_type] = await this.createOTACode(flow);
-        } else if (response_type === eOAuthResponseType.code_id_token) {
-            // Create OTA and Id token (no access token)
-            fragmented = true;
-            response = await this.createCode_IdToken_Response(flow);
-        } else if (response_type === eOAuthResponseType.code_token) {
-            // Include OTA and access token (no id token)
-            fragmented = true;
-            const code = await this.createOTACode(flow);
-            const result = await this.createTokens(
-                {
-                    flow,
-                    tokenRequest: { ...authRequest, grant_type: undefined },
-                    includeIdToken: false // no id token
-                }
-            );
-            response = {
-                code,
-                ...result
-            };
-        } else if (response_type === eOAuthResponseType.code_id_token_token) {
-            fragmented = true;
-            const code = response[eOAuthResponseType.code] = await this.createOTACode(flow);
-            const result = await this.createTokens(
-                {
-                    flow,
-                    tokenRequest: { ...authRequest, grant_type: undefined },
-                    idTokenPayload: await this.createIdTokenHeaderHashForKey("c_hash", code),
-                    includeAtHash: true
-                }
-            );
-            response = {
-                code,
-                ...result
-            };
-        } else if (response_type === eOAuthResponseType.id_token) {
-            // Implicit flow
-            fragmented = true;
-            const idTokenLifeTime = this.createIDTokenLifeTime(authRecord, session, authRequest);
-            const result = await this.createTokens({
-                flow,
-                tokenRequest: { ...authRequest, grant_type: undefined },
-                idTokenLifeTime,
-                includeAccessToken: false, // no access token,
-                idTokenPayload: this.getClaimsByScope({
-                    auth_request_params: authRequest,
-                    user,
-                    profile,
-                    tenant: tenantRecord,
-                    permissions: [],
-                    roles: [],
-                    application: {}
-                })
-            });
-
-            // Since there is no access token to do this
-            await databaseUtils.updateSessionLastTokenAuthTime(new Date(idTokenLifeTime.auth_time), session, tenantRecord);
-            response = {
-                ...result
-            };
-        } else if (response_type === eOAuthResponseType.id_token_token) {
-            fragmented = true;
-            const result = await this.createTokens(
-                {
-                    flow,
-                    tokenRequest: { ...authRequest, grant_type: undefined },
-                    includeAtHash: true
-                }
-            );
-            response = {
-                ...result
-            };
-        } else {
-            throw new Error(`Response Type ${response_type} is not implemented yet!`);
+        switch (response_type) {
+            case eOAuthResponseType.code:
+                response[response_type] = await this.createOTACode(flow);
+                break;
+            case eOAuthResponseType.code_id_token:
+                fragmented = true;
+                response = await this.create_Code_IdToken_Response(flow);
+                break;
+            case eOAuthResponseType.code_token:
+                fragmented = true;
+                response = await this.create_Code_Token_Response(flow);
+                break;
+            case eOAuthResponseType.code_id_token_token:
+                fragmented = true;
+                response = await this.create_Code_IdToken_Token_Response(flow);
+                break;
+            case eOAuthResponseType.id_token:
+                fragmented = true;
+                response = await this.create_IdToken_Response(flow);
+                break;
+            case eOAuthResponseType.id_token_token:
+                fragmented = true;
+                response = await this.create_IdToken_Token_Response(flow);
+                break;
+            default:
+                throw new Error(`Response Type ${response_type} is not implemented yet!`);
         }
 
         // After this point we don't need any auth cookies
