@@ -4,8 +4,8 @@ import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysTenant, ISysUser } from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
-import { EndpointController, commonUtils } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, eErrorType, eOAuthResponseType } from "../../../../types";
+import { EndpointController, commonUtils, formPostTemplate } from "../../../../services";
+import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, eErrorType, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
 
 /**
  * @export
@@ -57,11 +57,28 @@ export class FinalizeEndpointController extends EndpointController {
         // Disable all caching        
         this.setNoCacheResponse();
 
-        return new SuccessResponse(
-            renderGetRedirect(
-                this.createRedirectUri(authRequest, response)
-            )
-        );
+        switch (authRequest.response_mode) {
+            case eOAuthResponseMode.form_post: {
+                const { redirect_uri } = authRequest;
+                const params = {
+                    ...response,
+                    ...{
+                        state: authRequest.state,
+                        nonce: authRequest.nonce,
+                        ui_locales: authRequest.ui_locales
+                    }
+                };
+                return new SuccessResponse(formPostTemplate({ redirect_uri, data: params }));
+            }
+            default: {
+                return new SuccessResponse(
+                    renderGetRedirect(
+                        this.createRedirectUri(authRequest, response)
+                    )
+                );
+            }
+        }
+
     }
 
     /**
@@ -124,7 +141,7 @@ export class FinalizeEndpointController extends EndpointController {
         });
 
         this.cleanExpiredSessions();
-            
+
         return currentSessionRecord;
     }
 
