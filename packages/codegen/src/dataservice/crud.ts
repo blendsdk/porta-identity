@@ -77,6 +77,22 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         if (tableName === "sys_tenant") {
 
+            const revokes = [
+                "session",
+                "access_token",
+                "refresh_token",
+            ];
+
+            revokes.forEach(name => {
+                svc.defineMethod({
+                    name: `revoke_expired_${name}s`,
+                    query: `delete from sys_${name} where id in (select id from sys_${name} where (now() > date_expire) = true);`,
+                    recordSet: false,
+                    returnValue: eReturnValue.dataOnly,
+                    type: "query"
+                });
+            });
+
             svc.defineListByExpressionMethod({
                 table: "sys_access_token_view"
             });

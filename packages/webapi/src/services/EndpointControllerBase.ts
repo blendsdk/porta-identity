@@ -145,9 +145,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @return {*} 
      * @memberof EndpointController
      */
-    protected async cleanExpiredSessions() {
-        //@TODO: implement this
-        return null;
+    protected async cleanExpiredSessions(tenantRecord: ISysTenant) {
+        await databaseUtils.cleanExpiredSessions(tenantRecord);
     }
 
     /**

@@ -1,6 +1,6 @@
 import { verifyStringSync } from "@blendsdk/crypto";
 import { MD5 } from "@blendsdk/stdlib";
-import { Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
 import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST } from "@porta/shared";
@@ -28,7 +28,10 @@ export class AuthenticateEndpointController extends EndpointController {
         let expires_in: number = 0;
         let mfa_type: string = undefined;
 
-        const { update, password, mfa_result, username } = params;
+        let { update, password, mfa_result, username } = params;
+
+        const is_conformance_test = update === "conformance";
+        update = is_conformance_test ? "account" : update;
 
         const tenant = this.getCookie(COOKIE_TENANT);
         const flowId = this.getCookie(COOKIE_AUTH_FLOW);
@@ -123,18 +126,22 @@ export class AuthenticateEndpointController extends EndpointController {
             }
         }
 
-        return new SuccessResponse<ICheckSetFlowResponse>({
-            data: {
-                allow_reset_password,
-                application_name,
-                logo,
-                tenant_name,
-                resp,
-                error,
-                expires_in,
-                mfa_type
-            }
-        });
+        if (is_conformance_test) {
+            return new RedirectResponse({ url: resp });
+        } else {
+            return new SuccessResponse<ICheckSetFlowResponse>({
+                data: {
+                    allow_reset_password,
+                    application_name,
+                    logo,
+                    tenant_name,
+                    resp,
+                    error,
+                    expires_in,
+                    mfa_type
+                }
+            });
+        }
     }
 
     /**

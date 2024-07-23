@@ -23,7 +23,7 @@ export const formPostTemplate = ({ redirect_uri, data, query, fragment }: IFormP
 
     redirect_uri = url.toString();
 
-    data = isNullOrUndef(data) || isEmptyObject(data) ? { _: Date.now(), state: "test21" } : data;
+    data = isNullOrUndef(data) || isEmptyObject(data) ? { _: Date.now() } : data;
 
     const fields = Object.entries(data)
         .map(([key, value]) => {

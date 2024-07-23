@@ -93,7 +93,9 @@ export class AuthorizeEndpointController extends EndpointController {
         let signinURL = `${this.getServerURL()}/fe/auth/signin`;
         const url = new URL(signinURL);
 
-        url.searchParams.append("display", authRequest.display);
+        if (authRequest.display) {
+            url.searchParams.append("display", authRequest.display);
+        }
 
         if (authRequest.ui_locales) {
             url.searchParams.append("ui_locals", authRequest.ui_locales);

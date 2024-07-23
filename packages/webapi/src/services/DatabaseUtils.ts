@@ -23,6 +23,17 @@ export interface INewAccessTokenResult {
 export class DatabaseUtils extends ServiceBase {
 
     /**
+     * @param {ISysTenant} tenantRecord
+     * @memberof DatabaseUtils
+     */
+    public async cleanExpiredSessions(tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        await tenantDs.revokeExpiredAccessTokens();
+        await tenantDs.revokeExpiredRefreshTokens();
+        await tenantDs.revokeExpiredSessions();
+    }
+
+    /**
      * @param {string} user_id
      * @param {ISysTenant} tenantRecord
      * @return {*} 

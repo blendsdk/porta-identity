@@ -321,7 +321,7 @@ export class FinalizeEndpointController extends EndpointController {
             sameSite: "lax"
         });
 
-        this.cleanExpiredSessions();
+        this.cleanExpiredSessions(tenantRecord);
 
         return currentSessionRecord;
     }

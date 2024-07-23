@@ -249,7 +249,7 @@ export class TokenEndpointController extends EndpointController {
         const { client_id, client_secret } = credentials;
         const sessionId = MD5([client_id, client_secret, user.id].join(""));
 
-        this.cleanExpiredSessions();
+        this.cleanExpiredSessions(tenantRecord);
 
         let sessionRecord = await sessionDs.findSysSessionById({ id: sessionId });
 

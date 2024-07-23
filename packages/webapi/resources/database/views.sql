@@ -91,7 +91,6 @@ CREATE OR REPLACE VIEW sys_user_permission_view AS select
 	sp.id as permission_id,
 	sr."role",
 	sr.id as role_id
-	--,*
 from 
 	sys_user_role sur 
 	inner join sys_role sr on sr.id  = sur.role_id 

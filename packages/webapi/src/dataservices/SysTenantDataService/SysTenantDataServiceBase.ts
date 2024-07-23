@@ -27,6 +27,51 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  */
 export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExecutionContext> {
 	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredSessions(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_session where id in (select id from sys_session where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredAccessTokens(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_access_token where id in (select id from sys_access_token where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredRefreshTokens(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_refresh_token where id in (select id from sys_refresh_token where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
 	 * List a sys_access_token_view by expression syntax
 	 * @param {void}
 	 * @returns {ISysAccessTokenView[]}

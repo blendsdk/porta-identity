@@ -2,7 +2,8 @@
     "client": {
         "client_id": "097c6871-fa61-47c8-9840-93482a126b21",
         "client_secret": "secret",
-        "redirect_uri": "test1"
+        "redirect_uri": "test1",
+        "client_name": "097c6871-fa61-47c8-9840-93482a126b21"
     },
     "alias": "discovery-test",
     "server": {
@@ -14,6 +15,7 @@
     },
     "client2": {
         "client_id": "097c6871-fa61-47c8-9840-93482a126b22",
-        "client_secret": "secret"
+        "client_secret": "secret",
+        "client_name": "097c6871-fa61-47c8-9840-93482a126b22"
     }
 }
