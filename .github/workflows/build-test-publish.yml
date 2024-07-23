@@ -28,27 +28,27 @@ jobs:
             #       mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
             #       yarn test
 
-            - name: Publish Production Packages
-              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
-              run: |
-                  git reset --hard
-                  yarn tag-version-auto --yes
-                  yarn publish-packages --yes
+            # - name: Publish Production Packages
+            #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
+            #   run: |
+            #       git reset --hard
+            #       yarn tag-version-auto --yes
+            #       yarn publish-packages --yes
 
-            - name: Publish Non-production Packages
-              if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
-              run: |
-                  git reset --hard
-                  yarn tag-version-pre --yes
-                  yarn publish-packages --yes --dist-tag next
+            # - name: Publish Non-production Packages
+            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
+            #   run: |
+            #       git reset --hard
+            #       yarn tag-version-pre --yes
+            #       yarn publish-packages --yes --dist-tag next
 
             - name: Bundle Project
               run: |
                   cd ./bundler && bun install && bun create:bundle
 
-            - name: Next Deploy
-              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover1')
-              run: ./deploy.sh truesoftware@docker-prod-1 next
+            # - name: Next Deploy
+            #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover1')
+            #   run: ./deploy.sh truesoftware@docker-prod-1 next
     
             # - name: Development Deploy
             #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
