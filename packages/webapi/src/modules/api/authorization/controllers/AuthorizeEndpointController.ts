@@ -162,6 +162,23 @@ export class AuthorizeEndpointController extends EndpointController {
         return { user, profile, session };
     }
 
+    protected requireLoginByPrompt(authRequest: IAuthorizeRequest) {
+        return authRequest.prompt === eOAuthPrompt.login ||
+            authRequest.prompt == eOAuthPrompt.select_account;
+    }
+
+    protected async getConsentState(params: { authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }) {
+        const { authRecord, authRequest, tenantRecord, user } = params;
+        if (authRequest.prompt === eOAuthPrompt.consent) {
+            return false; // forced consent
+        } else if (isNullOrUndef(user)) {
+            return false; // user not logged in
+        } else {
+            const { is_consent = false } = (await databaseUtils.findConsentByUserAndApplication(user.id, authRecord.application_id, tenantRecord)) || {};
+            return is_consent || authRecord.ow_consent;
+        }
+    }
+
     /**
      * @protected
      * @param {ISysAuthorizationView} authRecord
@@ -175,7 +192,10 @@ export class AuthorizeEndpointController extends EndpointController {
 
         const { user, profile, session } = await this.getReturningUser(tenantRecord, authRequest);
         const authenticated = !isNullOrUndef(session) && !isNullOrUndef(user) && !isNullOrUndef(profile);
-        const login_required = session ? commonUtils.checkLoginRequired(session, authRequest.max_age) : true;
+        const login_required = session ? commonUtils.checkLoginRequired(session, authRequest.max_age) || this.requireLoginByPrompt(authRequest) : true;
+
+        const consent_state = await this.getConsentState({ authRecord, authRequest, user, tenantRecord });
+
         const complete = authenticated ? login_required ? false : authenticated : authenticated;
 
         let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
@@ -186,6 +206,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 complete,
                 authRecord,
                 authRequest,
+                consent_state,
                 flowId,
                 expire,
                 account_state: complete,

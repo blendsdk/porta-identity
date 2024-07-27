@@ -1,9 +1,10 @@
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysConsent, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
+import { SysConsentDataService } from "../dataservices/SysConsentDataService";
 import { SysKeyDataService } from "../dataservices/SysKeyDataService";
 import { SysProfileDataService } from "../dataservices/SysProfileDataService";
 import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataService";
@@ -21,6 +22,33 @@ export interface INewAccessTokenResult {
 }
 
 export class DatabaseUtils extends ServiceBase {
+
+    /**
+     * @param {ISysConsent} consent
+     * @param {ISysTenant} tenantRecord
+     * @memberof DatabaseUtils
+     */
+    public async saveUserConsent(consent: ISysConsent, tenantRecord: ISysTenant) {
+        const consentDs = new SysConsentDataService({ tenantId: tenantRecord.id });
+        const consentRecord = await consentDs.findSysConsentByApplicationIdAndUserId({ application_id: consent.application_id, user_id: consent.user_id });
+        if (consentRecord) {
+            await consentDs.updateSysConsentById(consent, { id: consentRecord.id });
+        } else {
+            await consentDs.insertIntoSysConsent(consent);
+        }
+    }
+
+    /**
+     * @param {string} user_id
+     * @param {string} application_id
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public findConsentByUserAndApplication(user_id: string, application_id: string, tenantRecord: ISysTenant) {
+        const consentDs = new SysConsentDataService({ tenantId: tenantRecord.id });
+        return consentDs.findSysConsentByApplicationIdAndUserId({ application_id, user_id });
+    }
 
     /**
      * @param {ISysTenant} tenantRecord

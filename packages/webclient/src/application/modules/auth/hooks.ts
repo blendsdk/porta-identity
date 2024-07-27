@@ -1,6 +1,6 @@
 import { useObjectState } from "@blendsdk/react";
 import { filterObject } from "@blendsdk/stdlib";
-import { ICheckSetFlow, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_MFA } from "@porta/shared";
+import { ICheckSetFlow, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CONSENT, RESP_MFA } from "@porta/shared";
 import { useFormik } from "formik";
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
@@ -19,6 +19,8 @@ export interface IAuthenticationDialogModel {
     rememberMe: boolean;
     username: string;
     password: string;
+    consent: boolean;
+    ow_consent: boolean;
     mfa: string;
 }
 
@@ -55,6 +57,8 @@ export const useAuthenticationFlow = () => {
             rememberMe: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) ? true : false,
             username: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) || "",
             password: "",
+            consent: false,
+            ow_consent: false,
             mfa: ""
         },
         validate: (values) => {
@@ -92,7 +96,7 @@ export const useAuthenticationFlow = () => {
                 }).then(({ data }) => {
                     setState({
                         fetching: isFinalize(data.resp),
-                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT ? data.resp : state.curState,
+                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT || data.resp === RESP_CONSENT ? data.resp : state.curState,
                         ...data
                     });
                 })
@@ -102,6 +106,21 @@ export const useAuthenticationFlow = () => {
                 ApplicationApi.authorization.checkSetFlow({
                     update: RESP_MFA,
                     mfa_result: values.mfa
+                }).then(({ data }) => {
+                    setState({
+                        fetching: isFinalize(data.resp),
+                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT ? data.resp : state.curState,
+                        ...data
+                    });
+                })
+                    .catch(catchSystemError);
+
+            } else if (state.resp === RESP_CONSENT) {
+                setState({ fetching: true });
+                ApplicationApi.authorization.checkSetFlow({
+                    update: RESP_CONSENT,
+                    ow_consent: values.ow_consent,
+                    consent: values.consent
                 }).then(({ data }) => {
                     setState({
                         fetching: isFinalize(data.resp),

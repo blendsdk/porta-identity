@@ -18,17 +18,10 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const permission = database.addTable("sys_permission");
     const user_role = database.addTable("sys_user_role");
     const role_permission = database.addTable("sys_role_permission");
-
-    // const user_profile = database.addTable("sys_user_profile");
-    // const role = database.addTable("sys_role");
-    // const user_role = database.addTable("sys_user_role");
-    // const permission = database.addTable("sys_permission");
-    // const role_permission = database.addTable("sys_role_permission");
-    // const application = database.addTable("sys_application");
-    // const client = database.addTable("sys_client");
     const session = database.addTable("sys_session");
     const access_token = database.addTable("sys_access_token");
     const refresh_token = database.addTable("sys_refresh_token");
+    const consent = database.addTable("sys_consent");
 
     const mfa = database.addTable("sys_mfa");
     //const user_mfa = database.addTable("sys_user_mfa");
@@ -67,6 +60,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("description", { required: false })
         .booleanColumn("is_system", { default: "false" })
         .booleanColumn("is_active", { default: "true" })
+        .booleanColumn("ow_consent", { default: "false" }) // organizational wide consent
         .referenceColumnAuto("tenant_id", tenant);
 
     user.primaryKeyColumn("id", true) //
@@ -77,6 +71,14 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .dateTimeColumn("date_created", { default: "now()" })
         .dateTimeColumn("date_modified", { default: "now()" })
         .referenceColumnAuto("service_application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
+
+    consent //
+        .primaryKeyColumn("id", true)
+        .booleanColumn("is_consent")
+        .stringColumn("scope")
+        .referenceColumnAuto("application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade })
+        .referenceColumnAuto("user_id", user, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade })
+        .uniqueConstraint(["user_id", "application_id"]);
 
     profile //
         .primaryKeyColumn("id", true)
@@ -217,111 +219,4 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         });
-
-    // mfa.primaryKeyColumn("id", true) //
-    //     .stringColumn("name")
-    //     .jsonColumn(
-    //         "settings",
-    //         ({ mainSchema, suggestedTypeName }) => {
-    //             mainSchema.createAppendType(suggestedTypeName);
-    //             return suggestedTypeName;
-    //         },
-    //         { required: false }
-    //     );
-
-    // user_mfa //
-    //     .primaryKeyColumn("id", true)
-    //     .referenceColumnAuto("user_id", user)
-    //     .referenceColumnAuto("mfa_id", mfa);
-
-    // client //
-    //     .primaryKeyColumn("id", true) //
-    //     .stringColumn("client_id", { unique: true })
-    //     .stringColumn("client_type") // Public = SPA/Native/Desktop, Confidential = WebApp / API, Service = MachineToMachine
-    //     .booleanColumn("is_active", { default: "true" })
-    //     .stringColumn("description", { required: false })
-    //     .stringColumn("client_secret", { default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')" })
-    //     .integerColumn("access_token_ttl", { required: false })
-    //     .integerColumn("refresh_token_ttl", { required: false })
-    //     .dateTimeColumn("valid_from", { required: false, default: "now()" })
-    //     .dateTimeColumn("valid_until", { required: false })
-    //     .stringColumn("redirect_uri", { required: false })
-    //     .referenceColumnAuto("client_credentials_user_id", user, undefined, { required: false })
-    //     .referenceColumnAuto("application_id", application)
-    //     .stringColumn("post_logout_redirect_uri", { required: false })
-    //     .booleanColumn("is_back_channel_post_logout", { default: "false" })
-    //     .booleanColumn("is_system_client", { default: "false" });
-
-    // session
-    //     .primaryKeyColumn("id", true)
-    //     .stringColumn("session_id")
-    //     .referenceColumnAuto("user_id", user, {
-    //         onUpdate: eDBForeignKeyAction.cascade,
-    //         onDelete: eDBForeignKeyAction.cascade
-    //     })
-    //     .referenceColumnAuto("client_id", client, {
-    //         onUpdate: eDBForeignKeyAction.cascade,
-    //         onDelete: eDBForeignKeyAction.cascade
-    //     })
-    //     .dateTimeColumn("date_created", { default: "now()" })
-    //     .uniqueConstraint(["user_id", "client_id"]);
-
-    // access_token
-    //     //
-    //     .primaryKeyColumn("id", true)
-    //     .integerColumn("ttl")
-    //     .integerColumn("refresh_ttl")
-    //     .integerColumn("auth_time")
-    //     .dateTimeColumn("date_created", { default: "now()" })
-    //     .jsonColumn(
-    //         "auth_request_params",
-    //         ({ suggestedTypeName, mainSchema }) => {
-    //             mainSchema
-    //                 .createAppendType(suggestedTypeName)
-    //                 .addString("ui_locales")
-    //                 .addString("claims")
-    //                 .addString("acr_values")
-    //                 .addString("resource")
-    //                 .addString("token_reference")
-    //                 .addString("scope");
-
-    //             return suggestedTypeName;
-    //         },
-    //         { required: false }
-    //     )
-    //     .stringColumn("access_token", {
-    //         unique: true,
-    //         default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
-    //     })
-    //     .referenceColumnAuto("session_id", session, {
-    //         onDelete: eDBForeignKeyAction.cascade,
-    //         onUpdate: eDBForeignKeyAction.cascade
-    //     })
-    //     .referenceColumnAuto("user_id", user, {
-    //         onDelete: eDBForeignKeyAction.cascade,
-    //         onUpdate: eDBForeignKeyAction.cascade
-    //     })
-    //     .referenceColumnAuto("client_id", client, {
-    //         onDelete: eDBForeignKeyAction.cascade,
-    //         onUpdate: eDBForeignKeyAction.cascade
-    //     })
-    //     .referenceColumnAuto("tenant_id", tenant, {
-    //         onDelete: eDBForeignKeyAction.cascade,
-    //         onUpdate: eDBForeignKeyAction.cascade
-    //     });
-
-    // refresh_token
-    //     //
-    //     .primaryKeyColumn("id", true)
-    //     .integerColumn("ttl")
-    //     .dateTimeColumn("date_created", { default: "now()" })
-    //     .stringColumn("refresh_token", {
-    //         unique: true,
-    //         default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
-    //     })
-    //     .referenceColumnAuto("access_token_id", access_token, {
-    //         onDelete: eDBForeignKeyAction.cascade,
-    //         onUpdate: eDBForeignKeyAction.cascade
-    //     });
-
 }

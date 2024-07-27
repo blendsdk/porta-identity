@@ -1,5 +1,6 @@
 select
 	sc.application_id,
+	sa.ow_consent,
 	sa.logo,
 	sa.application_name,
 	sa.client_id,

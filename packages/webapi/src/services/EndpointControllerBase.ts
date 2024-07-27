@@ -1,7 +1,7 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, ISysApplication, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
 import * as jose from "jose";
 import crypto from "node:crypto";
 import { eOAuthGrantType, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
@@ -202,7 +202,33 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @returns
      * @memberof EndpointController
      */
-    protected getClaimsByScope(params: IDictionaryOf<any>) {
+    protected async getClaimsByScope(params: IDictionaryOf<any>) {
+        const { user, client, tenant, auth_request_params } = (params as any as IPortaAccount & Pick<ISysAccessToken, "auth_request_params">) || {};
+        const { scope = "", is_consent } = (await databaseUtils.findConsentByUserAndApplication(
+            user.id,
+            client.application_id,
+            tenant
+        )) || {};
+
+        const requested = commonUtils.parseSeparatedTokens(auth_request_params["scope"] || "");
+        const consented = commonUtils.parseSeparatedTokens((scope || "").replace(/openid|offline_access/gi, ""));
+
+        console.log({ requested, consented });
+
+        if (!is_consent) {
+            // set the not consented scopes to false
+            Object.keys(consented).forEach(item => {
+                requested[item] = false;
+            });
+
+            // Object loop and remove the scopes set to false
+            params.auth_request_params.scope = Object.entries(requested).filter(([, v]) => {
+                return v === true;
+            }).map(([k,]) => {
+                return k;
+            }).join(" ");
+        }
+
         const claims = new Claims({
             ...params,
             serverUrl: this.getServerURL(),

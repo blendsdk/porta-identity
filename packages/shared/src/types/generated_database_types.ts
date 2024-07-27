@@ -120,6 +120,11 @@ export interface ISysApplication {
 	 */
 	is_active?: boolean;
 	/**
+	 * @type boolean
+	 * @memberOf ISysApplication
+	 */
+	ow_consent?: boolean;
+	/**
 	 * @type string
 	 * @memberOf ISysApplication
 	 */
@@ -687,6 +692,38 @@ export interface ISysRefreshToken {
 
 /**
  * @export
+ * @interface ISysConsent
+ */
+export interface ISysConsent {
+	/**
+	 * @type string
+	 * @memberOf ISysConsent
+	 */
+	id?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysConsent
+	 */
+	is_consent: boolean;
+	/**
+	 * @type string
+	 * @memberOf ISysConsent
+	 */
+	scope: string;
+	/**
+	 * @type string
+	 * @memberOf ISysConsent
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysConsent
+	 */
+	user_id: string;
+}
+
+/**
+ * @export
  * @interface ISysMfa
  */
 export interface ISysMfa {
@@ -774,6 +811,11 @@ export interface ISysAuthorizationView {
 	 * @memberOf ISysAuthorizationView
 	 */
 	application_id: string;
+	/**
+	 * @type boolean
+	 * @memberOf ISysAuthorizationView
+	 */
+	ow_consent: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysAuthorizationView

@@ -1,10 +1,11 @@
 import { Loading } from "@blendsdk/fui8";
 import { SessionLoadingView } from "@blendsdk/react";
 import { SpinnerSize } from "@fluentui/react";
-import { FLOW_ERROR_INVALID, RESP_ACCOUNT, RESP_MFA } from "@porta/shared";
+import { FLOW_ERROR_INVALID, RESP_ACCOUNT, RESP_CONSENT, RESP_MFA } from "@porta/shared";
 import React from "react";
 import LogoImage from "../../../resources/logo.svg";
 import { GetAccount } from "./GetAccount";
+import { GetConsent } from "./GetConsent";
 import { GetMFA } from "./GetMFA";
 import { InvalidSession } from "./InvalidSession";
 import { IUseAuthenticationFlowState, useAuthenticationFlow } from "./hooks";
@@ -25,6 +26,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
     const showControls = !isInvalidFlow && state.fetching !== true;
     const showGetAccount = showControls && (state.resp === RESP_ACCOUNT || state.curState === RESP_ACCOUNT);
     const showGetMFA = showControls && (state.resp === RESP_MFA || state.curState === RESP_MFA);
+    const showConsent = showControls && (state.resp == RESP_CONSENT);
 
     return state.initializing || state.returningUser ? <SessionLoadingView /> :
         <div className={styles.wrapper}>
@@ -35,6 +37,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
                     {showWaitSpinner && <Loading style={{ flex: 1 }} size={SpinnerSize.large} label={t("please_wait")} />}
                     {showGetAccount && <GetAccount form={form} flowState={state as IUseAuthenticationFlowState} />}
                     {showGetMFA && <GetMFA form={form} flowState={state as IUseAuthenticationFlowState} onResend={onResendMFA} />}
+                    {showConsent && <GetConsent form={form} flowState={state as IUseAuthenticationFlowState} />}
                 </div>
             </form>
         </div>;

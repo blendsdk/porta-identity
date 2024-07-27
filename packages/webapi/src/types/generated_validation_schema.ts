@@ -109,6 +109,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
+				ow_consent: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
 				tenant_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
@@ -569,6 +573,30 @@ export const validationSchema = {
 			},
 			required: ["date_expire", "access_token_id"]
 		},
+		sys_consent: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				is_consent: {
+					type: eJsonSchemaType.boolean
+				},
+				scope: {
+					type: eJsonSchemaType.string
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["is_consent", "scope", "application_id", "user_id"]
+		},
 		sys_mfa: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -646,6 +674,9 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					format: "uuid"
 				},
+				ow_consent: {
+					type: eJsonSchemaType.boolean
+				},
 				logo: {
 					type: eJsonSchemaType.string
 				},
@@ -701,6 +732,7 @@ export const validationSchema = {
 			},
 			required: [
 				"application_id",
+				"ow_consent",
 				"logo",
 				"application_name",
 				"client_id",
@@ -892,6 +924,10 @@ export const validationSchema = {
 					$ref: "#/definitions/sys_tenant",
 					type: eJsonSchemaType.object
 				},
+				client: {
+					$ref: "#/definitions/sys_client",
+					type: eJsonSchemaType.object
+				},
 				roles: {
 					type: eJsonSchemaType.array,
 					items: {
@@ -905,7 +941,7 @@ export const validationSchema = {
 					}
 				}
 			},
-			required: ["user", "profile", "tenant", "roles", "permissions"]
+			required: ["user", "profile", "tenant", "client", "roles", "permissions"]
 		},
 		error_data: {
 			type: eJsonSchemaType.object,
@@ -1234,6 +1270,14 @@ export const validationSchema = {
 				mfa_result: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
+				},
+				consent: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				ow_consent: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
 				}
 			}
 		},
@@ -1252,8 +1296,20 @@ export const validationSchema = {
 				application_name: {
 					type: eJsonSchemaType.string
 				},
+				consent_display_name: {
+					type: eJsonSchemaType.string
+				},
 				mfa_type: {
 					type: eJsonSchemaType.string
+				},
+				consent_claims: {
+					type: eJsonSchemaType.array,
+					items: {
+						type: eJsonSchemaType.string
+					}
+				},
+				ow_consent: {
+					type: eJsonSchemaType.boolean
 				},
 				allow_reset_password: {
 					type: eJsonSchemaType.boolean

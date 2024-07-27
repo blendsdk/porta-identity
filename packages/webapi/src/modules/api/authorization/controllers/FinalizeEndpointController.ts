@@ -122,7 +122,7 @@ export class FinalizeEndpointController extends EndpointController {
             tokenRequest: { ...authRequest, grant_type: undefined },
             idTokenLifeTime,
             includeAccessToken: false, // no access token,
-            idTokenPayload: this.getClaimsByScope({
+            idTokenPayload: await this.getClaimsByScope({
                 auth_request_params: authRequest,
                 user,
                 profile,

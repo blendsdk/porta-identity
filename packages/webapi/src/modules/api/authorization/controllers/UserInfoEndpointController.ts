@@ -32,7 +32,7 @@ export class UserInfoEndpointController extends EndpointController {
             }, true);
         }
 
-        return new SuccessResponse(this.getClaimsByScope(sessionStorage));
+        return new SuccessResponse(await this.getClaimsByScope(sessionStorage));
 
     }
 }

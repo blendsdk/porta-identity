@@ -3,6 +3,7 @@ import { HttpRequest, IRequestContext, IRoute } from "@blendsdk/webafx-common";
 import { IPortaAccount, ISysTenant } from "@porta/shared";
 import { TokenEndpointController } from "../modules/api/authorization/controllers/TokenEndpointController";
 import { eOAuthGrantType, IPortaApplicationSetting } from "../types";
+import { eScopes, mergeScopes } from "./Claims";
 import { commonUtils } from "./CommonUtils";
 import { databaseUtils } from "./DatabaseUtils";
 
@@ -97,7 +98,7 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
                             tenant: tenantRecord.id,
                             client_id,
                             client_secret,
-                            scope: "openid email userinfo profile acl"
+                            scope: mergeScopes(eScopes.openid, eScopes.email, eScopes.userinfo, eScopes.profile, eScopes.acl)
                         }, tenantRecord);
                         return errors.length === 0 ? await this.createSessionStorageByAccessToken(newToken.access_token, tenantRecord, false) : undefined;
                     }

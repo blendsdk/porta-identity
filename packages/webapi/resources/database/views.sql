@@ -17,6 +17,7 @@ from
 DROP VIEW IF EXISTS sys_authorization_view CASCADE;
 CREATE OR REPLACE VIEW sys_authorization_view AS select
 	sc.application_id,
+	sa.ow_consent,
 	sa.logo,
 	sa.application_name,
 	sa.client_id,

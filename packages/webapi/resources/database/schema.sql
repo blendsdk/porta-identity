@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS sys_role_permission CASCADE;
 DROP TABLE IF EXISTS sys_session CASCADE;
 DROP TABLE IF EXISTS sys_access_token CASCADE;
 DROP TABLE IF EXISTS sys_refresh_token CASCADE;
+DROP TABLE IF EXISTS sys_consent CASCADE;
 DROP TABLE IF EXISTS sys_mfa CASCADE;
 CREATE TABLE sys_tenant();
 ALTER TABLE sys_tenant ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
@@ -45,6 +46,7 @@ ALTER TABLE sys_application ADD COLUMN client_id varchar NOT NULL;
 ALTER TABLE sys_application ADD COLUMN description varchar;
 ALTER TABLE sys_application ADD COLUMN is_system boolean  DEFAULT false;
 ALTER TABLE sys_application ADD COLUMN is_active boolean  DEFAULT true;
+ALTER TABLE sys_application ADD COLUMN ow_consent boolean  DEFAULT false;
 ALTER TABLE sys_application ADD COLUMN tenant_id uuid NOT NULL;
 ALTER TABLE sys_application ADD PRIMARY KEY (id);
 ALTER TABLE sys_application ADD UNIQUE (client_id);
@@ -176,6 +178,14 @@ ALTER TABLE sys_refresh_token ADD COLUMN refresh_token varchar  DEFAULT encode(d
 ALTER TABLE sys_refresh_token ADD COLUMN access_token_id uuid NOT NULL;
 ALTER TABLE sys_refresh_token ADD PRIMARY KEY (id);
 ALTER TABLE sys_refresh_token ADD UNIQUE (refresh_token);
+CREATE TABLE sys_consent();
+ALTER TABLE sys_consent ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
+ALTER TABLE sys_consent ADD COLUMN is_consent boolean NOT NULL;
+ALTER TABLE sys_consent ADD COLUMN scope varchar NOT NULL;
+ALTER TABLE sys_consent ADD COLUMN application_id uuid NOT NULL;
+ALTER TABLE sys_consent ADD COLUMN user_id uuid NOT NULL;
+ALTER TABLE sys_consent ADD PRIMARY KEY (id);
+ALTER TABLE sys_consent ADD UNIQUE (application_id,user_id);
 CREATE TABLE sys_mfa();
 ALTER TABLE sys_mfa ADD COLUMN id uuid NOT NULL DEFAULT uuid_generate_v4();
 ALTER TABLE sys_mfa ADD COLUMN name varchar NOT NULL;
@@ -199,6 +209,8 @@ ALTER TABLE sys_access_token ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) 
 ALTER TABLE sys_access_token ADD FOREIGN KEY (client_id) REFERENCES sys_client (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_access_token ADD FOREIGN KEY (tenant_id) REFERENCES sys_tenant (id) ON UPDATE CASCADE ON DELETE CASCADE;
 ALTER TABLE sys_refresh_token ADD FOREIGN KEY (access_token_id) REFERENCES sys_access_token (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_consent ADD FOREIGN KEY (application_id) REFERENCES sys_application (id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE sys_consent ADD FOREIGN KEY (user_id) REFERENCES sys_user (id) ON UPDATE CASCADE ON DELETE CASCADE;
 CREATE INDEX gin_sys_application_tenant_id ON sys_application USING GIN (tenant_id);
 CREATE INDEX gin_sys_secret_application_id ON sys_secret USING GIN (application_id);
 CREATE INDEX gin_sys_client_application_id ON sys_client USING GIN (application_id);
@@ -215,4 +227,6 @@ CREATE INDEX gin_sys_access_token_session_id ON sys_access_token USING GIN (sess
 CREATE INDEX gin_sys_access_token_user_id ON sys_access_token USING GIN (user_id);
 CREATE INDEX gin_sys_access_token_client_id ON sys_access_token USING GIN (client_id);
 CREATE INDEX gin_sys_access_token_tenant_id ON sys_access_token USING GIN (tenant_id);
-CREATE INDEX gin_sys_refresh_token_access_token_id ON sys_refresh_token USING GIN (access_token_id)
+CREATE INDEX gin_sys_refresh_token_access_token_id ON sys_refresh_token USING GIN (access_token_id);
+CREATE INDEX gin_sys_consent_application_id ON sys_consent USING GIN (application_id);
+CREATE INDEX gin_sys_consent_user_id ON sys_consent USING GIN (user_id)

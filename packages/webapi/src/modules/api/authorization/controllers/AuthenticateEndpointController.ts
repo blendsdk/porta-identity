@@ -3,13 +3,25 @@ import { MD5 } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CONSENT, RESP_MFA } from "@porta/shared";
+import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { EmailMFAProvider, EndpointController, commonUtils } from "../../../../services";
+import { Claims, EmailMFAProvider, EndpointController, commonUtils, databaseUtils } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
+
+    /**
+     * @protected
+     * @param {IAuthorizeRequest} auth_request_params
+     * @return {*} 
+     * @memberof AuthenticateEndpointController
+     */
+    protected async getClaimsList(auth_request_params: IAuthorizeRequest) {
+        const claims = new Claims({ auth_request_params } as any);
+        return claims.getClaimsList();
+    }
 
     /**
      * @param {ICheckSetFlowRequest} params
@@ -27,11 +39,14 @@ export class AuthenticateEndpointController extends EndpointController {
         let allow_reset_password: boolean = undefined;
         let expires_in: number = 0;
         let mfa_type: string = undefined;
+        let consent_claims: string[] = [];
+        let consent_display_name = undefined;
+        let ow_consent = undefined;
 
-        let { update, password, mfa_result, username } = params;
+        let { update, password, mfa_result, username, consent: consent_result, ow_consent: ow_consent_result } = params;
 
         const is_conformance_test = update === "conformance";
-        update = is_conformance_test ? "account" : update;
+        update = is_conformance_test ? RESP_ACCOUNT : update;
 
         const tenant = this.getCookie(COOKIE_TENANT);
         const flowId = this.getCookie(COOKIE_AUTH_FLOW);
@@ -63,10 +78,11 @@ export class AuthenticateEndpointController extends EndpointController {
 
         // if we have a flow and a tenant
         if (!error) {
-            if (update === "account") {
-                const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
-                const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
 
+            const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+            const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+
+            if (update === RESP_ACCOUNT) {
                 const userRecord = await userDs.findByUsernameNonService({
                     username
                 });
@@ -87,7 +103,7 @@ export class AuthenticateEndpointController extends EndpointController {
                     resp = "invalid_username_or_password";
                 }
 
-            } else if (update === "mfa") {
+            } else if (update === RESP_MFA) {
                 flow.mfa_state = mfa_result === flow.mfa_request;
 
                 // check and set the bypass by IP and client_id if possible
@@ -100,11 +116,33 @@ export class AuthenticateEndpointController extends EndpointController {
                     resp = `invalid_mfa_${mfa_type}`;
                 }
                 await this.updateFlow(flow);
+            } else if (update === RESP_CONSENT) {
+                flow.consent_state = true;
+
+                // save the consent for this user
+                await databaseUtils.saveUserConsent({
+                    application_id: flow.authRecord.application_id,
+                    user_id: flow.user.id,
+                    is_consent: consent_result,
+                    // the requested scope for this application is saved
+                    // here so we can extract it later when Claims are read
+                    scope: flow.authRequest.scope
+                }, tenantRecord);
+
+                // we save the consent for the entire organization for this application
+                if (ow_consent_result === true) {
+                    const applicationDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
+                    await applicationDs.updateSysApplicationById({
+                        ow_consent: ow_consent_result
+                    }, { id: flow.authRecord.application_id });
+                }
+
+                await this.updateFlow(flow);
             }
 
             if (!error) {
                 if (flow.account_state === false) {
-                    resp = "account";
+                    resp = RESP_ACCOUNT;
                 } else {
                     // account state is true here
                     await this.checkMFABypass(flow);
@@ -114,7 +152,13 @@ export class AuthenticateEndpointController extends EndpointController {
                             await this.updateFlow(flow);
                         }
                         // send mfa code
-                        resp = "mfa";
+                        resp = RESP_MFA;
+                    } else if (flow.consent_state === false) {
+                        resp = RESP_CONSENT;
+                        consent_claims = await this.getClaimsList(flow.authRequest);
+                        consent_display_name = [flow.profile?.firstname, flow.profile?.middle_name, flow.profile?.lastname].filter(Boolean).join(" ");
+                        const { roles } = await databaseUtils.getUserRolesAndPermissions(flow.user.id, flow.authRecord.application_id, tenantRecord);
+                        ow_consent = roles.filter(r => (r.role === "ADMINISTRATOR")).length !== 0;
                     } else {
                         // mfa state is true
                         // here is the authentication complete
@@ -131,10 +175,13 @@ export class AuthenticateEndpointController extends EndpointController {
         } else {
             return new SuccessResponse<ICheckSetFlowResponse>({
                 data: {
+                    consent_display_name,
+                    ow_consent,
                     allow_reset_password,
                     application_name,
                     logo,
                     tenant_name,
+                    consent_claims,
                     resp,
                     error,
                     expires_in,

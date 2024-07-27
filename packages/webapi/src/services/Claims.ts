@@ -40,6 +40,55 @@ export interface IClames {
     auth_request_params: IAuthorizeRequest;
 }
 
+export enum eScopes {
+    userinfo = "userinfo",
+    profile = "profile",
+    openid = "openid",
+    email = "email",
+    phone = "phone",
+    acl = "acl",
+    address = "address",
+}
+
+export enum eClaims {
+    name = "name",
+    updated_at = "updated_at",
+    given_name = "given_name",
+    family_name = "family_name",
+    middle_name = "middle_name",
+    nickname = "nickname",
+    preferred_username = "preferred_username",
+    signout_url = "signout_url",
+    profile = "profile",
+    picture = "picture",
+    website = "website",
+    gender = "gender",
+    birthdate = "birthdate",
+    zoneinfo = "zoneinfo",
+    locale = "locale",
+    profile_updated_at = "profile_updated_at",
+    address = "address",
+    sub = "sub",
+    email = "email",
+    email_verified = "email_verified",
+    phone_number = "phone_number",
+    phone_number_verified = "phone_number_verified",
+    tenant = "tenant",
+    roles = "roles",
+    permissions = "permissions",
+}
+
+/**
+ * @export
+ * @param {...eScopes[]} scopes
+ * @return {*} 
+ */
+export function mergeScopes(...scopes: eScopes[]) {
+    return scopes.map(s => {
+        return s.toString();
+    }).join(" ");
+}
+
 /**
  * Implements Claims compilation
  *
@@ -81,57 +130,57 @@ export class Claims {
 
             this.handlers = [
                 {
-                    scope: ["userinfo", "profile"],
-                    claim: "name",
+                    scope: [eScopes.userinfo, eScopes.profile],
+                    claim: eClaims.name,
                     handler: this.handleClaim(() => {
                         return `${profile.firstname} ${profile.lastname}`;
                     })
                 },
                 {
-                    scope: ["userinfo", "profile"],
-                    claim: "updated_at",
+                    scope: [eScopes.userinfo, eScopes.profile],
+                    claim: eClaims.updated_at,
                     handler: this.handleClaim(() => {
                         return commonUtils.millisecondsToSeconds(new Date(user.date_modified).getTime());
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "given_name",
+                    scope: eScopes.profile,
+                    claim: eClaims.given_name,
                     handler: this.handleClaim(() => {
                         return profile.firstname;
                     })
                 },
                 {
-                    scope: ["userinfo", "profile"],
-                    claim: "family_name",
+                    scope: [eScopes.userinfo, eScopes.profile],
+                    claim: eClaims.family_name,
                     handler: this.handleClaim(() => {
                         return profile.lastname;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "middle_name",
+                    scope: eScopes.profile,
+                    claim: eClaims.middle_name,
                     handler: this.handleClaim(() => {
                         return profile.middle_name;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "nickname",
+                    scope: eScopes.profile,
+                    claim: eClaims.nickname,
                     handler: this.handleClaim(() => {
                         return profile.firstname;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "preferred_username",
+                    scope: eScopes.profile,
+                    claim: eClaims.preferred_username,
                     handler: this.handleClaim(() => {
                         return fq_email;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "signout_url",
+                    scope: eScopes.profile,
+                    claim: eClaims.signout_url,
                     handler: this.handleClaim(() => {
                         const signOutURL = new URL(`${serverUrl}/${tenant.name}/oauth2/logout`);
                         signOutURL.searchParams.append("client_id", application.client_id);
@@ -140,64 +189,64 @@ export class Claims {
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "profile",
+                    scope: eScopes.profile,
+                    claim: eClaims.profile,
                     handler: this.handleClaim(() => {
                         return `${serverUrl}/${tenant.id}/me`;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "picture",
+                    scope: eScopes.profile,
+                    claim: eClaims.picture,
                     handler: this.handleClaim(() => {
                         return profile.avatar ? profile.avatar : neutralAvatar;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "website",
+                    scope: eScopes.profile,
+                    claim: eClaims.website,
                     handler: this.handleClaim(() => {
                         return profile.website;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "gender",
+                    scope: eScopes.profile,
+                    claim: eClaims.gender,
                     handler: this.handleClaim(() => {
                         return profile.gender;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "birthdate",
+                    scope: eScopes.profile,
+                    claim: eClaims.birthdate,
                     handler: this.handleClaim(() => {
                         return profile.birthdate;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "zoneinfo",
+                    scope: eScopes.profile,
+                    claim: eClaims.zoneinfo,
                     handler: this.handleClaim(() => {
                         return profile.zoneinfo;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "locale",
+                    scope: eScopes.profile,
+                    claim: eClaims.locale,
                     handler: this.handleClaim(() => {
                         return profile.locale;
                     })
                 },
                 {
-                    scope: "profile",
-                    claim: "profile_updated_at",
+                    scope: eScopes.profile,
+                    claim: eClaims.profile_updated_at,
                     handler: this.handleClaim(() => {
                         return new Date(profile.date_modified).getTime();
                     })
                 },
                 {
-                    scope: "address",
-                    claim: "address",
+                    scope: eScopes.address,
+                    claim: eClaims.address,
                     handler: this.handleClaim(() => {
                         return {
                             address: profile.address || "n/a",
@@ -209,44 +258,44 @@ export class Claims {
                     })
                 },
                 {
-                    scope: "openid",
-                    claim: "sub",
+                    scope: eScopes.openid,
+                    claim: eClaims.sub,
                     handler: this.handleClaim(() => {
                         return user.id;
                     })
                 },
                 {
-                    scope: "email",
-                    claim: "email",
+                    scope: eScopes.email,
+                    claim: eClaims.email,
                     handler: this.handleClaim(() => {
                         return profile.email || user.username;
                     })
                 },
                 {
-                    scope: "email",
-                    claim: "email_verified",
+                    scope: eScopes.email,
+                    claim: eClaims.email_verified,
                     handler: this.handleClaim((essential) => {
                         // if not value in the db then return false when essential otherwise return whatever in the db
                         return essential ? (isNullOrUndef(user.is_active) ? false : user.is_active) : user.is_active;
                     })
                 },
                 {
-                    scope: "phone",
-                    claim: "phone_number",
+                    scope: eScopes.phone,
+                    claim: eClaims.phone_number,
                     handler: this.handleClaim(() => {
                         return profile.phone_number;
                     })
                 },
                 {
-                    scope: "phone",
-                    claim: "phone_number_verified",
+                    scope: eScopes.phone,
+                    claim: eClaims.phone_number_verified,
                     handler: this.handleClaim(() => {
                         return profile.phone_number_verified;
                     })
                 },
                 {
-                    scope: ["openid", "acl"],
-                    claim: "tenant",
+                    scope: [eScopes.openid, eScopes.acl],
+                    claim: eClaims.tenant,
                     handler: this.handleClaim(() => {
                         return {
                             id: tenant.id,
@@ -256,15 +305,15 @@ export class Claims {
                     })
                 },
                 {
-                    scope: ["openid", "acl"],
-                    claim: "roles",
+                    scope: [eScopes.acl],
+                    claim: eClaims.roles,
                     handler: this.handleClaim(() => {
                         return roles;
                     })
                 },
                 {
-                    scope: ["openid", "acl"],
-                    claim: "permissions",
+                    scope: [eScopes.acl],
+                    claim: eClaims.permissions,
                     handler: this.handleClaim(() => {
                         return permissions;
                     })
@@ -273,6 +322,32 @@ export class Claims {
         } else {
             this.handlers = [];
         }
+    }
+
+    /**
+     * @param {string[]} [customScopes]
+     * @return {*} 
+     * @memberof Claims
+     */
+    public getClaimsList(customScopes?: string[]) {
+        let { claims, scope } = this.config.auth_request_params || {};
+        let claimsObj: IDictionaryOf<IClaim> = {};
+        try {
+            claimsObj = isObject(claims) ? claims : JSON.parse(claims);
+            if (!isObject(claimsObj)) {
+                claimsObj = {};
+            }
+        } catch {
+            // no-op
+        }
+
+        const scopeList = Array.from(
+            new Set([...(customScopes || []), ...[scope, Object.keys(claimsObj)].filter(Boolean)])
+        )
+            .join(" ")
+            .trim();
+
+        return Object.keys(commonUtils.parseSeparatedTokens(scopeList));
     }
 
     /**

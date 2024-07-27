@@ -589,6 +589,16 @@ export interface ICheckSetFlowRequest {
 	 * @memberOf ICheckSetFlowRequest
 	 */
 	mfa_result?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	consent?: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	ow_consent?: boolean;
 }
 
 /**
@@ -620,7 +630,22 @@ export interface ICheckSetFlow {
 	 * @type string
 	 * @memberOf ICheckSetFlow
 	 */
+	consent_display_name?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
 	mfa_type?: string;
+	/**
+	 * @type string[]
+	 * @memberOf ICheckSetFlow
+	 */
+	consent_claims?: string[];
+	/**
+	 * @type boolean
+	 * @memberOf ICheckSetFlow
+	 */
+	ow_consent?: boolean;
 	/**
 	 * @type boolean
 	 * @memberOf ICheckSetFlow

@@ -46,6 +46,7 @@ export function createCustomTypes(order: number) {
             .addRefType("user", "#/definitions/sys_user")
             .addRefType("profile", "#/definitions/sys_profile")
             .addRefType("tenant", "#/definitions/sys_tenant")
+            .addRefType("client", "#/definitions/sys_client")
             .addRefType("roles", "#/definitions/sys_role", { array: true })
             .addRefType("permissions", "#/definitions/sys_permission", { array: true });
     }

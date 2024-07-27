@@ -76,6 +76,7 @@ export enum eSysApplication {
 	DESCRIPTION = "description",
 	IS_SYSTEM = "is_system",
 	IS_ACTIVE = "is_active",
+	OW_CONSENT = "ow_consent",
 	TENANT_ID = "tenant_id"
 }
 
@@ -283,6 +284,20 @@ export enum eSysRefreshToken {
 }
 
 /**
+ * Enum of the type sys_consent
+ * @export
+ * @enum
+ */
+export enum eSysConsent {
+	$name = "sys_consent",
+	ID = "id",
+	IS_CONSENT = "is_consent",
+	SCOPE = "scope",
+	APPLICATION_ID = "application_id",
+	USER_ID = "user_id"
+}
+
+/**
  * Enum of the type sys_mfa
  * @export
  * @enum
@@ -321,6 +336,7 @@ export enum eSysSecretView {
 export enum eSysAuthorizationView {
 	$name = "sys_authorization_view",
 	APPLICATION_ID = "application_id",
+	OW_CONSENT = "ow_consent",
 	LOGO = "logo",
 	APPLICATION_NAME = "application_name",
 	CLIENT_ID = "client_id",
@@ -403,6 +419,7 @@ export enum ePortaAccount {
 	USER = "user",
 	PROFILE = "profile",
 	TENANT = "tenant",
+	CLIENT = "client",
 	ROLES = "roles",
 	PERMISSIONS = "permissions"
 }
