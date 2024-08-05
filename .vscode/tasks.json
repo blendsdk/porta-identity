@@ -1,0 +1,89 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start Blend Dev",
+            "dependsOn": [
+                "WebAPI Watch TS",
+                "WebClient DEV",
+                "Dev Proxy"
+            ],
+            "problemMatcher": [],
+            "group": "none"
+        },
+        {
+            "label": "WebAPI Watch TS",
+            "type": "shell",
+            "command": "yarn",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/webapi"
+            },
+            "args": [
+                "watch:ts",
+            ],
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "WebClient DEV",
+            "type": "shell",
+            "command": "yarn",
+            "args": [
+                "dev",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/packages/webclient"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "CodeGen",
+            "type": "shell",
+            "command": "./generate.sh",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/codegen"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Dev Proxy",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "compose",
+                "up"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/devproxy"
+            },
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            }
+        },
+    ]
+}
