@@ -148,7 +148,7 @@ export const useAuthenticationFlow = () => {
         })
             .catch(catchSystemError);
 
-    }, []);
+    }, [catchSystemError, setState, state]);
 
     useEffect(() => {
         if (isFinalize(state.resp)) {

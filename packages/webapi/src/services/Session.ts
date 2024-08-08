@@ -127,8 +127,6 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
             client_secret = undefined
         } = req.context.getParameters<{ access_token: string; client_id: string; client_secret: string; }>();
 
-        console.log(req.context.getParameters());
-
         if (access_token) {
             req.context.addService(KEY_AUTH_TOKEN_TYPE, eTokenType.BEARER_TOKEN);
             return access_token;

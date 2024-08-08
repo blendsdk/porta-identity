@@ -8,8 +8,8 @@ import { GetAccount } from "./GetAccount";
 import { GetConsent } from "./GetConsent";
 import { GetMFA } from "./GetMFA";
 import { InvalidSession } from "./InvalidSession";
-import { IUseAuthenticationFlowState, useAuthenticationFlow } from "./hooks";
 import { useStyles } from "./styles";
+import { IUseAuthenticationFlowState, useAuthenticationFlow } from "./useAuthenticationFlow";
 
 export interface ILoginViewProps {
 }

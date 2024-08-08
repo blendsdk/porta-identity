@@ -4,7 +4,7 @@ import { makeStyles, shorthands } from "@griffel/react";
 import { FormikProps } from "formik";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "../../../system";
-import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./hooks";
+import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./useAuthenticationFlow";
 
 export interface IGetMFA {
     form: FormikProps<IAuthenticationDialogModel>;

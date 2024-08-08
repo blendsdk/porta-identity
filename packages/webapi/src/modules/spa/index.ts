@@ -1,4 +1,7 @@
+import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
+import { base64Encode } from "@blendsdk/stdlib";
 import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
@@ -7,17 +10,17 @@ import * as path from "path";
 let indexFile: string = null;
 let versionInfo = null;
 
-// const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => {
-//     const { tenant, locale } = req.context.getParameters<{ locale: string; tenant: string }>();
-//     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/${endpoint}`);
-//     if (state) {
-//         url.searchParams.append("state", base64Encode(JSON.stringify(state)));
-//     }
-//     if (locale) {
-//         url.searchParams.append("locale", locale);
-//     }
-//     return url.toString();
-// };
+const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => {
+    const { tenant, locale } = req.context.getParameters<{ locale: string; tenant: string; }>();
+    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/${endpoint}`);
+    if (state) {
+        url.searchParams.append("state", base64Encode(JSON.stringify(state)));
+    }
+    if (locale) {
+        url.searchParams.append("locale", locale);
+    }
+    return url.toString();
+};
 
 export const SPARoutes = (): IRouter => {
     return {
@@ -42,26 +45,6 @@ export const SPARoutes = (): IRouter => {
             //         const url = createOIDCRedirect("signin", req, {
             //             location: `${req.context.getServerURL()}/fe/manage/${tenant}/dashboard`
             //         });
-            //         res.send(renderGetRedirect(url.toString()));
-            //     }
-            // },
-            // {
-            //     method: "get",
-            //     public: true,
-            //     url: "/:tenant/signout",
-            //     request: {
-            //         properties: {
-            //             tenant: {
-            //                 type: eJsonSchemaType.string
-            //             },
-            //             locale: {
-            //                 type: eJsonSchemaType.string,
-            //                 location: eParameterLocation.query
-            //             }
-            //         }
-            //     },
-            //     handlers: (req: HttpRequest, res: HttpResponse) => {
-            //         const url = createOIDCRedirect("signout", req);
             //         res.send(renderGetRedirect(url.toString()));
             //     }
             // },
@@ -123,6 +106,27 @@ export const SPARoutes = (): IRouter => {
             //         res.send(renderGetRedirect(url.toString()));
             //     }
             // },
+
+            {
+                method: "get",
+                public: true,
+                url: "/:tenant/signout",
+                request: {
+                    properties: {
+                        tenant: {
+                            type: eJsonSchemaType.string
+                        },
+                        locale: {
+                            type: eJsonSchemaType.string,
+                            location: eParameterLocation.query
+                        }
+                    }
+                },
+                handlers: (req: HttpRequest, res: HttpResponse) => {
+                    const url = createOIDCRedirect("signout", req);
+                    res.send(renderGetRedirect(url.toString()));
+                }
+            },
             {
                 method: "get",
                 url: "/api/version",

@@ -3,7 +3,7 @@ import { DefaultButton, makeStyles, MessageBar, MessageBarType, PrimaryButton } 
 import { shorthands } from "@griffel/react";
 import { FormikProps } from "formik";
 import { useTranslation } from "../../../system";
-import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./hooks";
+import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./useAuthenticationFlow";
 
 export interface IGetConsent {
     form: FormikProps<IAuthenticationDialogModel>;

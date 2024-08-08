@@ -213,8 +213,6 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         const requested = commonUtils.parseSeparatedTokens(auth_request_params["scope"] || "");
         const consented = commonUtils.parseSeparatedTokens((scope || "").replace(/openid|offline_access/gi, ""));
 
-        console.log({ requested, consented });
-
         if (!is_consent) {
             // set the not consented scopes to false
             Object.keys(consented).forEach(item => {
