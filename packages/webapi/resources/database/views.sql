@@ -97,4 +97,17 @@ from
 	inner join sys_role sr on sr.id  = sur.role_id 
 	inner join sys_role_permission srp on srp.role_id = sur.role_id
 	inner join sys_permission sp on sp.id = srp.permission_id
-	left outer join sys_application ap on ap.id = sp.application_id
+	left outer join sys_application ap on ap.id = sp.application_id;
+DROP VIEW IF EXISTS sys_session_view CASCADE;
+CREATE OR REPLACE VIEW sys_session_view AS select
+	ss.id as session_id,
+	sa.client_id,
+	ss.user_id,
+	row_to_json(ss.*) as session,	
+	row_to_json(sa.*) as application,
+	row_to_json(sc.*) as client
+from
+	sys_session ss
+	inner join sys_application_session sas on sas.session_id = ss.id
+	inner join sys_application sa on sa.id  = sas.application_id
+	inner join sys_client sc on sc.application_id = sa.id

@@ -1,0 +1,164 @@
+import { generateRandomUUID } from "@blendsdk/crypto";
+import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
+import { Response, SuccessResponse } from "@blendsdk/webafx-common";
+import { COOKIE_AUTH_FLOW_TTL, IPortaAccount, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ISysSessionView, ISysTenant } from "@porta/shared";
+import * as jose from "jose";
+import { commonUtils, databaseUtils, EndpointController, ILogoutFlow } from "../../../../services";
+import { CONST_AUTH_FLOW_TTL, eErrorType } from "../../../../types";
+
+type TLogoutRequest = ISessionLogoutPostRequest | ISessionLogoutGetRequest;
+type TlogoutResponse = ISessionLogoutGetResponse | ISessionLogoutPostResponse;
+type TIdToken = jose.JWTVerifyResult<jose.JWTPayload>;
+
+export class EndSessionController extends EndpointController {
+
+    /**
+     * Validates and retrieves the ID token
+     *
+     * @protected
+     * @param {string} tenant
+     * @param {string} id_token
+     * @param {string} client_id
+     * @returns {Promise<{ idToken: any; errors: string[] }>}
+     * @memberof EndSessionController
+     */
+    protected async validateIDToken(
+        tenantRecord: ISysTenant,
+        id_token: string,
+        client_id: string,
+        errors: string[]
+    ): Promise<TIdToken> {
+        let idToken: TIdToken = undefined;
+        if (id_token) {
+            const { publicKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
+            const pKey = await jose.importSPKI(publicKey, "ES256");
+
+            try {
+                idToken = (await jose.jwtVerify(id_token, pKey, { issuer: this.getIssuer(tenantRecord.id), })) || {} as any;
+            } catch (err) {
+                errors.push(err.message);
+            }
+
+            if (client_id && idToken?.payload?.aud !== client_id) {
+                errors.push("Invalid id_token aud!");
+            }
+        }
+        return idToken;
+    }
+
+    /**
+     * @protected
+     * @return {*} 
+     * @memberof EndSessionController
+     */
+    protected isPostRequest() {
+        return this.request.method.toLocaleLowerCase() !== "get";
+    }
+
+    /**
+     * Handle the end session request
+     *
+     * @param {ISessionLogoutGetRequest} request
+     * @returns {Promise<Response<ISessionLogoutGetResponse>>}
+     * @memberof EndSessionController
+     */
+    public async handleRequest(
+        params: TLogoutRequest
+    ): Promise<Response<TlogoutResponse>> {
+        // get the request params
+        const { state, tenant, lf: logoutFlow = undefined, post_logout_redirect_uri } = params || {};
+
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
+
+        if (!tenantRecord) {
+            return this.responseWithError({
+                error: eErrorType.invalid_tenant,
+                error_description: tenant,
+                redirect_uri: post_logout_redirect_uri,
+                state
+            },
+                this.isPostRequest()
+            );
+        }
+
+        if (logoutFlow) {
+            throw new Error("Not implemented yet!");
+        } else {
+            return await this.startLogoutFlow(tenantRecord, params);
+        }
+    }
+
+
+    protected async startLogoutFlow(tenantRecord: ISysTenant, params: TLogoutRequest) {
+        const { state, id_token_hint, client_id, logout_hint } = params || {};
+        const errors: string[] = [];
+        let sessionView: ISysSessionView = undefined;
+
+        const idToken = await this.validateIDToken(tenantRecord, id_token_hint, client_id, errors);
+
+        if (errors.length === 0) {
+
+            //Find by id_token
+            if (idToken) {
+                const { payload } = idToken;
+                const { sub, aud } = payload || {};
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(aud.toString(), sub, tenantRecord);
+            }
+
+            // Find by client_id logout_hit is provided
+            if (!sessionView && client_id && logout_hint) {
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(client_id, logout_hint, tenantRecord);
+            }
+
+            // Find by current session
+            if (!sessionView) {
+                const { user, application } = this.getContext().getUser<IPortaAccount>();
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(application.client_id, user.id, tenantRecord);
+            }
+
+            // So here we found a session
+            if (sessionView) {
+
+                const flowId = generateRandomUUID();
+                await this.getCache().setValue<ILogoutFlow>(flowId, {
+                    state,
+                    session: sessionView.session,
+                    application: sessionView.application,
+                    client: sessionView.client,
+                    tenant: tenantRecord.name
+                });
+
+                const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL * 2);
+
+                this.setCookie(COOKIE_AUTH_FLOW_TTL, flowId, {
+                    expires: new Date(expire),
+                    secure: true,
+                    httpOnly: true,
+                    sameSite: "strict"
+                });
+
+                return new SuccessResponse(renderGetRedirect(`${this.getServerURL()}/fe/auth/signout`));
+
+            } else {
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: "unable_to_determine_session",
+                        state
+                    },
+                    this.isPostRequest()
+                );
+            }
+
+        } else {
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_request,
+                    error_description: errors.join(","),
+                    state
+                },
+                this.isPostRequest()
+            );
+        }
+    }
+}

@@ -3,7 +3,16 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysUser, ISysProfile, ISysTenant, ISysClient, ISysRole, ISysPermission } from "./generated_database_types";
+import {
+	ISysApplication,
+	ISysSession,
+	ISysUser,
+	ISysProfile,
+	ISysTenant,
+	ISysClient,
+	ISysRole,
+	ISysPermission
+} from "./generated_database_types";
 
 /**
  * @export
@@ -51,6 +60,16 @@ export interface IOpsResponse {
  * @interface IPortaAccount
  */
 export interface IPortaAccount {
+	/**
+	 * @type ISysApplication
+	 * @memberOf IPortaAccount
+	 */
+	application: ISysApplication;
+	/**
+	 * @type ISysSession
+	 * @memberOf IPortaAccount
+	 */
+	session: ISysSession;
 	/**
 	 * @type ISysUser
 	 * @memberOf IPortaAccount

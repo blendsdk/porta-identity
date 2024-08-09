@@ -18,6 +18,14 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
         const { has_list_by_expression } = table.getMetaData();
 
+        if (tableName == "sys_application_session") {
+
+            svc.defineFindByColumns({
+                table: tableName
+            }, table.getColumns("session_id"));
+
+        }
+
         // if (tableName === "sys_refresh_token") {
         //     svc.defineDeleteByColumnMethod(
         //         {
@@ -30,21 +38,26 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         // }
 
         // if (tableName === "sys_session") {
+
         //     svc.defineDeleteByColumnMethod(
         //         {
         //             table: tableName
         //         },
-        //         table.getColumns().filter((c) => {
-        //             return c.getName() === "user_id";
-        //         })
+        //         table.getColumns("user_id")
         //     );
+
+        //     svc.defineFindByColumns(
+        //         {
+        //             table: tableName,
+        //         },
+        //         table.getColumns("id", "user_id")
+        //     );
+
         //     svc.defineDeleteByColumnMethod(
         //         {
         //             table: tableName
         //         },
-        //         table.getColumns().filter((c) => {
-        //             return c.getName() === "user_id" || c.getName() === "client_id";
-        //         })
+        //         table.getColumns("id", "user_id")
         //     );
         // }
 
@@ -91,6 +104,10 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                     returnValue: eReturnValue.dataOnly,
                     type: "query"
                 });
+            });
+
+            svc.defineListByExpressionMethod({
+                table: "sys_session_view"
             });
 
             svc.defineListByExpressionMethod({

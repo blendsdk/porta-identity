@@ -1,7 +1,7 @@
 import { expression } from "@blendsdk/expression";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysConsent, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysUserPermissionView } from "@porta/shared";
+import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysConsent, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysSessionView, eSysUserPermissionView } from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysConsentDataService } from "../dataservices/SysConsentDataService";
@@ -35,6 +35,29 @@ export class DatabaseUtils extends ServiceBase {
             await consentDs.updateSysConsentById(consent, { id: consentRecord.id });
         } else {
             await consentDs.insertIntoSysConsent(consent);
+        }
+    }
+
+    /**
+     * @param {string} client_id
+     * @param {string} user_id
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async findSessionByClientIDAndLogoutHint(client_id: string, user_id: string, tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const e = expression();
+        const result = await tenantDs.listSysSessionViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysSessionView.CLIENT_ID, client_id),
+                e.Equal(eSysSessionView.USER_ID, user_id)
+            )
+        ));
+        if (result.length === 1) {
+            result[0];
+        } else {
+            return undefined;
         }
     }
 

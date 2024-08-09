@@ -4,6 +4,27 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 export function createAuthenticationAPI(builder: ApiBuilder) {
 
     builder.defineApi({
+        id: "logout_flow_info",
+        url: "/lf/flow_info",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type);
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("application_name")
+                .addString("organization")
+                .addString("finalize_url")
+                .addBoolean("has_post_redirect");
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "session_logout_get",
         url: "/:tenant/oauth2/logout",
         group: "authorization",

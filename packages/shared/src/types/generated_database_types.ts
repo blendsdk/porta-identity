@@ -598,6 +598,28 @@ export interface ISysSession {
 
 /**
  * @export
+ * @interface ISysApplicationSession
+ */
+export interface ISysApplicationSession {
+	/**
+	 * @type string
+	 * @memberOf ISysApplicationSession
+	 */
+	id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISysApplicationSession
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysApplicationSession
+	 */
+	session_id: string;
+}
+
+/**
+ * @export
  * @interface ISysAccessToken
  */
 export interface ISysAccessToken {
@@ -1052,4 +1074,41 @@ export interface ISysUserPermissionView {
 	 * @memberOf ISysUserPermissionView
 	 */
 	role_id: string;
+}
+
+/**
+ * @export
+ * @interface ISysSessionView
+ */
+export interface ISysSessionView {
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	session_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ISysSessionView
+	 */
+	user_id: string;
+	/**
+	 * @type ISysSession
+	 * @memberOf ISysSessionView
+	 */
+	session: ISysSession;
+	/**
+	 * @type ISysApplication
+	 * @memberOf ISysSessionView
+	 */
+	application: ISysApplication;
+	/**
+	 * @type ISysClient
+	 * @memberOf ISysSessionView
+	 */
+	client: ISysClient;
 }

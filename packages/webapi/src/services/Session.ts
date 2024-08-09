@@ -43,8 +43,9 @@ export class PortaAuthSessionProviderModule extends SessionProviderModuleBase {
         const { accessToken = undefined, roles = undefined, permissions = undefined, application } =
             await databaseUtils.findAccessTokenByTenantAndToken(token, tenantRecord, use_reference) || {};
         if (accessToken) {
-            const { profile, tenant, user, client, auth_request_params } = accessToken;
+            const { profile, tenant, user, client, auth_request_params, session } = accessToken;
             return {
+                session,
                 profile,
                 tenant,
                 user,

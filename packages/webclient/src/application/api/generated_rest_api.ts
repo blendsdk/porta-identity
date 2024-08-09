@@ -19,6 +19,12 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
+	ILogoutFlowInfoRequest,
+	ILogoutFlowInfoResponse,
+	ISessionLogoutGetRequest,
+	ISessionLogoutGetResponse,
+	ISessionLogoutPostRequest,
+	ISessionLogoutPostResponse,
 	ITokenInfoRequest,
 	ITokenInfoResponse,
 	IUserInfoPostRequest,
@@ -46,6 +52,9 @@ export interface IPortaApi {
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
 	authorization: {
+		logoutFlowInfo: THttpRequest<ILogoutFlowInfoRequest | void, ILogoutFlowInfoResponse>;
+		sessionLogoutGet: THttpRequest<ISessionLogoutGetRequest, ISessionLogoutGetResponse>;
+		sessionLogoutPost: THttpRequest<ISessionLogoutPostRequest, ISessionLogoutPostResponse>;
 		tokenInfo: THttpRequest<ITokenInfoRequest, ITokenInfoResponse>;
 		userInfoPost: THttpRequest<IUserInfoPostRequest, IUserInfoPostResponse>;
 		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
@@ -80,6 +89,22 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			})
 		},
 		authorization: {
+			logoutFlowInfo: defineEndpoint({ method: "post", url: "/lf/flow_info" }),
+			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout" }),
+			sessionLogoutPost: defineEndpoint({
+				method: "post",
+				url: "/:tenant/oauth2/logout",
+				parameters: {
+					tenant: eParameterLocation.params,
+					id_token_hint: eParameterLocation.body,
+					logout_hint: eParameterLocation.body,
+					client_id: eParameterLocation.body,
+					post_logout_redirect_uri: eParameterLocation.body,
+					state: eParameterLocation.body,
+					ui_locales: eParameterLocation.body,
+					lf: eParameterLocation.body
+				}
+			}),
 			tokenInfo: defineEndpoint({
 				method: "post",
 				url: "/:tenant/oauth2/token_info",

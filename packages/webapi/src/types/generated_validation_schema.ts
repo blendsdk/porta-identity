@@ -496,6 +496,24 @@ export const validationSchema = {
 			},
 			required: ["user_id", "date_expire"]
 		},
+		sys_application_session: {
+			type: eJsonSchemaType.object,
+			properties: {
+				id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				application_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				session_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				}
+			},
+			required: ["application_id", "session_id"]
+		},
 		sys_access_token: {
 			type: eJsonSchemaType.object,
 			properties: {
@@ -909,9 +927,49 @@ export const validationSchema = {
 			},
 			required: ["user_id", "application_id", "permission", "permission_id", "role", "role_id"]
 		},
+		sys_session_view: {
+			type: eJsonSchemaType.object,
+			properties: {
+				session_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				user_id: {
+					type: eJsonSchemaType.string,
+					format: "uuid"
+				},
+				session: {
+					$ref: "#/definitions/sys_session",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				application: {
+					$ref: "#/definitions/sys_application",
+					type: eJsonSchemaType.object,
+					format: "json"
+				},
+				client: {
+					$ref: "#/definitions/sys_client",
+					type: eJsonSchemaType.object,
+					format: "json"
+				}
+			},
+			required: ["session_id", "client_id", "user_id", "session", "application", "client"]
+		},
 		porta_account: {
 			type: eJsonSchemaType.object,
 			properties: {
+				application: {
+					$ref: "#/definitions/sys_application",
+					type: eJsonSchemaType.object
+				},
+				session: {
+					$ref: "#/definitions/sys_session",
+					type: eJsonSchemaType.object
+				},
 				user: {
 					$ref: "#/definitions/sys_user",
 					type: eJsonSchemaType.object
@@ -941,7 +999,7 @@ export const validationSchema = {
 					}
 				}
 			},
-			required: ["user", "profile", "tenant", "client", "roles", "permissions"]
+			required: ["application", "session", "user", "profile", "tenant", "client", "roles", "permissions"]
 		},
 		error_data: {
 			type: eJsonSchemaType.object,
@@ -1069,6 +1127,111 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "user_state"]
+		},
+		logout_flow_info_request: {
+			type: eJsonSchemaType.object
+		},
+		logout_flow_info: {
+			type: eJsonSchemaType.object,
+			properties: {
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				},
+				finalize_url: {
+					type: eJsonSchemaType.string
+				},
+				has_post_redirect: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["logo", "application_name", "organization", "finalize_url", "has_post_redirect"]
+		},
+		session_logout_get_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				id_token_hint: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				logout_hint: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				state: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				ui_locales: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				},
+				lf: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.query
+				}
+			}
+		},
+		session_logout_get: {
+			type: eJsonSchemaType.object
+		},
+		session_logout_post_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				id_token_hint: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				logout_hint: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				client_id: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				state: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				ui_locales: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				},
+				lf: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.body
+				}
+			},
+			required: ["tenant"]
+		},
+		session_logout_post: {
+			type: eJsonSchemaType.object
 		},
 		token_info_request: {
 			type: eJsonSchemaType.object,

@@ -12,6 +12,7 @@ import { SysPermissionDataService } from "../SysPermissionDataService";
 import { SysUserRoleDataService } from "../SysUserRoleDataService";
 import { SysRolePermissionDataService } from "../SysRolePermissionDataService";
 import { SysSessionDataService } from "../SysSessionDataService";
+import { SysApplicationSessionDataService } from "../SysApplicationSessionDataService";
 import { SysAccessTokenDataService } from "../SysAccessTokenDataService";
 import { SysRefreshTokenDataService } from "../SysRefreshTokenDataService";
 import { SysConsentDataService } from "../SysConsentDataService";
@@ -134,6 +135,15 @@ export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLEx
 	 */
 	public sysSessionDataService(): SysSessionDataService {
 		return new SysSessionDataService({ sharedContext: this.sharedContext });
+	}
+
+	/**
+	 * Returns a new instance of SysApplicationSessionDataService
+	 * @return {*}  {SysApplicationSessionDataService}
+	 * @memberof DataServicesBase
+	 */
+	public sysApplicationSessionDataService(): SysApplicationSessionDataService {
+		return new SysApplicationSessionDataService({ sharedContext: this.sharedContext });
 	}
 
 	/**

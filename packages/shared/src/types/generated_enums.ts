@@ -250,6 +250,18 @@ export enum eSysSession {
 }
 
 /**
+ * Enum of the type sys_application_session
+ * @export
+ * @enum
+ */
+export enum eSysApplicationSession {
+	$name = "sys_application_session",
+	ID = "id",
+	APPLICATION_ID = "application_id",
+	SESSION_ID = "session_id"
+}
+
+/**
  * Enum of the type sys_access_token
  * @export
  * @enum
@@ -410,12 +422,29 @@ export enum eSysUserPermissionView {
 }
 
 /**
+ * Enum of the type sys_session_view
+ * @export
+ * @enum
+ */
+export enum eSysSessionView {
+	$name = "sys_session_view",
+	SESSION_ID = "session_id",
+	CLIENT_ID = "client_id",
+	USER_ID = "user_id",
+	SESSION = "session",
+	APPLICATION = "application",
+	CLIENT = "client"
+}
+
+/**
  * Enum of the type porta_account
  * @export
  * @enum
  */
 export enum ePortaAccount {
 	$name = "porta_account",
+	APPLICATION = "application",
+	SESSION = "session",
 	USER = "user",
 	PROFILE = "profile",
 	TENANT = "tenant",

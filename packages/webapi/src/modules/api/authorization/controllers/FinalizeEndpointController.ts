@@ -3,6 +3,7 @@ import { IDictionaryOf } from "@blendsdk/stdlib";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { COOKIE_AUTH_FLOW, IAuthorizeRequest, IFinalizeRequest, IFinalizeResponse, ISysAuthorizationView, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
+import { SysApplicationSessionDataService } from "../../../../dataservices/SysApplicationSessionDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, databaseUtils, formPostTemplate } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, CONST_OTA_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType } from "../../../../types";
@@ -179,11 +180,11 @@ export class FinalizeEndpointController extends EndpointController {
             });
         }
 
-        const { authRequest, user } = flow;
+        const { authRequest, user, authRecord } = flow;
         const { response_type } = authRequest;
 
         // Create or update the session for this flow
-        flow.session = await this.createOrUpdateSession(flow.tenantRecord, user);
+        flow.session = await this.createOrUpdateSession(flow.tenantRecord, user, authRecord);
         await this.updateFlow(flow);
 
         let fragmented: boolean = false;
@@ -283,8 +284,10 @@ export class FinalizeEndpointController extends EndpointController {
      * @param {ISysUser} user
      * @memberof FinalizeEndpointController
      */
-    protected async createOrUpdateSession(tenantRecord: ISysTenant, user: ISysUser) {
+    protected async createOrUpdateSession(tenantRecord: ISysTenant, user: ISysUser, authRecord: ISysAuthorizationView) {
         const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
+        const appSesDs = new SysApplicationSessionDataService({ tenantId: tenantRecord.id });
+
         const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
         let currentSessionId = this.getCookie(cookieId);
         let date_expire: Date = undefined;
@@ -312,6 +315,18 @@ export class FinalizeEndpointController extends EndpointController {
             currentSessionRecord = await sessionDs.updateSysSessionById({
                 date_expire: date_expire.toISOString()
             }, { id: currentSessionId });
+        }
+
+        // application_session for logout hint
+        const appSesRecord = await appSesDs.findSysApplicationSessionBySessionId({
+            session_id: currentSessionId
+        });
+
+        if (!appSesRecord) {
+            await appSesDs.insertIntoSysApplicationSession({
+                application_id: authRecord.application_id,
+                session_id: currentSessionId
+            });
         }
 
         this.setCookie(cookieId, currentSessionId, {

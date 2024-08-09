@@ -262,6 +262,174 @@ export interface ISaveUserStateResponse {
 
 /**
  * @export
+ * @interface ILogoutFlowInfoRequest
+ */
+export interface ILogoutFlowInfoRequest {}
+
+/**
+ * @export
+ * @interface ILogoutFlowInfo
+ */
+export interface ILogoutFlowInfo {
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	organization: string;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	finalize_url: string;
+	/**
+	 * @type boolean
+	 * @memberOf ILogoutFlowInfo
+	 */
+	has_post_redirect: boolean;
+}
+
+/**
+ * @export
+ * @interface ILogoutFlowInfoResponse
+ */
+export interface ILogoutFlowInfoResponse {
+	/**
+	 * @type ILogoutFlowInfo
+	 * @memberOf ILogoutFlowInfoResponse
+	 */
+	data: ILogoutFlowInfo;
+}
+
+/**
+ * @export
+ * @interface ISessionLogoutGetRequest
+ */
+export interface ISessionLogoutGetRequest {
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	tenant?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	id_token_hint?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	logout_hint?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	client_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	post_logout_redirect_uri?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	ui_locales?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutGetRequest
+	 */
+	lf?: string;
+}
+
+/**
+ * @export
+ * @interface ISessionLogoutGet
+ */
+export interface ISessionLogoutGet {}
+
+/**
+ * @export
+ * @interface ISessionLogoutGetResponse
+ */
+export interface ISessionLogoutGetResponse {}
+
+/**
+ * @export
+ * @interface ISessionLogoutPostRequest
+ */
+export interface ISessionLogoutPostRequest {
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	id_token_hint?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	logout_hint?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	client_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	post_logout_redirect_uri?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	ui_locales?: string;
+	/**
+	 * @type string
+	 * @memberOf ISessionLogoutPostRequest
+	 */
+	lf?: string;
+}
+
+/**
+ * @export
+ * @interface ISessionLogoutPost
+ */
+export interface ISessionLogoutPost {}
+
+/**
+ * @export
+ * @interface ISessionLogoutPostResponse
+ */
+export interface ISessionLogoutPostResponse {}
+
+/**
+ * @export
  * @interface ITokenInfoRequest
  */
 export interface ITokenInfoRequest {

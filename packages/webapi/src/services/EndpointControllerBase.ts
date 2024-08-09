@@ -1,7 +1,7 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysClient, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
 import * as jose from "jose";
 import crypto from "node:crypto";
 import { eOAuthGrantType, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
@@ -9,6 +9,14 @@ import { Claims } from "./Claims";
 import { commonUtils } from "./CommonUtils";
 import { databaseUtils, INewAccessTokenResult } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
+
+export interface ILogoutFlow {
+    session: ISysSession;
+    application: ISysApplication;
+    client: ISysClient;
+    state: string;
+    tenant: string;
+}
 
 /**
  * Base class for a controller

@@ -10,6 +10,9 @@ export const routeDefinitions: {
 	reference_data: { get_reference_data: IRouteBase };
 	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
 	authorization: {
+		logout_flow_info: IRouteBase;
+		session_logout_get: IRouteBase;
+		session_logout_post: IRouteBase;
 		token_info: IRouteBase;
 		user_info_post: IRouteBase;
 		user_info_get: IRouteBase;
@@ -35,6 +38,9 @@ export const routeDefinitions: {
 		save_user_state: { id: "save_user_state", method: "post", url: "/api/:tenant/user_state", public: false }
 	},
 	authorization: {
+		logout_flow_info: { id: "logout_flow_info", method: "post", url: "/lf/flow_info", public: true },
+		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: true },
+		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
 		token_info: { id: "token_info", method: "post", url: "/:tenant/oauth2/token_info", public: false },
 		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
 		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false },

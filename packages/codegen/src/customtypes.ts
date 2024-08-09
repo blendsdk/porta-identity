@@ -43,6 +43,8 @@ export function createCustomTypes(order: number) {
     } else {
         typeSchema
             .createAppendType("porta_account")
+            .addRefType("application", "#/definitions/sys_application")
+            .addRefType("session", "#/definitions/sys_session")
             .addRefType("user", "#/definitions/sys_user")
             .addRefType("profile", "#/definitions/sys_profile")
             .addRefType("tenant", "#/definitions/sys_tenant")

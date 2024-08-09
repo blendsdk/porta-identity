@@ -1,4 +1,5 @@
 import {
+	ISysSessionView,
 	ISysAccessTokenView,
 	ISysRefreshTokenView,
 	ISysUserPermissionView,
@@ -68,6 +69,18 @@ export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExe
 			undefined,
 			{ single: true }
 		);
+		return result.data;
+	}
+
+	/**
+	 * List a sys_session_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysSessionView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysSessionViewByExpression(params: TExpressionRenderer): Promise<ISysSessionView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysSessionView[]>(`sys_session_view`, params, { single: false });
 		return result.data;
 	}
 

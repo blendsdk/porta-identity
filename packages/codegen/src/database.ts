@@ -19,6 +19,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const user_role = database.addTable("sys_user_role");
     const role_permission = database.addTable("sys_role_permission");
     const session = database.addTable("sys_session");
+    const app_session = database.addTable("sys_application_session");
     const access_token = database.addTable("sys_access_token");
     const refresh_token = database.addTable("sys_refresh_token");
     const consent = database.addTable("sys_consent");
@@ -216,6 +217,17 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             default: "encode(digest(md5(random()::text), 'sha1'::text),'hex')"
         })
         .referenceColumnAuto("access_token_id", access_token, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        });
+
+    app_session
+        .primaryKeyColumn("id", true)
+        .referenceColumnAuto("application_id", application, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumnAuto("session_id", session, {
             onDelete: eDBForeignKeyAction.cascade,
             onUpdate: eDBForeignKeyAction.cascade
         });

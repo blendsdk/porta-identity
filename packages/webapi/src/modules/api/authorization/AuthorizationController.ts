@@ -1,14 +1,16 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ITokenInfoRequest, ITokenInfoResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
+import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ILogoutFlowInfoRequest, ILogoutFlowInfoResponse, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ITokenInfoRequest, ITokenInfoResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
 import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointController";
+import { EndSessionController } from "./controllers/EndSessionController";
 import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
 import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
 import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
+import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
 
 
 /**
@@ -18,6 +20,31 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+
+    public logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
+        const subController = new LogoutFlowInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ISessionLogoutGetRequest} params
+     * @return {*}  {Promise<Response<ISessionLogoutGetResponse>>}
+     * @memberof AuthorizationController
+     */
+    public sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ISessionLogoutPostRequest} params
+     * @return {*}  {Promise<Response<ISessionLogoutPostResponse>>}
+     * @memberof AuthorizationController
+     */
+    public sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
 
     /**
      * @param {ITokenInfoRequest} params

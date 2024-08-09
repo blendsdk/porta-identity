@@ -5,6 +5,12 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	ILogoutFlowInfoRequest,
+	ILogoutFlowInfoResponse,
+	ISessionLogoutGetRequest,
+	ISessionLogoutGetResponse,
+	ISessionLogoutPostRequest,
+	ISessionLogoutPostResponse,
 	ITokenInfoRequest,
 	ITokenInfoResponse,
 	IUserInfoPostRequest,
@@ -35,6 +41,30 @@ import {
 export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [POST] /lf/flow_info
+	 * @abstract
+	 * @param {ILogoutFlowInfoRequest} params
+	 * @returns {Promise<Response<ILogoutFlowInfoResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/logout
+	 * @abstract
+	 * @param {ISessionLogoutGetRequest} params
+	 * @returns {Promise<Response<ISessionLogoutGetResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>>;
+	/**
+	 * Method for handling [POST] /:tenant/oauth2/logout
+	 * @abstract
+	 * @param {ISessionLogoutPostRequest} params
+	 * @returns {Promise<Response<ISessionLogoutPostResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>>;
 	/**
 	 * Method for handling [POST] /:tenant/oauth2/token_info
 	 * @abstract
