@@ -14,8 +14,9 @@ export interface ILogoutFlow {
     session: ISysSession;
     application: ISysApplication;
     client: ISysClient;
-    state: string;
     tenant: string;
+    expire: number;
+    post_logout_redirect_uri: string;
 }
 
 /**

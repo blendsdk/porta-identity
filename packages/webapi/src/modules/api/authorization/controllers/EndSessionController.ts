@@ -1,8 +1,9 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW_TTL, IPortaAccount, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ISysSessionView, ISysTenant } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, IPortaAccount, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ISysSessionView, ISysTenant } from "@porta/shared";
 import * as jose from "jose";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { commonUtils, databaseUtils, EndpointController, ILogoutFlow } from "../../../../services";
 import { CONST_AUTH_FLOW_TTL, eErrorType } from "../../../../types";
 
@@ -82,9 +83,22 @@ export class EndSessionController extends EndpointController {
         }
 
         if (logoutFlow) {
-            throw new Error("Not implemented yet!");
+            return await this.finalizeSignout(tenantRecord, params);
         } else {
             return await this.startLogoutFlow(tenantRecord, params);
+        }
+    }
+
+
+    protected async finalizeSignout(tenantRecord: ISysTenant, params: TLogoutRequest) {
+        const sessionDb = new SysSessionDataService({ tenantId: tenantRecord.id });
+        const { lf: flowId } = params || {};
+        const { session, post_logout_redirect_uri } = await this.getCache().getValue<ILogoutFlow>(flowId);
+        await sessionDb.deleteSysSessionById({ id: session.id });
+        if (post_logout_redirect_uri) {
+            return new SuccessResponse(renderGetRedirect(post_logout_redirect_uri));
+        } else {
+            return new SuccessResponse(renderGetRedirect(`${this.getServerURL()}/fe/auth/signout/complete`));
         }
     }
 
@@ -112,25 +126,47 @@ export class EndSessionController extends EndpointController {
 
             // Find by current session
             if (!sessionView) {
-                const { user, application } = this.getContext().getUser<IPortaAccount>();
-                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(application.client_id, user.id, tenantRecord);
+                const { user, application } = this.getContext()?.getUser<IPortaAccount>() || {};
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(application?.client_id, user?.id, tenantRecord);
             }
+
+            // when has a session (on a public route)
+            if (!sessionView) {
+                const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
+                const sessionId = this.getCookie(cookieId);
+                sessionView = await databaseUtils.findSessionBySessionId(sessionId, tenantRecord);
+            }
+
 
             // So here we found a session
             if (sessionView) {
 
                 const flowId = generateRandomUUID();
+                const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL * 2);
+
+                let post_logout_redirect_uri = undefined;
+
+                if (params.post_logout_redirect_uri && params.post_logout_redirect_uri === sessionView.client.post_logout_redirect_uri) {
+                    const url = new URL(params.post_logout_redirect_uri);
+                    if (params.state) {
+                        url.searchParams.append("state", params.state);
+                    }
+                    if (params.ui_locales) {
+                        url.searchParams.append("ui_locales", params.ui_locales);
+                    }
+                    post_logout_redirect_uri = url.toString();
+                }
+
                 await this.getCache().setValue<ILogoutFlow>(flowId, {
-                    state,
+                    post_logout_redirect_uri,
                     session: sessionView.session,
                     application: sessionView.application,
                     client: sessionView.client,
-                    tenant: tenantRecord.name
+                    tenant: tenantRecord.name,
+                    expire,
                 });
 
-                const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL * 2);
-
-                this.setCookie(COOKIE_AUTH_FLOW_TTL, flowId, {
+                this.setCookie(COOKIE_AUTH_FLOW, flowId, {
                     expires: new Date(expire),
                     secure: true,
                     httpOnly: true,
@@ -146,7 +182,7 @@ export class EndSessionController extends EndpointController {
                         error_description: "unable_to_determine_session",
                         state
                     },
-                    this.isPostRequest()
+                    true
                 );
             }
 
@@ -157,7 +193,7 @@ export class EndSessionController extends EndpointController {
                     error_description: errors.join(","),
                     state
                 },
-                this.isPostRequest()
+                true
             );
         }
     }

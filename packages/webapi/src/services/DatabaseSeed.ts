@@ -274,7 +274,7 @@ export class DatabaseSeed {
         });
     }
 
-    protected async createConformanceTestApplication(tenantRecord: ISysTenant, serverURL: string, userRole: ISysRole) {
+    protected async createConformanceTestApplication(tenantRecord: ISysTenant, _serverURL: string, userRole: ISysRole) {
 
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
@@ -329,7 +329,7 @@ export class DatabaseSeed {
                         client_type: eClientType.confidential,
                         application_id: app.id,
                         redirect_uri,
-                        post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                        post_logout_redirect_uri: redirect_uri.replace("callback", "post_logout_redirect"),
                         access_token_length: ACCESS_TOKEN_TTL,
                         refresh_token_length: REFRESH_TOKEN_TTL,
                         mfa_bypass_days: 1

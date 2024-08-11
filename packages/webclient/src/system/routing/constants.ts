@@ -6,5 +6,10 @@ export const eSystemRoutes = {
     logout: {
         key: "logout",
         path: "/fe/auth/signout"
+    },
+    logoutComplete: {
+        key: "logout_complete",
+        path: "/fe/auth/signout/complete"
     }
+
 };

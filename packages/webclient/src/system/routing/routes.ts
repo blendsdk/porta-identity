@@ -14,6 +14,11 @@ export const systemRoutes: IRoute[] = [
         component: LogoutView
     },
     {
+        name: eSystemRoutes.logoutComplete.key,
+        path: eSystemRoutes.logoutComplete.path,
+        component: LogoutView
+    },
+    {
         name: "not-authorized-access",
         path: "/not-authorized-access",
         component: () => {

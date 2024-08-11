@@ -292,6 +292,16 @@ export interface ILogoutFlowInfo {
 	 */
 	finalize_url: string;
 	/**
+	 * @type number
+	 * @memberOf ILogoutFlowInfo
+	 */
+	expires_in: number;
+	/**
+	 * @type string
+	 * @memberOf ILogoutFlowInfo
+	 */
+	error?: string;
+	/**
 	 * @type boolean
 	 * @memberOf ILogoutFlowInfo
 	 */

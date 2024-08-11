@@ -54,11 +54,24 @@ export class DatabaseUtils extends ServiceBase {
                 e.Equal(eSysSessionView.USER_ID, user_id)
             )
         ));
-        if (result.length === 1) {
-            result[0];
-        } else {
-            return undefined;
-        }
+        return result.length !== 0 ? result[0] : undefined;
+    }
+
+    /**
+     * @param {string} session_id
+     * @param {ISysTenant} tenantRecord
+     * @return {*} 
+     * @memberof DatabaseUtils
+     */
+    public async findSessionBySessionId(session_id: string, tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
+        const e = expression();
+        const result = await tenantDs.listSysSessionViewByExpression(e.createRenderer(
+            e.And(
+                e.Equal(eSysSessionView.SESSION_ID, session_id)
+            )
+        ));
+        return result.length !== 0 ? result[0] : undefined;
     }
 
     /**

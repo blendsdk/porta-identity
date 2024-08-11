@@ -19,6 +19,8 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("application_name")
                 .addString("organization")
                 .addString("finalize_url")
+                .addNumber("expires_in")
+                .addString("error", { optional: true })
                 .addBoolean("has_post_redirect");
             typeSchema.createResponseType(response_type, payload_type);
         }

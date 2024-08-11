@@ -155,6 +155,7 @@ export const useAuthenticationFlow = () => {
             const url = new URL(state.resp);
             router.go(url.toString(), {}, true);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.resp]);
 
     useEffect(() => {
@@ -187,6 +188,7 @@ export const useAuthenticationFlow = () => {
                 clearTimeout(timeoutId);
             }
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reCheck]);
 
     return { state, form, t, onResendMFA };
