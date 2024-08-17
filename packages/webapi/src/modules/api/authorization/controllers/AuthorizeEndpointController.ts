@@ -167,18 +167,6 @@ export class AuthorizeEndpointController extends EndpointController {
             authRequest.prompt == eOAuthPrompt.select_account;
     }
 
-    protected async getConsentState(params: { authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }) {
-        const { authRecord, authRequest, tenantRecord, user } = params;
-        if (authRequest.prompt === eOAuthPrompt.consent) {
-            return false; // forced consent
-        } else if (isNullOrUndef(user)) {
-            return false; // user not logged in
-        } else {
-            const { is_consent = false } = (await databaseUtils.findConsentByUserAndApplication(user.id, authRecord.application_id, tenantRecord)) || {};
-            return is_consent || authRecord.ow_consent;
-        }
-    }
-
     /**
      * @protected
      * @param {ISysAuthorizationView} authRecord

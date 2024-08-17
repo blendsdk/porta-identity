@@ -1,10 +1,10 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
-import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isObject } from "@blendsdk/stdlib";
+import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isNullOrUndef, isObject } from "@blendsdk/stdlib";
 import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysClient, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysAuthorizationView, ISysClient, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
 import * as jose from "jose";
 import crypto from "node:crypto";
-import { eOAuthGrantType, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
+import { eOAuthGrantType, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
 import { Claims } from "./Claims";
 import { commonUtils } from "./CommonUtils";
 import { databaseUtils, INewAccessTokenResult } from "./DatabaseUtils";
@@ -28,6 +28,25 @@ export interface ILogoutFlow {
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
+
+    /**
+     * @protected
+     * @param {{ authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }} params
+     * @return {*} 
+     * @memberof EndpointController
+     */
+    protected async getConsentState(params: { authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }) {
+        const { authRecord, authRequest, tenantRecord, user } = params;
+        if (authRequest.prompt === eOAuthPrompt.consent) {
+            return false; // forced consent
+        } else if (isNullOrUndef(user)) {
+            return false; // user not logged in
+        } else {
+            const { is_consent = false } = (await databaseUtils.findConsentByUserAndApplication(user.id, authRecord.application_id, tenantRecord)) || {};
+            return is_consent || authRecord.ow_consent;
+        }
+    }
+
 
     /**
      * @protected

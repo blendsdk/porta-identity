@@ -93,6 +93,7 @@ export class AuthenticateEndpointController extends EndpointController {
                         flow.account_state = true;
                         flow.user = userRecord;
                         flow.profile = await profileDs.findProfileByUserId({ user_id: userRecord.id });
+                        flow.consent_state = await this.getConsentState({ authRecord: flow.authRecord, authRequest: flow.authRequest, user: userRecord, tenantRecord });
                         await this.updateFlow(flow);
                     } else {
                         error = true;
