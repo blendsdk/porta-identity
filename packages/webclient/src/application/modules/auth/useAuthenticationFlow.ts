@@ -1,10 +1,13 @@
+/* eslint-disable no-useless-escape */
 import { useObjectState } from "@blendsdk/react";
 import { filterObject } from "@blendsdk/stdlib";
-import { ICheckSetFlow, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CONSENT, RESP_MFA } from "@porta/shared";
+import { ICheckSetFlow, INVALID_PWD, INVALID_PWD_MATCH, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_MFA } from "@porta/shared";
 import { useFormik } from "formik";
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
 import { ApplicationApi, useRouter, useSystemError, useTranslation } from "../../../system";
+
+const MIN_PASSWORD_LENGTH = 8;
 
 export const validateData = (data: any, validator: (data: any) => void) => {
     try {
@@ -19,6 +22,8 @@ export interface IAuthenticationDialogModel {
     rememberMe: boolean;
     username: string;
     password: string;
+    new_password_confirm: string;
+    new_password: string;
     consent: boolean;
     ow_consent: boolean;
     mfa: string;
@@ -57,6 +62,8 @@ export const useAuthenticationFlow = () => {
             rememberMe: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) ? true : false,
             username: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) || "",
             password: "",
+            new_password: "",
+            new_password_confirm: "",
             consent: false,
             ow_consent: false,
             mfa: ""
@@ -79,6 +86,26 @@ export const useAuthenticationFlow = () => {
                     }),
                 };
                 return filterObject(val, { undefinedValues: true });
+            } else if (state.resp === RESP_CHANGE_PASSWORD) {
+                const val = {
+                    password: validateData(values.password, (data) => {
+                        yup.string().required("password_is_required").validateSync(data);
+                    }),
+                    new_password: validateData(values.new_password, (data) => {
+                        yup.string()
+                            .required("password_is_required")
+                            .min(MIN_PASSWORD_LENGTH, "err_min_password_length")
+                            .notOneOf([values.password], "err_not_same_password")
+                            .matches(/[a-z]+/, "password must have at least one lower case character")
+                            .matches(/[A-Z]+/, "password must have at least one upper case character")
+                            .matches(/[!@#\$%\^&\*\(\)_\+\-=\[\]\{\};:'"\\|,.<>\/\?`~]+/, "password must have at least one special character")
+                            .matches(/\d+/, "password must have at least one number").validateSync(data);
+                    }),
+                    new_password_confirm: validateData(values.new_password_confirm, (data) => {
+                        yup.string().required().oneOf([values.new_password], "err_password_do_not_match").validateSync(data);
+                    })
+                };
+                return filterObject(val, { undefinedValues: true });
             }
         },
         onSubmit: (values) => {
@@ -96,7 +123,7 @@ export const useAuthenticationFlow = () => {
                 }).then(({ data }) => {
                     setState({
                         fetching: isFinalize(data.resp),
-                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT || data.resp === RESP_CONSENT ? data.resp : state.curState,
+                        curState: data.resp !== state.curState && data.resp !== INVALID_PWD ? data.resp : state.curState,
                         ...data
                     });
                 })
@@ -109,7 +136,7 @@ export const useAuthenticationFlow = () => {
                 }).then(({ data }) => {
                     setState({
                         fetching: isFinalize(data.resp),
-                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT ? data.resp : state.curState,
+                        curState: data.resp !== state.curState ? data.resp : state.curState,
                         ...data
                     });
                 })
@@ -124,7 +151,23 @@ export const useAuthenticationFlow = () => {
                 }).then(({ data }) => {
                     setState({
                         fetching: isFinalize(data.resp),
-                        curState: data.resp === RESP_MFA || data.resp === RESP_ACCOUNT ? data.resp : state.curState,
+                        curState: data.resp !== state.curState ? data.resp : state.curState,
+                        ...data
+                    });
+                })
+                    .catch(catchSystemError);
+            } else if (state.resp === RESP_CHANGE_PASSWORD || state.curState === RESP_CHANGE_PASSWORD) {
+                setState({ fetching: true });
+                ApplicationApi.authorization.checkSetFlow({
+                    update: RESP_CHANGE_PASSWORD,
+                    password: values.password,
+                    new_password: values.new_password,
+                    confirm_new_password: values.new_password_confirm,
+                    username: values.username,
+                }).then(({ data }) => {
+                    setState({
+                        fetching: isFinalize(data.resp),
+                        curState: data.resp !== state.curState && data.resp !== INVALID_PWD_MATCH ? data.resp : state.curState,
                         ...data
                     });
                 })
@@ -155,7 +198,7 @@ export const useAuthenticationFlow = () => {
             const url = new URL(state.resp);
             router.go(url.toString(), {}, true);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.resp]);
 
     useEffect(() => {
@@ -188,7 +231,7 @@ export const useAuthenticationFlow = () => {
                 clearTimeout(timeoutId);
             }
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reCheck]);
 
     return { state, form, t, onResendMFA };

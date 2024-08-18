@@ -50,6 +50,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
+				pw_change_first_login: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
 				auth_session_length_hours: {
 					type: eJsonSchemaType.integer,
 					format: "int32",
@@ -262,6 +266,10 @@ export const validationSchema = {
 					acceptNullValue: true
 				},
 				is_system: {
+					type: eJsonSchemaType.boolean,
+					acceptNullValue: true
+				},
+				require_pw_change: {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
@@ -1433,6 +1441,14 @@ export const validationSchema = {
 					acceptNullValue: true
 				},
 				password: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				new_password: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				confirm_new_password: {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
 				},

@@ -162,6 +162,12 @@ export class AuthorizeEndpointController extends EndpointController {
         return { user, profile, session };
     }
 
+    /**
+     * @protected
+     * @param {IAuthorizeRequest} authRequest
+     * @return {*} 
+     * @memberof AuthorizeEndpointController
+     */
     protected requireLoginByPrompt(authRequest: IAuthorizeRequest) {
         return authRequest.prompt === eOAuthPrompt.login ||
             authRequest.prompt == eOAuthPrompt.select_account;
@@ -200,6 +206,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 account_state: complete,
                 mfa_state,
                 mfa_request: undefined,
+                change_password_state: undefined,
                 profile,
                 user,
                 tenantRecord,

@@ -217,5 +217,45 @@
     "confirm_delete_tenant_text": {
         "en": "Are you sure you want to delete tenant ${name}? This operation cannot be reverted!",
         "nl": "Weet u zeker dat u tenant ${name} wilt verwijderen? Deze bewerking kan niet ongedaan worden gemaakt!"
+    },
+    "current_password": {
+        "en": "Your Current Password",
+        "nl": "Uw huidige wachtwoord"
+    },
+    "new_password": {
+        "en": "Your New Password",
+        "nl": "Uw nieuwe wachtwoord"
+    },
+    "new_password_confirm": {
+        "en": "Confirm your password",
+        "nl": "Bevestig uw wachtwoord"
+    },
+    "btn_confirm_change_password": {
+        "en": "Confirm",
+        "nl": "Bevestigen"
+    },
+    "err_min_password_length": {
+        "en": "Password must be ${length} characters or more",
+        "nl": "Het wachtwoord moet minimaal ${length} tekens lang zijn"
+    },
+    "err_not_same_password": {
+        "en": "The new password must not be the same as the current password",
+        "nl": "Het nieuwe wachtwoord mag niet hetzelfde zijn als het huidige wachtwoord"
+    },
+    "err_password_do_not_match": {
+        "en": "Password confimation does not match",
+        "nl": "Wachtwoordbevestiging komt niet overeen"
+    },
+    "this_is_a_required_field": {
+        "en": "This is a required field",
+        "nl": "Dit is een verplicht veld"
+    },
+    "change_password_text": {
+        "en": "You need to update your password because this is the first time you are signing in, or because your password has expired.",
+        "nl": "U moet uw wachtwoord wijzigen omdat dit de eerste keer is dat u zich aanmeldt, of omdat uw wachtwoord is verlopen."
+    },
+    "invalid_password_match": {
+        "en": "Password does not match with your current or temporary password",
+        "nl": "Wachtwoord komt niet overeen met uw huidige of tijdelijke wachtwoord"
     }
 }

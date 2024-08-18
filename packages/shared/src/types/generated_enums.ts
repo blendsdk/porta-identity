@@ -45,6 +45,7 @@ export enum eSysTenant {
 	IS_ACTIVE = "is_active",
 	ALLOW_RESET_PASSWORD = "allow_reset_password",
 	ALLOW_REGISTRATION = "allow_registration",
+	PW_CHANGE_FIRST_LOGIN = "pw_change_first_login",
 	AUTH_SESSION_LENGTH_HOURS = "auth_session_length_hours",
 	ORGANIZATION = "organization"
 }
@@ -146,6 +147,7 @@ export enum eSysUser {
 	PASSWORD = "password",
 	IS_ACTIVE = "is_active",
 	IS_SYSTEM = "is_system",
+	REQUIRE_PW_CHANGE = "require_pw_change",
 	DATE_CREATED = "date_created",
 	DATE_MODIFIED = "date_modified",
 	SERVICE_APPLICATION_ID = "service_application_id"

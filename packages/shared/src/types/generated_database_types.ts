@@ -41,6 +41,11 @@ export interface ISysTenant {
 	 */
 	allow_registration?: boolean;
 	/**
+	 * @type boolean
+	 * @memberOf ISysTenant
+	 */
+	pw_change_first_login?: boolean;
+	/**
 	 * @type number
 	 * @memberOf ISysTenant
 	 */
@@ -317,6 +322,11 @@ export interface ISysUser {
 	 * @memberOf ISysUser
 	 */
 	is_system?: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ISysUser
+	 */
+	require_pw_change?: boolean;
 	/**
 	 * @type string
 	 * @memberOf ISysUser

@@ -1,13 +1,13 @@
 import { verifyStringSync } from "@blendsdk/crypto";
-import { MD5 } from "@blendsdk/stdlib";
+import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CONSENT, RESP_MFA } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, INVALID_PWD, INVALID_PWD_MATCH, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_MFA } from "@porta/shared";
 import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { Claims, EmailMFAProvider, EndpointController, commonUtils, databaseUtils } from "../../../../services";
+import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
@@ -43,7 +43,15 @@ export class AuthenticateEndpointController extends EndpointController {
         let consent_display_name = undefined;
         let ow_consent = undefined;
 
-        let { update, password, mfa_result, username, consent: consent_result, ow_consent: ow_consent_result } = params;
+        let { update,
+            password,
+            mfa_result,
+            username,
+            consent: consent_result,
+            ow_consent: ow_consent_result,
+            new_password,
+            confirm_new_password
+        } = params;
 
         const is_conformance_test = update === "conformance";
         update = is_conformance_test ? RESP_ACCOUNT : update;
@@ -93,15 +101,17 @@ export class AuthenticateEndpointController extends EndpointController {
                         flow.account_state = true;
                         flow.user = userRecord;
                         flow.profile = await profileDs.findProfileByUserId({ user_id: userRecord.id });
+                        // we need to ask the consent state here since we need a valid user
                         flow.consent_state = await this.getConsentState({ authRecord: flow.authRecord, authRequest: flow.authRequest, user: userRecord, tenantRecord });
+                        flow.change_password_state = !(flow.user.require_pw_change === true);
                         await this.updateFlow(flow);
                     } else {
                         error = true;
-                        resp = "invalid_username_or_password";
+                        resp = INVALID_PWD;
                     }
                 } else {
                     error = true;
-                    resp = "invalid_username_or_password";
+                    resp = INVALID_PWD;
                 }
 
             } else if (update === RESP_MFA) {
@@ -139,6 +149,29 @@ export class AuthenticateEndpointController extends EndpointController {
                 }
 
                 await this.updateFlow(flow);
+            } else if (update === RESP_CHANGE_PASSWORD) {
+                const userRecord = await userDs.findByUsernameNonService({
+                    username
+                });
+                if (userRecord) {
+                    const isPasswordValid = verifyStringSync(password, userRecord.password);
+                    const isNewPassword = new_password === confirm_new_password && !isNullOrUndef(new_password);
+                    if (isPasswordValid && isNewPassword && userRecord.require_pw_change === true) {
+                        await userDs.updateSysUserById({
+                            password: new_password,
+                            date_modified: new Date().toISOString(),
+                            require_pw_change: false
+                        }, { id: userRecord.id });
+                        flow.change_password_state = true;
+                        await this.updateFlow(flow);
+                    } else {
+                        error = true;
+                        resp = INVALID_PWD_MATCH;
+                    }
+                } else {
+                    error = true;
+                    resp = INVALID_PWD;
+                }
             }
 
             if (!error) {
@@ -160,6 +193,8 @@ export class AuthenticateEndpointController extends EndpointController {
                         consent_display_name = [flow.profile?.firstname, flow.profile?.middle_name, flow.profile?.lastname].filter(Boolean).join(" ");
                         const { roles } = await databaseUtils.getUserRolesAndPermissions(flow.user.id, flow.authRecord.application_id, tenantRecord);
                         ow_consent = roles.filter(r => (r.role === "ADMINISTRATOR")).length !== 0;
+                    } else if (flow.change_password_state === false) {
+                        resp = RESP_CHANGE_PASSWORD;
                     } else {
                         // mfa state is true
                         // here is the authentication complete

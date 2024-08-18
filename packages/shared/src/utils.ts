@@ -9,6 +9,9 @@ export const FLOW_ERROR_INVALID = 'invalid_sign_in_flow';
 export const RESP_ACCOUNT = "account";
 export const RESP_MFA = "mfa";
 export const RESP_CONSENT = "consent";
+export const RESP_CHANGE_PASSWORD = "change_password";
+export const INVALID_PWD = "invalid_username_or_password";
+export const INVALID_PWD_MATCH = "invalid_password_match";
 
 export interface ILifetime {
     auth_time: string,

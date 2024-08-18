@@ -766,6 +766,16 @@ export interface ICheckSetFlowRequest {
 	 * @type string
 	 * @memberOf ICheckSetFlowRequest
 	 */
+	new_password?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	confirm_new_password?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
 	mfa_result?: string;
 	/**
 	 * @type boolean

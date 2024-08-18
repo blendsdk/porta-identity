@@ -438,8 +438,8 @@ export class DatabaseSeed {
             username: `${serviceApp.application_name}@service`,
             password: MD5(Date.now().toString()),
             is_system: true,
+            require_pw_change: false,
             service_application_id: serviceApp.id
-
         });
 
         await profileDs.insertIntoSysProfile({
@@ -472,7 +472,8 @@ export class DatabaseSeed {
         const adminUser = await userDs.insertIntoSysUser({
             username,
             password,
-            is_system: true
+            is_system: true,
+            require_pw_change: false,
         });
 
         await profileDs.insertIntoSysProfile({

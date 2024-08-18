@@ -50,6 +50,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("allow_reset_password", { default: "false" })
         .booleanColumn("allow_registration", { default: "false" })
+        .booleanColumn("pw_change_first_login", { default: "true" })
         .integerColumn("auth_session_length_hours", { default: "0" }) // indefinate session
         .stringColumn("organization");
 
@@ -69,6 +70,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .stringColumn("password")
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("is_system", { default: "false" })
+        .booleanColumn("require_pw_change", { default: "true" })
         .dateTimeColumn("date_created", { default: "now()" })
         .dateTimeColumn("date_modified", { default: "now()" })
         .referenceColumnAuto("service_application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
