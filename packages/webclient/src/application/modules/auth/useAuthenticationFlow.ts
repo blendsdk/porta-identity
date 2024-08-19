@@ -1,7 +1,7 @@
 /* eslint-disable no-useless-escape */
 import { useObjectState } from "@blendsdk/react";
 import { filterObject } from "@blendsdk/stdlib";
-import { ICheckSetFlow, INVALID_PWD, INVALID_PWD_MATCH, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_MFA } from "@porta/shared";
+import { ICheckSetFlow, INVALID_PWD, INVALID_PWD_MATCH, LOCAL_STORAGE_LAST_LOGIN, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_FORGOT_PASSWORD, RESP_MFA } from "@porta/shared";
 import { useFormik } from "formik";
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
@@ -193,6 +193,21 @@ export const useAuthenticationFlow = () => {
 
     }, [catchSystemError, setState, state]);
 
+    const onForgotPassword = useCallback(() => {
+        setState({ fetching: true });
+        ApplicationApi.authorization.checkSetFlow({
+            update: RESP_FORGOT_PASSWORD,
+        }).then(({ data }) => {
+            setState({
+                fetching: isFinalize(data.resp),
+                curState: data.resp === RESP_FORGOT_PASSWORD || data.resp === RESP_FORGOT_PASSWORD ? data.resp : state.curState,
+                ...data
+            });
+        })
+            .catch(catchSystemError);
+
+    }, [catchSystemError, setState, state.curState]);
+
     useEffect(() => {
         if (isFinalize(state.resp)) {
             const url = new URL(state.resp);
@@ -234,5 +249,5 @@ export const useAuthenticationFlow = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reCheck]);
 
-    return { state, form, t, onResendMFA };
+    return { state, form, t, onResendMFA, onForgotPassword };
 };

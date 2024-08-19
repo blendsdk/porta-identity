@@ -3,7 +3,7 @@ import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, INVALID_PWD, INVALID_PWD_MATCH, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_MFA } from "@porta/shared";
+import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, INVALID_PWD, INVALID_PWD_MATCH, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_FORGOT_PASSWORD, RESP_MFA } from "@porta/shared";
 import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
@@ -113,7 +113,9 @@ export class AuthenticateEndpointController extends EndpointController {
                     error = true;
                     resp = INVALID_PWD;
                 }
-
+            } else if (update === RESP_FORGOT_PASSWORD) {
+                flow.forgot_password_state = true;
+                await this.updateFlow(flow);
             } else if (update === RESP_MFA) {
                 flow.mfa_state = mfa_result === flow.mfa_request;
 
@@ -175,7 +177,9 @@ export class AuthenticateEndpointController extends EndpointController {
             }
 
             if (!error) {
-                if (flow.account_state === false) {
+                if (flow.forgot_password_state === true) {
+                    resp = RESP_FORGOT_PASSWORD;
+                } else if (flow.account_state === false) {
                     resp = RESP_ACCOUNT;
                 } else {
                     // account state is true here
@@ -217,6 +221,7 @@ export class AuthenticateEndpointController extends EndpointController {
                     application_name,
                     logo,
                     tenant_name,
+                    tenant: tenantRecord.id,
                     consent_claims,
                     resp,
                     error,

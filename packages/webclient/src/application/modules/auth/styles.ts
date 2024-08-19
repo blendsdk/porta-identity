@@ -23,7 +23,7 @@ export const useStyles = makeStyles({
         flexDirection: "column",
         justifyContent: "start",
         boxSizing: "border-box",
-        ...shorthands.gap(tokens.spacingS1),
+        gap: tokens.spacingM,
         ...shorthands.padding("1rem"),
         "@media only screen and (min-width: 600px)": {
             display: "flex",

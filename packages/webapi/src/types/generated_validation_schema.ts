@@ -1478,6 +1478,9 @@ export const validationSchema = {
 				tenant_name: {
 					type: eJsonSchemaType.string
 				},
+				tenant: {
+					type: eJsonSchemaType.string
+				},
 				application_name: {
 					type: eJsonSchemaType.string
 				},

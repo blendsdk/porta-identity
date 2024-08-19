@@ -213,6 +213,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addBoolean("error", { optional: true })
                 .addString("logo", { optional: true })
                 .addString("tenant_name", { optional: true })
+                .addString("tenant", { optional: true })
                 .addString("application_name", { optional: true })
                 .addString("consent_display_name", { optional: true })
                 .addString("mfa_type", { optional: true })

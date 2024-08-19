@@ -1,15 +1,15 @@
 import { Body1, FormCheckboxField, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
-import { Link } from "@blendsdk/react";
-import { PrimaryButton } from "@fluentui/react";
+import { Link, PrimaryButton } from "@fluentui/react";
 import { makeStyles, shorthands } from "@griffel/react";
 import { FormikProps } from "formik";
 import React from "react";
-import { useRouter, useTranslation } from "../../../system";
+import { useTranslation } from "../../../system";
 import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./useAuthenticationFlow";
 
 export interface IGetAccount {
     form: FormikProps<IAuthenticationDialogModel>;
     flowState: IUseAuthenticationFlowState;
+    onForgotPassword: () => void;
     disabled?: boolean;
 }
 
@@ -24,9 +24,8 @@ const useStyles = makeStyles({
     }
 });
 
-export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowState }) => {
+export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowState, onForgotPassword }) => {
     const { t } = useTranslation();
-    const router = useRouter();
     const styles = useStyles();
 
     return (
@@ -39,7 +38,7 @@ export const GetAccount: React.FC<IGetAccount> = ({ form, disabled, flowState })
             <Layout display="flex" flexDirection="row" justifyContent="flex-end" alignItems="center" gap={tokens.spacingM}>
                 {flowState?.allow_reset_password && (
                     <>
-                        <Link to={router.generateUrl("eAppRoutes.forgotPassword.path")} reload>
+                        <Link onClick={onForgotPassword}>
                             <Body1>{t("forgot_password_link")}</Body1>
                         </Link>
                         <ToolbarSpacer />

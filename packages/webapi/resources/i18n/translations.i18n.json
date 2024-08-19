@@ -132,13 +132,14 @@
         "nl": "Wachtwoord vergeten?"
     },
     "forgot_password_text": {
-        "en": "Please provide your account or email and click on "
+        "en": "Please provide your account or email and click on Submit",
+        "nl": "Geef uw account of e-mailadres op en klik op Verzenden"
     },
     "forgot_password_text_placeholder": {
         "en": "Provide you account or email",
         "nl": "Geef uw account of e-mailadres op"
     },
-    "forgot_password_btn": {
+    "btn_forgot_password": {
         "en": "Submit",
         "nl": "Verzenden"
     },
@@ -257,5 +258,9 @@
     "invalid_password_match": {
         "en": "Password does not match with your current or temporary password",
         "nl": "Wachtwoord komt niet overeen met uw huidige of tijdelijke wachtwoord"
+    },
+    "rememberMe": {
+        "en": "Remember me",
+        "nl": "Gebruikersnaam onthouden"
     }
 }

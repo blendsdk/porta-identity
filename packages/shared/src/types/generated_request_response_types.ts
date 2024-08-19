@@ -813,6 +813,11 @@ export interface ICheckSetFlow {
 	 * @type string
 	 * @memberOf ICheckSetFlow
 	 */
+	tenant?: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
 	application_name?: string;
 	/**
 	 * @type string
