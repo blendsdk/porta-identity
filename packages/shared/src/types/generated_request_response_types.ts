@@ -778,6 +778,11 @@ export interface ICheckSetFlowRequest {
 	 */
 	mfa_result?: string;
 	/**
+	 * @type string
+	 * @memberOf ICheckSetFlowRequest
+	 */
+	locale?: string;
+	/**
 	 * @type boolean
 	 * @memberOf ICheckSetFlowRequest
 	 */

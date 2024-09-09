@@ -205,6 +205,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addString("new_password", { optional: true, acceptNullValue: true })
                 .addString("confirm_new_password", { optional: true, acceptNullValue: true })
                 .addString("mfa_result", { optional: true, acceptNullValue: true })
+                .addString("locale", { optional: true, acceptNullValue: true })
                 .addBoolean("consent", { optional: true, acceptNullValue: true })
                 .addBoolean("ow_consent", { optional: true, acceptNullValue: true });
 

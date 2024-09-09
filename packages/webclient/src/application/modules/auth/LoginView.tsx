@@ -32,7 +32,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
     const showGetMFA = showControls && (state.resp === RESP_MFA || state.curState === RESP_MFA);
     const showConsent = showControls && (state.resp == RESP_CONSENT);
     const showChangePW = showControls && (state.resp === RESP_CHANGE_PASSWORD || (state.curState === RESP_CHANGE_PASSWORD && state.resp === INVALID_PWD_MATCH));
-    const showForgotPW = showControls && (state.resp === RESP_FORGOT_PASSWORD || state.curState === RESP_CHANGE_PASSWORD);
+    const showForgotPW = showControls && (state.resp === RESP_FORGOT_PASSWORD);
 
     return state.initializing || state.returningUser ? <SessionLoadingView /> :
         <div className={styles.wrapper}>

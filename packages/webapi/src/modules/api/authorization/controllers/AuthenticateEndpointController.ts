@@ -1,21 +1,38 @@
-import { verifyStringSync } from "@blendsdk/crypto";
-import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
+import { generateRandomUUID, verifyStringSync } from "@blendsdk/crypto";
+import { errorObjectInfo, isNullOrUndef, MD5 } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
-import { COOKIE_AUTH_FLOW, COOKIE_TENANT, FLOW_ERROR_INVALID, IAuthorizeRequest, ICheckSetFlowRequest, ICheckSetFlowResponse, INVALID_PWD, INVALID_PWD_MATCH, ISysTenant, MFA_RESEND_REQUEST, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_FORGOT_PASSWORD, RESP_MFA } from "@porta/shared";
+import {
+    COOKIE_AUTH_FLOW,
+    COOKIE_TENANT,
+    FLOW_ERROR_INVALID,
+    IAuthorizeRequest,
+    ICheckSetFlowRequest,
+    ICheckSetFlowResponse,
+    INVALID_PWD,
+    INVALID_PWD_MATCH,
+    ISysTenant,
+    MFA_RESEND_REQUEST,
+    RESP_ACCOUNT,
+    RESP_CHANGE_PASSWORD,
+    RESP_CONSENT,
+    RESP_FORGOT_PASSWORD,
+    RESP_FORGOT_PASSWORD_REQUEST,
+    RESP_MFA
+} from "@porta/shared";
 import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
+import { EMailForgotPasswordProvider } from "../../../../services/EMailForgotPasswordProvider";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
-
     /**
      * @protected
      * @param {IAuthorizeRequest} auth_request_params
-     * @return {*} 
+     * @return {*}
      * @memberof AuthenticateEndpointController
      */
     protected async getClaimsList(auth_request_params: IAuthorizeRequest) {
@@ -43,14 +60,16 @@ export class AuthenticateEndpointController extends EndpointController {
         let consent_display_name = undefined;
         let ow_consent = undefined;
 
-        let { update,
+        let {
+            update,
             password,
             mfa_result,
             username,
             consent: consent_result,
             ow_consent: ow_consent_result,
             new_password,
-            confirm_new_password
+            confirm_new_password,
+            locale
         } = params;
 
         const is_conformance_test = update === "conformance";
@@ -86,9 +105,10 @@ export class AuthenticateEndpointController extends EndpointController {
 
         // if we have a flow and a tenant
         if (!error) {
-
             const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
-            const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
+            const profileDs = new SysProfileDataService({
+                tenantId: tenantRecord.id
+            });
 
             if (update === RESP_ACCOUNT) {
                 const userRecord = await userDs.findByUsernameNonService({
@@ -100,9 +120,16 @@ export class AuthenticateEndpointController extends EndpointController {
                     if (isPasswordValid) {
                         flow.account_state = true;
                         flow.user = userRecord;
-                        flow.profile = await profileDs.findProfileByUserId({ user_id: userRecord.id });
+                        flow.profile = await profileDs.findProfileByUserId({
+                            user_id: userRecord.id
+                        });
                         // we need to ask the consent state here since we need a valid user
-                        flow.consent_state = await this.getConsentState({ authRecord: flow.authRecord, authRequest: flow.authRequest, user: userRecord, tenantRecord });
+                        flow.consent_state = await this.getConsentState({
+                            authRecord: flow.authRecord,
+                            authRequest: flow.authRequest,
+                            user: userRecord,
+                            tenantRecord
+                        });
                         flow.change_password_state = !(flow.user.require_pw_change === true);
                         await this.updateFlow(flow);
                     } else {
@@ -133,21 +160,29 @@ export class AuthenticateEndpointController extends EndpointController {
                 flow.consent_state = true;
 
                 // save the consent for this user
-                await databaseUtils.saveUserConsent({
-                    application_id: flow.authRecord.application_id,
-                    user_id: flow.user.id,
-                    is_consent: consent_result,
-                    // the requested scope for this application is saved
-                    // here so we can extract it later when Claims are read
-                    scope: flow.authRequest.scope
-                }, tenantRecord);
+                await databaseUtils.saveUserConsent(
+                    {
+                        application_id: flow.authRecord.application_id,
+                        user_id: flow.user.id,
+                        is_consent: consent_result,
+                        // the requested scope for this application is saved
+                        // here so we can extract it later when Claims are read
+                        scope: flow.authRequest.scope
+                    },
+                    tenantRecord
+                );
 
                 // we save the consent for the entire organization for this application
                 if (ow_consent_result === true) {
-                    const applicationDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
-                    await applicationDs.updateSysApplicationById({
-                        ow_consent: ow_consent_result
-                    }, { id: flow.authRecord.application_id });
+                    const applicationDs = new SysApplicationDataService({
+                        tenantId: tenantRecord.id
+                    });
+                    await applicationDs.updateSysApplicationById(
+                        {
+                            ow_consent: ow_consent_result
+                        },
+                        { id: flow.authRecord.application_id }
+                    );
                 }
 
                 await this.updateFlow(flow);
@@ -159,11 +194,14 @@ export class AuthenticateEndpointController extends EndpointController {
                     const isPasswordValid = verifyStringSync(password, userRecord.password);
                     const isNewPassword = new_password === confirm_new_password && !isNullOrUndef(new_password);
                     if (isPasswordValid && isNewPassword && userRecord.require_pw_change === true) {
-                        await userDs.updateSysUserById({
-                            password: new_password,
-                            date_modified: new Date().toISOString(),
-                            require_pw_change: false
-                        }, { id: userRecord.id });
+                        await userDs.updateSysUserById(
+                            {
+                                password: new_password,
+                                date_modified: new Date().toISOString(),
+                                require_pw_change: false
+                            },
+                            { id: userRecord.id }
+                        );
                         flow.change_password_state = true;
                         await this.updateFlow(flow);
                     } else {
@@ -173,6 +211,48 @@ export class AuthenticateEndpointController extends EndpointController {
                 } else {
                     error = true;
                     resp = INVALID_PWD;
+                }
+            } else if (update === RESP_FORGOT_PASSWORD_REQUEST) {
+                const userRecord = await userDs.findByUsernameNonService({ username });
+                if (userRecord) {
+                    const profileRecord = await profileDs.findProfileByUserId({
+                        user_id: userRecord.id
+                    });
+                    if (profileRecord) {
+                        try {
+                            const ttl_minutes = 10;
+                            const fpFlow = generateRandomUUID();
+                            const url = `${this.getServerURL()}/fp/${fpFlow}`;
+                            const mailer = new EMailForgotPasswordProvider({
+                                mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
+                                settings: this.request.context.getSettings(),
+                                trans: ((this as any).context as II18NRequestContext).getTranslator(),
+                                user: userRecord,
+                                profile: profileRecord,
+                                authRecord: flow.authRecord,
+                                tenantRecord: tenantRecord,
+                                locale,
+                                ttl: ttl_minutes,
+                                url
+                            });
+                            await mailer.send();
+                            await this.getCache().setValue(
+                                `forgot:${fpFlow}`,
+                                {
+                                    userRecord,
+                                    profileRecord,
+                                    locale,
+                                    authRecord: flow.authRecord,
+                                    tenantRecord
+                                },
+                                {
+                                    expire: commonUtils.expireSecondsFromNow(ttl_minutes * 60) // minutes
+                                }
+                            );
+                        } catch (err) {
+                            this.getLogger().error(errorObjectInfo(err));
+                        }
+                    }
                 }
             }
 
@@ -194,9 +274,19 @@ export class AuthenticateEndpointController extends EndpointController {
                     } else if (flow.consent_state === false) {
                         resp = RESP_CONSENT;
                         consent_claims = await this.getClaimsList(flow.authRequest);
-                        consent_display_name = [flow.profile?.firstname, flow.profile?.middle_name, flow.profile?.lastname].filter(Boolean).join(" ");
-                        const { roles } = await databaseUtils.getUserRolesAndPermissions(flow.user.id, flow.authRecord.application_id, tenantRecord);
-                        ow_consent = roles.filter(r => (r.role === "ADMINISTRATOR")).length !== 0;
+                        consent_display_name = [
+                            flow.profile?.firstname,
+                            flow.profile?.middle_name,
+                            flow.profile?.lastname
+                        ]
+                            .filter(Boolean)
+                            .join(" ");
+                        const { roles } = await databaseUtils.getUserRolesAndPermissions(
+                            flow.user.id,
+                            flow.authRecord.application_id,
+                            tenantRecord
+                        );
+                        ow_consent = roles.filter((r) => r.role === "ADMINISTRATOR").length !== 0;
                     } else if (flow.change_password_state === false) {
                         resp = RESP_CHANGE_PASSWORD;
                     } else {
@@ -235,7 +325,7 @@ export class AuthenticateEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
-     * @return {*} 
+     * @return {*}
      * @memberof AuthenticateEndpointController
      */
     protected async registerMFABypass(flow: IAuthorizationFlow) {
@@ -259,7 +349,7 @@ export class AuthenticateEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
-     * @return {*} 
+     * @return {*}
      * @memberof AuthenticateEndpointController
      */
     protected getMFABypassKey(flow: IAuthorizationFlow) {
@@ -270,7 +360,7 @@ export class AuthenticateEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
-     * @return {*} 
+     * @return {*}
      * @memberof FlowEndpointController
      */
     protected createMFARequest(flow: IAuthorizationFlow) {
@@ -280,7 +370,7 @@ export class AuthenticateEndpointController extends EndpointController {
                     flow,
                     mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
                     settings: this.request.context.getSettings(),
-                    trans: ((this as any).context as II18NRequestContext).getTranslator(),
+                    trans: ((this as any).context as II18NRequestContext).getTranslator()
                 });
                 return mailer.send();
             }

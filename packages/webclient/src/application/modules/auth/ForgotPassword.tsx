@@ -23,7 +23,7 @@ const useStyles = makeStyles({
     }
 });
 
-export const ForgotPassword: React.FC<IForgotPassword> = ({ form, flowState }) => {
+export const ForgotPassword: React.FC<IForgotPassword> = ({ form }) => {
     const { t } = useTranslation();
     const styles = useStyles();
 

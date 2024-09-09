@@ -11,6 +11,7 @@ export const RESP_MFA = "mfa";
 export const RESP_CONSENT = "consent";
 export const RESP_CHANGE_PASSWORD = "change_password";
 export const RESP_FORGOT_PASSWORD = "forgot";
+export const RESP_FORGOT_PASSWORD_REQUEST = "forgot_request";
 export const INVALID_PWD = "invalid_username_or_password";
 export const INVALID_PWD_MATCH = "invalid_password_match";
 

@@ -1456,6 +1456,10 @@ export const validationSchema = {
 					type: eJsonSchemaType.string,
 					acceptNullValue: true
 				},
+				locale: {
+					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
 				consent: {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
