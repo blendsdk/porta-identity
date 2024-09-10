@@ -1,14 +1,37 @@
 import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { isNullOrUndef } from "@blendsdk/stdlib";
-import { RedirectResponse, Response } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, IAuthorizeResponse, ISysAuthorizationView, ISysProfile, ISysSession, ISysTenant, ISysUser } from "@porta/shared";
+import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
+import { Response, SuccessResponse } from "@blendsdk/webafx-common";
+import {
+    COOKIE_AUTH_FLOW,
+    COOKIE_AUTH_FLOW_TTL,
+    COOKIE_TENANT,
+    IAuthorizeRequest,
+    IAuthorizeResponse,
+    ISysAuthorizationView,
+    ISysProfile,
+    ISysSession,
+    ISysTenant,
+    ISysUser
+} from "@porta/shared";
 import * as jose from "jose";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
-import { CONST_AUTH_FLOW_TTL, CONST_NONCE_TTL, IAuthorizationFlow, IPortaApplicationSetting, eErrorType, eOAuthDisplayModes, eOAuthPKCECodeChallengeMethod, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg } from "../../../../types";
-
+import {
+    CONST_AUTH_FLOW_TTL,
+    CONST_NONCE_TTL,
+    IAuthorizationFlow,
+    IPortaApplicationSetting,
+    eErrorType,
+    eOAuthDisplayModes,
+    eOAuthPKCECodeChallengeMethod,
+    eOAuthPrompt,
+    eOAuthResponseMode,
+    eOAuthResponseType,
+    eOAuthSigningAlg
+} from "../../../../types";
 
 /**
  * Handler for the authorize endpoint
@@ -24,7 +47,6 @@ export class AuthorizeEndpointController extends EndpointController {
      * @memberof AuthorizeEndpointController
      */
     public async handleRequest(authRequest: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
-
         // normalize to the defaults
         authRequest.response_mode = authRequest.response_mode || eOAuthResponseMode.query;
         authRequest.display = eOAuthDisplayModes[authRequest.display] || eOAuthDisplayModes.page;
@@ -59,13 +81,16 @@ export class AuthorizeEndpointController extends EndpointController {
             }
 
             if (errors.length === 0 && flowId) {
-                let signinUrl: string = undefined;
                 if (prompt === eOAuthPrompt.login) {
                     const flow = await this.getAuthenticationFlow(flowId);
                     await this.updateFlow({ ...flow, complete: false, account_state: false });
                 }
-                signinUrl = this.createFrontendSignInUrl(authRequest);
-                return new RedirectResponse({ url: signinUrl });
+                return new SuccessResponse(
+                    renderGetRedirect(
+                        flowComplete ? `${this.getServerURL()}/af/finalize` : this.createFrontendSignInUrl(authRequest),
+                        1000
+                    )
+                );
             } else {
                 return this.responseWithError(
                     {
@@ -76,7 +101,7 @@ export class AuthorizeEndpointController extends EndpointController {
                         response_mode,
                         response_type
                     },
-                    errors.findIndex(i => (i === eErrorType.invalid_authorization)) !== -1
+                    errors.findIndex((i) => i === eErrorType.invalid_authorization) !== -1
                 );
             }
         }
@@ -86,7 +111,7 @@ export class AuthorizeEndpointController extends EndpointController {
      * @protected
      * @param {string} flowId
      * @param {IAuthorizeRequest} authRequest
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
     protected createFrontendSignInUrl(authRequest: IAuthorizeRequest) {
@@ -107,19 +132,19 @@ export class AuthorizeEndpointController extends EndpointController {
      * @protected
      * @param {IAuthorizeRequest} authRequest
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
     protected async prepareAuthorization(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
-
         // Find the auth record based on the auth request from the database
         const authRecord = await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord);
 
         const errors: string[] = [];
 
-        let flow: { flowId: string, flowComplete: boolean; } = undefined;
+        let flow: { flowId: string; flowComplete: boolean } = undefined;
 
-        if (authRecord) { // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
+        if (authRecord) {
+            // authRecord must only return one record, otherwise somehow multiple records with the same client_id/secret where found!
             flow = await this.createAuthorizationFlow(authRecord, authRequest, tenantRecord);
         } else {
             errors.push(eErrorType.invalid_authorization);
@@ -130,7 +155,7 @@ export class AuthorizeEndpointController extends EndpointController {
     /**
      * @protected
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
     protected async getReturningUser(tenantRecord: ISysTenant, authRequest: IAuthorizeRequest) {
@@ -165,32 +190,40 @@ export class AuthorizeEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizeRequest} authRequest
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
     protected requireLoginByPrompt(authRequest: IAuthorizeRequest) {
-        return authRequest.prompt === eOAuthPrompt.login ||
-            authRequest.prompt == eOAuthPrompt.select_account;
+        return authRequest.prompt === eOAuthPrompt.login || authRequest.prompt == eOAuthPrompt.select_account;
     }
 
     /**
      * @protected
      * @param {ISysAuthorizationView} authRecord
      * @param {IAuthorizeRequest} authRequest
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
-    protected async createAuthorizationFlow(authRecord: ISysAuthorizationView, authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
+    protected async createAuthorizationFlow(
+        authRecord: ISysAuthorizationView,
+        authRequest: IAuthorizeRequest,
+        tenantRecord: ISysTenant
+    ) {
         const flowId = generateRandomUUID();
         const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL);
 
         const { user, profile, session } = await this.getReturningUser(tenantRecord, authRequest);
         const authenticated = !isNullOrUndef(session) && !isNullOrUndef(user) && !isNullOrUndef(profile);
-        const login_required = session ? commonUtils.checkLoginRequired(session, authRequest.max_age) || this.requireLoginByPrompt(authRequest) : true;
+
+        // Login is required when we have no session or the max age is elapsed or the prompt is login
+        const login_required = session
+            ? commonUtils.checkLoginRequired(session, authRequest.max_age) || this.requireLoginByPrompt(authRequest)
+            : true;
 
         const consent_state = await this.getConsentState({ authRecord, authRequest, user, tenantRecord });
 
-        const complete = authenticated ? login_required ? false : authenticated : authenticated;
+        // complete is when we have a session, a user and a profile and no forced login is required
+        const complete = authenticated ? (login_required ? false : authenticated) : authenticated;
 
         let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
 
@@ -228,13 +261,13 @@ export class AuthorizeEndpointController extends EndpointController {
             expires: new Date(expire),
             secure: true,
             httpOnly: true,
-            sameSite: "strict",
+            sameSite: "strict"
         });
 
         this.setCookie(COOKIE_AUTH_FLOW_TTL, generateRandomUUID(), {
             expires: new Date(expire),
             secure: true,
-            sameSite: "strict",
+            sameSite: "strict"
         });
 
         return { flowId, flowComplete: complete };
@@ -245,10 +278,14 @@ export class AuthorizeEndpointController extends EndpointController {
      * @param {string} id_token_hint
      * @param {ISysTenant} tenantRecord
      * @param {IAuthorizeRequest} authRequest
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
-    protected async isValidIDTokenHint(id_token_hint: string, tenantRecord: ISysTenant, authRequest: IAuthorizeRequest) {
+    protected async isValidIDTokenHint(
+        id_token_hint: string,
+        tenantRecord: ISysTenant,
+        authRequest: IAuthorizeRequest
+    ) {
         let is_valid: boolean = true;
         if (id_token_hint) {
             const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
@@ -264,7 +301,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 authRequest.id_token_hint = sid;
             } catch (err) {
                 this.getLogger().error("isValidIDTokenHint", { id_token_hint });
-                return is_valid = false;
+                return (is_valid = false);
             }
         }
         return is_valid;
@@ -273,7 +310,7 @@ export class AuthorizeEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizeRequest} authRequest
-     * @return {*} 
+     * @return {*}
      * @memberof AuthorizeEndpointController
      */
     protected async validateAuthorizationRequest(authRequest: IAuthorizeRequest, tenantRecord: ISysTenant) {
@@ -283,16 +320,14 @@ export class AuthorizeEndpointController extends EndpointController {
         const isNonceValid = await this.isValidNonce(authRequest, response_type);
         if (!redirect_uri) {
             // When no redirect URI then we cannot even continue
-            return this.responseWithError(
-                {
-                    error: eErrorType.invalid_request,
-                    redirect_uri,
-                    state,
-                    error_description: "no_redirect_uri",
-                    response_mode,
-                    response_type
-                }
-            );
+            return this.responseWithError({
+                error: eErrorType.invalid_request,
+                redirect_uri,
+                state,
+                error_description: "no_redirect_uri",
+                response_mode,
+                response_type
+            });
         } else if (!this.isValidPKCERequest(authRequest)) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
@@ -329,7 +364,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 response_mode,
                 response_type
             });
-        } else if (!await this.isValidIDTokenHint(id_token_hint, tenantRecord, authRequest)) {
+        } else if (!(await this.isValidIDTokenHint(id_token_hint, tenantRecord, authRequest))) {
             return this.responseWithError({
                 error: eErrorType.invalid_request,
                 redirect_uri,
@@ -381,11 +416,10 @@ export class AuthorizeEndpointController extends EndpointController {
         // https://bitbucket.org/openid/connect/issues/972/nonce-requirement-in-hybrid-auth-request%20/
         // nonce is not required for response type code
 
-        const skipNonceCheck = [
-            eOAuthResponseType.code,
-            eOAuthResponseType.code_token,
-            eOAuthResponseType.token
-        ].indexOf(response_type as any) !== -1;
+        const skipNonceCheck =
+            [eOAuthResponseType.code, eOAuthResponseType.code_token, eOAuthResponseType.token].indexOf(
+                response_type as any
+            ) !== -1;
 
         if (skipNonceCheck) {
             return true;
