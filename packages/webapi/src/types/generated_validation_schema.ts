@@ -213,41 +213,6 @@ export const validationSchema = {
 			},
 			required: ["access_token_length", "refresh_token_length", "application_id"]
 		},
-		sys_extension: {
-			type: eJsonSchemaType.object,
-			properties: {
-				extension_id: {
-					type: eJsonSchemaType.string,
-					format: "uuid"
-				},
-				name: {
-					type: eJsonSchemaType.string
-				},
-				version: {
-					type: eJsonSchemaType.string
-				},
-				description: {
-					type: eJsonSchemaType.string
-				},
-				source: {
-					type: eJsonSchemaType.string
-				},
-				options: {
-					type: eJsonSchemaType.string,
-					acceptNullValue: true
-				},
-				is_active: {
-					type: eJsonSchemaType.boolean,
-					acceptNullValue: true
-				},
-				date_created: {
-					type: eJsonSchemaType.string,
-					format: "datetime-tz",
-					acceptNullValue: true
-				}
-			},
-			required: ["name", "version", "description", "source"]
-		},
 		sys_user: {
 			type: eJsonSchemaType.object,
 			properties: {

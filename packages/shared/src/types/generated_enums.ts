@@ -119,23 +119,6 @@ export enum eSysClient {
 }
 
 /**
- * Enum of the type sys_extension
- * @export
- * @enum
- */
-export enum eSysExtension {
-	$name = "sys_extension",
-	EXTENSION_ID = "extension_id",
-	NAME = "name",
-	VERSION = "version",
-	DESCRIPTION = "description",
-	SOURCE = "source",
-	OPTIONS = "options",
-	IS_ACTIVE = "is_active",
-	DATE_CREATED = "date_created"
-}
-
-/**
  * Enum of the type sys_user
  * @export
  * @enum

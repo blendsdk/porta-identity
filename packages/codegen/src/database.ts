@@ -9,7 +9,6 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const application = database.addTable("sys_application");
     const secret = database.addTable("sys_secret");
     const client = database.addTable("sys_client");
-    const sys_extension = database.addTable("sys_extension").setMetaData({ has_list_by_expression: true });
 
     const user = database.addTable("sys_user");
     const profile = database.addTable("sys_profile");
@@ -25,23 +24,10 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
     const consent = database.addTable("sys_consent");
 
     const mfa = database.addTable("sys_mfa");
-    //const user_mfa = database.addTable("sys_user_mfa");
 
-    mfa
-        .primaryKeyColumn("id", true)
+    mfa.primaryKeyColumn("id", true)
         .stringColumn("name", { unique: true })
         .jsonColumn("settings", refType("mfa_settings"), { required: false, default: "'{}'" });
-
-    sys_extension
-        .primaryKeyColumn("extension_id", true)
-        .stringColumn("name")
-        .stringColumn("version")
-        .stringColumn("description")
-        .stringColumn("source")
-        .stringColumn("options", { default: "'{}'" })
-        .booleanColumn("is_active", { default: "false" })
-        .dateTimeColumn("date_created", { default: "now()" })
-        .uniqueConstraint(["name", "version"]);
 
     tenant //
         .primaryKeyColumn("id", true)
@@ -73,14 +59,25 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("require_pw_change", { default: "true" })
         .dateTimeColumn("date_created", { default: "now()" })
         .dateTimeColumn("date_modified", { default: "now()" })
-        .referenceColumnAuto("service_application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
+        .referenceColumnAuto(
+            "service_application_id",
+            application,
+            { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade },
+            { required: false }
+        );
 
     consent //
         .primaryKeyColumn("id", true)
         .booleanColumn("is_consent")
         .stringColumn("scope")
-        .referenceColumnAuto("application_id", application, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade })
-        .referenceColumnAuto("user_id", user, { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade })
+        .referenceColumnAuto("application_id", application, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
+        .referenceColumnAuto("user_id", user, {
+            onDelete: eDBForeignKeyAction.cascade,
+            onUpdate: eDBForeignKeyAction.cascade
+        })
         .uniqueConstraint(["user_id", "application_id"]);
 
     profile //
@@ -119,9 +116,15 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .integerColumn("refresh_token_length")
         .referenceColumnAuto("application_id", application)
         .integerColumn("mfa_bypass_days", { default: "0" }) // 0 = no bypass
-        .referenceColumn("mfa_id", mfa, "id", { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade }, { required: false });
+        .referenceColumn(
+            "mfa_id",
+            mfa,
+            "id",
+            { onDelete: eDBForeignKeyAction.cascade, onUpdate: eDBForeignKeyAction.cascade },
+            { required: false }
+        );
 
-    secret  //
+    secret //
         .primaryKeyColumn("id", true)
         .stringColumn("secret")
         .stringColumn("description", { required: false })
@@ -152,13 +155,16 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .primaryKeyColumn("id", true)
         .stringColumn("permission")
         .stringColumn("description", { required: false })
-        .referenceColumnAuto("application_id", application,
+        .referenceColumnAuto(
+            "application_id",
+            application,
             {
                 onDelete: eDBForeignKeyAction.cascade,
                 onUpdate: eDBForeignKeyAction.cascade
             },
             {
-                required: false, default: "null"
+                required: false,
+                default: "null"
             }
         )
         .booleanColumn("is_system", { default: "false" })
@@ -176,8 +182,8 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
             onUpdate: eDBForeignKeyAction.cascade,
             onDelete: eDBForeignKeyAction.cascade
         })
-        .dateTimeColumn("date_created", { default: 'now()' })
-        .dateTimeColumn("last_token_auth_time", { default: 'now()' })
+        .dateTimeColumn("date_created", { default: "now()" })
+        .dateTimeColumn("last_token_auth_time", { default: "now()" })
         .dateTimeColumn("date_expire");
 
     access_token

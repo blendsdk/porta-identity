@@ -4,7 +4,6 @@ import { SysKeyDataService } from "../SysKeyDataService";
 import { SysApplicationDataService } from "../SysApplicationDataService";
 import { SysSecretDataService } from "../SysSecretDataService";
 import { SysClientDataService } from "../SysClientDataService";
-import { SysExtensionDataService } from "../SysExtensionDataService";
 import { SysUserDataService } from "../SysUserDataService";
 import { SysProfileDataService } from "../SysProfileDataService";
 import { SysRoleDataService } from "../SysRoleDataService";
@@ -63,15 +62,6 @@ export abstract class DataServicesBase extends CoreDataServicesBase<PostgreSQLEx
 	 */
 	public sysClientDataService(): SysClientDataService {
 		return new SysClientDataService({ sharedContext: this.sharedContext });
-	}
-
-	/**
-	 * Returns a new instance of SysExtensionDataService
-	 * @return {*}  {SysExtensionDataService}
-	 * @memberof DataServicesBase
-	 */
-	public sysExtensionDataService(): SysExtensionDataService {
-		return new SysExtensionDataService({ sharedContext: this.sharedContext });
 	}
 
 	/**

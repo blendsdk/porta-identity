@@ -247,53 +247,6 @@ export interface ISysClient {
 
 /**
  * @export
- * @interface ISysExtension
- */
-export interface ISysExtension {
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	extension_id?: string;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	name: string;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	version: string;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	description: string;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	source: string;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	options?: string;
-	/**
-	 * @type boolean
-	 * @memberOf ISysExtension
-	 */
-	is_active?: boolean;
-	/**
-	 * @type string
-	 * @memberOf ISysExtension
-	 */
-	date_created?: string;
-}
-
-/**
- * @export
  * @interface ISysUser
  */
 export interface ISysUser {
