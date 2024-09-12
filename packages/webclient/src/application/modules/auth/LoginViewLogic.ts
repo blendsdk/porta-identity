@@ -84,6 +84,11 @@ export class LoginViewLogic extends DataStoreBase {
         this.errors = {};
     }
 
+    /**
+     * @protected
+     * @param {ICheckSetFlow} [state]
+     * @memberof LoginViewLogic
+     */
     protected updateState(state?: ICheckSetFlow) {
         if (state) {
             this.state = state;
@@ -109,6 +114,10 @@ export class LoginViewLogic extends DataStoreBase {
         }
     }
 
+    /**
+     * @protected
+     * @memberof LoginViewLogic
+     */
     protected async loadTenantInformation() {
         if (this.state === undefined && !this.fetching) {
             this.beginFetching();
@@ -130,6 +139,9 @@ export class LoginViewLogic extends DataStoreBase {
         }
     }
 
+    /**
+     * @memberof LoginViewLogic
+     */
     public onResendVerificationCode() {
         this.beginFetching();
         ApplicationApi.authorization
@@ -150,16 +162,27 @@ export class LoginViewLogic extends DataStoreBase {
             });
     }
 
+    /**
+     * @memberof LoginViewLogic
+     */
     public onForgotPasswordClick() {
         this.router.go(eAppRoutes.forgotPassword.path, {}, true);
     }
 
+    /**
+     * @protected
+     * @memberof LoginViewLogic
+     */
     protected beginFetching(): void {
         super.beginFetching(() => {
             this.updateState();
         });
     }
 
+    /**
+     * @protected
+     * @memberof LoginViewLogic
+     */
     protected doneFetching(): void {
         super.doneFetching(() => {
             this.updateState();
@@ -342,6 +365,10 @@ export class LoginViewLogic extends DataStoreBase {
             });
     }
 
+    /**
+     * @param {IInitStore} params
+     * @memberof LoginViewLogic
+     */
     public init(params: IInitStore): void {
         const { t } = useTranslation();
         this.router = useRouter();
