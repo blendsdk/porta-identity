@@ -3,11 +3,11 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 export default defineConfig({
     optimizeDeps: {
-        include: ["@porta/shared", "@blendsdk/fui8", "@fluentui/react"]
+        include: ["@porta/shared"]
     },
     build: {
         commonjsOptions: {
-            include: [/shared/, /node_modules/, /fui8/, /fluent/]
+            include: [/shared/, /node_modules/]
         }
     },
     plugins: [

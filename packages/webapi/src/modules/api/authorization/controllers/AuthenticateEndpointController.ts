@@ -1,5 +1,5 @@
-import { generateRandomUUID, verifyStringSync } from "@blendsdk/crypto";
-import { errorObjectInfo, isNullOrUndef, MD5 } from "@blendsdk/stdlib";
+import { verifyStringSync } from "@blendsdk/crypto";
+import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -16,16 +16,11 @@ import {
     MFA_RESEND_REQUEST,
     RESP_ACCOUNT,
     RESP_CHANGE_PASSWORD,
-    RESP_CONSENT,
-    RESP_FORGOT_PASSWORD,
-    RESP_FORGOT_PASSWORD_REQUEST,
     RESP_MFA
 } from "@porta/shared";
-import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
-import { EMailForgotPasswordProvider } from "../../../../services/EMailForgotPasswordProvider";
+import { Claims, commonUtils, EmailMFAProvider, EndpointController } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
@@ -40,13 +35,9 @@ export class AuthenticateEndpointController extends EndpointController {
         return claims.getClaimsList();
     }
 
-    /**
-     * @param {ICheckSetFlowRequest} params
-     * @return {*}  {Promise<Response<ICheckSetFlowResponse>>}
-     * @memberof AuthenticateEndpointController
-     */
     public async handleRequest(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>> {
         let flow: IAuthorizationFlow = undefined;
+        let next: string = undefined;
         let resp: string = undefined;
         let error: boolean = false;
         let tenantRecord: ISysTenant = undefined;
@@ -56,21 +47,11 @@ export class AuthenticateEndpointController extends EndpointController {
         let allow_reset_password: boolean = undefined;
         let expires_in: number = 0;
         let mfa_type: string = undefined;
-        let consent_claims: string[] = [];
-        let consent_display_name = undefined;
-        let ow_consent = undefined;
+        // let consent_claims: string[] = [];
+        // let consent_display_name = undefined;
+        // let ow_consent = undefined;
 
-        let {
-            update,
-            password,
-            mfa_result,
-            username,
-            consent: consent_result,
-            ow_consent: ow_consent_result,
-            new_password,
-            confirm_new_password,
-            locale
-        } = params;
+        let { update, username, password, new_password, confirm_new_password, mfa_result } = params;
 
         const is_conformance_test = update === "conformance";
         update = is_conformance_test ? RESP_ACCOUNT : update;
@@ -85,7 +66,6 @@ export class AuthenticateEndpointController extends EndpointController {
             error = true;
         }
 
-        // if we have a flow the check the tenant
         if (!error) {
             tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
@@ -103,199 +83,61 @@ export class AuthenticateEndpointController extends EndpointController {
             }
         }
 
-        // if we have a flow and a tenant
+        // Updates
         if (!error) {
-            const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
-            const profileDs = new SysProfileDataService({
-                tenantId: tenantRecord.id
-            });
-
+            if (update === null) {
+                flow.account_state = false;
+                // reset all user input there
+            }
             if (update === RESP_ACCOUNT) {
-                const userRecord = await userDs.findByUsernameNonService({
-                    username
-                });
-
-                if (userRecord) {
-                    const isPasswordValid = verifyStringSync(password, userRecord.password);
-                    if (isPasswordValid) {
-                        flow.account_state = true;
-                        flow.user = userRecord;
-                        flow.profile = await profileDs.findProfileByUserId({
-                            user_id: userRecord.id
-                        });
-                        // we need to ask the consent state here since we need a valid user
-                        flow.consent_state = await this.getConsentState({
-                            authRecord: flow.authRecord,
-                            authRequest: flow.authRequest,
-                            user: userRecord,
-                            tenantRecord
-                        });
-                        flow.change_password_state = !(flow.user.require_pw_change === true);
-                        await this.updateFlow(flow);
-                    } else {
-                        error = true;
-                        resp = INVALID_PWD;
-                    }
-                } else {
-                    error = true;
-                    resp = INVALID_PWD;
-                }
-            } else if (update === RESP_FORGOT_PASSWORD) {
-                flow.forgot_password_state = true;
-                await this.updateFlow(flow);
+                const result = await this.checkUserCredentials(username, password, flow, tenantRecord);
+                resp = result.resp;
+                error = result.error;
             } else if (update === RESP_MFA) {
+                // Check if the sent code is the code registered before!
                 flow.mfa_state = mfa_result === flow.mfa_request;
-
                 // check and set the bypass by IP and client_id if possible
                 if (flow.mfa_state && flow.authRecord.mfa_bypass_days !== 0) {
-                    await this.registerMFABypass(flow);
+                    await this.registerMFABypass(flow, true);
                 }
-
                 if (mfa_result !== MFA_RESEND_REQUEST && !flow.mfa_state) {
                     error = true;
                     resp = `invalid_mfa_${mfa_type}`;
                 }
                 await this.updateFlow(flow);
-            } else if (update === RESP_CONSENT) {
-                flow.consent_state = true;
-
-                // save the consent for this user
-                await databaseUtils.saveUserConsent(
-                    {
-                        application_id: flow.authRecord.application_id,
-                        user_id: flow.user.id,
-                        is_consent: consent_result,
-                        // the requested scope for this application is saved
-                        // here so we can extract it later when Claims are read
-                        scope: flow.authRequest.scope
-                    },
+            } else if (update === MFA_RESEND_REQUEST) {
+                await this.createNewMFARequest(flow);
+            } else if (update === RESP_CHANGE_PASSWORD) {
+                const result = await this.changePasswordAtLogin(
+                    flow,
+                    password,
+                    new_password,
+                    confirm_new_password,
                     tenantRecord
                 );
-
-                // we save the consent for the entire organization for this application
-                if (ow_consent_result === true) {
-                    const applicationDs = new SysApplicationDataService({
-                        tenantId: tenantRecord.id
-                    });
-                    await applicationDs.updateSysApplicationById(
-                        {
-                            ow_consent: ow_consent_result
-                        },
-                        { id: flow.authRecord.application_id }
-                    );
-                }
-
-                await this.updateFlow(flow);
-            } else if (update === RESP_CHANGE_PASSWORD) {
-                const userRecord = await userDs.findByUsernameNonService({
-                    username
-                });
-                if (userRecord) {
-                    const isPasswordValid = verifyStringSync(password, userRecord.password);
-                    const isNewPassword = new_password === confirm_new_password && !isNullOrUndef(new_password);
-                    if (isPasswordValid && isNewPassword && userRecord.require_pw_change === true) {
-                        await userDs.updateSysUserById(
-                            {
-                                password: new_password,
-                                date_modified: new Date().toISOString(),
-                                require_pw_change: false
-                            },
-                            { id: userRecord.id }
-                        );
-                        flow.change_password_state = true;
-                        await this.updateFlow(flow);
-                    } else {
-                        error = true;
-                        resp = INVALID_PWD_MATCH;
-                    }
-                } else {
-                    error = true;
-                    resp = INVALID_PWD;
-                }
-            } else if (update === RESP_FORGOT_PASSWORD_REQUEST) {
-                const userRecord = await userDs.findByUsernameNonService({ username });
-                if (userRecord) {
-                    const profileRecord = await profileDs.findProfileByUserId({
-                        user_id: userRecord.id
-                    });
-                    if (profileRecord) {
-                        try {
-                            const ttl_minutes = 10;
-                            const fpFlow = generateRandomUUID();
-                            const url = `${this.getServerURL()}/fp/${fpFlow}`;
-                            const mailer = new EMailForgotPasswordProvider({
-                                mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
-                                settings: this.request.context.getSettings(),
-                                trans: ((this as any).context as II18NRequestContext).getTranslator(),
-                                user: userRecord,
-                                profile: profileRecord,
-                                authRecord: flow.authRecord,
-                                tenantRecord: tenantRecord,
-                                locale,
-                                ttl: ttl_minutes,
-                                url
-                            });
-                            await mailer.send();
-                            await this.getCache().setValue(
-                                `forgot:${fpFlow}`,
-                                {
-                                    userRecord,
-                                    profileRecord,
-                                    locale,
-                                    authRecord: flow.authRecord,
-                                    tenantRecord
-                                },
-                                {
-                                    expire: commonUtils.expireSecondsFromNow(ttl_minutes * 60) // minutes
-                                }
-                            );
-                        } catch (err) {
-                            this.getLogger().error(errorObjectInfo(err));
-                        }
-                    }
-                }
+                error = result.error;
+                resp = result.resp;
             }
+        }
 
-            if (!error) {
-                if (flow.forgot_password_state === true) {
-                    resp = RESP_FORGOT_PASSWORD;
-                } else if (flow.account_state === false) {
-                    resp = RESP_ACCOUNT;
+        // Next steps
+        if (!error) {
+            if (!flow.account_state) {
+                next = RESP_ACCOUNT;
+            } else {
+                // the username and password has been accepted here.
+
+                //next we check the MFA and resend MFA code request
+                if (
+                    update === MFA_RESEND_REQUEST ||
+                    (update !== MFA_RESEND_REQUEST && (await this.checkSendMFARequest(flow, mfa_result)))
+                ) {
+                    next = RESP_MFA;
+                } else if (flow.require_change_password || (error === true && update === RESP_CHANGE_PASSWORD)) {
+                    next = RESP_CHANGE_PASSWORD;
                 } else {
-                    // account state is true here
-                    await this.checkMFABypass(flow);
-                    if (flow.mfa_state === false) {
-                        if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined) {
-                            flow.mfa_request = await this.createMFARequest(flow);
-                            await this.updateFlow(flow);
-                        }
-                        // send mfa code
-                        resp = RESP_MFA;
-                    } else if (flow.consent_state === false) {
-                        resp = RESP_CONSENT;
-                        consent_claims = await this.getClaimsList(flow.authRequest);
-                        consent_display_name = [
-                            flow.profile?.firstname,
-                            flow.profile?.middle_name,
-                            flow.profile?.lastname
-                        ]
-                            .filter(Boolean)
-                            .join(" ");
-                        const { roles } = await databaseUtils.getUserRolesAndPermissions(
-                            flow.user.id,
-                            flow.authRecord.application_id,
-                            tenantRecord
-                        );
-                        ow_consent = roles.filter((r) => r.role === "ADMINISTRATOR").length !== 0;
-                    } else if (flow.change_password_state === false) {
-                        resp = RESP_CHANGE_PASSWORD;
-                    } else {
-                        // mfa state is true
-                        // here is the authentication complete
-                        flow.complete = true;
-                        await this.updateFlow(flow);
-                        resp = `${this.getServerURL()}/af/finalize`;
-                    }
+                    // figure out the next step
+                    debugger;
                 }
             }
         }
@@ -305,14 +147,15 @@ export class AuthenticateEndpointController extends EndpointController {
         } else {
             return new SuccessResponse<ICheckSetFlowResponse>({
                 data: {
-                    consent_display_name,
-                    ow_consent,
+                    // consent_display_name,
+                    // ow_consent,
+                    // consent_claims,
+                    next,
                     allow_reset_password,
                     application_name,
                     logo,
                     tenant_name,
-                    tenant: tenantRecord.id,
-                    consent_claims,
+                    tenant: tenantRecord ? tenantRecord.id : undefined,
                     resp,
                     error,
                     expires_in,
@@ -322,14 +165,140 @@ export class AuthenticateEndpointController extends EndpointController {
         }
     }
 
+    protected async changePasswordAtLogin(
+        flow: IAuthorizationFlow,
+        password: string,
+        new_password: string,
+        confirm_new_password: string,
+        tenantRecord: ISysTenant
+    ) {
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const { user } = flow;
+        const userRecord = await userDs.findByUsernameNonService({ username: user.username });
+        if (userRecord) {
+            const isPasswordValid = verifyStringSync(password, userRecord.password);
+            const isNewPassword = new_password === confirm_new_password && !isNullOrUndef(new_password);
+            if (isPasswordValid && isNewPassword && userRecord.require_pw_change === true) {
+                await userDs.updateSysUserById(
+                    {
+                        password: new_password,
+                        date_modified: new Date().toISOString(),
+                        require_pw_change: false
+                    },
+                    { id: userRecord.id }
+                );
+                flow.require_change_password = false;
+                await this.updateFlow(flow);
+                return {
+                    error: false,
+                    resp: undefined
+                };
+            } else {
+                return {
+                    error: true,
+                    resp: INVALID_PWD_MATCH
+                };
+            }
+        } else {
+            return {
+                error: true,
+                resp: INVALID_PWD
+            };
+        }
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {string} mfa_result
+     * @return {*}
+     * @memberof AuthenticateEndpointController
+     */
+    protected async checkSendMFARequest(flow: IAuthorizationFlow, mfa_result: string) {
+        await this.checkMFABypass(flow);
+        if (flow.mfa_state === false) {
+            const alreadySent = (await this.getCache().getValue(this.getMFABypassKey(flow))) == "sent";
+            if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined || !alreadySent) {
+                this.createMFARequest(flow);
+            }
+            // send mfa code
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @memberof AuthenticateEndpointController
+     */
+    protected async createNewMFARequest(flow: IAuthorizationFlow) {
+        flow.mfa_request = await this.createMFARequest(flow);
+        await this.registerMFABypass(flow, "sent"); // just register do not bypass
+        await this.updateFlow(flow);
+    }
+
+    /**
+     * @protected
+     * @param {string} username
+     * @param {string} password
+     * @param {IAuthorizationFlow} flow
+     * @param {ISysTenant} tenantRecord
+     * @memberof AuthenticateEndpointController
+     */
+    protected async checkUserCredentials(
+        username: string,
+        password: string,
+        flow: IAuthorizationFlow,
+        tenantRecord: ISysTenant
+    ) {
+        let error: boolean = false;
+        let resp: string = undefined;
+        const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
+        const profileDs = new SysProfileDataService({
+            tenantId: tenantRecord.id
+        });
+        const userRecord = await userDs.findByUsernameNonService({
+            username
+        });
+
+        if (userRecord) {
+            const isPasswordValid = verifyStringSync(password, userRecord.password);
+            if (isPasswordValid) {
+                flow.account_state = true;
+                flow.user = userRecord;
+                flow.profile = await profileDs.findProfileByUserId({
+                    user_id: userRecord.id
+                });
+                // we need to ask the consent state here since we need a valid user
+                flow.consent_state = await this.getConsentState({
+                    authRecord: flow.authRecord,
+                    authRequest: flow.authRequest,
+                    user: userRecord,
+                    tenantRecord
+                });
+                flow.require_change_password = flow.user.require_pw_change === true;
+                await this.updateFlow(flow);
+            } else {
+                error = true;
+                resp = INVALID_PWD;
+            }
+        } else {
+            error = true;
+            resp = INVALID_PWD;
+        }
+        return { resp, error };
+    }
+
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
      * @return {*}
      * @memberof AuthenticateEndpointController
      */
-    protected async registerMFABypass(flow: IAuthorizationFlow) {
-        return await this.getCache().setValue(this.getMFABypassKey(flow), true, {
+    protected async registerMFABypass(flow: IAuthorizationFlow, value: any) {
+        return await this.getCache().setValue(this.getMFABypassKey(flow), value, {
             expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_days)
         });
     }
@@ -342,7 +311,7 @@ export class AuthenticateEndpointController extends EndpointController {
     protected async checkMFABypass(flow: IAuthorizationFlow) {
         if (flow.mfa_state === false) {
             const bypass = await this.getCache().getValue(this.getMFABypassKey(flow));
-            flow.mfa_state = bypass !== undefined;
+            flow.mfa_state = bypass === "sent" ? false : (bypass as any) !== undefined;
         }
     }
 

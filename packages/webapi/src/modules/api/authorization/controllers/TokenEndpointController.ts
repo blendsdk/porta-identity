@@ -1,6 +1,14 @@
 import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, ISysAuthorizationView, ISysTenant, ISysUser, IToken, ITokenRequest, ITokenResponse } from "@porta/shared";
+import {
+    IAuthorizeRequest,
+    ISysAuthorizationView,
+    ISysTenant,
+    ISysUser,
+    IToken,
+    ITokenRequest,
+    ITokenResponse
+} from "@porta/shared";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eClientType, eErrorType, eOAuthGrantType } from "../../../../types";
@@ -11,11 +19,10 @@ import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eClientType, eErrorType, eOAu
  * @extends {EndpointController}
  */
 export class TokenEndpointController extends EndpointController {
-
     /**
      * @protected
      * @param {string} code
-     * @return {*} 
+     * @return {*}
      * @memberof TokenEndpointController
      */
     protected async getFlowByOTACode(code: string, tenantRecord: ISysTenant) {
@@ -30,7 +37,7 @@ export class TokenEndpointController extends EndpointController {
     /**
      * @protected
      * @param {string} flowId
-     * @return {*} 
+     * @return {*}
      * @memberof TokenEndpointController
      */
     protected clearAuthenticationFlow(flowId: string) {
@@ -45,7 +52,6 @@ export class TokenEndpointController extends EndpointController {
      * @memberof TokenEndpointController
      */
     protected validateRequest(tokenRequest: ITokenRequest, authRequest: IAuthorizeRequest, errors: string[]) {
-
         if (tokenRequest.client_id !== authRequest.client_id) {
             errors.push("invalid_client_id");
         }
@@ -95,7 +101,11 @@ export class TokenEndpointController extends EndpointController {
          * we can check the secret validity
          */
         if (isConfidentialClient || isServiceClient) {
-            const isValidSecret = await databaseUtils.validateClientSecret(tenantRecord, client_id, tokenRequest.client_secret);
+            const isValidSecret = await databaseUtils.validateClientSecret(
+                tenantRecord,
+                client_id,
+                tokenRequest.client_secret
+            );
             if (!isValidSecret) {
                 errors.push("invalid_client_secret");
             }
@@ -139,7 +149,7 @@ export class TokenEndpointController extends EndpointController {
      * @protected
      * @param {ITokenRequest} tokenRequest
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof TokenEndpointController
      */
     protected async getTokenByRefreshToken(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
@@ -161,7 +171,6 @@ export class TokenEndpointController extends EndpointController {
                 await databaseUtils.revokeRefreshToken(tenantRecord, refresh_token_record);
                 errors.push("refresh_token_expired");
             } else {
-
                 const { application, session, profile, user, access_token } = refresh_token_record;
 
                 let { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
@@ -173,16 +182,15 @@ export class TokenEndpointController extends EndpointController {
                 const authRequest = access_token.auth_request_params as IAuthorizeRequest;
 
                 if (application.client_id === client_id && !isNullOrUndef(client_secret) && isValidSecret) {
-
                     const authRecord = await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord);
 
-                    // construct a flow 
+                    // construct a flow
                     const flow: IAuthorizationFlow = {
                         account_state: true,
                         consent_state: true,
                         complete: true,
                         mfa_state: true,
-                        change_password_state: true,
+                        require_change_password: true,
                         forgot_password_state: false,
                         session,
                         profile,
@@ -199,12 +207,10 @@ export class TokenEndpointController extends EndpointController {
                         flow,
                         tokenRequest: { ...tokenRequest, client_id }
                     });
-
                 } else {
                     errors.push("invalid_bound_client");
                 }
             }
-
         }
         return {
             errors,
@@ -217,10 +223,14 @@ export class TokenEndpointController extends EndpointController {
      * @param {IAuthorizationFlow} flow
      * @param {ITokenRequest} tokenRequest
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof TokenEndpointController
      */
-    protected async getTokenByAuthorizationCode(flow: IAuthorizationFlow, tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
+    protected async getTokenByAuthorizationCode(
+        flow: IAuthorizationFlow,
+        tokenRequest: ITokenRequest,
+        tenantRecord: ISysTenant
+    ) {
         const errors: string[] = [];
 
         // Here we set the client_id to authRequest.client_id to be able to pass the OIDC cert-test
@@ -244,10 +254,14 @@ export class TokenEndpointController extends EndpointController {
      * @param {ISysTenant} tenantRecord
      * @param {ISysUser} user
      * @param {ITokenRequest} credentials
-     * @return {*} 
+     * @return {*}
      * @memberof TokenEndpointController
      */
-    protected async createOrUpdateClientCredentialsSession(tenantRecord: ISysTenant, user: ISysUser, credentials: ITokenRequest) {
+    protected async createOrUpdateClientCredentialsSession(
+        tenantRecord: ISysTenant,
+        user: ISysUser,
+        credentials: ITokenRequest
+    ) {
         const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
         const { client_id, client_secret } = credentials;
         const sessionId = MD5([client_id, client_secret, user.id].join(""));
@@ -273,30 +287,40 @@ export class TokenEndpointController extends EndpointController {
                 date_expire: date_expire.toISOString()
             });
         } else {
-            sessionRecord = await sessionDs.updateSysSessionById({
-                date_expire: date_expire.toISOString()
-            }, { id: sessionRecord.id });
+            sessionRecord = await sessionDs.updateSysSessionById(
+                {
+                    date_expire: date_expire.toISOString()
+                },
+                { id: sessionRecord.id }
+            );
         }
 
         return sessionRecord;
     }
 
-    public async getTokenByClientCredentials(
-        tokenRequest: ITokenRequest,
-        tenantRecord: ISysTenant
-    ) {
+    public async getTokenByClientCredentials(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
         const errors: string[] = [];
         let token: IToken;
         const { client_id, client_secret } = tokenRequest;
 
-        const authRecord = await databaseUtils.findAuthorizationRecord({ client_id, redirect_uri: eOAuthGrantType.client_credentials }, tenantRecord);
+        const authRecord = await databaseUtils.findAuthorizationRecord(
+            { client_id, redirect_uri: eOAuthGrantType.client_credentials },
+            tenantRecord
+        );
 
         if (authRecord) {
-            const secretRecord = await databaseUtils.findClientSecretForServiceAccount(tenantRecord, client_id, client_secret);
-            const { user, profile } = await databaseUtils.finUserAndProfile(secretRecord.client_credential_user_id, tenantRecord);
+            const secretRecord = await databaseUtils.findClientSecretForServiceAccount(
+                tenantRecord,
+                client_id,
+                client_secret
+            );
+            const { user, profile } = await databaseUtils.finUserAndProfile(
+                secretRecord.client_credential_user_id,
+                tenantRecord
+            );
             const session = await this.createOrUpdateClientCredentialsSession(tenantRecord, user, tokenRequest);
             if (secretRecord) {
-                // construct a flow 
+                // construct a flow
                 const flow: IAuthorizationFlow = {
                     account_state: true,
                     complete: true,
@@ -307,7 +331,7 @@ export class TokenEndpointController extends EndpointController {
                     user,
                     tenantRecord,
                     authRequest: tokenRequest as any,
-                    change_password_state: true,
+                    require_change_password: true,
                     forgot_password_state: false,
                     authRecord,
                     mfa_request: undefined,
@@ -326,7 +350,6 @@ export class TokenEndpointController extends EndpointController {
             errors,
             token
         };
-
     }
 
     /**
@@ -354,7 +377,11 @@ export class TokenEndpointController extends EndpointController {
                 const flow = await this.getFlowByOTACode(code, tenantRecord);
                 if (flow) {
                     const { authRequest } = flow;
-                    const { errors, token: localToken } = await this.getTokenByAuthorizationCode(flow, params, tenantRecord);
+                    const { errors, token: localToken } = await this.getTokenByAuthorizationCode(
+                        flow,
+                        params,
+                        tenantRecord
+                    );
                     token = localToken;
                     await this.clearAuthenticationFlow(flow.flowId);
                     if (errors.length !== 0) {
@@ -375,7 +402,7 @@ export class TokenEndpointController extends EndpointController {
                             error: eErrorType.invalid_grant,
                             error_description: "invalid_authorization_code",
                             redirect_uri,
-                            state,
+                            state
                         },
                         true
                     );

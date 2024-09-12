@@ -1,52 +1,50 @@
-import { Loading } from "@blendsdk/fui8";
+import { Layout, Loading } from "@blendsdk/fui9";
 import { SessionLoadingView } from "@blendsdk/react";
-import { SpinnerSize } from "@fluentui/react";
-import { FLOW_ERROR_INVALID, INVALID_PWD, INVALID_PWD_MATCH, RESP_ACCOUNT, RESP_CHANGE_PASSWORD, RESP_CONSENT, RESP_FORGOT_PASSWORD, RESP_MFA } from "@porta/shared";
+import { Caption1 } from "@fluentui/react-components";
 import React from "react";
 import LogoImage from "../../../resources/logo.svg";
+import { useTranslation } from "../../../system";
 import { ChangePassword } from "./ChangePassword";
-import { ForgotPassword } from "./ForgotPassword";
 import { GetAccount } from "./GetAccount";
-import { GetConsent } from "./GetConsent";
 import { GetMFA } from "./GetMFA";
 import { InvalidSession } from "./InvalidSession";
+import { useLoginView } from "./LoginViewLogic";
 import { useStyles } from "./styles";
-import { IUseAuthenticationFlowState, useAuthenticationFlow } from "./useAuthenticationFlow";
 
-export interface ILoginViewProps {
-}
-
+export interface ILoginViewProps {}
 
 export const LoginView: React.FC<ILoginViewProps> = () => {
     const styles = useStyles();
-    const { form, state, t, onResendMFA, onForgotPassword } = useAuthenticationFlow();
+    const login = useLoginView();
+    const { t } = useTranslation();
 
-    console.log(state.resp, state.curState);
-
-    const isError = state?.error;
-    const isInvalidFlow = isError && state?.resp == FLOW_ERROR_INVALID;
-    const showLogo = !isInvalidFlow;
-    const showWaitSpinner = !isInvalidFlow && state.fetching === true;
-    const showControls = !isInvalidFlow && state.fetching !== true;
-    const showGetAccount = showControls && (state.resp === RESP_ACCOUNT || (state.curState === RESP_ACCOUNT && state.resp === INVALID_PWD));
-    const showGetMFA = showControls && (state.resp === RESP_MFA || state.curState === RESP_MFA);
-    const showConsent = showControls && (state.resp == RESP_CONSENT);
-    const showChangePW = showControls && (state.resp === RESP_CHANGE_PASSWORD || (state.curState === RESP_CHANGE_PASSWORD && state.resp === INVALID_PWD_MATCH));
-    const showForgotPW = showControls && (state.resp === RESP_FORGOT_PASSWORD);
-
-    return state.initializing || state.returningUser ? <SessionLoadingView /> :
-        <div className={styles.wrapper}>
-            <form onSubmit={form.handleSubmit}>
+    return !login.ready ? (
+        <SessionLoadingView />
+    ) : (
+        <div className={styles.wrapper} onKeyDown={login.onKandleKeyPress}>
+            <form>
                 <div className={styles.authView}>
-                    {isInvalidFlow && <InvalidSession caption="invalid_auth_session_caption" message="invalid_auth_session_message" />}
-                    {showLogo && <div className={styles.logo} style={{ backgroundImage: `url(${state?.logo || LogoImage})` }} />}
-                    {showWaitSpinner && <Loading style={{ flex: 1 }} size={SpinnerSize.large} label={t("please_wait")} />}
-                    {showGetAccount && <GetAccount form={form} onForgotPassword={onForgotPassword} flowState={state as IUseAuthenticationFlowState} />}
-                    {showGetMFA && <GetMFA form={form} flowState={state as IUseAuthenticationFlowState} onResend={onResendMFA} />}
-                    {showConsent && <GetConsent form={form} flowState={state as IUseAuthenticationFlowState} />}
-                    {showChangePW && <ChangePassword form={form} flowState={state as IUseAuthenticationFlowState} />}
-                    {showForgotPW && <ForgotPassword form={form} flowState={state as IUseAuthenticationFlowState} />}
+                    {login.isInavlidSession && (
+                        <InvalidSession
+                            caption={t("invalid_auth_session_caption")}
+                            message={t("invalid_auth_session_message")}
+                        />
+                    )}
+                    {login.showBrand && (
+                        <div className={styles.logo} style={{ backgroundImage: `url(${login.logo || LogoImage})` }} />
+                    )}
+                    {login.showWaitSpinner && <Loading style={{ flex: 1 }} size={"large"} label={t("please_wait")} />}
+                    {login.showCredentials && <GetAccount login={login} disabled={login.fetching} />}
+                    {login.showMFA && <GetMFA login={login} disabled={login.fetching} />}
+                    {login.showChangePassword && <ChangePassword login={login} disabled={login.fetching} />}
+                    {login.showBrand && (
+                        <Layout display="flex" flexDirection="row" justifyContent="space-evenly">
+                            <Caption1 className={styles.brandText}>{login.tenantName}</Caption1>
+                            <Caption1 className={styles.brandText}>{login.applicationName}</Caption1>
+                        </Layout>
+                    )}
                 </div>
             </form>
-        </div>;
+        </div>
+    );
 };

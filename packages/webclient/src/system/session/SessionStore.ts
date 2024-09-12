@@ -1,7 +1,7 @@
 import { SessionStoreBase, useGlobalSystemError } from "@blendsdk/react";
 import Cookies from "js-cookie";
-import { getTenant } from ".";
 import { ApplicationApi } from "../api";
+import { getTenant } from "../lib";
 import { eSystemRoutes } from "../routing";
 
 /**
@@ -22,8 +22,8 @@ export class SessionStore extends SessionStoreBase {
             case eSystemRoutes.login.key:
             case eSystemRoutes.logout.key:
             case eSystemRoutes.logoutComplete.key:
-            case eSystemRoutes.forgotPassword.key:
-            case eSystemRoutes.forgotReset.key:
+                //case eSystemRoutes.forgotPassword.key:
+                //case eSystemRoutes.forgotReset.key:
                 this.stopChecking();
                 return true;
             default:

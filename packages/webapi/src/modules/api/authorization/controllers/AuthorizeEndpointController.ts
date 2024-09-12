@@ -239,7 +239,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 account_state: complete,
                 mfa_state,
                 mfa_request: undefined,
-                change_password_state: undefined,
+                require_change_password: undefined,
                 forgot_password_state: undefined,
                 profile,
                 user,

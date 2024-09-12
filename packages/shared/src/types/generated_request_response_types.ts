@@ -858,6 +858,11 @@ export interface ICheckSetFlow {
 	 * @type string
 	 * @memberOf ICheckSetFlow
 	 */
+	next: string;
+	/**
+	 * @type string
+	 * @memberOf ICheckSetFlow
+	 */
 	resp: string;
 }
 

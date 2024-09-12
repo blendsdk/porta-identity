@@ -1,5 +1,5 @@
 import { IRoute } from "@blendsdk/react";
-import { LoginView, LogoutView } from "../../application";
+import { LoginView } from "../../application";
 import { eSystemRoutes } from "./constants";
 
 export const systemRoutes: IRoute[] = [
@@ -8,16 +8,16 @@ export const systemRoutes: IRoute[] = [
         path: eSystemRoutes.login.path,
         component: LoginView
     },
-    {
-        name: eSystemRoutes.logout.key,
-        path: eSystemRoutes.logout.path,
-        component: LogoutView
-    },
-    {
-        name: eSystemRoutes.logoutComplete.key,
-        path: eSystemRoutes.logoutComplete.path,
-        component: LogoutView
-    },
+    // {
+    //     name: eSystemRoutes.logout.key,
+    //     path: eSystemRoutes.logout.path,
+    //     component: LogoutView
+    // },
+    // {
+    //     name: eSystemRoutes.logoutComplete.key,
+    //     path: eSystemRoutes.logoutComplete.path,
+    //     component: LogoutView
+    // },
     {
         name: "not-authorized-access",
         path: "/not-authorized-access",

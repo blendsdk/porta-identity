@@ -1,4 +1,5 @@
 import { getGlobalRouter } from "@blendsdk/react";
+import { useSystemError } from "./init";
 
 export const getBaseUrl = () => {
     const { protocol, hostname } = window.location;
@@ -12,39 +13,30 @@ export const getBaseUrl = () => {
  * @return {*}
  */
 export function getTenant() {
-
     const router = getGlobalRouter();
-
     if (router) {
-        const { tenant } = router.getParameters<{ tenant: string; }>();
+        const { tenant } = router.getParameters<{ tenant: string }>();
         if (tenant) {
             return {
                 tenant,
                 version: tenant
             };
+        } else {
+            throw new Error(
+                `Unable to determine the tenant and the application version from ${window.location.hostname}`
+            );
         }
+    } else {
+        throw new Error("Router not initialized!");
     }
+}
 
-    const url = new URL(window.location.href);
-    const hostName = (url.hostname || url.host || "").toLocaleLowerCase();
-    const parts = hostName.split(".");
-
-    if (hostName === "localhost") {
-        return {
-            version: "develop",
-            tenant: "develop"
-        };
-    } else if (parts.length !== 4 && parts.length !== 3) {
-        throw new Error(`Unable to determine the tenant and the application version from ${hostName}`);
+export function useTenant() {
+    const { catchSystemError } = useSystemError();
+    try {
+        const { tenant } = getTenant();
+        return tenant;
+    } catch (err: any) {
+        catchSystemError(err);
     }
-
-    return parts.length === 4
-        ? {
-            version: parts[0],
-            tenant: parts[1]
-        }
-        : {
-            version: parts[0] === "next" ? "develop" : "prod",
-            tenant: parts[0]
-        };
 }

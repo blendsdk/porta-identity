@@ -2,7 +2,6 @@ import { ApiBuilder } from "@blendsdk/codegen";
 import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createAuthenticationAPI(builder: ApiBuilder) {
-
     builder.defineApi({
         id: "logout_flow_info",
         url: "/lf/flow_info",
@@ -71,7 +70,6 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
             typeSchema.createAppendType(response_type); //
         }
     });
-
 
     builder.defineApi({
         id: "token_info",
@@ -222,6 +220,7 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
                 .addBoolean("ow_consent", { optional: true })
                 .addBoolean("allow_reset_password", { optional: true })
                 .addNumber("expires_in")
+                .addString("next")
                 .addString("resp");
 
             typeSchema.createResponseType(response_type, payload_type); //
@@ -305,8 +304,6 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
             typeSchema.createResponseType(response_type, payload_type);
         }
     });
-
-
 }
 
 //     builder.defineApi({

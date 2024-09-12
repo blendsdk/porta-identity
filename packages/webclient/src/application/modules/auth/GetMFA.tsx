@@ -1,16 +1,14 @@
-import { Body1, FormTextField, Layout, ToolbarSpacer, tokens } from "@blendsdk/fui8";
-import { DefaultButton, PrimaryButton } from "@fluentui/react";
+import { FormFieldTextInput, Layout, ToolbarSpacer } from "@blendsdk/fui9";
+import { Body1, Button, tokens } from "@fluentui/react-components";
 import { makeStyles, shorthands } from "@griffel/react";
-import { FormikProps } from "formik";
-import React, { useEffect, useState } from "react";
+import { RESP_MFA } from "@porta/shared";
+import React from "react";
 import { useTranslation } from "../../../system";
-import { IAuthenticationDialogModel, IUseAuthenticationFlowState } from "./useAuthenticationFlow";
+import { LoginViewLogic } from "./LoginViewLogic";
 
 export interface IGetMFA {
-    form: FormikProps<IAuthenticationDialogModel>;
-    flowState: IUseAuthenticationFlowState;
+    login: LoginViewLogic;
     disabled?: boolean;
-    onResend: () => void;
 }
 
 const useStyles = makeStyles({
@@ -18,43 +16,65 @@ const useStyles = makeStyles({
         "& a": {
             ...shorthands.textDecoration("none"),
             ":hover": {
-                ...shorthands.textDecoration("underline"),
+                ...shorthands.textDecoration("underline")
             }
         }
+    },
+    error: {
+        marginTop: tokens.spacingVerticalS,
+        padding: tokens.spacingVerticalS,
+        textAlign: "center",
+        backgroundColor: tokens.colorPaletteRedBackground3,
+        color: "#fff"
     }
 });
 
-export const GetMFA: React.FC<IGetMFA> = ({ form, disabled, flowState, onResend }) => {
+export const GetMFA: React.FC<IGetMFA> = ({ login, disabled }) => {
     const { t } = useTranslation();
     const styles = useStyles();
-    const [showResend, setShowResend] = useState(false);
 
-    useEffect(() => {
-        const error = `invalid_mfa_${flowState.mfa_type}`;
-        if (flowState.error === true && flowState.resp === error) {
-            setShowResend(true);
-        }
-    }, [flowState.error]);
+    const error = login.errors[RESP_MFA] || false;
 
     return (
-        <Layout className={styles.root} display="flex" flexDirection="column" gap={tokens.spacingM}>
-            <FormTextField form={form} t={t} fieldName="mfa" placeholder={t(`mfa_${flowState.mfa_type}_text_placeholder`)} label={t("mfa_caption")} style={{ fontSize: "1.2rem", textAlign: "center" }} />
+        <Layout className={styles.root} display="flex" flex={1} flexDirection="column" gap={tokens.spacingVerticalM}>
             <ToolbarSpacer flex={1} />
-            {flowState.error && <Body1 style={{ color: tokens.paletteRed, textAlign: "center" }}>{t(flowState.resp)}</Body1>}
-            <Layout display="flex" flexDirection="row" justifyContent="center" alignItems="center" gap={tokens.spacingM}>
-                {showResend && <DefaultButton
+            {error && <Body1 className={styles.error}>{t(login.errors[RESP_MFA])}</Body1>}
+            <FormFieldTextInput
+                form={login.form}
+                t={t}
+                fieldName="mfa"
+                inputProps={{
+                    placeholder: t(`mfa_${login.mfa_type}_text_placeholder`),
+                    style: { fontSize: "1.2rem", textAlign: "center" }
+                }}
+                fieldLabel={t("mfa_caption")}
+            />
+            <ToolbarSpacer flex={1} />
+            <Layout
+                display="flex"
+                flexDirection="row"
+                justifyContent="center"
+                alignItems="center"
+                gap={tokens.spacingHorizontalM}
+            >
+                <Button
+                    appearance="secondary"
                     style={{ flex: 1 }}
-                    onClick={onResend}
-                    text={t("btn_resend")}
-                    disabled={disabled || !form.isValid}
-                />
-                }
-                <PrimaryButton
+                    onClick={login.onResendVerificationCode}
+                    disabled={disabled}
+                >
+                    {t("btn_resend")}
+                </Button>
+                <Button
+                    appearance="primary"
                     style={{ flex: 1 }}
-                    onClick={() => { form.submitForm(); }}
-                    text={t("btn_next")}
-                    disabled={disabled || !form.isValid}
-                />
+                    onClick={() => {
+                        login.form.submitForm();
+                    }}
+                    disabled={disabled || !login.form.isValid}
+                >
+                    {t("btn_verify")}
+                </Button>
             </Layout>
         </Layout>
     );

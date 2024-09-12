@@ -1474,11 +1474,14 @@ export const validationSchema = {
 				expires_in: {
 					type: eJsonSchemaType.number
 				},
+				next: {
+					type: eJsonSchemaType.string
+				},
 				resp: {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["expires_in", "resp"]
+			required: ["expires_in", "next", "resp"]
 		},
 		discovery_keys_request: {
 			type: eJsonSchemaType.object,

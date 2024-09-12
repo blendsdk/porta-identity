@@ -130,7 +130,7 @@ export class AuthenticateEndpointController extends EndpointController {
                             user: userRecord,
                             tenantRecord
                         });
-                        flow.change_password_state = !(flow.user.require_pw_change === true);
+                        flow.require_change_password = !(flow.user.require_pw_change === true);
                         await this.updateFlow(flow);
                     } else {
                         error = true;
@@ -202,7 +202,7 @@ export class AuthenticateEndpointController extends EndpointController {
                             },
                             { id: userRecord.id }
                         );
-                        flow.change_password_state = true;
+                        flow.require_change_password = true;
                         await this.updateFlow(flow);
                     } else {
                         error = true;
@@ -287,7 +287,7 @@ export class AuthenticateEndpointController extends EndpointController {
                             tenantRecord
                         );
                         ow_consent = roles.filter((r) => r.role === "ADMINISTRATOR").length !== 0;
-                    } else if (flow.change_password_state === false) {
+                    } else if (flow.require_change_password === false) {
                         resp = RESP_CHANGE_PASSWORD;
                     } else {
                         // mfa state is true
@@ -305,6 +305,7 @@ export class AuthenticateEndpointController extends EndpointController {
         } else {
             return new SuccessResponse<ICheckSetFlowResponse>({
                 data: {
+                    next: "",
                     consent_display_name,
                     ow_consent,
                     allow_reset_password,
