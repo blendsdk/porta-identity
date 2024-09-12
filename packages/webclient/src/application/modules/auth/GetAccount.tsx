@@ -1,4 +1,4 @@
-import { FormFieldTextInput, Layout, ToolbarSpacer } from "@blendsdk/fui9";
+import { FormFieldCheckbox, FormFieldTextInput, Layout, ToolbarSpacer } from "@blendsdk/fui9";
 import { Body1, Button, Link, tokens } from "@fluentui/react-components";
 import { RESP_ACCOUNT } from "@porta/shared";
 import React from "react";
@@ -27,6 +27,7 @@ export const GetAccount: React.FC<IGetAccount> = ({ disabled, login }) => {
                 form={login.form}
                 t={t}
             />
+            <FormFieldCheckbox fieldLabel={t("rememberMe")} fieldName="rememberMe" form={login.form} t={t} />
             <ToolbarSpacer flex={1} />
             <Layout
                 display="flex"

@@ -110,5 +110,9 @@
     "invalid_password_match": {
         "en": "Password does not match with your current or temporary password",
         "nl": "Wachtwoord komt niet overeen met uw huidige of tijdelijke wachtwoord"
+    },
+    "rememberMe": {
+        "en": "Remember Me",
+        "nl": "Gebruikersnaam onthouden"
     }
 }

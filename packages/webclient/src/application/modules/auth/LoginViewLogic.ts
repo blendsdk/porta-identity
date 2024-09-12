@@ -270,6 +270,9 @@ export class LoginViewLogic extends DataStoreBase {
      */
     public submitAccount(values: IAuthFormModel) {
         this.beginFetching();
+        if (values.rememberMe === false) {
+            window.localStorage.removeItem(LOCAL_STORAGE_LAST_LOGIN);
+        }
         ApplicationApi.authorization
             .checkSetFlow({
                 update: RESP_ACCOUNT,
@@ -377,12 +380,13 @@ export class LoginViewLogic extends DataStoreBase {
      * @memberof LoginViewLogic
      */
     protected initForm() {
+        const lastSignIn = window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN);
         this.form = useFormik<IAuthFormModel>({
             validateOnBlur: true,
             validateOnMount: true,
             initialValues: {
-                rememberMe: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) ? true : false,
-                username: window.localStorage.getItem(LOCAL_STORAGE_LAST_LOGIN) || "",
+                rememberMe: lastSignIn ? true : false,
+                username: lastSignIn || "",
                 password: "",
                 new_password: "",
                 new_password_confirm: "",
