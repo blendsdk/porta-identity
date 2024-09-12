@@ -222,8 +222,12 @@ export class AuthorizeEndpointController extends EndpointController {
 
         const require_user_consent = await this.isUserConsentRequired({ authRecord, authRequest, user, tenantRecord });
 
-        // complete is when we have a session, a user and a profile and no forced login is required
-        const complete = authenticated ? (login_required ? false : authenticated) : authenticated;
+        // complete is when we have a session, a user and a profile and no forced login and consent are required!
+        const complete = authenticated
+            ? login_required || require_user_consent
+                ? false
+                : authenticated
+            : authenticated;
 
         let mfa_state = complete ? true : !isNullOrUndef(authRecord.mfa) ? false : true; // check if we have an MFA record bound to this client
 
