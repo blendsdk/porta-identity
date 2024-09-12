@@ -456,8 +456,15 @@ export class LoginViewLogic extends DataStoreBase {
         });
     }
 
+    /**
+     * Check the session
+     *
+     * @protected
+     * @memberof LoginViewLogic
+     */
     protected checkSession() {
         const sessionCookie = Cookies.get(COOKIE_AUTH_FLOW_TTL);
+        console.log(sessionCookie);
         if (!sessionCookie) {
             this.state = this.state || ({} as any);
             this.state.error = true;
