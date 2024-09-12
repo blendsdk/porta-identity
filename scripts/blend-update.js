@@ -4,7 +4,9 @@ const path = require("path");
 const glob = require("glob");
 const root = process.cwd();
 
-const packages = glob.sync(path.join(root, "packages", "**", "package.json")).filter(p => { return p.indexOf("node_modules") === -1; });
+const packages = glob.sync(path.join(root, "packages", "**", "package.json"), {
+    ignore: ["**/temp/**", "**/node_modules/**", "**/dist/**"]
+});
 const install = [`rm ${path.join(root, "yarn.lock")}`, ""];
 const channel = process.argv[2];
 

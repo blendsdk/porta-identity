@@ -1,6 +1,7 @@
 import { DataStoreBase, IInitStore, makeLocalStore, RouterStore, TTranslationFunction } from "@blendsdk/react";
 import { filterObject, IDictionaryOf } from "@blendsdk/stdlib";
 import {
+    COOKIE_AUTH_FLOW_TTL,
     FLOW_ERROR_INVALID,
     ICheckSetFlow,
     LOCAL_STORAGE_LAST_LOGIN,
@@ -12,6 +13,7 @@ import {
     RESP_MFA
 } from "@porta/shared";
 import { FormikProps, useFormik } from "formik";
+import Cookies from "js-cookie";
 import React from "react";
 import * as yup from "yup";
 import { ApplicationApi, useRouter, useTranslation } from "../../../system";
@@ -36,12 +38,15 @@ export const validateData = (data: any, validator: (data: any) => void) => {
     }
 };
 
+/**
+ * @export
+ * @class LoginViewLogic
+ * @extends {DataStoreBase}
+ */
 export class LoginViewLogic extends DataStoreBase {
-    /**
-     * @type {boolean}
-     * @memberof LoginViewLogic
-     */
     public ready: boolean;
+
+    protected sessionChecker: any;
     protected state: ICheckSetFlow;
     protected t: TTranslationFunction;
 
@@ -93,10 +98,18 @@ export class LoginViewLogic extends DataStoreBase {
         if (state) {
             this.state = state;
         }
+
+        // make sure we have a state first
         if (this.state) {
             this.isInavlidSession = this.state.error && this.state.resp === FLOW_ERROR_INVALID;
             this.showControls = !this.isInavlidSession && this.fetching === false;
             this.showBrand = this.showControls;
+            this.showCredentials = this.showControls && this.view === eView.GET_CREDENTIALS;
+            this.showMFA = this.showControls && this.view === eView.GET_MFA;
+            this.showChangePassword = this.showControls && this.view === eView.CHANGE_PASSWORD_ON_LOGIN;
+            this.showUserConsent = this.showControls && this.view === eView.USER_CONSENT;
+            this.showWaitSpinner = !this.isInavlidSession && this.fetching === true;
+
             this.tenantName = this.state.tenant_name;
             this.applicationName = this.state.application_name;
             this.logo = this.state.logo;
@@ -105,12 +118,6 @@ export class LoginViewLogic extends DataStoreBase {
             this.consent_display_name = this.state.consent_display_name;
             this.consent_claims = this.state.consent_claims;
             this.can_ow_consent = this.state.ow_consent;
-
-            this.showCredentials = this.showControls && this.view === eView.GET_CREDENTIALS;
-            this.showMFA = this.showControls && this.view === eView.GET_MFA;
-            this.showChangePassword = this.showControls && this.view === eView.CHANGE_PASSWORD_ON_LOGIN;
-            this.showUserConsent = this.showControls && this.view === eView.USER_CONSENT;
-            this.showWaitSpinner = !this.isInavlidSession && this.fetching === true;
         }
     }
 
@@ -366,20 +373,10 @@ export class LoginViewLogic extends DataStoreBase {
     }
 
     /**
-     * @param {IInitStore} params
+     * @protected
      * @memberof LoginViewLogic
      */
-    public init(params: IInitStore): void {
-        const { t } = useTranslation();
-        this.router = useRouter();
-        this.t = t;
-
-        const { sideEffect } = params;
-
-        this.makeAction<LoginViewLogic>("onForgotPasswordClick");
-        this.makeAction<LoginViewLogic>("onKandleKeyPress");
-        this.makeAction<LoginViewLogic>("onResendVerificationCode");
-
+    protected initForm() {
         this.form = useFormik<IAuthFormModel>({
             validateOnBlur: true,
             validateOnMount: true,
@@ -457,9 +454,48 @@ export class LoginViewLogic extends DataStoreBase {
                 }
             }
         });
+    }
+
+    protected checkSession() {
+        const sessionCookie = Cookies.get(COOKIE_AUTH_FLOW_TTL);
+        if (!sessionCookie) {
+            this.state = this.state || ({} as any);
+            this.state.error = true;
+            this.state.resp = FLOW_ERROR_INVALID;
+            this.updateState(this.state);
+            this.react();
+        }
+    }
+
+    /**
+     * @param {IInitStore} params
+     * @memberof LoginViewLogic
+     */
+    public init(params: IInitStore): void {
+        const { t } = useTranslation();
+        this.router = useRouter();
+        this.t = t;
+
+        const { sideEffect } = params;
+
+        this.makeAction<LoginViewLogic>("onForgotPasswordClick");
+        this.makeAction<LoginViewLogic>("onKandleKeyPress");
+        this.makeAction<LoginViewLogic>("onResendVerificationCode");
+
+        this.initForm();
 
         sideEffect(() => {
             this.loadTenantInformation();
+            if (!this.sessionChecker) {
+                this.sessionChecker = setInterval(() => {
+                    this.checkSession();
+                }, 1000);
+            }
+            return () => {
+                if (this.sessionChecker) {
+                    clearInterval(this.sessionChecker);
+                }
+            };
         }, []);
     }
 }
