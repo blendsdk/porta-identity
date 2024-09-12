@@ -220,7 +220,7 @@ export class AuthorizeEndpointController extends EndpointController {
             ? commonUtils.checkLoginRequired(session, authRequest.max_age) || this.requireLoginByPrompt(authRequest)
             : true;
 
-        const consent_state = await this.getConsentState({ authRecord, authRequest, user, tenantRecord });
+        const require_user_consent = await this.isUserConsentRequired({ authRecord, authRequest, user, tenantRecord });
 
         // complete is when we have a session, a user and a profile and no forced login is required
         const complete = authenticated ? (login_required ? false : authenticated) : authenticated;
@@ -233,7 +233,7 @@ export class AuthorizeEndpointController extends EndpointController {
                 complete,
                 authRecord,
                 authRequest,
-                consent_state,
+                require_user_consent,
                 flowId,
                 expire,
                 account_state: complete,

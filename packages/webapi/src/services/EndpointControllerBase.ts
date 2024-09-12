@@ -1,10 +1,41 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isNullOrUndef, isObject } from "@blendsdk/stdlib";
-import { BadRequestResponse, Controller, IRequestContext, RedirectResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, COOKIE_AUTH_FLOW_TTL, COOKIE_TENANT, IAuthorizeRequest, ILifetime, IPortaAccount, ISysAccessToken, ISysApplication, ISysAuthorizationView, ISysClient, ISysSession, ISysTenant, ISysUser, IToken, ITokenRequest } from "@porta/shared";
+import {
+    BadRequestResponse,
+    Controller,
+    IRequestContext,
+    RedirectResponse,
+    SuccessResponse
+} from "@blendsdk/webafx-common";
+import {
+    COOKIE_AUTH_FLOW,
+    COOKIE_AUTH_FLOW_TTL,
+    COOKIE_TENANT,
+    IAuthorizeRequest,
+    ILifetime,
+    IPortaAccount,
+    ISysAccessToken,
+    ISysApplication,
+    ISysAuthorizationView,
+    ISysClient,
+    ISysSession,
+    ISysTenant,
+    ISysUser,
+    IToken,
+    ITokenRequest
+} from "@porta/shared";
 import * as jose from "jose";
 import crypto from "node:crypto";
-import { eOAuthGrantType, eOAuthPrompt, eOAuthResponseMode, eOAuthResponseType, eOAuthSigningAlg, IAuthorizationFlow, IErrorResponseParams, IPortaApplicationSetting } from "../types";
+import {
+    eOAuthGrantType,
+    eOAuthPrompt,
+    eOAuthResponseMode,
+    eOAuthResponseType,
+    eOAuthSigningAlg,
+    IAuthorizationFlow,
+    IErrorResponseParams,
+    IPortaApplicationSetting
+} from "../types";
 import { Claims } from "./Claims";
 import { commonUtils } from "./CommonUtils";
 import { databaseUtils, INewAccessTokenResult } from "./DatabaseUtils";
@@ -28,35 +59,46 @@ export interface ILogoutFlow {
  * @extends {Controller<IRequestContext>}
  */
 export abstract class EndpointController extends Controller<IRequestContext> {
-
     /**
      * @protected
-     * @param {{ authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }} params
-     * @return {*} 
+     * @param {{
+     *         authRequest: IAuthorizeRequest;
+     *         authRecord: ISysAuthorizationView;
+     *         user: ISysUser;
+     *         tenantRecord: ISysTenant;
+     *     }} params
+     * @return {*}
      * @memberof EndpointController
      */
-    protected async getConsentState(params: { authRequest: IAuthorizeRequest, authRecord: ISysAuthorizationView, user: ISysUser, tenantRecord: ISysTenant; }) {
+    protected async isUserConsentRequired(params: {
+        authRequest: IAuthorizeRequest;
+        authRecord: ISysAuthorizationView;
+        user: ISysUser;
+        tenantRecord: ISysTenant;
+    }) {
         const { authRecord, authRequest, tenantRecord, user } = params;
-        if (authRequest.prompt === eOAuthPrompt.consent) {
-            return false; // forced consent
-        } else if (isNullOrUndef(user)) {
-            return false; // user not logged in
+        if (authRequest.prompt === eOAuthPrompt.consent || isNullOrUndef(user)) {
+            return true; // forced consent
         } else {
-            const { is_consent = false } = (await databaseUtils.findConsentByUserAndApplication(user.id, authRecord.application_id, tenantRecord)) || {};
-            return is_consent || authRecord.ow_consent;
+            const { is_consent = false } =
+                (await databaseUtils.findConsentByUserAndApplication(
+                    user.id,
+                    authRecord.application_id,
+                    tenantRecord
+                )) || {};
+            return is_consent === false || authRecord.ow_consent === false;
         }
     }
-
 
     /**
      * @protected
      * @param {string} keyName
      * @param {string} value
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected async createIdTokenHeaderHashForKey(keyName: string, value: string) {
-        const hash = crypto.createHash('sha256').update(value).digest();
+        const hash = crypto.createHash("sha256").update(value).digest();
         const leftmostBits = hash.subarray(0, 16);
         return {
             [keyName]: leftmostBits.toString("base64url")
@@ -71,15 +113,23 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof TokenEndpointController
      */
     protected async createTokens(params: {
-        flow: IAuthorizationFlow,
-        tokenRequest: ITokenRequest,
-        idTokenPayload?: IDictionaryOf<any>,
+        flow: IAuthorizationFlow;
+        tokenRequest: ITokenRequest;
+        idTokenPayload?: IDictionaryOf<any>;
         includeIdToken?: boolean;
         includeAccessToken?: boolean;
         idTokenLifeTime?: ILifetime;
         includeAtHash?: boolean;
     }): Promise<IToken> {
-        const { flow, tokenRequest, idTokenPayload, includeIdToken = true, includeAccessToken = true, idTokenLifeTime, includeAtHash = false } = params;
+        const {
+            flow,
+            tokenRequest,
+            idTokenPayload,
+            includeIdToken = true,
+            includeAccessToken = true,
+            idTokenLifeTime,
+            includeAtHash = false
+        } = params;
         const { authRecord, authRequest, tenantRecord, user, session, profile } = flow;
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = this.getSettings<IPortaApplicationSetting>();
         let { access_token_length, refresh_token_length } = authRecord;
@@ -100,7 +150,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 ttl: access_token_length,
                 user_id: user.id,
                 authRequest,
-                token_reference: commonUtils.createTokenReference(tokenRequest.client_id, tokenRequest.client_secret || "", this.request),
+                token_reference: commonUtils.createTokenReference(
+                    tokenRequest.client_id,
+                    tokenRequest.client_secret || "",
+                    this.request
+                ),
                 tokenBuilder: async (date_created: Date, date_expire: Date) => {
                     return this.builJTWToken({
                         app: await databaseUtils.findApplicationByClientID(tenantRecord, authRequest.client_id),
@@ -125,15 +179,20 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 });
                 reftesh_token = {
                     refresh_token: refresh_token_record.refresh_token,
-                    refresh_token_expires_in: refreshtoken_date_expire.getTime() - Date.now(),
+                    refresh_token_expires_in: refreshtoken_date_expire.getTime() - Date.now()
                 };
             }
         }
 
         let id_token: string = undefined;
         if (includeIdToken) {
-
-            let payload = includeAtHash && accessTokenResult ? await this.createIdTokenHeaderHashForKey("at_hash", accessTokenResult.access_token_record.access_token) : {};
+            let payload =
+                includeAtHash && accessTokenResult
+                    ? await this.createIdTokenHeaderHashForKey(
+                          "at_hash",
+                          accessTokenResult.access_token_record.access_token
+                      )
+                    : {};
 
             id_token = await this.createIDToken({
                 lifeTime: accessTokenResult ? accessTokenResult.access_token_record : idTokenLifeTime,
@@ -143,7 +202,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 tokenRequest,
                 user_id: user.id,
                 is_refresh_token_grant: tokenRequest.grant_type === eOAuthGrantType.refresh_token,
-                payload: { ...payload, ...idTokenPayload || {} }
+                payload: { ...payload, ...(idTokenPayload || {}) }
             });
         }
 
@@ -154,7 +213,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 access_token: access_token_record.access_token,
                 expires_in: date_expire.getTime() - Date.now(),
                 token_type: "Bearer",
-                ...reftesh_token,
+                ...reftesh_token
             };
         }
 
@@ -170,7 +229,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
     /**
      * @protected
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected async cleanExpiredSessions(tenantRecord: ISysTenant) {
@@ -188,19 +247,18 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      *             date_expire: Date,
      *             claims: IDictionaryOf<any>;
      *         }} params
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
-    protected async builJTWToken(params:
-        {
-            tenantRecord: ISysTenant,
-            app: ISysApplication,
-            user: ISysUser,
-            session: ISysSession,
-            date_created: Date,
-            date_expire: Date,
-            claims: IDictionaryOf<any>;
-        }) {
+    protected async builJTWToken(params: {
+        tenantRecord: ISysTenant;
+        app: ISysApplication;
+        user: ISysUser;
+        session: ISysSession;
+        date_created: Date;
+        date_expire: Date;
+        claims: IDictionaryOf<any>;
+    }) {
         const { tenantRecord, app, date_created, date_expire, claims, user, session } = params;
         const { privateKey } = await databaseUtils.getJWKSigningKeys(tenantRecord);
 
@@ -231,33 +289,34 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @memberof EndpointController
      */
     protected async getClaimsByScope(params: IDictionaryOf<any>) {
-        const { user, client, tenant, auth_request_params } = (params as any as IPortaAccount & Pick<ISysAccessToken, "auth_request_params">) || {};
-        const { scope = "", is_consent } = (await databaseUtils.findConsentByUserAndApplication(
-            user.id,
-            client.application_id,
-            tenant
-        )) || {};
+        const { user, client, tenant, auth_request_params } =
+            (params as any as IPortaAccount & Pick<ISysAccessToken, "auth_request_params">) || {};
+        const { scope = "", is_consent } =
+            (await databaseUtils.findConsentByUserAndApplication(user.id, client.application_id, tenant)) || {};
 
         const requested = commonUtils.parseSeparatedTokens(auth_request_params["scope"] || "");
         const consented = commonUtils.parseSeparatedTokens((scope || "").replace(/openid|offline_access/gi, ""));
 
         if (!is_consent) {
             // set the not consented scopes to false
-            Object.keys(consented).forEach(item => {
+            Object.keys(consented).forEach((item) => {
                 requested[item] = false;
             });
 
             // Object loop and remove the scopes set to false
-            params.auth_request_params.scope = Object.entries(requested).filter(([, v]) => {
-                return v === true;
-            }).map(([k,]) => {
-                return k;
-            }).join(" ");
+            params.auth_request_params.scope = Object.entries(requested)
+                .filter(([, v]) => {
+                    return v === true;
+                })
+                .map(([k]) => {
+                    return k;
+                })
+                .join(" ");
         }
 
         const claims = new Claims({
             ...params,
-            serverUrl: this.getServerURL(),
+            serverUrl: this.getServerURL()
         } as any);
         return claims.getClaims();
     }
@@ -267,7 +326,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      *
      * @protected
      * @param {IAuthorizationFlow} flow
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected async updateFlow(flow: IAuthorizationFlow) {
@@ -279,7 +338,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @TODO implement this correctly!
      * @protected
      * @param {string} acr_values
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected handleAcrClaims(acr_values: string) {
@@ -294,7 +353,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
     /**
      * @protected
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected getBasicAuthCredentialsFromRequestHeader() {
@@ -329,22 +388,22 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     public clearAuthenticationFlowCookies() {
         this.setCookie(COOKIE_AUTH_FLOW, "-", {
-            expires: new Date(-1),
+            expires: new Date(-1)
         });
 
         this.setCookie(COOKIE_TENANT, "-", {
-            expires: new Date(-1),
+            expires: new Date(-1)
         });
 
         this.setCookie(COOKIE_AUTH_FLOW_TTL, "-", {
-            expires: new Date(-1),
+            expires: new Date(-1)
         });
     }
 
     /**
      * @protected
      * @param {string} flowId
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected getAuthenticationFlow(flowId: string) {
@@ -356,12 +415,19 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      * @protected
      * @param {IErrorResponseParams} args
      * @param {boolean} [toUserAgent]
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected responseWithError(args: IErrorResponseParams, toUserAgent?: boolean) {
-
-        const { error, error_description, state, redirect_uri, error_uri, response_mode, response_type = eOAuthResponseType.code } = args;
+        const {
+            error,
+            error_description,
+            state,
+            redirect_uri,
+            error_uri,
+            response_mode,
+            response_type = eOAuthResponseType.code
+        } = args;
 
         const fragmented = response_type !== eOAuthResponseType.code;
         let fragment: IDictionaryOf<any> = {};
@@ -400,11 +466,10 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
-     * @return {*} 
+     * @return {*}
      * @memberof FinalizeEndpointController
      */
     protected createRedirectUri(redirect_uri: string, response: IDictionaryOf<string>, fragment?: IDictionaryOf<any>) {
-
         const url = new URL(redirect_uri);
 
         Object.entries(response).forEach(([key, value]) => {
@@ -412,9 +477,11 @@ export abstract class EndpointController extends Controller<IRequestContext> {
         });
 
         if (!isEmptyObject(fragment || {})) {
-            url.hash = Object.entries(fragment).map(([k, v]) => {
-                return `${k}=${encodeURIComponent(v)}`;
-            }).join("&");
+            url.hash = Object.entries(fragment)
+                .map(([k, v]) => {
+                    return `${k}=${encodeURIComponent(v)}`;
+                })
+                .join("&");
         }
         return url.toString();
     }
@@ -422,8 +489,8 @@ export abstract class EndpointController extends Controller<IRequestContext> {
     protected setNoCacheResponse() {
         this.response.set({
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
+            Pragma: "no-cache",
+            Expires: "0",
             "Surrogate-Control": "no-store"
         });
     }
@@ -439,21 +506,21 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      *         user_id: string;
      *         is_refresh_token_grant: boolean;
      *     })} params
-     * @return {*} 
+     * @return {*}
      * @memberof EndpointController
      */
     protected async createIDToken(params: {
-        tenantRecord: ISysTenant,
-        tokenRequest: ITokenRequest | IAuthorizeRequest,
-        lifeTime: ILifetime,
-        session: ISysSession,
+        tenantRecord: ISysTenant;
+        tokenRequest: ITokenRequest | IAuthorizeRequest;
+        lifeTime: ILifetime;
+        session: ISysSession;
         authRequest: IAuthorizeRequest;
         user_id: string;
         is_refresh_token_grant: boolean;
         payload?: IDictionaryOf<any>;
     }) {
-
-        const { tenantRecord, tokenRequest, lifeTime, session, authRequest, user_id, is_refresh_token_grant, payload } = params;
+        const { tenantRecord, tokenRequest, lifeTime, session, authRequest, user_id, is_refresh_token_grant, payload } =
+            params;
 
         const { nonce } = authRequest;
 

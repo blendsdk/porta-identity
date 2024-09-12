@@ -187,10 +187,10 @@ export class TokenEndpointController extends EndpointController {
                     // construct a flow
                     const flow: IAuthorizationFlow = {
                         account_state: true,
-                        consent_state: true,
+                        require_user_consent: false,
                         complete: true,
                         mfa_state: true,
-                        require_change_password: true,
+                        require_change_password: false,
                         forgot_password_state: false,
                         session,
                         profile,
@@ -325,7 +325,7 @@ export class TokenEndpointController extends EndpointController {
                     account_state: true,
                     complete: true,
                     mfa_state: true,
-                    consent_state: true,
+                    require_user_consent: true,
                     session,
                     profile,
                     user,

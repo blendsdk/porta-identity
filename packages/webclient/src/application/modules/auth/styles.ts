@@ -74,5 +74,11 @@ export const useStyles = makeStyles({
         padding: tokens.spacingVerticalS,
         textAlign: "center",
         backgroundColor: tokens.colorStatusWarningBackground2
+    },
+    center: {
+        textAlign: "center"
+    },
+    fill: {
+        flex: 1
     }
 });

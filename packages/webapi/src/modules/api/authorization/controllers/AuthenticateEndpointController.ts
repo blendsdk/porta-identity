@@ -16,11 +16,14 @@ import {
     MFA_RESEND_REQUEST,
     RESP_ACCOUNT,
     RESP_CHANGE_PASSWORD,
+    RESP_CONSENT,
+    RESP_FINALIZE,
     RESP_MFA
 } from "@porta/shared";
+import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { Claims, commonUtils, EmailMFAProvider, EndpointController } from "../../../../services";
+import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
@@ -47,11 +50,20 @@ export class AuthenticateEndpointController extends EndpointController {
         let allow_reset_password: boolean = undefined;
         let expires_in: number = 0;
         let mfa_type: string = undefined;
-        // let consent_claims: string[] = [];
-        // let consent_display_name = undefined;
-        // let ow_consent = undefined;
+        let consent_claims: string[] = [];
+        let consent_display_name = undefined;
+        let ow_consent = undefined;
 
-        let { update, username, password, new_password, confirm_new_password, mfa_result } = params;
+        let {
+            update,
+            username,
+            password,
+            new_password,
+            confirm_new_password,
+            mfa_result,
+            consent: consent_result,
+            ow_consent: ow_consent_result
+        } = params;
 
         const is_conformance_test = update === "conformance";
         update = is_conformance_test ? RESP_ACCOUNT : update;
@@ -117,6 +129,8 @@ export class AuthenticateEndpointController extends EndpointController {
                 );
                 error = result.error;
                 resp = result.resp;
+            } else if (update === RESP_CONSENT) {
+                await this.saveUserConsent(flow, consent_result, ow_consent_result, tenantRecord);
             }
         }
 
@@ -133,11 +147,29 @@ export class AuthenticateEndpointController extends EndpointController {
                     (update !== MFA_RESEND_REQUEST && (await this.checkSendMFARequest(flow, mfa_result)))
                 ) {
                     next = RESP_MFA;
-                } else if (flow.require_change_password || (error === true && update === RESP_CHANGE_PASSWORD)) {
+                }
+                // next we check if a password change is required
+                else if (flow.require_change_password || (error === true && update === RESP_CHANGE_PASSWORD)) {
                     next = RESP_CHANGE_PASSWORD;
-                } else {
-                    // figure out the next step
-                    debugger;
+                }
+                // next we check is we need to get a consent from the user
+                else if (flow.require_user_consent) {
+                    next = RESP_CONSENT;
+                    consent_claims = await this.getClaimsList(flow.authRequest);
+                    consent_display_name = [flow.profile?.firstname, flow.profile?.middle_name, flow.profile?.lastname]
+                        .filter(Boolean)
+                        .join(" ");
+                    const { roles } = await databaseUtils.getUserRolesAndPermissions(
+                        flow.user.id,
+                        flow.authRecord.application_id,
+                        tenantRecord
+                    );
+                    ow_consent = roles.filter((r) => r.role === "ADMINISTRATOR").length !== 0;
+                }
+                // There are no more checks so we can safly finalize the flow
+                else {
+                    next = RESP_FINALIZE;
+                    resp = `${this.getServerURL()}/af/finalize`;
                 }
             }
         }
@@ -147,9 +179,9 @@ export class AuthenticateEndpointController extends EndpointController {
         } else {
             return new SuccessResponse<ICheckSetFlowResponse>({
                 data: {
-                    // consent_display_name,
-                    // ow_consent,
-                    // consent_claims,
+                    consent_display_name,
+                    ow_consent,
+                    consent_claims,
                     next,
                     allow_reset_password,
                     application_name,
@@ -165,6 +197,53 @@ export class AuthenticateEndpointController extends EndpointController {
         }
     }
 
+    protected async saveUserConsent(
+        flow: IAuthorizationFlow,
+        consent_result: boolean,
+        ow_consent_result: boolean,
+        tenantRecord: ISysTenant
+    ) {
+        flow.require_user_consent = false;
+
+        // save the consent for this user
+        await databaseUtils.saveUserConsent(
+            {
+                application_id: flow.authRecord.application_id,
+                user_id: flow.user.id,
+                is_consent: consent_result,
+                // the requested scope for this application is saved
+                // here so we can extract it later when Claims are read
+                scope: flow.authRequest.scope
+            },
+            tenantRecord
+        );
+
+        // we save the consent for the entire organization for this application
+        if (ow_consent_result === true) {
+            const applicationDs = new SysApplicationDataService({
+                tenantId: tenantRecord.id
+            });
+            await applicationDs.updateSysApplicationById(
+                {
+                    ow_consent: ow_consent_result
+                },
+                { id: flow.authRecord.application_id }
+            );
+        }
+
+        await this.updateFlow(flow);
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {string} password
+     * @param {string} new_password
+     * @param {string} confirm_new_password
+     * @param {ISysTenant} tenantRecord
+     * @return {*}
+     * @memberof AuthenticateEndpointController
+     */
     protected async changePasswordAtLogin(
         flow: IAuthorizationFlow,
         password: string,
@@ -272,7 +351,7 @@ export class AuthenticateEndpointController extends EndpointController {
                     user_id: userRecord.id
                 });
                 // we need to ask the consent state here since we need a valid user
-                flow.consent_state = await this.getConsentState({
+                flow.require_user_consent = await this.isUserConsentRequired({
                     authRecord: flow.authRecord,
                     authRequest: flow.authRequest,
                     user: userRecord,

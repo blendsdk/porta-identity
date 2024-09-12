@@ -1,11 +1,12 @@
 import { Layout, Loading } from "@blendsdk/fui9";
 import { SessionLoadingView } from "@blendsdk/react";
-import { Caption1 } from "@fluentui/react-components";
+import { Caption1, Divider } from "@fluentui/react-components";
 import React from "react";
 import LogoImage from "../../../resources/logo.svg";
 import { useTranslation } from "../../../system";
 import { ChangePassword } from "./ChangePassword";
 import { GetAccount } from "./GetAccount";
+import { GetConsent } from "./GetConsent";
 import { GetMFA } from "./GetMFA";
 import { InvalidSession } from "./InvalidSession";
 import { useLoginView } from "./LoginViewLogic";
@@ -37,6 +38,8 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
                     {login.showCredentials && <GetAccount login={login} disabled={login.fetching} />}
                     {login.showMFA && <GetMFA login={login} disabled={login.fetching} />}
                     {login.showChangePassword && <ChangePassword login={login} disabled={login.fetching} />}
+                    {login.showUserConsent && <GetConsent login={login} disabled={login.fetching} />}
+                    {login.showControls && <Divider />}
                     {login.showBrand && (
                         <Layout display="flex" flexDirection="row" justifyContent="space-evenly">
                             <Caption1 className={styles.brandText}>{login.tenantName}</Caption1>

@@ -1,33 +1,15 @@
 import { FormFieldTextInput, Layout, ToolbarSpacer } from "@blendsdk/fui9";
 import { Body1, Button, tokens } from "@fluentui/react-components";
-import { makeStyles, shorthands } from "@griffel/react";
 import { RESP_MFA } from "@porta/shared";
 import React from "react";
 import { useTranslation } from "../../../system";
 import { LoginViewLogic } from "./LoginViewLogic";
+import { useStyles } from "./styles";
 
 export interface IGetMFA {
     login: LoginViewLogic;
     disabled?: boolean;
 }
-
-const useStyles = makeStyles({
-    root: {
-        "& a": {
-            ...shorthands.textDecoration("none"),
-            ":hover": {
-                ...shorthands.textDecoration("underline")
-            }
-        }
-    },
-    error: {
-        marginTop: tokens.spacingVerticalS,
-        padding: tokens.spacingVerticalS,
-        textAlign: "center",
-        backgroundColor: tokens.colorPaletteRedBackground3,
-        color: "#fff"
-    }
-});
 
 export const GetMFA: React.FC<IGetMFA> = ({ login, disabled }) => {
     const { t } = useTranslation();
@@ -36,7 +18,7 @@ export const GetMFA: React.FC<IGetMFA> = ({ login, disabled }) => {
     const error = login.errors[RESP_MFA] || false;
 
     return (
-        <Layout className={styles.root} display="flex" flex={1} flexDirection="column" gap={tokens.spacingVerticalM}>
+        <Layout className={styles.page} display="flex" flex={1} flexDirection="column" gap={tokens.spacingVerticalM}>
             <ToolbarSpacer flex={1} />
             {error && <Body1 className={styles.error}>{t(login.errors[RESP_MFA])}</Body1>}
             <FormFieldTextInput
@@ -59,7 +41,7 @@ export const GetMFA: React.FC<IGetMFA> = ({ login, disabled }) => {
             >
                 <Button
                     appearance="secondary"
-                    style={{ flex: 1 }}
+                    className={styles.fill}
                     onClick={login.onResendVerificationCode}
                     disabled={disabled}
                 >
@@ -67,7 +49,7 @@ export const GetMFA: React.FC<IGetMFA> = ({ login, disabled }) => {
                 </Button>
                 <Button
                     appearance="primary"
-                    style={{ flex: 1 }}
+                    className={styles.fill}
                     onClick={() => {
                         login.form.submitForm();
                     }}

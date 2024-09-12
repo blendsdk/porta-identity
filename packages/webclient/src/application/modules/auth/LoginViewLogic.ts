@@ -7,6 +7,8 @@ import {
     MFA_RESEND_REQUEST,
     RESP_ACCOUNT,
     RESP_CHANGE_PASSWORD,
+    RESP_CONSENT,
+    RESP_FINALIZE,
     RESP_MFA
 } from "@porta/shared";
 import { FormikProps, useFormik } from "formik";
@@ -19,7 +21,8 @@ import { IAuthFormModel } from "./types";
 export enum eView {
     GET_CREDENTIALS = 1,
     GET_MFA = 2,
-    CHANGE_PASSWORD_ON_LOGIN = 3
+    CHANGE_PASSWORD_ON_LOGIN = 3,
+    USER_CONSENT = 4
 }
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -43,20 +46,24 @@ export class LoginViewLogic extends DataStoreBase {
     protected t: TTranslationFunction;
 
     public isInavlidSession: boolean;
-    public showControls: boolean;
-    public showBrand: boolean;
     public tenantName: string;
     public applicationName: string;
     public logo: string;
     public view: eView;
 
+    public showControls: boolean;
+    public showBrand: boolean;
     public showCredentials: boolean;
     public showMFA: boolean;
     public showChangePassword: boolean;
+    public showUserConsent: boolean;
 
     public showWaitSpinner: boolean;
     public allow_reset_password: boolean;
     public mfa_type: string;
+    public consent_display_name: string;
+    public consent_claims: string[];
+    public can_ow_consent: boolean;
 
     public form: FormikProps<IAuthFormModel>;
     public router: RouterStore;
@@ -90,11 +97,14 @@ export class LoginViewLogic extends DataStoreBase {
             this.logo = this.state.logo;
             this.allow_reset_password = this.state.allow_reset_password;
             this.mfa_type = this.state.mfa_type;
+            this.consent_display_name = this.state.consent_display_name;
+            this.consent_claims = this.state.consent_claims;
+            this.can_ow_consent = this.state.ow_consent;
 
             this.showCredentials = this.showControls && this.view === eView.GET_CREDENTIALS;
             this.showMFA = this.showControls && this.view === eView.GET_MFA;
             this.showChangePassword = this.showControls && this.view === eView.CHANGE_PASSWORD_ON_LOGIN;
-
+            this.showUserConsent = this.showControls && this.view === eView.USER_CONSENT;
             this.showWaitSpinner = !this.isInavlidSession && this.fetching === true;
         }
     }
@@ -184,11 +194,23 @@ export class LoginViewLogic extends DataStoreBase {
             } else {
                 this.errors[RESP_CHANGE_PASSWORD] = undefined;
             }
+        } else if (this.showUserConsent) {
+            if (e.code === "Enter") {
+                e.preventDefault();
+                this.form.submitForm();
+            } else {
+                this.errors[RESP_CONSENT] = undefined;
+            }
         }
     }
 
+    /**
+     * @protected
+     * @memberof LoginViewLogic
+     */
     protected gotoNextStep() {
         this.form.resetForm();
+        debugger;
         switch (this.state.next) {
             case RESP_MFA:
                 this.view = eView.GET_MFA;
@@ -196,10 +218,20 @@ export class LoginViewLogic extends DataStoreBase {
             case RESP_CHANGE_PASSWORD:
                 this.view = eView.CHANGE_PASSWORD_ON_LOGIN;
                 break;
+            case RESP_CONSENT:
+                this.view = eView.USER_CONSENT;
+                break;
         }
-        setTimeout(() => {
-            this.form.resetForm();
-        }, 100);
+
+        if (this.state.next === RESP_FINALIZE) {
+            this.beginFetching();
+            this.router.go(this.state.resp, {}, true);
+        } else {
+            setTimeout(() => {
+                this.form.resetForm();
+                this.doneFetching();
+            }, 100);
+        }
     }
 
     /**
@@ -221,7 +253,6 @@ export class LoginViewLogic extends DataStoreBase {
                 setTimeout(() => {
                     this.updateState(data);
                     this.gotoNextStep();
-                    this.doneFetching();
                 }, 500);
             })
             .catch((err) => {
@@ -248,7 +279,6 @@ export class LoginViewLogic extends DataStoreBase {
                 setTimeout(() => {
                     this.updateState(data);
                     this.gotoNextStep();
-                    this.doneFetching();
                 }, 500);
             })
             .catch((err) => {
@@ -257,6 +287,10 @@ export class LoginViewLogic extends DataStoreBase {
             });
     }
 
+    /**
+     * @param {IAuthFormModel} values
+     * @memberof LoginViewLogic
+     */
     public submitChangePassword(values: IAuthFormModel) {
         this.beginFetching();
         ApplicationApi.authorization
@@ -273,7 +307,33 @@ export class LoginViewLogic extends DataStoreBase {
                 setTimeout(() => {
                     this.updateState(data);
                     this.gotoNextStep();
-                    this.doneFetching();
+                }, 500);
+            })
+            .catch((err) => {
+                this.catchSystemError(err);
+                this.doneFetching();
+            });
+    }
+
+    /**
+     * @param {IAuthFormModel} values
+     * @memberof LoginViewLogic
+     */
+    public submitUserConsent(values: IAuthFormModel) {
+        this.beginFetching();
+        ApplicationApi.authorization
+            .checkSetFlow({
+                update: RESP_CONSENT,
+                consent: values.consent,
+                ow_consent: values.ow_consent
+            })
+            .then(({ data }) => {
+                if (data.error) {
+                    this.errors[RESP_CONSENT] = data.resp;
+                }
+                setTimeout(() => {
+                    this.updateState(data);
+                    this.gotoNextStep();
                 }, 500);
             })
             .catch((err) => {
@@ -363,6 +423,8 @@ export class LoginViewLogic extends DataStoreBase {
                     this.submitMFA(values);
                 } else if (this.showChangePassword) {
                     this.submitChangePassword(values);
+                } else if (this.showUserConsent) {
+                    this.submitUserConsent(values);
                 } else {
                     console.log(Error(`Not implemented yet ${this.view}`));
                 }

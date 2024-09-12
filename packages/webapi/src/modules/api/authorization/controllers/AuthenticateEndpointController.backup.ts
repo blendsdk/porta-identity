@@ -124,7 +124,7 @@ export class AuthenticateEndpointController extends EndpointController {
                             user_id: userRecord.id
                         });
                         // we need to ask the consent state here since we need a valid user
-                        flow.consent_state = await this.getConsentState({
+                        flow.require_user_consent = await this.isUserConsentRequired({
                             authRecord: flow.authRecord,
                             authRequest: flow.authRequest,
                             user: userRecord,
@@ -157,7 +157,7 @@ export class AuthenticateEndpointController extends EndpointController {
                 }
                 await this.updateFlow(flow);
             } else if (update === RESP_CONSENT) {
-                flow.consent_state = true;
+                flow.require_user_consent = true;
 
                 // save the consent for this user
                 await databaseUtils.saveUserConsent(
@@ -271,7 +271,7 @@ export class AuthenticateEndpointController extends EndpointController {
                         }
                         // send mfa code
                         resp = RESP_MFA;
-                    } else if (flow.consent_state === false) {
+                    } else if (flow.require_user_consent === false) {
                         resp = RESP_CONSENT;
                         consent_claims = await this.getClaimsList(flow.authRequest);
                         consent_display_name = [

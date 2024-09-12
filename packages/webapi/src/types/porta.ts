@@ -21,7 +21,7 @@ export interface IAuthorizationFlow {
     user: ISysUser;
     profile: ISysProfile;
     account_state: boolean;
-    consent_state: boolean;
+    require_user_consent: boolean;
     require_change_password: boolean;
     forgot_password_state: boolean;
     mfa_state: boolean;

@@ -5,10 +5,11 @@ export const COOKIE_TENANT = "_tn";
 export const COOKIE_AUTH_FLOW_TTL = "_aft";
 export const LOCAL_STORAGE_LAST_LOGIN = "_ll";
 export const MFA_RESEND_REQUEST = "resend";
-export const FLOW_ERROR_INVALID = 'invalid_sign_in_flow';
+export const FLOW_ERROR_INVALID = "invalid_sign_in_flow";
 export const RESP_ACCOUNT = "account";
 export const RESP_MFA = "mfa";
 export const RESP_CONSENT = "consent";
+export const RESP_FINALIZE = "finalize";
 export const RESP_CHANGE_PASSWORD = "change_password";
 export const RESP_FORGOT_PASSWORD = "forgot";
 export const RESP_FORGOT_PASSWORD_REQUEST = "forgot_request";
@@ -16,7 +17,7 @@ export const INVALID_PWD = "invalid_username_or_password";
 export const INVALID_PWD_MATCH = "invalid_password_match";
 
 export interface ILifetime {
-    auth_time: string,
+    auth_time: string;
     date_expire: string;
 }
 

@@ -34,5 +34,9 @@
     "consent_profile": {
         "en": "User profile",
         "nl": "Gebruikersprofiel"
+    },
+    "consent_address": {
+        "en": "Address information",
+        "nl": "Adresgegevens"
     }
 }
