@@ -15,8 +15,8 @@ import { useStyles } from "./styles";
 export interface ILoginViewProps {}
 
 export const LoginView: React.FC<ILoginViewProps> = () => {
-    const styles = useStyles();
     const login = useLoginView();
+    const styles = useStyles();
     const { t } = useTranslation();
 
     return !login.ready ? (

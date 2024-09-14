@@ -20,15 +20,22 @@ import { ApplicationApi, useRouter, useTranslation } from "../../../system";
 import { eAppRoutes } from "../../routing";
 import { IAuthFormModel } from "./types";
 
-export enum eView {
+export enum eLoginView {
     GET_CREDENTIALS = 1,
     GET_MFA = 2,
     CHANGE_PASSWORD_ON_LOGIN = 3,
     USER_CONSENT = 4
 }
 
+//FIXME! Make a configuration variable from this.
 const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ *
+ * @param data Custom validator
+ * @param validator
+ * @returns
+ */
 export const validateData = (data: any, validator: (data: any) => void) => {
     try {
         validator(data);
@@ -54,7 +61,7 @@ export class LoginViewLogic extends DataStoreBase {
     public tenantName: string;
     public applicationName: string;
     public logo: string;
-    public view: eView;
+    public view: eLoginView;
 
     public showControls: boolean;
     public showBrand: boolean;
@@ -104,10 +111,10 @@ export class LoginViewLogic extends DataStoreBase {
             this.isInavlidSession = this.state.error && this.state.resp === FLOW_ERROR_INVALID;
             this.showControls = !this.isInavlidSession && this.fetching === false;
             this.showBrand = this.showControls;
-            this.showCredentials = this.showControls && this.view === eView.GET_CREDENTIALS;
-            this.showMFA = this.showControls && this.view === eView.GET_MFA;
-            this.showChangePassword = this.showControls && this.view === eView.CHANGE_PASSWORD_ON_LOGIN;
-            this.showUserConsent = this.showControls && this.view === eView.USER_CONSENT;
+            this.showCredentials = this.showControls && this.view === eLoginView.GET_CREDENTIALS;
+            this.showMFA = this.showControls && this.view === eLoginView.GET_MFA;
+            this.showChangePassword = this.showControls && this.view === eLoginView.CHANGE_PASSWORD_ON_LOGIN;
+            this.showUserConsent = this.showControls && this.view === eLoginView.USER_CONSENT;
             this.showWaitSpinner = !this.isInavlidSession && this.fetching === true;
 
             this.tenantName = this.state.tenant_name;
@@ -133,7 +140,7 @@ export class LoginViewLogic extends DataStoreBase {
                     update: null
                 })
                 .then(({ data }) => {
-                    this.view = eView.GET_CREDENTIALS;
+                    this.view = eLoginView.GET_CREDENTIALS;
                     this.updateState(data);
                     this.ready = true;
                     this.doneFetching();
@@ -243,13 +250,13 @@ export class LoginViewLogic extends DataStoreBase {
         debugger;
         switch (this.state.next) {
             case RESP_MFA:
-                this.view = eView.GET_MFA;
+                this.view = eLoginView.GET_MFA;
                 break;
             case RESP_CHANGE_PASSWORD:
-                this.view = eView.CHANGE_PASSWORD_ON_LOGIN;
+                this.view = eLoginView.CHANGE_PASSWORD_ON_LOGIN;
                 break;
             case RESP_CONSENT:
-                this.view = eView.USER_CONSENT;
+                this.view = eLoginView.USER_CONSENT;
                 break;
         }
 
