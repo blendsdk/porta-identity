@@ -142,5 +142,21 @@
     "logout_complete": {
         "en": "You are successfully signed out. You can close this browser tab or window now.",
         "nl": "U bent succesvol uitgelogd. U kunt dit browsertabblad of dit browservenster nu sluiten."
+    },
+    "btn_submit": {
+        "en": "Submit",
+        "nl": "Verzenden"
+    },
+    "rest_password_request_message": {
+        "en": "Please enter your username or email address and click Submit.",
+        "nl": "Voer uw gebruikersnaam of e-mailadres in en klik op Verzenden."
+    },
+    "username_or_email": {
+        "en": "Username or email address",
+        "nl": "Gebruikersnaam of e-mailadres"
+    },
+    "reset_password_request_sent": {
+        "en": "Your request was been sent. If an account exists with the information provided, you will receive an email with instructions on how to reset your password. You can close this browser tab or window now.",
+        "nl": "Uw aanvraag is verzonden. Als er een account bestaat met de opgegeven gegevens, ontvangt u een e-mail met instructies om uw wachtwoord te resetten. U kunt dit browsertabblad of dit browservenster nu sluiten."
     }
 }

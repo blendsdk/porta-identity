@@ -10,6 +10,7 @@ import {
     RESP_CHANGE_PASSWORD,
     RESP_CONSENT,
     RESP_FINALIZE,
+    RESP_FORGOT_PASSWORD_REQUEST,
     RESP_MFA
 } from "@porta/shared";
 import { FormikProps, useFormik } from "formik";
@@ -17,14 +18,14 @@ import Cookies from "js-cookie";
 import React from "react";
 import * as yup from "yup";
 import { ApplicationApi, useRouter, useTranslation } from "../../../system";
-import { eAppRoutes } from "../../routing";
 import { IAuthFormModel } from "./types";
 
 export enum eLoginView {
     GET_CREDENTIALS = 1,
     GET_MFA = 2,
     CHANGE_PASSWORD_ON_LOGIN = 3,
-    USER_CONSENT = 4
+    USER_CONSENT = 4,
+    REQUEST_PASSWORD_RESET = 5
 }
 
 //FIXME! Make a configuration variable from this.
@@ -69,6 +70,8 @@ export class LoginViewLogic extends DataStoreBase {
     public showMFA: boolean;
     public showChangePassword: boolean;
     public showUserConsent: boolean;
+    public showRequestPasswordReset: boolean;
+    public requestResetPasswordSent: boolean;
 
     public showWaitSpinner: boolean;
     public allow_reset_password: boolean;
@@ -94,6 +97,7 @@ export class LoginViewLogic extends DataStoreBase {
         this.logo = undefined;
         this.view = undefined;
         this.errors = {};
+        this.requestResetPasswordSent = false;
     }
 
     /**
@@ -116,6 +120,7 @@ export class LoginViewLogic extends DataStoreBase {
             this.showChangePassword = this.showControls && this.view === eLoginView.CHANGE_PASSWORD_ON_LOGIN;
             this.showUserConsent = this.showControls && this.view === eLoginView.USER_CONSENT;
             this.showWaitSpinner = !this.isInavlidSession && this.fetching === true;
+            this.showRequestPasswordReset = this.showControls && this.view === eLoginView.REQUEST_PASSWORD_RESET;
 
             this.tenantName = this.state.tenant_name;
             this.applicationName = this.state.application_name;
@@ -180,7 +185,8 @@ export class LoginViewLogic extends DataStoreBase {
      * @memberof LoginViewLogic
      */
     public onForgotPasswordClick() {
-        this.router.go(eAppRoutes.forgotPassword.path, {}, true);
+        this.state.next = RESP_FORGOT_PASSWORD_REQUEST;
+        this.gotoNextStep();
     }
 
     /**
@@ -238,6 +244,13 @@ export class LoginViewLogic extends DataStoreBase {
             } else {
                 this.errors[RESP_CONSENT] = undefined;
             }
+        } else if (this.showRequestPasswordReset) {
+            if (e.code === "Enter") {
+                e.preventDefault();
+                this.form.submitForm();
+            } else {
+                this.errors[RESP_FORGOT_PASSWORD_REQUEST] = undefined;
+            }
         }
     }
 
@@ -256,6 +269,9 @@ export class LoginViewLogic extends DataStoreBase {
                 break;
             case RESP_CONSENT:
                 this.view = eLoginView.USER_CONSENT;
+                break;
+            case RESP_FORGOT_PASSWORD_REQUEST:
+                this.view = eLoginView.REQUEST_PASSWORD_RESET;
                 break;
         }
 
@@ -383,6 +399,29 @@ export class LoginViewLogic extends DataStoreBase {
             });
     }
 
+    public submitResetPasswordRequest(values: IAuthFormModel) {
+        this.beginFetching();
+        ApplicationApi.authorization
+            .checkSetFlow({
+                update: RESP_FORGOT_PASSWORD_REQUEST,
+                username: values.username
+            })
+            .then(({ data }) => {
+                if (data.error) {
+                    this.errors[RESP_FORGOT_PASSWORD_REQUEST] = data.resp;
+                }
+                setTimeout(() => {
+                    this.requestResetPasswordSent = true;
+                    this.updateState(data);
+                    this.gotoNextStep();
+                }, 500);
+            })
+            .catch((err) => {
+                this.catchSystemError(err);
+                this.doneFetching();
+            });
+    }
+
     /**
      * @protected
      * @memberof LoginViewLogic
@@ -410,6 +449,13 @@ export class LoginViewLogic extends DataStoreBase {
                         }),
                         password: validateData(values.password, (data) => {
                             yup.string().required("password_is_required").validateSync(data);
+                        })
+                    };
+                    return filterObject(val, { undefinedValues: true });
+                } else if (this.showRequestPasswordReset) {
+                    const val = {
+                        username: validateData(values.username, (data) => {
+                            yup.string().required("username_is_required").validateSync(data);
                         })
                     };
                     return filterObject(val, { undefinedValues: true });
@@ -461,6 +507,8 @@ export class LoginViewLogic extends DataStoreBase {
                     this.submitChangePassword(values);
                 } else if (this.showUserConsent) {
                     this.submitUserConsent(values);
+                } else if (this.showRequestPasswordReset) {
+                    this.submitResetPasswordRequest(values);
                 } else {
                     console.log(Error(`Not implemented yet ${this.view}`));
                 }

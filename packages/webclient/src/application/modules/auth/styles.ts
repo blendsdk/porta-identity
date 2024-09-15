@@ -75,6 +75,13 @@ export const useStyles = makeStyles({
         textAlign: "center",
         backgroundColor: tokens.colorStatusWarningBackground2
     },
+    info: {
+        borderRadius: tokens.borderRadiusMedium,
+        marginTop: tokens.spacingVerticalS,
+        padding: tokens.spacingVerticalS,
+        textAlign: "center",
+        backgroundColor: tokens.colorPaletteLightGreenBackground1
+    },
     center: {
         textAlign: "center"
     },

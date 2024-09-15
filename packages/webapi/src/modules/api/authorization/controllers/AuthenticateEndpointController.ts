@@ -374,6 +374,7 @@ export class AuthenticateEndpointController extends EndpointController {
     /**
      * @protected
      * @param {IAuthorizationFlow} flow
+     * @param {*} value
      * @return {*}
      * @memberof AuthenticateEndpointController
      */

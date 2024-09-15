@@ -10,6 +10,7 @@ import { GetConsent } from "./GetConsent";
 import { GetMFA } from "./GetMFA";
 import { InvalidSession } from "./InvalidSession";
 import { useLoginView } from "./LoginViewLogic";
+import { RequestPasswordReset } from "./RequestPasswordReset";
 import { useStyles } from "./styles";
 
 export interface ILoginViewProps {}
@@ -39,6 +40,7 @@ export const LoginView: React.FC<ILoginViewProps> = () => {
                     {login.showMFA && <GetMFA login={login} disabled={login.fetching} />}
                     {login.showChangePassword && <ChangePassword login={login} disabled={login.fetching} />}
                     {login.showUserConsent && <GetConsent login={login} disabled={login.fetching} />}
+                    {login.showRequestPasswordReset && <RequestPasswordReset login={login} disabled={login.fetching} />}
                     {login.showControls && <Divider />}
                     {login.showBrand && (
                         <Layout display="flex" flexDirection="row" justifyContent="space-evenly">
