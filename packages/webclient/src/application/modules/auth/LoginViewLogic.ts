@@ -247,7 +247,6 @@ export class LoginViewLogic extends DataStoreBase {
      */
     protected gotoNextStep() {
         this.form.resetForm();
-        debugger;
         switch (this.state.next) {
             case RESP_MFA:
                 this.view = eLoginView.GET_MFA;
@@ -279,6 +278,8 @@ export class LoginViewLogic extends DataStoreBase {
         this.beginFetching();
         if (values.rememberMe === false) {
             window.localStorage.removeItem(LOCAL_STORAGE_LAST_LOGIN);
+        } else if (values.rememberMe === true) {
+            window.localStorage.setItem(LOCAL_STORAGE_LAST_LOGIN, values.username);
         }
         ApplicationApi.authorization
             .checkSetFlow({
@@ -475,7 +476,6 @@ export class LoginViewLogic extends DataStoreBase {
      */
     protected checkSession() {
         const sessionCookie = Cookies.get(COOKIE_AUTH_FLOW_TTL);
-        console.log(sessionCookie);
         if (!sessionCookie) {
             this.state = this.state || ({} as any);
             this.state.error = true;

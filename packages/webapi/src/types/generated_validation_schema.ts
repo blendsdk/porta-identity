@@ -1123,13 +1123,16 @@ export const validationSchema = {
 					type: eJsonSchemaType.number
 				},
 				error: {
+					type: eJsonSchemaType.boolean
+				},
+				resp: {
 					type: eJsonSchemaType.string
 				},
 				has_post_redirect: {
 					type: eJsonSchemaType.boolean
 				}
 			},
-			required: ["logo", "application_name", "organization", "finalize_url", "expires_in", "has_post_redirect"]
+			required: ["logo", "application_name", "organization", "finalize_url", "expires_in", "resp", "has_post_redirect"]
 		},
 		session_logout_get_request: {
 			type: eJsonSchemaType.object,

@@ -1,7 +1,17 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
 import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { COOKIE_AUTH_FLOW, IPortaAccount, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ISysSessionView, ISysTenant } from "@porta/shared";
+import {
+    COOKIE_AUTH_FLOW,
+    COOKIE_AUTH_FLOW_TTL,
+    IPortaAccount,
+    ISessionLogoutGetRequest,
+    ISessionLogoutGetResponse,
+    ISessionLogoutPostRequest,
+    ISessionLogoutPostResponse,
+    ISysSessionView,
+    ISysTenant
+} from "@porta/shared";
 import * as jose from "jose";
 import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
 import { commonUtils, databaseUtils, EndpointController, ILogoutFlow } from "../../../../services";
@@ -12,7 +22,6 @@ type TlogoutResponse = ISessionLogoutGetResponse | ISessionLogoutPostResponse;
 type TIdToken = jose.JWTVerifyResult<jose.JWTPayload>;
 
 export class EndSessionController extends EndpointController {
-
     /**
      * Validates and retrieves the ID token
      *
@@ -35,7 +44,8 @@ export class EndSessionController extends EndpointController {
             const pKey = await jose.importSPKI(publicKey, "ES256");
 
             try {
-                idToken = (await jose.jwtVerify(id_token, pKey, { issuer: this.getIssuer(tenantRecord.id), })) || {} as any;
+                idToken =
+                    (await jose.jwtVerify(id_token, pKey, { issuer: this.getIssuer(tenantRecord.id) })) || ({} as any);
             } catch (err) {
                 errors.push(err.message);
             }
@@ -49,7 +59,7 @@ export class EndSessionController extends EndpointController {
 
     /**
      * @protected
-     * @return {*} 
+     * @return {*}
      * @memberof EndSessionController
      */
     protected isPostRequest() {
@@ -63,21 +73,20 @@ export class EndSessionController extends EndpointController {
      * @returns {Promise<Response<ISessionLogoutGetResponse>>}
      * @memberof EndSessionController
      */
-    public async handleRequest(
-        params: TLogoutRequest
-    ): Promise<Response<TlogoutResponse>> {
+    public async handleRequest(params: TLogoutRequest): Promise<Response<TlogoutResponse>> {
         // get the request params
         const { state, tenant, lf: logoutFlow = undefined, post_logout_redirect_uri } = params || {};
 
         const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
         if (!tenantRecord) {
-            return this.responseWithError({
-                error: eErrorType.invalid_tenant,
-                error_description: tenant,
-                redirect_uri: post_logout_redirect_uri,
-                state
-            },
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_tenant,
+                    error_description: tenant,
+                    redirect_uri: post_logout_redirect_uri,
+                    state
+                },
                 this.isPostRequest()
             );
         }
@@ -89,12 +98,33 @@ export class EndSessionController extends EndpointController {
         }
     }
 
-
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {TLogoutRequest} params
+     * @return {*}
+     * @memberof EndSessionController
+     */
     protected async finalizeSignout(tenantRecord: ISysTenant, params: TLogoutRequest) {
         const sessionDb = new SysSessionDataService({ tenantId: tenantRecord.id });
         const { lf: flowId } = params || {};
         const { session, post_logout_redirect_uri } = await this.getCache().getValue<ILogoutFlow>(flowId);
+
+        // We only delete the session information from the database here.
+        // The flow information still remains and will eventually timeout
+        // This is deone because we still want to show the application_name and logo after
+        // the logout process on the complete view!
         await sessionDb.deleteSysSessionById({ id: session.id });
+
+        // try to remove the session cokkie too
+        const cookieId = commonUtils.createSessionCookieID(tenantRecord, this.request);
+        this.setCookie(cookieId, "?", {
+            expires: new Date(Date.now() - 100000),
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax"
+        });
+
         if (post_logout_redirect_uri) {
             return new SuccessResponse(renderGetRedirect(post_logout_redirect_uri));
         } else {
@@ -102,7 +132,13 @@ export class EndSessionController extends EndpointController {
         }
     }
 
-
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {TLogoutRequest} params
+     * @return {*}
+     * @memberof EndSessionController
+     */
     protected async startLogoutFlow(tenantRecord: ISysTenant, params: TLogoutRequest) {
         const { state, id_token_hint, client_id, logout_hint } = params || {};
         const errors: string[] = [];
@@ -111,7 +147,6 @@ export class EndSessionController extends EndpointController {
         const idToken = await this.validateIDToken(tenantRecord, id_token_hint, client_id, errors);
 
         if (errors.length === 0) {
-
             //Find by id_token
             if (idToken) {
                 const { payload } = idToken;
@@ -121,13 +156,21 @@ export class EndSessionController extends EndpointController {
 
             // Find by client_id logout_hit is provided
             if (!sessionView && client_id && logout_hint) {
-                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(client_id, logout_hint, tenantRecord);
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(
+                    client_id,
+                    logout_hint,
+                    tenantRecord
+                );
             }
 
             // Find by current session
             if (!sessionView) {
                 const { user, application } = this.getContext()?.getUser<IPortaAccount>() || {};
-                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(application?.client_id, user?.id, tenantRecord);
+                sessionView = await databaseUtils.findSessionByClientIDAndLogoutHint(
+                    application?.client_id,
+                    user?.id,
+                    tenantRecord
+                );
             }
 
             // when has a session (on a public route)
@@ -137,16 +180,17 @@ export class EndSessionController extends EndpointController {
                 sessionView = await databaseUtils.findSessionBySessionId(sessionId, tenantRecord);
             }
 
-
             // So here we found a session
             if (sessionView) {
-
                 const flowId = generateRandomUUID();
                 const expire = commonUtils.expireSecondsFromNow(CONST_AUTH_FLOW_TTL * 2);
 
                 let post_logout_redirect_uri = undefined;
 
-                if (params.post_logout_redirect_uri && params.post_logout_redirect_uri === sessionView.client.post_logout_redirect_uri) {
+                if (
+                    params.post_logout_redirect_uri &&
+                    params.post_logout_redirect_uri === sessionView.client.post_logout_redirect_uri
+                ) {
                     const url = new URL(params.post_logout_redirect_uri);
                     if (params.state) {
                         url.searchParams.append("state", params.state);
@@ -163,7 +207,7 @@ export class EndSessionController extends EndpointController {
                     application: sessionView.application,
                     client: sessionView.client,
                     tenant: tenantRecord.name,
-                    expire,
+                    expire
                 });
 
                 this.setCookie(COOKIE_AUTH_FLOW, flowId, {
@@ -173,8 +217,13 @@ export class EndSessionController extends EndpointController {
                     sameSite: "strict"
                 });
 
-                return new SuccessResponse(renderGetRedirect(`${this.getServerURL()}/fe/auth/signout`));
+                this.setCookie(COOKIE_AUTH_FLOW_TTL, generateRandomUUID(), {
+                    expires: new Date(expire),
+                    secure: true,
+                    sameSite: "strict"
+                });
 
+                return new SuccessResponse(renderGetRedirect(`${this.getServerURL()}/fe/auth/signout`));
             } else {
                 return this.responseWithError(
                     {
@@ -185,7 +234,6 @@ export class EndSessionController extends EndpointController {
                     true
                 );
             }
-
         } else {
             return this.responseWithError(
                 {

@@ -7,6 +7,7 @@ export const LOCAL_STORAGE_LAST_LOGIN = "_ll";
 export const MFA_RESEND_REQUEST = "resend";
 export const FLOW_ERROR_INVALID = "invalid_sign_in_flow";
 export const RESP_ACCOUNT = "account";
+export const RESP_START_LOGOUT = "start_logout";
 export const RESP_MFA = "mfa";
 export const RESP_CONSENT = "consent";
 export const RESP_FINALIZE = "finalize";

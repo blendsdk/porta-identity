@@ -114,5 +114,33 @@
     "rememberMe": {
         "en": "Remember Me",
         "nl": "Gebruikersnaam onthouden"
+    },
+    "invalid_logout_session_caption": {
+        "en": "A timeout occurred while signing out",
+        "nl": "Er is een time-out opgetreden bij het uitloggen"
+    },
+    "invalid_logout_session_message": {
+        "en": "It is not possible to continue with the sign-out process. Please close this window and return to you application.",
+        "nl": "Het is niet mogelijk om verder te gaan met het uitlogproces. Sluit dit venster en keer terug naar uw applicatie."
+    },
+    "logout_confirm_message": {
+        "en": "Do you wish to sign out of from <span style=\"white-space:nowrap\">${application_name}?</span>",
+        "nl": "Wilt u zich afmelden bij <span style=\"white-space:nowrap\">${application_name}?</span>"
+    },
+    "btn_yes_logout": {
+        "en": "I want to sign out",
+        "nl": "Ik wil uitloggen"
+    },
+    "keep_me_signed_in": {
+        "en": "Keep me signed in",
+        "nl": "Ik blijf ingelogd"
+    },
+    "logout_canceled": {
+        "en": "You can close this window and return to <span style=\"white-space:nowrap\">${application_name}</span>.",
+        "nl": "U kunt dit venster sluiten en terugkeren naar <span style=\"white-space:nowrap\">${application_name}</span>."
+    },
+    "logout_complete": {
+        "en": "You are successfully signed out. You can close this browser tab or window now.",
+        "nl": "U bent succesvol uitgelogd. U kunt dit browsertabblad of dit browservenster nu sluiten."
     }
 }

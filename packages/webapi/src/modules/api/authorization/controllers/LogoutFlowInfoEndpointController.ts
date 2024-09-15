@@ -31,7 +31,9 @@ export class LogoutFlowInfoEndpointController extends EndpointController {
                         application_name: application.application_name,
                         finalize_url: `${this.getServerURL()}/${tenant}/oauth2/logout?lf=${flowId}`,
                         has_post_redirect: !isNullOrUndef(client.post_logout_redirect_uri),
-                        expires_in: expire - Date.now()
+                        expires_in: expire - Date.now(),
+                        resp: "",
+                        error: false
                     }
                 });
             } else {

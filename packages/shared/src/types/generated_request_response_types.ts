@@ -297,10 +297,15 @@ export interface ILogoutFlowInfo {
 	 */
 	expires_in: number;
 	/**
+	 * @type boolean
+	 * @memberOf ILogoutFlowInfo
+	 */
+	error?: boolean;
+	/**
 	 * @type string
 	 * @memberOf ILogoutFlowInfo
 	 */
-	error?: string;
+	resp: string;
 	/**
 	 * @type boolean
 	 * @memberOf ILogoutFlowInfo

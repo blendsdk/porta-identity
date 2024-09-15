@@ -3,11 +3,7 @@
     "tasks": [
         {
             "label": "Start Blend Dev",
-            "dependsOn": [
-                "WebAPI Watch TS",
-                "WebClient DEV",
-                "Dev Proxy"
-            ],
+            "dependsOn": ["WebAPI Watch TS", "WebClient DEV", "Dev Proxy"],
             "problemMatcher": [],
             "group": "none"
         },
@@ -18,9 +14,25 @@
             "options": {
                 "cwd": "${workspaceFolder}/packages/webapi"
             },
-            "args": [
-                "watch:ts",
-            ],
+            "dependsOn": ["Shared Build"],
+            "args": ["watch:ts"],
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Shared Build",
+            "type": "shell",
+            "command": "yarn",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/shared"
+            },
+            "args": ["build"],
             "problemMatcher": [],
             "group": "none",
             "presentation": {
@@ -34,9 +46,8 @@
             "label": "WebClient DEV",
             "type": "shell",
             "command": "yarn",
-            "args": [
-                "dev",
-            ],
+            "args": ["dev"],
+            "dependsOn": ["Shared Build"],
             "options": {
                 "cwd": "${workspaceFolder}/packages/webclient"
             },
@@ -69,10 +80,7 @@
             "label": "Dev Proxy",
             "type": "shell",
             "command": "docker",
-            "args": [
-                "compose",
-                "up"
-            ],
+            "args": ["compose", "up"],
             "options": {
                 "cwd": "${workspaceFolder}/devproxy"
             },
@@ -84,6 +92,6 @@
                 "focus": false,
                 "panel": "new"
             }
-        },
+        }
     ]
 }
