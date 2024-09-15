@@ -5,6 +5,8 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	IResetPasswordRedirectRequest,
+	IResetPasswordRedirectResponse,
 	ILogoutFlowInfoRequest,
 	ILogoutFlowInfoResponse,
 	ISessionLogoutGetRequest,
@@ -41,6 +43,16 @@ import {
 export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [GET] /rp/:flow/f
+	 * @abstract
+	 * @param {IResetPasswordRedirectRequest} params
+	 * @returns {Promise<Response<IResetPasswordRedirectResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract resetPasswordRedirect(
+		params: IResetPasswordRedirectRequest
+	): Promise<Response<IResetPasswordRedirectResponse>>;
 	/**
 	 * Method for handling [POST] /lf/flow_info
 	 * @abstract

@@ -3,6 +3,23 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createAuthenticationAPI(builder: ApiBuilder) {
     builder.defineApi({
+        id: "reset_password_redirect",
+        url: "/rp/:flow/f",
+        group: "authorization",
+        method: "get",
+        public: true,
+        generate: "backend-only",
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("flow", { location: eParameterLocation.params });
+
+            typeSchema.createAppendType(payload_type); //
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "logout_flow_info",
         url: "/lf/flow_info",
         group: "authorization",

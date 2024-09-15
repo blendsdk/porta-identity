@@ -12,6 +12,7 @@ export const CONST_NONCE_TTL = 86400 * 1; // 1 day
 export const CONST_AUTH_FLOW_TTL = 60 * 5; // 5 mins
 export const CONST_DAY_IN_SECONDS = 60 * 60 * 24;
 export const CONST_OTA_TTL = 30;
+export const TTL_PASSWORD_RESET_VALIDITY: number = 10;
 
 export const MFA_TYPE_PORTAMAIL = "portamail";
 

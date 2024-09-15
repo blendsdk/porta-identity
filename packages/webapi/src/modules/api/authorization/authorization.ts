@@ -12,6 +12,11 @@ export const AuthorizationModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
+				dispatch: "reset_password_redirect",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.reset_password_redirect
+			}),
+			defineControllerRoute({
 				dispatch: "logout_flow_info",
 				controller: AuthorizationController,
 				route: routeDefinitions.authorization.logout_flow_info

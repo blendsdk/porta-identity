@@ -158,5 +158,9 @@
     "reset_password_request_sent": {
         "en": "Your request was been sent. If an account exists with the information provided, you will receive an email with instructions on how to reset your password. You can close this browser tab or window now.",
         "nl": "Uw aanvraag is verzonden. Als er een account bestaat met de opgegeven gegevens, ontvangt u een e-mail met instructies om uw wachtwoord te resetten. U kunt dit browsertabblad of dit browservenster nu sluiten."
+    },
+    "mail_reset_password_subject": {
+        "en": "Reset you password for ${organization}",
+        "nl": "Wachtwoord wijzigen voor ${organization}"
     }
 }

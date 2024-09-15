@@ -1,5 +1,6 @@
-import { verifyStringSync } from "@blendsdk/crypto";
+import { generateRandomUUID, sha256Hash, verifyStringSync } from "@blendsdk/crypto";
 import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
+import { expireSecondsFromNow } from "@blendsdk/webafx-auth-oidc";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
 import { IMailer, KEY_MAILER_SERVICE } from "@blendsdk/webafx-mailer";
@@ -18,13 +19,19 @@ import {
     RESP_CHANGE_PASSWORD,
     RESP_CONSENT,
     RESP_FINALIZE,
+    RESP_FORGOT_PASSWORD_REQUEST,
     RESP_MFA
 } from "@porta/shared";
 import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
-import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
+import { AuthEmailProvider, Claims, commonUtils, databaseUtils, EndpointController } from "../../../../services";
+import {
+    CONST_DAY_IN_SECONDS,
+    IAuthorizationFlow,
+    MFA_TYPE_PORTAMAIL,
+    TTL_PASSWORD_RESET_VALIDITY
+} from "../../../../types";
 
 export class AuthenticateEndpointController extends EndpointController {
     /**
@@ -101,7 +108,10 @@ export class AuthenticateEndpointController extends EndpointController {
                 flow.account_state = false;
                 // reset all user input there
             }
-            if (update === RESP_ACCOUNT) {
+            if (update === RESP_FORGOT_PASSWORD_REQUEST) {
+                resp = RESP_FORGOT_PASSWORD_REQUEST;
+                await this.createResetPasswordRequest(flow, username, tenantRecord);
+            } else if (update === RESP_ACCOUNT) {
                 const result = await this.checkUserCredentials(username, password, flow, tenantRecord);
                 resp = result.resp;
                 error = result.error;
@@ -416,16 +426,61 @@ export class AuthenticateEndpointController extends EndpointController {
     protected createMFARequest(flow: IAuthorizationFlow) {
         switch (flow.authRecord.mfa) {
             case MFA_TYPE_PORTAMAIL: {
-                const mailer = new EmailMFAProvider({
+                const mailer = new AuthEmailProvider({
                     flow,
                     mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
                     settings: this.request.context.getSettings(),
                     trans: ((this as any).context as II18NRequestContext).getTranslator()
                 });
-                return mailer.send();
+                return mailer.sendMFAEmail();
             }
             default:
                 throw new Error(`No MFA request provider for ${flow.authRecord.mfa}`);
+        }
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {string} username
+     * @param {ISysTenant} tenantRecord
+     * @return {*}
+     * @memberof AuthenticateEndpointController
+     */
+    protected async createResetPasswordRequest(flow: IAuthorizationFlow, username: string, tenantRecord: ISysTenant) {
+        const userDb = new SysUserDataService({ tenantId: tenantRecord.id });
+        const userRecord = await userDb.findByUsernameNonService({ username });
+
+        if (userRecord) {
+            userRecord.password = undefined;
+            const profileDb = new SysProfileDataService({ tenantId: tenantRecord.id });
+            const profileRecord = await profileDb.findProfileByUserId({ user_id: userRecord.id });
+
+            const ttl: number = TTL_PASSWORD_RESET_VALIDITY;
+            const flowId = await sha256Hash(generateRandomUUID());
+            const url = `${this.getServerURL()}/rp/${flowId}/f`;
+            const expire = expireSecondsFromNow(60 * (ttl + 1)); // add one minute.
+
+            await this.getCache().setValue(
+                `reset_password_flow:${flowId}`,
+                {
+                    userRecord,
+                    tenantRecord,
+                    profileRecord
+                },
+                {
+                    expire
+                }
+            );
+
+            const mailer = new AuthEmailProvider({
+                flow,
+                mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
+                settings: this.request.context.getSettings(),
+                trans: ((this as any).context as II18NRequestContext).getTranslator()
+            });
+
+            return mailer.sendPasswordInstructionsEmail(userRecord, profileRecord, ttl, url);
         }
     }
 }

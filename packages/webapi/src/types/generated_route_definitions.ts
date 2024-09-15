@@ -10,6 +10,7 @@ export const routeDefinitions: {
 	reference_data: { get_reference_data: IRouteBase };
 	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
 	authorization: {
+		reset_password_redirect: IRouteBase;
 		logout_flow_info: IRouteBase;
 		session_logout_get: IRouteBase;
 		session_logout_post: IRouteBase;
@@ -38,6 +39,7 @@ export const routeDefinitions: {
 		save_user_state: { id: "save_user_state", method: "post", url: "/api/:tenant/user_state", public: false }
 	},
 	authorization: {
+		reset_password_redirect: { id: "reset_password_redirect", method: "get", url: "/rp/:flow/f", public: true },
 		logout_flow_info: { id: "logout_flow_info", method: "post", url: "/lf/flow_info", public: true },
 		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: true },
 		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },

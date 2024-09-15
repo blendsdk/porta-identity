@@ -999,10 +999,6 @@ export const validationSchema = {
 				options: {
 					type: eJsonSchemaType.string,
 					location: eParameterLocation.query
-				},
-				save: {
-					type: eJsonSchemaType.boolean,
-					location: eParameterLocation.query
 				}
 			}
 		},
@@ -1100,6 +1096,19 @@ export const validationSchema = {
 				}
 			},
 			required: ["tenant", "user_state"]
+		},
+		reset_password_redirect_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				flow: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				}
+			},
+			required: ["flow"]
+		},
+		reset_password_redirect: {
+			type: eJsonSchemaType.object
 		},
 		logout_flow_info_request: {
 			type: eJsonSchemaType.object

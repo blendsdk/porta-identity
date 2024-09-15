@@ -92,6 +92,18 @@ export abstract class EndpointController extends Controller<IRequestContext> {
 
     /**
      * @protected
+     * @memberof EndpointController
+     */
+    protected removeAllCookies() {
+        Object.keys(this.request.cookies).forEach((name) => {
+            this.setCookie(name, "?", {
+                expires: new Date(Date.now() - 1000000)
+            });
+        });
+    }
+
+    /**
+     * @protected
      * @param {string} keyName
      * @param {string} value
      * @return {*}

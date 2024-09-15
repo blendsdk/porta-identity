@@ -1,5 +1,30 @@
 import { Response } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IAuthorizeResponse, ICheckSetFlowRequest, ICheckSetFlowResponse, IDiscoveryKeysRequest, IDiscoveryKeysResponse, IDiscoveryRequest, IDiscoveryResponse, IFinalizeRequest, IFinalizeResponse, ILogoutFlowInfoRequest, ILogoutFlowInfoResponse, ISessionLogoutGetRequest, ISessionLogoutGetResponse, ISessionLogoutPostRequest, ISessionLogoutPostResponse, ITokenInfoRequest, ITokenInfoResponse, ITokenRequest, ITokenResponse, IUserInfoGetRequest, IUserInfoGetResponse } from "@porta/shared";
+import {
+    IAuthorizeRequest,
+    IAuthorizeResponse,
+    ICheckSetFlowRequest,
+    ICheckSetFlowResponse,
+    IDiscoveryKeysRequest,
+    IDiscoveryKeysResponse,
+    IDiscoveryRequest,
+    IDiscoveryResponse,
+    IFinalizeRequest,
+    IFinalizeResponse,
+    ILogoutFlowInfoRequest,
+    ILogoutFlowInfoResponse,
+    IResetPasswordRedirectRequest,
+    IResetPasswordRedirectResponse,
+    ISessionLogoutGetRequest,
+    ISessionLogoutGetResponse,
+    ISessionLogoutPostRequest,
+    ISessionLogoutPostResponse,
+    ITokenInfoRequest,
+    ITokenInfoResponse,
+    ITokenRequest,
+    ITokenResponse,
+    IUserInfoGetRequest,
+    IUserInfoGetResponse
+} from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
 import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
@@ -7,11 +32,11 @@ import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointCont
 import { EndSessionController } from "./controllers/EndSessionController";
 import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
+import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
+import { ResetPasswordController } from "./controllers/ResetPasswordController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
 import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
 import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
-import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
-
 
 /**
  * @export
@@ -20,7 +45,23 @@ import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEn
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    /**
+     * @param {IResetPasswordRedirectRequest} params
+     * @return {*}  {Promise<Response<IResetPasswordRedirectResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetPasswordRedirect(
+        params: IResetPasswordRedirectRequest
+    ): Promise<Response<IResetPasswordRedirectResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
 
+    /**
+     * @param {ILogoutFlowInfoRequest} params
+     * @return {*}  {Promise<Response<ILogoutFlowInfoResponse>>}
+     * @memberof AuthorizationController
+     */
     public logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
         const subController = new LogoutFlowInfoEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
@@ -131,7 +172,6 @@ export class AuthorizationController extends AuthorizationControllerBase {
     public discovery(params: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>> {
         const subController = new DiscoveryEndpointController(this.createSubControllerConfig());
         return subController.handleRequest(params);
-
     }
     /**
      * Creates a sub-controller config

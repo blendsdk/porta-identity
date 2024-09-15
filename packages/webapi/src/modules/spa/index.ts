@@ -11,7 +11,7 @@ let indexFile: string = null;
 let versionInfo = null;
 
 const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => {
-    const { tenant, locale } = req.context.getParameters<{ locale: string; tenant: string; }>();
+    const { tenant, locale } = req.context.getParameters<{ locale: string; tenant: string }>();
     const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/${endpoint}`);
     if (state) {
         url.searchParams.append("state", base64Encode(JSON.stringify(state)));
@@ -25,88 +25,6 @@ const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => 
 export const SPARoutes = (): IRouter => {
     return {
         routes: [
-            // {
-            //     method: "get",
-            //     public: true,
-            //     url: "/:tenant/signin",
-            //     request: {
-            //         properties: {
-            //             tenant: {
-            //                 type: eJsonSchemaType.string
-            //             },
-            //             locale: {
-            //                 type: eJsonSchemaType.string,
-            //                 location: eParameterLocation.query
-            //             }
-            //         }
-            //     },
-            //     handlers: (req: HttpRequest, res: HttpResponse) => {
-            //         const tenant = commonUtils.getTenantFromRequest(req);
-            //         const url = createOIDCRedirect("signin", req, {
-            //             location: `${req.context.getServerURL()}/fe/manage/${tenant}/dashboard`
-            //         });
-            //         res.send(renderGetRedirect(url.toString()));
-            //     }
-            // },
-            // {
-            //     method: "get",
-            //     public: false,
-            //     url: "/:tenant/me",
-            //     request: {
-            //         properties: {
-            //             tenant: {
-            //                 type: eJsonSchemaType.string
-            //             },
-            //             locale: {
-            //                 type: eJsonSchemaType.string,
-            //                 location: eParameterLocation.query
-            //             }
-            //         }
-            //     },
-            //     handlers: (req: HttpRequest, res: HttpResponse) => {
-            //         const { tenant, locale } = req.context.getParameters<any>();
-            //         const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
-            //         url.searchParams.append(
-            //             "state",
-            //             base64Encode(JSON.stringify({ location: `${req.context.getServerURL()}/fe/auth/${tenant}/me` }))
-            //         );
-            //         if (locale) {
-            //             url.searchParams.append("locale", locale);
-            //         }
-            //         res.send(renderGetRedirect(url.toString()));
-            //     }
-            // },
-            // {
-            //     method: "get",
-            //     public: false,
-            //     url: "/:tenant",
-            //     request: {
-            //         properties: {
-            //             tenant: {
-            //                 type: eJsonSchemaType.string
-            //             },
-            //             locale: {
-            //                 type: eJsonSchemaType.string,
-            //                 location: eParameterLocation.query
-            //             }
-            //         }
-            //     },
-            //     handlers: (req: HttpRequest, res: HttpResponse) => {
-            //         const { tenant, locale } = req.context.getParameters<any>();
-            //         const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/signin`);
-            //         url.searchParams.append(
-            //             "state",
-            //             base64Encode(
-            //                 JSON.stringify({ location: `${req.context.getServerURL()}/fe/manage/${tenant}/dashboard` })
-            //             )
-            //         );
-            //         if (locale) {
-            //             url.searchParams.append("locale", locale);
-            //         }
-            //         res.send(renderGetRedirect(url.toString()));
-            //     }
-            // },
-
             {
                 method: "get",
                 public: true,

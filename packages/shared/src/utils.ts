@@ -3,6 +3,8 @@ import { CRC32 } from "@blendsdk/stdlib";
 export const COOKIE_AUTH_FLOW = "_af";
 export const COOKIE_TENANT = "_tn";
 export const COOKIE_AUTH_FLOW_TTL = "_aft";
+export const COOKIE_RESET_PASSWORD_FLOW = "_rf";
+
 export const LOCAL_STORAGE_LAST_LOGIN = "_ll";
 export const MFA_RESEND_REQUEST = "resend";
 export const FLOW_ERROR_INVALID = "invalid_sign_in_flow";

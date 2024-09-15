@@ -37,11 +37,6 @@ export interface IGetTranslationsRequest {
 	 * @memberOf IGetTranslationsRequest
 	 */
 	options?: string;
-	/**
-	 * @type boolean
-	 * @memberOf IGetTranslationsRequest
-	 */
-	save?: boolean;
 }
 
 /**
@@ -258,6 +253,36 @@ export interface ISaveUserStateResponse {
 	 * @memberOf ISaveUserStateResponse
 	 */
 	data: IOpsResponse;
+}
+
+/**
+ * @export
+ * @interface IResetPasswordRedirectRequest
+ */
+export interface IResetPasswordRedirectRequest {
+	/**
+	 * @type string
+	 * @memberOf IResetPasswordRedirectRequest
+	 */
+	flow: string;
+}
+
+/**
+ * @export
+ * @interface IResetPasswordRedirect
+ */
+export interface IResetPasswordRedirect {}
+
+/**
+ * @export
+ * @interface IResetPasswordRedirectResponse
+ */
+export interface IResetPasswordRedirectResponse {
+	/**
+	 * @type IResetPasswordRedirect
+	 * @memberOf IResetPasswordRedirectResponse
+	 */
+	data: IResetPasswordRedirect;
 }
 
 /**

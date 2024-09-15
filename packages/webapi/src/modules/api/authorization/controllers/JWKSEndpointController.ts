@@ -25,14 +25,16 @@ export class JWKSEndpointController extends EndpointController {
      * @memberof JWKSEndpointController
      */
     public async handleRequest({ tenant }: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
-
         const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
 
         if (!tenantRecord) {
-            return this.responseWithError({
-                error: eErrorType.invalid_tenant,
-                error_description: tenant
-            }, true);
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_tenant,
+                    error_description: tenant
+                },
+                true
+            );
         }
 
         const ds = new DataServices(tenant, this.request, true); // no user no assertion
@@ -49,7 +51,7 @@ export class JWKSEndpointController extends EndpointController {
                 jwk.kid = record.key_id;
                 jwk.x5t = await jose.calculateJwkThumbprint(jwk, "sha256");
                 jwk.x5c = [certificate.replace(/(?:-----(?:BEGIN|END) CERTIFICATE-----|\s|=)/g, "")];
-                jwk.issuer = `${this.getServerURL()}/${tenant}/oauth2`;
+                (jwk as any).issuer = `${this.getServerURL()}/${tenant}/oauth2`;
                 (jwks as any[]).push(jwk);
             });
             return new SuccessResponse({

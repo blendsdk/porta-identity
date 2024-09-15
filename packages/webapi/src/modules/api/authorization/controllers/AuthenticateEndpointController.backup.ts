@@ -24,7 +24,7 @@ import {
 import { SysApplicationDataService } from "../../../../dataservices/SysApplicationDataService";
 import { SysProfileDataService } from "../../../../dataservices/SysProfileDataService";
 import { SysUserDataService } from "../../../../dataservices/SysUserDataService";
-import { Claims, commonUtils, databaseUtils, EmailMFAProvider, EndpointController } from "../../../../services";
+import { AuthEmailProvider, Claims, commonUtils, databaseUtils, EndpointController } from "../../../../services";
 import { EMailForgotPasswordProvider } from "../../../../services/EMailForgotPasswordProvider";
 import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, MFA_TYPE_PORTAMAIL } from "../../../../types";
 
@@ -367,13 +367,13 @@ export class AuthenticateEndpointController extends EndpointController {
     protected createMFARequest(flow: IAuthorizationFlow) {
         switch (flow.authRecord.mfa) {
             case MFA_TYPE_PORTAMAIL: {
-                const mailer = new EmailMFAProvider({
+                const mailer = new AuthEmailProvider({
                     flow,
                     mailer: this.request.context.getService<IMailer>(KEY_MAILER_SERVICE),
                     settings: this.request.context.getSettings(),
                     trans: ((this as any).context as II18NRequestContext).getTranslator()
                 });
-                return mailer.send();
+                return mailer.sendMFAEmail();
             }
             default:
                 throw new Error(`No MFA request provider for ${flow.authRecord.mfa}`);
