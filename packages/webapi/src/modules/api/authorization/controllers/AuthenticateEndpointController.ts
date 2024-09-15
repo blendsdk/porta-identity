@@ -298,7 +298,8 @@ export class AuthenticateEndpointController extends EndpointController {
         if (flow.mfa_state === false) {
             const alreadySent = (await this.getCache().getValue(this.getMFABypassKey(flow))) == "sent";
             if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined || !alreadySent) {
-                this.createMFARequest(flow);
+                flow.mfa_request = await this.createMFARequest(flow);
+                await this.updateFlow(flow);
             }
             // send mfa code
             return true;
