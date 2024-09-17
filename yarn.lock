@@ -312,30 +312,30 @@
   resolved "https://pak.truesoftware.net/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@blendsdk/clientkit@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/clientkit/-/clientkit-3.2.501.tgz#590b2df7e725bcaaf170a5d295f5ed01fbd57d33"
-  integrity sha512-0vUlwNJ4fMRJSslTQhfe0BemB37ErZhl/6KxwiGTzDET38w+wVQ7ZWXyHEOz4lCQ/OW94DkqOb6UMEhsZ66KhQ==
+"@blendsdk/clientkit@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/clientkit/-/clientkit-3.2.506.tgz#b8a8ffa1be12a849cb892afcfa774db9f4be5d35"
+  integrity sha512-FFWmvAsIKi6Hga924SPQWeLfzFgx5OBfmuF5duwEoV9/uJYUPNsv1chU5r6Y8NgjaNIJGg/pmCHmjrMK68CBEw==
   dependencies:
-    "@blendsdk/crypto" "3.2.501"
-    "@blendsdk/expression" "3.2.501"
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/path-to-regexp" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/crypto" "3.2.506"
+    "@blendsdk/expression" "3.2.506"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/path-to-regexp" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     tslib "^2.7.0"
 
-"@blendsdk/codegen@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/codegen/-/codegen-3.2.501.tgz#a1a27fbba6f804f6c0bcefc8ccfe0d4d59eab7d7"
-  integrity sha512-ELYytNeCAZhDc7YDBc6AmizEwPvt3/tPyBoOCEOAdO+/25+Bn1R7RoIwysivJ/HZibxQHyfpHTW+2KjwSLtGcg==
+"@blendsdk/codegen@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/codegen/-/codegen-3.2.506.tgz#06ddc0141e569e505bbf04d7230505dc563e46c3"
+  integrity sha512-YpLdfeB2pKMbD2P/VFgCx9etUdZy2ZJJtCyqzL+6q+Bc8iVoUSZd61Bqi5MqviO4LvnqLdtUW6Xywz0AqfjQ2Q==
   dependencies:
-    "@blendsdk/datakit" "3.2.501"
-    "@blendsdk/filesystem" "3.2.501"
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/logger" "3.2.501"
-    "@blendsdk/path-to-regexp" "3.2.501"
-    "@blendsdk/postgresql" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/datakit" "3.2.506"
+    "@blendsdk/filesystem" "3.2.506"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/logger" "3.2.506"
+    "@blendsdk/path-to-regexp" "3.2.506"
+    "@blendsdk/postgresql" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     chalk "^5.3.0"
     eol "^0.10.0"
     handlebars "^4.7.8"
@@ -344,195 +344,195 @@
     tslib "^2.7.0"
     yargs "^17.7.2"
 
-"@blendsdk/crypto@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/crypto/-/crypto-3.2.501.tgz#279ab4bb5ac45007483801dda35c74dd7cbc0ac1"
-  integrity sha512-bbot+e5VRcgu187SM73eDKJqJ1jJDbP/n1rW/iK+pS/gsJaBpqME6IhWXUndVvor2saTGUmCSlj6GmcRYFmoPA==
+"@blendsdk/crypto@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/crypto/-/crypto-3.2.506.tgz#dcf788b0e29b2d7465ce3d751209384b91e36b4a"
+  integrity sha512-qIWI33BVrkRTLw8UJimsB8ajAJUqrHkIEyR2cwjtj8a8ntFXPGeMwR7yfMMursCqNOypKRQssnYab59eSHFDfw==
   dependencies:
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/stdlib" "3.2.506"
     bcryptjs "^2.4.3"
 
-"@blendsdk/datakit@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/datakit/-/datakit-3.2.501.tgz#7ccd2ae7806885fc393a2605fe8e830db3c73515"
-  integrity sha512-R+YMC31R5lUya3G0zlJmn1k0IVENbA5RwP+wU9rNn9jS2VfiempMyuwYN65zcY0jO3yG3RX6II1HHZXeQE2M0w==
+"@blendsdk/datakit@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/datakit/-/datakit-3.2.506.tgz#a81fcba89fe6b69e76003b4b433cdca051f2d56f"
+  integrity sha512-gdr6bCrHA1UPwL7e9KKgvQCxalaFHX3j7J3u9LXMsfjI4CTBltIL2UUhf+iNzJjarAbB5KVj6CfhheowyO4L6A==
   dependencies:
-    "@blendsdk/expression" "3.2.501"
-    "@blendsdk/logger" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/expression" "3.2.506"
+    "@blendsdk/logger" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     tslib "^2.7.0"
 
-"@blendsdk/expression@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/expression/-/expression-3.2.501.tgz#56a7dd27f6b4aafaf7e003b213bc820ab245090f"
-  integrity sha512-6ONHC9EFs8ZMZ406hLD9yKzCkbEHG7A/vhQTMzFVOnHP8GuPKSGEknwYX0mcygySGWRj23Gy83lJfBArgMZcBA==
+"@blendsdk/expression@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/expression/-/expression-3.2.506.tgz#757126ec661401e8f0f21fcd267de1ac93fc3dcf"
+  integrity sha512-s2T04uyjlfn6omsJsafXEcCEkeZCHwK3T2h05MgG1n/2l4ZzKhz3Dfu91TV6ALzkY3fIC5qxYPI9DN9IDhnatg==
   dependencies:
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/stdlib" "3.2.506"
 
-"@blendsdk/filesystem@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/filesystem/-/filesystem-3.2.501.tgz#407f73df262946e0492bcaffde26167338756ad1"
-  integrity sha512-g09s5grme6/GMPJlJwDs8Ca6DEpueiej9sAyCDuBKQK5LHK+o4heFZmXADWy7f/ggYqccYMSyYwN6a5bp9wZ2g==
+"@blendsdk/filesystem@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/filesystem/-/filesystem-3.2.506.tgz#473ce930ca9be56b6364a08b9f257db290b9c528"
+  integrity sha512-lCGZvXuRI+GCiIJZaAmj0O3ClXrDsSzEaCjEylogQBKHY/QMOxxfsS4Vb8KhNUOBPHUdrb27qRDtTePW6GHGgw==
   dependencies:
-    "@blendsdk/logger" "3.2.501"
+    "@blendsdk/logger" "3.2.506"
     glob "^11.0.0"
     mkdirp "^3.0.1"
 
-"@blendsdk/fui9@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/fui9/-/fui9-3.2.501.tgz#f4b25c0822baba3c89f53b7ca8e4688a7912932f"
-  integrity sha512-sBD1QjWaeHipSYFEkWPB1OrPU58mbcjXMEVfIO+HlPKMSnXVFbMmtOp6z12cSqIBLk5p//lB6jPSZq9O8aHqyw==
+"@blendsdk/fui9@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/fui9/-/fui9-3.2.506.tgz#3a917f5b45124bf562f23a1bbb2dae049340bf3c"
+  integrity sha512-JltNDiJvhQ2xKzlGsBcsLLBHxjMqyHhBZyuUFdI8Bza0o/E2dua+KIrWNDS37LYq7DTH0I844jpPYUmsL+A7yA==
   dependencies:
-    "@blendsdk/react" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/react" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     add "^2.0.6"
     buffer "^6.0.3"
     react "^18.3.1"
     react-dropzone "^14.2.3"
 
-"@blendsdk/i18n@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/i18n/-/i18n-3.2.501.tgz#61dcf95560d6b3807956b0f726f61284ad3cbebc"
-  integrity sha512-8eGCeK473NEENTd8Se4Xf8++pAntJUXvYIf/KfRzAuhPSXB1yibbR/7WeUazkcrUEM4ei66C+yGQUm5em6aXug==
+"@blendsdk/i18n@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/i18n/-/i18n-3.2.506.tgz#2248ad5507efe7477d7149bf5eb7e5e6ece4a84f"
+  integrity sha512-GYDN21uKRUXLB8nV4GpfQ5RaDcudNilxw2F/OzGwByd0s4JrAodi77rfRzfovMWG49dmAAkpu3CUvLPRYQAqCg==
   dependencies:
-    "@blendsdk/logger" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/logger" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     js-cookie "^3.0.5"
     tslib "^2.7.0"
 
-"@blendsdk/jsonschema@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/jsonschema/-/jsonschema-3.2.501.tgz#bfec9d2176793f4467f24a498b4d1a5aae7d012b"
-  integrity sha512-0INiParvSA6IRXYtnWy5Jijhep5TcNviI8PJUu12HNuVsHDzS6yOAb6NjlNAamk6tJMpToyRL4shSKrj8TH0Dg==
+"@blendsdk/jsonschema@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/jsonschema/-/jsonschema-3.2.506.tgz#7c4c0394cd80754093e55b9a34d7671e16214181"
+  integrity sha512-hPsH4z0hyQ/OXVdOYUKjDIfkNnUekcsup3oT0LmwPuFb/lwpM0h+pFdqZbhjK5LqeQrP/CvbLXjAwKOcWDw4NA==
   dependencies:
-    "@blendsdk/i18n" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/i18n" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     tslib "^2.7.0"
 
-"@blendsdk/logger@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/logger/-/logger-3.2.501.tgz#b5b613b5f8584d0fa8fa282339b2197c87e591de"
-  integrity sha512-5kGjjC50epnilsCitBCVnBqHXa1rUKk5ATpkdX7qGzSMjBbz6Of+Xqjr3uI+gQFYe6KMlgIRvHyO8QYkIniJvQ==
+"@blendsdk/logger@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/logger/-/logger-3.2.506.tgz#f7b71af3b8cb9ffba75ba79aead46fb34b757996"
+  integrity sha512-quYtUuOmxoX02MBOYPucZ5+4HFVP7TztiQ6FJqIljZof7cjM765tpK47HuUocg9r1liV5h8d7uWHwvDG+8wP1g==
 
-"@blendsdk/path-to-regexp@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/path-to-regexp/-/path-to-regexp-3.2.501.tgz#cdd01240c49eacf7929d62ac246935b7ca690c67"
-  integrity sha512-sFH2Os1XrztYMuugVqOyRXMr0qb4dK3eT1+snYUVTBQFtVO3LyKimZEdkeffQmQNqnqtOVLjdKbh4qL7cfNyyg==
+"@blendsdk/path-to-regexp@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/path-to-regexp/-/path-to-regexp-3.2.506.tgz#96bf772f5cddd684c2541ac4f22124f8bc172fdf"
+  integrity sha512-v5ql0mFVFEkizbeORA/AhmbOg6qSCrkaVAasRqs62s59q168+w+qMiu2CdQliNBk65TZnivQnqWPstcZo5aUtQ==
 
-"@blendsdk/postgresql@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/postgresql/-/postgresql-3.2.501.tgz#5318abde3b22d4b08fb00a55e96d17b91fe111e1"
-  integrity sha512-k6i7VCOdAWFeQGH9KxL3pyKGG9KtIJiZ/ScMADZcf5pV/e3PFlHQSPYGCD+yq19E/KK/jEcmB0DRCCWSABImsQ==
+"@blendsdk/postgresql@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/postgresql/-/postgresql-3.2.506.tgz#d3d0992044abd82bf043c9b0151987b54e50353d"
+  integrity sha512-iOe4I7SjmrPNTHKzfHfQmPf+hOMIkYMI0vJBGWtMmn8sPoRgseL4KjQafkJj0M0KPN5aITbGCixXcSvo0MEqvA==
   dependencies:
-    "@blendsdk/datakit" "3.2.501"
-    "@blendsdk/expression" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/datakit" "3.2.506"
+    "@blendsdk/expression" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     pg "^8.12.0"
     tslib "^2.7.0"
     yesql "^7.0.0"
 
-"@blendsdk/rbac@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/rbac/-/rbac-3.2.501.tgz#4019394c66285819d45cb90006bf5ff9fdfee723"
-  integrity sha512-iOZCO7+eERWZPkfF0eIHPZfWugwRQPqppb6+j6dIxjCaOVYsHVlfbOsiaNURCEyW/cvxOE+suc6+Abu3bAIvsg==
+"@blendsdk/rbac@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/rbac/-/rbac-3.2.506.tgz#7b40199c1fbefa334165dc4d68221651d91d96c0"
+  integrity sha512-DRilsl2I49DOlWVlLN55mKZZJxxE3Y/BOBzU3AUh3yCixi08CQFc1kzhr7sZmEVHe4gLp29rJeq+sLrhiHofEg==
   dependencies:
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/stdlib" "3.2.506"
 
-"@blendsdk/react@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/react/-/react-3.2.501.tgz#2862f75ff0dccf40533beeeee3c3090227b84d46"
-  integrity sha512-DXWmj2Wzfe4krxGvDyLBYEhxQ3fZueYJGPcodvL0RM3N6OekBi5/f9DbEl179SBQ+Ht7gZgNGQRaDjQe+fkltA==
+"@blendsdk/react@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/react/-/react-3.2.506.tgz#5378e91ff97090b60e7022d9127deda1a0cd0a3d"
+  integrity sha512-EwwbTGA96kCPCrO1TSsckBe39mweVmFbVhu2i1aofbunLLjtdbc+cOu1F3KOP39wjIvngoe36VSB30TWIMMASA==
   dependencies:
-    "@blendsdk/clientkit" "3.2.501"
-    "@blendsdk/i18n" "3.2.501"
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/path-to-regexp" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/clientkit" "3.2.506"
+    "@blendsdk/i18n" "3.2.506"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/path-to-regexp" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     formik "^2.4.6"
     history "^5.3.0"
     js-cookie "^3.0.5"
     yup "^1.4.0"
 
-"@blendsdk/stdlib@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.501.tgz#d2518db9322758a07b3ed1a0f2226ffb14f04cc7"
-  integrity sha512-z3EcZWJHV22OAnnRcyMPrpQn5RlD8+YR18CryQmwIyHsWWLkOlLWNSBd84GPu3NKhu80LwV9SfuDZny0IjtWig==
+"@blendsdk/stdlib@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/stdlib/-/stdlib-3.2.506.tgz#759754ee1ce1e986e5367d40794c25ef24f60e25"
+  integrity sha512-ScDoFEweoLeQ/0ig0HlYrhBCEQgFUSw1mgvz2BxOEEdg4LKxa5BciXtaR36n+LJwcX+pBTmCHXYj0VLYTtnA6A==
 
-"@blendsdk/webafx-auth-oidc@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth-oidc/-/webafx-auth-oidc-3.2.501.tgz#839c2eaed9f6275debf06dc5cc76bab8486d0295"
-  integrity sha512-0ItAuQjW/sn2bTwENW0p0t8Wh2YhCPFqmoMYQ/R1+V4SMQHSDdWSUtXQEcGXgLhzbyE8kuCN5VFh6eoeTxkvnA==
+"@blendsdk/webafx-auth-oidc@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth-oidc/-/webafx-auth-oidc-3.2.506.tgz#7dd5ed282f64fef75b5b6b4c5f45dab91e3786b9"
+  integrity sha512-i9tJSfmmk4eLC+WUwWKqy5u4/pV8FBneUL3gb7ADmyJAMs2XXhjD4beqLe6dTtkbQaB4kuYOqC/ZNoo1rNbg5Q==
   dependencies:
-    "@blendsdk/crypto" "3.2.501"
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
-    "@blendsdk/webafx-auth" "3.2.501"
-    "@blendsdk/webafx-common" "3.2.501"
+    "@blendsdk/crypto" "3.2.506"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
+    "@blendsdk/webafx-auth" "3.2.506"
+    "@blendsdk/webafx-common" "3.2.506"
     jsonwebtoken "^9.0.2"
     openid-client "^5.7.0"
 
-"@blendsdk/webafx-auth@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth/-/webafx-auth-3.2.501.tgz#c61237ad90b74a4a381cb337d8156e968b831a35"
-  integrity sha512-yJba0/+mrEJWXxtuK8ktIywj8htNAX32lvXSJ/enWpn7wjIhkEFfZCAC0qPMFC3+pv37Ps65rtm6cBhIfa5TRA==
+"@blendsdk/webafx-auth@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-auth/-/webafx-auth-3.2.506.tgz#0d8ab20ca8c0b8682e7218edc16dde9e54a23886"
+  integrity sha512-Y62+Z+rnYmnF5gFWEc1kqqupO/obQ1Ic4K3ULyZ7J2rqSOxeO/dLdXk1SH2Qfnl37zrgt7SK4iARMF8uS4aouA==
   dependencies:
-    "@blendsdk/crypto" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
-    "@blendsdk/webafx" "3.2.501"
-    "@blendsdk/webafx-common" "3.2.501"
-    "@blendsdk/webafx-i18n" "3.2.501"
+    "@blendsdk/crypto" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
+    "@blendsdk/webafx" "3.2.506"
+    "@blendsdk/webafx-common" "3.2.506"
+    "@blendsdk/webafx-i18n" "3.2.506"
 
-"@blendsdk/webafx-cache-redis@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-redis/-/webafx-cache-redis-3.2.501.tgz#1f6bb5a37c05dada9327400b8cc3d00fc6998f35"
-  integrity sha512-9fuzhPE5JG6xOuc+f7RD7DEGRwqYn1iO/kbbXshysMsNpf0dq3O8dAZJEUk7eOO6St1IIk6LMzdnt68RuNdnCg==
+"@blendsdk/webafx-cache-redis@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-cache-redis/-/webafx-cache-redis-3.2.506.tgz#0c0c28311cb4f679ac3e32f939d20227515f664d"
+  integrity sha512-TwNCeZ2Ir939XP+11kS1jN+69mJiD0Jhvjw0+tJZ7kCSzpiItoO+R/kZ+BQGoXUu0F0Sa6EwW+JL5wHVtpK4Fw==
   dependencies:
-    "@blendsdk/stdlib" "3.2.501"
-    "@blendsdk/webafx" "3.2.501"
-    "@blendsdk/webafx-common" "3.2.501"
+    "@blendsdk/stdlib" "3.2.506"
+    "@blendsdk/webafx" "3.2.506"
+    "@blendsdk/webafx-common" "3.2.506"
     redis "^4.7.0"
 
-"@blendsdk/webafx-common@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-common/-/webafx-common-3.2.501.tgz#8fc3ae1fdd1f9b640ec41e2d8262f26faf6e115c"
-  integrity sha512-u/H3iaYTGewpQNd27cpqJkbYnnH7zTXNHXTzjqN2+JLlkjLD1CJPu9cVNl4x27rKYD93XdjdvlVgrFVp7b2J6w==
+"@blendsdk/webafx-common@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-common/-/webafx-common-3.2.506.tgz#a5deb1593d922fbb48430370952a01fb815a2ba6"
+  integrity sha512-xuqS20kBfEzJcKKlwyDm3tYk6cltIe+WoSJZE3bfj0y9OW4mpDA5vJVC6sd0TspBg43nzF38Sdoqk0Qo8mEpuA==
   dependencies:
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/logger" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/logger" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
     "@types/express" "^4.17.21"
     "@types/node" "^22.5.4"
     express "^4.20.0"
 
-"@blendsdk/webafx-i18n@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-i18n/-/webafx-i18n-3.2.501.tgz#f3ad139eddf135b93929654ce1dafeac6cbbe56f"
-  integrity sha512-A2HB2sR24uwDjN41sUvMvHV0fXm/o2Imb217PmZERRZCuIJfhdow+s99dowEkTj0pLFut5mdurbQAi/CvO0tNg==
+"@blendsdk/webafx-i18n@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-i18n/-/webafx-i18n-3.2.506.tgz#2753a871cdbb4a6b568a69db24ab075177641d75"
+  integrity sha512-A9sWTbUhKB5N/h6k9no4NxzMOhbKHdGSX+Ertn8jtBCFfwNq4l+LCvLkjSESIjfl0zA1PgPEoqR5H25ED7ydMw==
   dependencies:
-    "@blendsdk/filesystem" "3.2.501"
-    "@blendsdk/i18n" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
-    "@blendsdk/webafx" "3.2.501"
+    "@blendsdk/filesystem" "3.2.506"
+    "@blendsdk/i18n" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
+    "@blendsdk/webafx" "3.2.506"
 
-"@blendsdk/webafx-mailer@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx-mailer/-/webafx-mailer-3.2.501.tgz#114a73540b54bf896ee6ac87065a469188c8e30a"
-  integrity sha512-BD/XuaJfIJDe2lz6jxWVz6w/bVxi8LRpQz4EQfFWy8q0m+9LA0cla9x0iHUnIoTEkcQWcxlatR1Kgmyk9pEtEw==
+"@blendsdk/webafx-mailer@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx-mailer/-/webafx-mailer-3.2.506.tgz#9793e833338768ed07c436e91bb00db2cf1dd0b7"
+  integrity sha512-eMe3RqriQ0/l8TeXGfguohabi6aO/MU01JuF4l+lN8r51H2GwJgcrn26AbG80XUj3ThT0yXhxhmHk5M8xka+TQ==
   dependencies:
-    "@blendsdk/webafx" "3.2.501"
+    "@blendsdk/webafx" "3.2.506"
     nodemailer "^6.9.15"
 
-"@blendsdk/webafx@3.2.501":
-  version "3.2.501"
-  resolved "https://pak.truesoftware.net/@blendsdk/webafx/-/webafx-3.2.501.tgz#170cc203922d47e627434b4fdaad0dd358f7ee26"
-  integrity sha512-1PWs8p39zYznr5NHq9YpSw/pALJEta4la8wjM/aSX+m83vEBAw2opsoVC7f6+ccoM/ZPP49BK+febs6LZq2eOA==
+"@blendsdk/webafx@3.2.506":
+  version "3.2.506"
+  resolved "https://pak.truesoftware.net/@blendsdk/webafx/-/webafx-3.2.506.tgz#f96065c51465c87281f82a5e5f67f128d14f3ec0"
+  integrity sha512-1XdYpTszcSKL8Zu9AEylPPZjNBpBLeNqO0cBdIkS4IyV1NtSFAWjjW6bIC6QZk1K/O0L5vfaYcO+99UlSp9VnA==
   dependencies:
-    "@blendsdk/crypto" "3.2.501"
-    "@blendsdk/filesystem" "3.2.501"
-    "@blendsdk/jsonschema" "3.2.501"
-    "@blendsdk/logger" "3.2.501"
-    "@blendsdk/stdlib" "3.2.501"
-    "@blendsdk/webafx-common" "3.2.501"
+    "@blendsdk/crypto" "3.2.506"
+    "@blendsdk/filesystem" "3.2.506"
+    "@blendsdk/jsonschema" "3.2.506"
+    "@blendsdk/logger" "3.2.506"
+    "@blendsdk/stdlib" "3.2.506"
+    "@blendsdk/webafx-common" "3.2.506"
     compression "^1.7.4"
     cookie-parser "^1.4.6"
     cors "^2.8.5"
@@ -3074,9 +3074,9 @@
   integrity sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==
 
 "@types/jsonwebtoken@^9.0.6":
-  version "9.0.6"
-  resolved "https://pak.truesoftware.net/@types/jsonwebtoken/-/jsonwebtoken-9.0.6.tgz#d1af3544d99ad992fb6681bbe60676e06b032bd3"
-  integrity sha512-/5hndP5dCjloafCXns6SZyESp3Ldq7YjH3zwzwczYnjxIT0Fqzk5ROSYVGfFyczIue7IUEj8hkvLbPoLQ18vQw==
+  version "9.0.7"
+  resolved "https://pak.truesoftware.net/@types/jsonwebtoken/-/jsonwebtoken-9.0.7.tgz#e49b96c2b29356ed462e9708fc73b833014727d2"
+  integrity sha512-ugo316mmTYBl2g81zDFnZ7cfxlut3o+/EQdaP7J8QN2kY6lJ22hmQYCK5EHcJHbrW+dkCGSCPgbG8JtYj6qSrg==
   dependencies:
     "@types/node" "*"
 
@@ -3108,9 +3108,9 @@
   integrity sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==
 
 "@types/prop-types@*":
-  version "15.7.12"
-  resolved "https://pak.truesoftware.net/@types/prop-types/-/prop-types-15.7.12.tgz#12bb1e2be27293c1406acb6af1c3f3a1481d98c6"
-  integrity sha512-5zvhXYtRNRluoE/jAp4GVsSduVUzNWKkOZrCDBWYtE7biZywwdC2AcEzg+cSMLFRfVgeAFqpfNabiPjxFddV1Q==
+  version "15.7.13"
+  resolved "https://pak.truesoftware.net/@types/prop-types/-/prop-types-15.7.13.tgz#2af91918ee12d9d32914feb13f5326658461b451"
+  integrity sha512-hCZTSvwbzWGvhqxp/RqVqwU999pBf2vp7hzIjiYOsl8wqOmUxkQ6ddw1cV3l8811+kdUFus/q4d1Y3E3SyEifA==
 
 "@types/qs@*":
   version "6.9.16"
@@ -3130,9 +3130,9 @@
     "@types/react" "*"
 
 "@types/react@*", "@types/react@^18.3.5":
-  version "18.3.5"
-  resolved "https://pak.truesoftware.net/@types/react/-/react-18.3.5.tgz#5f524c2ad2089c0ff372bbdabc77ca2c4dbadf8f"
-  integrity sha512-WeqMfGJLGuLCqHGYRGHxnKrXcTitc6L/nBUWfWPcTarG3t9PsquqUMuVeXZeca+mglY4Vo5GZjCi0A3Or2lnxA==
+  version "18.3.6"
+  resolved "https://pak.truesoftware.net/@types/react/-/react-18.3.6.tgz#1cb5895c5ea0d99d8bc7d659e42f72713cbd3942"
+  integrity sha512-CnGaRYNu2iZlkGXGrOYtdg5mLK8neySj0woZ4e2wF/eli2E6Sazmq5X+Nrj6OBrrFVQfJWTUFeqAzoRhWQXYvg==
   dependencies:
     "@types/prop-types" "*"
     csstype "^3.0.2"
@@ -3172,61 +3172,61 @@
     "@types/yargs-parser" "*"
 
 "@typescript-eslint/eslint-plugin@^8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.5.0.tgz#7c1863693a98371703686e1c0fac64ffc576cdb1"
-  integrity sha512-lHS5hvz33iUFQKuPFGheAB84LwcJ60G8vKnEhnfcK1l8kGVLro2SFYW6K0/tj8FUhRJ0VHyg1oAfg50QGbPPHw==
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.6.0.tgz#20049754ff9f6d3a09bf240297f029ce04290999"
+  integrity sha512-UOaz/wFowmoh2G6Mr9gw60B1mm0MzUtm6Ic8G2yM1Le6gyj5Loi/N+O5mocugRGY+8OeeKmkMmbxNqUCq3B4Sg==
   dependencies:
     "@eslint-community/regexpp" "^4.10.0"
-    "@typescript-eslint/scope-manager" "8.5.0"
-    "@typescript-eslint/type-utils" "8.5.0"
-    "@typescript-eslint/utils" "8.5.0"
-    "@typescript-eslint/visitor-keys" "8.5.0"
+    "@typescript-eslint/scope-manager" "8.6.0"
+    "@typescript-eslint/type-utils" "8.6.0"
+    "@typescript-eslint/utils" "8.6.0"
+    "@typescript-eslint/visitor-keys" "8.6.0"
     graphemer "^1.4.0"
     ignore "^5.3.1"
     natural-compare "^1.4.0"
     ts-api-utils "^1.3.0"
 
 "@typescript-eslint/parser@^8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/parser/-/parser-8.5.0.tgz#d590e1ef9f31f26d423999ad3f687723247e6bcc"
-  integrity sha512-gF77eNv0Xz2UJg/NbpWJ0kqAm35UMsvZf1GHj8D9MRFTj/V3tAciIWXfmPLsAAF/vUlpWPvUDyH1jjsr0cMVWw==
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/parser/-/parser-8.6.0.tgz#02e092b9dc8b4e319172af620d0d39b337d948f6"
+  integrity sha512-eQcbCuA2Vmw45iGfcyG4y6rS7BhWfz9MQuk409WD47qMM+bKCGQWXxvoOs1DUp+T7UBMTtRTVT+kXr7Sh4O9Ow==
   dependencies:
-    "@typescript-eslint/scope-manager" "8.5.0"
-    "@typescript-eslint/types" "8.5.0"
-    "@typescript-eslint/typescript-estree" "8.5.0"
-    "@typescript-eslint/visitor-keys" "8.5.0"
+    "@typescript-eslint/scope-manager" "8.6.0"
+    "@typescript-eslint/types" "8.6.0"
+    "@typescript-eslint/typescript-estree" "8.6.0"
+    "@typescript-eslint/visitor-keys" "8.6.0"
     debug "^4.3.4"
 
-"@typescript-eslint/scope-manager@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/scope-manager/-/scope-manager-8.5.0.tgz#385341de65b976f02b295b8aca54bb4ffd6b5f07"
-  integrity sha512-06JOQ9Qgj33yvBEx6tpC8ecP9o860rsR22hWMEd12WcTRrfaFgHr2RB/CA/B+7BMhHkXT4chg2MyboGdFGawYg==
+"@typescript-eslint/scope-manager@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/scope-manager/-/scope-manager-8.6.0.tgz#28cc2fc26a84b75addf45091a2c6283e29e2c982"
+  integrity sha512-ZuoutoS5y9UOxKvpc/GkvF4cuEmpokda4wRg64JEia27wX+PysIE9q+lzDtlHHgblwUWwo5/Qn+/WyTUvDwBHw==
   dependencies:
-    "@typescript-eslint/types" "8.5.0"
-    "@typescript-eslint/visitor-keys" "8.5.0"
+    "@typescript-eslint/types" "8.6.0"
+    "@typescript-eslint/visitor-keys" "8.6.0"
 
-"@typescript-eslint/type-utils@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/type-utils/-/type-utils-8.5.0.tgz#6215b23aa39dbbd8dde0a4ef9ee0f745410c29b1"
-  integrity sha512-N1K8Ix+lUM+cIDhL2uekVn/ZD7TZW+9/rwz8DclQpcQ9rk4sIL5CAlBC0CugWKREmDjBzI/kQqU4wkg46jWLYA==
+"@typescript-eslint/type-utils@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/type-utils/-/type-utils-8.6.0.tgz#d4347e637478bef88cee1db691fcfa20ade9b8a0"
+  integrity sha512-dtePl4gsuenXVwC7dVNlb4mGDcKjDT/Ropsk4za/ouMBPplCLyznIaR+W65mvCvsyS97dymoBRrioEXI7k0XIg==
   dependencies:
-    "@typescript-eslint/typescript-estree" "8.5.0"
-    "@typescript-eslint/utils" "8.5.0"
+    "@typescript-eslint/typescript-estree" "8.6.0"
+    "@typescript-eslint/utils" "8.6.0"
     debug "^4.3.4"
     ts-api-utils "^1.3.0"
 
-"@typescript-eslint/types@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/types/-/types-8.5.0.tgz#4465d99331d1276f8fb2030e4f9c73fe01a05bf9"
-  integrity sha512-qjkormnQS5wF9pjSi6q60bKUHH44j2APxfh9TQRXK8wbYVeDYYdYJGIROL87LGZZ2gz3Rbmjc736qyL8deVtdw==
+"@typescript-eslint/types@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/types/-/types-8.6.0.tgz#cdc3a16f83f2f0663d6723e9fd032331cdd9f51c"
+  integrity sha512-rojqFZGd4MQxw33SrOy09qIDS8WEldM8JWtKQLAjf/X5mGSeEFh5ixQlxssMNyPslVIk9yzWqXCsV2eFhYrYUw==
 
-"@typescript-eslint/typescript-estree@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/typescript-estree/-/typescript-estree-8.5.0.tgz#6e5758cf2f63aa86e9ddfa4e284e2e0b81b87557"
-  integrity sha512-vEG2Sf9P8BPQ+d0pxdfndw3xIXaoSjliG0/Ejk7UggByZPKXmJmw3GW5jV2gHNQNawBUyfahoSiCFVov0Ruf7Q==
+"@typescript-eslint/typescript-estree@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/typescript-estree/-/typescript-estree-8.6.0.tgz#f945506de42871f04868371cb5bf21e8f7266e01"
+  integrity sha512-MOVAzsKJIPIlLK239l5s06YXjNqpKTVhBVDnqUumQJja5+Y94V3+4VUFRA0G60y2jNnTVwRCkhyGQpavfsbq/g==
   dependencies:
-    "@typescript-eslint/types" "8.5.0"
-    "@typescript-eslint/visitor-keys" "8.5.0"
+    "@typescript-eslint/types" "8.6.0"
+    "@typescript-eslint/visitor-keys" "8.6.0"
     debug "^4.3.4"
     fast-glob "^3.3.2"
     is-glob "^4.0.3"
@@ -3234,22 +3234,22 @@
     semver "^7.6.0"
     ts-api-utils "^1.3.0"
 
-"@typescript-eslint/utils@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/utils/-/utils-8.5.0.tgz#4d4ffed96d0654546a37faa5b84bdce16d951634"
-  integrity sha512-6yyGYVL0e+VzGYp60wvkBHiqDWOpT63pdMV2CVG4LVDd5uR6q1qQN/7LafBZtAtNIn/mqXjsSeS5ggv/P0iECw==
+"@typescript-eslint/utils@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/utils/-/utils-8.6.0.tgz#175fe893f32804bed1e72b3364ea6bbe1044181c"
+  integrity sha512-eNp9cWnYf36NaOVjkEUznf6fEgVy1TWpE0o52e4wtojjBx7D1UV2WAWGzR+8Y5lVFtpMLPwNbC67T83DWSph4A==
   dependencies:
     "@eslint-community/eslint-utils" "^4.4.0"
-    "@typescript-eslint/scope-manager" "8.5.0"
-    "@typescript-eslint/types" "8.5.0"
-    "@typescript-eslint/typescript-estree" "8.5.0"
+    "@typescript-eslint/scope-manager" "8.6.0"
+    "@typescript-eslint/types" "8.6.0"
+    "@typescript-eslint/typescript-estree" "8.6.0"
 
-"@typescript-eslint/visitor-keys@8.5.0":
-  version "8.5.0"
-  resolved "https://pak.truesoftware.net/@typescript-eslint/visitor-keys/-/visitor-keys-8.5.0.tgz#13028df3b866d2e3e2e2cc4193cf2c1e0e04c4bf"
-  integrity sha512-yTPqMnbAZJNy2Xq2XU8AdtOW9tJIr+UQb64aXB9f3B1498Zx9JorVgFJcZpEc9UBuCCrdzKID2RGAMkYcDtZOw==
+"@typescript-eslint/visitor-keys@8.6.0":
+  version "8.6.0"
+  resolved "https://pak.truesoftware.net/@typescript-eslint/visitor-keys/-/visitor-keys-8.6.0.tgz#5432af4a1753f376f35ab5b891fc9db237aaf76f"
+  integrity sha512-wapVFfZg9H0qOYh4grNVQiMklJGluQrOUiOhYRrQWhx7BY/+I1IYb8BczWNbbUpO+pqy0rDciv3lQH5E1bCLrg==
   dependencies:
-    "@typescript-eslint/types" "8.5.0"
+    "@typescript-eslint/types" "8.6.0"
     eslint-visitor-keys "^3.4.3"
 
 "@vitejs/plugin-react@^4.3.1":
@@ -3284,24 +3284,24 @@
     path-browserify "^1.0.1"
     vscode-uri "^3.0.8"
 
-"@vue/compiler-core@3.5.5":
-  version "3.5.5"
-  resolved "https://pak.truesoftware.net/@vue/compiler-core/-/compiler-core-3.5.5.tgz#1ed7a4531f693929a75e69a57add35193e2fcd13"
-  integrity sha512-ZrxcY8JMoV+kgDrmRwlDufz0SjDZ7jfoNZiIBluAACMBmgr55o/jTbxnyrccH6VSJXnFaDI4Ik1UFCiq9r8i7w==
+"@vue/compiler-core@3.5.6":
+  version "3.5.6"
+  resolved "https://pak.truesoftware.net/@vue/compiler-core/-/compiler-core-3.5.6.tgz#4a771c738fe745b61b963c41077af1405200db33"
+  integrity sha512-r+gNu6K4lrvaQLQGmf+1gc41p3FO2OUJyWmNqaIITaJU6YFiV5PtQSFZt8jfztYyARwqhoCayjprC7KMvT3nRA==
   dependencies:
     "@babel/parser" "^7.25.3"
-    "@vue/shared" "3.5.5"
+    "@vue/shared" "3.5.6"
     entities "^4.5.0"
     estree-walker "^2.0.2"
     source-map-js "^1.2.0"
 
 "@vue/compiler-dom@^3.4.0":
-  version "3.5.5"
-  resolved "https://pak.truesoftware.net/@vue/compiler-dom/-/compiler-dom-3.5.5.tgz#eef439a7c2e08e4653c0537d465d7db928578d50"
-  integrity sha512-HSvK5q1gmBbxRse3S0Wt34RcKuOyjDJKDDMuF3i7NC+QkDFrbAqw8NnrEm/z7zFDxWZa4/5eUwsBOMQzm1RHBA==
+  version "3.5.6"
+  resolved "https://pak.truesoftware.net/@vue/compiler-dom/-/compiler-dom-3.5.6.tgz#0942c290d3a52eb396243850ec73005f669c210d"
+  integrity sha512-xRXqxDrIqK8v8sSScpistyYH0qYqxakpsIvqMD2e5sV/PXQ1mTwtXp4k42yHK06KXxKSmitop9e45Ui/3BrTEw==
   dependencies:
-    "@vue/compiler-core" "3.5.5"
-    "@vue/shared" "3.5.5"
+    "@vue/compiler-core" "3.5.6"
+    "@vue/shared" "3.5.6"
 
 "@vue/compiler-vue2@^2.7.16":
   version "2.7.16"
@@ -3325,10 +3325,10 @@
     muggle-string "^0.4.1"
     path-browserify "^1.0.1"
 
-"@vue/shared@3.5.5", "@vue/shared@^3.4.0":
-  version "3.5.5"
-  resolved "https://pak.truesoftware.net/@vue/shared/-/shared-3.5.5.tgz#4e73f4512ec972f7670610068f6cff05b210fd1c"
-  integrity sha512-0KyMXyEgnmFAs6rNUL+6eUHtUCqCaNrVd+AW3MX3LyA0Yry5SA0Km03CDKiOua1x1WWnIr+W9+S0GMFoSDWERQ==
+"@vue/shared@3.5.6", "@vue/shared@^3.4.0":
+  version "3.5.6"
+  resolved "https://pak.truesoftware.net/@vue/shared/-/shared-3.5.6.tgz#602b3c2dccfe612f9e2e52e861dd7db340961a4f"
+  integrity sha512-eidH0HInnL39z6wAt6SFIwBrvGOpDWsDxlw3rCgo1B+CQ1781WzQUSU3YjxgdkcJo9Q8S6LmXTkvI+cLHGkQfA==
 
 "@yarnpkg/lockfile@^1.1.0":
   version "1.1.0"
@@ -3357,6 +3357,13 @@ JSONStream@^1.3.5:
   dependencies:
     jsonparse "^1.2.0"
     through ">=2.2.7 <3"
+
+a-captcha@^0.4.1:
+  version "0.4.1"
+  resolved "https://pak.truesoftware.net/a-captcha/-/a-captcha-0.4.1.tgz#15241ab8a884837847149809d6e445451c94bf77"
+  integrity sha512-j9fWVr9lxGR03xUhaTvAK8jHVZi8lUcMbDHJaXAQicU4FgPowngi7OiWTGj4pobmdIy6fp3vq6KCLgu4UXlFWw==
+  dependencies:
+    pngjs "^6.0.0"
 
 abbrev@^2.0.0:
   version "2.0.0"
@@ -8161,6 +8168,11 @@ pkg-types@^1.0.3, pkg-types@^1.1.1:
     confbox "^0.1.7"
     mlly "^1.7.1"
     pathe "^1.1.2"
+
+pngjs@^6.0.0:
+  version "6.0.0"
+  resolved "https://pak.truesoftware.net/pngjs/-/pngjs-6.0.0.tgz#ca9e5d2aa48db0228a52c419c3308e87720da821"
+  integrity sha512-TRzzuFRRmEoSW/p1KVAmiOgPco2Irlah+bGFCeNfJXxxYGwSw7YwAOAcd7X28K/m5bjBWKsC29KyoMfHbypayg==
 
 possible-typed-array-names@^1.0.0:
   version "1.0.0"

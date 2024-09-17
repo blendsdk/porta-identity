@@ -19,6 +19,10 @@ import {
 	IGetUserStateResponse,
 	ISaveUserStateRequest,
 	ISaveUserStateResponse,
+	IResetAuthRequest,
+	IResetAuthResponse,
+	IResetPasswordFlowInfoRequest,
+	IResetPasswordFlowInfoResponse,
 	ILogoutFlowInfoRequest,
 	ILogoutFlowInfoResponse,
 	ISessionLogoutGetRequest,
@@ -52,6 +56,8 @@ export interface IPortaApi {
 		saveUserState: THttpRequest<ISaveUserStateRequest, ISaveUserStateResponse>;
 	};
 	authorization: {
+		resetAuth: THttpRequest<IResetAuthRequest, IResetAuthResponse>;
+		resetPasswordFlowInfo: THttpRequest<IResetPasswordFlowInfoRequest | void, IResetPasswordFlowInfoResponse>;
 		logoutFlowInfo: THttpRequest<ILogoutFlowInfoRequest | void, ILogoutFlowInfoResponse>;
 		sessionLogoutGet: THttpRequest<ISessionLogoutGetRequest, ISessionLogoutGetResponse>;
 		sessionLogoutPost: THttpRequest<ISessionLogoutPostRequest, ISessionLogoutPostResponse>;
@@ -89,6 +95,8 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			})
 		},
 		authorization: {
+			resetAuth: defineEndpoint({ method: "post", url: "/rp/reset_auth" }),
+			resetPasswordFlowInfo: defineEndpoint({ method: "post", url: "/rp/flow_info" }),
 			logoutFlowInfo: defineEndpoint({ method: "post", url: "/lf/flow_info" }),
 			sessionLogoutGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/logout" }),
 			sessionLogoutPost: defineEndpoint({

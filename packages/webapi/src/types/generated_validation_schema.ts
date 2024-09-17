@@ -1110,6 +1110,57 @@ export const validationSchema = {
 		reset_password_redirect: {
 			type: eJsonSchemaType.object
 		},
+		reset_auth_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				password: {
+					type: eJsonSchemaType.string
+				},
+				confirm: {
+					type: eJsonSchemaType.string
+				},
+				captcha: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["password", "confirm", "captcha"]
+		},
+		reset_auth: {
+			type: eJsonSchemaType.object,
+			properties: {
+				resp: {
+					type: eJsonSchemaType.string
+				},
+				error: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["resp"]
+		},
+		reset_password_flow_info_request: {
+			type: eJsonSchemaType.object
+		},
+		reset_password_flow_info: {
+			type: eJsonSchemaType.object,
+			properties: {
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				},
+				captcha: {
+					type: eJsonSchemaType.string
+				},
+				error: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["logo", "application_name", "organization", "captcha"]
+		},
 		logout_flow_info_request: {
 			type: eJsonSchemaType.object
 		},

@@ -1,5 +1,14 @@
 import { generateRandomUUID } from "@blendsdk/crypto";
-import { base64Decode, CRC32, deepCopy, IDictionaryOf, isEmptyObject, isNullOrUndef, isObject } from "@blendsdk/stdlib";
+import {
+    base64Decode,
+    CRC32,
+    deepCopy,
+    IDictionaryOf,
+    isEmptyObject,
+    isNullOrUndef,
+    isObject,
+    MD5
+} from "@blendsdk/stdlib";
 import {
     BadRequestResponse,
     Controller,
@@ -100,6 +109,22 @@ export abstract class EndpointController extends Controller<IRequestContext> {
                 expires: new Date(Date.now() - 1000000)
             });
         });
+        Object.keys(this.request.signedCookies).forEach((name) => {
+            this.setCookie(name, "?", {
+                expires: new Date(Date.now() - 1000000),
+                signed: true
+            });
+        });
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @return {*}
+     * @memberof EndpointController
+     */
+    protected getMFABypassKey(user: ISysUser, authRecord: ISysAuthorizationView) {
+        return `auth_mfa_bypass:${MD5([authRecord.client_id, commonUtils.getRemoteIP(this.request), user.id].join(""))}`;
     }
 
     /**

@@ -22,8 +22,7 @@ export class SessionStore extends SessionStoreBase {
             case eSystemRoutes.login.key:
             case eSystemRoutes.logout.key:
             case eSystemRoutes.logoutComplete.key:
-                //case eSystemRoutes.forgotPassword.key:
-                //case eSystemRoutes.forgotReset.key:
+            case eSystemRoutes.resetPassword.key:
                 this.stopChecking();
                 return true;
             default:

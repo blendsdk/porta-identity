@@ -20,6 +20,48 @@ export function createAuthenticationAPI(builder: ApiBuilder) {
     });
 
     builder.defineApi({
+        id: "reset_auth",
+        url: "/rp/reset_auth",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("password")
+                .addString("confirm")
+                .addString("captcha");
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("resp")
+                .addBoolean("error", { optional: true });
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
+        id: "reset_password_flow_info",
+        url: "/rp/flow_info",
+        group: "authorization",
+        method: "post",
+        public: true,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type);
+
+            typeSchema
+                .createAppendType(payload_type) //
+                .addString("logo")
+                .addString("application_name")
+                .addString("organization")
+                .addString("captcha")
+                .addBoolean("error", { optional: true });
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "logout_flow_info",
         url: "/lf/flow_info",
         group: "authorization",

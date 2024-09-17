@@ -10,5 +10,9 @@ export const eSystemRoutes = {
     logoutComplete: {
         key: "logout_complete",
         path: "/fe/auth/signout/complete"
+    },
+    resetPassword: {
+        key: "reset_password",
+        path: "/fe/auth/reset-password"
     }
 };

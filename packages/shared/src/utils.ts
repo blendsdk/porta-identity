@@ -19,6 +19,11 @@ export const RESP_FORGOT_PASSWORD_REQUEST = "forgot_request";
 export const INVALID_PWD = "invalid_username_or_password";
 export const INVALID_PWD_MATCH = "invalid_password_match";
 
+export const RESET_PASSWORD_INVALID_PASSWORD = "RESET_PASSWORD_INVALID_PASSWORD";
+export const RESET_PASSWOPRD_INVALID_CAPTCHA = "RESET_PASSWOPRD_INVALID_CAPTCHA";
+export const RESET_PASSWORD_INVALID_FLOW = "RESET_PASSWORD_INVALID_FLOW";
+export const RESET_COMPLETE = "RESET_COMPLETE";
+
 export interface ILifetime {
     auth_time: string;
     date_expire: string;

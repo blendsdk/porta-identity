@@ -12,6 +12,10 @@ import {
     IFinalizeResponse,
     ILogoutFlowInfoRequest,
     ILogoutFlowInfoResponse,
+    IResetAuthRequest,
+    IResetAuthResponse,
+    IResetPasswordFlowInfoRequest,
+    IResetPasswordFlowInfoResponse,
     IResetPasswordRedirectRequest,
     IResetPasswordRedirectResponse,
     ISessionLogoutGetRequest,
@@ -45,6 +49,28 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    /**
+     * @param {IResetAuthRequest} params
+     * @return {*}  {Promise<Response<IResetAuthResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetAuth(params: IResetAuthRequest): Promise<Response<IResetAuthResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.resetAuth(params);
+    }
+
+    /**
+     * @param {IResetPasswordFlowInfoRequest} params
+     * @return {*}  {Promise<Response<IResetPasswordFlowInfoResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetPasswordFlowInfo(
+        params: IResetPasswordFlowInfoRequest
+    ): Promise<Response<IResetPasswordFlowInfoResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.resetPasswordFlowInfo(params);
+    }
+
     /**
      * @param {IResetPasswordRedirectRequest} params
      * @return {*}  {Promise<Response<IResetPasswordRedirectResponse>>}

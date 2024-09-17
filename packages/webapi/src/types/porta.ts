@@ -16,6 +16,15 @@ export const TTL_PASSWORD_RESET_VALIDITY: number = 10;
 
 export const MFA_TYPE_PORTAMAIL = "portamail";
 
+export interface IResetPasswordFlow {
+    userRecord: ISysUser;
+    tenantRecord: ISysTenant;
+    profileRecord: ISysProfile;
+    authRecord: ISysAuthorizationView;
+    expire: number;
+    captchaText: string;
+}
+
 export interface IAuthorizationFlow {
     authRequest: IAuthorizeRequest;
     authRecord: ISysAuthorizationView;

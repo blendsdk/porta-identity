@@ -80,6 +80,27 @@ export class AuthEmailProvider {
         });
     }
 
+    public async sendPasswordChangedEmail(user: ISysUser, profile: ISysProfile) {
+        const { authRecord, tenantRecord } = this.config.flow;
+
+        const to: string = profile.email || user.username;
+        const maildata: any = {
+            organization: tenantRecord.organization,
+            application: authRecord.application_name,
+            ...profile
+        };
+
+        const subject = this.config.trans.translate("mail_password_changed_subject", maildata);
+        const html = this.config.trans.translate("mail_password_changed_body", maildata);
+        await this.config.mailer.sendMail({
+            to,
+            subject,
+            from: this.config.settings.MFA_EMAIL_FROM,
+            html,
+            priority: "high"
+        });
+    }
+
     /**
      * @return {*}
      * @memberof AuthEmailProvider

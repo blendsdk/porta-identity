@@ -18,7 +18,7 @@ import Cookies from "js-cookie";
 import React from "react";
 import * as yup from "yup";
 import { ApplicationApi, useRouter, useTranslation } from "../../../system";
-import { IAuthFormModel } from "./types";
+import { IAuthFormModel, MIN_PASSWORD_LENGTH, validateData } from "./types";
 
 export enum eLoginView {
     GET_CREDENTIALS = 1,
@@ -27,24 +27,6 @@ export enum eLoginView {
     USER_CONSENT = 4,
     REQUEST_PASSWORD_RESET = 5
 }
-
-//FIXME! Make a configuration variable from this.
-const MIN_PASSWORD_LENGTH = 8;
-
-/**
- *
- * @param data Custom validator
- * @param validator
- * @returns
- */
-export const validateData = (data: any, validator: (data: any) => void) => {
-    try {
-        validator(data);
-        return undefined;
-    } catch (err: any) {
-        return err.message;
-    }
-};
 
 /**
  * @export

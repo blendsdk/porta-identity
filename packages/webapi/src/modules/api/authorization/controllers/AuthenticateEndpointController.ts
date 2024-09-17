@@ -1,5 +1,5 @@
 import { generateRandomUUID, sha256Hash, verifyStringSync } from "@blendsdk/crypto";
-import { isNullOrUndef, MD5 } from "@blendsdk/stdlib";
+import { isNullOrUndef } from "@blendsdk/stdlib";
 import { expireSecondsFromNow } from "@blendsdk/webafx-auth-oidc";
 import { RedirectResponse, Response, SuccessResponse } from "@blendsdk/webafx-common";
 import { II18NRequestContext } from "@blendsdk/webafx-i18n";
@@ -13,6 +13,7 @@ import {
     ICheckSetFlowResponse,
     INVALID_PWD,
     INVALID_PWD_MATCH,
+    ISysAuthorizationView,
     ISysTenant,
     MFA_RESEND_REQUEST,
     RESP_ACCOUNT,
@@ -29,6 +30,7 @@ import { AuthEmailProvider, Claims, commonUtils, databaseUtils, EndpointControll
 import {
     CONST_DAY_IN_SECONDS,
     IAuthorizationFlow,
+    IResetPasswordFlow,
     MFA_TYPE_PORTAMAIL,
     TTL_PASSWORD_RESET_VALIDITY
 } from "../../../../types";
@@ -110,7 +112,7 @@ export class AuthenticateEndpointController extends EndpointController {
             }
             if (update === RESP_FORGOT_PASSWORD_REQUEST) {
                 resp = RESP_FORGOT_PASSWORD_REQUEST;
-                await this.createResetPasswordRequest(flow, username, tenantRecord);
+                await this.createResetPasswordRequest(flow, username, tenantRecord, flow.authRecord);
             } else if (update === RESP_ACCOUNT) {
                 const result = await this.checkUserCredentials(username, password, flow, tenantRecord);
                 resp = result.resp;
@@ -306,7 +308,8 @@ export class AuthenticateEndpointController extends EndpointController {
     protected async checkSendMFARequest(flow: IAuthorizationFlow, mfa_result: string) {
         await this.checkMFABypass(flow);
         if (flow.mfa_state === false) {
-            const alreadySent = (await this.getCache().getValue(this.getMFABypassKey(flow))) == "sent";
+            const alreadySent =
+                (await this.getCache().getValue(this.getMFABypassKey(flow.user, flow.authRecord))) == "sent";
             if (mfa_result === MFA_RESEND_REQUEST || flow.mfa_request === undefined || !alreadySent) {
                 flow.mfa_request = await this.createMFARequest(flow);
                 await this.updateFlow(flow);
@@ -389,7 +392,7 @@ export class AuthenticateEndpointController extends EndpointController {
      * @memberof AuthenticateEndpointController
      */
     protected async registerMFABypass(flow: IAuthorizationFlow, value: any) {
-        return await this.getCache().setValue(this.getMFABypassKey(flow), value, {
+        return await this.getCache().setValue(this.getMFABypassKey(flow.user, flow.authRecord), value, {
             expire: commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * flow.authRecord.mfa_bypass_days)
         });
     }
@@ -401,20 +404,9 @@ export class AuthenticateEndpointController extends EndpointController {
      */
     protected async checkMFABypass(flow: IAuthorizationFlow) {
         if (flow.mfa_state === false) {
-            const bypass = await this.getCache().getValue(this.getMFABypassKey(flow));
+            const bypass = await this.getCache().getValue(this.getMFABypassKey(flow.user, flow.authRecord));
             flow.mfa_state = bypass === "sent" ? false : (bypass as any) !== undefined;
         }
-    }
-
-    /**
-     * @protected
-     * @param {IAuthorizationFlow} flow
-     * @return {*}
-     * @memberof AuthenticateEndpointController
-     */
-    protected getMFABypassKey(flow: IAuthorizationFlow) {
-        const { authRecord, user } = flow;
-        return `auth_mfa_bypass:${MD5([authRecord.client_id, commonUtils.getRemoteIP(this.request), user.id].join(""))}`;
     }
 
     /**
@@ -447,7 +439,12 @@ export class AuthenticateEndpointController extends EndpointController {
      * @return {*}
      * @memberof AuthenticateEndpointController
      */
-    protected async createResetPasswordRequest(flow: IAuthorizationFlow, username: string, tenantRecord: ISysTenant) {
+    protected async createResetPasswordRequest(
+        flow: IAuthorizationFlow,
+        username: string,
+        tenantRecord: ISysTenant,
+        authRecord: ISysAuthorizationView
+    ) {
         const userDb = new SysUserDataService({ tenantId: tenantRecord.id });
         const userRecord = await userDb.findByUsernameNonService({ username });
 
@@ -461,12 +458,15 @@ export class AuthenticateEndpointController extends EndpointController {
             const url = `${this.getServerURL()}/rp/${flowId}/f`;
             const expire = expireSecondsFromNow(60 * (ttl + 1)); // add one minute.
 
-            await this.getCache().setValue(
+            await this.getCache().setValue<IResetPasswordFlow>(
                 `reset_password_flow:${flowId}`,
                 {
                     userRecord,
                     tenantRecord,
-                    profileRecord
+                    profileRecord,
+                    authRecord,
+                    expire,
+                    captchaText: undefined
                 },
                 {
                     expire

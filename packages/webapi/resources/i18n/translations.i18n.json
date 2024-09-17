@@ -162,5 +162,41 @@
     "mail_reset_password_subject": {
         "en": "Reset you password for ${organization}",
         "nl": "Wachtwoord wijzigen voor ${organization}"
+    },
+    "invalid_reset_session_caption": {
+        "en": "A timeout occurred while processing your request",
+        "nl": "Er is een time-out opgetreden tijdens het verwerken van uw verzoek"
+    },
+    "invalid_reset_session_message": {
+        "en": "It is not possible to continue with resetting your password. Please close this window and try again.",
+        "nl": "Het is niet mogelijk om door te gaan met het resetten van uw wachtwoord. Sluit dit venster en probeer het opnieuw."
+    },
+    "reset_password_text": {
+        "en": "Please provide a new password and enter the captcha code to reset your password.",
+        "nl": "Geef een nieuw wachtwoord op en voer de captcha-code in om uw wachtwoord opnieuw in te stellen."
+    },
+    "password_confirm_is_required": {
+        "en": "Password confirmation is required",
+        "nl": "Wachtwoordbevestiging is vereist"
+    },
+    "captcha_value_is_required": {
+        "en": "Verification Code is required",
+        "nl": "Verificatiecode is vereist"
+    },
+    "captcha": {
+        "en": "Verification Code",
+        "nl": "Verificatiecode"
+    },
+    "RESET_PASSWOPRD_INVALID_CAPTCHA": {
+        "en": "Invalid Verification Code was provided",
+        "nl": "Er is een ongeldige verificatiecode opgegeven"
+    },
+    "reset_password_complete": {
+        "en": "Your password has been successfully changed. Please close this window and sign in again.",
+        "nl": "Uw wachtwoord is gewijzigd. Sluit dit venster en meld u opnieuw aan."
+    },
+    "mail_password_changed_subject": {
+        "en": "Your password is changed for ${application_name}",
+        "nl": "Uw wachtwoord is gewijzigd voor ${application_name}"
     }
 }

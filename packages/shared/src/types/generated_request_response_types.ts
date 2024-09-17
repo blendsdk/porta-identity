@@ -287,6 +287,107 @@ export interface IResetPasswordRedirectResponse {
 
 /**
  * @export
+ * @interface IResetAuthRequest
+ */
+export interface IResetAuthRequest {
+	/**
+	 * @type string
+	 * @memberOf IResetAuthRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf IResetAuthRequest
+	 */
+	confirm: string;
+	/**
+	 * @type string
+	 * @memberOf IResetAuthRequest
+	 */
+	captcha: string;
+}
+
+/**
+ * @export
+ * @interface IResetAuth
+ */
+export interface IResetAuth {
+	/**
+	 * @type string
+	 * @memberOf IResetAuth
+	 */
+	resp: string;
+	/**
+	 * @type boolean
+	 * @memberOf IResetAuth
+	 */
+	error?: boolean;
+}
+
+/**
+ * @export
+ * @interface IResetAuthResponse
+ */
+export interface IResetAuthResponse {
+	/**
+	 * @type IResetAuth
+	 * @memberOf IResetAuthResponse
+	 */
+	data: IResetAuth;
+}
+
+/**
+ * @export
+ * @interface IResetPasswordFlowInfoRequest
+ */
+export interface IResetPasswordFlowInfoRequest {}
+
+/**
+ * @export
+ * @interface IResetPasswordFlowInfo
+ */
+export interface IResetPasswordFlowInfo {
+	/**
+	 * @type string
+	 * @memberOf IResetPasswordFlowInfo
+	 */
+	logo: string;
+	/**
+	 * @type string
+	 * @memberOf IResetPasswordFlowInfo
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf IResetPasswordFlowInfo
+	 */
+	organization: string;
+	/**
+	 * @type string
+	 * @memberOf IResetPasswordFlowInfo
+	 */
+	captcha: string;
+	/**
+	 * @type boolean
+	 * @memberOf IResetPasswordFlowInfo
+	 */
+	error?: boolean;
+}
+
+/**
+ * @export
+ * @interface IResetPasswordFlowInfoResponse
+ */
+export interface IResetPasswordFlowInfoResponse {
+	/**
+	 * @type IResetPasswordFlowInfo
+	 * @memberOf IResetPasswordFlowInfoResponse
+	 */
+	data: IResetPasswordFlowInfo;
+}
+
+/**
+ * @export
  * @interface ILogoutFlowInfoRequest
  */
 export interface ILogoutFlowInfoRequest {}

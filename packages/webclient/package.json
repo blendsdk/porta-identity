@@ -10,12 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@blendsdk/clientkit": "3.2.501",
-    "@blendsdk/crypto": "3.2.501",
-    "@blendsdk/fui9": "3.2.501",
-    "@blendsdk/rbac": "3.2.501",
-    "@blendsdk/react": "3.2.501",
-    "@blendsdk/stdlib": "3.2.501",
+    "@blendsdk/clientkit": "3.2.506",
+    "@blendsdk/crypto": "3.2.506",
+    "@blendsdk/fui9": "3.2.506",
+    "@blendsdk/rbac": "3.2.506",
+    "@blendsdk/react": "3.2.506",
+    "@blendsdk/stdlib": "3.2.506",
     "@fluentui/react-components": "^9.54.14",
     "@fluentui/react-icons": "^2.0.258",
     "@griffel/react": "^1.5.25",

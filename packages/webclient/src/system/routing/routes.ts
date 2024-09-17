@@ -1,8 +1,13 @@
 import { IRoute } from "@blendsdk/react";
-import { LoginView, LogoutView } from "../../application";
+import { LoginView, LogoutView, ResetPassword } from "../../application";
 import { eSystemRoutes } from "./constants";
 
 export const systemRoutes: IRoute[] = [
+    {
+        name: eSystemRoutes.resetPassword.key,
+        path: eSystemRoutes.resetPassword.path,
+        component: ResetPassword
+    },
     {
         name: eSystemRoutes.login.key,
         path: eSystemRoutes.login.path,
