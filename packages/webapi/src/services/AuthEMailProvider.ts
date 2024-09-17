@@ -86,7 +86,7 @@ export class AuthEmailProvider {
         const to: string = profile.email || user.username;
         const maildata: any = {
             organization: tenantRecord.organization,
-            application: authRecord.application_name,
+            application_name: authRecord.application_name,
             ...profile
         };
 
