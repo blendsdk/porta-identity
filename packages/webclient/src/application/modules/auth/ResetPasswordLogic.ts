@@ -72,7 +72,7 @@ export class ResetPasswordLogic extends ComponentLogic<IResetPasswordLogicState>
     /**
      * @memberof ResetPasswordLogic
      */
-    public onGetNewPatchaImage() {
+    public onGetNewCaptchaImage = () => {
         ApplicationApi.authorization
             .resetPasswordFlowInfo({})
             .then(({ data }) => {
@@ -85,15 +85,7 @@ export class ResetPasswordLogic extends ComponentLogic<IResetPasswordLogicState>
             .catch((err) => {
                 this.catchSystemError(err);
             });
-    }
-
-    /**
-     * @protected
-     * @memberof ResetPasswordLogic
-     */
-    protected initActions(): void {
-        this.makeAction<ResetPasswordLogic>("onGetNewPatchaImage");
-    }
+    };
 
     /**
      * @protected

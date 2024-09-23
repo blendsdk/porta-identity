@@ -1,7 +1,5 @@
 import { SessionStoreBase, useGlobalSystemError } from "@blendsdk/react";
 import Cookies from "js-cookie";
-import { ApplicationApi } from "../api";
-import { getTenant } from "../lib";
 import { eSystemRoutes } from "../routing";
 
 /**
@@ -61,9 +59,10 @@ export class SessionStore extends SessionStoreBase {
     protected onSessionRefresh(): Promise<void> {
         return new Promise(async (resolve) => {
             try {
-                await ApplicationApi.authentication.oidcKeepAlive({
-                    ...getTenant()
-                });
+                //TODO: Implement this
+                // await ApplicationApi.authentication.oidcKeepAlive({
+                //     ...getTenant()
+                // });
                 // We wait 3 seconds for refresh effect
                 setTimeout(() => {
                     resolve();

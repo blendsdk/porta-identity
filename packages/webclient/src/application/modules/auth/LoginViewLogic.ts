@@ -143,7 +143,7 @@ export class LoginViewLogic extends DataStoreBase {
     /**
      * @memberof LoginViewLogic
      */
-    public onResendVerificationCode() {
+    public onResendVerificationCode = () => {
         this.beginFetching();
         ApplicationApi.authorization
             .checkSetFlow({
@@ -161,15 +161,15 @@ export class LoginViewLogic extends DataStoreBase {
                 this.catchSystemError(err);
                 this.doneFetching();
             });
-    }
+    };
 
     /**
      * @memberof LoginViewLogic
      */
-    public onForgotPasswordClick() {
+    public onForgotPasswordClick = () => {
         this.state.next = RESP_FORGOT_PASSWORD_REQUEST;
         this.gotoNextStep();
-    }
+    };
 
     /**
      * @protected
@@ -197,7 +197,7 @@ export class LoginViewLogic extends DataStoreBase {
      * @param {React.KeyboardEvent<HTMLDivElement>} e
      * @memberof LoginViewLogic
      */
-    public onKandleKeyPress(e: React.KeyboardEvent<HTMLDivElement>) {
+    public onKandleKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (this.showCredentials) {
             if (e.code === "Enter") {
                 e.preventDefault();
@@ -234,7 +234,7 @@ export class LoginViewLogic extends DataStoreBase {
                 this.errors[RESP_FORGOT_PASSWORD_REQUEST] = undefined;
             }
         }
-    }
+    };
 
     /**
      * @protected
@@ -525,10 +525,6 @@ export class LoginViewLogic extends DataStoreBase {
         this.t = t;
 
         const { sideEffect } = params;
-
-        this.makeAction<LoginViewLogic>("onForgotPasswordClick");
-        this.makeAction<LoginViewLogic>("onKandleKeyPress");
-        this.makeAction<LoginViewLogic>("onResendVerificationCode");
 
         this.initForm();
 

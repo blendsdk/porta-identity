@@ -131,19 +131,19 @@ export class LogoutViewLogic extends DataStoreBase {
     /**
      * @memberof LogoutViewLogic
      */
-    public onLogoutCancel() {
+    public onLogoutCancel = () => {
         this.view = eLogoutView.LOGOUT_CANCEL;
         this.doneFetching();
-    }
+    };
 
     /**
      * @memberof LogoutViewLogic
      */
-    public onProceedWithLogout() {
+    public onProceedWithLogout = () => {
         this.view = undefined;
         this.beginFetching();
         this.router.go(this.state.finalize_url, {}, true);
-    }
+    };
 
     /**
      * @param {IInitStore} params
@@ -154,9 +154,6 @@ export class LogoutViewLogic extends DataStoreBase {
         const { t } = useTranslation();
         this.router = useRouter();
         this.t = t;
-
-        this.makeAction<LogoutViewLogic>("onLogoutCancel");
-        this.makeAction<LogoutViewLogic>("onProceedWithLogout");
 
         sideEffect(() => {
             this.loadTenantInformation();

@@ -38,7 +38,7 @@ export const NewPassword: React.FC<INewPassword> = ({ reset, disabled }) => {
                 gap={tokens.spacingHorizontalM}
             >
                 <img src={reset.state.captcha} style={{ width: 200 }} />
-                <Button size="large" icon={<ArrowRepeatAllFilled />} onClick={reset.onGetNewPatchaImage} />
+                <Button size="large" icon={<ArrowRepeatAllFilled />} onClick={reset.onGetNewCaptchaImage} />
             </Layout>
             <FormFieldTextInput form={reset.form} t={t} fieldName="captcha" />
             <ToolbarSpacer flex={1} />
