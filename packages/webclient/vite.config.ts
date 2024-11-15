@@ -1,6 +1,5 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import dts from "vite-plugin-dts";
 export default defineConfig({
     optimizeDeps: {
         include: ["@porta/shared"]
@@ -10,12 +9,7 @@ export default defineConfig({
             include: [/shared/, /node_modules/]
         }
     },
-    plugins: [
-        react(),
-        dts({
-            outDir: "../sdk/types"
-        })
-    ],
+    plugins: [react()],
     define: {
         "process.env": {}
     },

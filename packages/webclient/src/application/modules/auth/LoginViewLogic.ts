@@ -1,4 +1,4 @@
-import { DataStoreBase, IInitStore, makeLocalStore, RouterStore, TTranslationFunction } from "@blendsdk/react";
+import { DataStoreBase, IInitStoreParams, makeLocalStore, RouterStore, TTranslationFunction } from "@blendsdk/react";
 import { filterObject, IDictionaryOf } from "@blendsdk/stdlib";
 import {
     COOKIE_AUTH_FLOW_TTL,
@@ -519,7 +519,7 @@ export class LoginViewLogic extends DataStoreBase {
      * @param {IInitStore} params
      * @memberof LoginViewLogic
      */
-    public init(params: IInitStore): void {
+    public init(params: IInitStoreParams): void {
         const { t } = useTranslation();
         this.router = useRouter();
         this.t = t;

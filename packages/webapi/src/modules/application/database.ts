@@ -8,7 +8,7 @@ export class DatabaseModule extends ApplicationModule {
         return new Promise((resolve, reject) => {
             try {
                 const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, PORTA_REGISTRY_TENANT, DB_DATABASE } =
-                    this.application.getSettings<IDatabaseAppSettings & IPortaApplicationSetting>();
+                    this.getApplication().getSettings<IDatabaseAppSettings & IPortaApplicationSetting>();
 
                 /**
                  * This is the Porta Registry Database

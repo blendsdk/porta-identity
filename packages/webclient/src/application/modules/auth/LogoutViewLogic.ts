@@ -1,4 +1,4 @@
-import { DataStoreBase, IInitStore, makeLocalStore, RouterStore, TTranslationFunction } from "@blendsdk/react";
+import { DataStoreBase, IInitStoreParams, makeLocalStore, RouterStore, TTranslationFunction } from "@blendsdk/react";
 import { COOKIE_AUTH_FLOW_TTL, FLOW_ERROR_INVALID, ILogoutFlowInfo } from "@porta/shared";
 import Cookies from "js-cookie";
 import { ApplicationApi, eSystemRoutes, useRouter, useTranslation } from "../../../system";
@@ -149,7 +149,7 @@ export class LogoutViewLogic extends DataStoreBase {
      * @param {IInitStore} params
      * @memberof LogoutViewLogic
      */
-    public init(params: IInitStore): void {
+    public init(params: IInitStoreParams): void {
         const { sideEffect } = params;
         const { t } = useTranslation();
         this.router = useRouter();
