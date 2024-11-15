@@ -1,4 +1,4 @@
-import { Application } from "@blendsdk/webafx";
+import { WebApplication } from "@blendsdk/webafx";
 import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import { MailerModule } from "@blendsdk/webafx-mailer";
@@ -24,7 +24,7 @@ const getTestConfig = () => {
  * Instance of the WebApi application configured with
  * modules.
  */
-const application = new Application({
+const application = new WebApplication({
     settings: process.env.TEST ? getTestConfig() : {},
     router: [
         //
