@@ -28,38 +28,19 @@ jobs:
             #       mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
             #       yarn test
 
-            # - name: Publish Production Packages
-            #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
-            #   run: |
-            #       git reset --hard
-            #       yarn tag-version-auto --yes
-            #       yarn publish-packages --yes
-
-            # - name: Publish Non-production Packages
-            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
-            #   run: |
-            #       git reset --hard
-            #       yarn tag-version-pre --yes
-            #       yarn publish-packages --yes --dist-tag next
-
             - name: Bundle Project
               run: |
                   git reset --hard
                   yarn tag-version-auto --yes
                   cd ./bundler && bun install && bun create:bundle
 
-            # - name: Next Deploy
-            #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/rover1')
-            #   run: ./deploy.sh truesoftware@docker-prod-1 next
+            - name: Deploy on Next
+              if: github.event_name == 'push' && contains(github.ref, !'refs/heads/master')
+              run: ./deploy.sh truesoftware@docker-prod-1 next
 
-            # - name: Development Deploy
-            #   if: github.event_name == 'push' && !contains(github.ref, 'refs/heads/master')
-            #   run: |
-            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com/docker/app"
-            #       rsync -avz -e "ssh -o StrictHostKeyChecking=no" --progress ./dist-bundle/ truesoftware@docker-prod-1:/home/truesoftware/containers/dev.portaidentity.com/docker/app
-            #       ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./porta up -c ./porta_dev.json -i app"
-
-            #       # ssh -o StrictHostKeyChecking=no truesoftware@docker-prod-1 "mkdir -p ~/containers/dev.portaidentity.com && cd ~/containers/dev.portaidentity.com && ./build-app-image.sh porta dev && ./swap.sh porta dev"
+            - name: Deploy on Production
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
+              run: ./deploy.sh truesoftware@docker-prod-1 sso
 
             - name: clear work
               if: always()
