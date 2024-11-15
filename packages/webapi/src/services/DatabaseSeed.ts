@@ -354,13 +354,12 @@ export class DatabaseSeed {
             BYPASS_MFA_DAYS = 1
         } = application.getSettings<IPortaApplicationSetting & IDatabaseAppSettings>();
 
-        const appId = MD5(`porta_cli_${tenantRecord.id}`);
         const app = await this.createApplication(
             {
                 tenant_id: tenantRecord.id,
-                id: appId,
+                id: MD5(`porta_cli_${tenantRecord.id}`),
                 application_name: "CLI",
-                client_id: await sha256Hash(`porta_cli_${tenantRecord.id}`),
+                client_id: await sha256Hash(`porta_cli_${tenantRecord.name}`),
                 description: "CLI Application",
                 is_system: true
             },
