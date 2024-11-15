@@ -1,479 +1,64 @@
-import { isNullOrUndef } from "@blendsdk/stdlib";
+import { MD5, isNullOrUndef } from "@blendsdk/stdlib";
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
     ISysAuthorizationView,
     ISysTenant,
+    ISysUser,
     IToken,
     ITokenRequest,
     ITokenResponse
 } from "@porta/shared";
-import * as jose from "jose";
-import { SysKeyDataService } from "../../../../dataservices/SysKeyDataService";
-import {
-    eClientType,
-    eErrorType,
-    eOAuthGrantType,
-    eOAuthScope,
-    ICachedFlowInformation,
-    IOTACache,
-    IPortaSessionInfo,
-    IPortaSessionStorage
-} from "../../../../types";
-import { commonUtils, databaseUtils } from "../../../../utils";
-import { eFlow, EndpointController } from "./EndpointControllerBase";
+import { SysSessionDataService } from "../../../../dataservices/SysSessionDataService";
+import { EndpointController, commonUtils, databaseUtils } from "../../../../services";
+import { CONST_DAY_IN_SECONDS, IAuthorizationFlow, eClientType, eErrorType, eOAuthGrantType } from "../../../../types";
 
 /**
- * Handles the token endpoint
- *
  * @export
  * @class TokenEndpointController
  * @extends {EndpointController}
  */
 export class TokenEndpointController extends EndpointController {
     /**
-     * Links the access token to the OTA
-     * so we can revoke it later of the OTA is used more than once
-     *
      * @protected
-     * @param {string} ota
-     * @param {string} access_token
+     * @param {string} code
+     * @return {*}
      * @memberof TokenEndpointController
      */
-    protected async linkOtaToAccessToken(ota: string, access_token: string) {
-        const otaKey = `ota:${ota}`;
-        let { flowId, used } = await this.getCache().getValue<IOTACache>(otaKey);
-        await this.getCache().setValue<IOTACache>(otaKey, { flowId, used, tokenRef: access_token });
+    protected async getFlowByOTACode(code: string, tenantRecord: ISysTenant) {
+        const cacheKey = `auth_ota:${code}`;
+        const flowId = await this.getCache().getValue<string>(cacheKey);
+        // revoke any access token by this code
+        await databaseUtils.revokeAccessToken(code, tenantRecord);
+        await this.getCache().deleteValue(cacheKey);
+        return this.getCache().getValue<IAuthorizationFlow>(`auth_flow:${flowId}`);
     }
 
     /**
-     * Gets the floeID by OTA code
-     *
      * @protected
-     * @param {string} ota
-     * @returns
+     * @param {string} flowId
+     * @return {*}
      * @memberof TokenEndpointController
      */
-    protected async getFlowIdByOTACode(ota: string) {
-        const otaKey = `ota:${ota}`;
-        let {
-            flowId = undefined,
-            used = undefined,
-            tokenRef = undefined
-        } = (await this.getCache().getValue<IOTACache>(otaKey)) || {};
-        try {
-            if (flowId && used === false) {
-                // mark as used. This is needed to pass RFC6749-4.1.2
-                await this.getCache().setValue<IOTACache>(otaKey, { flowId, used: true, tokenRef });
-            }
-
-            // is not allowed to use the second time
-            if (flowId && used === true) {
-                await this.revokeAccessToken(tokenRef);
-                await this.clearAuthenticationFlow(flowId);
-                await this.getCache().deleteValue(otaKey);
-                flowId = undefined;
-            }
-        } catch (err) {
-            await this.getLogger().warn("Trying to remove non-existing OTA", { ota });
-        }
-
-        return flowId || undefined;
+    protected clearAuthenticationFlow(flowId: string) {
+        return this.getCache().deleteValue(flowId);
     }
 
     /**
-     * Token endpoint handler
-     *
-     * @param {ITokenRequest} tokenRequest
-     * @returns {Promise<Response<ITokenResponse>>}
-     * @memberof AuthorizationController
-     */
-    public async handleRequest(tokenRequest: ITokenRequest): Promise<Response<ITokenResponse>> {
-        const { grant_type, state, code = undefined } = tokenRequest; // state is for client_credentials
-        let token: IToken = undefined;
-
-        if (eOAuthGrantType[grant_type] !== undefined) {
-            // Only when the requested grant type is authorization_code and we have a OTA
-            if (grant_type === eOAuthGrantType.authorization_code && !isNullOrUndef(code)) {
-                // for this grant type we need the cachedFlow information that would be
-                // available from the OTA
-                const flowIdByOTA = await this.getFlowIdByOTACode(code);
-
-                // Pass a random time to the flowIdByOTA that does not exist
-                // This way the getCurrentAuthenticationFlow will no default
-                // to looking a flowId by _af
-
-                const cachedFlow =
-                    (await this.getCurrentAuthenticationFlow(flowIdByOTA || Date.now().toString())) || ({} as any);
-
-                const { flowId = undefined, redirect_uri, response_mode } = cachedFlow || {};
-
-                if (flowId) {
-                    const { errors, token: localToken } = await this.getTokenByAuthorizationCode({
-                        cachedFlow,
-                        tokenRequest
-                    });
-                    token = localToken;
-
-                    // link only if we have an access token
-                    if (localToken && localToken.access_token) {
-                        await this.linkOtaToAccessToken(code, localToken.access_token);
-                    }
-
-                    await this.clearAuthenticationFlow(flowId);
-
-                    if (errors.length !== 0) {
-                        return this.responseWithError(
-                            {
-                                error: eErrorType.invalid_request,
-                                error_description: errors[0],
-                                redirect_uri,
-                                response_mode,
-                                state
-                            },
-                            true
-                        );
-                    }
-                } else {
-                    return this.responseWithError(
-                        {
-                            error: eErrorType.invalid_grant,
-                            error_description: "invalid_authorization_code"
-                        },
-                        true
-                    );
-                }
-            } else if (grant_type === eOAuthGrantType.client_credentials && isNullOrUndef(code)) {
-                /**
-                 * Only when the grant type is client_credentials and we don't have a code
-                 *
-                 * for this grant type we will find the service user bound to the the confidential client
-                 * and try to login with that user
-                 */
-                const { errors, token: localToken } = await this.getTokenByClientCredentials(tokenRequest);
-                token = localToken;
-
-                if (errors.length !== 0) {
-                    return this.responseWithError(
-                        {
-                            error: eErrorType.invalid_request,
-                            error_description: errors[0]
-                        },
-                        true
-                    );
-                }
-            } else {
-                return this.responseWithError(
-                    {
-                        error: eErrorType.invalid_request,
-                        error_description: "invalid_grant_type_combination",
-                        state
-                    },
-                    true
-                );
-            }
-        } else {
-            return this.responseWithError(
-                {
-                    error: eErrorType.invalid_grant,
-                    error_description: grant_type,
-                    state
-                },
-                true
-            );
-        }
-
-        return new SuccessResponse({ ...token, state });
-    }
-
-    /**
-     * Creates a token by client credentials for confidential clients
-     *
      * @protected
      * @param {ITokenRequest} tokenRequest
-     * @returns
+     * @param {IAuthorizeRequest} authRequest
+     * @param {string[]} errors
      * @memberof TokenEndpointController
      */
-    protected async getTokenByClientCredentials(tokenRequest: ITokenRequest) {
-        const { client_id, tenant, nonce } = tokenRequest || {};
-        const tenantRecord = await this.getTenant(tenant);
-        let token: IToken = undefined;
-        const errors: string[] = [];
-        if (this.checkTenantValidity(tenant, tenantRecord)) {
-            const authRecord = await this.getAuthorizationRecord(
-                tenantRecord,
-                client_id,
-                eOAuthGrantType.client_credentials
-            );
-
-            if (authRecord) {
-                if (!isNullOrUndef(authRecord.client_credentials_user_id)) {
-                    /**
-                     * The redirect_uri should already be null from the
-                     * database query `getAuthorizationRecord`
-                     */
-                    if (this.checkOTACodeValidity(authRecord, client_id, /* redirect_uri -->*/ null)) {
-                        const err = await this.checkAccessSecret(tokenRequest, authRecord, undefined);
-                        if (err.length === 0) {
-                            const { tokenKey, sessionStorage } = await this.createSessionStorageForUser(
-                                tenantRecord,
-                                authRecord,
-                                authRecord.client_credentials_user_id,
-                                undefined,
-                                eOAuthScope.openid, //TODO: porta specific claims should be added here!
-                                ""
-                            );
-                            token = await this.buildTokenPayload({
-                                access_token: tokenKey,
-                                ttl: sessionStorage.ttl,
-                                tokenExpireAt: sessionStorage.tokenExpireAt,
-                                tenant: tenantRecord,
-                                authRecord,
-                                authRequest: { nonce } as any,
-                                sessionInfo: sessionStorage.sessionInfo
-                            });
-                        } else {
-                            err.forEach((e) => errors.push(e));
-                        }
-                    } else {
-                        errors.push("invalid_client");
-                    }
-                } else {
-                    errors.push("not_a_confidential_client");
-                }
-            } else {
-                errors.push("invalid_request!!");
-            }
-        } else {
-            errors.push("invalid_tenant");
-        }
-        return { token, errors };
-    }
-
-    /**
-     * Handles the ACR values
-     *
-     * @protected
-     * @param {string} acr_values
-     * @returns
-     * @memberof TokenEndpointController
-     */
-    protected handleAcrClaims(acr_values: string) {
-        if (acr_values) {
-            const acr_request = commonUtils.parseSeparatedTokens(acr_values, true);
-            //TODO: need to be implemented in a later version
-            return Object.keys(acr_request)[0]; // just return something
-        } else {
-            return undefined;
-        }
-    }
-
-    /**
-     * Build an a token payload
-     *
-     * @protected
-     * @param {{
-     *         access_token: string;
-     *         ttl: number;
-     *         client_type: string;
-     *         tenant: ISysTenant;
-     *         authRecord: ISysAuthorizationView;
-     *         authRequest: IAuthorizeRequest;
-     *         sessionInfo: IPortaSessionInfo;
-     *     }} {
-     *         access_token,
-     *         ttl,
-     *         client_type,
-     *         tenant,
-     *         authRecord,
-     *         authRequest,
-     *         sessionInfo
-     *     }
-     * @returns {Promise<IToken>}
-     * @memberof TokenEndpointController
-     */
-    protected async buildTokenPayload({
-        access_token,
-        ttl,
-        tokenExpireAt,
-        tenant,
-        authRecord,
-        authRequest,
-        sessionInfo
-    }: {
-        access_token: string;
-        ttl: number;
-        tokenExpireAt: number;
-        tenant: ISysTenant;
-        authRecord: ISysAuthorizationView;
-        authRequest: IAuthorizeRequest;
-        sessionInfo: IPortaSessionInfo;
-    }): Promise<IToken> {
-        const keyDs = new SysKeyDataService({ tenantId: databaseUtils.getTenantDataSourceID(tenant) });
-        const { data } = (await keyDs.findJwkKeys())[0];
-        const { privateKey } = JSON.parse(data);
-        const { client_id } = authRecord;
-
-        const { metaData, accountId } = sessionInfo || {};
-        const { auth_time, roles, permissions } = metaData || {};
-
-        const pKey = await jose.importPKCS8(privateKey, "RS256");
-
-        const { nonce, state } = authRequest || {};
-
-        const auth_time_calculated = parseInt((auth_time / 1000) as any);
-
-        const acr = this.handleAcrClaims(authRequest.acr_values);
-
-        const id_token = await new jose.SignJWT({
-            "urn:acl:roles": roles
-                .filter((r) => {
-                    return r.is_active === true;
-                })
-                .map((r) => {
-                    return {
-                        role_id: r.id,
-                        role: r.name
-                    };
-                }),
-            "urn:acl:permissions": permissions
-                .filter((r) => {
-                    return r.is_active === true;
-                })
-                .map((r) => {
-                    return {
-                        permission_id: r.permission_id,
-                        permission: r.code
-                    };
-                }),
-            nonce,
-            state,
-            auth_time: auth_time_calculated,
-            acr
-        })
-            .setProtectedHeader({ alg: "RS256" })
-            .setIssuedAt()
-            .setIssuer(this.getIssuer(tenant.name))
-            .setAudience(client_id)
-            .setExpirationTime(tokenExpireAt)
-            .setSubject(accountId)
-            .sign(pKey);
-
-        return {
-            access_token,
-            expires_in: ttl,
-            id_token,
-            token_type: "Bearer" // OIDC
-        };
-    }
-
-    /**
-     * Get the token by client authorization_code and
-     * optionally build an ID_TOKEN
-     *
-     * @protected
-     * @param {{
-     *         tenant: string;
-     *         code: string;
-     *         client_id: string;
-     *         redirect_uri: string;
-     *         cachedFlow: ICachedFlowInformation;
-     *         tokenRequest: ITokenRequest;
-     *     }} {
-     *         tenant,
-     *         code,
-     *         client_id,
-     *         redirect_uri,
-     *         cachedFlow,
-     *         tokenRequest
-     *     }
-     * @returns {Promise<{ token: IToken; errors: any[] }>}
-     * @memberof TokenEndpointController
-     */
-    protected async getTokenByAuthorizationCode({
-        cachedFlow,
-        tokenRequest
-    }: {
-        cachedFlow: ICachedFlowInformation;
-        tokenRequest: ITokenRequest;
-    }): Promise<{ token: IToken; errors: any[] }> {
-        // get the current auth flow
-
-        const errors: string[] = [];
-
-        const { authRecord, flowId, tenantRecord: cachedTenantRecord, authRequest } = cachedFlow;
-
-        const { client_id, tenant, redirect_uri } = tokenRequest || {};
-
-        const tenantRecord = await this.checkTenantValidity(tenant, cachedTenantRecord);
-
-        if (isNullOrUndef(tenantRecord)) {
-            errors.push("tenant");
-            // Here we set the client_id to authRecord.client_id to be able to pass the OIDC cert-test
-            // It looks like the authorization_code flow does not require the client_id
-        } else if (!this.checkOTACodeValidity(authRecord, client_id || authRecord.client_id, redirect_uri)) {
-            errors.push("ota");
-        } else {
-            if (process.env.BYPASS) {
-                tokenRequest.client_secret = authRecord.secret; // OIDC test
-            }
-            (await this.checkAccessSecret(tokenRequest, authRecord, authRequest)).forEach((e) => errors.push(e));
+    protected validateRequest(tokenRequest: ITokenRequest, authRequest: IAuthorizeRequest, errors: string[]) {
+        if (tokenRequest.client_id !== authRequest.client_id) {
+            errors.push("invalid_client_id");
         }
 
-        if (errors.length === 0) {
-            const access_token = await this.getFlow<string>(eFlow.access_token, flowId);
-            const { sessionInfo, ttl, tokenExpireAt } = await this.getCache().getValue<IPortaSessionStorage>(
-                `tokens:${access_token}`
-            );
-
-            return {
-                errors: [],
-                token: await this.buildTokenPayload({
-                    access_token,
-                    ttl,
-                    tokenExpireAt,
-                    tenant: tenantRecord,
-                    authRecord,
-                    authRequest,
-                    sessionInfo
-                })
-            };
-        } else {
-            return {
-                errors,
-                token: undefined
-            };
+        if (tokenRequest.redirect_uri !== authRequest.redirect_uri) {
+            errors.push("invalid_redirect_uri");
         }
-    }
-
-    /**
-     * Check if the provided OTA code is valid
-     *
-     * @protected
-     * @param {ISysAuthorizationView} authRecord
-     * @param {string} client_id
-     * @param {string} redirect_uri
-     * @returns
-     * @memberof TokenEndpointController
-     */
-    protected checkOTACodeValidity(authRecord: ISysAuthorizationView, client_id: string, redirect_uri: string) {
-        return authRecord && client_id === authRecord.client_id && redirect_uri === authRecord.redirect_uri;
-    }
-
-    /**
-     * Checks if a given tenant is valid
-     *
-     * @protected
-     * @param {string} tenant
-     * @param {ISysTenant} cachedTenantRecord
-     * @returns {Promise<ISysTenant>}
-     * @memberof AuthorizationController
-     */
-    protected async checkTenantValidity(tenant: string, cachedTenantRecord: ISysTenant): Promise<ISysTenant> {
-        const tenantRecord = await this.getTenant(tenant);
-        return cachedTenantRecord && tenantRecord && tenantRecord.is_active && cachedTenantRecord.id === tenantRecord.id
-            ? tenantRecord
-            : undefined;
     }
 
     /**
@@ -489,25 +74,38 @@ export class TokenEndpointController extends EndpointController {
     protected async checkAccessSecret(
         tokenRequest: ITokenRequest,
         authRecord: ISysAuthorizationView,
-        authRequest: IAuthorizeRequest
+        authRequest: IAuthorizeRequest,
+        tenantRecord: ISysTenant,
+        errors: string[]
     ) {
         const { client_type } = authRecord || {};
-        const { code_verifier = undefined } = tokenRequest || {};
+        const { code_verifier = undefined, client_id } = tokenRequest || {};
         const { code_challenge = undefined, code_challenge_method = undefined } = authRequest || {};
-        const errors: string[] = [];
 
         const isPublicClient = client_type == eClientType.public;
         const isConfidentialClient = client_type === eClientType.confidential;
         const isServiceClient = client_type === eClientType.service;
+
+        // Try to get it from Authorization Bearer
+        if (!tokenRequest.client_secret) {
+            try {
+                const { client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+                tokenRequest.client_secret = client_secret;
+            } catch (err) {
+                errors.push("invalid_basic_auth_bearer_client_secret");
+            }
+        }
 
         /**
          * If the client_type is confidential or a service account then
          * we can check the secret validity
          */
         if (isConfidentialClient || isServiceClient) {
-            const isValidSecret =
-                authRecord.secret == tokenRequest.client_secret && !isNullOrUndef(tokenRequest.client_secret);
-
+            const isValidSecret = await databaseUtils.validateClientSecret(
+                tenantRecord,
+                client_id,
+                tokenRequest.client_secret
+            );
             if (!isValidSecret) {
                 errors.push("invalid_client_secret");
             }
@@ -545,5 +143,323 @@ export class TokenEndpointController extends EndpointController {
         }
 
         return errors;
+    }
+
+    /**
+     * @protected
+     * @param {ITokenRequest} tokenRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*}
+     * @memberof TokenEndpointController
+     */
+    protected async getTokenByRefreshToken(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
+        const errors: string[] = [];
+        const { refresh_token } = tokenRequest;
+        let token: IToken = undefined;
+        if (!refresh_token) {
+            errors.push(eErrorType.invalid_request);
+        } else {
+            let refresh_token_record = await databaseUtils.findRefreshTokenByTenant({
+                tenantRecord,
+                refresh_token,
+                check_validity: false
+            });
+            if (!refresh_token_record) {
+                errors.push(eErrorType.invalid_request);
+            } else if (refresh_token_record && refresh_token_record.is_expired) {
+                // delete the access_token and the refresh_token
+                await databaseUtils.revokeRefreshToken(tenantRecord, refresh_token_record);
+                errors.push("refresh_token_expired");
+            } else {
+                const { application, session, profile, user, access_token } = refresh_token_record;
+
+                let { client_id, client_secret } = this.getBasicAuthCredentialsFromRequestHeader();
+
+                client_id = client_id || tokenRequest.client_id;
+                client_secret = client_secret || tokenRequest.client_secret;
+
+                const isValidSecret = await databaseUtils.validateClientSecret(tenantRecord, client_id, client_secret);
+                const authRequest = access_token.auth_request_params as IAuthorizeRequest;
+
+                if (application.client_id === client_id && !isNullOrUndef(client_secret) && isValidSecret) {
+                    const authRecord = await databaseUtils.findAuthorizationRecord(authRequest, tenantRecord);
+
+                    // construct a flow
+                    const flow: IAuthorizationFlow = {
+                        account_state: true,
+                        require_user_consent: false,
+                        complete: true,
+                        mfa_state: true,
+                        require_change_password: false,
+                        forgot_password_state: false,
+                        session,
+                        profile,
+                        user,
+                        tenantRecord,
+                        authRequest,
+                        authRecord,
+                        mfa_request: undefined,
+                        flowId: undefined,
+                        expire: undefined
+                    };
+
+                    token = await this.createTokens({
+                        flow,
+                        tokenRequest: { ...tokenRequest, client_id }
+                    });
+                } else {
+                    errors.push("invalid_bound_client");
+                }
+            }
+        }
+        return {
+            errors,
+            token
+        };
+    }
+
+    /**
+     * @protected
+     * @param {IAuthorizationFlow} flow
+     * @param {ITokenRequest} tokenRequest
+     * @param {ISysTenant} tenantRecord
+     * @return {*}
+     * @memberof TokenEndpointController
+     */
+    protected async getTokenByAuthorizationCode(
+        flow: IAuthorizationFlow,
+        tokenRequest: ITokenRequest,
+        tenantRecord: ISysTenant
+    ) {
+        const errors: string[] = [];
+
+        // Here we set the client_id to authRequest.client_id to be able to pass the OIDC cert-test
+        // It looks like the authorization_code flow does not require the client_id
+        tokenRequest.client_id = tokenRequest.client_id ? tokenRequest.client_id : flow.authRequest.client_id;
+
+        this.validateRequest(tokenRequest, flow.authRequest, errors);
+        await this.checkAccessSecret(tokenRequest, flow.authRecord, flow.authRequest, tenantRecord, errors);
+        const token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
+        if (token) {
+            await databaseUtils.linkAccessTokenToOTA(token.access_token, tokenRequest.code, tenantRecord);
+        }
+        return {
+            errors,
+            token
+        };
+    }
+
+    /**
+     * @protected
+     * @param {ISysTenant} tenantRecord
+     * @param {ISysUser} user
+     * @param {ITokenRequest} credentials
+     * @return {*}
+     * @memberof TokenEndpointController
+     */
+    protected async createOrUpdateClientCredentialsSession(
+        tenantRecord: ISysTenant,
+        user: ISysUser,
+        credentials: ITokenRequest
+    ) {
+        const sessionDs = new SysSessionDataService({ tenantId: tenantRecord.id });
+        const { client_id, client_secret } = credentials;
+        const sessionId = MD5([client_id, client_secret, user.id].join(""));
+
+        this.cleanExpiredSessions(tenantRecord);
+
+        let sessionRecord = await sessionDs.findSysSessionById({ id: sessionId });
+
+        let date_expire: Date = undefined;
+
+        // Determine the expre_date of this session
+        // If the session time is set to 0 then we allow one year as indetinate session length
+        let sessionLength = tenantRecord.auth_session_length_hours;
+        if (sessionLength === 0) {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365)); // 1 year
+        } else {
+            date_expire = new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * sessionLength));
+        }
+
+        if (!sessionRecord) {
+            sessionRecord = await sessionDs.insertIntoSysSession({
+                user_id: user.id,
+                date_expire: date_expire.toISOString()
+            });
+        } else {
+            sessionRecord = await sessionDs.updateSysSessionById(
+                {
+                    date_expire: date_expire.toISOString()
+                },
+                { id: sessionRecord.id }
+            );
+        }
+
+        return sessionRecord;
+    }
+
+    public async getTokenByClientCredentials(tokenRequest: ITokenRequest, tenantRecord: ISysTenant) {
+        const errors: string[] = [];
+        let token: IToken;
+        const { client_id, client_secret } = tokenRequest;
+
+        const authRecord = await databaseUtils.findAuthorizationRecord(
+            { client_id, redirect_uri: eOAuthGrantType.client_credentials },
+            tenantRecord
+        );
+
+        if (authRecord) {
+            const secretRecord = await databaseUtils.findClientSecretForServiceAccount(
+                tenantRecord,
+                client_id,
+                client_secret
+            );
+            const { user, profile } = await databaseUtils.finUserAndProfile(
+                secretRecord.client_credential_user_id,
+                tenantRecord
+            );
+            const session = await this.createOrUpdateClientCredentialsSession(tenantRecord, user, tokenRequest);
+            if (secretRecord) {
+                // construct a flow
+                const flow: IAuthorizationFlow = {
+                    account_state: true,
+                    complete: true,
+                    mfa_state: true,
+                    require_user_consent: true,
+                    session,
+                    profile,
+                    user,
+                    tenantRecord,
+                    authRequest: tokenRequest as any,
+                    require_change_password: true,
+                    forgot_password_state: false,
+                    authRecord,
+                    mfa_request: undefined,
+                    flowId: undefined,
+                    expire: undefined
+                };
+                token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
+            } else {
+                errors.push("invalid_secret");
+            }
+        } else {
+            errors.push("invalid_request_auth_record");
+        }
+
+        return {
+            errors,
+            token
+        };
+    }
+
+    /**
+     * @param {ITokenRequest} _params
+     * @return {*}  {Promise<Response<ITokenResponse>>}
+     * @memberof TokenEndpointController
+     */
+    public async handleRequest(params: ITokenRequest): Promise<Response<ITokenResponse>> {
+        const { grant_type, state, tenant, redirect_uri, code = undefined } = params; // state is for client_credentials
+        let token: IToken = undefined;
+
+        const tenantRecord = await commonUtils.getTenantRecord(tenant, this.request);
+        if (!tenantRecord) {
+            return this.responseWithError({
+                error: eErrorType.invalid_tenant,
+                error_description: tenant,
+                redirect_uri,
+                state
+            });
+        }
+
+        if (eOAuthGrantType[grant_type] !== undefined) {
+            // Only when the requested grant type is authorization_code and we have a OTA
+            if (grant_type === eOAuthGrantType.authorization_code && !isNullOrUndef(code)) {
+                const flow = await this.getFlowByOTACode(code, tenantRecord);
+                if (flow) {
+                    const { authRequest } = flow;
+                    const { errors, token: localToken } = await this.getTokenByAuthorizationCode(
+                        flow,
+                        params,
+                        tenantRecord
+                    );
+                    token = localToken;
+                    await this.clearAuthenticationFlow(flow.flowId);
+                    if (errors.length !== 0) {
+                        return this.responseWithError(
+                            {
+                                error: eErrorType.invalid_grant,
+                                error_description: errors[0],
+                                redirect_uri,
+                                response_mode: authRequest?.response_mode,
+                                state
+                            },
+                            true
+                        );
+                    }
+                } else {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_grant,
+                            error_description: "invalid_authorization_code",
+                            redirect_uri,
+                            state
+                        },
+                        true
+                    );
+                }
+            } else if (grant_type === eOAuthGrantType.client_credentials && isNullOrUndef(code)) {
+                /**
+                 * Only when the grant type is client_credentials and we don't have a code
+                 *
+                 * for this grant type we will find the service user bound to the the confidential client
+                 * and try to login with that user
+                 */
+                const { errors, token: localToken } = await this.getTokenByClientCredentials(params, tenantRecord);
+                token = localToken;
+
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_request,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
+            } else if (grant_type === eOAuthGrantType.refresh_token) {
+                const { errors, token: localToken } = await this.getTokenByRefreshToken(params, tenantRecord);
+                token = localToken;
+                if (errors.length !== 0) {
+                    return this.responseWithError(
+                        {
+                            error: eErrorType.invalid_grant,
+                            error_description: errors[0]
+                        },
+                        true
+                    );
+                }
+            } else {
+                return this.responseWithError(
+                    {
+                        error: eErrorType.invalid_request,
+                        error_description: "invalid_grant_type_combination",
+                        redirect_uri,
+                        state
+                    },
+                    true
+                );
+            }
+        } else {
+            return this.responseWithError(
+                {
+                    error: eErrorType.invalid_grant,
+                    error_description: grant_type,
+                    redirect_uri,
+                    state
+                },
+                true
+            );
+        }
+        return new SuccessResponse({ ...token, state });
     }
 }

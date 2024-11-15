@@ -1,8 +1,8 @@
 import { Response, SuccessResponse } from "@blendsdk/webafx-common";
-import { IUserInfoGet, IUserInfoGetResponse, IUserInfoPost, IUserInfoPostRequest } from "@porta/shared";
+import { IPortaAccount, IUserInfoGet, IUserInfoGetResponse } from "@porta/shared";
 import { SysTenantDataService } from "../../../../dataservices/SysTenantDataService";
-import { IPortaSessionStorage } from "../../../../types";
-import { EndpointController } from "./EndpointControllerBase";
+import { EndpointController } from "../../../../services";
+import { eErrorType } from "../../../../types";
 
 /**
  * Handler for the user_info endpoint
@@ -18,11 +18,21 @@ export class UserInfoEndpointController extends EndpointController {
      * @memberof UserInfoEndpointController
      */
     public async handleRequest(
-        _params: IUserInfoGet | IUserInfoPost
-    ): Promise<Response<IUserInfoGetResponse | IUserInfoPostRequest>> {
-        const { sessionInfo } = this.getContext().getUser<IPortaSessionStorage>();
+        _params: IUserInfoGet
+    ): Promise<Response<IUserInfoGetResponse>> {
+        const sessionStorage = this.getContext().getSessionStorage<IPortaAccount>();
+        const { tenant } = sessionStorage || {};
         const tenantDs = new SysTenantDataService();
-        const tenantRecord = await tenantDs.findSysTenantById({ id: sessionInfo.metaData.tenant });
-        return new SuccessResponse(this.getClaimsByScope(sessionInfo, tenantRecord.name));
+        const tenantRecord = await tenantDs.findSysTenantById({ id: tenant.id });
+
+        if (!tenantRecord) {
+            return this.responseWithError({
+                error: eErrorType.invalid_tenant,
+                error_description: tenant.name
+            }, true);
+        }
+
+        return new SuccessResponse(await this.getClaimsByScope(sessionStorage));
+
     }
 }

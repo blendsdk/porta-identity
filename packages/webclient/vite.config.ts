@@ -1,10 +1,37 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-
-// https://vitejs.dev/config/
+import { defineConfig } from "vite";
 export default defineConfig({
-    define: {
-        "process.env": process.env
+    optimizeDeps: {
+        include: ["@porta/shared"]
     },
-    plugins: [react()]
+    build: {
+        commonjsOptions: {
+            include: [/shared/, /node_modules/]
+        }
+    },
+    plugins: [react()],
+    define: {
+        "process.env": {}
+    },
+    server: {
+        hmr: {
+            protocol: "ws",
+            host: "localhost",
+            port: 3001
+        },
+        host: "0.0.0.0",
+        port: 3000,
+        strictPort: true,
+        proxy: {
+            "/api": {
+                target: "http://localhost:4000",
+                changeOrigin: true
+            },
+            "/cache": {
+                target: "http://localhost:4000",
+                autoRewrite: true,
+                changeOrigin: true
+            }
+        }
+    }
 });

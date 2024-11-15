@@ -1,9 +1,8 @@
-import { ISysUser, ISysUserMfaView } from "@porta/shared";
+import { ISysUser } from "@porta/shared";
 import {
 	ISysUserDataServiceUpdateSysUserByIdFilter,
 	ISysUserDataServiceFindSysUserByIdParams,
 	ISysUserDataServiceDeleteSysUserByIdFilter,
-	ISysUserDataServiceFindMfaByUserIdParams,
 	ISysUserDataServiceFindByUsernameNonServiceParams
 } from "./types";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -143,21 +142,6 @@ export abstract class SysUserDataServiceBase extends DataService<PostgreSQLExecu
 	}
 
 	/**
-	 * @param {ISysUserDataServiceFindMfaByUserIdParams}
-	 * @returns {ISysUserMfaView[]}
-	 * @memberof SysUserDataServiceBase
-	 */
-	public async findMfaByUserId(params: ISysUserDataServiceFindMfaByUserIdParams): Promise<ISysUserMfaView[]> {
-		const ctx = await this.getContext();
-		const result = await ctx.executeQuery<ISysUserMfaView[], ISysUserDataServiceFindMfaByUserIdParams>(
-			`SELECT * FROM sys_user_mfa_view WHERE user_id = :user_id::uuid`,
-			params,
-			{ single: false }
-		);
-		return result.data;
-	}
-
-	/**
 	 * @param {ISysUserDataServiceFindByUsernameNonServiceParams}
 	 * @returns {ISysUser}
 	 * @memberof SysUserDataServiceBase
@@ -169,10 +153,9 @@ export abstract class SysUserDataServiceBase extends DataService<PostgreSQLExecu
                             su.*
                         from
                             sys_user su
-                            inner join sys_user_profile up on su.id = up.user_id
-                            left join sys_client sc on su.id = sc.client_credentials_user_id
+                            inner join sys_profile up on su.id = up.user_id
                         where
-                            sc.id is null and
+                            su.service_application_id is null and
                             (
                                 UPPER(su.username) = UPPER(:username) or
                                 UPPER(up.email) = UPPER(:username)

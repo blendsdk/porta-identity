@@ -1,6 +1,7 @@
 {
   "name": "@porta/codegen",
-  "version": "1.0.117",
+  "private": true,
+  "version": "1.0.248",
   "description": "Code generation package for porta",
   "main": "dist/index.js",
   "author": "TrueSoftware <info@truesoftware.nl>",
@@ -10,21 +11,22 @@
     "build": "rm -fR ./dist ./temp && tsc",
     "watch": "rm -fR ./dist && tsc -w",
     "test": "jest --detectOpenHandles --passWithNoTests",
+    "cli": "codegen",
     "generate": "yarn build && LOG_LEVEL=INFO node ./dist/index.js start",
     "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
   },
   "devDependencies": {
-    "@types/node": "^18.15.3",
-    "tslib": "^2.5.0"
+    "@types/node": "^22.5.4",
+    "tslib": "^2.7.0"
   },
   "dependencies": {
-    "@blendsdk/codegen": "3.2.218",
-    "@blendsdk/datakit": "3.2.218",
-    "@blendsdk/jsonschema": "3.2.218",
-    "@blendsdk/logger": "3.2.218",
-    "@blendsdk/postgresql": "3.2.218",
-    "@blendsdk/stdlib": "3.2.218",
-    "glob": "^9.3.0",
-    "jose": "^4.13.1"
+    "@blendsdk/codegen": "^3.2.520",
+    "@blendsdk/datakit": "3.2.520",
+    "@blendsdk/filesystem": "3.2.520",
+    "@blendsdk/jsonschema": "3.2.520",
+    "@blendsdk/logger": "3.2.520",
+    "@blendsdk/postgresql": "3.2.520",
+    "@blendsdk/stdlib": "3.2.520",
+    "jose": "^5.8.0"
   }
 }

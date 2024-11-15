@@ -38,3 +38,15 @@ export interface ISysMfaDataServiceUpdateSysMfaByIdFilter {
 	 */
 	id: string;
 }
+
+/**
+ * @export
+ * @interface ISysMfaDataServiceFindSysMfaByNameParams
+ */
+export interface ISysMfaDataServiceFindSysMfaByNameParams {
+	/**
+	 * @type string
+	 * @memberOf ISysMfaDataServiceFindSysMfaByNameParams
+	 */
+	name: string;
+}

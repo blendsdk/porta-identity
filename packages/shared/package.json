@@ -1,13 +1,15 @@
 {
     "name": "@porta/shared",
-    "version": "1.0.117",
+    "version": "1.0.248",
     "main": "dist/index.js",
+    "types": "./dist/index.d.ts",
     "scripts": {
         "ls": "docker container ls",
-        "mkpack": "rm -fR *.tgz && yarn pack",
         "build": "rm -fR ./dist && tsc",
         "test": "DEBUG=true jest --detectOpenHandles --runInBand --passWithNoTests --forceExit $TEST_FILTER",
         "watch": "tsc -w"
     },
-    "types": "./dist/index.d.ts"
+    "dependencies": {
+        "@blendsdk/stdlib": "3.2.520"
+    }
 }

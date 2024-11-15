@@ -5,18 +5,6 @@
 
 /**
  * @export
- * @interface ISysPermissionDataServiceFindPermissionsByUserIdParams
- */
-export interface ISysPermissionDataServiceFindPermissionsByUserIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysPermissionDataServiceFindPermissionsByUserIdParams
-	 */
-	user_id: string;
-}
-
-/**
- * @export
  * @interface ISysPermissionDataServiceFindSysPermissionByIdParams
  */
 export interface ISysPermissionDataServiceFindSysPermissionByIdParams {
@@ -49,16 +37,4 @@ export interface ISysPermissionDataServiceUpdateSysPermissionByIdFilter {
 	 * @memberOf ISysPermissionDataServiceUpdateSysPermissionByIdFilter
 	 */
 	id: string;
-}
-
-/**
- * @export
- * @interface ISysPermissionDataServiceFindSysPermissionByCodeParams
- */
-export interface ISysPermissionDataServiceFindSysPermissionByCodeParams {
-	/**
-	 * @type string
-	 * @memberOf ISysPermissionDataServiceFindSysPermissionByCodeParams
-	 */
-	code: string;
 }

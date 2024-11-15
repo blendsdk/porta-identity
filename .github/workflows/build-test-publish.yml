@@ -1,0 +1,47 @@
+name: BuildTestDeploy
+on:
+    push:
+        branches:
+            - "*" # matches every branch that doesn't contain a '/'
+env:
+    BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+    BuildTestDeploy:
+        runs-on: self-hosted
+        steps:
+            - uses: actions/checkout@v3
+            - uses: oven-sh/setup-bun@v1
+
+            - name: queue work
+              if: always()
+              run: work_queue queue ${{ github.event.organization.login }}_${{ github.event.repository.name }}
+
+            - name: Building the Project
+              run: |
+                  cp ./packages/webclient/vite.config.cicd.ts ./packages/webclient/vite.config.ts
+                  yarn
+                  yarn build
+
+            # - name: Testing the project
+            #   run: |
+            #       mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
+            #       yarn test
+
+            - name: Bundle Project
+              run: |
+                  git reset --hard
+                  yarn tag-version-auto --yes
+                  cd ./bundler && bun install && bun create:bundle
+
+            - name: Deploy on Next
+              if: github.event_name == 'push' && contains(github.ref, !'refs/heads/master')
+              run: ./deploy.sh truesoftware@docker-prod-1 next
+
+            - name: Deploy on Production
+              if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
+              run: ./deploy.sh truesoftware@docker-prod-1 sso
+
+            - name: clear work
+              if: always()
+              run: work_queue clear ${{ github.event.organization.login }}_${{ github.event.repository.name }}

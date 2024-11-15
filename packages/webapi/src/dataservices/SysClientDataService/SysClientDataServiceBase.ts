@@ -1,8 +1,7 @@
 import {
 	ISysClientDataServiceFindSysClientByIdParams,
 	ISysClientDataServiceDeleteSysClientByIdFilter,
-	ISysClientDataServiceUpdateSysClientByIdFilter,
-	ISysClientDataServiceFindSysClientByClientIdParams
+	ISysClientDataServiceUpdateSysClientByIdFilter
 } from "./types";
 import { ISysClient } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -76,24 +75,6 @@ export abstract class SysClientDataServiceBase extends DataService<PostgreSQLExe
 			Partial<ISysClient>,
 			ISysClientDataServiceUpdateSysClientByIdFilter
 		>(`sys_client`, params, filter, { single: true });
-		return result.data;
-	}
-
-	/**
-	 * Find a sys_client record by
-	 * @param {ISysClientDataServiceFindSysClientByClientIdParams}
-	 * @returns {ISysClient}
-	 * @memberof SysClientDataServiceBase
-	 */
-	public async findSysClientByClientId(
-		params: ISysClientDataServiceFindSysClientByClientIdParams
-	): Promise<ISysClient> {
-		const ctx = await this.getContext();
-		const result = await ctx.executeQuery<ISysClient, ISysClientDataServiceFindSysClientByClientIdParams>(
-			`SELECT * FROM sys_client WHERE client_id = :client_id`,
-			params,
-			{ single: true }
-		);
 		return result.data;
 	}
 }

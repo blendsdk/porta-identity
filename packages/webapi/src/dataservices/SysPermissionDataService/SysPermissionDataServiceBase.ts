@@ -1,11 +1,9 @@
 import {
-	ISysPermissionDataServiceFindPermissionsByUserIdParams,
 	ISysPermissionDataServiceFindSysPermissionByIdParams,
 	ISysPermissionDataServiceDeleteSysPermissionByIdFilter,
-	ISysPermissionDataServiceUpdateSysPermissionByIdFilter,
-	ISysPermissionDataServiceFindSysPermissionByCodeParams
+	ISysPermissionDataServiceUpdateSysPermissionByIdFilter
 } from "./types";
-import { ISysUserPermissionView, ISysPermission } from "@porta/shared";
+import { ISysPermission } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
 import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/postgresql";
 
@@ -17,22 +15,6 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysPermissionDataServiceBase extends DataService<PostgreSQLExecutionContext> {
-	/**
-	 * @param {ISysPermissionDataServiceFindPermissionsByUserIdParams}
-	 * @returns {ISysUserPermissionView[]}
-	 * @memberof SysPermissionDataServiceBase
-	 */
-	public async findPermissionsByUserId(
-		params: ISysPermissionDataServiceFindPermissionsByUserIdParams
-	): Promise<ISysUserPermissionView[]> {
-		const ctx = await this.getContext();
-		const result = await ctx.executeQuery<
-			ISysUserPermissionView[],
-			ISysPermissionDataServiceFindPermissionsByUserIdParams
-		>(`select * from sys_user_permission_view where user_id = :user_id`, params, { single: false });
-		return result.data;
-	}
-
 	/**
 	 * Find a sys_permission record by
 	 * @param {ISysPermissionDataServiceFindSysPermissionByIdParams}
@@ -97,24 +79,6 @@ export abstract class SysPermissionDataServiceBase extends DataService<PostgreSQ
 			Partial<ISysPermission>,
 			ISysPermissionDataServiceUpdateSysPermissionByIdFilter
 		>(`sys_permission`, params, filter, { single: true });
-		return result.data;
-	}
-
-	/**
-	 * Find a sys_permission record by
-	 * @param {ISysPermissionDataServiceFindSysPermissionByCodeParams}
-	 * @returns {ISysPermission}
-	 * @memberof SysPermissionDataServiceBase
-	 */
-	public async findSysPermissionByCode(
-		params: ISysPermissionDataServiceFindSysPermissionByCodeParams
-	): Promise<ISysPermission> {
-		const ctx = await this.getContext();
-		const result = await ctx.executeQuery<ISysPermission, ISysPermissionDataServiceFindSysPermissionByCodeParams>(
-			`SELECT * FROM sys_permission WHERE code = :code`,
-			params,
-			{ single: true }
-		);
 		return result.data;
 	}
 }

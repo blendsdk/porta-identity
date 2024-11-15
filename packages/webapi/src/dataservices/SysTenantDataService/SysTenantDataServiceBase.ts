@@ -1,4 +1,14 @@
 import {
+	ISysSessionView,
+	ISysAccessTokenView,
+	ISysRefreshTokenView,
+	ISysUserPermissionView,
+	ISysAuthorizationView,
+	ISysSecretView,
+	ISysTenant
+} from "@porta/shared";
+import { TExpressionRenderer } from "@blendsdk/expression";
+import {
 	ISysTenantDataServiceFindByNameOrIdParams,
 	ISysTenantDataServiceFindSysTenantByIdParams,
 	ISysTenantDataServiceDeleteSysTenantByIdFilter,
@@ -6,7 +16,6 @@ import {
 	ISysTenantDataServiceFindSysTenantByNameParams,
 	ISysTenantDataServiceFindSysTenantByDatabaseParams
 } from "./types";
-import { ISysTenant } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
 import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/postgresql";
 
@@ -18,6 +27,143 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  * @extends {DataService<PostgreSQLExecutionContext>}
  */
 export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExecutionContext> {
+	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredSessions(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_session where id in (select id from sys_session where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredAccessTokens(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_access_token where id in (select id from sys_access_token where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * @param {void}
+	 * @returns {void}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async revokeExpiredRefreshTokens(): Promise<void> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<void, void>(
+			`delete from sys_refresh_token where id in (select id from sys_refresh_token where (now() > date_expire) = true);`,
+			undefined,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * List a sys_session_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysSessionView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysSessionViewByExpression(params: TExpressionRenderer): Promise<ISysSessionView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysSessionView[]>(`sys_session_view`, params, { single: false });
+		return result.data;
+	}
+
+	/**
+	 * List a sys_access_token_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysAccessTokenView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysAccessTokenViewByExpression(params: TExpressionRenderer): Promise<ISysAccessTokenView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysAccessTokenView[]>(`sys_access_token_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_refresh_token_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysRefreshTokenView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysRefreshTokenViewByExpression(params: TExpressionRenderer): Promise<ISysRefreshTokenView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysRefreshTokenView[]>(`sys_refresh_token_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_user_permission_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysUserPermissionView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysUserPermissionViewByExpression(params: TExpressionRenderer): Promise<ISysUserPermissionView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysUserPermissionView[]>(`sys_user_permission_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_authorization_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysAuthorizationView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysAuthorizationViewByExpression(params: TExpressionRenderer): Promise<ISysAuthorizationView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysAuthorizationView[]>(`sys_authorization_view`, params, {
+			single: false
+		});
+		return result.data;
+	}
+
+	/**
+	 * List a sys_secret_view by expression syntax
+	 * @param {void}
+	 * @returns {ISysSecretView[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysSecretViewByExpression(params: TExpressionRenderer): Promise<ISysSecretView[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysSecretView[]>(`sys_secret_view`, params, { single: false });
+		return result.data;
+	}
+
+	/**
+	 * List a sys_tenant by expression syntax
+	 * @param {void}
+	 * @returns {ISysTenant[]}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async listSysTenantByExpression(params: TExpressionRenderer): Promise<ISysTenant[]> {
+		const ctx = await this.getContext();
+		const result = await ctx.listByExpression<ISysTenant[]>(`sys_tenant`, params, { single: false });
+		return result.data;
+	}
+
 	/**
 	 * @param {ISysTenantDataServiceFindByNameOrIdParams}
 	 * @returns {ISysTenant}

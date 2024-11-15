@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-import { createMethodName, databaseToSchema, EnumBuilder } from "@blendsdk/codegen";
+import { EnumBuilder, createMethodName, databaseToSchema } from "@blendsdk/codegen";
 import * as path from "path";
 import { createAPISchema } from "./api";
 import { createCustomTypes } from "./customtypes";
@@ -7,11 +6,11 @@ import { createDatabaseSchema } from "./database";
 import { createDataServices } from "./dataservice";
 import { consoleLogger, database, typeBuilder, typeSchema, writeFileSync } from "./lib";
 import { clean_generated } from "./lib/clean";
+import { createViewSchema } from "./views";
 
 const WebApiRoot: string = path.join(process.cwd(), "..", "webapi");
 const WebClientRoot: string = path.join(process.cwd(), "..", "webclient");
-const WebClientAdminRoot: string = path.join(process.cwd(), "..", "webclient-admin");
-const WebClientAccountRoot: string = path.join(process.cwd(), "..", "webclient-account");
+const CLIRoot: string = path.join(process.cwd(), "..", "cli");
 const SharedRoot: string = path.join(process.cwd(), "..", "shared");
 const packageScope = "@porta";
 
@@ -26,6 +25,8 @@ async function generate() {
     // Convert the database schema to json schema
     databaseToSchema(database, typeSchema);
 
+    await createViewSchema(database);
+
     createCustomTypes(1);
 
     const ds = await createDataServices(database, typeSchema);
@@ -39,7 +40,7 @@ async function generate() {
         types,
         database: dbs,
         request_response
-    } = typeBuilder.build(typeSchema.getSchema(), {
+    } = await typeBuilder.build(typeSchema.getSchema(), {
         importMapper: (from: string) => {
             switch (from) {
                 case "database":
@@ -52,8 +53,11 @@ async function generate() {
         }
     });
 
+    const { schema, views } = database.getSchemaSQL();
+
     // Write the database SQL script to file
-    writeFileSync(path.join(WebApiRoot, "resources", "database", "schema.sql"), database.getSchemaSQL().join(";\n"));
+    writeFileSync(path.join(WebApiRoot, "resources", "database", "schema.sql"), schema.join(";\n"));
+    writeFileSync(path.join(WebApiRoot, "resources", "database", "views.sql"), views.join(";\n"));
 
     // Write the TypeScript types to file
     writeFileSync(path.join(SharedRoot, "src", "types", "generated_types.ts"), types || "export {}");
@@ -66,50 +70,78 @@ async function generate() {
     // Write TypeScript route definitions to file
     writeFileSync(
         path.join(WebApiRoot, "src", "types", `generated_validation_schema.ts`),
-        typeSchema.toSource("validationSchema")
+        await typeSchema.toSource("validationSchema")
     );
 
     apiBuilder.writeOut(path.join(WebApiRoot, "src", "modules", "api"));
 
+    const permissions = await apiBuilder.getPermissionsAbdRoles({
+        roles: [
+            {
+                role: "system_users"
+            },
+            {
+                role: "system_admins"
+            },
+            {
+                role: "system_api"
+            }
+        ],
+        permissions: [
+            {
+                permission: "ROLE_PERMISSION",
+                description: "internal_role_permission"
+            },
+            {
+                permission: "CAN_MANAGE_TENANTS",
+                description: "permission_to_manage_tenants"
+            }
+        ]
+    });
+    if (permissions) {
+        writeFileSync(path.join(SharedRoot, "src", "types", `generated_permissions.ts`), permissions);
+    }
+
     // Create route definitions
     writeFileSync(
         path.join(WebApiRoot, "src", "types", `generated_route_definitions.ts`),
-        apiBuilder.getSharedRouteDefinitions()
+        await apiBuilder.getSharedRouteDefinitions()
     );
 
     const enumBuilder = new EnumBuilder({ logger: consoleLogger, typeSchema });
     // create enums
-    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), enumBuilder.build());
+    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), await enumBuilder.build());
 
     // create i18n keys
     writeFileSync(
         path.join(SharedRoot, "src", "types", "generated_i18n_keys.ts"), //
-        enumBuilder.buildFromI18nFile(path.join(process.cwd(), "resources", "**", "*.i18n.json"))
+        await enumBuilder.buildFromI18nFile(path.join(process.cwd(), "resources", "**", "*.i18n.json"))
     );
 
     // write the client both to the webclient and also to the webapi for tests
-    const { code, variableInterfaceName, variableName } = apiBuilder.getClientSideAPI(
+    const { code, variableInterfaceName, variableName } = await apiBuilder.getClientSideAPI(
         createMethodName("porta_api", false),
         "@porta/shared"
     );
     [
         path.join(WebClientRoot, "src", "application", "api", "generated_rest_api.ts"),
-        path.join(WebClientAdminRoot, "src", "application", "api", "generated_rest_api.ts"),
-        path.join(WebClientAccountRoot, "src", "application", "api", "generated_rest_api.ts"),
+        path.join(CLIRoot, "src", "api", "generated_rest_api.ts"),
         path.join(WebApiRoot, "src", "tests", "api", "generated_rest_api.ts")
     ].forEach((target) => {
         writeFileSync(target, code);
     });
 
     [
-        path.join(WebClientRoot, "src", "system", "api", "generated_api.ts"),
-        path.join(WebClientAdminRoot, "src", "system", "api", "generated_api.ts"),
-        path.join(WebClientAccountRoot, "src", "system", "api", "generated_api.ts")
+        //
+        path.join(WebClientRoot, "src", "system", "api", "generated_api.ts")
     ].forEach((outFile) => {
         writeFileSync(
             outFile,
             [
-                `// Generated on ${new Date().toISOString()}`,
+                `/**`,
+                ` * DO NOT CHANGE THIS FILE`,
+                ` * THIS FILE IS AUTO GENERATED`,
+                ` */`,
                 ``,
                 `import { I18NKeys } from "${packageScope}/shared";`,
                 `import { ${variableInterfaceName}, ${variableName} } from "../../application/api";`,

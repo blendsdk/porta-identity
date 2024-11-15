@@ -41,18 +41,6 @@ export interface ISysUserDataServiceDeleteSysUserByIdFilter {
 
 /**
  * @export
- * @interface ISysUserDataServiceFindMfaByUserIdParams
- */
-export interface ISysUserDataServiceFindMfaByUserIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysUserDataServiceFindMfaByUserIdParams
-	 */
-	user_id: string;
-}
-
-/**
- * @export
  * @interface ISysUserDataServiceFindByUsernameNonServiceParams
  */
 export interface ISysUserDataServiceFindByUsernameNonServiceParams {

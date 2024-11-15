@@ -1,10 +1,13 @@
 select
-    sug.user_id,
-    sgp.permission_id,
-    sp.code,
-    sp.is_active
-from
-    sys_user_group sug
-    inner join sys_group sg on sg.id = sug.group_id
-    inner join sys_group_permission sgp on sgp.group_id = sg.id
-    inner join sys_permission sp on sp.id = sgp.permission_id
+	sur.user_id,
+	ap.id as application_id,
+	sp."permission",
+	sp.id as permission_id,
+	sr."role",
+	sr.id as role_id
+from 
+	sys_user_role sur 
+	inner join sys_role sr on sr.id  = sur.role_id 
+	inner join sys_role_permission srp on srp.role_id = sur.role_id
+	inner join sys_permission sp on sp.id = srp.permission_id
+	left outer join sys_application ap on ap.id = sp.application_id

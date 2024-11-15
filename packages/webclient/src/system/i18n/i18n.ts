@@ -1,21 +1,69 @@
-import { createTranslator } from "@blendsdk/react";
-import { ApplicationApi, IApplicationI18NKeys } from "../api/generated_api";
+import { ITranslationDatabase } from "@blendsdk/i18n";
+import { TranslationStoreBase, makeTranslator } from "@blendsdk/react";
+import { ApplicationApi } from "../api";
+
+const isLocalhost = true;
+//TODO: Don't forget to remove this
+//window.location.href.includes("localhost");
 
 /**
- * Creates a translator store to be used in this application
+ * Implements a translation store
  *
+ * @export
+ * @class I18TranslationStore
+ * @extends {TranslationStoreBase}
  */
-export const useTranslator = createTranslator<IApplicationI18NKeys>({
-    loader: (locale:string) => {
+export class I18TranslationStore extends TranslationStoreBase {
+    public constructor() {
+        super();
+        if (isLocalhost) {
+            this.onMissingTranslation = (key: string) => {
+                const win: any = window as any;
+                if (!win.missing_i18n) {
+                    win.missing_i18n = {};
+                }
+                win.missing_i18n[key] = true;
+                win.make_missing_i18n = () => {
+                    const result: any = {};
+                    Object.keys(win.missing_i18n).forEach((key) => {
+                        result[key] = {
+                            en: "",
+                            nl: ""
+                        };
+                    });
+
+                    let check = 3;
+                    const id = setInterval(() => {
+                        check--;
+                        if (check < 0) {
+                            clearInterval(id);
+                            navigator.clipboard.writeText(JSON.stringify(result, null, 4)).then(() => {
+                                console.log(`${Object.keys(result).length} is copied to clipboard`);
+                            });
+                        } else {
+                            console.log(check);
+                        }
+                    }, 1000);
+                };
+            };
+        }
+    }
+
+    /**
+     * @param {string} [locale]
+     * @returns {Promise<ITranslationDatabase>}
+     * @memberof I18TranslationStore
+     */
+    load(locale?: string): Promise<ITranslationDatabase> {
         return new Promise((resolve, reject) => {
             ApplicationApi.blend
-                .getTranslations({
-                    locale: locale || (window.navigator as any).userLanguage || window.navigator.language
-                })
+                .getTranslations({ locale })
                 .then(({ data }) => {
                     resolve(data);
                 })
                 .catch(reject);
         });
     }
-});
+}
+
+export const useTranslation = makeTranslator(I18TranslationStore);

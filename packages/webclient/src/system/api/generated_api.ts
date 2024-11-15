@@ -1,4 +1,7 @@
-// Generated on 2023-03-14T09:37:27.856Z
+/**
+ * DO NOT CHANGE THIS FILE
+ * THIS FILE IS AUTO GENERATED
+ */
 
 import { I18NKeys } from "@porta/shared";
 import { IPortaApi, PortaApi } from "../../application/api";

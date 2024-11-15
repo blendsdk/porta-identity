@@ -1,4 +1,7 @@
-import { createAndSetSigningKeyCookie, IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { eJsonSchemaType, eParameterLocation } from "@blendsdk/jsonschema";
+import { base64Encode } from "@blendsdk/stdlib";
+import { IRouter, IStaticFileAppSettings } from "@blendsdk/webafx";
+import { renderGetRedirect } from "@blendsdk/webafx-auth-oidc";
 import { HttpRequest, HttpResponse, NextFunction } from "@blendsdk/webafx-common";
 import * as fs from "fs";
 import * as os from "os";
@@ -7,9 +10,41 @@ import * as path from "path";
 let indexFile: string = null;
 let versionInfo = null;
 
+const createOIDCRedirect = (endpoint: string, req: HttpRequest, state?: any) => {
+    const { tenant, locale } = req.context.getParameters<{ locale: string; tenant: string }>();
+    const url = new URL(`${req.context.getServerURL()}/oidc/${tenant}/${endpoint}`);
+    if (state) {
+        url.searchParams.append("state", base64Encode(JSON.stringify(state)));
+    }
+    if (locale) {
+        url.searchParams.append("locale", locale);
+    }
+    return url.toString();
+};
+
 export const SPARoutes = (): IRouter => {
     return {
         routes: [
+            {
+                method: "get",
+                public: true,
+                url: "/:tenant/signout",
+                request: {
+                    properties: {
+                        tenant: {
+                            type: eJsonSchemaType.string
+                        },
+                        locale: {
+                            type: eJsonSchemaType.string,
+                            location: eParameterLocation.query
+                        }
+                    }
+                },
+                handlers: (req: HttpRequest, res: HttpResponse) => {
+                    const url = createOIDCRedirect("signout", req);
+                    res.send(renderGetRedirect(url.toString()));
+                }
+            },
             {
                 method: "get",
                 url: "/api/version",
@@ -37,17 +72,17 @@ export const SPARoutes = (): IRouter => {
                 method: "get",
                 url: "*",
                 public: true,
-                signed: false,
-                handlers: (req: HttpRequest, res: HttpResponse, next: NextFunction) => {
+                handlers: (req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
                     // cache the location to avoid resolving
                     if (!indexFile) {
                         const { PUBLIC_FOLDER } = req.context.getSettings<IStaticFileAppSettings>();
-                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.view.html")).toString();
+                        indexFile = fs.readFileSync(path.resolve(PUBLIC_FOLDER, "index.html")).toString();
                     }
                     if (req.url === "/" || req.url.startsWith("/fe")) {
-                        res.send(indexFile.replace("_csr_", createAndSetSigningKeyCookie(req, res)));
+                        res.send(indexFile);
                     } else {
-                        next();
+                        req.context.getLogger().error(req.url);
+                        res.redirect("/fe/not-found");
                     }
                 }
             }

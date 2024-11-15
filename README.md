@@ -15,15 +15,9 @@ Install the SSL certs from `devproxy/ssl` in your machine using this
 To recreate the SSL certificates you need to start the nginx container and create the SSL certificates from within the
 container!
 
-### TODO
+### Development
 
-get rid of the sys_client_type and determine the client type of redirect url. This can be done by looking at at the
-ios/android or redirect_uri columns.
-
-We need something like this to automatically determine PKCE for mobile and HTML5 clients (TokenEndpointController) We
-also have the Confidential Client to handle. the CC do not need PKCE We also need to take care of the logout mechanism.
-We also need to take care of session refresh and extension. (this is going to be a challenge)
-
-[security] the OTA should not be the same as the flowId
-
-READ! https://datatracker.ietf.org/doc/html/draft-sakimura-oauth-wmrm-00
+1. Run `./restart-dev.sh`
+2. Start the webapi `yarn watch:node`
+3. Start the webclient `yarn dev`
+4. Start the devproxy `cd devproxy && docker compose up`

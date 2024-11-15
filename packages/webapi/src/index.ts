@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import * as path from "path";
+//
 import yargs from "yargs";
+import * as start from "./modules/commandline/commands/start";
 
-// tslint:disable-next-line: no-unused-expression
 yargs
+    //
     .scriptName("porta-crtl")
-    .commandDir(path.resolve(path.join(__dirname, "modules", "commandline", "commands")))
-    .demandCommand()
+    .command(start)
+    .demandCommand(1)
     .help().argv;

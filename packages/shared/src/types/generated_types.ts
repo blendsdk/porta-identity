@@ -3,60 +3,57 @@
  * THIS FILE IS AUTO GENERATED
  */
 
-import { ISysUser, ISysUserProfile, ISysTenant } from "./generated_database_types";
+import {
+	ISysApplication,
+	ISysSession,
+	ISysUser,
+	ISysProfile,
+	ISysTenant,
+	ISysClient,
+	ISysRole,
+	ISysPermission
+} from "./generated_database_types";
 
 /**
  * @export
- * @interface IAuthenticationFlowState
+ * @interface IAnyIndex
  */
-export interface IAuthenticationFlowState {
+export interface IAnyIndex {
 	/**
-	 * @type string
-	 * @memberOf IAuthenticationFlowState
+	 * @type any
+	 * @memberOf IAnyIndex
 	 */
-	account?: string;
-	/**
-	 * @type boolean
-	 * @memberOf IAuthenticationFlowState
-	 */
-	account_status?: boolean;
-	/**
-	 * @type boolean
-	 * @memberOf IAuthenticationFlowState
-	 */
-	account_state?: boolean;
-	/**
-	 * @type boolean
-	 * @memberOf IAuthenticationFlowState
-	 */
-	password_state?: boolean;
-	/**
-	 * @type string
-	 * @memberOf IAuthenticationFlowState
-	 */
-	signin_url?: string;
-	/**
-	 * @type boolean
-	 * @memberOf IAuthenticationFlowState
-	 */
-	mfa_state?: boolean;
-	/**
-	 * @type string
-	 * @memberOf IAuthenticationFlowState
-	 */
-	mfa?: string;
-	/**
-	 * @type string[]
-	 * @memberOf IAuthenticationFlowState
-	 */
-	mfa_list?: string[];
+	[key: string]: any;
 }
 
 /**
  * @export
- * @interface ISysMfaSettings
+ * @interface IMfaSettings
  */
-export interface ISysMfaSettings {}
+export interface IMfaSettings {
+	/**
+	 * @type string
+	 * @memberOf IMfaSettings
+	 */
+	[key: string]: string;
+}
+
+/**
+ * @export
+ * @interface IOpsResponse
+ */
+export interface IOpsResponse {
+	/**
+	 * @type string
+	 * @memberOf IOpsResponse
+	 */
+	message: string;
+	/**
+	 * @type boolean
+	 * @memberOf IOpsResponse
+	 */
+	success: boolean;
+}
 
 /**
  * @export
@@ -64,20 +61,45 @@ export interface ISysMfaSettings {}
  */
 export interface IPortaAccount {
 	/**
+	 * @type ISysApplication
+	 * @memberOf IPortaAccount
+	 */
+	application: ISysApplication;
+	/**
+	 * @type ISysSession
+	 * @memberOf IPortaAccount
+	 */
+	session: ISysSession;
+	/**
 	 * @type ISysUser
 	 * @memberOf IPortaAccount
 	 */
 	user: ISysUser;
 	/**
-	 * @type ISysUserProfile
+	 * @type ISysProfile
 	 * @memberOf IPortaAccount
 	 */
-	profile: ISysUserProfile;
+	profile: ISysProfile;
 	/**
 	 * @type ISysTenant
 	 * @memberOf IPortaAccount
 	 */
 	tenant: ISysTenant;
+	/**
+	 * @type ISysClient
+	 * @memberOf IPortaAccount
+	 */
+	client: ISysClient;
+	/**
+	 * @type ISysRole[]
+	 * @memberOf IPortaAccount
+	 */
+	roles: ISysRole[];
+	/**
+	 * @type ISysPermission[]
+	 * @memberOf IPortaAccount
+	 */
+	permissions: ISysPermission[];
 }
 
 /**

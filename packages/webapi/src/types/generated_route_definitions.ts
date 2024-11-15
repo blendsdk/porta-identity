@@ -1,70 +1,65 @@
+/**
+ * DO NOT CHANGE.
+ * THIS FILE IS AUTO GENERATED
+ */
+
 import { IRouteBase } from "@blendsdk/stdlib";
 export const routeDefinitions: {
 	blend: { get_translations: IRouteBase; get_app_version: IRouteBase };
+	initialize: { initialize: IRouteBase };
+	reference_data: { get_reference_data: IRouteBase };
+	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
 	authorization: {
-		authorize: IRouteBase;
-		token: IRouteBase;
-		signin: IRouteBase;
-		redirect: IRouteBase;
-		flow_info: IRouteBase;
-		check_flow: IRouteBase;
-		oidc_discovery: IRouteBase;
-		oidc_discovery_keys: IRouteBase;
-		user_info_get: IRouteBase;
+		reset_password_redirect: IRouteBase;
+		reset_auth: IRouteBase;
+		reset_password_flow_info: IRouteBase;
+		logout_flow_info: IRouteBase;
+		session_logout_get: IRouteBase;
+		session_logout_post: IRouteBase;
+		token_info: IRouteBase;
 		user_info_post: IRouteBase;
-	};
-	authentication: {
-		authentication_keep_alive: IRouteBase;
-		authentication_logout: IRouteBase;
-		authentication_login: IRouteBase;
+		user_info_get: IRouteBase;
+		token: IRouteBase;
+		finalize: IRouteBase;
+		check_set_flow: IRouteBase;
+		discovery_keys: IRouteBase;
+		discovery: IRouteBase;
+		authorize: IRouteBase;
 	};
 } = {
 	blend: {
-		get_translations: {
-			id: "get_translations",
-			method: "get",
-			url: "/api/i18n/:locale?",
-			public: false,
-			signed: false
-		},
-		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true, signed: false }
+		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
+		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true }
+	},
+	initialize: { initialize: { id: "initialize", method: "post", url: "/api/initialize", public: false } },
+	reference_data: {
+		get_reference_data: { id: "get_reference_data", method: "post", url: "/api/:tenant/reference_data", public: false }
+	},
+	profile: {
+		get_user_profile: { id: "get_user_profile", method: "post", url: "/api/profile", public: false },
+		get_user_state: { id: "get_user_state", method: "get", url: "/api/:tenant/user_state", public: false },
+		save_user_state: { id: "save_user_state", method: "post", url: "/api/:tenant/user_state", public: false }
 	},
 	authorization: {
-		authorize: { id: "authorize", method: "get", url: "/:tenant/oauth2/authorize", public: true, signed: false },
-		token: { id: "token", method: "post", url: "/:tenant/oauth2/token", public: true, signed: false },
-		signin: { id: "signin", method: "get", url: "/af/signin", public: true, signed: false },
-		redirect: { id: "redirect", method: "get", url: "/af/redirect", public: true, signed: false },
-		flow_info: { id: "flow_info", method: "post", url: "/af/flow_info", public: true },
-		check_flow: { id: "check_flow", method: "post", url: "/af/check_flow", public: true },
-		oidc_discovery: {
-			id: "oidc_discovery",
+		reset_password_redirect: { id: "reset_password_redirect", method: "get", url: "/rp/:flow/f", public: true },
+		reset_auth: { id: "reset_auth", method: "post", url: "/rp/reset_auth", public: true },
+		reset_password_flow_info: { id: "reset_password_flow_info", method: "post", url: "/rp/flow_info", public: true },
+		logout_flow_info: { id: "logout_flow_info", method: "post", url: "/lf/flow_info", public: true },
+		session_logout_get: { id: "session_logout_get", method: "get", url: "/:tenant/oauth2/logout", public: true },
+		session_logout_post: { id: "session_logout_post", method: "post", url: "/:tenant/oauth2/logout", public: false },
+		token_info: { id: "token_info", method: "post", url: "/:tenant/oauth2/token_info", public: false },
+		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false },
+		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false },
+		token: { id: "token", method: "post", url: "/:tenant/oauth2/token", public: true },
+		finalize: { id: "finalize", method: "get", url: "/af/finalize", public: true },
+		check_set_flow: { id: "check_set_flow", method: "post", url: "/af/flow", public: true },
+		discovery_keys: { id: "discovery_keys", method: "get", url: "/:tenant/oauth2/discovery/keys", public: true },
+		discovery: {
+			id: "discovery",
 			method: "get",
 			url: "/:tenant/oauth2/.well-known/openid-configuration",
-			public: true,
-			signed: false
+			public: true
 		},
-		oidc_discovery_keys: {
-			id: "oidc_discovery_keys",
-			method: "get",
-			url: "/:tenant/oauth2/discovery/keys",
-			public: true,
-			signed: false
-		},
-		user_info_get: { id: "user_info_get", method: "get", url: "/:tenant/oauth2/me", public: false, signed: false },
-		user_info_post: { id: "user_info_post", method: "post", url: "/:tenant/oauth2/me", public: false, signed: false }
-	},
-	authentication: {
-		authentication_keep_alive: {
-			id: "authentication_keep_alive",
-			method: "post",
-			url: "/api/authentication/keep-alive"
-		},
-		authentication_logout: {
-			id: "authentication_logout",
-			method: "post",
-			url: "/api/authentication/logout",
-			signed: false
-		},
-		authentication_login: { id: "authentication_login", method: "post", url: "/api/authentication/login" }
+		authorize: { id: "authorize", method: "get", url: "/:tenant/oauth2/authorize", public: true }
 	}
 };

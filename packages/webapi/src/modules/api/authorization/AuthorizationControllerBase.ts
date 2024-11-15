@@ -5,26 +5,36 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
-	IAuthorizeRequest,
-	IAuthorizeResponse,
-	ITokenRequest,
-	ITokenResponse,
-	ISigninRequest,
-	ISigninResponse,
-	IRedirectRequest,
-	IRedirectResponse,
-	IFlowInfoRequest,
-	IFlowInfoResponse,
-	ICheckFlowRequest,
-	ICheckFlowResponse,
-	IOidcDiscoveryRequest,
-	IOidcDiscoveryResponse,
-	IOidcDiscoveryKeysRequest,
-	IOidcDiscoveryKeysResponse,
+	IResetPasswordRedirectRequest,
+	IResetPasswordRedirectResponse,
+	IResetAuthRequest,
+	IResetAuthResponse,
+	IResetPasswordFlowInfoRequest,
+	IResetPasswordFlowInfoResponse,
+	ILogoutFlowInfoRequest,
+	ILogoutFlowInfoResponse,
+	ISessionLogoutGetRequest,
+	ISessionLogoutGetResponse,
+	ISessionLogoutPostRequest,
+	ISessionLogoutPostResponse,
+	ITokenInfoRequest,
+	ITokenInfoResponse,
+	IUserInfoPostRequest,
+	IUserInfoPostResponse,
 	IUserInfoGetRequest,
 	IUserInfoGetResponse,
-	IUserInfoPostRequest,
-	IUserInfoPostResponse
+	ITokenRequest,
+	ITokenResponse,
+	IFinalizeRequest,
+	IFinalizeResponse,
+	ICheckSetFlowRequest,
+	ICheckSetFlowResponse,
+	IDiscoveryKeysRequest,
+	IDiscoveryKeysResponse,
+	IDiscoveryRequest,
+	IDiscoveryResponse,
+	IAuthorizeRequest,
+	IAuthorizeResponse
 } from "@porta/shared";
 
 /**
@@ -38,69 +48,73 @@ export abstract class AuthorizationControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
 	/**
-	 * Method for handling [GET] /:tenant/oauth2/authorize
+	 * Method for handling [GET] /rp/:flow/f
 	 * @abstract
-	 * @param {IAuthorizeRequest} params
-	 * @returns {Promise<Response<IAuthorizeResponse>>}
+	 * @param {IResetPasswordRedirectRequest} params
+	 * @returns {Promise<Response<IResetPasswordRedirectResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>>;
+	public abstract resetPasswordRedirect(
+		params: IResetPasswordRedirectRequest
+	): Promise<Response<IResetPasswordRedirectResponse>>;
 	/**
-	 * Method for handling [POST] /:tenant/oauth2/token
+	 * Method for handling [POST] /rp/reset_auth
 	 * @abstract
-	 * @param {ITokenRequest} params
-	 * @returns {Promise<Response<ITokenResponse>>}
+	 * @param {IResetAuthRequest} params
+	 * @returns {Promise<Response<IResetAuthResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract token(params: ITokenRequest): Promise<Response<ITokenResponse>>;
+	public abstract resetAuth(params: IResetAuthRequest): Promise<Response<IResetAuthResponse>>;
 	/**
-	 * Method for handling [GET] /af/signin
+	 * Method for handling [POST] /rp/flow_info
 	 * @abstract
-	 * @param {ISigninRequest} params
-	 * @returns {Promise<Response<ISigninResponse>>}
+	 * @param {IResetPasswordFlowInfoRequest} params
+	 * @returns {Promise<Response<IResetPasswordFlowInfoResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract signin(params: ISigninRequest): Promise<Response<ISigninResponse>>;
+	public abstract resetPasswordFlowInfo(
+		params: IResetPasswordFlowInfoRequest
+	): Promise<Response<IResetPasswordFlowInfoResponse>>;
 	/**
-	 * Method for handling [GET] /af/redirect
+	 * Method for handling [POST] /lf/flow_info
 	 * @abstract
-	 * @param {IRedirectRequest} params
-	 * @returns {Promise<Response<IRedirectResponse>>}
+	 * @param {ILogoutFlowInfoRequest} params
+	 * @returns {Promise<Response<ILogoutFlowInfoResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract redirect(params: IRedirectRequest): Promise<Response<IRedirectResponse>>;
+	public abstract logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>>;
 	/**
-	 * Method for handling [POST] /af/flow_info
+	 * Method for handling [GET] /:tenant/oauth2/logout
 	 * @abstract
-	 * @param {IFlowInfoRequest} params
-	 * @returns {Promise<Response<IFlowInfoResponse>>}
+	 * @param {ISessionLogoutGetRequest} params
+	 * @returns {Promise<Response<ISessionLogoutGetResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract flowInfo(params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>>;
+	public abstract sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>>;
 	/**
-	 * Method for handling [POST] /af/check_flow
+	 * Method for handling [POST] /:tenant/oauth2/logout
 	 * @abstract
-	 * @param {ICheckFlowRequest} params
-	 * @returns {Promise<Response<ICheckFlowResponse>>}
+	 * @param {ISessionLogoutPostRequest} params
+	 * @returns {Promise<Response<ISessionLogoutPostResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract checkFlow(params: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>>;
+	public abstract sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>>;
 	/**
-	 * Method for handling [GET] /:tenant/oauth2/.well-known/openid-configuration
+	 * Method for handling [POST] /:tenant/oauth2/token_info
 	 * @abstract
-	 * @param {IOidcDiscoveryRequest} params
-	 * @returns {Promise<Response<IOidcDiscoveryResponse>>}
+	 * @param {ITokenInfoRequest} params
+	 * @returns {Promise<Response<ITokenInfoResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract oidcDiscovery(params: IOidcDiscoveryRequest): Promise<Response<IOidcDiscoveryResponse>>;
+	public abstract tokenInfo(params: ITokenInfoRequest): Promise<Response<ITokenInfoResponse>>;
 	/**
-	 * Method for handling [GET] /:tenant/oauth2/discovery/keys
+	 * Method for handling [POST] /:tenant/oauth2/me
 	 * @abstract
-	 * @param {IOidcDiscoveryKeysRequest} params
-	 * @returns {Promise<Response<IOidcDiscoveryKeysResponse>>}
+	 * @param {IUserInfoPostRequest} params
+	 * @returns {Promise<Response<IUserInfoPostResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract oidcDiscoveryKeys(params: IOidcDiscoveryKeysRequest): Promise<Response<IOidcDiscoveryKeysResponse>>;
+	public abstract userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>>;
 	/**
 	 * Method for handling [GET] /:tenant/oauth2/me
 	 * @abstract
@@ -110,11 +124,51 @@ export abstract class AuthorizationControllerBase<
 	 */
 	public abstract userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>>;
 	/**
-	 * Method for handling [POST] /:tenant/oauth2/me
+	 * Method for handling [POST] /:tenant/oauth2/token
 	 * @abstract
-	 * @param {IUserInfoPostRequest} params
-	 * @returns {Promise<Response<IUserInfoPostResponse>>}
+	 * @param {ITokenRequest} params
+	 * @returns {Promise<Response<ITokenResponse>>}
 	 * @memberof AuthorizationControllerBase
 	 */
-	public abstract userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>>;
+	public abstract token(params: ITokenRequest): Promise<Response<ITokenResponse>>;
+	/**
+	 * Method for handling [GET] /af/finalize
+	 * @abstract
+	 * @param {IFinalizeRequest} params
+	 * @returns {Promise<Response<IFinalizeResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract finalize(params: IFinalizeRequest): Promise<Response<IFinalizeResponse>>;
+	/**
+	 * Method for handling [POST] /af/flow
+	 * @abstract
+	 * @param {ICheckSetFlowRequest} params
+	 * @returns {Promise<Response<ICheckSetFlowResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract checkSetFlow(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/discovery/keys
+	 * @abstract
+	 * @param {IDiscoveryKeysRequest} params
+	 * @returns {Promise<Response<IDiscoveryKeysResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract discoveryKeys(params: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/.well-known/openid-configuration
+	 * @abstract
+	 * @param {IDiscoveryRequest} params
+	 * @returns {Promise<Response<IDiscoveryResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract discovery(params: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>>;
+	/**
+	 * Method for handling [GET] /:tenant/oauth2/authorize
+	 * @abstract
+	 * @param {IAuthorizeRequest} params
+	 * @returns {Promise<Response<IAuthorizeResponse>>}
+	 * @memberof AuthorizationControllerBase
+	 */
+	public abstract authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>>;
 }

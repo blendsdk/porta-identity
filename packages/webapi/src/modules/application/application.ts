@@ -1,9 +1,12 @@
-import { Application, BypassCallSignature } from "@blendsdk/webafx";
-import { CacheModule } from "@blendsdk/webafx-cache";
+import { WebApplication } from "@blendsdk/webafx";
+import { RedisCacheModule } from "@blendsdk/webafx-cache-redis";
 import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
+import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
+import { PortaAuthSessionProviderModule } from "../../services";
 import { AuthorizationModule } from "../api/authorization";
-import { PortaAuthenticationModule } from "../auth/local";
+import { InitializeModule } from "../api/initialize";
+import { RedirectRoutes } from "../redirects";
 import { SPARoutes } from "../spa";
 import { DatabaseModule } from "./database";
 import { ValidationSchema } from "./validations";
@@ -14,7 +17,6 @@ import { ValidationSchema } from "./validations";
 const getTestConfig = () => {
     const cfg = require(path.join(process.cwd(), "config", "app.config.js"));
     cfg.PORT = 4010;
-    cfg.PORTA_SIGNIN_URI = "http://localhost:4020/fe/auth/signin";
     return cfg;
 };
 
@@ -22,33 +24,36 @@ const getTestConfig = () => {
  * Instance of the WebApi application configured with
  * modules.
  */
-const application = new Application({
+const application = new WebApplication({
     settings: process.env.TEST ? getTestConfig() : {},
     router: [
         //
         ValidationSchema(),
+        InitializeModule(),
         AuthorizationModule(),
+        RedirectRoutes(),
         SPARoutes()
     ]
 }).addModule([
     //
     (config) => {
-        return new CacheModule({ ...config, id: config.PORTA_SSO_COMMON_NAME });
+        return new RedisCacheModule({ ...config, id: config.PORTA_SSO_COMMON_NAME });
     },
     I18NModuleFactory({
-        translationDatabase: path.join(process.cwd(), "resources", "i18n", "*.json")
+        translationDatabase: [
+            path.join(process.cwd(), "resources", "i18n", "*.json"),
+            path.join(process.cwd(), "resources", "i18n", "*.html")
+        ]
     }),
+    (config) => {
+        return new PortaAuthSessionProviderModule({ ...config });
+    },
     (config) => {
         return new DatabaseModule({ ...config });
     },
     (config) => {
-        return new PortaAuthenticationModule(config);
+        return new MailerModule(config);
     }
 ]);
-
-if (process.env.BYPASS) {
-    application.getLogger().warn("Bypassing the call signature");
-    application.addSignatureHandler("bypass-for-dev", BypassCallSignature);
-}
 
 export { application };

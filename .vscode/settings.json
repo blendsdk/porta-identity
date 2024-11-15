@@ -3,6 +3,7 @@
     "cSpell.words": [
         "datakit",
         "firstname",
+        "Formik",
         "jose",
         "lastname",
         "pkce",
@@ -12,5 +13,8 @@
         "signin",
         "Signin",
         "webafx"
-    ]
+    ],
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    }
 }

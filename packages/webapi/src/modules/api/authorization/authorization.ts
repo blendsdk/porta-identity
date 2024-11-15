@@ -12,44 +12,44 @@ export const AuthorizationModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
-				dispatch: "authorize",
+				dispatch: "reset_password_redirect",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.authorize
+				route: routeDefinitions.authorization.reset_password_redirect
 			}),
 			defineControllerRoute({
-				dispatch: "token",
+				dispatch: "reset_auth",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.token
+				route: routeDefinitions.authorization.reset_auth
 			}),
 			defineControllerRoute({
-				dispatch: "signin",
+				dispatch: "reset_password_flow_info",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.signin
+				route: routeDefinitions.authorization.reset_password_flow_info
 			}),
 			defineControllerRoute({
-				dispatch: "redirect",
+				dispatch: "logout_flow_info",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.redirect
+				route: routeDefinitions.authorization.logout_flow_info
 			}),
 			defineControllerRoute({
-				dispatch: "flow_info",
+				dispatch: "session_logout_get",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.flow_info
+				route: routeDefinitions.authorization.session_logout_get
 			}),
 			defineControllerRoute({
-				dispatch: "check_flow",
+				dispatch: "session_logout_post",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.check_flow
+				route: routeDefinitions.authorization.session_logout_post
 			}),
 			defineControllerRoute({
-				dispatch: "oidc_discovery",
+				dispatch: "token_info",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.oidc_discovery
+				route: routeDefinitions.authorization.token_info
 			}),
 			defineControllerRoute({
-				dispatch: "oidc_discovery_keys",
+				dispatch: "user_info_post",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.oidc_discovery_keys
+				route: routeDefinitions.authorization.user_info_post
 			}),
 			defineControllerRoute({
 				dispatch: "user_info_get",
@@ -57,9 +57,34 @@ export const AuthorizationModule = (): IRouter => {
 				route: routeDefinitions.authorization.user_info_get
 			}),
 			defineControllerRoute({
-				dispatch: "user_info_post",
+				dispatch: "token",
 				controller: AuthorizationController,
-				route: routeDefinitions.authorization.user_info_post
+				route: routeDefinitions.authorization.token
+			}),
+			defineControllerRoute({
+				dispatch: "finalize",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.finalize
+			}),
+			defineControllerRoute({
+				dispatch: "check_set_flow",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.check_set_flow
+			}),
+			defineControllerRoute({
+				dispatch: "discovery_keys",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.discovery_keys
+			}),
+			defineControllerRoute({
+				dispatch: "discovery",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.discovery
+			}),
+			defineControllerRoute({
+				dispatch: "authorize",
+				controller: AuthorizationController,
+				route: routeDefinitions.authorization.authorize
 			})
 		]
 	};

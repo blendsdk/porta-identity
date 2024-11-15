@@ -11,13 +11,17 @@ module.exports = {
     REDIS_PORT: 16385,
     DB_HOST: "localhost",
     DB_PORT: 5010,
-    DB_USER: "porta",
-    DB_PASSWORD: "secret",
-    DB_DATABASE: "porta",
-    PORTA_SESSION_LENGTH: 3 * 24 * 60 * 60, // 3 days
-    PORTA_ADMIN: "admin@blendsdk.net",
-    PORTA_PASSWORD: "secret",
-    PORTA_SIGNIN_URI: "http://localhost:3000/fe/auth/signin",
+    DB_USER: "postgres",
+    DB_PASSWORD: "postgres",
+    DB_DATABASE: "postgres",
+    ACCESS_TOKEN_TTL: 60 * 60 * 4, // 4 hours
+    REFRESH_TOKEN_TTL: 60 * 60 * 24 * 7, // one week,
+    BYPASS_MFA_DAYS: 1, // 1 Day
+    AUTH_SESSION_LENGTH_HOURS: 24,
+    PORTA_PUBLIC_DOMAIN: "porta.local", // NO <---------------
     PORTA_SSO_COMMON_NAME: "porta_development",
-    ENFORCE_PKCE: false
+    PORTA_REGISTRY_TENANT: "registry1",
+    PORTA_API_KEY: "YFmDkzFRhyuKwL9L0OdB9XGX6SbwytqI6gL3rEupc1NlAaBePXpPh4LEGKTAqoT1",
+    ENFORCE_PKCE: false,
+    MFA_EMAIL_FROM: "no-reply@truesoftware.nl"
 };

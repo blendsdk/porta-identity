@@ -38,15 +38,3 @@ export interface ISysClientDataServiceUpdateSysClientByIdFilter {
 	 */
 	id: string;
 }
-
-/**
- * @export
- * @interface ISysClientDataServiceFindSysClientByClientIdParams
- */
-export interface ISysClientDataServiceFindSysClientByClientIdParams {
-	/**
-	 * @type string
-	 * @memberOf ISysClientDataServiceFindSysClientByClientIdParams
-	 */
-	client_id: string;
-}

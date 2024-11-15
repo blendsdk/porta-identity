@@ -2,34 +2,44 @@ import { Response } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
     IAuthorizeResponse,
+    ICheckSetFlowRequest,
+    ICheckSetFlowResponse,
+    IDiscoveryKeysRequest,
+    IDiscoveryKeysResponse,
+    IDiscoveryRequest,
+    IDiscoveryResponse,
+    IFinalizeRequest,
+    IFinalizeResponse,
+    ILogoutFlowInfoRequest,
+    ILogoutFlowInfoResponse,
+    IResetAuthRequest,
+    IResetAuthResponse,
+    IResetPasswordFlowInfoRequest,
+    IResetPasswordFlowInfoResponse,
+    IResetPasswordRedirectRequest,
+    IResetPasswordRedirectResponse,
+    ISessionLogoutGetRequest,
+    ISessionLogoutGetResponse,
+    ISessionLogoutPostRequest,
+    ISessionLogoutPostResponse,
+    ITokenInfoRequest,
+    ITokenInfoResponse,
     ITokenRequest,
     ITokenResponse,
-    ISigninRequest,
-    ISigninResponse,
-    IRedirectRequest,
-    IRedirectResponse,
-    IFlowInfoRequest,
-    IFlowInfoResponse,
-    ICheckFlowRequest,
-    ICheckFlowResponse,
-    IOidcDiscoveryRequest,
-    IOidcDiscoveryResponse,
-    IOidcDiscoveryKeysRequest,
-    IOidcDiscoveryKeysResponse,
     IUserInfoGetRequest,
-    IUserInfoGetResponse,
-    IUserInfoPostRequest,
-    IUserInfoPostResponse
+    IUserInfoGetResponse
 } from "@porta/shared";
 import { AuthorizationControllerBase } from "./AuthorizationControllerBase";
+import { AuthenticateEndpointController } from "./controllers/AuthenticateEndpointController";
 import { AuthorizeEndpointController } from "./controllers/AuthorizeEndpointController";
-import { CheckFlowEndpointController } from "./controllers/CheckFlowEndpointController";
-import { FlowInfoEndpointController } from "./controllers/FlowInfoEndpointController";
+import { DiscoveryEndpointController } from "./controllers/DiscoveryEndpointController";
+import { EndSessionController } from "./controllers/EndSessionController";
+import { FinalizeEndpointController } from "./controllers/FinalizeEndpointController";
 import { JWKSEndpointController } from "./controllers/JWKSEndpointController";
-import { OIDCDiscoveryEndpointController } from "./controllers/OIDCDiscoveryEndpointController";
-import { RedirectEndpointController } from "./controllers/RedirectEndpointController";
-import { SigninEndpointController } from "./controllers/SigninEndpointController";
+import { LogoutFlowInfoEndpointController } from "./controllers/LogoutFlowInfoEndpointController";
+import { ResetPasswordController } from "./controllers/ResetPasswordController";
 import { TokenEndpointController } from "./controllers/TokenEndpointController";
+import { TokenInfoEndpointController } from "./controllers/TokenInfoEndpointController";
 import { UserInfoEndpointController } from "./controllers/UserInfoEndpointController";
 
 /**
@@ -39,6 +49,156 @@ import { UserInfoEndpointController } from "./controllers/UserInfoEndpointContro
  * @extends {AuthorizationControllerBase}
  */
 export class AuthorizationController extends AuthorizationControllerBase {
+    /**
+     * @param {IResetAuthRequest} params
+     * @return {*}  {Promise<Response<IResetAuthResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetAuth(params: IResetAuthRequest): Promise<Response<IResetAuthResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.resetAuth(params);
+    }
+
+    /**
+     * @param {IResetPasswordFlowInfoRequest} params
+     * @return {*}  {Promise<Response<IResetPasswordFlowInfoResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetPasswordFlowInfo(
+        params: IResetPasswordFlowInfoRequest
+    ): Promise<Response<IResetPasswordFlowInfoResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.resetPasswordFlowInfo(params);
+    }
+
+    /**
+     * @param {IResetPasswordRedirectRequest} params
+     * @return {*}  {Promise<Response<IResetPasswordRedirectResponse>>}
+     * @memberof AuthorizationController
+     */
+    public resetPasswordRedirect(
+        params: IResetPasswordRedirectRequest
+    ): Promise<Response<IResetPasswordRedirectResponse>> {
+        const subController = new ResetPasswordController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ILogoutFlowInfoRequest} params
+     * @return {*}  {Promise<Response<ILogoutFlowInfoResponse>>}
+     * @memberof AuthorizationController
+     */
+    public logoutFlowInfo(params: ILogoutFlowInfoRequest): Promise<Response<ILogoutFlowInfoResponse>> {
+        const subController = new LogoutFlowInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ISessionLogoutGetRequest} params
+     * @return {*}  {Promise<Response<ISessionLogoutGetResponse>>}
+     * @memberof AuthorizationController
+     */
+    public sessionLogoutGet(params: ISessionLogoutGetRequest): Promise<Response<ISessionLogoutGetResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ISessionLogoutPostRequest} params
+     * @return {*}  {Promise<Response<ISessionLogoutPostResponse>>}
+     * @memberof AuthorizationController
+     */
+    public sessionLogoutPost(params: ISessionLogoutPostRequest): Promise<Response<ISessionLogoutPostResponse>> {
+        const subController = new EndSessionController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ITokenInfoRequest} params
+     * @return {*}  {Promise<Response<ITokenInfoResponse>>}
+     * @memberof AuthorizationController
+     */
+    public tokenInfo(params: ITokenInfoRequest): Promise<Response<ITokenInfoResponse>> {
+        const subController = new TokenInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {IAuthorizeRequest} params
+     * @return {*}  {Promise<Response<IAuthorizeRequest>>}
+     * @memberof AuthorizationController
+     */
+    public userInfoPost(params: IAuthorizeRequest): Promise<Response<IAuthorizeRequest>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {IUserInfoGetRequest} params
+     * @return {*}  {Promise<Response<IUserInfoGetResponse>>}
+     * @memberof AuthorizationController
+     */
+    public userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
+        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ITokenRequest} params
+     * @return {*}  {Promise<Response<ITokenResponse>>}
+     * @memberof AuthorizationController
+     */
+    public token(params: ITokenRequest): Promise<Response<ITokenResponse>> {
+        const subController = new TokenEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {IFinalizeRequest} params
+     * @return {*}  {Promise<Response<IFinalizeResponse>>}
+     * @memberof AuthorizationController
+     */
+    public finalize(params: IFinalizeRequest): Promise<Response<IFinalizeResponse>> {
+        const subController = new FinalizeEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+
+    /**
+     * @param {ICheckSetFlowRequest} params
+     * @return {*}  {Promise<Response<ICheckSetFlowResponse>>}
+     * @memberof AuthorizationController
+     */
+    public checkSetFlow(params: ICheckSetFlowRequest): Promise<Response<ICheckSetFlowResponse>> {
+        const subController = new AuthenticateEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+    /**
+     * @param {IAuthorizeRequest} params
+     * @return {*}  {Promise<Response<IAuthorizeResponse>>}
+     * @memberof AuthorizationController
+     */
+    public authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
+        const subController = new AuthorizeEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+    /**
+     * @param {IDiscoveryKeysRequest} params
+     * @return {*}  {Promise<Response<IDiscoveryKeysResponse>>}
+     * @memberof AuthorizationController
+     */
+    public discoveryKeys(params: IDiscoveryKeysRequest): Promise<Response<IDiscoveryKeysResponse>> {
+        const subController = new JWKSEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
+    /**
+     * @param {IDiscoveryRequest} params
+     * @return {*}  {Promise<Response<IDiscoveryResponse>>}
+     * @memberof AuthorizationController
+     */
+    public discovery(params: IDiscoveryRequest): Promise<Response<IDiscoveryResponse>> {
+        const subController = new DiscoveryEndpointController(this.createSubControllerConfig());
+        return subController.handleRequest(params);
+    }
     /**
      * Creates a sub-controller config
      *
@@ -52,48 +212,5 @@ export class AuthorizationController extends AuthorizationControllerBase {
             response: this.response,
             ...this.request.context.services
         };
-    }
-
-    public authorize(params: IAuthorizeRequest): Promise<Response<IAuthorizeResponse>> {
-        const subController = new AuthorizeEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public token(params: ITokenRequest): Promise<Response<ITokenResponse>> {
-        const subController = new TokenEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public signin(params: ISigninRequest): Promise<Response<ISigninResponse>> {
-        const subController = new SigninEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public redirect(params: IRedirectRequest): Promise<Response<IRedirectResponse>> {
-        const subController = new RedirectEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public flowInfo(params: IFlowInfoRequest): Promise<Response<IFlowInfoResponse>> {
-        const subController = new FlowInfoEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public checkFlow(params: ICheckFlowRequest): Promise<Response<ICheckFlowResponse>> {
-        const subController = new CheckFlowEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public oidcDiscovery(params: IOidcDiscoveryRequest): Promise<Response<IOidcDiscoveryResponse>> {
-        const subController = new OIDCDiscoveryEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-    public oidcDiscoveryKeys(params: IOidcDiscoveryKeysRequest): Promise<Response<IOidcDiscoveryKeysResponse>> {
-        const subController = new JWKSEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-
-    public userInfoGet(params: IUserInfoGetRequest): Promise<Response<IUserInfoGetResponse>> {
-        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
-    }
-
-    public userInfoPost(params: IUserInfoPostRequest): Promise<Response<IUserInfoPostResponse>> {
-        const subController = new UserInfoEndpointController(this.createSubControllerConfig());
-        return subController.handleRequest(params);
     }
 }

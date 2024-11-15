@@ -1,7 +1,8 @@
 import {
 	ISysMfaDataServiceFindSysMfaByIdParams,
 	ISysMfaDataServiceDeleteSysMfaByIdFilter,
-	ISysMfaDataServiceUpdateSysMfaByIdFilter
+	ISysMfaDataServiceUpdateSysMfaByIdFilter,
+	ISysMfaDataServiceFindSysMfaByNameParams
 } from "./types";
 import { ISysMfa } from "@porta/shared";
 import { ICountRecordsResult, IExecuteQueryReturnValue, DataService } from "@blendsdk/datakit";
@@ -74,6 +75,22 @@ export abstract class SysMfaDataServiceBase extends DataService<PostgreSQLExecut
 			`sys_mfa`,
 			params,
 			filter,
+			{ single: true }
+		);
+		return result.data;
+	}
+
+	/**
+	 * Find a sys_mfa record by
+	 * @param {ISysMfaDataServiceFindSysMfaByNameParams}
+	 * @returns {ISysMfa}
+	 * @memberof SysMfaDataServiceBase
+	 */
+	public async findSysMfaByName(params: ISysMfaDataServiceFindSysMfaByNameParams): Promise<ISysMfa> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysMfa, ISysMfaDataServiceFindSysMfaByNameParams>(
+			`SELECT * FROM sys_mfa WHERE name = :name`,
+			params,
 			{ single: true }
 		);
 		return result.data;

@@ -1,11 +1,17 @@
 #!/bin/bash
+reset
+clear
 
 HERE=`pwd`
 echo build codegen
 yarn generate && \
 
-echo building shared libs && \
+echo "" && \
+echo "///////////////////////////////////////////////" && \
+echo BUILDING THE SHARED LIB && \
+echo "///////////////////////////////////////////////" && \
 cd ../shared && \
+pwd && \
 yarn build && \
 cd ${HERE}
 

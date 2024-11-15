@@ -1,7 +1,12 @@
-import { ApiBuilder, IApiCollection } from "@blendsdk/codegen";
+import { ApiBuilder } from "@blendsdk/codegen";
+import { createAuthenticationAPI } from "./auth";
+import { createInitializeAPI } from "./initialize";
+import { createUserProfileAPI } from "./profile";
+import { createReferenceDataAPI } from "./ref";
 
 export function defineCustomApi(builder: ApiBuilder) {
-    // TODO: Add custom API here
-    const application: IApiCollection = {};
-    builder.defineApiCollection(application);
+    createInitializeAPI(builder);
+    createReferenceDataAPI(builder);
+    createUserProfileAPI(builder);
+    createAuthenticationAPI(builder);
 }
