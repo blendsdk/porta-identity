@@ -1,5 +1,5 @@
 import { sha256Hash } from "@blendsdk/crypto";
-import { CRC32 } from "@blendsdk/stdlib";
+import { CRC32, MD5 } from "@blendsdk/stdlib";
 import { INewAccessOrRefreshToken, SESSION_KEY } from "@blendsdk/webafx-auth";
 import {
     IGetRefreshTokenFromUserCache,
@@ -53,6 +53,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
         };
     }
     protected async getOIDCClientConfig(_req: HttpRequest, tenant: string): Promise<ClientMetadata> {
+        console.error(await sha256Hash(`porta_cli_${tenant}`));
         return {
             client_id: await sha256Hash(`porta_cli_${tenant}`),
             token_endpoint_auth_method: "none"
@@ -61,7 +62,7 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
 
     protected async getDiscoveryURL(tenant: string, req: HttpRequest<IOpenIDHTTPRequestContext>): Promise<string> {
         const { PORTA_HOST } = req.context.getSettings<{ PORTA_HOST: string }>();
-        return `${PORTA_HOST}/${tenant}/oauth2`;
+        return `${PORTA_HOST}/${MD5(tenant)}/oauth2`;
     }
 
     protected async findOrCreateUser(
