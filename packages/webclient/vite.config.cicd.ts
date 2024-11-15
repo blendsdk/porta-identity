@@ -4,11 +4,11 @@ import { defineConfig } from "vite";
 // https://vitejs.dev/config/
 export default defineConfig({
     optimizeDeps: {
-        include: ["@porta/shared", "@blendsdk/fui8"]
+        include: ["@porta/shared"]
     },
     build: {
         commonjsOptions: {
-            include: [/shared/, /node_modules/, /fui8/]
+            include: [/shared/, /node_modules/]
         }
     },
     plugins: [react()],

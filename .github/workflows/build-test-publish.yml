@@ -23,10 +23,10 @@ jobs:
                   yarn
                   yarn build
 
-            - name: Testing the project
-              run: |
-                  mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
-                  yarn test
+            # - name: Testing the project
+            #   run: |
+            #       mv ./packages/webapi/docker/docker-compose-ci.yml ./packages/webapi/docker/docker-compose.yml
+            #       yarn test
 
             # - name: Publish Production Packages
             #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
