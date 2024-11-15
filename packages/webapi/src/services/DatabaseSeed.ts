@@ -372,8 +372,8 @@ export class DatabaseSeed {
             {
                 client_type: eClientType.public,
                 application_id: app.id,
-                redirect_uri: `${serverURL}/oidc/${tenantRecord.id}/signin/callback`,
-                post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.id}/signout/complete`,
+                redirect_uri: `${serverURL}/oidc/${tenantRecord.name}/signin/callback`,
+                post_logout_redirect_uri: `${serverURL}/fe/auth/${tenantRecord.name}/signout/complete`,
                 access_token_length: ACCESS_TOKEN_TTL,
                 refresh_token_length: REFRESH_TOKEN_TTL,
                 is_system: true,
