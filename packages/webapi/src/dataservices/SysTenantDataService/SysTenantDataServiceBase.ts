@@ -172,7 +172,7 @@ export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExe
 	public async findByNameOrId(params: ISysTenantDataServiceFindByNameOrIdParams): Promise<ISysTenant> {
 		const ctx = await this.getContext();
 		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceFindByNameOrIdParams>(
-			`SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name`,
+			`SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR REPLACE(UPPER(id::text),'-','') = REPLACE(UPPER(:name),'-','')`,
 			params,
 			{ single: true }
 		);

@@ -11,19 +11,17 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
     databaseSchema.getTables().forEach((table) => {
         const tableName = table.getName();
         const serviceName = createMethodName(`${tableName}_data_service`, false);
-        const svc = builder.createService(
-            serviceName,
-            `Provides functionality to manipulate the ${tableName} table`
-        );
+        const svc = builder.createService(serviceName, `Provides functionality to manipulate the ${tableName} table`);
 
         const { has_list_by_expression } = table.getMetaData();
 
         if (tableName == "sys_application_session") {
-
-            svc.defineFindByColumns({
-                table: tableName
-            }, table.getColumns("session_id"));
-
+            svc.defineFindByColumns(
+                {
+                    table: tableName
+                },
+                table.getColumns("session_id")
+            );
         }
 
         // if (tableName === "sys_refresh_token") {
@@ -89,14 +87,9 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
         // }
 
         if (tableName === "sys_tenant") {
+            const revokes = ["session", "access_token", "refresh_token"];
 
-            const revokes = [
-                "session",
-                "access_token",
-                "refresh_token",
-            ];
-
-            revokes.forEach(name => {
+            revokes.forEach((name) => {
                 svc.defineMethod({
                     name: `revoke_expired_${name}s`,
                     query: `delete from sys_${name} where id in (select id from sys_${name} where (now() > date_expire) = true);`,
@@ -136,7 +129,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
 
             svc.defineMethod({
                 name: "find_by_name_or_id",
-                query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR id::text = :name",
+                query: "SELECT * FROM sys_tenant WHERE UPPER(name) = UPPER(:name) OR REPLACE(UPPER(id::text),'-','') = REPLACE(UPPER(:name),'-','')",
                 recordSet: false,
                 returnValue: eReturnValue.dataOnly,
                 type: "query",
