@@ -1,7 +1,6 @@
 import { ApiBuilder } from "@blendsdk/codegen";
 
 export function createInitializeAPI(builder: ApiBuilder) {
-
     builder.defineApi({
         id: "initialize",
         url: "/api/initialize",

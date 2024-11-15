@@ -1,4 +1,4 @@
-import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
+import { sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { MD5, asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
@@ -48,11 +48,10 @@ export interface IInitializeTenant {
  * @class DatabaseSeed
  */
 export class DatabaseSeed {
-
     /**
      * @protected
      * @param {string} databaseName
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
     protected async isSystemInitialized(databaseName: string) {
@@ -67,14 +66,13 @@ export class DatabaseSeed {
         return !isNullOrUndef(data);
     }
 
-
     /**
      * Generates a public and private key plus certificate to be used
      * as JWK keys
      *
      * @protected
      * @param {string} name
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
     protected async generateKeyPareAndCertificate(name: string) {
@@ -121,7 +119,7 @@ export class DatabaseSeed {
      * @returns
      * @memberof DatabaseSeed
      */
-    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean; }) {
+    protected async initializeDatabaseSchema({ isRegistry, tenant }: { tenant: ISysTenant; isRegistry?: boolean }) {
         const defaultDataSource = dataSourceManager.getDataSource<PostgreSQLDataSource>(eDatabaseType.system);
         const { DB_USER, DB_HOST, DB_PORT, DB_PASSWORD } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
@@ -202,20 +200,27 @@ export class DatabaseSeed {
         });
     }
 
-
     /**
      * @param {IInitializeTenant} params
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
     public async initializeTenant(params: IInitializeTenant) {
-
         const { AUTH_SESSION_LENGTH_HOURS = 0 } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
         >();
 
-
-        let { allow_registration, allow_reset_password, databaseName, email, organization, password, tenantName, username, serverURL } = params || {};
+        let {
+            allow_registration,
+            allow_reset_password,
+            databaseName,
+            email,
+            organization,
+            password,
+            tenantName,
+            username,
+            serverURL
+        } = params || {};
 
         // is registry flag
         const isRegistry = tenantName === commonUtils.getPortaRegistryTenant();
@@ -258,7 +263,7 @@ export class DatabaseSeed {
             // create keys
             await this.createJWKKeys(tenantRecord);
             const { userRole, adminRole } = await this.createRoles(tenantRecord);
-            await this.createCLIApplication(tenantRecord, serverURL);
+            await this.createCLIApplication(tenantRecord);
             await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
             await this.createConformanceTestApplication(tenantRecord, serverURL, userRole);
             await this.createMFAProviders(tenantRecord);
@@ -275,11 +280,9 @@ export class DatabaseSeed {
     }
 
     protected async createConformanceTestApplication(tenantRecord: ISysTenant, _serverURL: string, userRole: ISysRole) {
-
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
         >();
-
 
         if (!process.env.DEBUG) {
             return;
@@ -288,13 +291,12 @@ export class DatabaseSeed {
         let serviceUserCreated = false;
         const sets = ["097c6871-fa61-47c8-9840-93482a126b21", "097c6871-fa61-47c8-9840-93482a126b22"];
         await asyncForEach(sets, async (client_id: string, index: number) => {
-
             const app = await this.createApplication(
                 {
                     tenant_id: tenantRecord.id,
                     application_name: "OIDC Conformance Test Suite " + index,
                     client_id,
-                    description: "Demo Application " + index,
+                    description: "Demo Application " + index
                 },
                 tenantRecord
             );
@@ -303,7 +305,6 @@ export class DatabaseSeed {
                 await this.createServiceUsers(tenantRecord, app, userRole);
                 serviceUserCreated = true;
             }
-
 
             const now = Date.now();
             await this.createSecret(
@@ -316,7 +317,6 @@ export class DatabaseSeed {
                 app,
                 tenantRecord
             );
-
 
             const clients = [
                 "https://localhost.emobix.co.uk:8443/test/a/discovery-test/callback",
@@ -338,9 +338,7 @@ export class DatabaseSeed {
                     tenantRecord
                 );
             });
-
         });
-
     }
 
     /**
@@ -349,22 +347,27 @@ export class DatabaseSeed {
      * @param {string} serverURL
      * @memberof DatabaseSeed
      */
-    protected async createCLIApplication(tenantRecord: ISysTenant, serverURL: string) {
-        const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, BYPASS_MFA_DAYS = 1, } = application.getSettings<
-            IPortaApplicationSetting & IDatabaseAppSettings
-        >();
+    protected async createCLIApplication(tenantRecord: ISysTenant) {
+        const {
+            ACCESS_TOKEN_TTL,
+            REFRESH_TOKEN_TTL,
+            BYPASS_MFA_DAYS = 1
+        } = application.getSettings<IPortaApplicationSetting & IDatabaseAppSettings>();
 
+        const appId = MD5(`porta_cli_${tenantRecord.id}`);
         const app = await this.createApplication(
             {
                 tenant_id: tenantRecord.id,
-                id: MD5(`porta_cli_${tenantRecord.id}`),
+                id: appId,
                 application_name: "CLI",
-                client_id: generateRandomUUID(),
+                client_id: await sha256Hash(`porta_cli_${tenantRecord.id}`),
                 description: "CLI Application",
                 is_system: true
             },
             tenantRecord
         );
+
+        const serverURL = "http://localhost:9090";
 
         await this.createClient(
             {
@@ -389,7 +392,7 @@ export class DatabaseSeed {
      * @param {ISysSecret} record
      * @param {ISysApplication} app
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
     public createSecret(record: ISysSecret, application: ISysApplication, tenantRecord: ISysTenant) {
@@ -405,7 +408,7 @@ export class DatabaseSeed {
      * @param {ISysClient} record
      * @param {ISysApplication} app
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
     protected createClient(record: ISysClient, app: ISysApplication, tenantRecord: ISysTenant) {
@@ -420,10 +423,10 @@ export class DatabaseSeed {
      * @protected
      * @param {ISysApplication} record
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseSeed
      */
-    protected createApplication(record: ISysApplication, tenantRecord: ISysTenant,) {
+    protected createApplication(record: ISysApplication, tenantRecord: ISysTenant) {
         const appDs = new SysApplicationDataService({ tenantId: tenantRecord.id });
         return appDs.insertIntoSysApplication(record);
     }
@@ -464,7 +467,14 @@ export class DatabaseSeed {
      * @param {string} email
      * @memberof DatabaseSeed
      */
-    protected async createUsers(tenantRecord: ISysTenant, userRole: ISysRole, adminRole: ISysRole, username: string, password: string, email: string) {
+    protected async createUsers(
+        tenantRecord: ISysTenant,
+        userRole: ISysRole,
+        adminRole: ISysRole,
+        username: string,
+        password: string,
+        email: string
+    ) {
         const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
         const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
         const userRoleDs = new SysUserRoleDataService({ tenantId: tenantRecord.id });
@@ -473,7 +483,7 @@ export class DatabaseSeed {
             username,
             password,
             is_system: true,
-            require_pw_change: false,
+            require_pw_change: false
         });
 
         await profileDs.insertIntoSysProfile({
@@ -503,8 +513,8 @@ export class DatabaseSeed {
     }
 
     /**
-     * @param tenantRecord 
-     * @returns 
+     * @param tenantRecord
+     * @returns
      */
     protected async createRoles(tenantRecord: ISysTenant) {
         const roleDs = new SysRoleDataService({ tenantId: tenantRecord.id });
@@ -532,7 +542,6 @@ export class DatabaseSeed {
             is_active: true,
             is_system: true
         });
-
 
         await rolePermissionDs.insertIntoSysRolePermission({
             permission_id: defaultPermission.id,

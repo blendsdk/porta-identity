@@ -3,9 +3,27 @@
     "tasks": [
         {
             "label": "Start Blend Dev",
-            "dependsOn": ["WebAPI Watch TS", "WebClient DEV", "Dev Proxy"],
+            "dependsOn": ["WebAPI Watch TS", "WebClient DEV", "Dev Proxy", "CLI Watch TS"],
             "problemMatcher": [],
             "group": "none"
+        },
+        {
+            "label": "CLI Watch TS",
+            "type": "shell",
+            "command": "yarn",
+            "options": {
+                "cwd": "${workspaceFolder}/packages/cli"
+            },
+            "dependsOn": ["Shared Build"],
+            "args": ["watch:ts"],
+            "problemMatcher": [],
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            }
         },
         {
             "label": "WebAPI Watch TS",
