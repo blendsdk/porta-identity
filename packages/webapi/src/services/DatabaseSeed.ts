@@ -213,7 +213,7 @@ export class DatabaseSeed {
         const tenantRecord = await databaseUtils.findTenant(name);
 
         if (tenantRecord) {
-            
+            await databaseUtils.deleteTenant(tenantRecord);
         } else {
             throw new Error(`Tenant ${name} does not exist!`);
         }
