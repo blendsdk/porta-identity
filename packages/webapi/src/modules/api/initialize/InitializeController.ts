@@ -1,6 +1,13 @@
 import { errorObjectInfo } from "@blendsdk/stdlib";
 import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
-import { ICreateTenantRequest, ICreateTenantResponse, IInitializeRequest, IInitializeResponse } from "@porta/shared";
+import {
+    ICreateTenantRequest,
+    ICreateTenantResponse,
+    IDeleteTenantRequest,
+    IDeleteTenantResponse,
+    IInitializeRequest,
+    IInitializeResponse
+} from "@porta/shared";
 import { DatabaseSeed, commonUtils } from "../../../services";
 import { InitializeControllerBase } from "./InitializeControllerBase";
 
@@ -11,6 +18,40 @@ import { InitializeControllerBase } from "./InitializeControllerBase";
  * @extends {InitializeControllerBase}
  */
 export class InitializeController extends InitializeControllerBase {
+    /**
+     * @param {IDeleteTenantRequest} params
+     * @return {*}  {Promise<Response<IDeleteTenantResponse>>}
+     * @memberof InitializeController
+     */
+    public async deleteTenant(params: IDeleteTenantRequest): Promise<Response<IDeleteTenantResponse>> {
+        try {
+            let { name, tenant } = params;
+
+            const registry = commonUtils.getPortaRegistryTenant();
+
+            // Only allow tenant deletion from if logged into the registry!
+            // Do not delete the registry itself!
+            if (
+                tenant.toLocaleLowerCase() !== registry.toLocaleLowerCase() ||
+                name.toLocaleLowerCase() === registry.toLocaleLowerCase() ||
+                name.toLocaleLowerCase() === tenant.toLocaleLowerCase()
+            ) {
+                throw new Error(`Unable to delete a ${name} while authenticated with ${tenant}`);
+            }
+
+            const databaseSeed = new DatabaseSeed();
+
+            await databaseSeed.deleteTenant(name);
+
+            return new SuccessResponse({
+                status: true,
+                error: undefined
+            } as any);
+        } catch (err) {
+            this.getLogger().error(err.message, errorObjectInfo(err));
+            return new ServerErrorResponse(err);
+        }
+    }
     /**
      * @param {ICreateTenantRequest} params
      * @return {*}  {Promise<Response<ICreateTenantResponse>>}
@@ -23,7 +64,7 @@ export class InitializeController extends InitializeControllerBase {
             const registry = commonUtils.getPortaRegistryTenant();
 
             // Only allow tenant registration from if logged into the registry!
-            if (tenant !== registry) {
+            if (tenant.toLocaleLowerCase() !== registry.toLocaleLowerCase()) {
                 throw new Error(`Unable to create a new tenant while authenticated with ${tenant}`);
             }
 

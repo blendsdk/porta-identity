@@ -12,6 +12,11 @@ export const InitializeModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
+				dispatch: "delete_tenant",
+				controller: InitializeController,
+				route: routeDefinitions.initialize.delete_tenant
+			}),
+			defineControllerRoute({
 				dispatch: "create_tenant",
 				controller: InitializeController,
 				route: routeDefinitions.initialize.create_tenant

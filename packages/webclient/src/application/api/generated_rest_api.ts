@@ -9,6 +9,8 @@ import {
 	IGetTranslationsResponse,
 	IGetAppVersionRequest,
 	IGetAppVersionResponse,
+	IDeleteTenantRequest,
+	IDeleteTenantResponse,
 	ICreateTenantRequest,
 	ICreateTenantResponse,
 	IInitializeRequest,
@@ -51,6 +53,7 @@ export interface IPortaApi {
 		getAppVersion: THttpRequest<IGetAppVersionRequest | void, IGetAppVersionResponse>;
 	};
 	initialize: {
+		deleteTenant: THttpRequest<IDeleteTenantRequest, IDeleteTenantResponse>;
 		createTenant: THttpRequest<ICreateTenantRequest, ICreateTenantResponse>;
 		initialize: THttpRequest<IInitializeRequest, IInitializeResponse>;
 	};
@@ -83,6 +86,7 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
 		initialize: {
+			deleteTenant: defineEndpoint({ method: "post", url: "/api/initialize/tenant/delete" }),
 			createTenant: defineEndpoint({ method: "post", url: "/api/initialize/tenant/create" }),
 			initialize: defineEndpoint({ method: "post", url: "/api/initialize" })
 		},

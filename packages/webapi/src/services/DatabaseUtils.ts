@@ -1,7 +1,29 @@
+import { dataSourceManager } from "@blendsdk/datakit";
 import { expression } from "@blendsdk/expression";
+import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { indexObject } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
-import { IAuthorizeRequest, IPortaAccount, ISysAccessToken, ISysAuthorizationView, ISysConsent, ISysPermission, ISysProfile, ISysRefreshTokenView, ISysRole, ISysSession, ISysTenant, ISysUser, ISysUserPermissionView, eSysAccessTokenView, eSysAuthorizationView, eSysRefreshTokenView, eSysSecretView, eSysSessionView, eSysUserPermissionView } from "@porta/shared";
+import {
+    IAuthorizeRequest,
+    IPortaAccount,
+    ISysAccessToken,
+    ISysAuthorizationView,
+    ISysConsent,
+    ISysPermission,
+    ISysProfile,
+    ISysRefreshTokenView,
+    ISysRole,
+    ISysSession,
+    ISysTenant,
+    ISysUser,
+    ISysUserPermissionView,
+    eSysAccessTokenView,
+    eSysAuthorizationView,
+    eSysRefreshTokenView,
+    eSysSecretView,
+    eSysSessionView,
+    eSysUserPermissionView
+} from "@porta/shared";
 import { SysAccessTokenDataService } from "../dataservices/SysAccessTokenDataService";
 import { SysApplicationDataService } from "../dataservices/SysApplicationDataService";
 import { SysConsentDataService } from "../dataservices/SysConsentDataService";
@@ -11,7 +33,7 @@ import { SysRefreshTokenDataService } from "../dataservices/SysRefreshTokenDataS
 import { SysSessionDataService } from "../dataservices/SysSessionDataService";
 import { SysTenantDataService } from "../dataservices/SysTenantDataService";
 import { SysUserDataService } from "../dataservices/SysUserDataService";
-import { eOAuthGrantType, eOAuthPrompt } from "../types";
+import { eDatabaseType, eOAuthGrantType, eOAuthPrompt } from "../types";
 import { commonUtils } from "./CommonUtils";
 import { ServiceBase } from "./ServiceBase";
 
@@ -22,6 +44,25 @@ export interface INewAccessTokenResult {
 }
 
 export class DatabaseUtils extends ServiceBase {
+    /**
+     * @param {ISysTenant} tenantRecord
+     * @return {*}
+     * @memberof DatabaseUtils
+     */
+    public async deleteTenant(tenantRecord: ISysTenant) {
+        const tenantDs = new SysTenantDataService({ tenantId: eDatabaseType.registry });
+
+        // delete the registry record
+        await tenantDs.deleteSysTenantById({ id: tenantRecord.id });
+
+        // clone all connection to the tenant database
+        await tenantDs.terminateConnectionByDatabaseName({ name: tenantRecord.database });
+
+        // drop the tenant database
+        const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>();
+        const ctx = await ds.createContext();
+        await ctx.executeQuery(`DROP DATABASE ${tenantRecord.database}`);
+    }
 
     /**
      * @param {ISysConsent} consent
@@ -30,7 +71,10 @@ export class DatabaseUtils extends ServiceBase {
      */
     public async saveUserConsent(consent: ISysConsent, tenantRecord: ISysTenant) {
         const consentDs = new SysConsentDataService({ tenantId: tenantRecord.id });
-        const consentRecord = await consentDs.findSysConsentByApplicationIdAndUserId({ application_id: consent.application_id, user_id: consent.user_id });
+        const consentRecord = await consentDs.findSysConsentByApplicationIdAndUserId({
+            application_id: consent.application_id,
+            user_id: consent.user_id
+        });
         if (consentRecord) {
             await consentDs.updateSysConsentById(consent, { id: consentRecord.id });
         } else {
@@ -42,35 +86,32 @@ export class DatabaseUtils extends ServiceBase {
      * @param {string} client_id
      * @param {string} user_id
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async findSessionByClientIDAndLogoutHint(client_id: string, user_id: string, tenantRecord: ISysTenant) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const result = await tenantDs.listSysSessionViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysSessionView.CLIENT_ID, client_id),
-                e.Equal(eSysSessionView.USER_ID, user_id)
+        const result = await tenantDs.listSysSessionViewByExpression(
+            e.createRenderer(
+                e.And(e.Equal(eSysSessionView.CLIENT_ID, client_id), e.Equal(eSysSessionView.USER_ID, user_id))
             )
-        ));
+        );
         return result.length !== 0 ? result[0] : undefined;
     }
 
     /**
      * @param {string} session_id
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async findSessionBySessionId(session_id: string, tenantRecord: ISysTenant) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const result = await tenantDs.listSysSessionViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysSessionView.SESSION_ID, session_id)
-            )
-        ));
+        const result = await tenantDs.listSysSessionViewByExpression(
+            e.createRenderer(e.And(e.Equal(eSysSessionView.SESSION_ID, session_id)))
+        );
         return result.length !== 0 ? result[0] : undefined;
     }
 
@@ -78,7 +119,7 @@ export class DatabaseUtils extends ServiceBase {
      * @param {string} user_id
      * @param {string} application_id
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public findConsentByUserAndApplication(user_id: string, application_id: string, tenantRecord: ISysTenant) {
@@ -100,7 +141,7 @@ export class DatabaseUtils extends ServiceBase {
     /**
      * @param {string} user_id
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async finUserAndProfile(user_id: string, tenantRecord: ISysTenant) {
@@ -124,15 +165,19 @@ export class DatabaseUtils extends ServiceBase {
      * @returns {Promise<ISysRefreshTokenView>}
      * @memberof DatabaseUtils
      */
-    public async findRefreshTokenByTenant(params: { tenantRecord: ISysTenant, check_validity: boolean, refresh_token; }): Promise<ISysRefreshTokenView> {
+    public async findRefreshTokenByTenant(params: {
+        tenantRecord: ISysTenant;
+        check_validity: boolean;
+        refresh_token;
+    }): Promise<ISysRefreshTokenView> {
         let { tenantRecord, check_validity, refresh_token } = params;
         check_validity = check_validity === false ? false : true;
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
 
         const e = expression();
-        const records = await tenantDs.listSysRefreshTokenViewByExpression(e.createRenderer(
-            e.Equal(eSysRefreshTokenView.REFRESH_TOKEN, refresh_token)
-        ));
+        const records = await tenantDs.listSysRefreshTokenViewByExpression(
+            e.createRenderer(e.Equal(eSysRefreshTokenView.REFRESH_TOKEN, refresh_token))
+        );
 
         if (records.length === 1) {
             const isValid = check_validity === true ? !records[0].is_expired : true;
@@ -161,7 +206,9 @@ export class DatabaseUtils extends ServiceBase {
      */
     public async revokeAccessToken(otaOrAccessToken: string, tenantRecord: ISysTenant) {
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
-        let accessTokenRecord = (await accessTokenDs.findSysAccessTokenByOta({ ota: otaOrAccessToken })) || (await accessTokenDs.findSysAccessTokenByAccessToken({ access_token: otaOrAccessToken }));
+        let accessTokenRecord =
+            (await accessTokenDs.findSysAccessTokenByOta({ ota: otaOrAccessToken })) ||
+            (await accessTokenDs.findSysAccessTokenByAccessToken({ access_token: otaOrAccessToken }));
         if (accessTokenRecord) {
             await accessTokenDs.deleteSysAccessTokenById({ id: accessTokenRecord.id });
         }
@@ -177,11 +224,14 @@ export class DatabaseUtils extends ServiceBase {
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
         const accessTokenRecord = await accessTokenDs.findSysAccessTokenByAccessToken({ access_token });
         if (accessTokenRecord) {
-            await accessTokenDs.updateSysAccessTokenById({
-                ota
-            }, {
-                id: accessTokenRecord.id
-            });
+            await accessTokenDs.updateSysAccessTokenById(
+                {
+                    ota
+                },
+                {
+                    id: accessTokenRecord.id
+                }
+            );
         }
     }
 
@@ -213,33 +263,37 @@ export class DatabaseUtils extends ServiceBase {
      * @param {ISysTenant} tenantRecord
      * @param {string} client_id
      * @param {string} secret
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async validateClientSecret(tenantRecord: ISysTenant, client_id: string, secret: string) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const secrets = await tenantDs.listSysSecretViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                e.Equal(eSysSecretView.CLIENT_SECRET, secret),
-                e.Equal(eSysSecretView.IS_EXPIRED, false)
+        const secrets = await tenantDs.listSysSecretViewByExpression(
+            e.createRenderer(
+                e.And(
+                    e.Equal(eSysSecretView.CLIENT_ID, client_id),
+                    e.Equal(eSysSecretView.CLIENT_SECRET, secret),
+                    e.Equal(eSysSecretView.IS_EXPIRED, false)
+                )
             )
-        ));
+        );
         return secrets.length === 1;
     }
 
     public async findClientSecretForServiceAccount(tenantRecord: ISysTenant, client_id: string, secret: string) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const secrets = await tenantDs.listSysSecretViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                e.Equal(eSysSecretView.CLIENT_SECRET, secret),
-                e.Equal(eSysSecretView.IS_EXPIRED, false),
-                e.IsNotNull(eSysSecretView.CLIENT_CREDENTIAL_USER_ID)
+        const secrets = await tenantDs.listSysSecretViewByExpression(
+            e.createRenderer(
+                e.And(
+                    e.Equal(eSysSecretView.CLIENT_ID, client_id),
+                    e.Equal(eSysSecretView.CLIENT_SECRET, secret),
+                    e.Equal(eSysSecretView.IS_EXPIRED, false),
+                    e.IsNotNull(eSysSecretView.CLIENT_CREDENTIAL_USER_ID)
+                )
             )
-        ));
+        );
         return secrets.length !== 0 ? secrets[0] : undefined;
     }
 
@@ -263,11 +317,11 @@ export class DatabaseUtils extends ServiceBase {
      *         accessTokenRecord: ISysAccessToken;
      *         ttl: number;
      *     }} params
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async newRefreshToken(params: {
-        tenantRecord: ISysTenant,
+        tenantRecord: ISysTenant;
         accessTokenRecord: ISysAccessToken;
         ttl: number;
     }) {
@@ -284,7 +338,7 @@ export class DatabaseUtils extends ServiceBase {
     /**
      * @param {ISysTenant} tenantRecord
      * @param {string} client_id
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public findApplicationByClientID(tenantRecord: ISysTenant, client_id: string) {
@@ -306,26 +360,28 @@ export class DatabaseUtils extends ServiceBase {
      * @memberof DatabaseUtils
      */
     public async newAccessToken(params: {
-        tenantRecord: ISysTenant,
-        user_id: string,
-        session: ISysSession,
-        ttl: number,
+        tenantRecord: ISysTenant;
+        user_id: string;
+        session: ISysSession;
+        ttl: number;
         client_record_id: string;
         authRequest: IAuthorizeRequest;
         tokenBuilder: (date_created: Date, date_expire: Date) => Promise<string>;
         token_reference: string;
     }): Promise<INewAccessTokenResult> {
-
-        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder, token_reference } = params;
+        const { tenantRecord, user_id, session, ttl, client_record_id, authRequest, tokenBuilder, token_reference } =
+            params;
 
         const accessTokenDs = new SysAccessTokenDataService({ tenantId: tenantRecord.id });
-
 
         const isNewSession = commonUtils.checkLoginRequired(session, authRequest.max_age);
 
         // OIDC conformance. When the prompt is none then we want to know the initial auth time.
         // This is when the session was created first and not when the token is created!
-        const now = authRequest.prompt === eOAuthPrompt.none || (authRequest.max_age && !isNewSession) ? new Date(session.last_token_auth_time) : new Date();
+        const now =
+            authRequest.prompt === eOAuthPrompt.none || (authRequest.max_age && !isNewSession)
+                ? new Date(session.last_token_auth_time)
+                : new Date();
 
         const date_expire = new Date(now.getTime() + commonUtils.secondsToMilliseconds(ttl));
 
@@ -350,7 +406,7 @@ export class DatabaseUtils extends ServiceBase {
      * @param {Date} when
      * @param {ISysSession} session
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public updateSessionLastTokenAuthTime(when: Date, session: ISysSession, tenantRecord: ISysTenant) {
@@ -361,29 +417,36 @@ export class DatabaseUtils extends ServiceBase {
     /**
      * @param {{ client_id: string, redirect_uri: string; }} params
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
-    public async findAuthorizationRecord(params: { client_id: string, redirect_uri: string; }, tenantRecord: ISysTenant) {
+    public async findAuthorizationRecord(
+        params: { client_id: string; redirect_uri: string },
+        tenantRecord: ISysTenant
+    ) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const { client_id, redirect_uri } = params;
         const e = expression();
         let result: ISysAuthorizationView[] = [];
         if (redirect_uri === eOAuthGrantType.client_credentials) {
-            result = await tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
-                e.And(
-                    e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
-                    e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
+            result = await tenantDs.listSysAuthorizationViewByExpression(
+                e.createRenderer(
+                    e.And(
+                        e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                        e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id)
+                    )
                 )
-            ));
+            );
         } else {
-            result = await tenantDs.listSysAuthorizationViewByExpression(e.createRenderer(
-                e.And(
-                    e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
-                    e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
-                    e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id),
+            result = await tenantDs.listSysAuthorizationViewByExpression(
+                e.createRenderer(
+                    e.And(
+                        e.Equal(eSysAuthorizationView.CLIENT_ID, client_id),
+                        e.Equal(eSysAuthorizationView.REDIRECT_URI, redirect_uri),
+                        e.Equal(eSysAuthorizationView.TENANT_ID, tenantRecord.id)
+                    )
                 )
-            ));
+            );
         }
         return result.length !== 0 ? result[0] : undefined;
     }
@@ -392,38 +455,43 @@ export class DatabaseUtils extends ServiceBase {
      * @param {string} user_id
      * @param {string} application_id
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async getUserRolesAndPermissions(user_id: string, application_id: string, tenantRecord: ISysTenant) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const userPermissionRecords = await tenantDs.listSysUserPermissionViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(eSysUserPermissionView.USER_ID, user_id),
-                e.Or(
-                    e.Equal(eSysUserPermissionView.APPLICATION_ID, application_id),
-                    e.IsNull(eSysUserPermissionView.APPLICATION_ID)
+        const userPermissionRecords = await tenantDs.listSysUserPermissionViewByExpression(
+            e.createRenderer(
+                e.And(
+                    e.Equal(eSysUserPermissionView.USER_ID, user_id),
+                    e.Or(
+                        e.Equal(eSysUserPermissionView.APPLICATION_ID, application_id),
+                        e.IsNull(eSysUserPermissionView.APPLICATION_ID)
+                    )
                 )
             )
-        ));
+        );
 
-        const roles: ISysRole[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "role_id"))
-            .map((r: ISysUserPermissionView) => {
-                return {
-                    role: r.role,
-                    id: r.role_id
-                };
-            });
+        const roles: ISysRole[] = Object.values(
+            indexObject<ISysUserPermissionView>(userPermissionRecords, "role_id")
+        ).map((r: ISysUserPermissionView) => {
+            return {
+                role: r.role,
+                id: r.role_id
+            };
+        });
 
         // We don't want the default permission since it was only
         // introduced to include the roles
-        const permissions: ISysPermission[] = Object.values(indexObject<ISysUserPermissionView>(userPermissionRecords, "permission_id"))
-            .filter((r: ISysPermission) => (r.permission !== "DEFAULT"))
+        const permissions: ISysPermission[] = Object.values(
+            indexObject<ISysUserPermissionView>(userPermissionRecords, "permission_id")
+        )
+            .filter((r: ISysPermission) => r.permission !== "DEFAULT")
             .map((r: ISysUserPermissionView) => {
                 return {
                     permission: r.permission,
-                    id: r.permission_id,
+                    id: r.permission_id
                 };
             });
 
@@ -440,22 +508,31 @@ export class DatabaseUtils extends ServiceBase {
     /**
      * @param {string} token
      * @param {ISysTenant} tenantRecord
-     * @return {*} 
+     * @return {*}
      * @memberof DatabaseUtils
      */
     public async findAccessTokenByTenantAndToken(token: string, tenantRecord: ISysTenant, use_reference: boolean) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
-        const result = await tenantDs.listSysAccessTokenViewByExpression(e.createRenderer(
-            e.And(
-                e.Equal(use_reference ? eSysAccessTokenView.TOKEN_REFERENCE : eSysAccessTokenView.ACCESS_TOKEN, token),
-                e.Equal(eSysAccessTokenView.IS_EXPIRED, false)
+        const result = await tenantDs.listSysAccessTokenViewByExpression(
+            e.createRenderer(
+                e.And(
+                    e.Equal(
+                        use_reference ? eSysAccessTokenView.TOKEN_REFERENCE : eSysAccessTokenView.ACCESS_TOKEN,
+                        token
+                    ),
+                    e.Equal(eSysAccessTokenView.IS_EXPIRED, false)
+                )
             )
-        ));
+        );
         const record = result[0];
         if (record) {
             const { client, user } = record;
-            const { application, permissions, roles } = await this.getUserRolesAndPermissions(user.id, client.application_id, tenantRecord);
+            const { application, permissions, roles } = await this.getUserRolesAndPermissions(
+                user.id,
+                client.application_id,
+                tenantRecord
+            );
             return {
                 roles,
                 permissions,
@@ -475,7 +552,7 @@ export class DatabaseUtils extends ServiceBase {
      * @returns {Promise<{ privateKey: string; publicKey: string }>}
      * @memberof DatabaseUtils
      */
-    public async getJWKSigningKeys(tenantRecord: ISysTenant): Promise<{ privateKey: string; publicKey: string; }> {
+    public async getJWKSigningKeys(tenantRecord: ISysTenant): Promise<{ privateKey: string; publicKey: string }> {
         const keyDs = new SysKeyDataService({ tenantId: tenantRecord.id });
         const { data } = (await keyDs.findJwkKeys())[0];
         return JSON.parse(data);

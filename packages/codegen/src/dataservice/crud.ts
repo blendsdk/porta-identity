@@ -126,6 +126,21 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             svc.defineListByExpressionMethod({
                 table: tableName
             });
+            
+            svc.defineMethod({
+                name: "terminate_connection_by_database_name",
+                query: "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :name  AND pid <> pg_backend_pid();",
+                recordSet: false,
+                returnValue: eReturnValue.dataOnly,
+                type: "query",
+                inputType: ({ suggestedTypeName, typeSchema }) => {
+                    typeSchema
+                        .createAppendType(suggestedTypeName) //
+                        .addString("name");
+                    return suggestedTypeName;
+                },
+                returnType: "sys_tenant" // not really returnung
+            });
 
             svc.defineMethod({
                 name: "find_by_name_or_id",

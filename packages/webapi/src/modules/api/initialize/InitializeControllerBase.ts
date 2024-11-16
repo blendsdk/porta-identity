@@ -4,7 +4,14 @@
  */
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
-import { ICreateTenantRequest, ICreateTenantResponse, IInitializeRequest, IInitializeResponse } from "@porta/shared";
+import {
+	IDeleteTenantRequest,
+	IDeleteTenantResponse,
+	ICreateTenantRequest,
+	ICreateTenantResponse,
+	IInitializeRequest,
+	IInitializeResponse
+} from "@porta/shared";
 
 /**
  * @export
@@ -16,6 +23,14 @@ import { ICreateTenantRequest, ICreateTenantResponse, IInitializeRequest, IIniti
 export abstract class InitializeControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [POST] /api/initialize/tenant/delete
+	 * @abstract
+	 * @param {IDeleteTenantRequest} params
+	 * @returns {Promise<Response<IDeleteTenantResponse>>}
+	 * @memberof InitializeControllerBase
+	 */
+	public abstract deleteTenant(params: IDeleteTenantRequest): Promise<Response<IDeleteTenantResponse>>;
 	/**
 	 * Method for handling [POST] /api/initialize/tenant/create
 	 * @abstract

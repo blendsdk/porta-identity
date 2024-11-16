@@ -6,7 +6,7 @@
 import { IRouteBase } from "@blendsdk/stdlib";
 export const routeDefinitions: {
 	blend: { get_translations: IRouteBase; get_app_version: IRouteBase };
-	initialize: { create_tenant: IRouteBase; initialize: IRouteBase };
+	initialize: { delete_tenant: IRouteBase; create_tenant: IRouteBase; initialize: IRouteBase };
 	reference_data: { get_reference_data: IRouteBase };
 	profile: { get_user_profile: IRouteBase; get_user_state: IRouteBase; save_user_state: IRouteBase };
 	authorization: {
@@ -32,6 +32,7 @@ export const routeDefinitions: {
 		get_app_version: { id: "get_app_version", method: "get", url: "/api/version", public: true }
 	},
 	initialize: {
+		delete_tenant: { id: "delete_tenant", method: "post", url: "/api/initialize/tenant/delete", public: false },
 		create_tenant: { id: "create_tenant", method: "post", url: "/api/initialize/tenant/create", public: false },
 		initialize: { id: "initialize", method: "post", url: "/api/initialize", public: false }
 	},

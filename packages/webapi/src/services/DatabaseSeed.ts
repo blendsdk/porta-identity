@@ -24,6 +24,7 @@ import { SysUserRoleDataService } from "../dataservices/SysUserRoleDataService";
 import { application } from "../modules/application/application";
 import { CONST_DAY_IN_SECONDS, IPortaApplicationSetting, eClientType, eDatabaseType } from "../types";
 import { commonUtils } from "./CommonUtils";
+import { databaseUtils } from "./DatabaseUtils";
 
 const crypto = new Crypto();
 x509.cryptoProvider.set(crypto);
@@ -201,6 +202,23 @@ export class DatabaseSeed {
         });
     }
 
+    public async deleteTenant(name: string) {
+        name = name.toLocaleLowerCase();
+        const isRegistry = name === commonUtils.getPortaRegistryTenant();
+
+        if (isRegistry) {
+            throw new Error("Not alowed to delete the registry!");
+        }
+
+        const tenantRecord = await databaseUtils.findTenant(name);
+
+        if (tenantRecord) {
+            
+        } else {
+            throw new Error(`Tenant ${name} does not exist!`);
+        }
+    }
+
     /**
      * @param {IInitializeTenant} params
      * @return {*}
@@ -223,6 +241,8 @@ export class DatabaseSeed {
             serverURL,
             conformanceTest
         } = params || {};
+
+        tenantName = tenantName.toLocaleLowerCase();
 
         // is registry flag
         const isRegistry = tenantName === commonUtils.getPortaRegistryTenant();

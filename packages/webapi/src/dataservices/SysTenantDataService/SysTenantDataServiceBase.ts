@@ -9,6 +9,7 @@ import {
 } from "@porta/shared";
 import { TExpressionRenderer } from "@blendsdk/expression";
 import {
+	ISysTenantDataServiceTerminateConnectionByDatabaseNameParams,
 	ISysTenantDataServiceFindByNameOrIdParams,
 	ISysTenantDataServiceFindSysTenantByIdParams,
 	ISysTenantDataServiceDeleteSysTenantByIdFilter,
@@ -161,6 +162,23 @@ export abstract class SysTenantDataServiceBase extends DataService<PostgreSQLExe
 	public async listSysTenantByExpression(params: TExpressionRenderer): Promise<ISysTenant[]> {
 		const ctx = await this.getContext();
 		const result = await ctx.listByExpression<ISysTenant[]>(`sys_tenant`, params, { single: false });
+		return result.data;
+	}
+
+	/**
+	 * @param {ISysTenantDataServiceTerminateConnectionByDatabaseNameParams}
+	 * @returns {ISysTenant}
+	 * @memberof SysTenantDataServiceBase
+	 */
+	public async terminateConnectionByDatabaseName(
+		params: ISysTenantDataServiceTerminateConnectionByDatabaseNameParams
+	): Promise<ISysTenant> {
+		const ctx = await this.getContext();
+		const result = await ctx.executeQuery<ISysTenant, ISysTenantDataServiceTerminateConnectionByDatabaseNameParams>(
+			`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :name  AND pid <> pg_backend_pid();`,
+			params,
+			{ single: true }
+		);
 		return result.data;
 	}
 

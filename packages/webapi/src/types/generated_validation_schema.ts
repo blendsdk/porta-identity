@@ -1020,6 +1020,30 @@ export const validationSchema = {
 			},
 			required: ["webclient", "webapi", "mobileclient"]
 		},
+		delete_tenant_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string
+				},
+				name: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["tenant", "name"]
+		},
+		delete_tenant: {
+			type: eJsonSchemaType.object,
+			properties: {
+				error: {
+					type: eJsonSchemaType.string
+				},
+				status: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["status"]
+		},
 		create_tenant_request: {
 			type: eJsonSchemaType.object,
 			properties: {

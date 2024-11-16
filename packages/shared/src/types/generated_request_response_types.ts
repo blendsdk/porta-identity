@@ -93,6 +93,52 @@ export interface IGetAppVersionResponse {
 
 /**
  * @export
+ * @interface IDeleteTenantRequest
+ */
+export interface IDeleteTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf IDeleteTenantRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IDeleteTenantRequest
+	 */
+	name: string;
+}
+
+/**
+ * @export
+ * @interface IDeleteTenant
+ */
+export interface IDeleteTenant {
+	/**
+	 * @type string
+	 * @memberOf IDeleteTenant
+	 */
+	error?: string;
+	/**
+	 * @type boolean
+	 * @memberOf IDeleteTenant
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface IDeleteTenantResponse
+ */
+export interface IDeleteTenantResponse {
+	/**
+	 * @type IDeleteTenant
+	 * @memberOf IDeleteTenantResponse
+	 */
+	data: IDeleteTenant;
+}
+
+/**
+ * @export
  * @interface ICreateTenantRequest
  */
 export interface ICreateTenantRequest {

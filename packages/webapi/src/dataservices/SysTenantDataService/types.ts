@@ -5,6 +5,18 @@
 
 /**
  * @export
+ * @interface ISysTenantDataServiceTerminateConnectionByDatabaseNameParams
+ */
+export interface ISysTenantDataServiceTerminateConnectionByDatabaseNameParams {
+	/**
+	 * @type string
+	 * @memberOf ISysTenantDataServiceTerminateConnectionByDatabaseNameParams
+	 */
+	name: string;
+}
+
+/**
+ * @export
  * @interface ISysTenantDataServiceFindByNameOrIdParams
  */
 export interface ISysTenantDataServiceFindByNameOrIdParams {

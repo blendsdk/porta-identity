@@ -4,9 +4,9 @@ import { CommandModule } from "yargs";
 import { PortaApi } from "../../api/generated_rest_api";
 import { checkGetToken } from "../common";
 
-export function createTenantCommand(): CommandModule {
+export function createTenantCreateCommand(): CommandModule {
     return {
-        command: "tenant",
+        command: "tenant:create",
         describe: "Creates a new tenant",
         handler: async () => {
             const token = checkGetToken();
@@ -70,6 +70,45 @@ export function createTenantCommand(): CommandModule {
                         email: answers.email,
                         organization: answers.organization,
                         password: answers.password,
+                        tenant: token.tenant
+                    });
+                    console.log(JSON.stringify(result, null, 4));
+                } catch (err) {
+                    lineLogger.error(err.message);
+                    console.log(err);
+                }
+            }
+        }
+    };
+}
+
+export function createTenantDeleteCommand(): CommandModule {
+    return {
+        command: "tenant:delete",
+        describe: "Deletes a tenant",
+        handler: async () => {
+            const token = checkGetToken();
+            const answers = {
+                name: await input({
+                    message: "Please provide a tenant name to delete",
+                    validate: (value) => {
+                        return !value || value.includes(" ") ? "Name must not have spaces or be empty" : true;
+                    }
+                }),
+                ok: await confirm({
+                    message: `Tenant will be delete on [${token.host}] using registry [${token.tenant}]. Are you sure`,
+                    default: false
+                })
+            };
+
+            if (answers.ok) {
+                PortaApi.setBaseUrl(token.host);
+                PortaApi.onRequest((req) => {
+                    req.headers["Authorization"] = `Bearer ${token.token}`;
+                });
+                try {
+                    const result = await PortaApi.initialize.deleteTenant({
+                        name: answers.name,
                         tenant: token.tenant
                     });
                     console.log(JSON.stringify(result, null, 4));
