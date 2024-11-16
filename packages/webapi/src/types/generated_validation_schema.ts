@@ -1020,6 +1020,39 @@ export const validationSchema = {
 			},
 			required: ["webclient", "webapi", "mobileclient"]
 		},
+		create_tenant_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				name: {
+					type: eJsonSchemaType.string
+				},
+				organization: {
+					type: eJsonSchemaType.string
+				},
+				username: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				email: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["name", "organization", "password", "email"]
+		},
+		create_tenant: {
+			type: eJsonSchemaType.object,
+			properties: {
+				error: {
+					type: eJsonSchemaType.string
+				},
+				status: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["status"]
+		},
 		initialize_request: {
 			type: eJsonSchemaType.object,
 			properties: {

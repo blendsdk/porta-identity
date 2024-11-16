@@ -93,6 +93,67 @@ export interface IGetAppVersionResponse {
 
 /**
  * @export
+ * @interface ICreateTenantRequest
+ */
+export interface ICreateTenantRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	name: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	organization: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	password: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
+	email: string;
+}
+
+/**
+ * @export
+ * @interface ICreateTenant
+ */
+export interface ICreateTenant {
+	/**
+	 * @type string
+	 * @memberOf ICreateTenant
+	 */
+	error?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateTenant
+	 */
+	status: boolean;
+}
+
+/**
+ * @export
+ * @interface ICreateTenantResponse
+ */
+export interface ICreateTenantResponse {
+	/**
+	 * @type ICreateTenant
+	 * @memberOf ICreateTenantResponse
+	 */
+	data: ICreateTenant;
+}
+
+/**
+ * @export
  * @interface IInitializeRequest
  */
 export interface IInitializeRequest {

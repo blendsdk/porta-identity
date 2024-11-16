@@ -42,6 +42,7 @@ export interface IInitializeTenant {
     password: string;
     email: string;
     serverURL: string;
+    conformanceTest: boolean;
 }
 
 /**
@@ -219,7 +220,8 @@ export class DatabaseSeed {
             password,
             tenantName,
             username,
-            serverURL
+            serverURL,
+            conformanceTest
         } = params || {};
 
         // is registry flag
@@ -265,7 +267,9 @@ export class DatabaseSeed {
             const { userRole, adminRole } = await this.createRoles(tenantRecord);
             await this.createCLIApplication(tenantRecord);
             await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
-            await this.createConformanceTestApplication(tenantRecord, serverURL, userRole);
+            if (conformanceTest) {
+                await this.createConformanceTestApplication(tenantRecord, serverURL, userRole);
+            }
             await this.createMFAProviders(tenantRecord);
         }
 

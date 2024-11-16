@@ -9,6 +9,8 @@ import {
 	IGetTranslationsResponse,
 	IGetAppVersionRequest,
 	IGetAppVersionResponse,
+	ICreateTenantRequest,
+	ICreateTenantResponse,
 	IInitializeRequest,
 	IInitializeResponse,
 	IGetReferenceDataRequest,
@@ -48,7 +50,10 @@ export interface IPortaApi {
 		getTranslations: THttpRequest<IGetTranslationsRequest, IGetTranslationsResponse>;
 		getAppVersion: THttpRequest<IGetAppVersionRequest | void, IGetAppVersionResponse>;
 	};
-	initialize: { initialize: THttpRequest<IInitializeRequest, IInitializeResponse> };
+	initialize: {
+		createTenant: THttpRequest<ICreateTenantRequest, ICreateTenantResponse>;
+		initialize: THttpRequest<IInitializeRequest, IInitializeResponse>;
+	};
 	referenceData: { getReferenceData: THttpRequest<IGetReferenceDataRequest, IGetReferenceDataResponse> };
 	profile: {
 		getUserProfile: THttpRequest<IGetUserProfileRequest | void, IGetUserProfileResponse>;
@@ -77,7 +82,10 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			getTranslations: defineEndpoint({ method: "get", url: "/api/i18n/:locale?" }),
 			getAppVersion: defineEndpoint({ method: "get", url: "/api/version" })
 		},
-		initialize: { initialize: defineEndpoint({ method: "post", url: "/api/initialize" }) },
+		initialize: {
+			createTenant: defineEndpoint({ method: "post", url: "/api/initialize/tenant/create" }),
+			initialize: defineEndpoint({ method: "post", url: "/api/initialize" })
+		},
 		referenceData: {
 			getReferenceData: defineEndpoint({
 				method: "post",
