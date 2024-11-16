@@ -69,9 +69,9 @@ export function createTenantCommand(): CommandModule {
                         //allow_reset_password: answers.allow_reset_password,
                         email: answers.email,
                         organization: answers.organization,
-                        password: answers.password
+                        password: answers.password,
+                        tenant: token.tenant
                     });
-
                     console.log(JSON.stringify(result, null, 4));
                 } catch (err) {
                     lineLogger.error(err.message);

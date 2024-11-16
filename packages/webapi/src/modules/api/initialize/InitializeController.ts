@@ -18,13 +18,20 @@ export class InitializeController extends InitializeControllerBase {
      */
     public async createTenant(params: ICreateTenantRequest): Promise<Response<ICreateTenantResponse>> {
         try {
-            let { email, password, username, organization, name } = params;
+            let { email, password, username, organization, name, tenant } = params;
+
+            const registry = commonUtils.getPortaRegistryTenant();
+
+            // Only allow tenant registration from if logged into the registry!
+            if (tenant !== registry) {
+                throw new Error(`Unable to create a new tenant while authenticated with ${tenant}`);
+            }
 
             username = username || email;
 
             const databaseSeed = new DatabaseSeed();
 
-            const tenant = await databaseSeed.initializeTenant({
+            const newTenant = await databaseSeed.initializeTenant({
                 allow_registration: false,
                 allow_reset_password: true,
                 databaseName: undefined,
@@ -38,10 +45,10 @@ export class InitializeController extends InitializeControllerBase {
             });
 
             return new SuccessResponse({
-                status: tenant ? true : false,
-                error: tenant ? undefined : `${name} is already initialized!`,
+                status: newTenant ? true : false,
+                error: newTenant ? undefined : `${name} is already initialized!`,
                 tenants: {
-                    tenant: tenant || {}
+                    tenant: newTenant || {}
                 }
             } as any);
         } catch (err) {

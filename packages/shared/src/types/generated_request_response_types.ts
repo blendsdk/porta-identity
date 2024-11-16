@@ -100,6 +100,11 @@ export interface ICreateTenantRequest {
 	 * @type string
 	 * @memberOf ICreateTenantRequest
 	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateTenantRequest
+	 */
 	name: string;
 	/**
 	 * @type string

@@ -1023,6 +1023,9 @@ export const validationSchema = {
 		create_tenant_request: {
 			type: eJsonSchemaType.object,
 			properties: {
+				tenant: {
+					type: eJsonSchemaType.string
+				},
 				name: {
 					type: eJsonSchemaType.string
 				},
@@ -1039,7 +1042,7 @@ export const validationSchema = {
 					type: eJsonSchemaType.string
 				}
 			},
-			required: ["name", "organization", "password", "email"]
+			required: ["tenant", "name", "organization", "password", "email"]
 		},
 		create_tenant: {
 			type: eJsonSchemaType.object,
