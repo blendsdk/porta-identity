@@ -69,7 +69,6 @@ export function createInitCommand(): CommandModule {
                     console.log(JSON.stringify(result, null, 4));
                 } catch (err) {
                     lineLogger.error(err.message);
-                    console.log(err);
                 }
             }
         }
