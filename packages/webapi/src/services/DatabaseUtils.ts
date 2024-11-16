@@ -58,10 +58,12 @@ export class DatabaseUtils extends ServiceBase {
         // clone all connection to the tenant database
         await tenantDs.terminateConnectionByDatabaseName({ name: tenantRecord.database });
 
-        // drop the tenant database
+        // rename the tenant database. We do not delete it for now
         const ds = dataSourceManager.getDataSource<PostgreSQLDataSource>();
         const ctx = await ds.createContext();
-        await ctx.executeQuery(`DROP DATABASE ${tenantRecord.database}`);
+        await ctx.executeQuery(
+            `ALTER DATABASE ${tenantRecord.database} RENAME TO ${tenantRecord.database}_DELETED_ON_${new Date().getTime()};`
+        );
     }
 
     /**
