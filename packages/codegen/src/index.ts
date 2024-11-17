@@ -6,13 +6,14 @@ import { createDatabaseSchema } from "./database";
 import { createDataServices } from "./dataservice";
 import { consoleLogger, database, typeBuilder, typeSchema, writeFileSync } from "./lib";
 import { clean_generated } from "./lib/clean";
+import { generateDatabaseSeeds } from "./seed";
 import { createViewSchema } from "./views";
 
 const WebApiRoot: string = path.join(process.cwd(), "..", "webapi");
 const WebClientRoot: string = path.join(process.cwd(), "..", "webclient");
 const CLIRoot: string = path.join(process.cwd(), "..", "cli");
 const SharedRoot: string = path.join(process.cwd(), "..", "shared");
-const packageScope = "@porta";
+const CodeGenRoot: string = path.join(process.cwd());
 
 async function generate() {
     clean_generated();
@@ -62,6 +63,10 @@ async function generate() {
     // Write the TypeScript types to file
     writeFileSync(path.join(SharedRoot, "src", "types", "generated_types.ts"), types || "export {}");
     writeFileSync(path.join(SharedRoot, "src", "types", "generated_database_types.ts"), dbs || "export {}");
+
+    writeFileSync(path.join(CodeGenRoot, "src", "types", "generated_types.ts"), types || "export {}");
+    writeFileSync(path.join(CodeGenRoot, "src", "types", "generated_database_types.ts"), dbs || "export {}");
+
     writeFileSync(
         path.join(SharedRoot, "src", "types", "generated_request_response_types.ts"),
         request_response || "export {}"
@@ -109,8 +114,10 @@ async function generate() {
     );
 
     const enumBuilder = new EnumBuilder({ logger: consoleLogger, typeSchema });
+    const enumsData = await enumBuilder.build();
     // create enums
-    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), await enumBuilder.build());
+    writeFileSync(path.join(SharedRoot, "src", "types", "generated_enums.ts"), enumsData);
+    writeFileSync(path.join(CodeGenRoot, "src", "types", "generated_enums.ts"), enumsData);
 
     // create i18n keys
     writeFileSync(
@@ -139,20 +146,27 @@ async function generate() {
             outFile,
             [
                 `/**`,
-                ` * DO NOT CHANGE THIS FILE`,
                 ` * THIS FILE IS AUTO GENERATED`,
+                ` * DO NOT CHANGED THIS FILE`,
                 ` */`,
                 ``,
-                `import { I18NKeys } from "${packageScope}/shared";`,
-                `import { ${variableInterfaceName}, ${variableName} } from "../../application/api";`,
+                `import { ${variableInterfaceName}, ${variableName} } from "../../api";`,
                 ``,
-                `export interface IApplicationI18NKeys extends I18NKeys {}`,
                 `export interface IApplicationApi extends ${variableInterfaceName} {}`,
                 ``,
                 `export const ApplicationApi = ${variableName};`
             ].join("\n")
         );
     });
+
+    const seeds = await generateDatabaseSeeds();
+    writeFileSync(path.join(WebApiRoot, "resources", "database", "seeds.sql"), seeds.sql);
+    writeFileSync(path.join(SharedRoot, "src", "types", "generated_constants.ts"), seeds.enums);
+
+    writeFileSync(
+        path.join(SharedRoot, "src", "types", "generated_i18n_keys.ts"), //
+        seeds.enums
+    );
 }
 
 (async () => {

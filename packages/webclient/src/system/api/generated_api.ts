@@ -1,12 +1,10 @@
 /**
- * DO NOT CHANGE THIS FILE
  * THIS FILE IS AUTO GENERATED
+ * DO NOT CHANGED THIS FILE
  */
 
-import { I18NKeys } from "@porta/shared";
-import { IPortaApi, PortaApi } from "../../application/api";
+import { IPortaApi, PortaApi } from "../../api";
 
-export interface IApplicationI18NKeys extends I18NKeys {}
 export interface IApplicationApi extends IPortaApi {}
 
 export const ApplicationApi = PortaApi;

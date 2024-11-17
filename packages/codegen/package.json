@@ -1,32 +1,33 @@
 {
-  "name": "@porta/codegen",
-  "private": true,
-  "version": "1.0.260",
-  "description": "Code generation package for porta",
-  "main": "dist/index.js",
-  "author": "TrueSoftware <info@truesoftware.nl>",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "lint": "tslint -p ./tsconfig.json --fix",
-    "build": "rm -fR ./dist ./temp && tsc",
-    "watch": "rm -fR ./dist && tsc -w",
-    "test": "jest --detectOpenHandles --passWithNoTests",
-    "cli": "codegen",
-    "generate": "yarn build && LOG_LEVEL=INFO node ./dist/index.js start",
-    "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
-  },
-  "devDependencies": {
-    "@types/node": "^22.5.4",
-    "tslib": "^2.7.0"
-  },
-  "dependencies": {
-    "@blendsdk/codegen": "3.2.521",
-    "@blendsdk/datakit": "3.2.521",
-    "@blendsdk/filesystem": "3.2.521",
-    "@blendsdk/jsonschema": "3.2.521",
-    "@blendsdk/logger": "3.2.521",
-    "@blendsdk/postgresql": "3.2.521",
-    "@blendsdk/stdlib": "3.2.521",
-    "jose": "^5.8.0"
-  }
+    "name": "@porta/codegen",
+    "private": true,
+    "version": "1.0.260",
+    "description": "Code generation package for porta",
+    "main": "dist/index.js",
+    "author": "TrueSoftware <info@truesoftware.nl>",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "lint": "tslint -p ./tsconfig.json --fix",
+        "build": "rm -fR ./dist ./temp && tsc",
+        "watch": "rm -fR ./dist && tsc -w",
+        "test": "jest --detectOpenHandles --passWithNoTests",
+        "cli": "codegen",
+        "generate": "yarn build && LOG_LEVEL=INFO node ./dist/index.js start",
+        "generate:watch": "DEBUG=true nodemon --config ./nodemon.json --watch ./dist/ --watch ./resources --inspect ./dist/index.js start"
+    },
+    "devDependencies": {
+        "@types/node": "^22.5.4",
+        "tslib": "^2.7.0"
+    },
+    "dependencies": {
+        "@blendsdk/crypto": "3.2.521",
+        "@blendsdk/codegen": "3.2.521",
+        "@blendsdk/datakit": "3.2.521",
+        "@blendsdk/filesystem": "3.2.521",
+        "@blendsdk/jsonschema": "3.2.521",
+        "@blendsdk/logger": "3.2.521",
+        "@blendsdk/postgresql": "3.2.521",
+        "@blendsdk/stdlib": "3.2.521",
+        "jose": "^5.8.0"
+    }
 }

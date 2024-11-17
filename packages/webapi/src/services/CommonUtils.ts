@@ -22,7 +22,7 @@ class CommonUtils {
 
     /**
      * @param {number} seconds
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public secondsToMilliseconds(seconds: number) {
@@ -31,7 +31,7 @@ class CommonUtils {
 
     /**
      * @param {number} milliseconds
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public millisecondsToSeconds(milliseconds: number) {
@@ -41,29 +41,30 @@ class CommonUtils {
     /**
      * @param {number} seconds
      * @param {number} [now]
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public expireSecondsFromNow(seconds: number, now?: number) {
         return (now || Date.now()) + this.secondsToMilliseconds(seconds);
-    };
-
+    }
 
     /**
      * @param {HttpRequest} request
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public getRemoteIP(request: HttpRequest) {
         return wrapInArray(
             request.headers["x-forwarded-for"] || request.headers["x-real-ip"] || request.socket.remoteAddress
-        ).join("_").replace(/\:/gi, "_");
+        )
+            .join("_")
+            .replace(/\:/gi, "_");
     }
 
     /**
      * @param {ISysTenant} tenantRecord
      * @param {HttpRequest} request
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public createSessionCookieID(tenantRecord: ISysTenant, request: HttpRequest) {
@@ -101,7 +102,7 @@ class CommonUtils {
      * @param {string} client_id
      * @param {string} client_secret
      * @param {HttpRequest} req
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public createTokenReference(client_id: string, client_secret: string, req: HttpRequest) {
@@ -111,13 +112,13 @@ class CommonUtils {
     /**
      * @param {string} tenant
      * @param {boolean} [checkActive]
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public async getTenantRecord(tenant: string, req: HttpRequest, checkActive?: boolean) {
         const tenantRecord = await databaseUtils.findTenant(tenant);
         checkActive = checkActive === false ? false : true;
-        const isActive = tenantRecord ? checkActive ? tenantRecord.is_active : true : false;
+        const isActive = tenantRecord ? (checkActive ? tenantRecord.is_active : true) : false;
         if (tenantRecord && isActive) {
             await databaseUtils.initDataSource(tenantRecord.id, req);
             return tenantRecord;
@@ -125,7 +126,6 @@ class CommonUtils {
             return undefined;
         }
     }
-
 
     /**
      * Parses a a string with spaces to an array
@@ -151,12 +151,46 @@ class CommonUtils {
     /**
      * @param {ISysSession} session
      * @param {number} max_age
-     * @return {*} 
+     * @return {*}
      * @memberof CommonUtils
      */
     public checkLoginRequired(session: ISysSession, max_age: number) {
         const date_created = new Date(session.date_created).getTime();
         return max_age ? this.millisecondsToSeconds(Date.now() - date_created) > max_age : false;
+    }
+
+    /**
+     * @param {number} [length]
+     * @return {*}  {string}
+     * @memberof CommonUtils
+     */
+    public generateSecret(length: number): string {
+        const lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        const upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const numbers = "0123456789";
+        const specialChars = "!@#$%^&*-_~";
+        const allChars = lowerCase + upperCase + numbers + specialChars;
+
+        let password = "";
+
+        // Ensure at least one character from each group
+        password += lowerCase[Math.floor(Math.random() * lowerCase.length)];
+        password += upperCase[Math.floor(Math.random() * upperCase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += specialChars[Math.floor(Math.random() * specialChars.length)];
+
+        // Fill the remaining characters randomly
+        for (let i = password.length; i < length; i++) {
+            password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+
+        // Shuffle the password to prevent predictable patterns
+        password = password
+            .split("")
+            .sort(() => 0.5 - Math.random())
+            .join("");
+
+        return password;
     }
 }
 

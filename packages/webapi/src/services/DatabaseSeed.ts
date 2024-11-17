@@ -1,4 +1,4 @@
-import { sha256Hash } from "@blendsdk/crypto";
+import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { MD5, asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
@@ -366,9 +366,98 @@ export class DatabaseSeed {
     }
 
     /**
+     * @param {ISysTenant} tenantRecord
+     * @param {{
+     *             issuer: string;
+     *             server_url: string;
+     *             tenant_name: string;
+     *             application_name: string;
+     *             logo?: string;
+     *             description?: string;
+     *         }} options
+     * @return {*} 
+     * @memberof DatabaseSeed
+     */
+    public async createMultiTenantBlendApplication(
+        tenantRecord: ISysTenant,
+        options: {
+            issuer: string;
+            server_url: string;
+            tenant_name: string;
+            application_name: string;
+            logo?: string;
+            description?: string;
+        }
+    ) {
+        const {
+            ACCESS_TOKEN_TTL,
+            REFRESH_TOKEN_TTL,
+            BYPASS_MFA_DAYS = 1
+        } = application.getSettings<IPortaApplicationSetting & IDatabaseAppSettings>();
+
+        const { application_name, logo, description, server_url, tenant_name, issuer } = options;
+
+        const app = await this.createApplication(
+            {
+                id: MD5(application_name),
+                tenant_id: tenantRecord.id,
+                application_name,
+                logo,
+                client_id: await sha256Hash(generateRandomUUID()),
+                description: description || application_name,
+                is_system: false
+            },
+            tenantRecord
+        );
+
+        const client = await this.createClient(
+            {
+                client_type: eClientType.confidential,
+                application_id: app.id,
+                redirect_uri: `${server_url}/oidc/${tenant_name}/signin/callback`,
+                post_logout_redirect_uri: `${server_url}/fe/auth/${tenant_name}/signout/complete`,
+                access_token_length: ACCESS_TOKEN_TTL,
+                refresh_token_length: REFRESH_TOKEN_TTL,
+                is_system: false,
+                is_back_channel_post_logout: false,
+                mfa_bypass_days: BYPASS_MFA_DAYS
+            },
+            app,
+            tenantRecord
+        );
+
+        const now = Date.now();
+        const secret = await this.createSecret(
+            {
+                secret: commonUtils.generateSecret(60),
+                valid_from: new Date(now).toISOString(),
+                valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
+                application_id: app.id
+            },
+            app,
+            tenantRecord
+        );
+
+        return {
+            issuer,
+            client_id: app.client_id,
+            secret: secret.secret,
+            secret_valid_until: new Date(secret.valid_to).toISOString(),
+            redirect_uri: client.redirect_uri,
+            post_logout_redirect_uri: client.post_logout_redirect_uri
+        };
+        /**
+         * TODO:
+         *      1. Create the commandline command application:create
+         *      2. Create endpoint
+         */
+
+    }
+
+    /**
      * @protected
      * @param {ISysTenant} tenantRecord
-     * @param {string} serverURL
+     * @param {string} serverURLpost_logout_redirect_uri
      * @memberof DatabaseSeed
      */
     protected async createCLIApplication(tenantRecord: ISysTenant) {
