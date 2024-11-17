@@ -150,7 +150,7 @@ async function generate() {
                 ` * DO NOT CHANGED THIS FILE`,
                 ` */`,
                 ``,
-                `import { ${variableInterfaceName}, ${variableName} } from "../../api";`,
+                `import { ${variableInterfaceName}, ${variableName} } from "../../application/api";`,
                 ``,
                 `export interface IApplicationApi extends ${variableInterfaceName} {}`,
                 ``,

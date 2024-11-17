@@ -71,7 +71,6 @@ export class PortaAuthUtils {
         };
     }
 }
-
 /**
  * Singleton
  */

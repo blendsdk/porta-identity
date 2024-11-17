@@ -1,11 +1,20 @@
-import { generateRandomUUID, sha256Hash } from "@blendsdk/crypto";
+import { sha256Hash } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
 import { MD5, asyncForEach, isNullOrUndef } from "@blendsdk/stdlib";
 import { IDatabaseAppSettings } from "@blendsdk/webafx";
 import { Crypto } from "@peculiar/webcrypto";
 import * as x509 from "@peculiar/x509";
-import { ISysApplication, ISysClient, ISysRole, ISysSecret, ISysTenant } from "@porta/shared";
+import {
+    ISysApplication,
+    ISysClient,
+    ISysPermission,
+    ISysRole,
+    ISysSecret,
+    ISysTenant,
+    eSystemPermissions,
+    eSystemRoles
+} from "@porta/shared";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -284,11 +293,11 @@ export class DatabaseSeed {
         if (tenantRecord) {
             // create keys
             await this.createJWKKeys(tenantRecord);
-            const { userRole, adminRole } = await this.createRoles(tenantRecord);
+            await this.createSystemRoles(tenantRecord);
             await this.createCLIApplication(tenantRecord);
-            await this.createUsers(tenantRecord, userRole, adminRole, username, password, email);
+            await this.createUsers(tenantRecord, username, password, email, isRegistry);
             if (conformanceTest) {
-                await this.createConformanceTestApplication(tenantRecord, serverURL, userRole);
+                await this.createConformanceTestApplication(tenantRecord, serverURL);
             }
             await this.createMFAProviders(tenantRecord);
         }
@@ -303,7 +312,7 @@ export class DatabaseSeed {
         });
     }
 
-    protected async createConformanceTestApplication(tenantRecord: ISysTenant, _serverURL: string, userRole: ISysRole) {
+    protected async createConformanceTestApplication(tenantRecord: ISysTenant, _serverURL: string) {
         const { ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL } = application.getSettings<
             IPortaApplicationSetting & IDatabaseAppSettings
         >();
@@ -326,7 +335,7 @@ export class DatabaseSeed {
             );
 
             if (!serviceUserCreated) {
-                await this.createServiceUsers(tenantRecord, app, userRole);
+                await this.createServiceUsers(tenantRecord, app);
                 serviceUserCreated = true;
             }
 
@@ -365,94 +374,94 @@ export class DatabaseSeed {
         });
     }
 
-    /**
-     * @param {ISysTenant} tenantRecord
-     * @param {{
-     *             issuer: string;
-     *             server_url: string;
-     *             tenant_name: string;
-     *             application_name: string;
-     *             logo?: string;
-     *             description?: string;
-     *         }} options
-     * @return {*} 
-     * @memberof DatabaseSeed
-     */
-    public async createMultiTenantBlendApplication(
-        tenantRecord: ISysTenant,
-        options: {
-            issuer: string;
-            server_url: string;
-            tenant_name: string;
-            application_name: string;
-            logo?: string;
-            description?: string;
-        }
-    ) {
-        const {
-            ACCESS_TOKEN_TTL,
-            REFRESH_TOKEN_TTL,
-            BYPASS_MFA_DAYS = 1
-        } = application.getSettings<IPortaApplicationSetting & IDatabaseAppSettings>();
+    // /**
+    //  * @param {ISysTenant} tenantRecord
+    //  * @param {{
+    //  *             issuer: string;
+    //  *             server_url: string;
+    //  *             tenant_name: string;
+    //  *             application_name: string;
+    //  *             logo?: string;
+    //  *             description?: string;
+    //  *         }} options
+    //  * @return {*}
+    //  * @memberof DatabaseSeed
+    //  */
+    // public async createMultiTenantBlendApplication(
+    //     tenantRecord: ISysTenant,
+    //     options: {
+    //         issuer: string;
+    //         server_url: string;
+    //         tenant_name: string;
+    //         application_name: string;
+    //         logo?: string;
+    //         description?: string;
+    //     }
+    // ) {
+    //     const {
+    //         ACCESS_TOKEN_TTL,
+    //         REFRESH_TOKEN_TTL,
+    //         BYPASS_MFA_DAYS = 1
+    //     } = application.getSettings<IPortaApplicationSetting & IDatabaseAppSettings>();
 
-        const { application_name, logo, description, server_url, tenant_name, issuer } = options;
+    //     const { application_name, logo, description, server_url, tenant_name, issuer } = options;
 
-        const app = await this.createApplication(
-            {
-                id: MD5(application_name),
-                tenant_id: tenantRecord.id,
-                application_name,
-                logo,
-                client_id: await sha256Hash(generateRandomUUID()),
-                description: description || application_name,
-                is_system: false
-            },
-            tenantRecord
-        );
+    //     const app = await this.createApplication(
+    //         {
+    //             id: MD5(application_name),
+    //             tenant_id: tenantRecord.id,
+    //             application_name,
+    //             logo,
+    //             client_id: await sha256Hash(generateRandomUUID()),
+    //             description: description || application_name,
+    //             is_system: false
+    //         },
+    //         tenantRecord
+    //     );
 
-        const client = await this.createClient(
-            {
-                client_type: eClientType.confidential,
-                application_id: app.id,
-                redirect_uri: `${server_url}/oidc/${tenant_name}/signin/callback`,
-                post_logout_redirect_uri: `${server_url}/fe/auth/${tenant_name}/signout/complete`,
-                access_token_length: ACCESS_TOKEN_TTL,
-                refresh_token_length: REFRESH_TOKEN_TTL,
-                is_system: false,
-                is_back_channel_post_logout: false,
-                mfa_bypass_days: BYPASS_MFA_DAYS
-            },
-            app,
-            tenantRecord
-        );
+    //     const client = await this.createClient(
+    //         {
+    //             client_type: eClientType.confidential,
+    //             application_id: app.id,
+    //             redirect_uri: `${server_url}/oidc/${tenant_name}/signin/callback`,
+    //             post_logout_redirect_uri: `${server_url}/fe/auth/${tenant_name}/signout/complete`,
+    //             access_token_length: ACCESS_TOKEN_TTL,
+    //             refresh_token_length: REFRESH_TOKEN_TTL,
+    //             is_system: false,
+    //             is_back_channel_post_logout: false,
+    //             mfa_bypass_days: BYPASS_MFA_DAYS
+    //         },
+    //         app,
+    //         tenantRecord
+    //     );
 
-        const now = Date.now();
-        const secret = await this.createSecret(
-            {
-                secret: commonUtils.generateSecret(60),
-                valid_from: new Date(now).toISOString(),
-                valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
-                application_id: app.id
-            },
-            app,
-            tenantRecord
-        );
+    //     const now = Date.now();
+    //     const secret = await this.createSecret(
+    //         {
+    //             secret: commonUtils.generateSecret(60),
+    //             valid_from: new Date(now).toISOString(),
+    //             valid_to: new Date(commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)).toISOString(),
+    //             application_id: app.id
+    //         },
+    //         app,
+    //         tenantRecord
+    //     );
 
-        return {
-            issuer,
-            client_id: app.client_id,
-            secret: secret.secret,
-            secret_valid_until: new Date(secret.valid_to).toISOString(),
-            redirect_uri: client.redirect_uri,
-            post_logout_redirect_uri: client.post_logout_redirect_uri
-        };
-        /**
-         * TODO:
-         *      1. Create the commandline command application:create
-         *      2. Create endpoint
-         */
+    //     return {
+    //         issuer,
+    //         client_id: app.client_id,
+    //         secret: secret.secret,
+    //         secret_valid_until: new Date(secret.valid_to).toISOString(),
+    //         redirect_uri: client.redirect_uri,
+    //         post_logout_redirect_uri: client.post_logout_redirect_uri
+    //     };
+    //     /**
+    //      * TODO:
+    //      *      1. Create the commandline command application:create
+    //      *      2. Create endpoint
+    //      */
 
-    }
+    // }
 
     /**
      * @protected
@@ -543,7 +552,7 @@ export class DatabaseSeed {
         return appDs.insertIntoSysApplication(record);
     }
 
-    protected async createServiceUsers(tenantRecord: ISysTenant, serviceApp: ISysApplication, userRole: ISysRole) {
+    protected async createServiceUsers(tenantRecord: ISysTenant, serviceApp: ISysApplication) {
         const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
         const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
         const userRoleDs = new SysUserRoleDataService({ tenantId: tenantRecord.id });
@@ -564,7 +573,7 @@ export class DatabaseSeed {
         });
 
         await userRoleDs.insertIntoSysUserRole({
-            role_id: userRole.id,
+            role_id: eSystemRoles.USER.id,
             user_id: serviceUser.id
         });
     }
@@ -581,11 +590,10 @@ export class DatabaseSeed {
      */
     protected async createUsers(
         tenantRecord: ISysTenant,
-        userRole: ISysRole,
-        adminRole: ISysRole,
         username: string,
         password: string,
-        email: string
+        email: string,
+        isRegistry: boolean
     ) {
         const userDs = new SysUserDataService({ tenantId: tenantRecord.id });
         const profileDs = new SysProfileDataService({ tenantId: tenantRecord.id });
@@ -614,57 +622,49 @@ export class DatabaseSeed {
         });
 
         await userRoleDs.insertIntoSysUserRole({
-            role_id: userRole.id,
+            role_id: eSystemRoles.USER.id,
             user_id: adminUser.id
         });
 
         await userRoleDs.insertIntoSysUserRole({
-            role_id: adminRole.id,
+            role_id: eSystemRoles.ADMINISTRATOR.id,
             user_id: adminUser.id
         });
+
+        await userRoleDs.insertIntoSysUserRole({
+            role_id: eSystemRoles.TENANT_OWNER.id,
+            user_id: adminUser.id
+        });
+
+        if (isRegistry) {
+            await userRoleDs.insertIntoSysUserRole({
+                role_id: eSystemRoles.REGISTRY_OWNER.id,
+                user_id: adminUser.id
+            });
+        }
     }
 
     /**
      * @param tenantRecord
      * @returns
      */
-    protected async createRoles(tenantRecord: ISysTenant) {
+    protected async createSystemRoles(tenantRecord: ISysTenant) {
         const roleDs = new SysRoleDataService({ tenantId: tenantRecord.id });
         const permissionDs = new SysPermissionDataService({ tenantId: tenantRecord.id });
         const rolePermissionDs = new SysRolePermissionDataService({ tenantId: tenantRecord.id });
 
-        const userRole = await roleDs.insertIntoSysRole({
-            role: "USER",
-            description: "System Users",
-            is_active: true,
-            is_system: true
+        // add the system permissions
+        await asyncForEach(Object.values(eSystemPermissions), async (record: ISysPermission) => {
+            await permissionDs.insertIntoSysPermission(record);
         });
 
-        const adminRole = await roleDs.insertIntoSysRole({
-            role: "ADMINISTRATOR",
-            description: "System Administrators",
-            is_active: true,
-            is_system: true
+        // add the relevant records
+        await asyncForEach(Object.values(eSystemRoles), async (record: ISysRole) => {
+            await roleDs.insertIntoSysRole(record);
+            await rolePermissionDs.insertIntoSysRolePermission({
+                permission_id: eSystemPermissions.DEFAULT.id,
+                role_id: record.id
+            });
         });
-
-        const defaultPermission = await permissionDs.insertIntoSysPermission({
-            permission: "DEFAULT",
-            application_id: null,
-            description: "Default System Permission",
-            is_active: true,
-            is_system: true
-        });
-
-        await rolePermissionDs.insertIntoSysRolePermission({
-            permission_id: defaultPermission.id,
-            role_id: userRole.id
-        });
-
-        await rolePermissionDs.insertIntoSysRolePermission({
-            permission_id: defaultPermission.id,
-            role_id: adminRole.id
-        });
-
-        return { userRole, adminRole };
     }
 }

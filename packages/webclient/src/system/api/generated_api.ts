@@ -3,7 +3,7 @@
  * DO NOT CHANGED THIS FILE
  */
 
-import { IPortaApi, PortaApi } from "../../api";
+import { IPortaApi, PortaApi } from "../../application/api";
 
 export interface IApplicationApi extends IPortaApi {}
 

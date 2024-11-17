@@ -1,14 +1,17 @@
 import { errorObjectInfo } from "@blendsdk/stdlib";
-import { Response, ServerErrorResponse, SuccessResponse } from "@blendsdk/webafx-common";
+import { Response, ServerErrorResponse, SuccessResponse, UnAuthorizedAccessResponse } from "@blendsdk/webafx-common";
 import {
+    eSystemRoles,
+    hasRole,
     ICreateTenantRequest,
     ICreateTenantResponse,
     IDeleteTenantRequest,
     IDeleteTenantResponse,
     IInitializeRequest,
-    IInitializeResponse
+    IInitializeResponse,
+    IPortaAccount
 } from "@porta/shared";
-import { DatabaseSeed, commonUtils } from "../../../services";
+import { commonUtils, DatabaseSeed } from "../../../services";
 import { InitializeControllerBase } from "./InitializeControllerBase";
 
 /**
@@ -25,6 +28,10 @@ export class InitializeController extends InitializeControllerBase {
      */
     public async deleteTenant(params: IDeleteTenantRequest): Promise<Response<IDeleteTenantResponse>> {
         try {
+            if (!hasRole(eSystemRoles.REGISTRY_OWNER, this.context.getUser<IPortaAccount>().roles)) {
+                return new UnAuthorizedAccessResponse(new Error("You are not a registry owner!"));
+            }
+
             let { name, tenant } = params;
 
             const registry = commonUtils.getPortaRegistryTenant();
@@ -52,6 +59,7 @@ export class InitializeController extends InitializeControllerBase {
             return new ServerErrorResponse(err);
         }
     }
+
     /**
      * @param {ICreateTenantRequest} params
      * @return {*}  {Promise<Response<ICreateTenantResponse>>}
@@ -59,6 +67,10 @@ export class InitializeController extends InitializeControllerBase {
      */
     public async createTenant(params: ICreateTenantRequest): Promise<Response<ICreateTenantResponse>> {
         try {
+            if (!hasRole(eSystemRoles.REGISTRY_OWNER, this.context.getUser<IPortaAccount>().roles)) {
+                return new UnAuthorizedAccessResponse(new Error("You are not a registry owner!"));
+            }
+
             let { email, password, username, organization, name, tenant } = params;
 
             const registry = commonUtils.getPortaRegistryTenant();
