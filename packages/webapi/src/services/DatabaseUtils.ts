@@ -308,7 +308,7 @@ export class DatabaseUtils extends ServiceBase {
      */
     public assertTenant(tenant: string, req: HttpRequest) {
         const { tenant: sessionTenant } = req.context.getUser<IPortaAccount>();
-        if (tenant !== sessionTenant.id) {
+        if (tenant !== sessionTenant.id && tenant !== sessionTenant.name) {
             throw new Error("Invalid or mismatch tenant");
         }
     }

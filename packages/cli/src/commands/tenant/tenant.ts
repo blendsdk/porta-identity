@@ -118,3 +118,29 @@ export function createTenantDeleteCommand(): CommandModule {
         }
     };
 }
+
+export function createDevTestCommand(): CommandModule {
+    return {
+        command: "dev:test",
+        describe: "DevTest",
+        handler: async () => {
+            const token = checkGetToken();
+            PortaApi.setBaseUrl(token.host);
+            PortaApi.onRequest((req) => {
+                req.headers["Authorization"] = `Bearer ${token.token}`;
+            });
+            try {
+                const result = await PortaApi.admin.createApplication({
+                    application_name: "app" + Date.now(),
+                    description: "test",
+                    redirect_uri: "test1",
+                    tenant: token.tenant,
+                    client_type: "C"
+                });
+                console.log(JSON.stringify(result, null, 4));
+            } catch (err) {
+                lineLogger.error(err.message);
+            }
+        }
+    };
+}

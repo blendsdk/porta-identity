@@ -1718,6 +1718,61 @@ export const validationSchema = {
 		},
 		authorize: {
 			type: eJsonSchemaType.object
+		},
+		create_application_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				application_name: {
+					type: eJsonSchemaType.string
+				},
+				logo: {
+					type: eJsonSchemaType.string
+				},
+				description: {
+					type: eJsonSchemaType.string
+				},
+				ow_consent: {
+					type: eJsonSchemaType.boolean
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				mfa_bypass_days: {
+					type: eJsonSchemaType.number
+				},
+				mfa_id: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["tenant", "application_name", "description", "redirect_uri"]
+		},
+		create_application: {
+			type: eJsonSchemaType.object,
+			properties: {
+				application_id: {
+					type: eJsonSchemaType.string
+				},
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_secret: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["application_id", "client_id", "client_secret"]
 		}
 	}
 };

@@ -1288,3 +1288,99 @@ export interface IAuthorizeResponse {
 	 */
 	data: IAuthorize;
 }
+
+/**
+ * @export
+ * @interface ICreateApplicationRequest
+ */
+export interface ICreateApplicationRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	application_name: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	logo?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	description: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateApplicationRequest
+	 */
+	ow_consent?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	client_type?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	post_logout_redirect_uri?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateApplicationRequest
+	 */
+	is_back_channel_post_logout?: boolean;
+	/**
+	 * @type number
+	 * @memberOf ICreateApplicationRequest
+	 */
+	mfa_bypass_days?: number;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	mfa_id?: string;
+}
+
+/**
+ * @export
+ * @interface ICreateApplication
+ */
+export interface ICreateApplication {
+	/**
+	 * @type string
+	 * @memberOf ICreateApplication
+	 */
+	application_id: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplication
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplication
+	 */
+	client_secret: string;
+}
+
+/**
+ * @export
+ * @interface ICreateApplicationResponse
+ */
+export interface ICreateApplicationResponse {
+	/**
+	 * @type ICreateApplication
+	 * @memberOf ICreateApplicationResponse
+	 */
+	data: ICreateApplication;
+}

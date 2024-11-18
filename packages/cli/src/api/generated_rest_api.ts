@@ -40,7 +40,9 @@ import {
 	IUserInfoGetRequest,
 	IUserInfoGetResponse,
 	ICheckSetFlowRequest,
-	ICheckSetFlowResponse
+	ICheckSetFlowResponse,
+	ICreateApplicationRequest,
+	ICreateApplicationResponse
 } from "@porta/shared";
 /**
  * Interface describing the Backend REST API client
@@ -74,6 +76,7 @@ export interface IPortaApi {
 		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
 		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
 	};
+	admin: { createApplication: THttpRequest<ICreateApplicationRequest, ICreateApplicationResponse> };
 }
 /**
  * Backend REST API client
@@ -142,6 +145,13 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			}),
 			userInfoGet: defineEndpoint({ method: "get", url: "/:tenant/oauth2/me" }),
 			checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" })
+		},
+		admin: {
+			createApplication: defineEndpoint({
+				method: "post",
+				url: "/api/admin/:tenant/application/create",
+				parameters: { tenant: eParameterLocation.params }
+			})
 		}
 	}
 });

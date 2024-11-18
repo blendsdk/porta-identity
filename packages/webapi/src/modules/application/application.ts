@@ -4,6 +4,7 @@ import { I18NModuleFactory } from "@blendsdk/webafx-i18n";
 import { MailerModule } from "@blendsdk/webafx-mailer";
 import * as path from "path";
 import { PortaAuthSessionProviderModule } from "../../services";
+import { AdminModule } from "../api/admin";
 import { AuthorizationModule } from "../api/authorization";
 import { InitializeModule } from "../api/initialize";
 import { RedirectRoutes } from "../redirects";
@@ -31,6 +32,7 @@ const application = new WebApplication({
         ValidationSchema(),
         InitializeModule(),
         AuthorizationModule(),
+        AdminModule(),
         RedirectRoutes(),
         SPARoutes()
     ]
