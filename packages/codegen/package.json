@@ -1,7 +1,7 @@
 {
     "name": "@porta/codegen",
     "private": true,
-    "version": "1.0.260",
+    "version": "1.0.261",
     "description": "Code generation package for porta",
     "main": "dist/index.js",
     "author": "TrueSoftware <info@truesoftware.nl>",
@@ -20,8 +20,8 @@
         "tslib": "^2.7.0"
     },
     "dependencies": {
-        "@blendsdk/crypto": "3.2.521",
         "@blendsdk/codegen": "3.2.521",
+        "@blendsdk/crypto": "3.2.521",
         "@blendsdk/datakit": "3.2.521",
         "@blendsdk/filesystem": "3.2.521",
         "@blendsdk/jsonschema": "3.2.521",
