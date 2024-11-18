@@ -1,7 +1,8 @@
+import { verifyStringSync } from "@blendsdk/crypto";
 import { dataSourceManager } from "@blendsdk/datakit";
 import { expression } from "@blendsdk/expression";
 import { PostgreSQLDataSource } from "@blendsdk/postgresql";
-import { indexObject } from "@blendsdk/stdlib";
+import { indexObject, isNullOrUndef } from "@blendsdk/stdlib";
 import { HttpRequest } from "@blendsdk/webafx-common";
 import {
     IAuthorizeRequest,
@@ -275,14 +276,20 @@ export class DatabaseUtils extends ServiceBase {
             e.createRenderer(
                 e.And(
                     e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                    e.Equal(eSysSecretView.CLIENT_SECRET, secret),
                     e.Equal(eSysSecretView.IS_EXPIRED, false)
                 )
             )
         );
-        return secrets.length === 1;
+        return !isNullOrUndef(secrets.find((s) => verifyStringSync(secret, s.client_secret)));
     }
 
+    /**
+     * @param {ISysTenant} tenantRecord
+     * @param {string} client_id
+     * @param {string} secret
+     * @return {*}
+     * @memberof DatabaseUtils
+     */
     public async findClientSecretForServiceAccount(tenantRecord: ISysTenant, client_id: string, secret: string) {
         const tenantDs = new SysTenantDataService({ tenantId: tenantRecord.id });
         const e = expression();
@@ -290,13 +297,12 @@ export class DatabaseUtils extends ServiceBase {
             e.createRenderer(
                 e.And(
                     e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                    e.Equal(eSysSecretView.CLIENT_SECRET, secret),
                     e.Equal(eSysSecretView.IS_EXPIRED, false),
                     e.IsNotNull(eSysSecretView.CLIENT_CREDENTIAL_USER_ID)
                 )
             )
         );
-        return secrets.length !== 0 ? secrets[0] : undefined;
+        return secrets.find((s) => verifyStringSync(secret, s.client_secret));
     }
 
     /**

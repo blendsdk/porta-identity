@@ -17,6 +17,22 @@ import { IPostgreSQLQueryResult, PostgreSQLExecutionContext } from "@blendsdk/po
  */
 export abstract class SysSecretDataServiceBase extends DataService<PostgreSQLExecutionContext> {
 	/**
+	 * Input converter of insertIntoSysSecret
+	 * @param {ISysSecret}
+	 * @returns {ISysSecret}
+	 * @memberof SysSecretDataServiceBase
+	 */
+	protected abstract insertIntoSysSecretInConverter(record: ISysSecret): ISysSecret;
+
+	/**
+	 * Input converter of updateSysSecretById
+	 * @param {Partial<ISysSecret>}
+	 * @returns {Partial<ISysSecret>}
+	 * @memberof SysSecretDataServiceBase
+	 */
+	protected abstract updateSysSecretByIdInConverter(record: Partial<ISysSecret>): Partial<ISysSecret>;
+
+	/**
 	 * Find a sys_secret record by
 	 * @param {ISysSecretDataServiceFindSysSecretByIdParams}
 	 * @returns {ISysSecret}
@@ -40,7 +56,12 @@ export abstract class SysSecretDataServiceBase extends DataService<PostgreSQLExe
 	 */
 	public async insertIntoSysSecret(params: ISysSecret): Promise<ISysSecret> {
 		const ctx = await this.getContext();
-		const result = await ctx.insertRecord<ISysSecret, ISysSecret>(`sys_secret`, params, { single: true });
+		const result = await ctx.insertRecord<ISysSecret, ISysSecret>(`sys_secret`, params, {
+			single: true,
+			inConverter: (record: ISysSecret) => {
+				return this.insertIntoSysSecretInConverter(record);
+			}
+		});
 		return result.data;
 	}
 
@@ -75,7 +96,12 @@ export abstract class SysSecretDataServiceBase extends DataService<PostgreSQLExe
 			ISysSecret,
 			Partial<ISysSecret>,
 			ISysSecretDataServiceUpdateSysSecretByIdFilter
-		>(`sys_secret`, params, filter, { single: true });
+		>(`sys_secret`, params, filter, {
+			single: true,
+			inConverter: (record: Partial<ISysSecret>) => {
+				return this.updateSysSecretByIdInConverter(record);
+			}
+		});
 		return result.data;
 	}
 

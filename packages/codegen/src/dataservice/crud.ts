@@ -1,4 +1,10 @@
-import { createMethodName, Database, eReturnValue, RdbDataServiceBuilder } from "@blendsdk/codegen";
+import {
+    createMethodName,
+    Database,
+    eReturnValue,
+    IDataServiceByRelationMethod,
+    RdbDataServiceBuilder
+} from "@blendsdk/codegen";
 
 /**
  * Creates CRUD DataServices for all tables in the database
@@ -126,7 +132,7 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             svc.defineListByExpressionMethod({
                 table: tableName
             });
-            
+
             svc.defineMethod({
                 name: "terminate_connection_by_database_name",
                 query: "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :name  AND pid <> pg_backend_pid();",
@@ -187,61 +193,11 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
             });
         }
 
-        // if (tableName === "sys_user_group") {
-        //     svc.defineMethod({
-        //         name: "find_groups_by_user_id",
-        //         query: "select * from sys_groups_by_user_view where user_id = :user_id",
-        //         recordSet: true,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("user_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: "sys_groups_by_user_view"
-        //     });
-        // }
-
-        // if (tableName === "sys_permission") {
-        //     svc.defineMethod({
-        //         name: "find_permissions_by_user_id_and_client_id",
-        //         query: "select * from sys_user_permission_view where user_id = :user_id and client_id = :client_id",
-        //         recordSet: true,
-        //         returnValue: eReturnValue.dataOnly,
-        //         type: "query",
-        //         inputType: ({ suggestedTypeName, typeSchema }) => {
-        //             typeSchema
-        //                 .createAppendType(suggestedTypeName) //
-        //                 .addString("client_id")
-        //                 .addString("user_id");
-        //             return suggestedTypeName;
-        //         },
-        //         returnType: "sys_user_permission_view"
-        //     });
-        // }
-
         if (tableName === "sys_user") {
             svc.defineInsertMethod({ table: tableName, inConverter: true, outConverter: true });
             svc.defineUpdateByPrimaryKeyMethod({ table: tableName, inConverter: true, outConverter: true });
             svc.defineFindByPrimaryKeyMethod({ table: tableName, outConverter: true });
             svc.defineDeleteByPrimaryKeyMethod({ table: tableName });
-
-            // svc.defineMethod({
-            //     name: "find_mfa_by_user_id",
-            //     query: "SELECT * FROM sys_user_mfa_view WHERE user_id = :user_id::uuid",
-            //     recordSet: true,
-            //     returnValue: eReturnValue.dataOnly,
-            //     type: "query",
-            //     inputType: ({ suggestedTypeName, typeSchema }) => {
-            //         typeSchema
-            //             .createAppendType(suggestedTypeName) //
-            //             .addString("user_id");
-            //         return suggestedTypeName;
-            //     },
-            //     returnType: "sys_user_mfa_view"
-            // });
 
             svc.defineMethod({
                 name: "find_by_username_non_service",
@@ -269,11 +225,25 @@ export function createCrudDataServices(databaseSchema: Database, builder: RdbDat
                 returnType: "sys_user"
             });
         } else {
+            let insert_extra: Partial<IDataServiceByRelationMethod> = {};
+            let update_extra: Partial<IDataServiceByRelationMethod> = {};
+
+            // Add inConverters to sys_secret
+            if (tableName === "sys_secret") {
+                insert_extra = {
+                    inConverter: true
+                };
+
+                update_extra = {
+                    inConverter: true
+                };
+            }
+
             // create CRUD
             svc.defineFindByPrimaryKeyMethod({ table: tableName });
-            svc.defineInsertMethod({ table: tableName });
+            svc.defineInsertMethod({ table: tableName, ...insert_extra });
             svc.defineDeleteByPrimaryKeyMethod({ table: tableName });
-            svc.defineUpdateByPrimaryKeyMethod({ table: tableName });
+            svc.defineUpdateByPrimaryKeyMethod({ table: tableName, ...update_extra });
             svc.defineFindByUniqueColumnMethod({ table: tableName });
             svc.defineFindByUniqueConstraintMethod({ table: tableName });
             if (has_list_by_expression) {

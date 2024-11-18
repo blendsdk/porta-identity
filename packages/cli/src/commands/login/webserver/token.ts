@@ -47,8 +47,6 @@ export class CliTokenAuth extends MultiTenantOpenIDTokenAuthenticationModule {
         return {
             prompt: "login",
             scope: "openid email profile offline_access acl",
-            state: `hello-${Date.now()}`,
-            ui_locales: "nl-NL",
             resource: req.context.getServerURL()
         };
     }
