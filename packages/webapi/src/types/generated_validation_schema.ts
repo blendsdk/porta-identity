@@ -1719,6 +1719,98 @@ export const validationSchema = {
 		authorize: {
 			type: eJsonSchemaType.object
 		},
+		create_account_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				username: {
+					type: eJsonSchemaType.string
+				},
+				password: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				},
+				require_pw_change: {
+					type: eJsonSchemaType.boolean
+				},
+				email: {
+					type: eJsonSchemaType.string
+				},
+				firstname: {
+					type: eJsonSchemaType.string
+				},
+				lastname: {
+					type: eJsonSchemaType.string
+				},
+				website: {
+					type: eJsonSchemaType.string
+				},
+				zoneinfo: {
+					type: eJsonSchemaType.string
+				},
+				birthdate: {
+					type: eJsonSchemaType.string
+				},
+				gender: {
+					type: eJsonSchemaType.string
+				},
+				middle_name: {
+					type: eJsonSchemaType.string
+				},
+				locale: {
+					type: eJsonSchemaType.string
+				},
+				avatar: {
+					type: eJsonSchemaType.string
+				},
+				address: {
+					type: eJsonSchemaType.string
+				},
+				postalcode: {
+					type: eJsonSchemaType.string
+				},
+				city: {
+					type: eJsonSchemaType.string
+				},
+				country: {
+					type: eJsonSchemaType.string
+				},
+				state: {
+					type: eJsonSchemaType.string
+				},
+				phone_number: {
+					type: eJsonSchemaType.string
+				},
+				phone_number_verified: {
+					type: eJsonSchemaType.boolean
+				},
+				applications: {
+					type: eJsonSchemaType.array,
+					items: {
+						type: eJsonSchemaType.string
+					},
+					acceptNullValue: true
+				},
+				service_application_id: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["tenant", "password", "email", "firstname", "lastname"]
+		},
+		create_account: {
+			type: eJsonSchemaType.object,
+			properties: {
+				user_id: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["user_id"]
+		},
 		create_application_request: {
 			type: eJsonSchemaType.object,
 			properties: {

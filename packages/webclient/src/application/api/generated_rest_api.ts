@@ -41,6 +41,8 @@ import {
 	IUserInfoGetResponse,
 	ICheckSetFlowRequest,
 	ICheckSetFlowResponse,
+	ICreateAccountRequest,
+	ICreateAccountResponse,
 	ICreateApplicationRequest,
 	ICreateApplicationResponse
 } from "@porta/shared";
@@ -76,7 +78,10 @@ export interface IPortaApi {
 		userInfoGet: THttpRequest<IUserInfoGetRequest, IUserInfoGetResponse>;
 		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
 	};
-	admin: { createApplication: THttpRequest<ICreateApplicationRequest, ICreateApplicationResponse> };
+	admin: {
+		createAccount: THttpRequest<ICreateAccountRequest, ICreateAccountResponse>;
+		createApplication: THttpRequest<ICreateApplicationRequest, ICreateApplicationResponse>;
+	};
 }
 /**
  * Backend REST API client
@@ -147,6 +152,11 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" })
 		},
 		admin: {
+			createAccount: defineEndpoint({
+				method: "post",
+				url: "/api/admin/:tenant/account/create",
+				parameters: { tenant: eParameterLocation.params }
+			}),
 			createApplication: defineEndpoint({
 				method: "post",
 				url: "/api/admin/:tenant/application/create",

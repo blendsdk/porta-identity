@@ -1291,6 +1291,157 @@ export interface IAuthorizeResponse {
 
 /**
  * @export
+ * @interface ICreateAccountRequest
+ */
+export interface ICreateAccountRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	username?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	password: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateAccountRequest
+	 */
+	is_active?: boolean;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateAccountRequest
+	 */
+	require_pw_change?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	email: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	firstname: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	lastname: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	website?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	zoneinfo?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	birthdate?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	gender?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	middle_name?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	locale?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	avatar?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	address?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	postalcode?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	city?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	country?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	state?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	phone_number?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateAccountRequest
+	 */
+	phone_number_verified?: boolean;
+	/**
+	 * @type string[]
+	 * @memberOf ICreateAccountRequest
+	 */
+	applications?: string[];
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	service_application_id?: string;
+}
+
+/**
+ * @export
+ * @interface ICreateAccount
+ */
+export interface ICreateAccount {
+	/**
+	 * @type string
+	 * @memberOf ICreateAccount
+	 */
+	user_id: string;
+}
+
+/**
+ * @export
+ * @interface ICreateAccountResponse
+ */
+export interface ICreateAccountResponse {
+	/**
+	 * @type ICreateAccount
+	 * @memberOf ICreateAccountResponse
+	 */
+	data: ICreateAccount;
+}
+
+/**
+ * @export
  * @interface ICreateApplicationRequest
  */
 export interface ICreateApplicationRequest {

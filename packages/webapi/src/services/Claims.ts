@@ -1,8 +1,16 @@
 import { IDictionaryOf, isNullOrUndef, isObject, wrapInArray } from "@blendsdk/stdlib";
-import { IAuthorizeRequest, ISysApplication, ISysClient, ISysPermission, ISysProfile, ISysRole, ISysTenant, ISysUser } from "@porta/shared";
+import {
+    IAuthorizeRequest,
+    ISysApplication,
+    ISysClient,
+    ISysPermission,
+    ISysProfile,
+    ISysRole,
+    ISysTenant,
+    ISysUser
+} from "@porta/shared";
 import { commonUtils } from "./CommonUtils";
 import { neutralAvatar } from "./resources";
-
 
 /**
  * Interface describing a claim
@@ -29,11 +37,11 @@ export interface IClaimHandlerRecord {
 }
 
 export interface IClames {
-    application: ISysApplication,
-    user: ISysUser,
-    profile: ISysProfile,
-    tenant: ISysTenant,
-    roles: ISysRole[],
+    application: ISysApplication;
+    user: ISysUser;
+    profile: ISysProfile;
+    tenant: ISysTenant;
+    roles: ISysRole[];
     permissions: ISysPermission[];
     client: ISysClient;
     serverUrl: string;
@@ -47,7 +55,7 @@ export enum eScopes {
     email = "email",
     phone = "phone",
     acl = "acl",
-    address = "address",
+    address = "address"
 }
 
 export enum eClaims {
@@ -75,18 +83,20 @@ export enum eClaims {
     phone_number_verified = "phone_number_verified",
     tenant = "tenant",
     roles = "roles",
-    permissions = "permissions",
+    permissions = "permissions"
 }
 
 /**
  * @export
  * @param {...eScopes[]} scopes
- * @return {*} 
+ * @return {*}
  */
 export function mergeScopes(...scopes: eScopes[]) {
-    return scopes.map(s => {
-        return s.toString();
-    }).join(" ");
+    return scopes
+        .map((s) => {
+            return s.toString();
+        })
+        .join(" ");
 }
 
 /**
@@ -116,7 +126,8 @@ export class Claims {
      */
     public constructor(config: IClames) {
         this.config = config;
-        const { user = undefined,
+        const {
+            user = undefined,
             profile = undefined,
             tenant = undefined,
             permissions = [],
@@ -253,7 +264,7 @@ export class Claims {
                             city: profile.city || "n/a",
                             postalcode: profile.postalcode || "n/a",
                             state: profile.state || "n/a",
-                            country: profile.country || "n/a",
+                            country: profile.country || "n/a"
                         };
                     })
                 },
@@ -326,7 +337,7 @@ export class Claims {
 
     /**
      * @param {string[]} [customScopes]
-     * @return {*} 
+     * @return {*}
      * @memberof Claims
      */
     public getClaimsList(customScopes?: string[]) {
@@ -407,7 +418,8 @@ export class Claims {
                     try {
                         result[handler.claim] = handler.handler({});
                     } catch (err) {
-                        debugger;
+                        // no handler found!
+                        // debugger
                     }
                 });
         });

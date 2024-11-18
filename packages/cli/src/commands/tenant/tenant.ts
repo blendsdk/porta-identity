@@ -119,9 +119,9 @@ export function createTenantDeleteCommand(): CommandModule {
     };
 }
 
-export function createDevTestCommand(): CommandModule {
+export function createDevTestApplicationCommand(): CommandModule {
     return {
-        command: "dev:test",
+        command: "dev:test:application",
         describe: "DevTest",
         handler: async () => {
             const token = checkGetToken();
@@ -136,6 +136,47 @@ export function createDevTestCommand(): CommandModule {
                     redirect_uri: "test1",
                     tenant: token.tenant,
                     client_type: "C"
+                });
+                console.log(JSON.stringify(result, null, 4));
+            } catch (err) {
+                lineLogger.error(err.message);
+            }
+        }
+    };
+}
+
+export function createDevTestAccountCommand(): CommandModule {
+    return {
+        command: "dev:test:account",
+        describe: "DevTest",
+        builder: {
+            a: {
+                alias: "app",
+                required: false,
+                type: "string",
+                array: true
+            },
+            u: {
+                alias: "user",
+                required: false,
+                type: "string"
+            }
+        },
+        handler: async (args: any) => {
+            const token = checkGetToken();
+            PortaApi.setBaseUrl(token.host);
+            PortaApi.onRequest((req) => {
+                req.headers["Authorization"] = `Bearer ${token.token}`;
+            });
+            try {
+                const result = await PortaApi.admin.createAccount({
+                    email: args.user || `${Date.now()}@${token.tenant}`,
+                    firstname: "John " + Date.now(),
+                    lastname: "Doe",
+                    password: "secret",
+                    tenant: token.tenant,
+                    is_active: true,
+                    applications: args.app
                 });
                 console.log(JSON.stringify(result, null, 4));
             } catch (err) {

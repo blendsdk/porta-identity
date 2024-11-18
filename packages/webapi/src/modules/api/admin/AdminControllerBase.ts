@@ -4,7 +4,12 @@
  */
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
-import { ICreateApplicationRequest, ICreateApplicationResponse } from "@porta/shared";
+import {
+	ICreateAccountRequest,
+	ICreateAccountResponse,
+	ICreateApplicationRequest,
+	ICreateApplicationResponse
+} from "@porta/shared";
 
 /**
  * @export
@@ -16,6 +21,14 @@ import { ICreateApplicationRequest, ICreateApplicationResponse } from "@porta/sh
 export abstract class AdminControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [POST] /api/admin/:tenant/account/create
+	 * @abstract
+	 * @param {ICreateAccountRequest} params
+	 * @returns {Promise<Response<ICreateAccountResponse>>}
+	 * @memberof AdminControllerBase
+	 */
+	public abstract createAccount(params: ICreateAccountRequest): Promise<Response<ICreateAccountResponse>>;
 	/**
 	 * Method for handling [POST] /api/admin/:tenant/application/create
 	 * @abstract
