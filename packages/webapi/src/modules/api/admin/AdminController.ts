@@ -68,7 +68,8 @@ export class AdminController extends AdminControllerBase {
                 postalcode,
                 state,
                 website,
-                zoneinfo
+                zoneinfo,
+                metadata
             } = params;
 
             return this.withSuccessResponse<ICreateAccount>(() => {
@@ -82,7 +83,6 @@ export class AdminController extends AdminControllerBase {
                         is_system: false,
                         service_application_id
                     });
-
                     await ds.sysProfileDataService().insertIntoSysProfile({
                         user_id: userRecord.id,
                         email,
@@ -101,7 +101,8 @@ export class AdminController extends AdminControllerBase {
                         postalcode,
                         state,
                         website,
-                        zoneinfo
+                        zoneinfo,
+                        metadata: metadata ? JSON.parse(metadata) : undefined
                     });
 
                     await asyncForEach(wrapInArray<string>(applications), async (application_id) => {
@@ -156,7 +157,8 @@ export class AdminController extends AdminControllerBase {
                 is_back_channel_post_logout = false,
                 mfa_bypass_days = BYPASS_MFA_DAYS || 1,
                 mfa_id,
-                post_logout_redirect_uri
+                post_logout_redirect_uri,
+                metadata
             } = params;
 
             const portaAccount = this.getContext().getUser<IPortaAccount>();
@@ -172,7 +174,8 @@ export class AdminController extends AdminControllerBase {
                         logo,
                         ow_consent,
                         is_active: true,
-                        is_system: false
+                        is_system: false,
+                        metadata: metadata ? JSON.parse(metadata) : undefined
                     });
 
                     await ds.sysClientDataService().insertIntoSysClient({

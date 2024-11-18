@@ -1414,6 +1414,11 @@ export interface ICreateAccountRequest {
 	 * @memberOf ICreateAccountRequest
 	 */
 	service_application_id?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccountRequest
+	 */
+	metadata?: string;
 }
 
 /**
@@ -1426,6 +1431,16 @@ export interface ICreateAccount {
 	 * @memberOf ICreateAccount
 	 */
 	user_id: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccount
+	 */
+	user_name: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateAccount
+	 */
+	date_created: string;
 }
 
 /**
@@ -1470,6 +1485,11 @@ export interface ICreateApplicationRequest {
 	 * @memberOf ICreateApplicationRequest
 	 */
 	ow_consent?: boolean;
+	/**
+	 * @type string
+	 * @memberOf ICreateApplicationRequest
+	 */
+	metadata?: string;
 	/**
 	 * @type string
 	 * @memberOf ICreateApplicationRequest

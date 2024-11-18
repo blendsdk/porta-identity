@@ -78,6 +78,7 @@ export enum eSysApplication {
 	IS_SYSTEM = "is_system",
 	IS_ACTIVE = "is_active",
 	OW_CONSENT = "ow_consent",
+	METADATA = "metadata",
 	TENANT_ID = "tenant_id"
 }
 
@@ -164,6 +165,7 @@ export enum eSysProfile {
 	USER_ID = "user_id",
 	DATE_CREATED = "date_created",
 	USER_STATE = "user_state",
+	METADATA = "metadata",
 	DATE_MODIFIED = "date_modified"
 }
 

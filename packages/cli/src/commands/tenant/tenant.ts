@@ -176,7 +176,10 @@ export function createDevTestAccountCommand(): CommandModule {
                     password: "secret",
                     tenant: token.tenant,
                     is_active: true,
-                    applications: args.app
+                    applications: args.app,
+                    metadata: JSON.stringify({
+                        actor_id: "this actor"
+                    })
                 });
                 console.log(JSON.stringify(result, null, 4));
             } catch (err) {

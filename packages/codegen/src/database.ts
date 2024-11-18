@@ -49,6 +49,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .booleanColumn("is_system", { default: "false" })
         .booleanColumn("is_active", { default: "true" })
         .booleanColumn("ow_consent", { default: "false" }) // organizational wide consent
+        .jsonColumn("metadata", refType("any_index"), { required: false, default: "'{}'" })
         .referenceColumnAuto("tenant_id", tenant);
 
     user.primaryKeyColumn("id", true) //
@@ -102,6 +103,7 @@ export async function createDatabaseSchema(database: Database, resourcesRoot: st
         .referenceColumnAuto("user_id", user)
         .dateTimeColumn("date_created", { default: "now()" })
         .stringColumn("user_state", { required: false })
+        .jsonColumn("metadata", refType("any_index"), { required: false, default: "'{}'" })
         .dateTimeColumn("date_modified", { default: "now()" });
 
     client //

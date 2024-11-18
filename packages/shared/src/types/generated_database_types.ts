@@ -130,6 +130,11 @@ export interface ISysApplication {
 	 */
 	ow_consent?: boolean;
 	/**
+	 * @type IAnyIndex
+	 * @memberOf ISysApplication
+	 */
+	metadata?: IAnyIndex;
+	/**
 	 * @type string
 	 * @memberOf ISysApplication
 	 */
@@ -407,6 +412,11 @@ export interface ISysProfile {
 	 * @memberOf ISysProfile
 	 */
 	user_state?: string;
+	/**
+	 * @type IAnyIndex
+	 * @memberOf ISysProfile
+	 */
+	metadata?: IAnyIndex;
 	/**
 	 * @type string
 	 * @memberOf ISysProfile

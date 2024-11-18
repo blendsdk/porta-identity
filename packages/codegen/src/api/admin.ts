@@ -34,7 +34,8 @@ export function createAdminAPI(builder: ApiBuilder) {
                 .addString("phone_number", { optional: true })
                 .addBoolean("phone_number_verified", { optional: true })
                 .addString("applications", { optional: true, array: true, acceptNullValue: true })
-                .addString("service_application_id", { optional: true });
+                .addString("service_application_id", { optional: true })
+                .addString("metadata", { optional: true });
 
             typeSchema
                 .createAppendType(payload_type)
@@ -60,6 +61,7 @@ export function createAdminAPI(builder: ApiBuilder) {
                 .addString("logo", { optional: true })
                 .addString("description")
                 .addBoolean("ow_consent", { optional: true }) // organizational wide consent
+                .addString("metadata", { optional: true })
 
                 .addString("client_type", { optional: true })
                 .addString("redirect_uri")

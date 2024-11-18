@@ -117,6 +117,11 @@ export const validationSchema = {
 					type: eJsonSchemaType.boolean,
 					acceptNullValue: true
 				},
+				metadata: {
+					type: eJsonSchemaType.object,
+					$ref: "#/definitions/any_index",
+					acceptNullValue: true
+				},
 				tenant_id: {
 					type: eJsonSchemaType.string,
 					format: "uuid"
@@ -340,6 +345,11 @@ export const validationSchema = {
 				},
 				user_state: {
 					type: eJsonSchemaType.string,
+					acceptNullValue: true
+				},
+				metadata: {
+					type: eJsonSchemaType.object,
+					$ref: "#/definitions/any_index",
 					acceptNullValue: true
 				},
 				date_modified: {
@@ -1798,6 +1808,9 @@ export const validationSchema = {
 				},
 				service_application_id: {
 					type: eJsonSchemaType.string
+				},
+				metadata: {
+					type: eJsonSchemaType.string
 				}
 			},
 			required: ["tenant", "password", "email", "firstname", "lastname"]
@@ -1807,9 +1820,15 @@ export const validationSchema = {
 			properties: {
 				user_id: {
 					type: eJsonSchemaType.string
+				},
+				user_name: {
+					type: eJsonSchemaType.string
+				},
+				date_created: {
+					type: eJsonSchemaType.string
 				}
 			},
-			required: ["user_id"]
+			required: ["user_id", "user_name", "date_created"]
 		},
 		create_application_request: {
 			type: eJsonSchemaType.object,
@@ -1829,6 +1848,9 @@ export const validationSchema = {
 				},
 				ow_consent: {
 					type: eJsonSchemaType.boolean
+				},
+				metadata: {
+					type: eJsonSchemaType.string
 				},
 				client_type: {
 					type: eJsonSchemaType.string
