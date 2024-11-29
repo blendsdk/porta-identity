@@ -1,6 +1,6 @@
 {
     "name": "@porta/webapi",
-    "version": "1.0.269",
+    "version": "1.0.270",
     "main": "dist/index.js",
     "private": true,
     "bin": {
