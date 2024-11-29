@@ -277,10 +277,13 @@ export class DatabaseUtils extends ServiceBase {
                 e.And(e.Equal(eSysSecretView.CLIENT_ID, client_id), e.Equal(eSysSecretView.IS_EXPIRED, false))
             )
         );
+
+        //TODO: This should have been done in BlendSDK
+        secret = decodeURIComponent(secret);
+
         return !isNullOrUndef(
             secrets.find((s) => {
-                console.log({ hash: s, secret });
-                return verifyStringSync(secret, s.client_secret);
+                verifyStringSync(secret, s.client_secret);
             })
         );
     }
