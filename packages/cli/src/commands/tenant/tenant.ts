@@ -188,3 +188,29 @@ export function createDevTestAccountCommand(): CommandModule {
         }
     };
 }
+
+export function createGroencastingCommand(): CommandModule {
+    return {
+        command: "prod:groencasting",
+        describe: "Groencasting",
+        handler: async () => {
+            const token = checkGetToken();
+            PortaApi.setBaseUrl(token.host);
+            PortaApi.onRequest((req) => {
+                req.headers["Authorization"] = `Bearer ${token.token}`;
+            });
+            try {
+                const result = await PortaApi.admin.createApplication({
+                    application_name: "actorportal",
+                    description: "Groencasting ActorPortal",
+                    redirect_uri: "http://localhost:4000/oidc/${tenantRecord.name}/signin/callback",
+                    tenant: token.tenant,
+                    client_type: "C"
+                });
+                console.log(JSON.stringify(result, null, 4));
+            } catch (err) {
+                lineLogger.error(err.message);
+            }
+        }
+    };
+}

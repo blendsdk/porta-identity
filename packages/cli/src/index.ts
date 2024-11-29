@@ -4,6 +4,7 @@ import { createLoginCommand } from "./commands/login";
 import {
     createDevTestAccountCommand,
     createDevTestApplicationCommand,
+    createGroencastingCommand,
     createTenantCreateCommand,
     createTenantDeleteCommand
 } from "./commands/tenant";
@@ -19,5 +20,6 @@ yargs
     .command(createTenantDeleteCommand())
     .command(createDevTestApplicationCommand())
     .command(createDevTestAccountCommand())
+    .command(createGroencastingCommand())
     .demandCommand(1)
     .help().argv;
