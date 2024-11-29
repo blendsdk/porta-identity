@@ -202,10 +202,11 @@ export function createGroencastingCommand(): CommandModule {
             try {
                 const result = await PortaApi.admin.createApplication({
                     application_name: "actorportal",
-                    description: "Groencasting ActorPortal",
-                    redirect_uri: "http://localhost:4000/oidc/${tenantRecord.name}/signin/callback",
+                    description: "Groencasting ActorPortal Develop",
+                    redirect_uri: "http://localhost:4000/oidc/groencasting/signin/callback",
                     tenant: token.tenant,
-                    client_type: "C"
+                    client_type: "C",
+                    ow_consent: true
                 });
                 console.log(JSON.stringify(result, null, 4));
             } catch (err) {

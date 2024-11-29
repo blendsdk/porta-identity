@@ -1887,6 +1887,49 @@ export const validationSchema = {
 				}
 			},
 			required: ["application_id", "client_id", "client_secret"]
+		},
+		create_client_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				application: {
+					type: eJsonSchemaType.string
+				},
+				client_type: {
+					type: eJsonSchemaType.string
+				},
+				redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				post_logout_redirect_uri: {
+					type: eJsonSchemaType.string
+				},
+				is_back_channel_post_logout: {
+					type: eJsonSchemaType.boolean
+				},
+				mfa_bypass_days: {
+					type: eJsonSchemaType.number
+				},
+				mfa_id: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["tenant", "application", "redirect_uri"]
+		},
+		create_client: {
+			type: eJsonSchemaType.object,
+			properties: {
+				client_id: {
+					type: eJsonSchemaType.string
+				},
+				client_secret: {
+					type: eJsonSchemaType.string
+				}
+			},
+			required: ["client_id", "client_secret"]
 		}
 	}
 };

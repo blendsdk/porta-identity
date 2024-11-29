@@ -8,7 +8,9 @@ import {
 	ICreateAccountRequest,
 	ICreateAccountResponse,
 	ICreateApplicationRequest,
-	ICreateApplicationResponse
+	ICreateApplicationResponse,
+	ICreateClientRequest,
+	ICreateClientResponse
 } from "@porta/shared";
 
 /**
@@ -37,4 +39,12 @@ export abstract class AdminControllerBase<
 	 * @memberof AdminControllerBase
 	 */
 	public abstract createApplication(params: ICreateApplicationRequest): Promise<Response<ICreateApplicationResponse>>;
+	/**
+	 * Method for handling [POST] /api/admin/:tenant/client/create
+	 * @abstract
+	 * @param {ICreateClientRequest} params
+	 * @returns {Promise<Response<ICreateClientResponse>>}
+	 * @memberof AdminControllerBase
+	 */
+	public abstract createClient(params: ICreateClientRequest): Promise<Response<ICreateClientResponse>>;
 }

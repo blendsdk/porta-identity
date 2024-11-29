@@ -12,6 +12,8 @@ import {
     ICreateApplication,
     ICreateApplicationRequest,
     ICreateApplicationResponse,
+    ICreateClientRequest,
+    ICreateClientResponse,
     IPortaAccount,
     ISysRole,
     ISysUserPermissionView
@@ -28,6 +30,104 @@ import { AdminControllerBase } from "./AdminControllerBase";
  * @extends {AdminControllerBase}
  */
 export class AdminController extends AdminControllerBase {
+    /**
+     * @param {ICreateClientRequest} params
+     * @return {*}  {Promise<Response<ICreateClientResponse>>}
+     * @memberof AdminController
+     */
+    public async createClient(params: ICreateClientRequest): Promise<Response<ICreateClientResponse>> {
+        let error: string = undefined;
+
+        if (!hasRole(eSystemRoles.TENANT_OWNER, this.getUser<IPortaAccount>().roles)) {
+            error = "You are not a tenant owner!";
+        }
+
+        if (!error) {
+            const {
+                ACCESS_TOKEN_TTL,
+                REFRESH_TOKEN_TTL,
+                BYPASS_MFA_DAYS = 1
+            } = this.getContext().getSettings<IPortaApplicationSetting>();
+
+            const {
+                tenant,
+                application,
+                client_type = "C",
+                redirect_uri,
+                is_back_channel_post_logout = false,
+                mfa_bypass_days = BYPASS_MFA_DAYS || 1,
+                mfa_id,
+                post_logout_redirect_uri
+            } = params;
+
+            return this.withSuccessResponse<ICreateApplication>(() => {
+                const ds = new DataServices(tenant, this.request);
+                return ds.withTransaction(async () => {
+                    const applicationRecord = await ds.sysApplicationDataService().findSysApplicationById({
+                        id: application
+                    });
+
+                    if (applicationRecord) {
+                        await ds.sysClientDataService().insertIntoSysClient({
+                            application_id: applicationRecord.id,
+                            client_type,
+                            redirect_uri,
+                            post_logout_redirect_uri,
+                            is_back_channel_post_logout,
+                            access_token_length: ACCESS_TOKEN_TTL,
+                            refresh_token_length: REFRESH_TOKEN_TTL,
+                            mfa_bypass_days,
+                            mfa_id,
+                            is_active: true,
+                            is_system: false
+                        });
+
+                        const now = Date.now();
+
+                        const application_secret = commonUtils.generateSecret(60);
+                        await ds.sysSecretDataService().insertIntoSysSecret({
+                            application_id: applicationRecord.id,
+                            secret: application_secret,
+                            valid_from: new Date(now).toISOString(),
+                            valid_to: new Date(
+                                commonUtils.expireSecondsFromNow(CONST_DAY_IN_SECONDS * 365, now)
+                            ).toISOString()
+                        });
+
+                        const applicationRole = await ds.sysRoleDataService().insertIntoSysRole({
+                            id: applicationRecord.id,
+                            role: applicationRecord.application_name,
+                            description: `${applicationRecord.application_name} Users`,
+                            is_active: true,
+                            is_system: true
+                        });
+
+                        const defPerm = await ds.sysPermissionDataService().insertIntoSysPermission({
+                            permission: "DEFAULT",
+                            application_id: applicationRecord.id
+                        });
+
+                        await ds.sysRolePermissionDataService().insertIntoSysRolePermission({
+                            permission_id: defPerm.id,
+                            role_id: applicationRole.id
+                        });
+
+                        await this.assignRoleToAdmins(applicationRole, ds);
+
+                        return {
+                            application_id: applicationRecord.id,
+                            client_id: applicationRecord.client_id,
+                            client_secret: application_secret
+                        };
+                    } else {
+                        throw new Error(`Application ${application} does not exist!`);
+                    }
+                });
+            });
+        } else {
+            return new BadRequestResponse(new Error(error));
+        }
+    }
     /**
      * @param {ICreateAccountRequest} params
      * @return {*}  {Promise<Response<ICreateAccountResponse>>}

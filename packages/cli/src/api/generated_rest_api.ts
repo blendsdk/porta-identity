@@ -44,7 +44,9 @@ import {
 	ICreateAccountRequest,
 	ICreateAccountResponse,
 	ICreateApplicationRequest,
-	ICreateApplicationResponse
+	ICreateApplicationResponse,
+	ICreateClientRequest,
+	ICreateClientResponse
 } from "@porta/shared";
 /**
  * Interface describing the Backend REST API client
@@ -81,6 +83,7 @@ export interface IPortaApi {
 	admin: {
 		createAccount: THttpRequest<ICreateAccountRequest, ICreateAccountResponse>;
 		createApplication: THttpRequest<ICreateApplicationRequest, ICreateApplicationResponse>;
+		createClient: THttpRequest<ICreateClientRequest, ICreateClientResponse>;
 	};
 }
 /**
@@ -160,6 +163,11 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			createApplication: defineEndpoint({
 				method: "post",
 				url: "/api/admin/:tenant/application/create",
+				parameters: { tenant: eParameterLocation.params }
+			}),
+			createClient: defineEndpoint({
+				method: "post",
+				url: "/api/admin/:tenant/client/create",
 				parameters: { tenant: eParameterLocation.params }
 			})
 		}

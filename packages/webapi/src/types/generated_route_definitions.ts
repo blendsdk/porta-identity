@@ -26,7 +26,7 @@ export const routeDefinitions: {
 		discovery: IRouteBase;
 		authorize: IRouteBase;
 	};
-	admin: { create_account: IRouteBase; create_application: IRouteBase };
+	admin: { create_account: IRouteBase; create_application: IRouteBase; create_client: IRouteBase };
 } = {
 	blend: {
 		get_translations: { id: "get_translations", method: "get", url: "/api/i18n/:locale?", public: false },
@@ -74,6 +74,7 @@ export const routeDefinitions: {
 			method: "post",
 			url: "/api/admin/:tenant/application/create",
 			public: false
-		}
+		},
+		create_client: { id: "create_client", method: "post", url: "/api/admin/:tenant/client/create", public: false }
 	}
 };

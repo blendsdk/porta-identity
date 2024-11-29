@@ -1555,3 +1555,79 @@ export interface ICreateApplicationResponse {
 	 */
 	data: ICreateApplication;
 }
+
+/**
+ * @export
+ * @interface ICreateClientRequest
+ */
+export interface ICreateClientRequest {
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	application: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	client_type?: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	redirect_uri: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	post_logout_redirect_uri?: string;
+	/**
+	 * @type boolean
+	 * @memberOf ICreateClientRequest
+	 */
+	is_back_channel_post_logout?: boolean;
+	/**
+	 * @type number
+	 * @memberOf ICreateClientRequest
+	 */
+	mfa_bypass_days?: number;
+	/**
+	 * @type string
+	 * @memberOf ICreateClientRequest
+	 */
+	mfa_id?: string;
+}
+
+/**
+ * @export
+ * @interface ICreateClient
+ */
+export interface ICreateClient {
+	/**
+	 * @type string
+	 * @memberOf ICreateClient
+	 */
+	client_id: string;
+	/**
+	 * @type string
+	 * @memberOf ICreateClient
+	 */
+	client_secret: string;
+}
+
+/**
+ * @export
+ * @interface ICreateClientResponse
+ */
+export interface ICreateClientResponse {
+	/**
+	 * @type ICreateClient
+	 * @memberOf ICreateClientResponse
+	 */
+	data: ICreateClient;
+}

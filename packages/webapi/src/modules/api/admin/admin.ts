@@ -20,6 +20,11 @@ export const AdminModule = (): IRouter => {
 				dispatch: "create_application",
 				controller: AdminController,
 				route: routeDefinitions.admin.create_application
+			}),
+			defineControllerRoute({
+				dispatch: "create_client",
+				controller: AdminController,
+				route: routeDefinitions.admin.create_client
 			})
 		]
 	};
