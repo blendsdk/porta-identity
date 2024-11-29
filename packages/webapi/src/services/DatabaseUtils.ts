@@ -274,13 +274,15 @@ export class DatabaseUtils extends ServiceBase {
         const e = expression();
         const secrets = await tenantDs.listSysSecretViewByExpression(
             e.createRenderer(
-                e.And(
-                    e.Equal(eSysSecretView.CLIENT_ID, client_id),
-                    e.Equal(eSysSecretView.IS_EXPIRED, false)
-                )
+                e.And(e.Equal(eSysSecretView.CLIENT_ID, client_id), e.Equal(eSysSecretView.IS_EXPIRED, false))
             )
         );
-        return !isNullOrUndef(secrets.find((s) => verifyStringSync(secret, s.client_secret)));
+        return !isNullOrUndef(
+            secrets.find((s) => {
+                console.log({ hash: s, secret });
+                return verifyStringSync(secret, s.client_secret);
+            })
+        );
     }
 
     /**
