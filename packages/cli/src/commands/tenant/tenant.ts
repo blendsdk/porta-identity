@@ -200,15 +200,33 @@ export function createGroencastingCommand(): CommandModule {
                 req.headers["Authorization"] = `Bearer ${token.token}`;
             });
             try {
-                const result = await PortaApi.admin.createApplication({
+                const app = await PortaApi.admin.createApplication({
                     application_name: "actorportal",
-                    description: "Groencasting ActorPortal Develop",
-                    redirect_uri: "http://localhost:4000/oidc/groencasting/signin/callback",
+                    description: "Groencasting ActorPortal",
+                    redirect_uri: "http://actorportal.nl/oidc/groencasting/signin/callback",
                     tenant: token.tenant,
                     client_type: "C",
                     ow_consent: true
                 });
-                console.log(JSON.stringify(result, null, 4));
+
+                const client = await PortaApi.admin.createClient({
+                    application: app.data.application_id,
+                    redirect_uri: "http://localhost:4000/oidc/develop/signin/callback",
+                    tenant: token.tenant,
+                    client_type: "C"
+                });
+
+                console.log(
+                    JSON.stringify(
+                        {
+                            app,
+                            client
+                        },
+                        null,
+                        4
+                    )
+                );
+                
             } catch (err) {
                 lineLogger.error(err.message);
             }

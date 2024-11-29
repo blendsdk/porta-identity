@@ -94,26 +94,6 @@ export class AdminController extends AdminControllerBase {
                             ).toISOString()
                         });
 
-                        const applicationRole = await ds.sysRoleDataService().insertIntoSysRole({
-                            id: applicationRecord.id,
-                            role: applicationRecord.application_name,
-                            description: `${applicationRecord.application_name} Users`,
-                            is_active: true,
-                            is_system: true
-                        });
-
-                        const defPerm = await ds.sysPermissionDataService().insertIntoSysPermission({
-                            permission: "DEFAULT",
-                            application_id: applicationRecord.id
-                        });
-
-                        await ds.sysRolePermissionDataService().insertIntoSysRolePermission({
-                            permission_id: defPerm.id,
-                            role_id: applicationRole.id
-                        });
-
-                        await this.assignRoleToAdmins(applicationRole, ds);
-
                         return {
                             application_id: applicationRecord.id,
                             client_id: applicationRecord.client_id,
