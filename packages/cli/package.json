@@ -1,7 +1,7 @@
 {
     "name": "@porta/cli",
     "private": true,
-    "version": "1.0.261",
+    "version": "1.0.262",
     "main": "dist/index.js",
     "bin": {
         "porta-cli": "./dist/index.js"
