@@ -195,7 +195,7 @@ export class AdminController extends AdminControllerBase {
                     const now = Date.now();
 
                     const application_secret = commonUtils.generateSecret(60);
-                    const secretRecord = await ds.sysSecretDataService().insertIntoSysSecret({
+                    await ds.sysSecretDataService().insertIntoSysSecret({
                         application_id: applicationRecord.id,
                         secret: application_secret,
                         valid_from: new Date(now).toISOString(),
