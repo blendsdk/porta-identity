@@ -281,11 +281,7 @@ export class DatabaseUtils extends ServiceBase {
         //TODO: This should have been done in BlendSDK
         secret = decodeURIComponent(secret);
 
-        return !isNullOrUndef(
-            secrets.find((s) => {
-                verifyStringSync(secret, s.client_secret);
-            })
-        );
+        return !isNullOrUndef(secrets.find((s) => verifyStringSync(secret, s.client_secret)));
     }
 
     /**
