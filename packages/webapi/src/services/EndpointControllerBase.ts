@@ -355,7 +355,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
             ...params,
             serverUrl: this.getServerURL()
         } as any);
-        return claims.getClaims();
+        return { ...claims.getClaims(), _x: params };
     }
 
     /**
