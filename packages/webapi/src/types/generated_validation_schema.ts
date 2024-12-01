@@ -1480,12 +1480,12 @@ export const validationSchema = {
 				},
 				scope: {
 					type: eJsonSchemaType.string,
-					location: eParameterLocation.query
+					location: eParameterLocation.body
 				},
 				claims: {
 					type: eJsonSchemaType.string,
 					validate: false,
-					location: eParameterLocation.query
+					location: eParameterLocation.body
 				},
 				refresh_token: {
 					type: eJsonSchemaType.string,
