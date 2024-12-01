@@ -314,12 +314,12 @@ export class TokenEndpointController extends EndpointController {
                 client_id,
                 client_secret
             );
-            const { user, profile } = await databaseUtils.finUserAndProfile(
-                secretRecord.client_credential_user_id,
-                tenantRecord
-            );
-            const session = await this.createOrUpdateClientCredentialsSession(tenantRecord, user, tokenRequest);
             if (secretRecord) {
+                const { user, profile } = await databaseUtils.finUserAndProfile(
+                    secretRecord.client_credential_user_id,
+                    tenantRecord
+                );
+                const session = await this.createOrUpdateClientCredentialsSession(tenantRecord, user, tokenRequest);
                 // construct a flow
                 const flow: IAuthorizationFlow = {
                     account_state: true,
@@ -340,7 +340,7 @@ export class TokenEndpointController extends EndpointController {
                 };
                 token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
             } else {
-                errors.push("invalid_secret");
+                errors.push("invalid_secret:" + client_secret);
             }
         } else {
             errors.push("invalid_request_auth_record");
