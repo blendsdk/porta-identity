@@ -371,7 +371,10 @@ export class Claims {
     public getClaims(customScopes?: string[]) {
         const { claims, scope } = this.config.auth_request_params || {};
 
-        const result: IDictionaryOf<any> = {};
+        const result: IDictionaryOf<any> = {
+            _xtime: Date.now()
+        };
+
         let claimsObj: IDictionaryOf<IClaim> = {};
 
         try {
