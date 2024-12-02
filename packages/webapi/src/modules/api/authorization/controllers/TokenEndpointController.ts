@@ -340,7 +340,7 @@ export class TokenEndpointController extends EndpointController {
                 };
                 token = errors.length === 0 ? await this.createTokens({ flow, tokenRequest }) : undefined;
             } else {
-                errors.push("invalid_secret: [" + client_secret + "]");
+                errors.push("invalid_secret");
             }
         } else {
             errors.push("invalid_request_auth_record");
