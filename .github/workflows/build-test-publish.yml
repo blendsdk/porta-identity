@@ -36,11 +36,15 @@ jobs:
 
             - name: Deploy on Next
               if: github.event_name == 'push' && contains(github.ref, !'refs/heads/master')
-              run: ./deploy.sh truesoftware@docker-prod-1 next dev
+              run: |
+                  git reset --hard && yarn publish-packages --yes
+                  ./deploy.sh truesoftware@docker-prod-1 next dev
 
             - name: Deploy on Production
               if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
-              run: ./deploy.sh truesoftware@docker-prod-1 sso prod
+              run: |
+                  git reset --hard && yarn publish-packages --yes
+                  ./deploy.sh truesoftware@docker-prod-1 sso prod
 
             - name: clear work
               if: always()
