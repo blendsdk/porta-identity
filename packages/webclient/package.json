@@ -1,6 +1,6 @@
 {
     "name": "@porta/webclient",
-    "version": "1.0.277",
+    "version": "1.0.279",
     "type": "module",
     "scripts": {
         "dev": "vite --force",
@@ -19,7 +19,7 @@
         "@fluentui/react-components": "^9.54.14",
         "@fluentui/react-icons": "^2.0.258",
         "@griffel/react": "^1.5.25",
-        "@porta/shared": "^1.0.277",
+        "@porta/shared": "^1.0.279",
         "@types/js-cookie": "^3.0.6",
         "@types/react": "^18.3.5",
         "@types/react-dom": "^18.3.0",
