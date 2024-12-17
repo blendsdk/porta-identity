@@ -117,11 +117,10 @@ export class AdminController extends AdminControllerBase {
         let error: string = undefined;
 
         if (
-            !hasRole(eSystemRoles.ADMINISTRATOR, this.getUser<IPortaAccount>().roles) ||
+            !hasRole(eSystemRoles.ADMINISTRATOR, this.getUser<IPortaAccount>().roles) &&
             !hasRole(eSystemRoles.TENANT_OWNER, this.getUser<IPortaAccount>().roles)
         ) {
             error = "You are not authorized to create accounts!";
-            this.getLogger().error("--------------------->ROLES", this.getUser<IPortaAccount>().roles);
         }
 
         if (!error) {
