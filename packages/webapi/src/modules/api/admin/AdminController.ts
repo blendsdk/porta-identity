@@ -59,10 +59,15 @@ export class AdminController extends AdminControllerBase {
                     if (userRecord) {
                         await ds.sysUserDataService().updateSysUserById(
                             {
-                                is_active
+                                is_active,
+                                date_modified: new Date().toISOString()
                             },
                             { id: account }
                         );
+                        return {
+                            account: userRecord.id,
+                            is_active: userRecord.is_active
+                        };
                     } else {
                         return { account: null, is_active: null };
                     }
