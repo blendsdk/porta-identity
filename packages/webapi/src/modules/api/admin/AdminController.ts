@@ -121,6 +121,7 @@ export class AdminController extends AdminControllerBase {
             !hasRole(eSystemRoles.TENANT_OWNER, this.getUser<IPortaAccount>().roles)
         ) {
             error = "You are not authorized to create accounts!";
+            this.getLogger().error("--------------------->ROLES", this.getUser<IPortaAccount>().roles);
         }
 
         if (!error) {
