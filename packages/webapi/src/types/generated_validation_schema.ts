@@ -1729,6 +1729,34 @@ export const validationSchema = {
 		authorize: {
 			type: eJsonSchemaType.object
 		},
+		change_account_state_request: {
+			type: eJsonSchemaType.object,
+			properties: {
+				tenant: {
+					type: eJsonSchemaType.string,
+					location: eParameterLocation.params
+				},
+				account: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["tenant", "account", "is_active"]
+		},
+		change_account_state: {
+			type: eJsonSchemaType.object,
+			properties: {
+				account: {
+					type: eJsonSchemaType.string
+				},
+				is_active: {
+					type: eJsonSchemaType.boolean
+				}
+			},
+			required: ["account", "is_active"]
+		},
 		create_account_request: {
 			type: eJsonSchemaType.object,
 			properties: {

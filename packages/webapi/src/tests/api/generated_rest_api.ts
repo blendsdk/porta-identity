@@ -41,6 +41,8 @@ import {
 	IUserInfoGetResponse,
 	ICheckSetFlowRequest,
 	ICheckSetFlowResponse,
+	IChangeAccountStateRequest,
+	IChangeAccountStateResponse,
 	ICreateAccountRequest,
 	ICreateAccountResponse,
 	ICreateApplicationRequest,
@@ -81,6 +83,7 @@ export interface IPortaApi {
 		checkSetFlow: THttpRequest<ICheckSetFlowRequest, ICheckSetFlowResponse>;
 	};
 	admin: {
+		changeAccountState: THttpRequest<IChangeAccountStateRequest, IChangeAccountStateResponse>;
 		createAccount: THttpRequest<ICreateAccountRequest, ICreateAccountResponse>;
 		createApplication: THttpRequest<ICreateApplicationRequest, ICreateApplicationResponse>;
 		createClient: THttpRequest<ICreateClientRequest, ICreateClientResponse>;
@@ -155,6 +158,11 @@ export const PortaApi = createHttpApi<IPortaApi>({
 			checkSetFlow: defineEndpoint({ method: "post", url: "/af/flow" })
 		},
 		admin: {
+			changeAccountState: defineEndpoint({
+				method: "post",
+				url: "/api/admin/:tenant/account/state",
+				parameters: { tenant: eParameterLocation.params }
+			}),
 			createAccount: defineEndpoint({
 				method: "post",
 				url: "/api/admin/:tenant/account/create",

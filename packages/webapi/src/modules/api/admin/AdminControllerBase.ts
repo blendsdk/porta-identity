@@ -5,6 +5,8 @@
 
 import { Controller, IRequestContext, Response } from "@blendsdk/webafx-common";
 import {
+	IChangeAccountStateRequest,
+	IChangeAccountStateResponse,
 	ICreateAccountRequest,
 	ICreateAccountResponse,
 	ICreateApplicationRequest,
@@ -23,6 +25,16 @@ import {
 export abstract class AdminControllerBase<
 	RequestContextType extends IRequestContext = IRequestContext
 > extends Controller<RequestContextType> {
+	/**
+	 * Method for handling [POST] /api/admin/:tenant/account/state
+	 * @abstract
+	 * @param {IChangeAccountStateRequest} params
+	 * @returns {Promise<Response<IChangeAccountStateResponse>>}
+	 * @memberof AdminControllerBase
+	 */
+	public abstract changeAccountState(
+		params: IChangeAccountStateRequest
+	): Promise<Response<IChangeAccountStateResponse>>;
 	/**
 	 * Method for handling [POST] /api/admin/:tenant/account/create
 	 * @abstract

@@ -6,6 +6,9 @@ import {
     eSystemRoles,
     eSysUserPermissionView,
     hasRole,
+    IChangeAccountState,
+    IChangeAccountStateRequest,
+    IChangeAccountStateResponse,
     ICreateAccount,
     ICreateAccountRequest,
     ICreateAccountResponse,
@@ -30,6 +33,45 @@ import { AdminControllerBase } from "./AdminControllerBase";
  * @extends {AdminControllerBase}
  */
 export class AdminController extends AdminControllerBase {
+    /**
+     * @param {IChangeAccountStateRequest} params
+     * @return {*}  {Promise<Response<IChangeAccountStateResponse>>}
+     * @memberof AdminController
+     */
+    public async changeAccountState(
+        params: IChangeAccountStateRequest
+    ): Promise<Response<IChangeAccountStateResponse>> {
+        let error: string = undefined;
+
+        if (
+            !hasRole(eSystemRoles.ADMINISTRATOR, this.getUser<IPortaAccount>().roles) &&
+            !hasRole(eSystemRoles.TENANT_OWNER, this.getUser<IPortaAccount>().roles)
+        ) {
+            error = "You are not authorized to create accounts!";
+        }
+
+        if (!error) {
+            const { account, is_active, tenant } = params;
+            return this.withSuccessResponse<IChangeAccountState>(() => {
+                const ds = new DataServices(tenant, this.request);
+                return ds.withTransaction(async () => {
+                    const userRecord = await ds.sysUserDataService().findSysUserById({ id: account });
+                    if (userRecord) {
+                        await ds.sysUserDataService().updateSysUserById(
+                            {
+                                is_active
+                            },
+                            { id: account }
+                        );
+                    } else {
+                        return { account: null, is_active: null };
+                    }
+                });
+            });
+        } else {
+            return new BadRequestResponse(new Error(error));
+        }
+    }
     /**
      * @param {ICreateClientRequest} params
      * @return {*}  {Promise<Response<ICreateClientResponse>>}

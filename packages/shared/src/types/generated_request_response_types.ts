@@ -1291,6 +1291,57 @@ export interface IAuthorizeResponse {
 
 /**
  * @export
+ * @interface IChangeAccountStateRequest
+ */
+export interface IChangeAccountStateRequest {
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountStateRequest
+	 */
+	tenant: string;
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountStateRequest
+	 */
+	account: string;
+	/**
+	 * @type boolean
+	 * @memberOf IChangeAccountStateRequest
+	 */
+	is_active: boolean;
+}
+
+/**
+ * @export
+ * @interface IChangeAccountState
+ */
+export interface IChangeAccountState {
+	/**
+	 * @type string
+	 * @memberOf IChangeAccountState
+	 */
+	account: string;
+	/**
+	 * @type boolean
+	 * @memberOf IChangeAccountState
+	 */
+	is_active: boolean;
+}
+
+/**
+ * @export
+ * @interface IChangeAccountStateResponse
+ */
+export interface IChangeAccountStateResponse {
+	/**
+	 * @type IChangeAccountState
+	 * @memberOf IChangeAccountStateResponse
+	 */
+	data: IChangeAccountState;
+}
+
+/**
+ * @export
  * @interface ICreateAccountRequest
  */
 export interface ICreateAccountRequest {

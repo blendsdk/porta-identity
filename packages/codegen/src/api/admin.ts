@@ -3,6 +3,29 @@ import { eParameterLocation } from "@blendsdk/jsonschema";
 
 export function createAdminAPI(builder: ApiBuilder) {
     builder.defineApi({
+        id: "change_account_state",
+        url: "/api/admin/:tenant/account/state",
+        group: "admin",
+        method: "post",
+        public: false,
+        createTypes: ({ request_type, response_type, payload_type, typeSchema }) => {
+            typeSchema //
+                .createAppendType(request_type)
+                .addString("tenant", { location: eParameterLocation.params })
+                .addString("account")
+                .addBoolean("is_active");
+
+            typeSchema
+                .createAppendType(payload_type)
+                //
+                .addString("account")
+                .addBoolean("is_active");
+
+            typeSchema.createResponseType(response_type, payload_type);
+        }
+    });
+
+    builder.defineApi({
         id: "create_account",
         url: "/api/admin/:tenant/account/create",
         group: "admin",

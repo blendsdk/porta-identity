@@ -12,6 +12,11 @@ export const AdminModule = (): IRouter => {
 	return {
 		routes: [
 			defineControllerRoute({
+				dispatch: "change_account_state",
+				controller: AdminController,
+				route: routeDefinitions.admin.change_account_state
+			}),
+			defineControllerRoute({
 				dispatch: "create_account",
 				controller: AdminController,
 				route: routeDefinitions.admin.create_account
