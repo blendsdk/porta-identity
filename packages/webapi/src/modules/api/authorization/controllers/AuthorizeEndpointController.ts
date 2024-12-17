@@ -180,7 +180,15 @@ export class AuthorizeEndpointController extends EndpointController {
             session = await sessionDS.findSysSessionById({ id: currentSessionId });
             if (session) {
                 user = await userDs.findSysUserById({ id: session.user_id });
-                profile = await profileDs.findProfileByUserId({ user_id: user.id });
+                if (user && user.is_active) {
+                    profile = await profileDs.findProfileByUserId({ user_id: user.id });
+                } else {
+                    // revoke the session if the use if somehow not active anymore
+                    user = undefined;
+                    profile = undefined;
+                    session = undefined;
+                    await sessionDS.deleteSysSessionById({ id: session.id });
+                }
             }
         }
 
