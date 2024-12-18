@@ -83,7 +83,8 @@ export enum eClaims {
     phone_number_verified = "phone_number_verified",
     tenant = "tenant",
     roles = "roles",
-    permissions = "permissions"
+    permissions = "permissions",
+    metadata = "metadata"
 }
 
 /**
@@ -140,6 +141,13 @@ export class Claims {
             const fq_email = user.username;
 
             this.handlers = [
+                {
+                    scope: [eScopes.userinfo, eScopes.profile],
+                    claim: eClaims.metadata,
+                    handler: this.handleClaim(() => {
+                        return profile.metadata;
+                    })
+                },
                 {
                     scope: [eScopes.userinfo, eScopes.profile],
                     claim: eClaims.name,
