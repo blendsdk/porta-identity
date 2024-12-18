@@ -50,6 +50,8 @@ import { commonUtils } from "./CommonUtils";
 import { databaseUtils, INewAccessTokenResult } from "./DatabaseUtils";
 import { formPostTemplate } from "./FormPostTemplate";
 
+export type TClaimsCollection = IPortaAccount & Pick<ISysAccessToken, "auth_request_params">
+
 export interface ILogoutFlow {
     session: ISysSession;
     application: ISysApplication;
@@ -327,7 +329,7 @@ export abstract class EndpointController extends Controller<IRequestContext> {
      */
     protected async getClaimsByScope(params: IDictionaryOf<any>) {
         const { user, client, tenant, auth_request_params } =
-            (params as any as IPortaAccount & Pick<ISysAccessToken, "auth_request_params">) || {};
+            (params as any as TClaimsCollection) || {};
         const { scope = "", is_consent } =
             (await databaseUtils.findConsentByUserAndApplication(user.id, client.application_id, tenant)) || {};
 

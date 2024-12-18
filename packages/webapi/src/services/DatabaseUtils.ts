@@ -302,7 +302,11 @@ export class DatabaseUtils extends ServiceBase {
                 )
             )
         );
-        return secrets.find((s) => verifyStringSync(secret, s.client_secret));
+        const result = secrets.find((s) => verifyStringSync(secret, s.client_secret));
+        if (result) {
+            result.client_secret = null;
+        }
+        return result;
     }
 
     /**
