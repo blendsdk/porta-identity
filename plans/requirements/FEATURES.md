@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §4 Feature Requirements
-> **Version**: 0.10.0
+> **Version**: 0.11.0
 
 ---
 
@@ -22,6 +22,7 @@
 - [4.11 Self-Service Flows](#411-self-service-flows)
 - [4.12 Audit Logging](#412-audit-logging)
 - [4.13 Internationalization (i18n)](#413-internationalization-i18n)
+- [4.14 Admin CLI](#414-admin-cli)
 
 ---
 
@@ -463,3 +464,69 @@ The organization and application context for custom claims (`app:roles`, `app:or
 
 **Branding resolution for context-free emails:**
 Password reset (`POST /api/forgot-password`) and email verification (`POST /api/verify-email`) are triggered from unauthenticated endpoints with no client/application context. For these emails, **default Porta branding** is used (no application-specific logo/colors). The `app_name` variable falls back to the hostname extracted from the `ISSUER` env var.
+
+---
+
+## 4.14 Admin CLI
+
+> Since Porta v5 does not ship an admin dashboard UI, a command-line interface (CLI) is provided for administrative operations. The CLI is a thin wrapper over the Admin API — every CLI command maps to one or more Admin API calls.
+
+| ID | Feature | Priority | Notes |
+|----|---------|----------|-------|
+| CLI-01 | Organization management | **MVP** | `porta orgs list`, `create`, `get`, `update`, `delete` |
+| CLI-02 | User management | **MVP** | `porta users list`, `create`, `get`, `update`, `suspend`, `activate` |
+| CLI-03 | Application management | **MVP** | `porta apps list`, `create`, `get`, `update`, `delete` |
+| CLI-04 | Client management | **MVP** | `porta clients list`, `create`, `get`, `update`, `delete`, `rotate-secret` |
+| CLI-05 | Role & permission management | **MVP** | `porta roles list/create/delete`, `porta permissions list/create/delete` |
+| CLI-06 | Role assignment | **MVP** | `porta roles assign`, `porta roles unassign` — assign/remove roles for a user in an org+app |
+| CLI-07 | Invitation management | **MVP** | `porta invitations send`, `list`, `revoke` |
+| CLI-08 | API key management | **MVP** | `porta api-keys create`, `list`, `revoke`, `rotate` |
+| CLI-09 | Signing key operations | **MVP** | `porta keys list`, `rotate` |
+| CLI-10 | Audit log query | **MVP** | `porta audit list` — filter by event type, user, org, date range |
+| CLI-11 | Organization member management | **MVP** | `porta members list`, `add`, `remove`, `set-role` |
+| CLI-12 | Organization-application subscriptions | **MVP** | `porta subscriptions list`, `enable`, `disable` |
+| CLI-13 | Health check | **MVP** | `porta health` — check server, database, and Redis status |
+| CLI-14 | Configuration display | **MVP** | `porta config` — show current connection settings (masked secrets) |
+| CLI-15 | Output format options | **MVP** | `--json` flag for machine-readable output, human-friendly table format by default |
+| CLI-16 | Shell completion | **Phase 2** | Bash/Zsh/Fish tab completion for commands and flags |
+| CLI-17 | Interactive mode | **Future** | REPL-style interactive session for exploratory admin tasks |
+
+### CLI Architecture
+
+- **Implementation:** TypeScript, ships as part of the Porta package (`npx porta` or `npm run porta`)
+- **Authentication:** Authenticates to the Admin API using an API key. Configured via `PORTA_API_KEY` env var or `--api-key` flag. Connection URL via `PORTA_URL` env var or `--url` flag
+- **Configuration file:** Optional `~/.portarc` (JSON) for persistent connection settings (URL, API key name — key itself always from env var for security)
+- **No direct database access:** The CLI never connects to PostgreSQL or Redis directly. All operations go through the Admin API, ensuring the same authorization and audit logging as any other API client
+- **Error handling:** HTTP errors from the Admin API are displayed with status code, error message, and actionable guidance (e.g., "Organization has active clients. Remove them first before deleting.")
+- **Pagination:** List commands auto-paginate by default. Use `--limit` and `--cursor` for manual control
+
+### CLI Command Reference
+
+```
+porta <resource> <action> [options]
+
+Resources:
+  orgs            Organization management
+  users           User management
+  apps            Application management
+  clients         OIDC client management
+  roles           Role management
+  permissions     Permission management
+  invitations     Invitation management
+  members         Organization member management
+  subscriptions   Organization-application subscriptions
+  api-keys        Admin API key management
+  keys            Signing key management
+  audit           Audit log queries
+  health          Health check
+  config          Show CLI configuration
+
+Global Options:
+  --url <url>     Porta server URL (overrides PORTA_URL)
+  --api-key <key> API key (overrides PORTA_API_KEY)
+  --json          Output as JSON
+  --no-color      Disable colored output
+  --verbose       Show HTTP request/response details
+  --help          Show help for a command
+  --version       Show CLI version
+```

@@ -1,7 +1,7 @@
 # Porta v5 — Requirements Overview
 
 > **Project**: Porta v5 — OIDC Identity Provider
-> **Version**: 0.10.0
+> **Version**: 0.11.0
 > **Last Updated**: 2026-04-07
 > **Status**: In Progress — Requirements Finalized
 
@@ -33,6 +33,7 @@ Porta v5 is a **purpose-built OIDC Identity Provider** — a service that issues
 - **Multi-tenant**: Organization model with application-scoped authorization — users belong to organizations, and their roles are scoped per (organization, application) pair
 - **Multiple authentication methods**: Password, magic link (passwordless), TOTP 2FA
 - **API-first management**: Full admin API for programmatic management of organizations, applications, clients, users, roles, and invitations
+- **Admin CLI**: Command-line interface for all administrative operations (no admin UI — CLI wraps the Admin API)
 - **Brandable**: Per-application branding on interaction pages (login, consent, invitation)
 - **Multi-language**: Internationalization (English + Dutch) for all user-facing pages and emails
 - **Minimal footprint**: Lightweight Node.js service with minimal dependencies
@@ -40,7 +41,7 @@ Porta v5 is a **purpose-built OIDC Identity Provider** — a service that issues
 ### Non-Goals
 
 - Porta v5 is NOT a general-purpose web framework
-- Porta v5 does NOT provide a full admin dashboard UI (API-only for management; UI is only for authentication flows)
+- Porta v5 does NOT provide a full admin dashboard UI (admin CLI + API for management; UI is only for authentication flows)
 - Porta v5 does NOT implement social login federation (Google, GitHub, etc.) in the initial version
 
 ---
@@ -248,11 +249,11 @@ An **Invitation** is a mechanism for onboarding users into an organization for a
 
 | Document | Section | Description |
 |----------|---------|-------------|
-| [FEATURES.md](./FEATURES.md) | §4 | Feature requirements (OIDC, Auth, MFA, Org, App, RBAC, Claims, Clients, Users, Invitations, Self-Service, Audit, i18n), Audit Event Catalog, Scope Catalog, Introspection Response, Status Enforcement, Profile Claims Mapping |
+| [FEATURES.md](./FEATURES.md) | §4 | Feature requirements (OIDC, Auth, MFA, Org, App, RBAC, Claims, Clients, Users, Invitations, Self-Service, Audit, i18n, Admin CLI), Audit Event Catalog, Scope Catalog, Introspection Response, Status Enforcement, Profile Claims Mapping |
 | [API-SURFACE.md](./API-SURFACE.md) | §5 | OIDC Protocol Endpoints, Interaction Endpoints, Admin API Authentication, API Conventions (pagination, response format, HTTP codes, CORS), Admin API (~60 endpoints), Self-Service API |
 | [DATA-MODEL.md](./DATA-MODEL.md) | §6 | ER diagram, 17+ tables, oidc_clients.payload fields, FK Cascade Matrix, Database Index Strategy |
 | [SECURITY.md](./SECURITY.md) | §7 | 25 security requirements (SEC-01 through SEC-25), Account Lockout, Rate Limiting, Password Policy, Signing Key Rotation, Token & Session Lifetimes |
-| [OPERATIONS.md](./OPERATIONS.md) | §8 | Performance targets, Deployment, Monitoring, Development, Bootstrapping, Migrations, Redis Key Strategy, Stale Data Cleanup, Environment Variables Reference |
+| [OPERATIONS.md](./OPERATIONS.md) | §8 | Performance targets, Deployment, Monitoring, Development, Bootstrapping, Migrations, Redis Key Strategy, Stale Data Cleanup, Environment Variables Reference, Admin CLI operations |
 
 ---
 
@@ -302,13 +303,13 @@ An **Invitation** is a mechanism for onboarding users into an organization for a
 | **Phase 2: Auth Flows** | Password login, magic link, MFA, consent UI, branding | 9 days |
 | **Phase 3: Organization Model** | Organizations CRUD, members, subscriptions, org-scoped queries | 3 days |
 | **Phase 4: Application Model** | Applications, roles, permissions, claims | 5 days |
-| **Phase 5: Admin API** | All admin endpoints (orgs, apps, clients, users, roles) | 8 days |
+| **Phase 5: Admin API + CLI** | All admin endpoints (orgs, apps, clients, users, roles) + admin CLI | 10 days |
 | **Phase 6: Invitations** | Invitation system (org-scoped), acceptance flow, emails via SMTP | 4 days |
 | **Phase 7: Self-Service** | Password reset, email verification, MFA setup | 4 days |
 | **Phase 8: Security** | Rate limiting, brute force, CSRF, input validation, key rotation | 4 days |
 | **Phase 9: Testing** | Unit tests, integration tests, auth flow e2e, OIDC conformance | 6 days |
 | **Phase 10: Polish** | Audit logging, documentation, deployment config | 3 days |
-| **Total** | | **~56 days (~11 weeks)** |
+| **Total** | | **~58 days (~12 weeks)** |
 
 ---
 
@@ -326,3 +327,4 @@ An **Invitation** is a mechanism for onboarding users into an organization for a
 | 2026-04-07 | 0.8.0 | **Round 4 gap analysis (28 gaps):** Replaced stale v0.2.0 master with OVERVIEW.md. Added bootstrap OIDC client for porta-admin (BOOTSTRAP_ADMIN_REDIRECT_URI). Added `revoked_at` to admin_api_keys, `updated_at` to oidc_clients. Specified application ID format (slug, 3-64 chars, immutable). Added org-app subscription check to status enforcement. Defined admin JWT authentication specification (role→access matrix). Added request/response body schemas and sensitive field exclusion rules. Defined org_role semantics for MVP (metadata + at-least-one-owner rule). Changed invitations.roles from TEXT[] to UUID[] (role_ids). Added explicit claim resolution rule for multi-org users. Added email template specification. Defined health check response schema. Added audit_log FK for application_id. Standardized UUID PK defaults. Specified oidc_clients.id and signing_keys.id generation. Documented magic link timing edge case. Added missing cascade behaviors. Added stale data cleanup specification. Defined PUT merge semantics. Documented applications.owner_id purpose. Noted admin_api_keys.scopes MVP behavior. Listed oidc_models model names. |
 | 2026-04-07 | 0.9.0 | **Round 5 gap analysis (9 gaps):** Specified bootstrap porta-admin-client full config (public client, grant_types, scopes). Split self-service API into authenticated/unauthenticated. Defined email branding fallback for context-free flows. Added admin_api_keys.created_by cascade. Defined invitation post-flow (welcome page, no auto-login). Expanded CSRF to invitation forms. Added CORS for self-service. Added timestamps to permissions/roles. Fixed audit_log.organization_id FK notation. |
 | 2026-04-07 | 0.10.0 | **Round 6 gap analysis (5 fixes):** Added permissions immutability note (no update endpoint — delete and re-create). Fixed signing key rotation link (§5.4 → §5.5). Added `roles.is_default` Phase 2 note. Added `POST /api/reset-password` rate limit (10/min per IP). Added self-service request body reference table. |
+| 2026-04-08 | 0.11.0 | **Added Admin CLI (§4.14):** 17 feature requirements (CLI-01 through CLI-17), CLI architecture (API-key auth, no direct DB access, `~/.portarc` config), full command reference, CLI env vars (`PORTA_URL`, `PORTA_API_KEY`), CLI operations section in OPERATIONS.md. Updated effort estimate (+2 days for CLI in Phase 5). Requirements finalized — ready for implementation. |

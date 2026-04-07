@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §8 Non-Functional Requirements
-> **Version**: 0.10.0
+> **Version**: 0.11.0
 
 ---
 
@@ -17,6 +17,7 @@
 - [Redis Key Strategy](#redis-key-strategy)
 - [Stale Data Cleanup](#stale-data-cleanup)
 - [Environment Variables Reference](#environment-variables-reference)
+- [Admin CLI](#admin-cli)
 
 ---
 
@@ -247,3 +248,37 @@ npm start                 # 3. Start the application
 | `BOOTSTRAP_ADMIN_PASSWORD` | **Yes** (first run) | — | Password for the initial admin user |
 | `BOOTSTRAP_API_KEY_NAME` | No | — | If set, creates an initial API key (plaintext printed to stdout) |
 | `BOOTSTRAP_ADMIN_REDIRECT_URI` | No | `http://localhost:3000/callback` | Redirect URI for the bootstrap porta-admin OIDC client |
+
+---
+
+## Admin CLI
+
+> The Admin CLI (`porta`) is a command-line tool for managing Porta without a UI. It wraps the Admin API — see [FEATURES.md §4.14](./FEATURES.md#414-admin-cli) for the full feature list and command reference.
+
+**Running the CLI:**
+
+```bash
+# Via npx (after installing the porta package)
+npx porta <command>
+
+# Via npm script
+npm run porta -- <command>
+
+# Examples
+npx porta orgs list
+npx porta users create --email admin@example.com --display-name "Admin User"
+npx porta clients list --org <org-id> --app <app-id>
+npx porta health
+```
+
+**CLI Environment Variables:**
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORTA_URL` | **Yes** | — | Porta server URL (e.g., `https://auth.example.com`) |
+| `PORTA_API_KEY` | **Yes** | — | Admin API key for authentication |
+
+**Relationship to `npm run bootstrap` and `npm run migrate`:**
+- `npm run migrate` and `npm run bootstrap` are **operational commands** that run locally and access the database directly
+- `porta` CLI commands are **management commands** that go through the Admin API (remote-capable)
+- After initial setup (`migrate` → `bootstrap`), all day-to-day administration is done via the `porta` CLI or the Admin API directly
