@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §6 Data Model
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 
 ---
 
@@ -145,6 +145,7 @@ organizations ──< organization_applications >──── applications ─�
 | `application_id` | TEXT | FK → applications(id), NOT NULL | |
 | `name` | TEXT | NOT NULL | e.g., "documents:read" |
 | `description` | TEXT | | |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() | |
 | | | UNIQUE(application_id, name) | |
 
 ### `roles`
@@ -156,6 +157,8 @@ organizations ──< organization_applications >──── applications ─�
 | `name` | TEXT | NOT NULL | e.g., "editor" |
 | `description` | TEXT | | |
 | `is_default` | BOOLEAN | DEFAULT false | Auto-assigned to new users |
+| `created_at` | TIMESTAMPTZ | DEFAULT now() | |
+| `updated_at` | TIMESTAMPTZ | DEFAULT now() | |
 | | | UNIQUE(application_id, name) | |
 
 ### `role_permissions`
@@ -337,7 +340,7 @@ Additional fields may be present per oidc-provider's client metadata schema. The
 | `event_type` | TEXT | NOT NULL | Event category (see [FEATURES.md §4.12 Audit Event Catalog](./FEATURES.md#audit-event-type-catalog)) |
 | `user_id` | UUID | FK → users(id), NULLABLE | ON DELETE SET NULL |
 | `client_id` | TEXT | NULLABLE | Metadata only (no FK — clients may be deleted) |
-| `organization_id` | UUID | NULLABLE | ON DELETE SET NULL |
+| `organization_id` | UUID | FK → organizations(id), NULLABLE | ON DELETE SET NULL |
 | `application_id` | TEXT | FK → applications(id), NULLABLE | ON DELETE SET NULL |
 | `ip_address` | INET | | |
 | `user_agent` | TEXT | | |
@@ -375,6 +378,7 @@ Additional fields may be present per oidc-provider's client metadata schema. The
 | `users` | `invitations.invited_by` | SET NULL | Preserve invitation record |
 | `users` | `user_org_app_roles.assigned_by` | SET NULL | Preserve assignment record |
 | `users` | `applications.owner_id` | SET NULL | Preserve application record |
+| `users` | `admin_api_keys.created_by` | SET NULL | Preserve API key record |
 | `applications` | `audit_log.application_id` | SET NULL | Preserve audit history |
 | `roles` | `role_permissions` | CASCADE | Permission links are role-specific |
 | `roles` | `user_org_app_roles` | CASCADE | Assignments reference the role |

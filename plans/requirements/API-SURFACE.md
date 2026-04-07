@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §5 API Surface
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 
 ---
 
@@ -215,6 +215,7 @@ CORS is configured to support SPA clients calling Porta endpoints:
 - **Max age:** 86400 (24 hours preflight cache)
 - **OIDC endpoints** (`/token`, `/userinfo`, `/revoke`, `/introspect`): CORS enabled per oidc-provider defaults
 - **Admin API endpoints**: CORS enabled for admin JWT-authenticated requests
+- **Self-service API endpoints** (`/api/*` non-admin): CORS enabled, same origin rules as OIDC endpoints
 - **Interaction endpoints**: No CORS needed (server-rendered, same-origin)
 
 ---
@@ -376,7 +377,7 @@ The Admin API accepts two authentication methods (checked in order):
 
 ## 5.6 Self-Service API Endpoints
 
-> Authenticated by user's own token.
+### Unauthenticated (token in request body, no Bearer required)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -384,7 +385,12 @@ The Admin API accepts two authentication methods (checked in order):
 | POST | `/api/verify-email` | Verify email with token |
 | POST | `/api/forgot-password` | Request password reset |
 | POST | `/api/reset-password` | Reset password with token |
-| PUT | `/api/account/password` | Change password (authenticated) |
+
+### Authenticated (Bearer token required)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PUT | `/api/account/password` | Change password |
 | GET | `/api/account/profile` | Get own profile (Phase 2) |
 | PUT | `/api/account/profile` | Update own profile (Phase 2) |
 | POST | `/api/account/mfa/setup` | Start MFA setup (get QR code) |

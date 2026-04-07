@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §8 Non-Functional Requirements
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 
 ---
 
@@ -121,7 +121,7 @@
 | Admin Permissions | `*` (all), `read:*`, `write:*` | Pre-defined permissions for admin roles |
 | Initial Admin User | Created from env vars | First admin user with `super-admin` role |
 | Initial API Key | Created from env vars (optional) | Bootstrap API key for automation |
-| Initial OIDC Client | `porta-admin-client` | OIDC client for `porta-admin` app in `porta-system` org — enables admin JWT login flow. Redirect URI from `BOOTSTRAP_ADMIN_REDIRECT_URI` env var |
+| Initial OIDC Client | `porta-admin-client` | Public OIDC client for admin JWT login. Config: `token_endpoint_auth_method: "none"`, `grant_types: ["authorization_code", "refresh_token"]`, `response_types: ["code"]`, `scope: "openid profile email app:roles"`, `skipConsent: true`, redirect URI from `BOOTSTRAP_ADMIN_REDIRECT_URI` env var |
 | Initial Signing Key | Auto-generated | First OIDC signing key (algorithm from `SIGNING_ALGORITHM` env var) |
 
 **Environment variables for bootstrap:**

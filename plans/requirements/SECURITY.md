@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §7 Security Requirements
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 
 ---
 
@@ -28,7 +28,7 @@
 | SEC-05 | Refresh token rotation | **MVP** | New refresh token on each use; detect replay |
 | SEC-06 | Redirect URI exact matching | **MVP** | No wildcards, no open redirectors |
 | SEC-07 | HTTPS required in production | **MVP** | oidc-provider enforces this |
-| SEC-08 | CSRF protection on interaction forms | **MVP** | Token-based CSRF on login/consent pages |
+| SEC-08 | CSRF protection on interaction forms | **MVP** | Token-based CSRF on all server-rendered POST forms (login, consent, MFA, invitation acceptance) |
 | SEC-09 | Rate limiting on sensitive endpoints | **MVP** | `/token`, `/interaction/*/login`, magic link requests |
 | SEC-10 | Brute force protection | **MVP** | Progressive delays, account lockout after N failures |
 | SEC-11 | MFA secret encryption at rest | **MVP** | TOTP secrets encrypted in database |

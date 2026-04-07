@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §4 Feature Requirements
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 
 ---
 
@@ -284,7 +284,7 @@ The organization and application context for custom claims (`app:roles`, `app:or
 |----|---------|----------|-------|
 | INVITE-01 | Invite user via Admin API | **MVP** | Invitation for a specific organization + application + roles |
 | INVITE-02 | Invitation email with magic link | **MVP** | User receives email via SMTP/Nodemailer with link to accept |
-| INVITE-03 | Invitation acceptance flow | **MVP** | User sets up account (display name, password or passwordless) |
+| INVITE-03 | Invitation acceptance flow | **MVP** | User sets up account (display name, password or passwordless). After acceptance, show "Welcome" page with link to log in (user is NOT auto-logged-in) |
 | INVITE-04 | Automatic role assignment on acceptance | **MVP** | Roles specified in invitation are assigned to the user in the org+app |
 | INVITE-05 | Invitation expiry | **MVP** | Configurable (default: 72 hours) |
 | INVITE-06 | Invitation revocation | **MVP** | Admin can revoke pending invitations |
@@ -460,3 +460,6 @@ The organization and application context for custom claims (`app:roles`, `app:or
 - Templates have both HTML and plain-text versions (EJS renders both)
 - The `{ISSUER}` base URL is used to construct all links (e.g., `{ISSUER}/interaction/{uid}/magic/{token}`)
 - Sender address: `SMTP_FROM` env var for all emails
+
+**Branding resolution for context-free emails:**
+Password reset (`POST /api/forgot-password`) and email verification (`POST /api/verify-email`) are triggered from unauthenticated endpoints with no client/application context. For these emails, **default Porta branding** is used (no application-specific logo/colors). The `app_name` variable falls back to the hostname extracted from the `ISSUER` env var.

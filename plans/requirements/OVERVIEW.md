@@ -1,7 +1,7 @@
 # Porta v5 — Requirements Overview
 
 > **Project**: Porta v5 — OIDC Identity Provider
-> **Version**: 0.8.0
+> **Version**: 0.9.0
 > **Last Updated**: 2026-04-07
 > **Status**: In Progress — Requirements Finalized
 
@@ -324,3 +324,4 @@ An **Invitation** is a mechanism for onboarding users into an organization for a
 | 2026-04-07 | 0.6.0 | Added i18n feature requirements (§4.13, I18N-01 through I18N-11), user `locale` column, language resolution order, translatable email templates and validation messages, consent scope descriptions. |
 | 2026-04-07 | 0.7.0 | **Structural split:** Monolithic requirements document split into 6 focused files for maintainability. No content changes. Files: OVERVIEW.md, FEATURES.md, API-SURFACE.md, DATA-MODEL.md, SECURITY.md, OPERATIONS.md. |
 | 2026-04-07 | 0.8.0 | **Round 4 gap analysis (28 gaps):** Replaced stale v0.2.0 master with OVERVIEW.md. Added bootstrap OIDC client for porta-admin (BOOTSTRAP_ADMIN_REDIRECT_URI). Added `revoked_at` to admin_api_keys, `updated_at` to oidc_clients. Specified application ID format (slug, 3-64 chars, immutable). Added org-app subscription check to status enforcement. Defined admin JWT authentication specification (role→access matrix). Added request/response body schemas and sensitive field exclusion rules. Defined org_role semantics for MVP (metadata + at-least-one-owner rule). Changed invitations.roles from TEXT[] to UUID[] (role_ids). Added explicit claim resolution rule for multi-org users. Added email template specification. Defined health check response schema. Added audit_log FK for application_id. Standardized UUID PK defaults. Specified oidc_clients.id and signing_keys.id generation. Documented magic link timing edge case. Added missing cascade behaviors. Added stale data cleanup specification. Defined PUT merge semantics. Documented applications.owner_id purpose. Noted admin_api_keys.scopes MVP behavior. Listed oidc_models model names. |
+| 2026-04-07 | 0.9.0 | **Round 5 gap analysis (9 gaps):** Specified bootstrap porta-admin-client full config (public client, grant_types, scopes). Split self-service API into authenticated/unauthenticated. Defined email branding fallback for context-free flows. Added admin_api_keys.created_by cascade. Defined invitation post-flow (welcome page, no auto-login). Expanded CSRF to invitation forms. Added CORS for self-service. Added timestamps to permissions/roles. Fixed audit_log.organization_id FK notation. |
