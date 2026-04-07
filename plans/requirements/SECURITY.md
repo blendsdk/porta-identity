@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §7 Security Requirements
-> **Version**: 0.9.0
+> **Version**: 0.10.0
 
 ---
 
@@ -75,6 +75,7 @@
 | `POST /interaction/*/login` | 10 attempts | 1 minute | Per IP address | Password login attempts |
 | `POST /interaction/*/magic-link` | 3 requests | 15 minutes | Per email address | SEC-16 |
 | `POST /api/forgot-password` | 3 requests | 15 minutes | Per email address | Prevent email flooding |
+| `POST /api/reset-password` | 10 requests | 1 minute | Per IP address | Prevent token brute-force |
 | `POST /api/verify-email` | 5 requests | 15 minutes | Per email address | |
 | `POST /introspect` | 100 requests | 1 minute | Per `client_id` | Resource server introspection |
 | `POST /api/register` | 5 requests | 1 hour | Per IP address | Phase 2 self-registration |
@@ -111,7 +112,7 @@
 
 **Rotation mechanism:**
 - **Automatic:** An in-process interval timer checks on startup and every hour whether the active signing key is older than `KEY_ROTATION_INTERVAL`. If so, it generates a new key and marks the old one as `rotated`.
-- **Manual:** Admin can force rotation via `POST /api/admin/signing-keys/rotate` (see [API-SURFACE.md §5.4](./API-SURFACE.md#signing-keys)). Use this for emergency rotation if a key is compromised.
+- **Manual:** Admin can force rotation via `POST /api/admin/signing-keys/rotate` (see [API-SURFACE.md §5.5](./API-SURFACE.md#signing-keys)). Use this for emergency rotation if a key is compromised.
 - **Leader election:** In multi-instance deployments, rotation uses a PostgreSQL advisory lock (`pg_try_advisory_lock`) to ensure only one instance performs the rotation. Other instances pick up the new key on their next JWKS refresh cycle.
 
 **Key lifecycle:**

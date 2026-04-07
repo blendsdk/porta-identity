@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §8 Non-Functional Requirements
-> **Version**: 0.9.0
+> **Version**: 0.10.0
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §6 Data Model
-> **Version**: 0.9.0
+> **Version**: 0.10.0
 
 ---
 
@@ -156,7 +156,7 @@ organizations ──< organization_applications >──── applications ─�
 | `application_id` | TEXT | FK → applications(id), NOT NULL | |
 | `name` | TEXT | NOT NULL | e.g., "editor" |
 | `description` | TEXT | | |
-| `is_default` | BOOLEAN | DEFAULT false | Auto-assigned to new users |
+| `is_default` | BOOLEAN | DEFAULT false | Auto-assigned to new users (column present in MVP; auto-assignment behavior implemented in Phase 2 per APP-06) |
 | `created_at` | TIMESTAMPTZ | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | DEFAULT now() | |
 | | | UNIQUE(application_id, name) | |

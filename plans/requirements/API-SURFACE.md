@@ -2,7 +2,7 @@
 
 > **Part of:** [OVERVIEW.md](./OVERVIEW.md)
 > **Section:** §5 API Surface
-> **Version**: 0.9.0
+> **Version**: 0.10.0
 
 ---
 
@@ -297,6 +297,8 @@ The Admin API accepts two authentication methods (checked in order):
 
 ### Permissions (per Application)
 
+> Permissions are **immutable** — there is no update endpoint. To rename a permission, delete and re-create it. This simplifies audit trails and prevents silent permission semantics changes.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/admin/applications/:appId/permissions` | List permissions |
@@ -396,3 +398,15 @@ The Admin API accepts two authentication methods (checked in order):
 | POST | `/api/account/mfa/setup` | Start MFA setup (get QR code) |
 | POST | `/api/account/mfa/confirm` | Confirm MFA setup (verify first code) |
 | DELETE | `/api/account/mfa` | Disable MFA |
+
+### Self-Service Request Body Reference
+
+| Endpoint | Request Body |
+|----------|-------------|
+| `POST /api/forgot-password` | `{ "email": "user@example.com" }` |
+| `POST /api/reset-password` | `{ "token": "...", "password": "newpassword" }` |
+| `POST /api/verify-email` | `{ "token": "..." }` |
+| `PUT /api/account/password` | `{ "current_password": "...", "new_password": "..." }` |
+| `POST /api/account/mfa/setup` | `{}` (empty — returns QR code + secret) |
+| `POST /api/account/mfa/confirm` | `{ "code": "123456" }` (TOTP code to verify setup) |
+| `DELETE /api/account/mfa` | `{ "code": "123456" }` (TOTP code to confirm disable) |
