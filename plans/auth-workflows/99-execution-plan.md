@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 01:11
-> **Progress**: 23/50 tasks (46%)
+> **Progress**: 38/50 tasks (76%)
 
 ## Overview
 
@@ -214,9 +214,9 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 | 6.1.3 | Create sendMagicLink (POST /interaction/:uid/magic-link) | `src/routes/interactions.ts` |
 
 **Deliverables**:
-- [ ] Login show/process with rate limiting, CSRF, audit logging
-- [ ] Magic link send with user enumeration prevention
-- [ ] All verification passing
+- [x] Login show/process with rate limiting, CSRF, audit logging
+- [x] Magic link send with user enumeration prevention
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -234,9 +234,9 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 | 6.2.3 | Create abortInteraction                            | `src/routes/interactions.ts`  |
 
 **Deliverables**:
-- [ ] Consent show/process with auto-consent
-- [ ] Abort interaction
-- [ ] All verification passing
+- [x] Consent show/process with auto-consent
+- [x] Abort interaction
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -258,9 +258,9 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 | 7.1.3 | Create showResetPassword and processResetPassword    | `src/routes/password-reset.ts` |
 
 **Deliverables**:
-- [ ] Magic link verification with OIDC flow resume
-- [ ] Forgot/reset password flow
-- [ ] All verification passing
+- [x] Magic link verification with OIDC flow resume
+- [x] Forgot/reset password flow
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -277,8 +277,8 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 | 7.2.2 | Create processAcceptInvite handler            | `src/routes/invitation.ts`  |
 
 **Deliverables**:
-- [ ] Accept invite with token verification and password setting
-- [ ] All verification passing
+- [x] Accept invite with token verification and password setting
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -301,9 +301,9 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 | 8.1.4 | Add i18n and template engine init to startup (src/index.ts) | `src/index.ts` |
 
 **Deliverables**:
-- [ ] All routes mounted and accessible
-- [ ] i18n and template engine initialized at startup
-- [ ] All verification passing
+- [x] All routes mounted and accessible
+- [x] i18n and template engine initialized at startup
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -461,25 +461,25 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 - [x] 5.2.3 Create invitation, errors, emails translations ✅ (completed: 2026-04-09 01:10)
 
 ### Phase 6: Interaction Routes (Login & Consent)
-- [ ] 6.1.1 Create showLogin handler
-- [ ] 6.1.2 Create processLogin handler
-- [ ] 6.1.3 Create sendMagicLink handler
-- [ ] 6.2.1 Create showConsent with auto-consent
-- [ ] 6.2.2 Create processConsent handler
-- [ ] 6.2.3 Create abortInteraction handler
+- [x] 6.1.1 Create showLogin handler ✅ (completed: 2026-04-09 01:32)
+- [x] 6.1.2 Create processLogin handler ✅ (completed: 2026-04-09 01:32)
+- [x] 6.1.3 Create sendMagicLink handler ✅ (completed: 2026-04-09 01:32)
+- [x] 6.2.1 Create showConsent with auto-consent ✅ (completed: 2026-04-09 01:32)
+- [x] 6.2.2 Create processConsent handler ✅ (completed: 2026-04-09 01:32)
+- [x] 6.2.3 Create abortInteraction handler ✅ (completed: 2026-04-09 01:32)
 
 ### Phase 7: Auth Routes (Magic Link, Reset, Invite)
-- [ ] 7.1.1 Create verifyMagicLink handler
-- [ ] 7.1.2 Create showForgotPassword and processForgotPassword
-- [ ] 7.1.3 Create showResetPassword and processResetPassword
-- [ ] 7.2.1 Create showAcceptInvite handler
-- [ ] 7.2.2 Create processAcceptInvite handler
+- [x] 7.1.1 Create verifyMagicLink handler ✅ (completed: 2026-04-09 01:33)
+- [x] 7.1.2 Create showForgotPassword and processForgotPassword ✅ (completed: 2026-04-09 01:34)
+- [x] 7.1.3 Create showResetPassword and processResetPassword ✅ (completed: 2026-04-09 01:34)
+- [x] 7.2.1 Create showAcceptInvite handler ✅ (completed: 2026-04-09 01:35)
+- [x] 7.2.2 Create processAcceptInvite handler ✅ (completed: 2026-04-09 01:35)
 
 ### Phase 8: Server Integration
-- [ ] 8.1.1 Create auth module barrel export
-- [ ] 8.1.2 Mount interaction routes in server.ts
-- [ ] 8.1.3 Mount auth routes in server.ts
-- [ ] 8.1.4 Add i18n and template engine init to startup
+- [x] 8.1.1 Create auth module barrel export ✅ (completed: 2026-04-09 01:35)
+- [x] 8.1.2 Mount interaction routes in server.ts ✅ (completed: 2026-04-09 01:36)
+- [x] 8.1.3 Mount auth routes in server.ts ✅ (completed: 2026-04-09 01:36)
+- [x] 8.1.4 Add i18n and template engine init to startup ✅ (completed: 2026-04-09 01:36)
 
 ### Phase 9: Test — Tokens & Rate Limiter
 - [ ] 9.1.1 Test generateToken, hashToken
