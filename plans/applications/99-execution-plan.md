@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-08 18:16
-> **Progress**: 12/30 tasks (40%)
+> **Last Updated**: 2026-04-08 18:20
+> **Progress**: 18/30 tasks (60%)
 
 ## Overview
 
@@ -368,12 +368,12 @@ OIDC client-finder.
 - [x] 3.1.3 Write service tests (~34 tests) ✅ (completed: 2026-04-08 18:16)
 
 ### Phase 4: Client Foundation
-- [ ] 4.1.1 Install argon2 npm dependency
-- [ ] 4.1.2 Create client types, interfaces, and row mapping
-- [ ] 4.1.3 Create client domain error classes
-- [ ] 4.1.4 Create crypto utilities (client ID, secret, Argon2id)
-- [ ] 4.1.5 Write tests for types (~6 tests)
-- [ ] 4.1.6 Write tests for crypto (~10 tests)
+- [x] 4.1.1 Install argon2 npm dependency ✅ (completed: 2026-04-08 18:18)
+- [x] 4.1.2 Create client types, interfaces, and row mapping ✅ (completed: 2026-04-08 18:19)
+- [x] 4.1.3 Create client domain error classes ✅ (completed: 2026-04-08 18:19)
+- [x] 4.1.4 Create crypto utilities (client ID, secret, Argon2id) ✅ (completed: 2026-04-08 18:19)
+- [x] 4.1.5 Write tests for types (~9 tests) ✅ (completed: 2026-04-08 18:20)
+- [x] 4.1.6 Write tests for crypto (~11 tests) ✅ (completed: 2026-04-08 18:20)
 - [ ] 4.2.1 Create redirect URI validators and default grant types
 - [ ] 4.2.2 Write validator tests (~18 tests)
 
