@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-08 18:20
-> **Progress**: 18/30 tasks (60%)
+> **Progress**: 20/30 tasks (67%)
 
 ## Overview
 
@@ -374,8 +374,8 @@ OIDC client-finder.
 - [x] 4.1.4 Create crypto utilities (client ID, secret, Argon2id) ✅ (completed: 2026-04-08 18:19)
 - [x] 4.1.5 Write tests for types (~9 tests) ✅ (completed: 2026-04-08 18:20)
 - [x] 4.1.6 Write tests for crypto (~11 tests) ✅ (completed: 2026-04-08 18:20)
-- [ ] 4.2.1 Create redirect URI validators and default grant types
-- [ ] 4.2.2 Write validator tests (~18 tests)
+- [x] 4.2.1 Create redirect URI validators and default grant types ✅ (completed: 2026-04-08 18:22)
+- [x] 4.2.2 Write validator tests (~27 tests) ✅ (completed: 2026-04-08 18:22)
 
 ### Phase 5: Client & Secret Repository
 - [ ] 5.1.1 Create client repository (CRUD with org/app filters)
