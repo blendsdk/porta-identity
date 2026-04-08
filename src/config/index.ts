@@ -11,6 +11,9 @@ function loadConfig(): AppConfig {
     databaseUrl: process.env.DATABASE_URL,
     redisUrl: process.env.REDIS_URL,
     issuerBaseUrl: process.env.ISSUER_BASE_URL,
+    // COOKIE_KEYS is a comma-separated list of secrets for OIDC cookie signing.
+    // Supports key rotation: first key signs, subsequent keys verify old cookies.
+    cookieKeys: process.env.COOKIE_KEYS?.split(',') ?? [],
     smtp: {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,

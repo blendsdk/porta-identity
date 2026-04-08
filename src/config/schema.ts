@@ -7,6 +7,9 @@ export const configSchema = z.object({
   databaseUrl: z.string().min(1, 'DATABASE_URL is required'),
   redisUrl: z.string().min(1, 'REDIS_URL is required'),
   issuerBaseUrl: z.string().url('ISSUER_BASE_URL must be a valid URL'),
+  // Cookie signing keys for OIDC sessions — array of secrets for key rotation.
+  // First key is used for signing; subsequent keys are used for verification only.
+  cookieKeys: z.array(z.string().min(16)).min(1, 'At least one COOKIE_KEY is required'),
   smtp: z.object({
     host: z.string().min(1, 'SMTP_HOST is required'),
     port: z.coerce.number().default(587),

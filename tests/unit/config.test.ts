@@ -8,6 +8,7 @@ const validEnv = {
   databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
   redisUrl: 'redis://localhost:6379',
   issuerBaseUrl: 'http://localhost:3000',
+  cookieKeys: ['test-cookie-key-at-least-16-chars'],
   smtp: {
     host: 'localhost',
     port: 1025,
@@ -34,6 +35,7 @@ describe('config schema', () => {
       databaseUrl: 'postgresql://localhost/test',
       redisUrl: 'redis://localhost:6379',
       issuerBaseUrl: 'http://localhost:3000',
+      cookieKeys: ['minimal-test-cookie-key-16ch'],
       smtp: {
         host: 'localhost',
         from: 'test@test.com',
@@ -123,5 +125,34 @@ describe('config schema', () => {
       smtp: { ...validEnv.smtp, from: '' },
     });
     expect(result.success).toBe(false);
+  });
+
+  describe('cookieKeys validation', () => {
+    it('accepts valid cookieKeys array', () => {
+      const result = configSchema.safeParse({
+        ...validEnv,
+        cookieKeys: ['valid-cookie-key-16chars', 'another-key-at-least-16'],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.cookieKeys).toHaveLength(2);
+      }
+    });
+
+    it('rejects empty cookieKeys array', () => {
+      const result = configSchema.safeParse({
+        ...validEnv,
+        cookieKeys: [],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects cookieKeys with short strings', () => {
+      const result = configSchema.safeParse({
+        ...validEnv,
+        cookieKeys: ['short'],
+      });
+      expect(result.success).toBe(false);
+    });
   });
 });
