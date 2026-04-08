@@ -1,0 +1,10 @@
+{{!-- Magic link sent: "check your email" confirmation --}}
+<div class="text-center">
+  <h1>{{t "magic-link.sent_title"}}</h1>
+  <p class="text-muted mb-4">{{t "magic-link.check_email" email=email}}</p>
+  <p class="text-muted">{{t "magic-link.expires_note"}}</p>
+
+  <div class="mt-4">
+    <a href="/{{orgSlug}}/interaction/{{interactionUid}}">{{t "common.back_to_login"}}</a>
+  </div>
+</div>

@@ -1,0 +1,9 @@
+{{!-- Password reset success confirmation --}}
+<div class="text-center">
+  <h1>{{t "reset-password.success_title"}}</h1>
+  <p class="text-muted mb-4">{{t "reset-password.success_message"}}</p>
+
+  {{#if loginUrl}}
+    <a href="{{loginUrl}}" class="btn-primary" style="display: inline-block; padding: 10px 24px;">{{t "reset-password.back_to_login"}}</a>
+  {{/if}}
+</div>

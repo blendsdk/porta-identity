@@ -1,0 +1,7 @@
+{
+  "title": "Sign out",
+  "message": "Are you sure you want to sign out?",
+  "confirm": "Sign out",
+  "success_title": "Signed out",
+  "success_message": "You have been signed out successfully."
+}

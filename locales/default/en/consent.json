@@ -1,0 +1,12 @@
+{
+  "title": "Authorize access",
+  "description": "{{clientName}} is requesting access to your account",
+  "scopes_heading": "This application would like to:",
+  "approve": "Allow access",
+  "deny": "Deny",
+  "scope_openid": "Verify your identity",
+  "scope_profile": "Access your profile information",
+  "scope_email": "Access your email address",
+  "scope_phone": "Access your phone number",
+  "scope_address": "Access your address"
+}

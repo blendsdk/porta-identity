@@ -1,0 +1,18 @@
+{
+  "title": "Accept your invitation",
+  "description": "You've been invited to join {{orgName}}. Set a password to activate your account.",
+  "email_label": "Email address",
+  "password_label": "Password",
+  "password_placeholder": "Choose a password",
+  "confirm_label": "Confirm password",
+  "confirm_placeholder": "Re-enter your password",
+  "submit": "Create account",
+  "success_title": "Account created!",
+  "success_message": "Your account has been set up successfully. You can now sign in.",
+  "go_to_login": "Go to sign in",
+  "expired_title": "Invitation expired",
+  "expired_message": "This invitation link has expired or is no longer valid.",
+  "contact_admin": "Please contact your organization administrator for a new invitation.",
+  "error_mismatch": "Passwords do not match",
+  "error_weak": "Password does not meet the minimum requirements"
+}

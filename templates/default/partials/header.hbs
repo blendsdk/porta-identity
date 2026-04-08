@@ -1,0 +1,8 @@
+{{!-- Page header with organization branding/logo --}}
+<div class="header" style="text-align: center; margin-bottom: 24px;">
+  {{#if branding.logoUrl}}
+    <img src="{{branding.logoUrl}}" alt="{{branding.companyName}}" style="max-height: 48px; margin-bottom: 12px;">
+  {{else}}
+    <h2 style="color: var(--primary); margin-bottom: 0;">{{branding.companyName}}</h2>
+  {{/if}}
+</div>

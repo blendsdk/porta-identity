@@ -1,0 +1,17 @@
+{
+  "magic_link": {
+    "subject": "Sign in to your account"
+  },
+  "password_reset": {
+    "subject": "Reset your password"
+  },
+  "invitation": {
+    "subject": "You've been invited to {{orgName}}"
+  },
+  "welcome": {
+    "subject": "Welcome to {{orgName}}"
+  },
+  "password_changed": {
+    "subject": "Your password has been changed"
+  }
+}

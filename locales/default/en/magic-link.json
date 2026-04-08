@@ -1,0 +1,9 @@
+{
+  "sent_title": "Check your email",
+  "check_email": "We've sent a sign-in link to {{email}}.",
+  "expires_note": "The link expires in 15 minutes.",
+  "error_rate_limited": "Too many magic link requests. Please try again later.",
+  "error_token_expired": "This sign-in link has expired. Please request a new one.",
+  "error_token_invalid": "This sign-in link is invalid. Please request a new one.",
+  "success_message": "You have been signed in successfully."
+}

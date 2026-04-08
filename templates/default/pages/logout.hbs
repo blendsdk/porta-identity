@@ -1,0 +1,10 @@
+{{!-- Logout confirmation page --}}
+<div class="text-center">
+  <h1>{{t "logout.title"}}</h1>
+  <p class="text-muted mb-4">{{t "logout.message"}}</p>
+
+  <form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/logout">
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+    <button type="submit" class="btn-primary">{{t "logout.confirm"}}</button>
+  </form>
+</div>

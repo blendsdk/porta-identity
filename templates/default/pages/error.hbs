@@ -1,0 +1,15 @@
+{{!-- Generic error page --}}
+<div class="text-center">
+  <h1>{{t "errors.page_title"}}</h1>
+  <p class="text-muted mb-4">{{#if errorMessage}}{{errorMessage}}{{else}}{{t "errors.generic"}}{{/if}}</p>
+
+  {{#if errorCode}}
+    <p class="text-muted" style="font-size: 12px;">{{t "errors.code_label"}}: {{errorCode}}</p>
+  {{/if}}
+
+  {{#if retryUrl}}
+    <div class="mt-4">
+      <a href="{{retryUrl}}" class="btn-primary" style="display: inline-block; padding: 10px 24px;">{{t "common.try_again"}}</a>
+    </div>
+  {{/if}}
+</div>

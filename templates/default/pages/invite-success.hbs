@@ -1,0 +1,9 @@
+{{!-- Invitation accepted: account setup complete --}}
+<div class="text-center">
+  <h1>{{t "invitation.success_title"}}</h1>
+  <p class="text-muted mb-4">{{t "invitation.success_message"}}</p>
+
+  {{#if loginUrl}}
+    <a href="{{loginUrl}}" class="btn-primary" style="display: inline-block; padding: 10px 24px;">{{t "invitation.go_to_login"}}</a>
+  {{/if}}
+</div>

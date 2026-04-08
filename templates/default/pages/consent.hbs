@@ -1,0 +1,25 @@
+{{!-- Consent page: scope approval/deny for third-party applications --}}
+<h1>{{t "consent.title"}}</h1>
+<p class="text-muted mb-4">{{t "consent.description" clientName=interaction.client.clientName}}</p>
+
+{{#if scopes.length}}
+  <p style="font-weight: 500;">{{t "consent.scopes_heading"}}</p>
+  <ul class="scope-list">
+    {{#each scopes}}
+      <li>{{this}}</li>
+    {{/each}}
+  </ul>
+{{/if}}
+
+<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/confirm">
+  <input type="hidden" name="_csrf" value="{{csrfToken}}">
+
+  <div class="form-group">
+    <button type="submit" class="btn-primary">{{t "consent.approve"}}</button>
+  </div>
+</form>
+
+<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/abort">
+  <input type="hidden" name="_csrf" value="{{csrfToken}}">
+  <button type="submit" class="btn-secondary">{{t "consent.deny"}}</button>
+</form>
