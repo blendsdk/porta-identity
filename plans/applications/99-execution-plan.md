@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-08 18:20
-> **Progress**: 20/30 tasks (67%)
+> **Progress**: 24/30 tasks (80%)
 
 ## Overview
 
@@ -378,10 +378,10 @@ OIDC client-finder.
 - [x] 4.2.2 Write validator tests (~27 tests) ✅ (completed: 2026-04-08 18:22)
 
 ### Phase 5: Client & Secret Repository
-- [ ] 5.1.1 Create client repository (CRUD with org/app filters)
-- [ ] 5.1.2 Write client repository tests (~12 tests)
-- [ ] 5.2.1 Create secret repository
-- [ ] 5.2.2 Write secret repository tests (~10 tests)
+- [x] 5.1.1 Create client repository (CRUD with org/app filters) ✅ (completed: 2026-04-08 18:24)
+- [x] 5.1.2 Write client repository tests (~19 tests) ✅ (completed: 2026-04-08 18:25)
+- [x] 5.2.1 Create secret repository ✅ (completed: 2026-04-08 18:25)
+- [x] 5.2.2 Write secret repository tests (~13 tests) ✅ (completed: 2026-04-08 18:26)
 
 ### Phase 6: Client & Secret Service
 - [ ] 6.1.1 Create client cache (Redis)
