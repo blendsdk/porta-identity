@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-08 18:12
-> **Progress**: 9/30 tasks (30%)
+> **Last Updated**: 2026-04-08 18:16
+> **Progress**: 12/30 tasks (40%)
 
 ## Overview
 
@@ -363,9 +363,9 @@ OIDC client-finder.
 - [x] 2.2.2 Write cache tests (~13 tests) ✅ (completed: 2026-04-08 18:11)
 
 ### Phase 3: Application Service
-- [ ] 3.1.1 Create application service (CRUD + status + modules)
-- [ ] 3.1.2 Create barrel export
-- [ ] 3.1.3 Write service tests (~25 tests)
+- [x] 3.1.1 Create application service (CRUD + status + modules) ✅ (completed: 2026-04-08 18:15)
+- [x] 3.1.2 Create barrel export ✅ (completed: 2026-04-08 18:15)
+- [x] 3.1.3 Write service tests (~34 tests) ✅ (completed: 2026-04-08 18:16)
 
 ### Phase 4: Client Foundation
 - [ ] 4.1.1 Install argon2 npm dependency
