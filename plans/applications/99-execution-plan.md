@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-08 18:20
-> **Progress**: 24/30 tasks (80%)
+> **Progress**: 31/30 tasks (100% — Phase 6 complete, 7 remaining in Phase 7)
 
 ## Overview
 
@@ -384,13 +384,13 @@ OIDC client-finder.
 - [x] 5.2.2 Write secret repository tests (~13 tests) ✅ (completed: 2026-04-08 18:26)
 
 ### Phase 6: Client & Secret Service
-- [ ] 6.1.1 Create client cache (Redis)
-- [ ] 6.1.2 Write cache tests (~8 tests)
-- [ ] 6.1.3 Create client service (CRUD + status + OIDC mapping)
-- [ ] 6.1.4 Write client service tests (~22 tests)
-- [ ] 6.2.1 Create secret service (generate, verify, revoke, cleanup)
-- [ ] 6.2.2 Create barrel export for clients module
-- [ ] 6.2.3 Write secret service tests (~15 tests)
+- [x] 6.1.1 Create client cache (Redis) ✅ (completed: 2026-04-08 19:10)
+- [x] 6.1.2 Write cache tests (~14 tests) ✅ (completed: 2026-04-08 19:10)
+- [x] 6.1.3 Create client service (CRUD + status + OIDC mapping) ✅ (completed: 2026-04-08 19:17)
+- [x] 6.1.4 Write client service tests (~36 tests) ✅ (completed: 2026-04-08 19:18)
+- [x] 6.2.1 Create secret service (generate, verify, revoke, cleanup) ✅ (completed: 2026-04-08 19:19)
+- [x] 6.2.2 Create barrel export for clients module ✅ (completed: 2026-04-08 19:20)
+- [x] 6.2.3 Write secret service tests (~15 tests) ✅ (completed: 2026-04-08 19:20)
 
 ### Phase 7: API Routes & OIDC Integration
 - [ ] 7.1.1 Create application route handlers
