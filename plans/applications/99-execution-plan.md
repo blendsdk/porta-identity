@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-08 16:45
-> **Progress**: 7/30 tasks (23%)
+> **Last Updated**: 2026-04-08 18:12
+> **Progress**: 9/30 tasks (30%)
 
 ## Overview
 
@@ -359,8 +359,8 @@ OIDC client-finder.
 ### Phase 2: Application Repository & Cache
 - [x] 2.1.1 Create application repository (CRUD + module CRUD) ✅ (completed: 2026-04-08 17:05)
 - [x] 2.1.2 Write repository tests (~32 tests) ✅ (completed: 2026-04-08 17:06)
-- [ ] 2.2.1 Create application cache (Redis get/set/invalidate)
-- [ ] 2.2.2 Write cache tests (~8 tests)
+- [x] 2.2.1 Create application cache (Redis get/set/invalidate) ✅ (completed: 2026-04-08 18:11)
+- [x] 2.2.2 Write cache tests (~13 tests) ✅ (completed: 2026-04-08 18:11)
 
 ### Phase 3: Application Service
 - [ ] 3.1.1 Create application service (CRUD + status + modules)
