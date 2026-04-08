@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 00:53
-> **Progress**: 10/50 tasks (20%)
+> **Last Updated**: 2026-04-09 01:11
+> **Progress**: 23/50 tasks (46%)
 
 ## Overview
 
@@ -444,21 +444,21 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 - [x] 3.1.3 Create email service with 5 email methods ✅ (completed: 2026-04-09 00:58)
 
 ### Phase 4: i18n & Template Engine
-- [ ] 4.1.1 Create initI18n, resolveLocale, getTranslationFunction
-- [ ] 4.1.2 Create registerHandlebarsI18nHelper
-- [ ] 4.2.1 Create initTemplateEngine with partial registration
-- [ ] 4.2.2 Create renderPage with layout injection and org overrides
+- [x] 4.1.1 Create initI18n, resolveLocale, getTranslationFunction ✅ (completed: 2026-04-09 01:04)
+- [x] 4.1.2 Create registerHandlebarsI18nHelper ✅ (completed: 2026-04-09 01:04)
+- [x] 4.2.1 Create initTemplateEngine with partial registration ✅ (completed: 2026-04-09 01:05)
+- [x] 4.2.2 Create renderPage with layout injection and org overrides ✅ (completed: 2026-04-09 01:05)
 
 ### Phase 5: Templates & Translations
-- [ ] 5.1.1 Create base layout and partials
-- [ ] 5.1.2 Create login, consent, logout pages
-- [ ] 5.1.3 Create forgot-password, reset-password, reset-success pages
-- [ ] 5.1.4 Create magic-link-sent, error pages
-- [ ] 5.1.5 Create accept-invite, invite-success, invite-expired pages
-- [ ] 5.1.6 Create email templates (HTML + plaintext, all 5 types)
-- [ ] 5.2.1 Create common, login, consent translation files
-- [ ] 5.2.2 Create forgot-password, reset-password, magic-link, logout translations
-- [ ] 5.2.3 Create invitation, errors, emails translations
+- [x] 5.1.1 Create base layout and partials ✅ (completed: 2026-04-09 01:06)
+- [x] 5.1.2 Create login, consent, logout pages ✅ (completed: 2026-04-09 01:07)
+- [x] 5.1.3 Create forgot-password, reset-password, reset-success pages ✅ (completed: 2026-04-09 01:07)
+- [x] 5.1.4 Create magic-link-sent, error pages ✅ (completed: 2026-04-09 01:07)
+- [x] 5.1.5 Create accept-invite, invite-success, invite-expired pages ✅ (completed: 2026-04-09 01:07)
+- [x] 5.1.6 Create email templates (HTML + plaintext, all 5 types) ✅ (completed: 2026-04-09 01:09)
+- [x] 5.2.1 Create common, login, consent translation files ✅ (completed: 2026-04-09 01:09)
+- [x] 5.2.2 Create forgot-password, reset-password, magic-link, logout translations ✅ (completed: 2026-04-09 01:10)
+- [x] 5.2.3 Create invitation, errors, emails translations ✅ (completed: 2026-04-09 01:10)
 
 ### Phase 6: Interaction Routes (Login & Consent)
 - [ ] 6.1.1 Create showLogin handler
