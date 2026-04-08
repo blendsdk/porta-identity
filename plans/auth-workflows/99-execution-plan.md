@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 00:53
-> **Progress**: 4/50 tasks (8%)
+> **Progress**: 7/50 tasks (14%)
 
 ## Overview
 
@@ -434,9 +434,9 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 - [x] 1.1.4 Create CSRF token generation and verification ✅ (completed: 2026-04-09 00:51)
 
 ### Phase 2: Rate Limiter
-- [ ] 2.1.1 Create checkRateLimit with INCR + EXPIRE
-- [ ] 2.1.2 Create resetRateLimit and key builder functions
-- [ ] 2.1.3 Create loadXxxRateLimitConfig from system_config
+- [x] 2.1.1 Create checkRateLimit with INCR + EXPIRE ✅ (completed: 2026-04-09 00:55)
+- [x] 2.1.2 Create resetRateLimit and key builder functions ✅ (completed: 2026-04-09 00:55)
+- [x] 2.1.3 Create loadXxxRateLimitConfig from system_config ✅ (completed: 2026-04-09 00:55)
 
 ### Phase 3: Email Transport & Renderer
 - [ ] 3.1.1 Create EmailTransport interface and SMTP implementation
