@@ -8,6 +8,8 @@
  * Route structure:
  *   /health                        — Health check (DB + Redis status)
  *   /api/admin/organizations/*     — Organization management (super-admin)
+ *   /api/admin/applications/*      — Application management (super-admin)
+ *   /api/admin/clients/*           — Client & secret management (super-admin)
  *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
  */
 
@@ -20,6 +22,8 @@ import { errorHandler } from './middleware/error-handler.js';
 import { healthCheck } from './middleware/health.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { createOrganizationRouter } from './routes/organizations.js';
+import { createApplicationRouter } from './routes/applications.js';
+import { createClientRouter } from './routes/clients.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -51,6 +55,18 @@ export function createApp(oidcProvider?: Provider): Koa {
   const orgRouter = createOrganizationRouter();
   app.use(orgRouter.routes());
   app.use(orgRouter.allowedMethods());
+
+  // Application management API — requires super-admin authorization
+  // Mounted at /api/admin/applications (see routes/applications.ts)
+  const appRouter = createApplicationRouter();
+  app.use(appRouter.routes());
+  app.use(appRouter.allowedMethods());
+
+  // Client & secret management API — requires super-admin authorization
+  // Mounted at /api/admin/clients (see routes/clients.ts)
+  const clientRouter = createClientRouter();
+  app.use(clientRouter.routes());
+  app.use(clientRouter.allowedMethods());
 
   // OIDC provider routes — mounted under /:orgSlug prefix
   if (oidcProvider) {
