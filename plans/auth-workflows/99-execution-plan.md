@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 01:11
-> **Progress**: 38/50 tasks (76%)
+> **Last Updated**: 2026-04-09 01:54
+> **Progress**: 47/50 tasks (94%)
 
 ## Overview
 
@@ -482,19 +482,19 @@ Implement all authentication workflows, server-rendered interaction UI, email de
 - [x] 8.1.4 Add i18n and template engine init to startup ✅ (completed: 2026-04-09 01:36)
 
 ### Phase 9: Test — Tokens & Rate Limiter
-- [ ] 9.1.1 Test generateToken, hashToken
-- [ ] 9.1.2 Test token repository CRUD
-- [ ] 9.1.3 Test CSRF generate/verify
-- [ ] 9.1.4 Test rate limiter
+- [x] 9.1.1 Test generateToken, hashToken ✅ (completed: 2026-04-09 00:51, 14 tests)
+- [x] 9.1.2 Test token repository CRUD ✅ (completed: 2026-04-09 00:51, 24 tests)
+- [x] 9.1.3 Test CSRF generate/verify ✅ (completed: 2026-04-09 00:51, 16 tests)
+- [x] 9.1.4 Test rate limiter ✅ (completed: 2026-04-09 00:55, 26 tests)
 
 ### Phase 10: Test — Email Service
-- [ ] 10.1.1 Test SMTP transport
-- [ ] 10.1.2 Test email renderer
-- [ ] 10.1.3 Test email service
+- [x] 10.1.1 Test SMTP transport ✅ (completed: 2026-04-09 01:47, 11 tests)
+- [x] 10.1.2 Test email renderer ✅ (completed: 2026-04-09 01:48, 10 tests)
+- [x] 10.1.3 Test email service ✅ (completed: 2026-04-09 01:49, 13 tests)
 
 ### Phase 11: Test — i18n & Templates
-- [ ] 11.1.1 Test locale resolution and translation loading
-- [ ] 11.1.2 Test template engine rendering
+- [x] 11.1.1 Test locale resolution and translation loading ✅ (completed: 2026-04-09 01:52, 21 tests)
+- [x] 11.1.2 Test template engine rendering ✅ (completed: 2026-04-09 01:53, 12 tests)
 
 ### Phase 12: Test — Interaction Routes
 - [ ] 12.1.1 Test login and magic link handlers
