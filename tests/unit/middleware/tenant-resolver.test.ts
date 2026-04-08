@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Organization } from '../../../src/organizations/types.js';
 
-vi.mock('../../../src/lib/database.js', () => ({
-  getPool: vi.fn(),
+vi.mock('../../../src/organizations/cache.js', () => ({
+  getCachedOrganizationBySlug: vi.fn(),
+  cacheOrganization: vi.fn(),
+}));
+
+vi.mock('../../../src/organizations/repository.js', () => ({
+  findOrganizationBySlug: vi.fn(),
 }));
 
 vi.mock('../../../src/config/index.js', () => ({
@@ -18,17 +24,32 @@ vi.mock('../../../src/config/index.js', () => ({
   },
 }));
 
-import { getPool } from '../../../src/lib/database.js';
+import { getCachedOrganizationBySlug, cacheOrganization } from '../../../src/organizations/cache.js';
+import { findOrganizationBySlug } from '../../../src/organizations/repository.js';
 import { tenantResolver } from '../../../src/middleware/tenant-resolver.js';
 
-function mockPool(rows: Record<string, unknown>[] = []) {
-  const mockQuery = vi.fn().mockResolvedValue({ rows });
-  (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
-  return mockQuery;
+/** Create a full Organization test object */
+function createTestOrg(overrides: Partial<Organization> = {}): Organization {
+  return {
+    id: 'org-uuid-1',
+    name: 'Acme Corp',
+    slug: 'acme-corp',
+    status: 'active',
+    isSuperAdmin: false,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    brandingPrimaryColor: null,
+    brandingCompanyName: null,
+    brandingCustomCss: null,
+    defaultLocale: 'en',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    ...overrides,
+  };
 }
 
 function createMockCtx(orgSlug?: string) {
-  const ctx = {
+  return {
     params: orgSlug ? { orgSlug } : {},
     state: {} as Record<string, unknown>,
     throw: vi.fn((status: number, message: string) => {
@@ -37,15 +58,14 @@ function createMockCtx(orgSlug?: string) {
       throw err;
     }),
   };
-  return ctx;
 }
 
 describe('tenant-resolver', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('sets organization on ctx.state for valid active org', async () => {
-    const org = { id: 'uuid-1', slug: 'acme-corp', name: 'Acme Corp', status: 'active' };
-    mockPool([org]);
+  it('should return cached org on cache hit (no DB query)', async () => {
+    const org = createTestOrg();
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
     const middleware = tenantResolver();
     const ctx = createMockCtx('acme-corp');
@@ -54,12 +74,14 @@ describe('tenant-resolver', () => {
     await middleware(ctx as never, next);
 
     expect(ctx.state.organization).toEqual(org);
+    expect(findOrganizationBySlug).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalled();
   });
 
-  it('sets issuer on ctx.state', async () => {
-    const org = { id: 'uuid-1', slug: 'acme-corp', name: 'Acme Corp', status: 'active' };
-    mockPool([org]);
+  it('should query DB on cache miss and cache the result', async () => {
+    const org = createTestOrg();
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (findOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
     const middleware = tenantResolver();
     const ctx = createMockCtx('acme-corp');
@@ -67,11 +89,43 @@ describe('tenant-resolver', () => {
 
     await middleware(ctx as never, next);
 
-    expect(ctx.state.issuer).toBe('http://localhost:3000/acme-corp');
+    expect(findOrganizationBySlug).toHaveBeenCalledWith('acme-corp');
+    expect(cacheOrganization).toHaveBeenCalledWith(org);
+    expect(ctx.state.organization).toEqual(org);
   });
 
-  it('throws 404 for unknown slug', async () => {
-    mockPool([]);
+  it('should set issuer on ctx.state', async () => {
+    const org = createTestOrg({ slug: 'test-org' });
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+    const middleware = tenantResolver();
+    const ctx = createMockCtx('test-org');
+    const next = vi.fn();
+
+    await middleware(ctx as never, next);
+
+    expect(ctx.state.issuer).toBe('http://localhost:3000/test-org');
+  });
+
+  it('should set full Organization object on ctx.state', async () => {
+    const org = createTestOrg({ brandingPrimaryColor: '#FF0000', isSuperAdmin: true });
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+    const middleware = tenantResolver();
+    const ctx = createMockCtx('acme-corp');
+    const next = vi.fn();
+
+    await middleware(ctx as never, next);
+
+    const stateOrg = ctx.state.organization as Organization;
+    expect(stateOrg.brandingPrimaryColor).toBe('#FF0000');
+    expect(stateOrg.isSuperAdmin).toBe(true);
+    expect(stateOrg.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('should throw 404 for unknown slug', async () => {
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (findOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const middleware = tenantResolver();
     const ctx = createMockCtx('nonexistent');
@@ -81,23 +135,46 @@ describe('tenant-resolver', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('throws 404 for missing orgSlug parameter', async () => {
-    mockPool([]);
-
+  it('should throw 404 for missing orgSlug parameter', async () => {
     const middleware = tenantResolver();
     const ctx = createMockCtx(); // no orgSlug
     const next = vi.fn();
 
     await expect(middleware(ctx as never, next)).rejects.toThrow('Organization not found');
+  });
+
+  it('should throw 404 for archived organization', async () => {
+    const org = createTestOrg({ status: 'archived' });
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+    const middleware = tenantResolver();
+    const ctx = createMockCtx('acme-corp');
+    const next = vi.fn();
+
+    await expect(middleware(ctx as never, next)).rejects.toThrow('Organization not found');
+    expect(ctx.throw).toHaveBeenCalledWith(404, 'Organization not found');
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next() on success', async () => {
-    const org = { id: 'uuid-1', slug: 'test-org', name: 'Test Org', status: 'active' };
-    mockPool([org]);
+  it('should throw 403 for suspended organization', async () => {
+    const org = createTestOrg({ status: 'suspended' });
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
     const middleware = tenantResolver();
-    const ctx = createMockCtx('test-org');
+    const ctx = createMockCtx('acme-corp');
+    const next = vi.fn();
+
+    await expect(middleware(ctx as never, next)).rejects.toThrow('Organization is suspended');
+    expect(ctx.throw).toHaveBeenCalledWith(403, 'Organization is suspended');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should call next() on success', async () => {
+    const org = createTestOrg();
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+    const middleware = tenantResolver();
+    const ctx = createMockCtx('acme-corp');
     const next = vi.fn();
 
     await middleware(ctx as never, next);
@@ -105,16 +182,15 @@ describe('tenant-resolver', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('queries with active status filter', async () => {
-    const mockQuery = mockPool([]);
+  it('should gracefully handle cache returning null and DB also null', async () => {
+    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (findOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const middleware = tenantResolver();
-    const ctx = createMockCtx('test-org');
+    const ctx = createMockCtx('gone-org');
     const next = vi.fn();
 
-    try { await middleware(ctx as never, next); } catch { /* expected 404 */ }
-
-    const sql = mockQuery.mock.calls[0][0] as string;
-    expect(sql).toContain("status = 'active'");
+    await expect(middleware(ctx as never, next)).rejects.toThrow('Organization not found');
+    expect(cacheOrganization).not.toHaveBeenCalled();
   });
 });

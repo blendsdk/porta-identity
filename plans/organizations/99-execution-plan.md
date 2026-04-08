@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-08 15:50
-> **Progress**: 13/20 tasks (65%)
+> **Progress**: 15/20 tasks (75%)
 
 ## Overview
 
@@ -241,8 +241,8 @@ API routes with Zod validation, and comprehensive unit tests.
 - [x] 3.2.3 Write organization service tests (~28 tests) ✅ (completed: 2026-04-08 16:19)
 
 ### Phase 4: Enhanced Tenant Resolver
-- [ ] 4.1.1 Update tenant resolver middleware (cache + status)
-- [ ] 4.1.2 Update tenant resolver tests (~10 tests)
+- [x] 4.1.1 Update tenant resolver middleware (cache + status) ✅ (completed: 2026-04-08 16:24)
+- [x] 4.1.2 Update tenant resolver tests (~10 tests) ✅ (completed: 2026-04-08 16:25)
 
 ### Phase 5: API Routes & Server Integration
 - [ ] 5.1.1 Create super-admin authorization middleware
