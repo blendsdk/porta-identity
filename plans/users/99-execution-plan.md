@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-08 22:00
-> **Progress**: 0/38 tasks (0%)
+> **Last Updated**: 2026-04-09 00:06
+> **Progress**: 38/38 tasks (100%) ✅ COMPLETE
 
 ## Overview
 
@@ -46,10 +46,10 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 1.1.3 | Create password validation, hashPassword, verifyPassword | `src/users/password.ts` |
 
 **Deliverables**:
-- [ ] `src/users/types.ts` with User, UserRow, mapRowToUser, CreateUserInput, UpdateUserInput, AddressInput, UserListOptions
-- [ ] `src/users/errors.ts` with UserNotFoundError, UserValidationError
-- [ ] `src/users/password.ts` with validatePassword, hashPassword, verifyPassword
-- [ ] All verification passing
+- [x] `src/users/types.ts` with User, UserRow, mapRowToUser, CreateUserInput, UpdateUserInput, AddressInput, UserListOptions
+- [x] `src/users/errors.ts` with UserNotFoundError, UserValidationError
+- [x] `src/users/password.ts` with validatePassword, hashPassword, verifyPassword
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -73,8 +73,8 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 2.1.5 | Create emailExists, updateLoginStats, countByOrganization | `src/users/repository.ts` |
 
 **Deliverables**:
-- [ ] Complete `src/users/repository.ts` with all CRUD + utility operations
-- [ ] All verification passing
+- [x] Complete `src/users/repository.ts` with all CRUD + utility operations
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -92,8 +92,8 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 2.2.3 | Create invalidateUserCache             | `src/users/cache.ts`  |
 
 **Deliverables**:
-- [ ] Complete `src/users/cache.ts` with get/set/invalidate
-- [ ] All verification passing
+- [x] Complete `src/users/cache.ts` with get/set/invalidate
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -115,8 +115,8 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 3.1.3 | Create hasAddress helper                       | `src/users/claims.ts`  |
 
 **Deliverables**:
-- [ ] Complete `src/users/claims.ts` with scope-based claims building
-- [ ] All verification passing
+- [x] Complete `src/users/claims.ts` with scope-based claims building
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -137,9 +137,9 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 3.2.6 | Create barrel export                           | `src/users/index.ts`   |
 
 **Deliverables**:
-- [ ] Complete `src/users/service.ts` with all business logic
-- [ ] Complete `src/users/index.ts` barrel export
-- [ ] All verification passing
+- [x] Complete `src/users/service.ts` with all business logic
+- [x] Complete `src/users/index.ts` barrel export
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -161,10 +161,10 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 4.1.3 | Upgrade account finder to use user service/claims | `src/oidc/account-finder.ts` |
 
 **Deliverables**:
-- [ ] Complete `src/routes/users.ts` with all endpoints
-- [ ] `src/server.ts` updated with user route mounting
-- [ ] `src/oidc/account-finder.ts` upgraded from stub to full implementation
-- [ ] All verification passing
+- [x] Complete `src/routes/users.ts` with all endpoints
+- [x] `src/server.ts` updated with user route mounting
+- [x] `src/oidc/account-finder.ts` upgraded from stub to full implementation
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -186,10 +186,10 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 5.1.3 | Test validatePassword, hashPassword, verifyPassword | `tests/unit/users/password.test.ts` |
 
 **Deliverables**:
-- [ ] `tests/unit/users/types.test.ts` (~8 tests)
-- [ ] `tests/unit/users/errors.test.ts` (~4 tests)
-- [ ] `tests/unit/users/password.test.ts` (~10 tests)
-- [ ] All verification passing
+- [x] `tests/unit/users/types.test.ts` (~8 tests)
+- [x] `tests/unit/users/errors.test.ts` (~4 tests)
+- [x] `tests/unit/users/password.test.ts` (~10 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -210,9 +210,9 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 6.1.2 | Test cache get/set/invalidate (mocked redis)   | `tests/unit/users/cache.test.ts`            |
 
 **Deliverables**:
-- [ ] `tests/unit/users/repository.test.ts` (~20 tests)
-- [ ] `tests/unit/users/cache.test.ts` (~10 tests)
-- [ ] All verification passing
+- [x] `tests/unit/users/repository.test.ts` (~20 tests)
+- [x] `tests/unit/users/cache.test.ts` (~10 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -232,8 +232,8 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 7.1.1 | Test scope-based claims building             | `tests/unit/users/claims.test.ts`        |
 
 **Deliverables**:
-- [ ] `tests/unit/users/claims.test.ts` (~15 tests)
-- [ ] All verification passing
+- [x] `tests/unit/users/claims.test.ts` (~15 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -252,8 +252,8 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 7.2.4 | Test login tracking and OIDC integration            | `tests/unit/users/service.test.ts`        |
 
 **Deliverables**:
-- [ ] `tests/unit/users/service.test.ts` (~30 tests)
-- [ ] All verification passing
+- [x] `tests/unit/users/service.test.ts` (~30 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -275,10 +275,10 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 | 8.1.3 | Run final full verification                 | —                                                |
 
 **Deliverables**:
-- [ ] `tests/unit/routes/users.test.ts` (~20 tests)
-- [ ] `tests/unit/oidc/account-finder.test.ts` updated (~6 tests)
-- [ ] Final `yarn verify` passing with zero warnings/errors
-- [ ] All ~123 new tests passing
+- [x] `tests/unit/routes/users.test.ts` (~20 tests)
+- [x] `tests/unit/oidc/account-finder.test.ts` updated (~6 tests)
+- [x] Final `yarn verify` passing with zero warnings/errors
+- [x] All ~123 new tests passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -286,57 +286,57 @@ Implement the user management module for Porta v5. Users are org-scoped entities
 
 ## Task Checklist (All Phases)
 
-### Phase 1: Types, Errors & Password
-- [ ] 1.1.1 Create User types, UserRow, mapRowToUser, input types
-- [ ] 1.1.2 Create UserNotFoundError and UserValidationError
-- [ ] 1.1.3 Create password validation, hashPassword, verifyPassword
+### Phase 1: Types, Errors & Password ✅
+- [x] 1.1.1 Create User types, UserRow, mapRowToUser, input types
+- [x] 1.1.2 Create UserNotFoundError and UserValidationError
+- [x] 1.1.3 Create password validation, hashPassword, verifyPassword
 
-### Phase 2: Repository & Cache
-- [ ] 2.1.1 Create insertUser with all fields
-- [ ] 2.1.2 Create findUserById, findUserByEmail, getPasswordHash
-- [ ] 2.1.3 Create updateUser with dynamic SET builder
-- [ ] 2.1.4 Create listUsers with pagination/search/sort
-- [ ] 2.1.5 Create emailExists, updateLoginStats, countByOrganization
-- [ ] 2.2.1 Create getCachedUserById with Date deserialization
-- [ ] 2.2.2 Create cacheUser with TTL
-- [ ] 2.2.3 Create invalidateUserCache
+### Phase 2: Repository & Cache ✅
+- [x] 2.1.1 Create insertUser with all fields
+- [x] 2.1.2 Create findUserById, findUserByEmail, getPasswordHash
+- [x] 2.1.3 Create updateUser with dynamic SET builder
+- [x] 2.1.4 Create listUsers with pagination/search/sort
+- [x] 2.1.5 Create emailExists, updateLoginStats, countByOrganization
+- [x] 2.2.1 Create getCachedUserById with Date deserialization
+- [x] 2.2.2 Create cacheUser with TTL
+- [x] 2.2.3 Create invalidateUserCache
 
-### Phase 3: Claims & Service
-- [ ] 3.1.1 Create OidcClaims and OidcAddress types
-- [ ] 3.1.2 Create buildUserClaims with scope-based mapping
-- [ ] 3.1.3 Create hasAddress helper
-- [ ] 3.2.1 Create CRUD service functions
-- [ ] 3.2.2 Create status lifecycle functions
-- [ ] 3.2.3 Create password management functions
-- [ ] 3.2.4 Create email verification and login tracking
-- [ ] 3.2.5 Create findUserForOidc
-- [ ] 3.2.6 Create barrel export
+### Phase 3: Claims & Service ✅
+- [x] 3.1.1 Create OidcClaims and OidcAddress types
+- [x] 3.1.2 Create buildUserClaims with scope-based mapping
+- [x] 3.1.3 Create hasAddress helper
+- [x] 3.2.1 Create CRUD service functions
+- [x] 3.2.2 Create status lifecycle functions
+- [x] 3.2.3 Create password management functions
+- [x] 3.2.4 Create email verification and login tracking
+- [x] 3.2.5 Create findUserForOidc
+- [x] 3.2.6 Create barrel export
 
-### Phase 4: Routes & Integration
-- [ ] 4.1.1 Create user route handlers with Zod validation
-- [ ] 4.1.2 Mount user routes in Koa app
-- [ ] 4.1.3 Upgrade account finder to use user service/claims
+### Phase 4: Routes & Integration ✅
+- [x] 4.1.1 Create user route handlers with Zod validation
+- [x] 4.1.2 Mount user routes in Koa app
+- [x] 4.1.3 Upgrade account finder to use user service/claims
 
-### Phase 5: Test — Types & Password
-- [ ] 5.1.1 Test mapRowToUser, all field mappings
-- [ ] 5.1.2 Test error classes
-- [ ] 5.1.3 Test validatePassword, hashPassword, verifyPassword
+### Phase 5: Test — Types & Password ✅
+- [x] 5.1.1 Test mapRowToUser, all field mappings (8 tests)
+- [x] 5.1.2 Test error classes (4 tests)
+- [x] 5.1.3 Test validatePassword, hashPassword, verifyPassword (10 tests)
 
-### Phase 6: Test — Repository & Cache
-- [ ] 6.1.1 Test all repository operations
-- [ ] 6.1.2 Test cache get/set/invalidate
+### Phase 6: Test — Repository & Cache ✅
+- [x] 6.1.1 Test all repository operations (25 tests)
+- [x] 6.1.2 Test cache get/set/invalidate (9 tests)
 
-### Phase 7: Test — Claims & Service
-- [ ] 7.1.1 Test scope-based claims building
-- [ ] 7.2.1 Test CRUD operations
-- [ ] 7.2.2 Test status lifecycle
-- [ ] 7.2.3 Test password and email management
-- [ ] 7.2.4 Test login tracking and OIDC integration
+### Phase 7: Test — Claims & Service ✅
+- [x] 7.1.1 Test scope-based claims building (16 tests)
+- [x] 7.2.1 Test CRUD operations
+- [x] 7.2.2 Test status lifecycle
+- [x] 7.2.3 Test password and email management
+- [x] 7.2.4 Test login tracking and OIDC integration (36 tests total for 7.2.x)
 
-### Phase 8: Test — Routes & Account Finder
-- [ ] 8.1.1 Test route handlers and Zod validation
-- [ ] 8.1.2 Update account finder tests
-- [ ] 8.1.3 Run final full verification
+### Phase 8: Test — Routes & Account Finder ✅
+- [x] 8.1.1 Test route handlers and Zod validation (21 tests)
+- [x] 8.1.2 Update account finder tests (5 tests)
+- [x] 8.1.3 Run final full verification — 775 tests passing, 0 failures
 
 ---
 
