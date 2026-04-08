@@ -26,6 +26,10 @@
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "docker:logs": "docker compose -f docker/docker-compose.yml logs -f",
     "verify": "yarn lint && yarn build && yarn test",
+    "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
+    "migrate:rollback": "node-pg-migrate down --migrations-dir migrations --migration-file-language sql --count 1",
+    "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language sql",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations --migration-file-language sql",
     "deps:check": "ncu",
     "deps:update": "ncu -u && yarn install"
   },
@@ -35,6 +39,7 @@
     "ioredis": "5.10.1",
     "koa": "3.2.0",
     "koa-bodyparser": "4.4.1",
+    "node-pg-migrate": "8.0.4",
     "pg": "8.20.0",
     "pino": "10.3.1",
     "zod": "4.3.6"
