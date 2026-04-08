@@ -147,7 +147,7 @@ const VALID_ENV = {
 
 ## Verification Checklist
 
-- [ ] All unit tests pass (`npm test`)
+- [ ] All unit tests pass (`yarn test`)
 - [ ] All tests produce clear pass/fail output
 - [ ] No regressions (there are no existing tests to regress)
-- [ ] `npm run verify` (build + test) passes
+- [ ] `yarn verify` (build + test) passes

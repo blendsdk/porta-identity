@@ -34,7 +34,7 @@ These rules are **mandatory** and must be consulted before every task.
 - **Runtime:** Node.js ≥ 22
 - **Framework(s):** Koa (native — no BlendSDK/WebAFX, see ADR-002)
 - **OIDC Engine:** [panva/oidc-provider](https://github.com/panva/node-oidc-provider) (OpenID Certified™)
-- **Package Manager:** npm
+- **Package Manager:** Yarn (modern/v4, via Corepack)
 - **Test Framework:** Vitest
 - **Database:** PostgreSQL (persistent data) + Redis (ephemeral/sessions)
 - **Email:** Nodemailer (SMTP)
@@ -54,31 +54,31 @@ All commands assume execution from the project root. Prefix all shell commands w
 ### Build
 
 ```bash
-clear && sleep 3 && npm run build
+clear && sleep 3 && yarn build
 ```
 
 ### Test
 
 ```bash
 # Run all tests
-clear && sleep 3 && npm test
+clear && sleep 3 && yarn test
 
 # Run tests in watch mode
-clear && sleep 3 && npm run test:watch
+clear && sleep 3 && yarn test:watch
 ```
 
 ### Verify (before commit)
 
 ```bash
 # Full verification — run this before any git commit
-clear && sleep 3 && npm run verify
+clear && sleep 3 && yarn verify
 ```
 
 ### Development
 
 ```bash
 # Start dev server with Docker dependencies
-clear && sleep 3 && docker compose up -d && npm run dev
+clear && sleep 3 && docker compose up -d && yarn dev
 ```
 
 ## Project Structure

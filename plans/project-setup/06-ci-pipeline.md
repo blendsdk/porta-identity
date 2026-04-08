@@ -5,7 +5,7 @@
 
 ## Overview
 
-GitHub Actions CI workflow that runs on every push and pull request. Builds the TypeScript project and runs all tests. Future plans will extend this with integration tests, Docker builds, and deployment steps.
+GitHub Actions CI workflow that runs on a **self-hosted runner** on every push and pull request. Builds the TypeScript project and runs all tests. Future plans will extend this with integration tests, Docker builds, and deployment steps.
 
 ## GitHub Actions Workflow
 
@@ -23,30 +23,29 @@ on:
 jobs:
   build-and-test:
     name: Build & Test
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [22]
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          node-version: 22
+          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --immutable
 
       - name: Build
-        run: npm run build
+        run: yarn build
 
       - name: Run tests
-        run: npm test
+        run: yarn test
         env:
           NODE_ENV: test
           ISSUER: http://localhost:3000
@@ -61,7 +60,7 @@ jobs:
           SMTP_FROM: 'Test <test@localhost>'
 
       - name: Verify (build + test combined)
-        run: npm run verify
+        run: yarn verify
         env:
           NODE_ENV: test
           ISSUER: http://localhost:3000
@@ -77,11 +76,13 @@ jobs:
 ```
 
 **Design decisions:**
+- **Self-hosted runner** (`runs-on: self-hosted`) — runs on the organization's own infrastructure, not GitHub's public runners
 - Runs on `main` and `v5` branches (v5 is the current working branch)
-- Node.js 22 only (per requirements, no multi-version matrix needed)
-- `npm ci` for deterministic installs
+- Node.js 22 via `actions/setup-node` (assumes the self-hosted runner supports this action)
+- `corepack enable` activates Yarn modern (managed by Node.js)
+- `yarn install --immutable` for deterministic installs (fails if lockfile is out of date)
 - Test env vars provided inline (no secrets needed for unit tests)
-- `npm run verify` runs the full build + test pipeline — same as local development
+- `yarn verify` runs the full build + test pipeline — same as local development
 
 ### Future Extensions (Not In This Plan)
 

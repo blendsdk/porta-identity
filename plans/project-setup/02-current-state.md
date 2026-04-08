@@ -23,7 +23,7 @@ The repository contains only requirement documents and CI rules. There is **no s
 
 ### What Does NOT Exist (To Be Created)
 
-- `package.json` — No npm project initialized
+- `package.json` — No Yarn project initialized
 - `tsconfig.json` — No TypeScript configuration
 - `src/` — No source code directory
 - `tests/` — No test directory
@@ -38,7 +38,7 @@ The repository contains only requirement documents and CI rules. There is **no s
 ### Gap 1: No Project Foundation
 
 **Current Behavior:** Repository has no runnable code.
-**Required Behavior:** `npm run dev` starts a Koa server, `npm run verify` passes.
+**Required Behavior:** `yarn dev` starts a Koa server, `yarn verify` passes.
 **Fix Required:** Create all scaffolding from scratch.
 
 ### Gap 2: No Development Infrastructure
@@ -65,7 +65,7 @@ The repository contains only requirement documents and CI rules. There is **no s
 | Dependency | Version | Purpose |
 | ---------- | ------- | ------- |
 | Node.js | ≥ 22 | Runtime |
-| npm | ≥ 10 | Package manager |
+| Yarn | ≥ 4 (via Corepack) | Package manager |
 | Docker + Docker Compose | v2 | Development infrastructure |
 | GitHub Actions | N/A | CI platform |
 

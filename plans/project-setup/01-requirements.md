@@ -11,7 +11,7 @@ Scaffold the Porta v5 project from an empty repository to a fully buildable, tes
 
 ### Must Have
 
-- [ ] npm project initialized with all production + dev dependencies
+- [ ] Yarn project initialized with all production + dev dependencies
 - [ ] TypeScript strict mode, ESM-only configuration
 - [ ] Vitest configured and running
 - [ ] Docker Compose with PostgreSQL 16 + Redis 7 for development
@@ -21,7 +21,7 @@ Scaffold the Porta v5 project from an empty repository to a fully buildable, tes
 - [ ] Structured JSON logger (stdout)
 - [ ] Basic Koa server with graceful shutdown
 - [ ] Health check endpoint (`GET /health`)
-- [ ] npm scripts: `build`, `dev`, `test`, `test:watch`, `verify`, `start`
+- [ ] Yarn scripts: `build`, `dev`, `test`, `test:watch`, `verify`, `start`
 - [ ] `.env.example` documenting all env vars
 - [ ] `.gitignore` for Node.js/TypeScript project
 - [ ] GitHub Actions CI workflow (build + test on push/PR)
@@ -30,8 +30,8 @@ Scaffold the Porta v5 project from an empty repository to a fully buildable, tes
 ### Should Have
 
 - [ ] `.dockerignore` for efficient Docker builds
-- [ ] `npm run dev` with watch mode (tsx or similar)
-- [ ] npm script stubs for `migrate` and `bootstrap` (echo "not implemented yet")
+- [ ] `yarn dev` with watch mode (tsx or similar)
+- [ ] Yarn script stubs for `migrate` and `bootstrap` (echo "not implemented yet")
 
 ### Won't Have (Out of Scope)
 
@@ -63,6 +63,7 @@ Scaffold the Porta v5 project from an empty repository to a fully buildable, tes
 - No secrets in committed files (`.env.example` has placeholders only)
 - Dockerfile runs as non-root user
 - Dependencies pinned to specific versions in package.json
+- Yarn modern (v4) managed via Corepack
 
 ## Scope Decisions
 
@@ -75,12 +76,12 @@ Scaffold the Porta v5 project from an empty repository to a fully buildable, tes
 
 ## Acceptance Criteria
 
-1. [ ] `npm run build` compiles TypeScript without errors
-2. [ ] `npm test` runs and all tests pass
-3. [ ] `npm run verify` (build + test) passes
-4. [ ] `npm run dev` starts the server on port 3000
+1. [ ] `yarn build` compiles TypeScript without errors
+2. [ ] `yarn test` runs and all tests pass
+3. [ ] `yarn verify` (build + test) passes
+4. [ ] `yarn dev` starts the server on port 3000
 5. [ ] `GET http://localhost:3000/health` returns 200 with JSON status
 6. [ ] `docker compose up -d` starts PostgreSQL and Redis
 7. [ ] `docker build .` produces a working image
-8. [ ] GitHub Actions workflow runs on push (build + test)
+8. [ ] GitHub Actions workflow runs on push (self-hosted runner, build + test)
 9. [ ] All env vars from OPERATIONS.md are defined in config schema (with defaults where applicable)

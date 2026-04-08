@@ -45,11 +45,11 @@ Scaffold the Porta v5 project from an empty repository to a running Koa server w
 | 1.1.5 | Create .gitignore and .env.example                | `.gitignore`, `.env.example` |
 
 **Deliverables**:
-- [ ] `npm install` succeeds
-- [ ] `npm run build` compiles (empty project, no errors)
+- [ ] `yarn install` succeeds
+- [ ] `yarn build` compiles (empty project, no errors)
 - [ ] Directory structure matches project conventions
 
-**Verify**: `clear && sleep 3 && npm run build`
+**Verify**: `clear && sleep 3 && yarn build`
 
 ---
 
@@ -95,11 +95,11 @@ Scaffold the Porta v5 project from an empty repository to a running Koa server w
 | 3.1.5 | Create application entry point                    | `src/index.ts`             |
 
 **Deliverables**:
-- [ ] `npm run build` compiles without errors
-- [ ] `npm run dev` starts server (with valid env vars)
+- [ ] `yarn build` compiles without errors
+- [ ] `yarn dev` starts server (with valid env vars)
 - [ ] `GET /health` returns 200 with JSON body
 
-**Verify**: `clear && sleep 3 && npm run build`
+**Verify**: `clear && sleep 3 && yarn build`
 
 ---
 
@@ -124,7 +124,7 @@ Scaffold the Porta v5 project from an empty repository to a running Koa server w
 - [ ] Logger tests verify JSON format and level filtering
 - [ ] Health tests verify response format
 
-**Verify**: `clear && sleep 3 && npm run verify`
+**Verify**: `clear && sleep 3 && yarn verify`
 
 ---
 
@@ -144,11 +144,11 @@ Scaffold the Porta v5 project from an empty repository to a running Koa server w
 
 **Deliverables**:
 - [ ] CI workflow file exists and is valid YAML
-- [ ] `npm run verify` passes (build + all tests)
+- [ ] `yarn verify` passes (build + all tests)
 - [ ] `docker compose config` validates
 - [ ] `docker build .` completes successfully
 
-**Verify**: `clear && sleep 3 && npm run verify`
+**Verify**: `clear && sleep 3 && yarn verify`
 
 ---
 
@@ -192,7 +192,7 @@ Scaffold the Porta v5 project from an empty repository to a running Koa server w
 
 ### Ending a Session
 
-1. Run the project's verify command: `clear && sleep 3 && npm run verify`
+1. Run the project's verify command: `clear && sleep 3 && yarn verify`
 2. Handle commit per the active **commit mode** (see "Commit Behavior During Plan Execution" in `make_plan.md`)
 3. Compact the conversation with `/compact`
 
@@ -226,8 +226,8 @@ Phase 5: CI Pipeline & Final (needs everything)
 **Feature is complete when:**
 
 1. ✅ All phases completed
-2. ✅ `npm run verify` passes (build + all tests)
-3. ✅ `npm run dev` starts a working server
+2. ✅ `yarn verify` passes (build + all tests)
+3. ✅ `yarn dev` starts a working server
 4. ✅ `GET /health` returns 200 with structured JSON
 5. ✅ `docker compose up -d` starts PostgreSQL + Redis
 6. ✅ `docker build .` produces a working image

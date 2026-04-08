@@ -66,17 +66,20 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Enable Corepack for Yarn
+RUN corepack enable
+
 # Install dependencies first (Docker layer caching)
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
 
 # Copy source and build
 COPY tsconfig.json ./
 COPY src/ ./src/
-RUN npm run build
+RUN yarn build
 
-# Prune dev dependencies
-RUN npm prune --production
+# Production install (no dev dependencies)
+RUN yarn workspaces focus --production
 
 # ============================================================
 # Stage 2: Runtime
@@ -114,8 +117,8 @@ CMD ["node", "dist/index.js"]
 
 **Design decisions:**
 - Multi-stage: build stage has TypeScript compiler, runtime stage only has production deps
-- `npm ci --ignore-scripts` — deterministic installs, skip postinstall scripts for security
-- `npm prune --production` — remove devDependencies before copying to runtime
+- `yarn install --immutable` — deterministic installs from lockfile, fails if lockfile is out of date
+- `yarn workspaces focus --production` — installs only production dependencies for the runtime stage
 - Non-root user (`porta:1001`) per security requirements
 - Alpine base for minimal image size (~150MB estimated)
 - Health check using wget (available in Alpine, no curl needed)

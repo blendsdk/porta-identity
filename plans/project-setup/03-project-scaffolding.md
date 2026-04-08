@@ -5,7 +5,9 @@
 
 ## Overview
 
-Initialize the npm project with all dependencies, TypeScript configuration, Vitest setup, npm scripts, and project-level config files (`.gitignore`, `.env.example`). This creates the buildable foundation before any application code.
+Initialize the Yarn project with all dependencies, TypeScript configuration, Vitest setup, scripts, and project-level config files (`.gitignore`, `.env.example`). This creates the buildable foundation before any application code.
+
+**Package manager:** Yarn (modern/v4) managed via Node.js Corepack. Run `corepack enable` to activate.
 
 ## package.json
 
@@ -17,6 +19,7 @@ Initialize the npm project with all dependencies, TypeScript configuration, Vite
   "version": "5.0.0",
   "description": "Porta v5 — OIDC Identity Provider",
   "type": "module",
+  "packageManager": "yarn@4.9.1",
   "engines": {
     "node": ">=22"
   },
@@ -57,7 +60,7 @@ Initialize the npm project with all dependencies, TypeScript configuration, Vite
 | `@types/ejs` | EJS type definitions |
 | `@types/qrcode` | QR code type definitions |
 
-### npm Scripts
+### Yarn Scripts
 
 ```json
 {
@@ -67,7 +70,7 @@ Initialize the npm project with all dependencies, TypeScript configuration, Vite
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run build && npm test",
+    "verify": "yarn build && yarn test",
     "migrate": "echo 'Migration runner not implemented yet — see Plan 2: core-oidc'",
     "bootstrap": "echo 'Bootstrap not implemented yet — see Plan 2: core-oidc'"
   }

@@ -6,7 +6,7 @@
 
 ## Overview
 
-This plan scaffolds the Porta v5 project from scratch: npm project initialization, TypeScript configuration, Docker development environment, basic Koa server with health check, structured logging, configuration loader, production Dockerfile, GitHub Actions CI, and the first passing tests. After this plan, `npm run dev` starts a working server and `npm run verify` passes.
+This plan scaffolds the Porta v5 project from scratch: Yarn project initialization, TypeScript configuration, Docker development environment, basic Koa server with health check, structured logging, configuration loader, production Dockerfile, GitHub Actions CI (self-hosted runner), and the first passing tests. After this plan, `yarn dev` starts a working server and `yarn verify` passes.
 
 ## Document Index
 
@@ -15,7 +15,7 @@ This plan scaffolds the Porta v5 project from scratch: npm project initializatio
 | 00  | [Index](00-index.md)                                | This document — overview and navigation |
 | 01  | [Requirements](01-requirements.md)                  | Feature requirements and scope          |
 | 02  | [Current State](02-current-state.md)                | Analysis of current implementation      |
-| 03  | [Project Scaffolding](03-project-scaffolding.md)    | package.json, TypeScript, Vitest, npm scripts |
+| 03  | [Project Scaffolding](03-project-scaffolding.md)    | package.json, TypeScript, Vitest, Yarn scripts |
 | 04  | [Docker Environment](04-docker.md)                  | Docker Compose, Dockerfile, .dockerignore |
 | 05  | [Application Core](05-application-core.md)          | Config loader, logger, Koa server, health endpoint |
 | 06  | [CI Pipeline](06-ci-pipeline.md)                    | GitHub Actions workflow                 |
@@ -28,13 +28,13 @@ This plan scaffolds the Porta v5 project from scratch: npm project initializatio
 
 ```bash
 # Start development environment
-docker compose up -d && npm run dev
+docker compose up -d && yarn dev
 
 # Run tests
-npm test
+yarn test
 
 # Full verification (build + test)
-npm run verify
+yarn verify
 
 # Production build
 docker build -t porta:latest .
@@ -44,12 +44,12 @@ docker build -t porta:latest .
 
 | Decision                  | Outcome                                     |
 | ------------------------- | ------------------------------------------- |
-| Package manager           | npm (per requirements)                      |
+| Package manager           | Yarn (modern, via Corepack)                 |
 | TypeScript target         | ES2022, ESM-only                            |
 | Test framework            | Vitest                                      |
 | Docker dev services       | PostgreSQL 16 + Redis 7                     |
 | Dockerfile strategy       | Multi-stage (build + runtime)               |
-| CI platform               | GitHub Actions                              |
+| CI platform               | GitHub Actions (self-hosted runner)          |
 | Config validation         | Zod                                         |
 | Logger                    | Custom structured JSON (stdout)             |
 
