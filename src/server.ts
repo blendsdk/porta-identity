@@ -11,6 +11,8 @@
  *   /api/admin/applications/*      — Application management (super-admin)
  *   /api/admin/clients/*           — Client & secret management (super-admin)
  *   /api/admin/organizations/:orgId/users/* — User management (super-admin)
+ *   /interaction/:uid/*            — OIDC interaction routes (login, consent, abort)
+ *   /:orgSlug/auth/*               — Auth routes (magic link, password reset, invitation)
  *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
  */
 
@@ -26,6 +28,10 @@ import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
 import { createUserRouter } from './routes/users.js';
+import { createInteractionRouter } from './routes/interactions.js';
+import { createMagicLinkRouter } from './routes/magic-link.js';
+import { createPasswordResetRouter } from './routes/password-reset.js';
+import { createInvitationRouter } from './routes/invitation.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -76,7 +82,37 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
 
+  // OIDC interaction routes — mounted at /interaction/:uid/*
+  // These must be before the OIDC catch-all so the provider can redirect here.
+  // Only mounted when provider is available (interaction handlers need it).
+  if (oidcProvider) {
+    const interactionRouter = createInteractionRouter(oidcProvider);
+    app.use(interactionRouter.routes());
+    app.use(interactionRouter.allowedMethods());
+  }
+
+  // Auth routes — magic link, password reset, invitation
+  // These are org-scoped via /:orgSlug/auth/* and use tenant resolution.
+  // Mounted before the OIDC catch-all to prevent it from swallowing auth paths.
+  if (oidcProvider) {
+    // Magic link needs the provider to resume OIDC interactions
+    const magicLinkRouter = createMagicLinkRouter(oidcProvider);
+    app.use(magicLinkRouter.routes());
+    app.use(magicLinkRouter.allowedMethods());
+  }
+
+  // Password reset and invitation routes don't need the provider
+  const passwordResetRouter = createPasswordResetRouter();
+  app.use(passwordResetRouter.routes());
+  app.use(passwordResetRouter.allowedMethods());
+
+  const invitationRouter = createInvitationRouter();
+  app.use(invitationRouter.routes());
+  app.use(invitationRouter.allowedMethods());
+
   // OIDC provider routes — mounted under /:orgSlug prefix
+  // This is the catch-all for OIDC protocol endpoints (auth, token, jwks, etc.)
+  // MUST be last because /:orgSlug/* matches everything.
   if (oidcProvider) {
     const oidcRouter = new Router({ prefix: '/:orgSlug' });
 
