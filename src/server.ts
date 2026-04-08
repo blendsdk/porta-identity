@@ -6,8 +6,9 @@
  * OIDC functionality.
  *
  * Route structure:
- *   /health            — Health check (DB + Redis status)
- *   /:orgSlug/*        — OIDC provider endpoints (auth, token, jwks, etc.)
+ *   /health                        — Health check (DB + Redis status)
+ *   /api/admin/organizations/*     — Organization management (super-admin)
+ *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
  */
 
 import Koa from 'koa';
@@ -18,6 +19,7 @@ import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { healthCheck } from './middleware/health.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
+import { createOrganizationRouter } from './routes/organizations.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -43,6 +45,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   router.get('/health', healthCheck());
   app.use(router.routes());
   app.use(router.allowedMethods());
+
+  // Organization management API — requires super-admin authorization
+  // Mounted at /api/admin/organizations (see routes/organizations.ts)
+  const orgRouter = createOrganizationRouter();
+  app.use(orgRouter.routes());
+  app.use(orgRouter.allowedMethods());
 
   // OIDC provider routes — mounted under /:orgSlug prefix
   if (oidcProvider) {
