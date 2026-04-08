@@ -10,6 +10,7 @@
  *   /api/admin/organizations/*     — Organization management (super-admin)
  *   /api/admin/applications/*      — Application management (super-admin)
  *   /api/admin/clients/*           — Client & secret management (super-admin)
+ *   /api/admin/organizations/:orgId/users/* — User management (super-admin)
  *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
  */
 
@@ -24,6 +25,7 @@ import { tenantResolver } from './middleware/tenant-resolver.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
+import { createUserRouter } from './routes/users.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -67,6 +69,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const clientRouter = createClientRouter();
   app.use(clientRouter.routes());
   app.use(clientRouter.allowedMethods());
+
+  // User management API — requires super-admin authorization
+  // Mounted at /api/admin/organizations/:orgId/users (see routes/users.ts)
+  const userRouter = createUserRouter();
+  app.use(userRouter.routes());
+  app.use(userRouter.allowedMethods());
 
   // OIDC provider routes — mounted under /:orgSlug prefix
   if (oidcProvider) {
