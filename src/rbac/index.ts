@@ -1,12 +1,10 @@
 /**
  * RBAC module — public API barrel export.
  *
- * Re-exports the types, error classes, and slug utilities that other
- * modules need. Internal implementation details (repository, cache)
- * are NOT exported — they are consumed only by the service layer.
- *
- * Note: Service functions will be added here as they are implemented
- * in later phases (Phase 3).
+ * Re-exports the types, error classes, slug utilities, and service
+ * functions that other modules need. Internal implementation details
+ * (repository, cache) are NOT exported — they are consumed only by
+ * the service layer.
  */
 
 // Types
@@ -50,3 +48,38 @@ export {
 
 // Slug types
 export type { ParsedPermissionSlug } from './slugs.js';
+
+// Role service
+export {
+  createRole,
+  findRoleById,
+  findRoleBySlug,
+  updateRole,
+  deleteRole,
+  listRolesByApplication,
+  assignPermissionsToRole,
+  removePermissionsFromRole,
+  getPermissionsForRole,
+} from './role-service.js';
+
+// Permission service
+export {
+  createPermission,
+  findPermissionById,
+  findPermissionBySlug,
+  updatePermission,
+  deletePermission,
+  listPermissionsByApplication,
+  getRolesWithPermission,
+} from './permission-service.js';
+
+// User-role service
+export {
+  assignRolesToUser,
+  removeRolesFromUser,
+  getUserRoles,
+  getUserPermissions,
+  getUsersWithRole,
+  buildRoleClaims,
+  buildPermissionClaims,
+} from './user-role-service.js';
