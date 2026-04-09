@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 22:14
-> **Progress**: 37/62 tasks (60%)
+> **Last Updated**: 2026-04-09 23:45
+> **Progress**: 52/62 tasks (84%) — Phases 1–12 unit tests complete; integration tests deferred to RD-10
 
 ## Overview
 
@@ -416,25 +416,25 @@ Implements two-factor authentication for Porta v5: Email OTP, TOTP (authenticato
 - [x] 9.1.4 Replace stubs in user.ts ✅ (completed: 2026-04-09 22:14, commit: f567b32)
 
 ### Phase 10: Unit Tests — Crypto, OTP, TOTP, Recovery
-- [ ] 10.1.1 Crypto unit tests
-- [ ] 10.1.2 OTP unit tests
-- [ ] 10.1.3 Types + errors tests
-- [ ] 10.2.1 TOTP unit tests
-- [ ] 10.2.2 Recovery code unit tests
+- [x] 10.1.1 Crypto unit tests (13 tests) ✅ (completed: 2026-04-09 23:37)
+- [x] 10.1.2 OTP unit tests (10 tests) ✅ (completed: 2026-04-09 23:37)
+- [x] 10.1.3 Types + errors tests (24 tests) ✅ (completed: 2026-04-09 23:37)
+- [x] 10.2.1 TOTP unit tests (14 tests) ✅ (completed: 2026-04-09 23:38)
+- [x] 10.2.2 Recovery code unit tests (13 tests) ✅ (completed: 2026-04-09 23:38)
 
 ### Phase 11: Unit Tests — Repository, Service, Routes
-- [ ] 11.1.1 Repository unit tests
-- [ ] 11.1.2 Cache unit tests
-- [ ] 11.2.1 Service unit tests
-- [ ] 11.3.1 Route handler tests
-- [ ] 11.3.2 CLI 2FA command tests
-- [ ] 11.3.3 Update existing org/user tests
+- [x] 11.1.1 Repository unit tests (22 tests) ✅ (completed: 2026-04-09 23:39)
+- [x] 11.1.2 Cache unit tests (9 tests) ✅ (completed: 2026-04-09 23:39)
+- [x] 11.2.1 Service unit tests (30 tests) ✅ (completed: 2026-04-09 23:40)
+- [x] 11.3.1 Route handler tests (13 tests) ✅ (completed: 2026-04-09 23:42)
+- [x] 11.3.2 CLI 2FA command tests (10 tests) ✅ (completed: 2026-04-09 23:42)
+- [x] 11.3.3 Update existing org/user tests ✅ (completed: 2026-04-09 23:42)
 
 ### Phase 12: Integration Tests & Final Verification
-- [ ] 12.1.1 2FA repository integration tests
-- [ ] 12.1.2 Update migration integration tests
-- [ ] 12.2.1 Run full suite, fix regressions
-- [ ] 12.2.2 Update .clinerules/project.md
+- [ ] 12.1.1 2FA repository integration tests — deferred to RD-10 (requires Docker infra)
+- [ ] 12.1.2 Update migration integration tests — deferred to RD-10 (requires Docker infra)
+- [x] 12.2.1 Run full suite, fix regressions ✅ (completed: 2026-04-09 23:45, 1818 tests, 0 failures)
+- [x] 12.2.2 Update .clinerules/project.md ✅ (completed: 2026-04-09 23:45)
 
 ---
 

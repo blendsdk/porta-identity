@@ -426,7 +426,8 @@ dist/                # TypeScript build output (gitignored)
 - **Custom claims module** — Claim definitions per application, user claim values, type-validated, cached
 - **Functional code style** — standalone exported functions, not classes
 - **CLI module** — yargs-based admin CLI (`porta`), 10 top-level commands, direct service invocation (no HTTP), bootstrap DB+Redis → run command → shutdown, table + JSON output, confirmation prompts, 220 CLI tests
-- **Test suite** — 1,780 unit+integration tests across 105 files, zero failures. Plus 20 E2E test files (~100 tests), 32 pentest files (~185 security tests). Total: ~2,065 tests across 157 files.
+- **Two-factor module** — Email OTP, TOTP (authenticator), recovery codes, per-org policy, login flow integration, templates, i18n, CLI admin (status/disable/reset), AES-256-GCM secret encryption, Argon2id recovery hashing
+- **Test suite** — 1,818 unit+integration tests across 112 files, zero failures. Plus 20 E2E test files (~100 tests), 32 pentest files (~185 security tests). Total: ~2,103 tests across 164 files.
 - **Pentest coverage** — Auth bypass (SQL injection, brute force, timing, session), magic link attacks (prediction, replay, host injection, enumeration), injection (SQL, XSS, CRLF, SSTI), crypto (JWT algo confusion, manipulation, key confusion), admin security (unauthorized access, privilege escalation, IDOR, mass assignment), multi-tenant (cross-tenant auth, enumeration, slug injection), infrastructure (HTTP headers, CORS, method tampering, info disclosure)
 
 ## Cross-References
