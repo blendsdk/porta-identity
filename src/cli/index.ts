@@ -30,6 +30,8 @@ import { configCommand } from './commands/config.js';
 import { auditCommand } from './commands/audit.js';
 import { orgCommand } from './commands/org.js';
 import { appCommand } from './commands/app.js';
+import { clientCommand } from './commands/client.js';
+import { userCommand } from './commands/user.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -93,9 +95,8 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
     // Domain commands
     .command(orgCommand)
     .command(appCommand)
-    // Remaining domain commands registered in later sessions:
-    // .command(clientCommand)
-    // .command(userCommand)
+    .command(clientCommand)
+    .command(userCommand)
     .demandCommand(1, 'You need to specify a command')
     .strict()
     .help()
