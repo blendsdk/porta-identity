@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 14:30
-> **Progress**: 0/116 tasks (0%)
+> **Progress**: 17/116 tasks (15%)
 
 ## Overview
 
@@ -697,25 +697,25 @@ Implements the comprehensive testing strategy for Porta v5: integration tests, E
 ## Task Checklist (All Phases)
 
 ### Phase 1: Test Infrastructure Foundation
-- [ ] 1.1.1 Rewrite vitest.config.ts with 4 workspace projects
-- [ ] 1.1.2 Create docker/init-test-db.sql
-- [ ] 1.1.3 Update docker-compose.yml to mount init script
-- [ ] 1.1.4 Add test:pentest script, update test scripts
-- [ ] 1.2.1 Add test env vars to .env.example
-- [ ] 1.2.2 Create shared server setup module
-- [ ] 1.2.3 Create shared test constants
+- [x] 1.1.1 Rewrite vitest.config.ts with 4 workspace projects ✅ (completed: 2026-04-09 15:50)
+- [x] 1.1.2 Create docker/init-test-db.sql ✅ (completed: 2026-04-09 15:50)
+- [x] 1.1.3 Update docker-compose.yml to mount init script ✅ (completed: 2026-04-09 15:50)
+- [x] 1.1.4 Add test:pentest script, update test scripts ✅ (completed: 2026-04-09 15:50)
+- [x] 1.2.1 Add test env vars to .env.example ✅ (completed: 2026-04-09 15:51)
+- [x] 1.2.2 Create shared server setup module ✅ (completed: 2026-04-09 15:52)
+- [x] 1.2.3 Create shared test constants ✅ (completed: 2026-04-09 15:51)
 
 ### Phase 2: Test Data Factories & Fixtures
-- [ ] 2.1.1 Create factories with randomSuffix, org/app factories
-- [ ] 2.1.2 Add client factory with secret generation
-- [ ] 2.1.3 Add user factory with password hashing
-- [ ] 2.1.4 Add role, permission, claim definition factories
-- [ ] 2.1.5 Add composite createFullTestTenant factory
-- [ ] 2.2.1 Create organization fixtures
-- [ ] 2.2.2 Create user fixtures
-- [ ] 2.2.3 Create client fixtures
-- [ ] 2.2.4 Create application fixtures
-- [ ] 2.2.5 Create RBAC fixtures
+- [x] 2.1.1 Create factories with randomSuffix, org/app factories ✅ (completed: 2026-04-09 15:53)
+- [x] 2.1.2 Add client factory with secret generation ✅ (completed: 2026-04-09 15:53)
+- [x] 2.1.3 Add user factory with password hashing ✅ (completed: 2026-04-09 15:53)
+- [x] 2.1.4 Add role, permission, claim definition factories ✅ (completed: 2026-04-09 15:53)
+- [x] 2.1.5 Add composite createFullTestTenant factory ✅ (completed: 2026-04-09 15:53)
+- [x] 2.2.1 Create organization fixtures ✅ (completed: 2026-04-09 15:54)
+- [x] 2.2.2 Create user fixtures ✅ (completed: 2026-04-09 15:54)
+- [x] 2.2.3 Create client fixtures ✅ (completed: 2026-04-09 15:54)
+- [x] 2.2.4 Create application fixtures ✅ (completed: 2026-04-09 15:54)
+- [x] 2.2.5 Create RBAC fixtures ✅ (completed: 2026-04-09 15:54)
 
 ### Phase 3: Integration Test Infrastructure
 - [ ] 3.1.1 Create integration global setup
