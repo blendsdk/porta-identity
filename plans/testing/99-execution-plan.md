@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 17:37
-> **Progress**: 46/116 tasks (40%)
+> **Last Updated**: 2026-04-09 18:17
+> **Progress**: 69/116 tasks (59%)
 
 ## Overview
 
@@ -757,32 +757,32 @@ Implements the comprehensive testing strategy for Porta v5: integration tests, E
 - [x] 7.3.2 Token revocation tests (4 tests) ✅ (completed: 2026-04-09 17:37)
 
 ### Phase 8: E2E Tests — Auth Workflows & Invalid Params
-- [ ] 8.1.1 Password login flow tests
-- [ ] 8.1.2 Magic link flow tests
-- [ ] 8.2.1 Forgot/reset password flow tests
-- [ ] 8.2.2 Consent flow tests
-- [ ] 8.3.1 Authorization endpoint invalid params tests
-- [ ] 8.3.2 Token endpoint invalid params tests
-- [ ] 8.3.3 Consent/interaction invalid params tests
-- [ ] 8.3.4 Login form invalid params tests
-- [ ] 8.3.5 Introspection/revocation invalid params tests
+- [x] 8.1.1 Password login flow tests (7 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.1.2 Magic link flow tests (6 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.2.1 Forgot/reset password flow tests (6 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.2.2 Consent flow tests (5 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.3.1 Authorization endpoint invalid params tests (14 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.3.2 Token endpoint invalid params tests (14 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.3.3 Consent/interaction invalid params tests (4 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.3.4 Login form invalid params tests (6 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 8.3.5 Introspection/revocation invalid params tests (5 tests) ✅ (completed: 2026-04-09 18:12)
 
 ### Phase 9: E2E Tests — Multi-tenant & Security
-- [ ] 9.1.1 Tenant isolation tests
-- [ ] 9.1.2 Issuer resolution tests
-- [ ] 9.2.1 Rate limiting tests
-- [ ] 9.2.2 CSRF protection tests
-- [ ] 9.2.3 User enumeration prevention tests
+- [x] 9.1.1 Tenant isolation tests (6 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 9.1.2 Issuer resolution tests (4 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 9.2.1 Rate limiting tests (3 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 9.2.2 CSRF protection tests (4 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 9.2.3 User enumeration prevention tests (3 tests) ✅ (completed: 2026-04-09 18:12)
 
 ### Phase 10: Pentest Infrastructure & OIDC Attacks
-- [ ] 10.1.1 Create pentest global setup
-- [ ] 10.1.2 Create AttackClient
-- [ ] 10.2.1 PKCE bypass attack tests
-- [ ] 10.2.2 Redirect URI manipulation tests
-- [ ] 10.3.1 Authorization code injection tests
-- [ ] 10.3.2 Token substitution tests
-- [ ] 10.3.3 Scope escalation tests
-- [ ] 10.3.4 Refresh token replay tests
+- [x] 10.1.1 Create pentest global setup ✅ (completed: 2026-04-09 18:12)
+- [x] 10.1.2 Create AttackClient ✅ (completed: 2026-04-09 18:12)
+- [x] 10.2.1 PKCE bypass attack tests (7 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 10.2.2 Redirect URI manipulation tests (10 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 10.3.1 Authorization code injection tests (5 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 10.3.2 Token substitution tests (4 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 10.3.3 Scope escalation tests (4 tests) ✅ (completed: 2026-04-09 18:12)
+- [x] 10.3.4 Refresh token replay tests (4 tests) ✅ (completed: 2026-04-09 18:12)
 
 ### Phase 11: Pentests — Auth Bypass, Injection, Crypto
 - [ ] 11.1.1 SQL injection in auth flows tests
