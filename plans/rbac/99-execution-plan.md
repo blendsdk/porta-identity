@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 11:04
-> **Progress**: 21/46 tasks (46%)
+> **Last Updated**: 2026-04-09 11:20
+> **Progress**: 35/46 tasks (76%)
 
 ## Overview
 
@@ -331,22 +331,22 @@ Implement Authorization (RBAC) & Custom Claims for Porta v5. Two new modules (`s
 - [x] 3.2.3 Update RBAC barrel export ✅ (completed: 2026-04-09 11:02)
 
 ### Phase 4: Custom Claims Module
-- [ ] 4.1.1 Create custom claims types
-- [ ] 4.1.2 Create custom claims errors
-- [ ] 4.1.3 Create validators
-- [ ] 4.1.4 Create unit tests for types and errors
-- [ ] 4.1.5 Create unit tests for validators
-- [ ] 4.1.6 Create repository
-- [ ] 4.1.7 Create unit tests for repository
-- [ ] 4.2.1 Create cache
-- [ ] 4.2.2 Create unit tests for cache
-- [ ] 4.2.3 Create service
-- [ ] 4.2.4 Create unit tests for service
-- [ ] 4.2.5 Create barrel export
+- [x] 4.1.1 Create custom claims types ✅ (completed: 2026-04-09 11:12)
+- [x] 4.1.2 Create custom claims errors ✅ (completed: 2026-04-09 11:12)
+- [x] 4.1.3 Create validators ✅ (completed: 2026-04-09 11:12)
+- [x] 4.1.4 Create unit tests for types (12 tests) and errors (8 tests) ✅ (completed: 2026-04-09 11:13)
+- [x] 4.1.5 Create unit tests for validators (38 tests) ✅ (completed: 2026-04-09 11:14)
+- [x] 4.1.6 Create repository ✅ (completed: 2026-04-09 11:12)
+- [x] 4.1.7 Create unit tests for repository (41 tests) ✅ (completed: 2026-04-09 11:15)
+- [x] 4.2.1 Create cache ✅ (completed: 2026-04-09 11:15)
+- [x] 4.2.2 Create unit tests for cache (12 tests) ✅ (completed: 2026-04-09 11:17)
+- [x] 4.2.3 Create service ✅ (completed: 2026-04-09 11:16)
+- [x] 4.2.4 Create unit tests for service (29 tests) ✅ (completed: 2026-04-09 11:18)
+- [x] 4.2.5 Create barrel export ✅ (completed: 2026-04-09 11:17)
 
 ### Phase 5: Token Integration
-- [ ] 5.1.1 Extend account-finder claims() for RBAC + custom claims
-- [ ] 5.1.2 Add/update account-finder tests
+- [x] 5.1.1 Extend account-finder claims() for RBAC + custom claims ✅ (completed: 2026-04-09 11:19)
+- [x] 5.1.2 Add/update account-finder tests (16 tests) ✅ (completed: 2026-04-09 11:20)
 
 ### Phase 6: API Routes
 - [ ] 6.1.1 Create role routes
