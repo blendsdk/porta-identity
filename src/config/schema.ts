@@ -18,6 +18,13 @@ export const configSchema = z.object({
     from: z.string().min(1, 'SMTP_FROM is required'),
   }),
   logLevel: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  // AES-256-GCM encryption key for TOTP secrets — must be exactly 32 hex bytes (64 chars).
+  // Optional in dev/test (a default is used); required in production for security.
+  twoFactorEncryptionKey: z
+    .string()
+    .length(64, 'TWO_FACTOR_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
+    .regex(/^[0-9a-f]+$/i, 'TWO_FACTOR_ENCRYPTION_KEY must be hex-encoded')
+    .optional(),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

@@ -91,5 +91,63 @@ describe('Migration File Validation', () => {
       expect(content).toContain('access_token_ttl');
       expect(content).toContain('refresh_token_ttl');
     });
+
+    it('012_two_factor.sql adds two_factor_policy to organizations', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('ALTER TABLE organizations');
+      expect(content).toContain('two_factor_policy');
+      expect(content).toContain("'optional'");
+      expect(content).toContain("'required_email'");
+      expect(content).toContain("'required_totp'");
+      expect(content).toContain("'required_any'");
+    });
+
+    it('012_two_factor.sql adds 2FA columns to users', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('ALTER TABLE users');
+      expect(content).toContain('two_factor_enabled');
+      expect(content).toContain('two_factor_method');
+    });
+
+    it('012_two_factor.sql creates user_totp table with encryption fields', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('CREATE TABLE user_totp');
+      expect(content).toContain('encrypted_secret');
+      expect(content).toContain('encryption_iv');
+      expect(content).toContain('encryption_tag');
+      expect(content).toContain('UNIQUE (user_id)');
+    });
+
+    it('012_two_factor.sql creates two_factor_otp_codes table', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('CREATE TABLE two_factor_otp_codes');
+      expect(content).toContain('code_hash');
+      expect(content).toContain('expires_at');
+      expect(content).toContain('idx_otp_codes_user_active');
+    });
+
+    it('012_two_factor.sql creates two_factor_recovery_codes table', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('CREATE TABLE two_factor_recovery_codes');
+      expect(content).toContain('code_hash');
+      expect(content).toContain('Argon2id');
+      expect(content).toContain('idx_recovery_codes_user');
+    });
+
+    it('012_two_factor.sql creates updated_at trigger for user_totp', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      expect(content).toContain('set_user_totp_updated_at');
+      expect(content).toContain('trigger_set_updated_at');
+    });
+
+    it('012_two_factor.sql has proper down migration', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '012_two_factor.sql'), 'utf-8');
+      const downSection = content.slice(content.indexOf('-- Down Migration'));
+      expect(downSection).toContain('DROP TABLE IF EXISTS two_factor_recovery_codes');
+      expect(downSection).toContain('DROP TABLE IF EXISTS two_factor_otp_codes');
+      expect(downSection).toContain('DROP TABLE IF EXISTS user_totp');
+      expect(downSection).toContain('DROP COLUMN IF EXISTS two_factor_enabled');
+      expect(downSection).toContain('DROP COLUMN IF EXISTS two_factor_policy');
+    });
   });
 });

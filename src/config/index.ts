@@ -22,6 +22,7 @@ function loadConfig(): AppConfig {
       from: process.env.SMTP_FROM,
     },
     logLevel: process.env.LOG_LEVEL,
+    twoFactorEncryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
   });
 
   if (!result.success) {
