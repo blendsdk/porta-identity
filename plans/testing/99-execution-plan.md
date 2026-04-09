@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 16:30
-> **Progress**: 28/116 tasks (24%)
+> **Last Updated**: 2026-04-09 17:37
+> **Progress**: 46/116 tasks (40%)
 
 ## Overview
 
@@ -733,28 +733,28 @@ Implements the comprehensive testing strategy for Porta v5: integration tests, E
 - [x] 4.3.3 Audit log repository integration tests (7 tests) ✅ (completed: 2026-04-09 16:20)
 
 ### Phase 5: Integration Tests — Adapters & Services
-- [ ] 5.1.1 PostgreSQL adapter integration tests
-- [ ] 5.1.2 Redis adapter integration tests
-- [ ] 5.2.1 System config service integration tests
-- [ ] 5.2.2 Email service integration tests with MailHog
-- [ ] 5.2.3 Signing key service integration tests
-- [ ] 5.2.4 Tenant resolver middleware integration tests
+- [x] 5.1.1 PostgreSQL adapter integration tests (8 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 5.1.2 Redis adapter integration tests (9 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 5.2.1 System config service integration tests (6 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 5.2.2 Email service integration tests with MailHog (6 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 5.2.3 Signing key service integration tests (4 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 5.2.4 Tenant resolver middleware integration tests (6 tests) ✅ (completed: 2026-04-09 17:37)
 
 ### Phase 6: E2E Test Infrastructure
-- [ ] 6.1.1 Create E2E global setup
-- [ ] 6.1.2 Create HTTP test client
-- [ ] 6.1.3 Create MailHog client
-- [ ] 6.2.1 Create OidcTestClient (auth URLs, PKCE, code exchange)
-- [ ] 6.2.2 Add token operations
-- [ ] 6.2.3 Add discovery and JWKS methods
+- [x] 6.1.1 Create E2E global setup ✅ (completed: 2026-04-09 17:37)
+- [x] 6.1.2 Create HTTP test client ✅ (completed: 2026-04-09 17:37)
+- [x] 6.1.3 Create MailHog client ✅ (completed: 2026-04-09 17:37)
+- [x] 6.2.1 Create OidcTestClient (auth URLs, PKCE, code exchange) ✅ (completed: 2026-04-09 17:37)
+- [x] 6.2.2 Add token operations ✅ (completed: 2026-04-09 17:37)
+- [x] 6.2.3 Add discovery and JWKS methods ✅ (completed: 2026-04-09 17:37)
 
 ### Phase 7: E2E Tests — OIDC Flows
-- [ ] 7.1.1 Discovery endpoint tests
-- [ ] 7.1.2 Authorization code + PKCE flow tests
-- [ ] 7.2.1 Client credentials flow tests
-- [ ] 7.2.2 Refresh token rotation tests
-- [ ] 7.3.1 Token introspection tests
-- [ ] 7.3.2 Token revocation tests
+- [x] 7.1.1 Discovery endpoint tests (7 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 7.1.2 Authorization code + PKCE flow tests (8 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 7.2.1 Client credentials flow tests (7 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 7.2.2 Refresh token rotation tests (5 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 7.3.1 Token introspection tests (5 tests) ✅ (completed: 2026-04-09 17:37)
+- [x] 7.3.2 Token revocation tests (4 tests) ✅ (completed: 2026-04-09 17:37)
 
 ### Phase 8: E2E Tests — Auth Workflows & Invalid Params
 - [ ] 8.1.1 Password login flow tests

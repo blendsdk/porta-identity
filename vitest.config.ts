@@ -115,10 +115,22 @@ export default defineConfig({
           name: 'e2e',
           include: ['tests/e2e/**/*.test.ts'],
           environment: 'node',
-          // globalSetup added in Phase 6 when tests/e2e/setup.ts is created
+          globalSetup: ['tests/e2e/setup.ts'],
           testTimeout: 60_000,
           hookTimeout: 60_000,
           pool: 'forks',
+          fileParallelism: false, // Sequential execution — tests share server state
+          env: {
+            DATABASE_URL: testDbUrl,
+            REDIS_URL: testRedisUrl,
+            ISSUER_BASE_URL: 'http://localhost:0',
+            COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
+            SMTP_HOST: 'localhost',
+            SMTP_PORT: '1025',
+            SMTP_FROM: 'test@porta.local',
+            NODE_ENV: 'test',
+            LOG_LEVEL: 'fatal',
+          },
         },
       },
       {

@@ -44,7 +44,7 @@ export async function setup(): Promise<void> {
   // Override environment — modules read process.env internally
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   process.env.REDIS_URL = TEST_REDIS_URL;
-  process.env.LOG_LEVEL = 'silent';
+  process.env.LOG_LEVEL = 'fatal';
   process.env.NODE_ENV = 'test';
   process.env.SMTP_HOST = TEST_SMTP_HOST;
   process.env.SMTP_PORT = TEST_SMTP_PORT;
@@ -81,7 +81,7 @@ export async function setup(): Promise<void> {
   const ttl = await loadOidcTtlConfig();
 
   // Create the OIDC provider and Koa app
-  const provider = createOidcProvider({ jwks, ttl });
+  const provider = await createOidcProvider({ jwks, ttl });
   const app = createApp(provider);
 
   // Start server on port 0 — OS assigns a random available port
