@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 10:43
-> **Progress**: 6/46 tasks (13%)
+> **Last Updated**: 2026-04-09 11:04
+> **Progress**: 21/46 tasks (46%)
 
 ## Overview
 
@@ -312,23 +312,23 @@ Implement Authorization (RBAC) & Custom Claims for Porta v5. Two new modules (`s
 - [x] 1.1.6 Create unit tests for slugs (53 tests) ✅ (completed: 2026-04-09 10:43)
 
 ### Phase 2: RBAC Repository & Cache
-- [ ] 2.1.1 Create role repository
-- [ ] 2.1.2 Create unit tests for role repository
-- [ ] 2.1.3 Create permission repository
-- [ ] 2.1.4 Create unit tests for permission repository
-- [ ] 2.2.1 Create mapping repository
-- [ ] 2.2.2 Create unit tests for mapping repository
-- [ ] 2.2.3 Create Redis cache
-- [ ] 2.2.4 Create unit tests for cache
+- [x] 2.1.1 Create role repository (26 tests) ✅ (completed: 2026-04-09 11:00)
+- [x] 2.1.2 Create unit tests for role repository ✅ (completed: 2026-04-09 11:00)
+- [x] 2.1.3 Create permission repository (27 tests) ✅ (completed: 2026-04-09 11:00)
+- [x] 2.1.4 Create unit tests for permission repository ✅ (completed: 2026-04-09 11:00)
+- [x] 2.2.1 Create mapping repository (31 tests) ✅ (completed: 2026-04-09 11:00)
+- [x] 2.2.2 Create unit tests for mapping repository ✅ (completed: 2026-04-09 11:00)
+- [x] 2.2.3 Create Redis cache (24 tests) ✅ (completed: 2026-04-09 11:00)
+- [x] 2.2.4 Create unit tests for cache ✅ (completed: 2026-04-09 11:00)
 
 ### Phase 3: RBAC Services
-- [ ] 3.1.1 Create role service
-- [ ] 3.1.2 Create unit tests for role service
-- [ ] 3.1.3 Create permission service
-- [ ] 3.1.4 Create unit tests for permission service
-- [ ] 3.2.1 Create user-role service
-- [ ] 3.2.2 Create unit tests for user-role service
-- [ ] 3.2.3 Create RBAC barrel export
+- [x] 3.1.1 Create role service (29 tests) ✅ (completed: 2026-04-09 11:02)
+- [x] 3.1.2 Create unit tests for role service ✅ (completed: 2026-04-09 11:02)
+- [x] 3.1.3 Create permission service (18 tests) ✅ (completed: 2026-04-09 11:02)
+- [x] 3.1.4 Create unit tests for permission service ✅ (completed: 2026-04-09 11:02)
+- [x] 3.2.1 Create user-role service (18 tests) ✅ (completed: 2026-04-09 11:02)
+- [x] 3.2.2 Create unit tests for user-role service ✅ (completed: 2026-04-09 11:02)
+- [x] 3.2.3 Update RBAC barrel export ✅ (completed: 2026-04-09 11:02)
 
 ### Phase 4: Custom Claims Module
 - [ ] 4.1.1 Create custom claims types
