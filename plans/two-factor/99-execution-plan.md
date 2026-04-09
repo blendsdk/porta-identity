@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 21:57
-> **Progress**: 25/62 tasks (40%)
+> **Last Updated**: 2026-04-09 22:14
+> **Progress**: 37/62 tasks (60%)
 
 ## Overview
 
@@ -393,27 +393,27 @@ Implements two-factor authentication for Porta v5: Email OTP, TOTP (authenticato
 - [x] 6.1.4 Update user service for 2FA state ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
 
 ### Phase 7: Auth Integration — Login Flow & Routes
-- [ ] 7.1.1 Add 2FA check in processLogin
-- [ ] 7.1.2 Store pending login in interaction session
-- [ ] 7.2.1 GET showTwoFactor route
-- [ ] 7.2.2 POST verifyTwoFactor route
-- [ ] 7.2.3 POST resendOtpCode route
-- [ ] 7.3.1 GET showTwoFactorSetup route
-- [ ] 7.3.2 POST processTwoFactorSetup route
-- [ ] 7.3.3 Register routes in server.ts
+- [x] 7.1.1 Add 2FA check in processLogin ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.1.2 Store pending login in interaction session ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.2.1 GET showTwoFactor route ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.2.2 POST verifyTwoFactor route ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.2.3 POST resendOtpCode route ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.3.1 GET showTwoFactorSetup route ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.3.2 POST processTwoFactorSetup route ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 7.3.3 Register routes in server.ts ✅ (completed: 2026-04-09 22:14, commit: f567b32)
 
 ### Phase 8: Templates & Email
-- [ ] 8.1.1 Create two-factor-verify.hbs
-- [ ] 8.1.2 Create two-factor-setup.hbs
-- [ ] 8.1.3 Create otp-code.hbs email template
-- [ ] 8.1.4 Add sendOtpCodeEmail to email service
-- [ ] 8.1.5 Create two-factor.json i18n
+- [x] 8.1.1 Create two-factor-verify.hbs ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 8.1.2 Create two-factor-setup.hbs ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 8.1.3 Create otp-code.hbs email template ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 8.1.4 Add sendOtpCodeEmail to email service ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 8.1.5 Create two-factor.json i18n ✅ (completed: 2026-04-09 22:14, commit: f567b32)
 
 ### Phase 9: CLI Commands
-- [ ] 9.1.1 Implement 2fa status command
-- [ ] 9.1.2 Implement 2fa disable command
-- [ ] 9.1.3 Implement 2fa reset command
-- [ ] 9.1.4 Replace stubs in user.ts
+- [x] 9.1.1 Implement 2fa status command ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 9.1.2 Implement 2fa disable command ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 9.1.3 Implement 2fa reset command ✅ (completed: 2026-04-09 22:14, commit: f567b32)
+- [x] 9.1.4 Replace stubs in user.ts ✅ (completed: 2026-04-09 22:14, commit: f567b32)
 
 ### Phase 10: Unit Tests — Crypto, OTP, TOTP, Recovery
 - [ ] 10.1.1 Crypto unit tests
