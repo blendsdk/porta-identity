@@ -11,6 +11,10 @@
  *   /api/admin/applications/*      — Application management (super-admin)
  *   /api/admin/clients/*           — Client & secret management (super-admin)
  *   /api/admin/organizations/:orgId/users/* — User management (super-admin)
+ *   /api/admin/applications/:appId/roles/* — Role management (super-admin)
+ *   /api/admin/applications/:appId/permissions/* — Permission management (super-admin)
+ *   /api/admin/organizations/:orgId/users/:userId/roles/* — User-role assignments (super-admin)
+ *   /api/admin/applications/:appId/claims/* — Custom claims management (super-admin)
  *   /interaction/:uid/*            — OIDC interaction routes (login, consent, abort)
  *   /:orgSlug/auth/*               — Auth routes (magic link, password reset, invitation)
  *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
@@ -32,6 +36,10 @@ import { createInteractionRouter } from './routes/interactions.js';
 import { createMagicLinkRouter } from './routes/magic-link.js';
 import { createPasswordResetRouter } from './routes/password-reset.js';
 import { createInvitationRouter } from './routes/invitation.js';
+import { createRoleRouter } from './routes/roles.js';
+import { createPermissionRouter } from './routes/permissions.js';
+import { createUserRoleRouter } from './routes/user-roles.js';
+import { createCustomClaimRouter } from './routes/custom-claims.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -81,6 +89,27 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userRouter = createUserRouter();
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
+
+  // RBAC & Custom Claims admin APIs (RD-08) — requires super-admin authorization
+  // Role management at /api/admin/applications/:appId/roles
+  const roleRouter = createRoleRouter();
+  app.use(roleRouter.routes());
+  app.use(roleRouter.allowedMethods());
+
+  // Permission management at /api/admin/applications/:appId/permissions
+  const permissionRouter = createPermissionRouter();
+  app.use(permissionRouter.routes());
+  app.use(permissionRouter.allowedMethods());
+
+  // User-role assignments at /api/admin/organizations/:orgId/users/:userId/roles
+  const userRoleRouter = createUserRoleRouter();
+  app.use(userRoleRouter.routes());
+  app.use(userRoleRouter.allowedMethods());
+
+  // Custom claims at /api/admin/applications/:appId/claims
+  const customClaimRouter = createCustomClaimRouter();
+  app.use(customClaimRouter.routes());
+  app.use(customClaimRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/*
   // These must be before the OIDC catch-all so the provider can redirect here.
