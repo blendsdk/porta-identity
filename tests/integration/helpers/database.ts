@@ -36,6 +36,7 @@ export async function truncateAllTables(): Promise<void> {
   await pool.query(`
     TRUNCATE TABLE
       audit_log,
+      two_factor_recovery_codes, two_factor_otp_codes, user_totp,
       custom_claim_values, custom_claim_definitions,
       user_roles, role_permissions, permissions, roles,
       magic_link_tokens, password_reset_tokens, invitation_tokens,

@@ -76,6 +76,9 @@ describe('Schema Structure', () => {
     'signing_keys',
     'audit_log',
     'oidc_payloads',
+    'user_totp',
+    'two_factor_otp_codes',
+    'two_factor_recovery_codes',
   ];
 
   it.each(expectedTables)('table "%s" exists', async (table) => {
@@ -118,6 +121,59 @@ describe('Schema Structure', () => {
         'address_street',
         'address_country',
       ]),
+    );
+  });
+
+  it('organizations table has two_factor_policy column', async () => {
+    const columns = await getColumns('organizations');
+    const tfCol = columns.find((c) => c.column_name === 'two_factor_policy');
+    expect(tfCol).toBeDefined();
+    expect(tfCol!.is_nullable).toBe('NO');
+  });
+
+  it('users table has two-factor columns', async () => {
+    const columns = await getColumns('users');
+    const names = columns.map((c) => c.column_name);
+    expect(names).toContain('two_factor_enabled');
+    expect(names).toContain('two_factor_method');
+  });
+
+  it('user_totp table has expected columns', async () => {
+    const columns = await getColumns('user_totp');
+    const names = columns.map((c) => c.column_name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'id',
+        'user_id',
+        'encrypted_secret',
+        'encryption_iv',
+        'encryption_tag',
+        'verified',
+        'created_at',
+      ]),
+    );
+  });
+
+  it('two_factor_otp_codes table has expected columns', async () => {
+    const columns = await getColumns('two_factor_otp_codes');
+    const names = columns.map((c) => c.column_name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'id',
+        'user_id',
+        'code_hash',
+        'expires_at',
+        'used_at',
+        'created_at',
+      ]),
+    );
+  });
+
+  it('two_factor_recovery_codes table has expected columns', async () => {
+    const columns = await getColumns('two_factor_recovery_codes');
+    const names = columns.map((c) => c.column_name);
+    expect(names).toEqual(
+      expect.arrayContaining(['id', 'user_id', 'code_hash', 'used_at', 'created_at']),
     );
   });
 
