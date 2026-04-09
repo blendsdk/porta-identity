@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 12:00
-> **Progress**: 5/48 tasks (10%)
+> **Last Updated**: 2026-04-09 12:49
+> **Progress**: 24/48 tasks (50%)
 
 ## Overview
 
@@ -40,18 +40,18 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 
 | #     | Task                                                        | File                          |
 | ----- | ----------------------------------------------------------- | ----------------------------- |
-| 1.1.1 | Install yargs, cli-table3, chalk deps + @types/yargs dev dep | `package.json`               |
-| 1.1.2 | Add `bin` entry and `porta` script to package.json          | `package.json`                |
-| 1.1.3 | Create CLI entry point with yargs setup and global options  | `src/cli/index.ts`            |
-| 1.1.4 | Create bootstrap module (DB + Redis lifecycle, CLI flag overrides) | `src/cli/bootstrap.ts`   |
-| 1.1.5 | Write bootstrap unit tests                                  | `tests/unit/cli/bootstrap.test.ts` |
+| 1.1.1 | ~~Install yargs, cli-table3, chalk deps + @types/yargs dev dep~~ | `package.json` ✅ |
+| 1.1.2 | ~~Add `bin` entry and `porta` script to package.json~~ | `package.json` ✅ |
+| 1.1.3 | ~~Create CLI entry point with yargs setup and global options~~ | `src/cli/index.ts` ✅ |
+| 1.1.4 | ~~Create bootstrap module (DB + Redis lifecycle, CLI flag overrides)~~ | `src/cli/bootstrap.ts` ✅ |
+| 1.1.5 | ~~Write bootstrap unit tests~~ | `tests/unit/cli/bootstrap.test.ts` ✅ |
 
 **Deliverables**:
-- [ ] yargs, cli-table3, chalk installed
-- [ ] `porta --help` works via `yarn porta --help`
-- [ ] Bootstrap connects/disconnects DB + Redis
-- [ ] Bootstrap tests pass
-- [ ] All verification passing
+- [x] yargs, cli-table3, chalk installed
+- [x] `porta --help` works via `yarn porta --help`
+- [x] Bootstrap connects/disconnects DB + Redis
+- [x] Bootstrap tests pass (15 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -66,18 +66,18 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 
 | #     | Task                                                        | File                                |
 | ----- | ----------------------------------------------------------- | ----------------------------------- |
-| 1.2.1 | Create output helpers (table, JSON, colors, formatters)     | `src/cli/output.ts`                 |
-| 1.2.2 | Create CLI error handler (domain error mapping, exit codes) | `src/cli/error-handler.ts`           |
-| 1.2.3 | Create confirmation prompt utility (readline, --force)      | `src/cli/prompt.ts`                  |
-| 1.2.4 | Write output helper unit tests                              | `tests/unit/cli/output.test.ts`      |
-| 1.2.5 | Write error handler unit tests                              | `tests/unit/cli/error-handler.test.ts` |
-| 1.2.6 | Write prompt utility unit tests                             | `tests/unit/cli/prompt.test.ts`      |
+| 1.2.1 | ~~Create output helpers (table, JSON, colors, formatters)~~ | `src/cli/output.ts` ✅ |
+| 1.2.2 | ~~Create CLI error handler (domain error mapping, exit codes)~~ | `src/cli/error-handler.ts` ✅ |
+| 1.2.3 | ~~Create confirmation prompt utility (readline, --force)~~ | `src/cli/prompt.ts` ✅ |
+| 1.2.4 | ~~Write output helper unit tests~~ | `tests/unit/cli/output.test.ts` ✅ |
+| 1.2.5 | ~~Write error handler unit tests~~ | `tests/unit/cli/error-handler.test.ts` ✅ |
+| 1.2.6 | ~~Write prompt utility unit tests~~ | `tests/unit/cli/prompt.test.ts` ✅ |
 
 **Deliverables**:
-- [ ] Output helpers render tables and JSON correctly
-- [ ] Error handler maps all domain error types
-- [ ] Prompt utility supports --force bypass
-- [ ] All utility tests pass (~43 tests)
+- [x] Output helpers render tables and JSON correctly (28 tests)
+- [x] Error handler maps all domain error types (22 tests)
+- [x] Prompt utility supports --force bypass (17 tests)
+- [x] All utility tests pass (67 tests total)
 - [ ] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
@@ -338,27 +338,27 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 - [x] 1.1.3 Create CLI entry point with yargs setup and global options ✅ (completed: 2026-04-09 12:14)
 - [x] 1.1.4 Create bootstrap module (DB + Redis lifecycle) ✅ (completed: 2026-04-09 12:14)
 - [x] 1.1.5 Write bootstrap unit tests ✅ (completed: 2026-04-09 12:14)
-- [ ] 1.2.1 Create output helpers (table, JSON, colors, formatters)
-- [ ] 1.2.2 Create CLI error handler (domain error mapping)
-- [ ] 1.2.3 Create confirmation prompt utility
-- [ ] 1.2.4 Write output helper unit tests
-- [ ] 1.2.5 Write error handler unit tests
-- [ ] 1.2.6 Write prompt utility unit tests
+- [x] 1.2.1 Create output helpers (table, JSON, colors, formatters) ✅ (completed: 2026-04-09 12:37)
+- [x] 1.2.2 Create CLI error handler (domain error mapping) ✅ (completed: 2026-04-09 12:37)
+- [x] 1.2.3 Create confirmation prompt utility ✅ (completed: 2026-04-09 12:37)
+- [x] 1.2.4 Write output helper unit tests ✅ (completed: 2026-04-09 12:37)
+- [x] 1.2.5 Write error handler unit tests ✅ (completed: 2026-04-09 12:37)
+- [x] 1.2.6 Write prompt utility unit tests ✅ (completed: 2026-04-09 12:37)
 
 ### Phase 2: Infrastructure Commands
-- [ ] 2.1.1 Create health check command
-- [ ] 2.1.2 Create migration commands (up, down, status, create)
-- [ ] 2.1.3 Create seed command
-- [ ] 2.1.4 Register health, migrate, seed in CLI entry point
-- [ ] 2.1.5 Write health command tests
-- [ ] 2.1.6 Write migrate command tests
-- [ ] 2.2.1 Create signing key commands (list, generate, rotate, cleanup)
-- [ ] 2.2.2 Create system config commands (list, get, set, reset)
-- [ ] 2.2.3 Create audit log viewer command
-- [ ] 2.2.4 Register keys, config, audit in CLI entry point
-- [ ] 2.2.5 Write keys command tests
-- [ ] 2.2.6 Write config command tests
-- [ ] 2.2.7 Write audit command tests
+- [x] 2.1.1 Create health check command ✅ (completed: 2026-04-09 12:43)
+- [x] 2.1.2 Create migration commands (up, down, status) ✅ (completed: 2026-04-09 12:43)
+- [x] 2.1.3 Create seed command ✅ (completed: 2026-04-09 12:43)
+- [x] 2.1.4 Register health, migrate, seed in CLI entry point ✅ (completed: 2026-04-09 12:43)
+- [x] 2.1.5 Write health command tests (7 tests) ✅ (completed: 2026-04-09 12:43)
+- [x] 2.1.6 Write migrate command tests (9 tests) ✅ (completed: 2026-04-09 12:43)
+- [x] 2.2.1 Create signing key commands (list, generate, rotate) ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.2 Create system config commands (list, get, set) ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.3 Create audit log viewer command ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.4 Register keys, config, audit in CLI entry point ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.5 Write keys command tests (8 tests) ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.6 Write config command tests (9 tests) ✅ (completed: 2026-04-09 12:49)
+- [x] 2.2.7 Write audit command tests (7 tests) ✅ (completed: 2026-04-09 12:49)
 
 ### Phase 3: Organization Commands
 - [ ] 3.1.1 Create org command with all 8 subcommands
