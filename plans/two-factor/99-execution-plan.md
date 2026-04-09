@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 19:10
-> **Progress**: 0/62 tasks (0%)
+> **Progress**: 4/62 tasks (6%)
 
 ## Overview
 
@@ -356,10 +356,10 @@ Implements two-factor authentication for Porta v5: Email OTP, TOTP (authenticato
 ## Task Checklist (All Phases)
 
 ### Phase 1: Dependencies & Database Migration
-- [ ] 1.1.1 Install otpauth, qrcode, @types/qrcode
-- [ ] 1.1.2 Add TWO_FACTOR_ENCRYPTION_KEY to config schema + .env.example
-- [ ] 1.1.3 Create migration 012
-- [ ] 1.1.4 Update migration SQL validation tests
+- [x] 1.1.1 Install otpauth, qrcode, @types/qrcode ✅ (completed: 2026-04-09 19:28)
+- [x] 1.1.2 Add TWO_FACTOR_ENCRYPTION_KEY to config schema + .env.example ✅ (completed: 2026-04-09 19:28)
+- [x] 1.1.3 Create migration 012 ✅ (completed: 2026-04-09 19:29)
+- [x] 1.1.4 Update migration SQL validation tests ✅ (completed: 2026-04-09 19:29)
 
 ### Phase 2: Core 2FA Module — Types, Errors, Crypto
 - [ ] 2.1.1 Create types
