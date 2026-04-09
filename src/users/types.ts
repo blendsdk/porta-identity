@@ -17,6 +17,7 @@
  */
 
 import type { PaginatedResult } from '../organizations/index.js';
+import type { TwoFactorMethod } from '../two-factor/types.js';
 
 // Re-export PaginatedResult so consumers can import from users module too
 export type { PaginatedResult };
@@ -82,6 +83,12 @@ export interface User {
   addressRegion: string | null;
   addressPostalCode: string | null;
   addressCountry: string | null;
+
+  // Two-factor authentication state
+  /** Whether 2FA is enabled for this user */
+  twoFactorEnabled: boolean;
+  /** The 2FA method configured ('email' or 'totp'), null if not enabled */
+  twoFactorMethod: TwoFactorMethod | null;
 
   // Status & lifecycle
   status: UserStatus;
@@ -231,6 +238,8 @@ export interface UserRow {
   address_region: string | null;
   address_postal_code: string | null;
   address_country: string | null;
+  two_factor_enabled: boolean;
+  two_factor_method: string | null;
   status: string;
   locked_at: Date | null;
   locked_reason: string | null;
@@ -285,6 +294,10 @@ export function mapRowToUser(row: UserRow): User {
     addressRegion: row.address_region,
     addressPostalCode: row.address_postal_code,
     addressCountry: row.address_country,
+
+    // Two-factor authentication
+    twoFactorEnabled: row.two_factor_enabled,
+    twoFactorMethod: (row.two_factor_method as TwoFactorMethod) ?? null,
 
     // Status & lifecycle
     status: row.status as UserStatus,

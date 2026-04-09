@@ -146,6 +146,7 @@ export interface UpdateOrganizationData {
   name?: string;
   status?: string;
   defaultLocale?: string;
+  twoFactorPolicy?: string;
   brandingLogoUrl?: string | null;
   brandingFaviconUrl?: string | null;
   brandingPrimaryColor?: string | null;
@@ -161,6 +162,7 @@ const FIELD_TO_COLUMN: Record<string, string> = {
   name: 'name',
   status: 'status',
   defaultLocale: 'default_locale',
+  twoFactorPolicy: 'two_factor_policy',
   brandingLogoUrl: 'branding_logo_url',
   brandingFaviconUrl: 'branding_favicon_url',
   brandingPrimaryColor: 'branding_primary_color',

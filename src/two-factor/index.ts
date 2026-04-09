@@ -61,3 +61,44 @@ export {
   hashRecoveryCode,
   verifyRecoveryCode,
 } from './recovery.js';
+
+// Repository
+export {
+  insertTotp,
+  findTotpByUserId,
+  markTotpVerified,
+  deleteTotp,
+  insertOtpCode,
+  findActiveOtpCodes,
+  markOtpCodeUsed,
+  deleteExpiredOtpCodes,
+  countActiveOtpCodes,
+  insertRecoveryCodes,
+  findUnusedRecoveryCodes,
+  markRecoveryCodeUsed,
+  deleteAllRecoveryCodes,
+  countUnusedRecoveryCodes,
+} from './repository.js';
+
+// Cache
+export {
+  getCachedTwoFactorStatus,
+  cacheTwoFactorStatus,
+  invalidateTwoFactorCache,
+} from './cache.js';
+
+// Service
+export {
+  setupEmailOtp,
+  setupTotp,
+  confirmTotpSetup,
+  sendOtpCode,
+  verifyOtp,
+  verifyTotp,
+  verifyRecoveryCode as verifyRecoveryCodeService,
+  getTwoFactorStatus,
+  disableTwoFactor,
+  regenerateRecoveryCodes,
+  requiresTwoFactor,
+  determineTwoFactorMethod,
+} from './service.js';

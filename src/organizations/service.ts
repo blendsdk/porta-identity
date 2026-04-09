@@ -175,6 +175,7 @@ export async function updateOrganization(
   const updateData: Record<string, unknown> = {};
   if (input.name !== undefined) updateData.name = input.name;
   if (input.defaultLocale !== undefined) updateData.defaultLocale = input.defaultLocale;
+  if (input.twoFactorPolicy !== undefined) updateData.twoFactorPolicy = input.twoFactorPolicy;
 
   // Include branding fields if provided
   if (input.branding) {

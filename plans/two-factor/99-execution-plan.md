@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 19:10
-> **Progress**: 4/62 tasks (6%)
+> **Progress**: 11/62 tasks (18%)
 
 ## Overview
 
@@ -362,15 +362,15 @@ Implements two-factor authentication for Porta v5: Email OTP, TOTP (authenticato
 - [x] 1.1.4 Update migration SQL validation tests ✅ (completed: 2026-04-09 19:29)
 
 ### Phase 2: Core 2FA Module — Types, Errors, Crypto
-- [ ] 2.1.1 Create types
-- [ ] 2.1.2 Create error classes
-- [ ] 2.1.3 Create barrel export
-- [ ] 2.2.1 Implement AES-256-GCM crypto
+- [x] 2.1.1 Create types ✅ (completed: 2026-04-09 19:33)
+- [x] 2.1.2 Create error classes ✅ (completed: 2026-04-09 19:33)
+- [x] 2.1.3 Create barrel export ✅ (completed: 2026-04-09 19:34)
+- [x] 2.2.1 Implement AES-256-GCM crypto ✅ (completed: 2026-04-09 19:34)
 
 ### Phase 3: Core 2FA Module — OTP, TOTP, Recovery
-- [ ] 3.1.1 Implement OTP code generation/hashing/verification
-- [ ] 3.1.2 Implement TOTP secret/URI/QR/verification
-- [ ] 3.2.1 Implement recovery code generation/hashing/verification
+- [x] 3.1.1 Implement OTP code generation/hashing/verification ✅ (completed: 2026-04-09 19:35)
+- [x] 3.1.2 Implement TOTP secret/URI/QR/verification ✅ (completed: 2026-04-09 19:35)
+- [x] 3.2.1 Implement recovery code generation/hashing/verification ✅ (completed: 2026-04-09 19:35)
 
 ### Phase 4: Core 2FA Module — Repository & Cache
 - [ ] 4.1.1 TOTP repository operations

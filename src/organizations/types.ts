@@ -15,6 +15,8 @@
 // Organization status
 // ---------------------------------------------------------------------------
 
+import type { TwoFactorPolicy } from '../two-factor/types.js';
+
 /** Organization status values — matches the DB CHECK constraint */
 export type OrganizationStatus = 'active' | 'suspended' | 'archived';
 
@@ -43,6 +45,10 @@ export interface Organization {
   // Locale
   defaultLocale: string;
 
+  // Two-factor authentication policy
+  /** Controls whether 2FA is required for org members */
+  twoFactorPolicy: TwoFactorPolicy;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -67,6 +73,7 @@ export interface CreateOrganizationInput {
 export interface UpdateOrganizationInput {
   name?: string;
   defaultLocale?: string;
+  twoFactorPolicy?: TwoFactorPolicy;
   branding?: BrandingInput;
 }
 
@@ -122,6 +129,7 @@ export interface OrganizationRow {
   branding_company_name: string | null;
   branding_custom_css: string | null;
   default_locale: string;
+  two_factor_policy: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -150,6 +158,7 @@ export function mapRowToOrganization(row: OrganizationRow): Organization {
     brandingCompanyName: row.branding_company_name,
     brandingCustomCss: row.branding_custom_css,
     defaultLocale: row.default_locale,
+    twoFactorPolicy: row.two_factor_policy as TwoFactorPolicy,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

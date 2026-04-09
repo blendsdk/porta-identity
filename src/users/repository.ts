@@ -223,6 +223,10 @@ export interface UpdateUserData {
   addressPostalCode?: string | null;
   addressCountry?: string | null;
 
+  // Two-factor authentication fields
+  twoFactorEnabled?: boolean;
+  twoFactorMethod?: string | null;
+
   // Status fields
   status?: string;
   lockedAt?: Date | null;
@@ -257,6 +261,8 @@ const FIELD_TO_COLUMN: Record<string, string> = {
   addressRegion: 'address_region',
   addressPostalCode: 'address_postal_code',
   addressCountry: 'address_country',
+  twoFactorEnabled: 'two_factor_enabled',
+  twoFactorMethod: 'two_factor_method',
   status: 'status',
   lockedAt: 'locked_at',
   lockedReason: 'locked_reason',
