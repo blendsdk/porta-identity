@@ -195,6 +195,18 @@ export function buildMagicLinkRateLimitKey(orgId: string, email: string): string
  * @param email - Email address requesting password reset
  * @returns Rate limit key string
  */
+/**
+ * Build a generic rate limit key for custom actions (e.g., 2FA verification, OTP resend).
+ *
+ * @param action - Action identifier (e.g., '2fa_verify', '2fa_resend')
+ * @param orgId - Organization UUID
+ * @param identifier - User-specific identifier (e.g., userId)
+ * @returns Redis key string
+ */
+export function buildRateLimitKey(action: string, orgId: string, identifier: string): string {
+  return `ratelimit:${action}:${orgId}:${hashIdentifier(identifier)}`;
+}
+
 export function buildPasswordResetRateLimitKey(orgId: string, email: string): string {
   return `ratelimit:reset:${orgId}:${hashIdentifier(email)}`;
 }

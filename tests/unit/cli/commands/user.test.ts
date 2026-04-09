@@ -69,6 +69,28 @@ vi.mock('../../../../src/custom-claims/index.js', () => ({
   deleteValue: vi.fn(),
 }));
 
+// Mock two-factor service (for user 2fa commands)
+vi.mock('../../../../src/two-factor/service.js', () => ({
+  getTwoFactorStatus: vi.fn().mockResolvedValue({
+    enabled: false,
+    method: null,
+    totpConfigured: false,
+    recoveryCodesRemaining: 0,
+  }),
+  disableTwoFactor: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock users repository (for user 2fa status lookup)
+vi.mock('../../../../src/users/repository.js', () => ({
+  findUserById: vi.fn().mockResolvedValue({
+    id: 'user-uuid-1',
+    email: 'test@example.com',
+    givenName: 'Test',
+    familyName: 'User',
+    status: 'active',
+  }),
+}));
+
 import { userCommand } from '../../../../src/cli/commands/user.js';
 import { success, warn, outputResult, printTable } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
@@ -523,28 +545,34 @@ describe('CLI User Command', () => {
     });
   });
 
-  // ─── user 2fa stubs ───────────────────────────────────────────────
+  // ─── user 2fa ─────────────────────────────────────────────────────
 
   describe('user 2fa', () => {
-    it('should show not-implemented message for 2fa status', async () => {
+    it('should show 2fa status for a user', async () => {
       const { nestedGroups } = getHandlers();
       await nestedGroups['2fa']['status'](createArgv({ id: fakeUser.id }));
 
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('not yet implemented'));
+      const { getTwoFactorStatus } = await import('../../../../src/two-factor/service.js');
+      expect(getTwoFactorStatus).toHaveBeenCalledWith(fakeUser.id);
+      expect(outputResult).toHaveBeenCalled();
     });
 
-    it('should show not-implemented message for 2fa disable', async () => {
+    it('should disable 2fa for a user', async () => {
       const { nestedGroups } = getHandlers();
-      await nestedGroups['2fa']['disable'](createArgv({ id: fakeUser.id }));
+      await nestedGroups['2fa']['disable'](createArgv({ id: fakeUser.id, force: true }));
 
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('not yet implemented'));
+      const { disableTwoFactor } = await import('../../../../src/two-factor/service.js');
+      expect(disableTwoFactor).toHaveBeenCalledWith(fakeUser.id);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('2FA disabled'));
     });
 
-    it('should show not-implemented message for 2fa reset', async () => {
+    it('should reset 2fa for a user', async () => {
       const { nestedGroups } = getHandlers();
-      await nestedGroups['2fa']['reset'](createArgv({ id: fakeUser.id }));
+      await nestedGroups['2fa']['reset'](createArgv({ id: fakeUser.id, force: true }));
 
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('not yet implemented'));
+      const { disableTwoFactor } = await import('../../../../src/two-factor/service.js');
+      expect(disableTwoFactor).toHaveBeenCalledWith(fakeUser.id);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('2FA reset'));
     });
   });
 

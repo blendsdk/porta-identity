@@ -34,11 +34,16 @@ import {
 } from '../auth/rate-limiter.js';
 import { generateToken } from '../auth/tokens.js';
 import { insertToken, invalidateUserTokens } from '../auth/token-repository.js';
-import { sendMagicLinkEmail } from '../auth/email-service.js';
+import { sendMagicLinkEmail, sendOtpCodeEmail } from '../auth/email-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { getUserByEmail, verifyUserPassword, recordLogin } from '../users/service.js';
+import {
+  requiresTwoFactor,
+  determineTwoFactorMethod,
+  sendOtpCode,
+} from '../two-factor/service.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
@@ -387,11 +392,63 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       return;
     }
 
-    // Step 6: Login successful
-    await recordLogin(user.id);
+    // Step 6: Password valid — check if 2FA is required
     await resetRateLimit(rateLimitKey);
 
-    // Audit: successful login
+    // Determine 2FA requirements based on org policy and user state
+    const twoFactorRequired = user.twoFactorEnabled || requiresTwoFactor(org, user);
+    const twoFactorMethod = determineTwoFactorMethod(org, user);
+
+    if (twoFactorRequired) {
+      // Store pending login in the interaction session — user must complete 2FA
+      await provider.interactionResult(ctx.req, ctx.res, {
+        twoFactor: {
+          pendingAccountId: user.id,
+          method: twoFactorMethod ?? 'email',
+          email: user.email,
+        },
+      }, { mergeWithLastSubmission: true });
+
+      // If method is email, auto-send the first OTP code
+      if (twoFactorMethod === 'email' || (!user.twoFactorEnabled && !twoFactorMethod)) {
+        try {
+          const otpCode = await sendOtpCode(user.id, user.email, org.id);
+          // Send the OTP code via email (fire-and-forget)
+          sendOtpCodeEmail(
+            { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
+            { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+            otpCode,
+            10,
+            locale,
+          );
+        } catch (otpErr) {
+          logger.warn({ otpErr, userId: user.id }, 'Failed to send initial OTP code');
+        }
+      }
+
+      writeAuditLog({
+        organizationId: org.id,
+        userId: user.id,
+        eventType: '2fa.challenge.started',
+        eventCategory: 'authentication',
+        description: `2FA challenge initiated for ${email} (method: ${twoFactorMethod ?? 'setup_required'})`,
+        ipAddress: ctx.ip,
+      });
+
+      // Redirect to the 2FA verification page (or setup page if not enrolled)
+      if (user.twoFactorEnabled) {
+        ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
+      } else {
+        // User needs to set up 2FA first (org requires it but user hasn't enrolled)
+        ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
+      }
+      return;
+    }
+
+    // No 2FA required — complete login normally
+    await recordLogin(user.id);
+
+    // Audit: successful login (no 2FA)
     writeAuditLog({
       organizationId: org.id,
       userId: user.id,

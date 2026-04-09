@@ -42,6 +42,7 @@ import {
 import { confirm } from '../prompt.js';
 import { userRoleCommand } from './user-role.js';
 import { userClaimCommand } from './user-claim.js';
+import { userTwoFaCommand } from './user-2fa.js';
 import * as readline from 'readline';
 
 // ---------------------------------------------------------------------------
@@ -520,8 +521,8 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      // ── 2FA stubs (RD-12 not implemented) ───────────────────────────
-      .command(twoFaCommand)
+      // ── 2FA management (RD-12) ──────────────────────────────────────
+      .command(userTwoFaCommand)
 
       // ── nested subcommand groups ────────────────────────────────────
       .command(userRoleCommand)
@@ -534,42 +535,3 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 };
 
 // ---------------------------------------------------------------------------
-// 2FA stub commands (RD-12 not yet implemented)
-// ---------------------------------------------------------------------------
-
-/** The user 2fa subcommand group — stubs that return "not yet implemented" */
-const twoFaCommand: CommandModule<GlobalOptions, GlobalOptions> = {
-  command: '2fa',
-  describe: '2FA management (not yet implemented)',
-  builder: (yargs) => {
-    return yargs
-      .command(
-        'status <id>',
-        'Check 2FA status',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID or email' }),
-        async () => {
-          warn('⚠️  2FA management is not yet implemented. It will be available after RD-12 is complete.');
-        },
-      )
-      .command(
-        'disable <id>',
-        'Disable 2FA',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID or email' }),
-        async () => {
-          warn('⚠️  2FA management is not yet implemented. It will be available after RD-12 is complete.');
-        },
-      )
-      .command(
-        'reset <id>',
-        'Reset 2FA',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID or email' }),
-        async () => {
-          warn('⚠️  2FA management is not yet implemented. It will be available after RD-12 is complete.');
-        },
-      )
-      .demandCommand(1, 'Specify a 2fa subcommand: status, disable, reset');
-  },
-  handler: () => {
-    // No-op — subcommands handle execution
-  },
-};

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 19:10
-> **Progress**: 11/62 tasks (18%)
+> **Last Updated**: 2026-04-09 21:57
+> **Progress**: 25/62 tasks (40%)
 
 ## Overview
 
@@ -373,24 +373,24 @@ Implements two-factor authentication for Porta v5: Email OTP, TOTP (authenticato
 - [x] 3.2.1 Implement recovery code generation/hashing/verification ✅ (completed: 2026-04-09 19:35)
 
 ### Phase 4: Core 2FA Module — Repository & Cache
-- [ ] 4.1.1 TOTP repository operations
-- [ ] 4.1.2 OTP code repository operations
-- [ ] 4.1.3 Recovery code repository operations
-- [ ] 4.2.1 Redis cache for 2FA status
+- [x] 4.1.1 TOTP repository operations ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 4.1.2 OTP code repository operations ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 4.1.3 Recovery code repository operations ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 4.2.1 Redis cache for 2FA status ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
 
 ### Phase 5: Core 2FA Module — Service Layer
-- [ ] 5.1.1 Setup functions (setupEmailOtp, setupTotp, confirmTotpSetup)
-- [ ] 5.1.2 Verification functions (verifyOtp, verifyTotp, verifyRecoveryCode)
-- [ ] 5.1.3 OTP email sending
-- [ ] 5.2.1 Management functions (status, disable, regenerate)
-- [ ] 5.2.2 Policy functions (requiresTwoFactor, determineTwoFactorMethod)
-- [ ] 5.2.3 Update barrel export
+- [x] 5.1.1 Setup functions (setupEmailOtp, setupTotp, confirmTotpSetup) ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 5.1.2 Verification functions (verifyOtp, verifyTotp, verifyRecoveryCode) ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 5.1.3 OTP email sending ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 5.2.1 Management functions (status, disable, regenerate) ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 5.2.2 Policy functions (requiresTwoFactor, determineTwoFactorMethod) ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 5.2.3 Update barrel export ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
 
 ### Phase 6: Org & User Type/Repo Updates
-- [ ] 6.1.1 Add twoFactorPolicy to org types + repo
-- [ ] 6.1.2 Add twoFactorEnabled/Method to user types + repo
-- [ ] 6.1.3 Update org service for new field
-- [ ] 6.1.4 Update user service for 2FA state
+- [x] 6.1.1 Add twoFactorPolicy to org types + repo ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 6.1.2 Add twoFactorEnabled/Method to user types + repo ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 6.1.3 Update org service for new field ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
+- [x] 6.1.4 Update user service for 2FA state ✅ (completed: 2026-04-09 21:00, commit: 95851b7)
 
 ### Phase 7: Auth Integration — Login Flow & Routes
 - [ ] 7.1.1 Add 2FA check in processLogin

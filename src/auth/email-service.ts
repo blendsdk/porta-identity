@@ -314,6 +314,66 @@ export async function sendWelcomeEmail(
 }
 
 /**
+ * Send a 2FA OTP verification code email.
+ *
+ * Used during login when the user's 2FA method is 'email'. The email
+ * contains a 6-digit code that expires in the specified number of minutes.
+ * Follows the same fire-and-forget pattern as other email methods.
+ *
+ * @param user - Recipient user
+ * @param org - Organization (for branding and template override)
+ * @param code - 6-digit OTP code to include in the email
+ * @param expiresMinutes - Minutes until the code expires (e.g., 10)
+ * @param locale - Locale for i18n
+ */
+export async function sendOtpCodeEmail(
+  user: EmailUser,
+  org: EmailOrganization,
+  code: string,
+  expiresMinutes: number,
+  locale: string,
+): Promise<void> {
+  try {
+    const { html, text } = await renderEmail('otp-code', org.slug, {
+      userName: getUserDisplayName(user),
+      code,
+      expiresMinutes,
+      orgName: org.brandingCompanyName ?? org.slug,
+      branding: buildBrandingContext(org),
+      locale,
+    });
+
+    await getTransport().send({
+      to: user.email,
+      subject: `Your verification code: ${code}`,
+      html,
+      text,
+    });
+
+    // Fire-and-forget audit log
+    writeAuditLog({
+      organizationId: org.id,
+      userId: user.id,
+      eventType: 'email.send.otp_code',
+      eventCategory: 'auth',
+      description: `OTP code email sent to ${user.email}`,
+    });
+
+    logger.debug({ userId: user.id, email: user.email }, 'OTP code email sent');
+  } catch (error) {
+    logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send OTP code email');
+    writeAuditLog({
+      organizationId: org.id,
+      userId: user.id,
+      eventType: 'email.send.failed',
+      eventCategory: 'auth',
+      description: `Failed to send OTP code email to ${user.email}`,
+      metadata: { error: String(error), template: 'otp-code' },
+    });
+  }
+}
+
+/**
  * Send a password-changed confirmation email.
  *
  * @param user - Recipient user

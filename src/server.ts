@@ -40,6 +40,7 @@ import { createRoleRouter } from './routes/roles.js';
 import { createPermissionRouter } from './routes/permissions.js';
 import { createUserRoleRouter } from './routes/user-roles.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
+import { createTwoFactorRouter } from './routes/two-factor.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -118,6 +119,12 @@ export function createApp(oidcProvider?: Provider): Koa {
     const interactionRouter = createInteractionRouter(oidcProvider);
     app.use(interactionRouter.routes());
     app.use(interactionRouter.allowedMethods());
+
+    // Two-factor authentication routes — mounted at /interaction/:uid/two-factor/*
+    // Must be after the main interaction router for proper routing precedence.
+    const twoFactorRouter = createTwoFactorRouter(oidcProvider);
+    app.use(twoFactorRouter.routes());
+    app.use(twoFactorRouter.allowedMethods());
   }
 
   // Auth routes — magic link, password reset, invitation

@@ -81,6 +81,12 @@ vi.mock('../../../src/lib/logger.js', () => ({
   },
 }));
 
+vi.mock('../../../src/two-factor/service.js', () => ({
+  requiresTwoFactor: vi.fn().mockReturnValue(false),
+  determineTwoFactorMethod: vi.fn().mockReturnValue(null),
+  sendOtpCode: vi.fn().mockResolvedValue('123456'),
+}));
+
 vi.mock('../../../src/config/index.js', () => ({
   config: {
     issuerBaseUrl: 'https://auth.example.com',

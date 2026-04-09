@@ -1,0 +1,78 @@
+{{!-- Two-factor verification page: OTP/TOTP code entry form --}}
+<h1>{{t "two-factor.verify_title"}}</h1>
+
+{{#if (eq method "email")}}
+  <p class="text-muted mb-4">{{t "two-factor.verify_email_subtitle" maskedEmail=maskedEmail}}</p>
+{{else}}
+  <p class="text-muted mb-4">{{t "two-factor.verify_totp_subtitle"}}</p>
+{{/if}}
+
+{{> flash-messages}}
+
+<form method="POST" action="/interaction/{{interaction.uid}}/two-factor" id="verify-form">
+  <input type="hidden" name="_csrf" value="{{csrfToken}}">
+  <input type="hidden" name="_csrfStored" value="{{csrfToken}}">
+  <input type="hidden" name="codeType" value="{{#if (eq method "totp")}}totp{{else}}otp{{/if}}" id="codeType">
+
+  <div class="form-group">
+    <label for="code">{{t "two-factor.code_label"}}</label>
+    <input type="text" id="code" name="code" required autofocus
+           placeholder="{{t "two-factor.code_placeholder"}}"
+           maxlength="12" autocomplete="one-time-code" inputmode="numeric"
+           pattern="[0-9A-Za-z-]+"
+           style="font-size: 24px; letter-spacing: 4px; text-align: center;">
+  </div>
+
+  <button type="submit" class="btn-primary">{{t "two-factor.verify_button"}}</button>
+</form>
+
+{{#if showResend}}
+<div style="margin-top: 16px; text-align: center;">
+  <form method="POST" action="/interaction/{{interaction.uid}}/two-factor/resend" style="display: inline;">
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+    <button type="submit" class="btn-link" style="font-size: 13px;">{{t "two-factor.resend_code"}}</button>
+  </form>
+</div>
+{{/if}}
+
+{{#if showRecoveryLink}}
+<div class="divider"><span>{{t "two-factor.or_divider"}}</span></div>
+
+<p style="text-align: center; font-size: 13px; color: #6b7280;">
+  {{t "two-factor.recovery_prompt"}}
+</p>
+
+<div style="text-align: center;">
+  <button type="button" class="btn-link" id="use-recovery-btn" style="font-size: 13px;">
+    {{t "two-factor.use_recovery_code"}}
+  </button>
+</div>
+{{/if}}
+
+<script>
+  // Toggle between OTP/TOTP and recovery code input
+  var recoveryMode = false;
+  var recoveryBtn = document.getElementById('use-recovery-btn');
+  if (recoveryBtn) {
+    recoveryBtn.addEventListener('click', function() {
+      recoveryMode = !recoveryMode;
+      var codeTypeField = document.getElementById('codeType');
+      var codeInput = document.getElementById('code');
+      if (recoveryMode) {
+        codeTypeField.value = 'recovery';
+        codeInput.placeholder = 'XXXX-XXXX-XXXX';
+        codeInput.maxLength = 14;
+        codeInput.inputMode = 'text';
+        this.textContent = '{{t "two-factor.use_verification_code"}}';
+      } else {
+        codeTypeField.value = '{{#if (eq method "totp")}}totp{{else}}otp{{/if}}';
+        codeInput.placeholder = '{{t "two-factor.code_placeholder"}}';
+        codeInput.maxLength = 12;
+        codeInput.inputMode = 'numeric';
+        this.textContent = '{{t "two-factor.use_recovery_code"}}';
+      }
+      codeInput.value = '';
+      codeInput.focus();
+    });
+  }
+</script>
