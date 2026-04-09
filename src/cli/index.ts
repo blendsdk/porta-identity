@@ -22,6 +22,9 @@
 
 import yargs, { type Argv } from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { healthCommand } from './commands/health.js';
+import { migrateCommand } from './commands/migrate.js';
+import { seedCommand } from './commands/seed.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -75,9 +78,11 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
       type: 'string',
       description: 'Redis connection URL override',
     })
-    // Command modules will be registered here in later sessions:
-    // .command(healthCommand)
-    // .command(migrateCommand)
+    // Infrastructure commands
+    .command(healthCommand)
+    .command(migrateCommand)
+    .command(seedCommand)
+    // Domain commands will be registered in later sessions:
     // .command(orgCommand)
     // .command(appCommand)
     // .command(clientCommand)
