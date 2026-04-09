@@ -28,6 +28,8 @@ import { seedCommand } from './commands/seed.js';
 import { keysCommand } from './commands/keys.js';
 import { configCommand } from './commands/config.js';
 import { auditCommand } from './commands/audit.js';
+import { orgCommand } from './commands/org.js';
+import { appCommand } from './commands/app.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -88,12 +90,12 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
     .command(keysCommand)
     .command(configCommand)
     .command(auditCommand)
-    // Domain commands will be registered in later sessions:
-    // .command(orgCommand)
-    // .command(appCommand)
+    // Domain commands
+    .command(orgCommand)
+    .command(appCommand)
+    // Remaining domain commands registered in later sessions:
     // .command(clientCommand)
     // .command(userCommand)
-    // etc.
     .demandCommand(1, 'You need to specify a command')
     .strict()
     .help()
