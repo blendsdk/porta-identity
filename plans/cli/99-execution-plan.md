@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-09 12:00
-> **Progress**: 0/48 tasks (0%)
+> **Progress**: 5/48 tasks (10%)
 
 ## Overview
 
@@ -333,11 +333,11 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 ## Task Checklist (All Phases)
 
 ### Phase 1: CLI Foundation & Utilities
-- [ ] 1.1.1 Install yargs, cli-table3, chalk dependencies
-- [ ] 1.1.2 Add bin entry and porta script to package.json
-- [ ] 1.1.3 Create CLI entry point with yargs setup and global options
-- [ ] 1.1.4 Create bootstrap module (DB + Redis lifecycle)
-- [ ] 1.1.5 Write bootstrap unit tests
+- [x] 1.1.1 Install yargs, cli-table3, chalk dependencies ✅ (completed: 2026-04-09 12:14)
+- [x] 1.1.2 Add bin entry and porta script to package.json ✅ (completed: 2026-04-09 12:14)
+- [x] 1.1.3 Create CLI entry point with yargs setup and global options ✅ (completed: 2026-04-09 12:14)
+- [x] 1.1.4 Create bootstrap module (DB + Redis lifecycle) ✅ (completed: 2026-04-09 12:14)
+- [x] 1.1.5 Write bootstrap unit tests ✅ (completed: 2026-04-09 12:14)
 - [ ] 1.2.1 Create output helpers (table, JSON, colors, formatters)
 - [ ] 1.2.2 Create CLI error handler (domain error mapping)
 - [ ] 1.2.3 Create confirmation prompt utility
