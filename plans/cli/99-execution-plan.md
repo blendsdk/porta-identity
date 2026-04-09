@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 12:49
-> **Progress**: 24/48 tasks (50%)
+> **Last Updated**: 2026-04-09 13:30
+> **Progress**: 35/48 tasks (73%)
 
 ## Overview
 
@@ -152,16 +152,16 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 
 | #     | Task                                                        | File                                   |
 | ----- | ----------------------------------------------------------- | -------------------------------------- |
-| 3.1.1 | Create org command with all 8 subcommands (create, list, show, update, suspend, activate, archive, branding) | `src/cli/commands/org.ts` |
-| 3.1.2 | Register org command in CLI entry point                     | `src/cli/index.ts`                     |
-| 3.1.3 | Write org command tests (CRUD, status lifecycle, output formats, confirmations) | `tests/unit/cli/commands/org.test.ts` |
+| 3.1.1 | ~~Create org command with all 8 subcommands (create, list, show, update, suspend, activate, archive, branding)~~ | `src/cli/commands/org.ts` ✅ |
+| 3.1.2 | ~~Register org command in CLI entry point~~                 | `src/cli/index.ts` ✅                  |
+| 3.1.3 | ~~Write org command tests (CRUD, status lifecycle, output formats, confirmations)~~ | `tests/unit/cli/commands/org.test.ts` ✅ |
 
 **Deliverables**:
-- [ ] All 8 org subcommands work with table and JSON output
-- [ ] Destructive operations require confirmation (--force bypass)
-- [ ] ID-or-slug resolution works
-- [ ] Org command tests pass (~20 tests)
-- [ ] All verification passing
+- [x] All 8 org subcommands work with table and JSON output
+- [x] Destructive operations require confirmation (--force bypass)
+- [x] ID-or-slug resolution works
+- [x] Org command tests pass (19 tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -178,17 +178,17 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 
 | #     | Task                                                        | File                                   |
 | ----- | ----------------------------------------------------------- | -------------------------------------- |
-| 4.1.1 | Create app command with 5 core subcommands (create, list, show, update, archive) | `src/cli/commands/app.ts` |
-| 4.1.2 | Create app module subcommands (create, list, update, deactivate) | `src/cli/commands/app-module.ts` |
-| 4.1.3 | Register module subcommands in app command                  | `src/cli/commands/app.ts`              |
-| 4.1.4 | Register app command in CLI entry point                     | `src/cli/index.ts`                     |
-| 4.1.5 | Write app + module command tests                            | `tests/unit/cli/commands/app.test.ts`  |
+| 4.1.1 | ~~Create app command with 5 core subcommands (create, list, show, update, archive)~~ | `src/cli/commands/app.ts` ✅ |
+| 4.1.2 | ~~Create app module subcommands (create, list, update, deactivate)~~ | `src/cli/commands/app-module.ts` ✅ |
+| 4.1.3 | ~~Register module subcommands in app command~~              | `src/cli/commands/app.ts` ✅             |
+| 4.1.4 | ~~Register app command in CLI entry point~~                 | `src/cli/index.ts` ✅                    |
+| 4.1.5 | ~~Write app + module command tests~~                        | `tests/unit/cli/commands/app.test.ts` ✅ |
 
 **Deliverables**:
-- [ ] App CRUD commands work
-- [ ] Module subcommands work under `app module`
-- [ ] App command tests pass (core + module: ~12 tests)
-- [ ] All verification passing
+- [x] App CRUD commands work
+- [x] Module subcommands work under `app module`
+- [x] App command tests pass (core + module: 26 tests total with RBAC+claims)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -203,18 +203,18 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 
 | #     | Task                                                        | File                                        |
 | ----- | ----------------------------------------------------------- | ------------------------------------------- |
-| 4.2.1 | Create app role subcommands (create, list, show, update, delete, assign-permissions, remove-permissions) | `src/cli/commands/app-role.ts` |
-| 4.2.2 | Create app permission subcommands (create, list, update, delete) | `src/cli/commands/app-permission.ts` |
-| 4.2.3 | Create app claim subcommands (create, list, update, delete) | `src/cli/commands/app-claim.ts`             |
-| 4.2.4 | Register role, permission, claim subcommands in app command | `src/cli/commands/app.ts`                   |
-| 4.2.5 | Write RBAC + claim command tests (add to app.test.ts)       | `tests/unit/cli/commands/app.test.ts`        |
+| 4.2.1 | ~~Create app role subcommands (create, list, show, update, delete, assign-permissions, remove-permissions)~~ | `src/cli/commands/app-role.ts` ✅ |
+| 4.2.2 | ~~Create app permission subcommands (create, list, update, delete)~~ | `src/cli/commands/app-permission.ts` ✅ |
+| 4.2.3 | ~~Create app claim subcommands (create, list, update, delete)~~ | `src/cli/commands/app-claim.ts` ✅          |
+| 4.2.4 | ~~Register role, permission, claim subcommands in app command~~ | `src/cli/commands/app.ts` ✅                |
+| 4.2.5 | ~~Write RBAC + claim command tests (add to app.test.ts)~~   | `tests/unit/cli/commands/app.test.ts` ✅     |
 
 **Deliverables**:
-- [ ] Role subcommands work under `app role`
-- [ ] Permission subcommands work under `app permission`
-- [ ] Claim subcommands work under `app claim`
-- [ ] RBAC + claim tests pass (~13 tests)
-- [ ] All verification passing
+- [x] Role subcommands work under `app role`
+- [x] Permission subcommands work under `app permission`
+- [x] Claim subcommands work under `app claim`
+- [x] RBAC + claim tests pass (included in 26 app tests)
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -361,21 +361,21 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 - [x] 2.2.7 Write audit command tests (7 tests) ✅ (completed: 2026-04-09 12:49)
 
 ### Phase 3: Organization Commands
-- [ ] 3.1.1 Create org command with all 8 subcommands
-- [ ] 3.1.2 Register org command in CLI entry point
-- [ ] 3.1.3 Write org command tests
+- [x] 3.1.1 Create org command with all 8 subcommands ✅ (completed: 2026-04-09 13:30)
+- [x] 3.1.2 Register org command in CLI entry point ✅ (completed: 2026-04-09 13:30)
+- [x] 3.1.3 Write org command tests (19 tests) ✅ (completed: 2026-04-09 13:30)
 
 ### Phase 4: Application Commands
-- [ ] 4.1.1 Create app command with 5 core subcommands
-- [ ] 4.1.2 Create app module subcommands
-- [ ] 4.1.3 Register module subcommands in app command
-- [ ] 4.1.4 Register app command in CLI entry point
-- [ ] 4.1.5 Write app + module command tests
-- [ ] 4.2.1 Create app role subcommands (7 subcommands)
-- [ ] 4.2.2 Create app permission subcommands (4 subcommands)
-- [ ] 4.2.3 Create app claim subcommands (4 subcommands)
-- [ ] 4.2.4 Register role, permission, claim in app command
-- [ ] 4.2.5 Write RBAC + claim command tests
+- [x] 4.1.1 Create app command with 5 core subcommands ✅ (completed: 2026-04-09 13:30)
+- [x] 4.1.2 Create app module subcommands ✅ (completed: 2026-04-09 13:30)
+- [x] 4.1.3 Register module subcommands in app command ✅ (completed: 2026-04-09 13:30)
+- [x] 4.1.4 Register app command in CLI entry point ✅ (completed: 2026-04-09 13:30)
+- [x] 4.1.5 Write app + module command tests ✅ (completed: 2026-04-09 13:30)
+- [x] 4.2.1 Create app role subcommands (7 subcommands) ✅ (completed: 2026-04-09 13:30)
+- [x] 4.2.2 Create app permission subcommands (4 subcommands) ✅ (completed: 2026-04-09 13:30)
+- [x] 4.2.3 Create app claim subcommands (4 subcommands) ✅ (completed: 2026-04-09 13:30)
+- [x] 4.2.4 Register role, permission, claim in app command ✅ (completed: 2026-04-09 13:30)
+- [x] 4.2.5 Write RBAC + claim command tests ✅ (completed: 2026-04-09 13:30)
 
 ### Phase 5: Client Commands
 - [ ] 5.1.1 Create client command with 5 core subcommands
