@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 13:30
-> **Progress**: 35/48 tasks (73%)
+> **Last Updated**: 2026-04-09 13:49
+> **Progress**: 48/48 tasks — Phases 1-6 complete (88%), Phase 7 remaining
 
 ## Overview
 
@@ -378,23 +378,23 @@ Implement a yargs-based CLI tool (`porta`) for all administrative operations. Th
 - [x] 4.2.5 Write RBAC + claim command tests ✅ (completed: 2026-04-09 13:30)
 
 ### Phase 5: Client Commands
-- [ ] 5.1.1 Create client command with 5 core subcommands
-- [ ] 5.1.2 Create client secret subcommands with one-time display
-- [ ] 5.1.3 Register secret subcommands in client command
-- [ ] 5.1.4 Register client command in CLI entry point
-- [ ] 5.1.5 Write client + secret command tests
+- [x] 5.1.1 Create client command with 5 core subcommands ✅ (completed: 2026-04-09 13:49)
+- [x] 5.1.2 Create client secret subcommands with one-time display ✅ (completed: 2026-04-09 13:49)
+- [x] 5.1.3 Register secret subcommands in client command ✅ (completed: 2026-04-09 13:49)
+- [x] 5.1.4 Register client command in CLI entry point ✅ (completed: 2026-04-09 13:49)
+- [x] 5.1.5 Write client + secret command tests (21 tests) ✅ (completed: 2026-04-09 13:49)
 
 ### Phase 6: User Commands
-- [ ] 6.1.1 Create user command with 12 core subcommands
-- [ ] 6.1.2 Implement create with --no-notify and --passwordless
-- [ ] 6.1.3 Implement set-password with hidden input
-- [ ] 6.1.4 Register user command in CLI entry point
-- [ ] 6.1.5 Write user core command tests
-- [ ] 6.2.1 Create user role subcommands
-- [ ] 6.2.2 Create user claim subcommands
-- [ ] 6.2.3 Create user 2FA stub subcommands
-- [ ] 6.2.4 Register role, claim, 2fa subcommands in user command
-- [ ] 6.2.5 Write user role + claim + 2fa command tests
+- [x] 6.1.1 Create user command with 12 core subcommands ✅ (completed: 2026-04-09 13:49)
+- [x] 6.1.2 Implement create with --no-notify and --passwordless ✅ (completed: 2026-04-09 13:49)
+- [x] 6.1.3 Implement set-password with hidden input ✅ (completed: 2026-04-09 13:49)
+- [x] 6.1.4 Register user command in CLI entry point ✅ (completed: 2026-04-09 13:49)
+- [x] 6.1.5 Write user core command tests (32 tests) ✅ (completed: 2026-04-09 13:49)
+- [x] 6.2.1 Create user role subcommands ✅ (completed: 2026-04-09 13:49)
+- [x] 6.2.2 Create user claim subcommands ✅ (completed: 2026-04-09 13:49)
+- [x] 6.2.3 Create user 2FA stub subcommands ✅ (completed: 2026-04-09 13:49)
+- [x] 6.2.4 Register role, claim, 2fa subcommands in user command ✅ (completed: 2026-04-09 13:49)
+- [x] 6.2.5 Write user role + claim + 2fa command tests ✅ (completed: 2026-04-09 13:49)
 
 ### Phase 7: Final Integration & Verification
 - [ ] 7.1.1 Verify all 10 top-level commands registered
