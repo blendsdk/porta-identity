@@ -25,6 +25,9 @@ import { hideBin } from 'yargs/helpers';
 import { healthCommand } from './commands/health.js';
 import { migrateCommand } from './commands/migrate.js';
 import { seedCommand } from './commands/seed.js';
+import { keysCommand } from './commands/keys.js';
+import { configCommand } from './commands/config.js';
+import { auditCommand } from './commands/audit.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -82,6 +85,9 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
     .command(healthCommand)
     .command(migrateCommand)
     .command(seedCommand)
+    .command(keysCommand)
+    .command(configCommand)
+    .command(auditCommand)
     // Domain commands will be registered in later sessions:
     // .command(orgCommand)
     // .command(appCommand)
