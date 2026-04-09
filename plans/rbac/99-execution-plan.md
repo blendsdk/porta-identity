@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-09 02:43
-> **Progress**: 0/46 tasks (0%)
+> **Last Updated**: 2026-04-09 10:43
+> **Progress**: 6/46 tasks (13%)
 
 ## Overview
 
@@ -304,12 +304,12 @@ Implement Authorization (RBAC) & Custom Claims for Porta v5. Two new modules (`s
 ## Task Checklist (All Phases)
 
 ### Phase 1: RBAC Types, Errors & Slugs
-- [ ] 1.1.1 Create RBAC types (Role, Permission, UserRole interfaces, row types, row mappers)
-- [ ] 1.1.2 Create RBAC error classes
-- [ ] 1.1.3 Create slug/permission validation
-- [ ] 1.1.4 Create unit tests for types
-- [ ] 1.1.5 Create unit tests for errors
-- [ ] 1.1.6 Create unit tests for slugs
+- [x] 1.1.1 Create RBAC types (Role, Permission, UserRole interfaces, row types, row mappers) ✅ (completed: 2026-04-09 10:40)
+- [x] 1.1.2 Create RBAC error classes ✅ (completed: 2026-04-09 10:40)
+- [x] 1.1.3 Create slug/permission validation ✅ (completed: 2026-04-09 10:41)
+- [x] 1.1.4 Create unit tests for types (15 tests) ✅ (completed: 2026-04-09 10:42)
+- [x] 1.1.5 Create unit tests for errors (12 tests) ✅ (completed: 2026-04-09 10:42)
+- [x] 1.1.6 Create unit tests for slugs (53 tests) ✅ (completed: 2026-04-09 10:43)
 
 ### Phase 2: RBAC Repository & Cache
 - [ ] 2.1.1 Create role repository
