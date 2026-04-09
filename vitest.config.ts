@@ -15,12 +15,46 @@
  * Phase 10: pentest). Until then, the projects are defined without
  * globalSetup so --project flags work immediately.
  */
+import { config as dotenvConfig } from 'dotenv';
 import { defineConfig } from 'vitest/config';
+
+// Load .env so DATABASE_URL / REDIS_URL are available for deriving test URLs.
+// This runs at config-parse time, before any test code.
+dotenvConfig();
+
+/**
+ * Derive test database URL from DATABASE_URL in .env.
+ * Replaces the database name (last path segment) with 'porta_test'.
+ * Falls back to the default test URL if DATABASE_URL is not set.
+ */
+function getTestDatabaseUrl(): string {
+  if (process.env.TEST_DATABASE_URL) return process.env.TEST_DATABASE_URL;
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl) return dbUrl.replace(/\/[^/]+$/, '/porta_test');
+  return 'postgresql://porta:porta_dev@localhost:5432/porta_test';
+}
+
+/**
+ * Derive test Redis URL from REDIS_URL in .env.
+ * Appends '/1' (DB index 1) to isolate test data from dev.
+ * Falls back to the default test URL if REDIS_URL is not set.
+ */
+function getTestRedisUrl(): string {
+  if (process.env.TEST_REDIS_URL) return process.env.TEST_REDIS_URL;
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) return redisUrl.replace(/\/\d*$/, '') + '/1';
+  return 'redis://localhost:6379/1';
+}
+
+const testDbUrl = getTestDatabaseUrl();
+const testRedisUrl = getTestRedisUrl();
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Allow projects with no test files yet (e2e, pentest)
+    passWithNoTests: true,
 
     // Coverage configuration (applies when running with --coverage)
     coverage: {
@@ -55,11 +89,25 @@ export default defineConfig({
           name: 'integration',
           include: ['tests/integration/**/*.test.ts'],
           environment: 'node',
-          // globalSetup added in Phase 3 when tests/integration/setup.ts is created
+          globalSetup: ['tests/integration/setup.ts'],
+          setupFiles: ['tests/integration/setup-worker.ts'],
           testTimeout: 30_000,
           hookTimeout: 30_000,
           pool: 'forks',
-          // Sequential execution to avoid DB conflicts
+          fileParallelism: false, // Sequential execution to avoid DB conflicts
+          // Override env vars so the app's config module reads test URLs.
+          // dotenv won't override these since they're already set in process.env.
+          env: {
+            DATABASE_URL: testDbUrl,
+            REDIS_URL: testRedisUrl,
+            ISSUER_BASE_URL: 'http://localhost:3000',
+            COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
+            SMTP_HOST: 'localhost',
+            SMTP_PORT: '1025',
+            SMTP_FROM: 'test@porta.local',
+            NODE_ENV: 'test',
+            LOG_LEVEL: 'fatal',
+          },
         },
       },
       {

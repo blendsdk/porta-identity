@@ -1,67 +1,54 @@
-import pg from 'pg';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-
-const { Pool } = pg;
-
 /**
  * Integration tests for database schema verification.
  *
- * These tests require a running PostgreSQL instance with migrations applied.
- * They verify table existence, column types, constraints, triggers, and seed data.
+ * These tests verify table existence, column types, constraints,
+ * triggers, and seed data against the real PostgreSQL test database.
  *
- * Run with: yarn test:integration (requires yarn docker:up && yarn migrate)
+ * The test database connection is managed by the integration test
+ * infrastructure (globalSetup runs migrations, setup-worker connects
+ * the pool). Tests use getPool() from the app's database module.
+ *
+ * Run with: yarn test:integration (requires yarn docker:up)
  */
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgresql://porta:porta_dev@localhost:5432/porta';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { getPool } from '../../src/lib/database.js';
+import { seedBaseData } from './helpers/database.js';
 
-let pool: pg.Pool;
-let dbAvailable = false;
-
+// Restore seed data before tests run — other integration test files
+// may have truncated all tables before this file executes.
 beforeAll(async () => {
-  pool = new Pool({ connectionString: DATABASE_URL });
-  try {
-    await pool.query('SELECT 1');
-    dbAvailable = true;
-  } catch {
-    console.warn(
-      'Skipping integration tests — PostgreSQL not available at',
-      DATABASE_URL
-    );
+  const pool = getPool();
+  // Only seed if the super-admin org is missing (avoid duplicate inserts)
+  const check = await pool.query(
+    `SELECT 1 FROM organizations WHERE slug = 'porta-admin' LIMIT 1`,
+  );
+  if (check.rowCount === 0) {
+    await seedBaseData();
   }
 });
-
-afterAll(async () => {
-  if (pool) await pool.end();
-});
-
-/** Helper: skip test if DB is not available */
-function requireDb() {
-  if (!dbAvailable) {
-    return false;
-  }
-  return true;
-}
 
 /** Query information_schema for table existence */
 async function tableExists(tableName: string): Promise<boolean> {
+  const pool = getPool();
   const result = await pool.query(
     `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
-    [tableName]
+    [tableName],
   );
   return result.rowCount !== null && result.rowCount > 0;
 }
 
 /** Query column info for a table */
 async function getColumns(
-  tableName: string
+  tableName: string,
 ): Promise<{ column_name: string; data_type: string; is_nullable: string }[]> {
+  const pool = getPool();
   const result = await pool.query(
     `SELECT column_name, data_type, is_nullable
      FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1
      ORDER BY ordinal_position`,
-    [tableName]
+    [tableName],
   );
   return result.rows;
 }
@@ -92,12 +79,10 @@ describe('Schema Structure', () => {
   ];
 
   it.each(expectedTables)('table "%s" exists', async (table) => {
-    if (!requireDb()) return;
     expect(await tableExists(table)).toBe(true);
   });
 
   it('organizations table has expected columns', async () => {
-    if (!requireDb()) return;
     const columns = await getColumns('organizations');
     const names = columns.map((c) => c.column_name);
     expect(names).toEqual(
@@ -112,12 +97,11 @@ describe('Schema Structure', () => {
         'default_locale',
         'created_at',
         'updated_at',
-      ])
+      ]),
     );
   });
 
   it('users table has OIDC Standard Claims columns', async () => {
-    if (!requireDb()) return;
     const columns = await getColumns('users');
     const names = columns.map((c) => c.column_name);
     expect(names).toEqual(
@@ -133,18 +117,18 @@ describe('Schema Structure', () => {
         'phone_number',
         'address_street',
         'address_country',
-      ])
+      ]),
     );
   });
 
   it('oidc_payloads has composite primary key (id, type)', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     const result = await pool.query(
       `SELECT a.attname
        FROM pg_index i
        JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
        WHERE i.indrelid = 'oidc_payloads'::regclass AND i.indisprimary
-       ORDER BY array_position(i.indkey, a.attnum)`
+       ORDER BY array_position(i.indkey, a.attnum)`,
     );
     const pkColumns = result.rows.map((r: { attname: string }) => r.attname);
     expect(pkColumns).toEqual(['id', 'type']);
@@ -155,72 +139,72 @@ describe('Schema Structure', () => {
 
 describe('Constraints', () => {
   it('rejects duplicate organization slugs', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     await pool.query(
-      `INSERT INTO organizations (name, slug) VALUES ('Dup Test 1', 'dup-slug-test')`
+      `INSERT INTO organizations (name, slug) VALUES ('Dup Test 1', 'dup-slug-test')`,
     );
     await expect(
       pool.query(
-        `INSERT INTO organizations (name, slug) VALUES ('Dup Test 2', 'dup-slug-test')`
-      )
+        `INSERT INTO organizations (name, slug) VALUES ('Dup Test 2', 'dup-slug-test')`,
+      ),
     ).rejects.toThrow(/duplicate key|unique/i);
     // Cleanup
     await pool.query(`DELETE FROM organizations WHERE slug = 'dup-slug-test'`);
   });
 
   it('rejects invalid organization status', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     await expect(
       pool.query(
-        `INSERT INTO organizations (name, slug, status) VALUES ('Bad Status', 'bad-status', 'invalid')`
-      )
+        `INSERT INTO organizations (name, slug, status) VALUES ('Bad Status', 'bad-status', 'invalid')`,
+      ),
     ).rejects.toThrow(/violates check constraint/i);
   });
 
   it('enforces only one super-admin organization (partial unique index)', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     // Seed already created one super-admin — inserting another should fail
     await expect(
       pool.query(
-        `INSERT INTO organizations (name, slug, is_super_admin) VALUES ('Second Admin', 'second-admin', TRUE)`
-      )
+        `INSERT INTO organizations (name, slug, is_super_admin) VALUES ('Second Admin', 'second-admin', TRUE)`,
+      ),
     ).rejects.toThrow(/duplicate key|unique/i);
   });
 
   it('enforces case-insensitive email uniqueness per org (CITEXT)', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     // Get the super-admin org ID for FK
     const orgResult = await pool.query(
-      `SELECT id FROM organizations WHERE slug = 'porta-admin'`
+      `SELECT id FROM organizations WHERE slug = 'porta-admin'`,
     );
     const orgId = orgResult.rows[0].id;
 
     await pool.query(
       `INSERT INTO users (organization_id, email, status) VALUES ($1, 'CaseTest@Example.com', 'active')`,
-      [orgId]
+      [orgId],
     );
     await expect(
       pool.query(
         `INSERT INTO users (organization_id, email, status) VALUES ($1, 'casetest@example.com', 'active')`,
-        [orgId]
-      )
+        [orgId],
+      ),
     ).rejects.toThrow(/duplicate key|unique/i);
     // Cleanup
     await pool.query(
       `DELETE FROM users WHERE organization_id = $1 AND email = 'CaseTest@Example.com'`,
-      [orgId]
+      [orgId],
     );
   });
 
   it('enforces FK: clients.organization_id references organizations', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     await expect(
       pool.query(
         `INSERT INTO clients (organization_id, application_id, client_id, client_name, client_type)
          VALUES ($1, $1, 'fk-test-client', 'FK Test', 'public')`,
-        [fakeUuid]
-      )
+        [fakeUuid],
+      ),
     ).rejects.toThrow(/violates foreign key/i);
   });
 });
@@ -229,22 +213,22 @@ describe('Constraints', () => {
 
 describe('Cascade Behavior', () => {
   it('ON DELETE CASCADE: deleting org removes its users', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
 
     // Create test org and user
     const orgResult = await pool.query(
-      `INSERT INTO organizations (name, slug) VALUES ('Cascade Test Org', 'cascade-test-org') RETURNING id`
+      `INSERT INTO organizations (name, slug) VALUES ('Cascade Test Org', 'cascade-test-org') RETURNING id`,
     );
     const orgId = orgResult.rows[0].id;
     await pool.query(
       `INSERT INTO users (organization_id, email, status) VALUES ($1, 'cascade@test.com', 'active')`,
-      [orgId]
+      [orgId],
     );
 
     // Verify user exists
     const before = await pool.query(
       `SELECT count(*) FROM users WHERE organization_id = $1`,
-      [orgId]
+      [orgId],
     );
     expect(parseInt(before.rows[0].count, 10)).toBe(1);
 
@@ -253,22 +237,22 @@ describe('Cascade Behavior', () => {
 
     const after = await pool.query(
       `SELECT count(*) FROM users WHERE organization_id = $1`,
-      [orgId]
+      [orgId],
     );
     expect(parseInt(after.rows[0].count, 10)).toBe(0);
   });
 
   it('ON DELETE SET NULL: deleting user preserves audit log entries', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
 
     // Create test org and user
     const orgResult = await pool.query(
-      `INSERT INTO organizations (name, slug) VALUES ('Audit Test Org', 'audit-test-org') RETURNING id`
+      `INSERT INTO organizations (name, slug) VALUES ('Audit Test Org', 'audit-test-org') RETURNING id`,
     );
     const orgId = orgResult.rows[0].id;
     const userResult = await pool.query(
       `INSERT INTO users (organization_id, email, status) VALUES ($1, 'audit@test.com', 'active') RETURNING id`,
-      [orgId]
+      [orgId],
     );
     const userId = userResult.rows[0].id;
 
@@ -276,7 +260,7 @@ describe('Cascade Behavior', () => {
     await pool.query(
       `INSERT INTO audit_log (organization_id, user_id, event_type, event_category)
        VALUES ($1, $2, 'test.event', 'test')`,
-      [orgId, userId]
+      [orgId, userId],
     );
 
     // Delete user — audit log user_id should become NULL
@@ -284,11 +268,12 @@ describe('Cascade Behavior', () => {
 
     const audit = await pool.query(
       `SELECT user_id FROM audit_log WHERE organization_id = $1 AND event_type = 'test.event'`,
-      [orgId]
+      [orgId],
     );
     expect(audit.rows[0].user_id).toBeNull();
 
     // Cleanup
+    await pool.query(`DELETE FROM audit_log WHERE organization_id = $1`, [orgId]);
     await pool.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
   });
 });
@@ -297,10 +282,10 @@ describe('Cascade Behavior', () => {
 
 describe('Triggers', () => {
   it('updated_at trigger auto-updates on row modification', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
 
     const orgResult = await pool.query(
-      `INSERT INTO organizations (name, slug) VALUES ('Trigger Test', 'trigger-test') RETURNING id, updated_at`
+      `INSERT INTO organizations (name, slug) VALUES ('Trigger Test', 'trigger-test') RETURNING id, updated_at`,
     );
     const orgId = orgResult.rows[0].id;
     const originalUpdatedAt = orgResult.rows[0].updated_at;
@@ -315,7 +300,7 @@ describe('Triggers', () => {
       orgId,
     ]);
     expect(new Date(updated.rows[0].updated_at).getTime()).toBeGreaterThan(
-      new Date(originalUpdatedAt).getTime()
+      new Date(originalUpdatedAt).getTime(),
     );
 
     // Cleanup
@@ -327,10 +312,10 @@ describe('Triggers', () => {
 
 describe('Seed Data', () => {
   it('super-admin organization exists with correct values', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     const result = await pool.query(
       `SELECT name, slug, status, is_super_admin, branding_company_name
-       FROM organizations WHERE slug = 'porta-admin'`
+       FROM organizations WHERE slug = 'porta-admin'`,
     );
     expect(result.rowCount).toBe(1);
     expect(result.rows[0]).toMatchObject({
@@ -343,7 +328,7 @@ describe('Seed Data', () => {
   });
 
   it('system config defaults are present', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     const result = await pool.query(`SELECT key, value_type FROM system_config ORDER BY key`);
     const keys = result.rows.map((r: { key: string }) => r.key);
     expect(keys).toEqual(
@@ -363,12 +348,12 @@ describe('Seed Data', () => {
         'lockout_duration',
         'require_pkce',
         'cors_max_age',
-      ])
+      ]),
     );
   });
 
   it('all config values have correct value_type', async () => {
-    if (!requireDb()) return;
+    const pool = getPool();
     const result = await pool.query(`SELECT key, value_type FROM system_config`);
     const validTypes = ['string', 'number', 'boolean', 'duration', 'json'];
     for (const row of result.rows) {
