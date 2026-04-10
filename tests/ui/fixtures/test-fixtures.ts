@@ -37,7 +37,7 @@ import { test as base, expect, type Page } from '@playwright/test';
 export interface TestData {
   /** Organization slug — used in URL paths (e.g., /:orgSlug/auth/...) */
   orgSlug: string;
-  /** OIDC client_id for the test application */
+  /** OIDC client_id for the test application (public client) */
   clientId: string;
   /** Plaintext client secret for token exchange */
   clientSecret: string;
@@ -49,6 +49,16 @@ export interface TestData {
   userPassword: string;
   /** Base URL of the Porta test server (e.g., http://localhost:49200) */
   baseUrl: string;
+  /** Confidential client org slug — separate tenant for confidential client testing */
+  confOrgSlug: string;
+  /** Confidential client OIDC client_id */
+  confClientId: string;
+  /** Confidential client plaintext secret (SHA-256 hashed in DB) */
+  confClientSecret: string;
+  /** Confidential client user email */
+  confUserEmail: string;
+  /** Confidential client user password */
+  confUserPassword: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +116,11 @@ export const test = base.extend<{
       userEmail: process.env.TEST_USER_EMAIL!,
       userPassword: process.env.TEST_USER_PASSWORD!,
       baseUrl: process.env.TEST_UI_BASE_URL!,
+      confOrgSlug: process.env.TEST_CONF_ORG_SLUG!,
+      confClientId: process.env.TEST_CONF_CLIENT_ID!,
+      confClientSecret: process.env.TEST_CONF_CLIENT_SECRET!,
+      confUserEmail: process.env.TEST_CONF_USER_EMAIL!,
+      confUserPassword: process.env.TEST_CONF_USER_PASSWORD!,
     });
   },
 

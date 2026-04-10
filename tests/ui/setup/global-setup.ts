@@ -110,7 +110,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   await truncateAllTables();
   await seedBaseData();
 
-  // Create a full test tenant: org → app → client (with secret) → user (with password)
+  // Create a full test tenant: org → app → public client (with secret) → user (with password)
   const { createFullTestTenant } = await import(
     '../../integration/helpers/factories.js'
   );
@@ -118,6 +118,28 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     clientOverrides: {
       // Redirect URI that Playwright tests will use — matches the test server
       redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+    },
+  });
+
+  // Create a second tenant with a CONFIDENTIAL client for token endpoint E2E tests.
+  // Confidential clients use client_secret_post for authentication and have
+  // a stored SHA-256 hash of the secret in the database. This tenant exercises
+  // the full OIDC flow: auth → token → id_token → introspect → userinfo.
+  const confTenant = await createFullTestTenant({
+    orgOverrides: { name: 'Confidential Test Org' },
+    clientOverrides: {
+      clientName: 'Confidential Test Client',
+      clientType: 'confidential',
+      applicationType: 'web',
+      tokenEndpointAuthMethod: 'client_secret_post',
+      grantTypes: ['authorization_code', 'refresh_token'],
+      responseTypes: ['code'],
+      redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+    },
+    userOverrides: {
+      email: 'conf-test@example.com',
+      givenName: 'Conf',
+      familyName: 'Tester',
     },
   });
 
@@ -131,6 +153,13 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.TEST_REDIRECT_URI = `http://localhost:${UI_TEST_PORT}/callback`;
   process.env.TEST_USER_EMAIL = tenant.user.email;
   process.env.TEST_USER_PASSWORD = tenant.password ?? DEFAULT_TEST_PASSWORD;
+
+  // Confidential client test data — separate tenant with confidential client
+  process.env.TEST_CONF_ORG_SLUG = confTenant.org.slug;
+  process.env.TEST_CONF_CLIENT_ID = confTenant.client.clientId;
+  process.env.TEST_CONF_CLIENT_SECRET = confTenant.clientSecret;
+  process.env.TEST_CONF_USER_EMAIL = confTenant.user.email;
+  process.env.TEST_CONF_USER_PASSWORD = confTenant.password ?? DEFAULT_TEST_PASSWORD;
 
   // Store server reference for teardown — Playwright runs setup/teardown
   // in the same process, so module-level state persists

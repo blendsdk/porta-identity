@@ -8,7 +8,7 @@
  * The configuration enables:
  * - Hybrid adapter (Postgres/Redis) for OIDC artifact storage
  * - ES256 signing keys loaded from the database
- * - Dynamic client lookup from the database
+ * - Client lookup via adapter pattern (adapter.find('Client', id) → findForOidc())
  * - PKCE required for all authorization code flows (S256 only)
  * - Token introspection, revocation, and client credentials
  * - Standard OIDC scopes and claims mapping
@@ -35,8 +35,6 @@ export interface BuildProviderConfigParams {
   interactionUrl: (ctx: unknown, interaction: { uid: string }) => string;
   /** CORS handler — determines if an origin is allowed for a client */
   clientBasedCORS?: (ctx: unknown, origin: string, client: unknown) => boolean;
-  /** Client finder function — looks up clients by client_id with secret verification */
-  findClient?: (ctx: unknown, id: string) => Promise<Record<string, unknown> | undefined>;
 }
 
 /**
@@ -50,7 +48,7 @@ export interface BuildProviderConfigParams {
  * @returns Complete Configuration object for node-oidc-provider
  */
 export function buildProviderConfiguration(params: BuildProviderConfigParams): Record<string, unknown> {
-  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS, findClient } = params;
+  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS } = params;
 
   return {
     // Adapter — hybrid Postgres/Redis via factory
@@ -150,10 +148,5 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // CORS handler — checks client's allowed_origins
     clientBasedCORS,
-
-    // Client finder — bypasses adapter for client model, looks up from clients table.
-    // When present, oidc-provider calls this instead of adapter.find('Client', id).
-    // This is the fix for GAP-1: wiring client lookup into the provider.
-    ...(findClient ? { findClient } : {}),
   };
 }

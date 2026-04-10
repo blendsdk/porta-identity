@@ -2,8 +2,8 @@
  * OIDC provider factory.
  *
  * Creates and configures the node-oidc-provider instance with all
- * configuration, adapters, keys, and finders wired together. This is
- * the main entry point for provider creation, called once at startup.
+ * configuration, adapters, keys, and account finder wired together.
+ * This is the main entry point for provider creation, called once at startup.
  *
  * The provider uses a base issuer URL and supports path-based
  * multi-tenancy where each organization gets a unique issuer:
@@ -17,15 +17,19 @@ import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { buildProviderConfiguration } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
-import { findClientByClientId } from './client-finder.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
 
 /**
  * Create and configure the node-oidc-provider instance.
  *
  * Wires together the adapter factory, signing keys, TTL config,
- * account finder, CORS handler, and interaction URL builder into
- * a single Provider instance ready to handle OIDC requests.
+ * account finder, CORS handler, and interaction URL builder into a
+ * single Provider instance ready to handle OIDC requests.
+ *
+ * Client lookup is handled by the adapter pattern: oidc-provider calls
+ * adapter.find('Client', id), which the adapter factory routes to
+ * findForOidc() in the clients service. This returns client metadata
+ * including SHA-256 hashed secrets for confidential clients.
  *
  * @param params.jwks - JWK key set loaded from the signing_keys table
  * @param params.ttl - TTL configuration loaded from the system_config table
@@ -45,10 +49,6 @@ export async function createOidcProvider(params: {
     findAccount,
     adapterFactory: createAdapterFactory(),
     clientBasedCORS: oidcCors,
-    // Client finder — resolves clients from the clients table with secret verification.
-    // Fixes GAP-1: oidc-provider now finds clients via Porta's client management system
-    // instead of falling back to the adapter (which looks in oidc_payloads table).
-    findClient: findClientByClientId,
     // Interaction URL — placeholder for RD-03, real login UI in RD-07
     interactionUrl: (_ctx, interaction) => {
       return `/interaction/${interaction.uid}`;

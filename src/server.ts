@@ -57,10 +57,37 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Global middleware stack (order matters):
   // 1. Error handler catches all downstream errors
   // 2. Request logger adds X-Request-Id and logs request/response
-  // 3. Body parser makes request body available on ctx.request.body
+  // 3. Selective body parser — only routes that need it (NOT OIDC routes)
   app.use(errorHandler());
   app.use(requestLogger());
-  app.use(bodyParser());
+
+  // Selective body parser: apply only to admin API, interaction, and auth routes.
+  // OIDC provider routes (/:orgSlug/*) must NOT have pre-parsed bodies because
+  // oidc-provider uses its own internal body parser (selective_body.js).
+  // Pre-parsing the body consumes the request stream, which causes
+  // client_secret_post authentication to fail at the token endpoint with
+  // "no client authentication mechanism provided".
+  //
+  // Routes that NEED body parsing:
+  //   /api/*           — Admin API routes (JSON request bodies)
+  //   /interaction/*   — OIDC interaction routes (login/consent form submissions)
+  //   /:orgSlug/auth/* — Auth workflow routes (magic-link, password-reset, invitation)
+  //   /health          — GET-only, no body needed, but harmless to parse
+  //
+  // Routes that must NOT be body-parsed:
+  //   /:orgSlug/*      — OIDC provider endpoints (token, revocation, introspection, etc.)
+  const bp = bodyParser();
+  app.use(async (ctx, next) => {
+    if (
+      ctx.path.startsWith('/api/') ||
+      ctx.path.startsWith('/interaction/') ||
+      ctx.path.startsWith('/health') ||
+      ctx.path.includes('/auth/')
+    ) {
+      return bp(ctx, next);
+    }
+    return next();
+  });
 
   // Health check route — root level, no tenant context required
   const router = new Router();
@@ -158,9 +185,35 @@ export function createApp(oidcProvider?: Provider): Koa {
     // Tenant resolver validates the org slug and sets ctx.state.organization
     oidcRouter.use(tenantResolver());
 
+    // Body parser for OIDC routes — parses application/x-www-form-urlencoded
+    // and JSON bodies before they reach our middleware.
+    //
+    // When the body is already parsed, oidc-provider's selective_body.js detects
+    // ctx.req.readable === false and falls back to reading ctx.req.body.
+    //
+    // IMPORTANT: We must copy the parsed body to ctx.req.body (Node's IncomingMessage)
+    // because oidcProvider.callback() receives ctx.req/ctx.res (raw Node objects),
+    // and oidc-provider creates its own internal Koa context — so it can NOT access
+    // our Koa app's ctx.request.body. Setting ctx.req.body makes the parsed body
+    // available via the fallback path in selective_body.js.
+    const oidcBodyParser = bodyParser();
+    oidcRouter.use(async (ctx, next) => {
+      await oidcBodyParser(ctx, next);
+    });
+    oidcRouter.use(async (ctx, next) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = (ctx.request as any).body;
+      if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (ctx.req as any).body = body;
+      }
+      await next();
+    });
+
     // Pre-hash client secrets with SHA-256 before oidc-provider processes them.
     // This enables secure secret storage: we store SHA-256 hashes in the DB,
     // the middleware hashes the presented secret, and oidc-provider compares them.
+    // Requires body parser above so ctx.request.body.client_secret is available.
     oidcRouter.use(clientSecretHash());
 
     // Delegate all OIDC requests to node-oidc-provider's callback handler.
