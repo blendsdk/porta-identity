@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-10 23:43
-> **Progress**: 21/38 tasks (55%)
+> **Progress**: 22/38 tasks (58%)
 
 ## Overview
 
@@ -278,7 +278,7 @@ Templates use `{{interaction.client.clientName}}` in i18n strings like `"Sign in
 - [x] 5.1.2 Implement two-factor-edge-cases.spec.ts (8 tests, all fixme — cross-process 2FA state) ✅ (completed: 2026-04-10 23:43)
 
 ### Phase 6: Security & Tenant Isolation
-- [ ] 6.1.1 Implement tenant-isolation.spec.ts (4 tests)
+- [x] 6.1.1 Implement tenant-isolation.spec.ts (4 tests) ✅ (completed: 2026-04-10 23:45)
 
 ### Phase 7: Quality, Discovery & Accessibility
 - [ ] 7.1.1 Implement page-quality.spec.ts (7 tests)
