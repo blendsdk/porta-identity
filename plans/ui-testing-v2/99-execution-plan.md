@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-10 22:08
-> **Progress**: 13/38 tasks (34%)
+> **Last Updated**: 2026-04-10 23:25
+> **Progress**: 19/38 tasks (50%)
 
 ## Overview
 
@@ -260,9 +260,9 @@ Templates use `{{interaction.client.clientName}}` in i18n strings like `"Sign in
 - [x] 1.1.6 Verify smoke test passes with new data ✅ (completed: 2026-04-10 21:00)
 
 ### Phase 2: Password Reset Tests
-- [ ] 2.1.1 Implement forgot-password.spec.ts (8 tests)
-- [ ] 2.1.2 Implement reset-password.spec.ts (10 tests)
-- [ ] 2.1.3 Implement reset-password-abuse.spec.ts (4 tests)
+- [x] 2.1.1 Implement forgot-password.spec.ts (8 tests) ✅ (completed: 2026-04-10 21:30)
+- [x] 2.1.2 Implement reset-password.spec.ts (10 tests) ✅ (completed: 2026-04-10 21:30)
+- [x] 2.1.3 Implement reset-password-abuse.spec.ts (4 tests) ✅ (completed: 2026-04-10 21:30)
 
 ### Phase 3: Magic Link & Invitation Tests
 - [x] 3.1.1 Implement magic-link-verify.spec.ts (5 passing + 1 fixme) ✅ (completed: 2026-04-10 22:05)
@@ -270,8 +270,8 @@ Templates use `{{interaction.client.clientName}}` in i18n strings like `"Sign in
 - [x] 3.1.3 Implement invitation.spec.ts (9 tests) ✅ (completed: 2026-04-10 22:05)
 
 ### Phase 4: Login States & Consent Tests
-- [ ] 4.1.1 Implement login-error-states.spec.ts (9 tests)
-- [ ] 4.1.2 Implement consent-edge-cases.spec.ts (5 tests)
+- [x] 4.1.1 Implement login-error-states.spec.ts (9 tests) ✅ (completed: 2026-04-10 23:20)
+- [x] 4.1.2 Implement consent-edge-cases.spec.ts (5 tests) ✅ (completed: 2026-04-10 23:20)
 
 ### Phase 5: Interaction Lifecycle & 2FA Edge Cases
 - [ ] 5.1.1 Implement interaction-lifecycle.spec.ts (6 tests)

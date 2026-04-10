@@ -362,7 +362,9 @@ async function resetRateLimits(pattern: string): Promise<void> {
  * Call this before tests that exercise rate limiting to ensure clean state.
  */
 async function resetAllRateLimits(): Promise<void> {
+  // Clear both key patterns used by the rate limiter
   await resetRateLimits('rate:*');
+  await resetRateLimits('ratelimit:*');
 }
 
 /**
