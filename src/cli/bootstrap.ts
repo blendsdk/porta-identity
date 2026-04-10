@@ -26,6 +26,14 @@ import type { GlobalOptions } from './index.js';
  * @param argv - Parsed CLI global options from yargs
  */
 export async function bootstrap(argv: GlobalOptions): Promise<void> {
+  // CLI is a run-and-exit tool — suppress infrastructure logs (Database connected,
+  // Redis connected, etc.) that clutter both table and JSON output.
+  // Use --verbose to opt in to full diagnostic logging for debugging.
+  // Uses 'fatal' (quietest valid level) since the config schema doesn't allow 'silent'.
+  if (!argv.verbose) {
+    process.env.LOG_LEVEL = 'fatal';
+  }
+
   // Override env vars BEFORE config module loads (via dynamic imports below).
   // This ensures the config schema parses the CLI-provided URLs instead of .env values.
   if (argv['database-url']) {

@@ -1,7 +1,7 @@
 # Porta v5 — Requirements Documents
 
 > **Project**: Porta v5 — Multi-Tenant OIDC Provider
-> **Status**: Requirements Complete
+> **Status**: Requirements In Progress (RD-13 added)
 > **Created**: 2026-04-08
 > **Architecture**: Koa + TypeScript + node-oidc-provider + PostgreSQL + Redis
 
@@ -27,6 +27,7 @@ Porta v5 is a multi-tenant OIDC provider built on top of [node-oidc-provider](ht
 | **RD-10** | [Testing Strategy](RD-10-testing-strategy.md) | Vitest, unit/integration/E2E tests, coverage | All |
 | **RD-11** | [Deployment & Blue-Green](RD-11-deployment.md) | Production Docker, blue-green deployment, health checks | RD-01, All |
 | **RD-12** | [Two-Factor Authentication (2FA)](RD-12-two-factor-authentication.md) | Email OTP, TOTP authenticator, recovery codes, org 2FA policy | RD-02, RD-04, RD-06, RD-07 |
+| **RD-13** | [Admin Authentication & CLI v2](RD-13-admin-auth-cli-v2.md) | Secure admin API, CLI OIDC login, bootstrap command, HTTP migration | RD-03, RD-05, RD-08, RD-09 |
 
 ## Dependency Graph
 

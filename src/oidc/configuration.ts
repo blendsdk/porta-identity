@@ -35,6 +35,8 @@ export interface BuildProviderConfigParams {
   interactionUrl: (ctx: unknown, interaction: { uid: string }) => string;
   /** CORS handler — determines if an origin is allowed for a client */
   clientBasedCORS?: (ctx: unknown, origin: string, client: unknown) => boolean;
+  /** Client finder function — looks up clients by client_id with secret verification */
+  findClient?: (ctx: unknown, id: string) => Promise<Record<string, unknown> | undefined>;
 }
 
 /**
@@ -48,7 +50,7 @@ export interface BuildProviderConfigParams {
  * @returns Complete Configuration object for node-oidc-provider
  */
 export function buildProviderConfiguration(params: BuildProviderConfigParams): Record<string, unknown> {
-  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS } = params;
+  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS, findClient } = params;
 
   return {
     // Adapter — hybrid Postgres/Redis via factory
@@ -59,6 +61,8 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // OIDC features
     features: {
+      // Disable devInteractions — we provide our own login/consent UI
+      devInteractions: { enabled: false },
       // Enable token introspection (RFC 7662)
       introspection: { enabled: true },
       // Enable token revocation (RFC 7009)
@@ -146,5 +150,10 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // CORS handler — checks client's allowed_origins
     clientBasedCORS,
+
+    // Client finder — bypasses adapter for client model, looks up from clients table.
+    // When present, oidc-provider calls this instead of adapter.find('Client', id).
+    // This is the fix for GAP-1: wiring client lookup into the provider.
+    ...(findClient ? { findClient } : {}),
   };
 }

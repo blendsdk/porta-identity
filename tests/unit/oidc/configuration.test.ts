@@ -122,4 +122,17 @@ describe('configuration builder', () => {
     const config = buildProviderConfiguration(createDefaultParams());
     expect(config.responseTypes).toEqual(['code']);
   });
+
+  it('includes findClient when provided', () => {
+    const mockFindClient = async () => undefined;
+    const config = buildProviderConfiguration(
+      createDefaultParams({ findClient: mockFindClient }),
+    );
+    expect(config.findClient).toBe(mockFindClient);
+  });
+
+  it('does not include findClient when not provided', () => {
+    const config = buildProviderConfiguration(createDefaultParams());
+    expect(config.findClient).toBeUndefined();
+  });
 });

@@ -158,10 +158,17 @@ export function createApp(oidcProvider?: Provider): Koa {
     // Delegate all OIDC requests to node-oidc-provider's callback handler.
     // URL rewriting strips the /:orgSlug prefix so the provider sees
     // standard OIDC paths (/auth, /token, /jwks, etc.).
-    oidcRouter.all('(.*)', async (ctx) => {
+    oidcRouter.all('/{*path}', async (ctx) => {
+      // Preserve the original URL so the provider can detect the mount path
+      // and generate correct endpoint URLs (e.g., /playground/auth instead of /auth).
+      // node-oidc-provider compares originalUrl vs url to extract the mount prefix.
+      const originalUrl = ctx.req.url!;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ctx.req as any).originalUrl = originalUrl;
+
       // Strip the org slug prefix from the URL before passing to the provider.
       // e.g., /acme-corp/token → /token
-      ctx.req.url = ctx.req.url!.replace(`/${ctx.params.orgSlug}`, '');
+      ctx.req.url = originalUrl.replace(`/${ctx.params.orgSlug}`, '');
 
       // Delegate to node-oidc-provider's Koa callback handler
       await oidcProvider.callback()(ctx.req, ctx.res);

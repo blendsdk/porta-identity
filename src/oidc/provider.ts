@@ -17,6 +17,7 @@ import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { buildProviderConfiguration } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
+import { findClientByClientId } from './client-finder.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
 
 /**
@@ -44,6 +45,10 @@ export async function createOidcProvider(params: {
     findAccount,
     adapterFactory: createAdapterFactory(),
     clientBasedCORS: oidcCors,
+    // Client finder — resolves clients from the clients table with secret verification.
+    // Fixes GAP-1: oidc-provider now finds clients via Porta's client management system
+    // instead of falling back to the adapter (which looks in oidc_payloads table).
+    findClient: findClientByClientId,
     // Interaction URL — placeholder for RD-03, real login UI in RD-07
     interactionUrl: (_ctx, interaction) => {
       return `/interaction/${interaction.uid}`;

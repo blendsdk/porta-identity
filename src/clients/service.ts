@@ -48,6 +48,7 @@ import {
   getDefaultResponseTypes,
   getDefaultScope,
 } from './validators.js';
+import { verify } from './secret-service.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { ClientNotFoundError, ClientValidationError } from './errors.js';
 import { getApplicationById } from '../applications/service.js';
@@ -473,5 +474,38 @@ export async function findForOidc(
       : client.tokenEndpointAuthMethod,
     // allowed_origins needed for CORS checks on OIDC endpoints
     'urn:porta:allowed_origins': client.allowedOrigins,
+    // Client type needed by client-finder for decision matrix
+    // (determines whether secret verification is required)
+    'urn:porta:client_type': client.clientType,
   };
+}
+
+/**
+ * Verify a client secret for OIDC authentication.
+ *
+ * Convenience wrapper around secret-service.verify() that resolves the
+ * internal DB id from the OIDC client_id and performs guard checks:
+ * - Client must exist and be active
+ * - Client must be confidential (public clients have no secrets)
+ *
+ * Used by the client-finder during token endpoint authentication.
+ *
+ * @param clientId - The OIDC client_id (external identifier)
+ * @param plaintext - The presented secret to verify
+ * @returns true if secret matches any active hash, false otherwise
+ */
+export async function verifyClientSecret(
+  clientId: string,
+  plaintext: string,
+): Promise<boolean> {
+  const client = await getClientByClientId(clientId);
+
+  // Client must exist and be active
+  if (!client || client.status !== 'active') return false;
+
+  // Public clients should not have secrets — reject verification attempts
+  if (client.clientType === 'public') return false;
+
+  // Delegate to secret-service which checks all active, non-expired hashes
+  return verify(client.id, plaintext);
 }

@@ -44,7 +44,7 @@ export {
 } from './service.js';
 
 // Service functions — OIDC integration
-export { findForOidc } from './service.js';
+export { findForOidc, verifyClientSecret } from './service.js';
 
 // Secret service functions
 export {

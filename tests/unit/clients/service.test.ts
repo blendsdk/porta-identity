@@ -41,6 +41,10 @@ vi.mock('../../../src/organizations/service.js', () => ({
   getOrganizationById: vi.fn(),
 }));
 
+vi.mock('../../../src/clients/secret-service.js', () => ({
+  verify: vi.fn(),
+}));
+
 import {
   insertClient,
   findClientById,
@@ -59,6 +63,7 @@ import { validateRedirectUris } from '../../../src/clients/validators.js';
 import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { getApplicationById } from '../../../src/applications/service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
+import { verify } from '../../../src/clients/secret-service.js';
 import {
   createClient,
   getClientById,
@@ -70,6 +75,7 @@ import {
   activateClient,
   revokeClient,
   findForOidc,
+  verifyClientSecret,
 } from '../../../src/clients/service.js';
 import { ClientNotFoundError, ClientValidationError } from '../../../src/clients/errors.js';
 
@@ -579,6 +585,73 @@ describe('client service', () => {
       const result = await findForOidc('generated-client-id-abc123');
 
       expect(result!['urn:porta:allowed_origins']).toEqual(['https://a.com', 'https://b.com']);
+    });
+
+    it('should include client_type under custom URN', async () => {
+      const client = createTestClient({ clientType: 'confidential' });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const result = await findForOidc('generated-client-id-abc123');
+
+      expect(result!['urn:porta:client_type']).toBe('confidential');
+    });
+  });
+
+  // =========================================================================
+  // verifyClientSecret
+  // =========================================================================
+
+  describe('verifyClientSecret', () => {
+    it('should return true for valid secret on active confidential client', async () => {
+      const client = createTestClient({ clientType: 'confidential', status: 'active' });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (verify as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const result = await verifyClientSecret('generated-client-id-abc123', 'valid-secret');
+
+      expect(result).toBe(true);
+      expect(verify).toHaveBeenCalledWith('client-db-uuid-1', 'valid-secret');
+    });
+
+    it('should return false for invalid secret', async () => {
+      const client = createTestClient({ clientType: 'confidential', status: 'active' });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (verify as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      const result = await verifyClientSecret('generated-client-id-abc123', 'wrong-secret');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false for public client (no secrets allowed)', async () => {
+      const client = createTestClient({ clientType: 'public', status: 'active' });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const result = await verifyClientSecret('generated-client-id-abc123', 'any-secret');
+
+      expect(result).toBe(false);
+      // Should NOT call verify for public clients
+      expect(verify).not.toHaveBeenCalled();
+    });
+
+    it('should return false for inactive client', async () => {
+      const client = createTestClient({ clientType: 'confidential', status: 'inactive' });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const result = await verifyClientSecret('generated-client-id-abc123', 'valid-secret');
+
+      expect(result).toBe(false);
+      expect(verify).not.toHaveBeenCalled();
+    });
+
+    it('should return false for unknown client', async () => {
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const result = await verifyClientSecret('nonexistent', 'any-secret');
+
+      expect(result).toBe(false);
+      expect(verify).not.toHaveBeenCalled();
     });
   });
 });
