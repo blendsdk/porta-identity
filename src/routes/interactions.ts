@@ -167,6 +167,27 @@ async function resolveOrganizationForInteraction(
 }
 
 /**
+ * Resolve a human-readable client name from the OIDC provider metadata.
+ *
+ * Looks up the client by client_id and returns the `client_name` from
+ * its metadata. Falls back to the raw client_id if the client is not
+ * found or has no `client_name` set.
+ *
+ * @param provider - OIDC provider instance
+ * @param clientId - The client_id to look up
+ * @returns Human-readable client name, or the raw client_id as fallback
+ */
+async function resolveClientName(provider: Provider, clientId: string): Promise<string> {
+  try {
+    const client = await provider.Client.find(clientId);
+    return (client?.metadata()?.client_name as string) ?? clientId;
+  } catch {
+    // If lookup fails (e.g., client deleted), fall back to client_id
+    return clientId;
+  }
+}
+
+/**
  * Get an error message for a user status that prevents login.
  * Returns undefined if the status allows login (i.e., 'active').
  *
@@ -300,6 +321,10 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // Pre-fill email from login_hint if provided
     const loginHint = (params.login_hint as string) ?? '';
 
+    // Resolve human-readable client name from OIDC provider metadata.
+    // Falls back to the raw client_id if not found.
+    const clientName = await resolveClientName(provider, params.client_id as string);
+
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
       t,
@@ -307,7 +332,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
         uid: interaction.uid,
         prompt: prompt.name,
         params: params as Record<string, unknown>,
-        client: { clientName: (params.client_id as string) ?? '' },
+        client: { clientName },
       },
       email: loginHint,
     };
@@ -355,7 +380,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     // Step 1: Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
-      await renderLoginWithError(ctx, interaction, t, locale, email, t('errors.csrf_invalid'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
       return;
     }
 
@@ -377,7 +402,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       });
 
       await renderLoginWithError(
-        ctx, interaction, t, locale, email,
+        ctx, provider, interaction, t, locale, email,
         t('errors.rate_limit_exceeded'),
         429,
       );
@@ -397,7 +422,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, interaction, t, locale, email, t('login.error_invalid_credentials'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid_credentials'));
       return;
     }
 
@@ -413,7 +438,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, interaction, t, locale, email, statusError);
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, statusError);
       return;
     }
 
@@ -430,7 +455,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, interaction, t, locale, email, t('login.error_invalid_credentials'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid_credentials'));
       return;
     }
 
@@ -544,7 +569,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     // Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
-      await renderLoginWithError(ctx, interaction, t, locale, email, t('errors.csrf_invalid'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
       return;
     }
 
@@ -565,7 +590,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       });
 
       await renderLoginWithError(
-        ctx, interaction, t, locale, email,
+        ctx, provider, interaction, t, locale, email,
         t('errors.rate_limit_exceeded'),
         429,
       );
@@ -881,6 +906,7 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
  * Used when login fails (wrong password, rate limited, CSRF mismatch, etc.).
  *
  * @param ctx - Koa context
+ * @param provider - OIDC provider instance (used to resolve human-readable client name)
  * @param interaction - OIDC interaction details
  * @param t - Translation function
  * @param locale - Resolved locale
@@ -890,6 +916,7 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
  */
 async function renderLoginWithError(
   ctx: InteractionContext,
+  provider: Provider,
   interaction: { uid: string; prompt: { name: string }; params: Record<string, unknown> },
   t: (key: string, options?: Record<string, unknown>) => string,
   locale: string,
@@ -901,6 +928,11 @@ async function renderLoginWithError(
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
 
+  // Resolve human-readable client name from provider metadata.
+  // Falls back to raw client_id if the client is not found.
+  const clientId = (interaction.params.client_id as string) ?? '';
+  const clientName = await resolveClientName(provider, clientId);
+
   const context: TemplateContext = {
     ...buildBaseContext(ctx, locale, csrfToken, org.slug),
     t,
@@ -908,7 +940,7 @@ async function renderLoginWithError(
       uid: interaction.uid,
       prompt: interaction.prompt.name,
       params: interaction.params as Record<string, unknown>,
-      client: { clientName: (interaction.params.client_id as string) ?? '' },
+      client: { clientName },
     },
     email,
     flash: { error: errorMessage },

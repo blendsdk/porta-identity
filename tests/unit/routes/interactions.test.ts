@@ -339,6 +339,85 @@ describe('interaction routes', () => {
       );
     });
 
+    it('should resolve human-readable clientName from provider metadata', async () => {
+      const provider = createMockProvider();
+      // Provider returns client with client_name metadata
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'My Cool App',
+          organizationId: undefined,
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      // Should call provider.Client.find to look up the client name
+      expect(provider.Client.find).toHaveBeenCalledWith('client-id-abc');
+
+      // The rendered context should include the human-readable name, NOT the UUID
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          interaction: expect.objectContaining({
+            client: { clientName: 'My Cool App' },
+          }),
+        }),
+      );
+    });
+
+    it('should fall back to client_id when client has no client_name', async () => {
+      const provider = createMockProvider();
+      // Provider returns client without client_name in metadata
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          organizationId: undefined,
+          // No client_name field
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      // Should fall back to the raw client_id
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          interaction: expect.objectContaining({
+            client: { clientName: 'client-id-abc' },
+          }),
+        }),
+      );
+    });
+
+    it('should fall back to client_id when provider.Client.find returns null', async () => {
+      const provider = createMockProvider();
+      // Client not found in provider
+      provider.Client.find.mockResolvedValue(null);
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      // Should fall back to the raw client_id
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          interaction: expect.objectContaining({
+            client: { clientName: 'client-id-abc' },
+          }),
+        }),
+      );
+    });
+
     it('should render error page when provider interaction fails', async () => {
       const provider = createMockProvider();
       provider.interactionDetails.mockRejectedValue(new Error('Interaction expired'));
@@ -572,6 +651,39 @@ describe('interaction routes', () => {
         expect.objectContaining({
           eventType: 'user.login.password.failed',
           userId: 'user-uuid-1',
+        }),
+      );
+    });
+
+    it('should resolve human-readable clientName on error pages', async () => {
+      // Verify that login error pages also show the resolved client name
+      // (not the raw client_id UUID) — this tests the renderLoginWithError path
+      vi.mocked(userService.getUserByEmail).mockResolvedValue(null);
+
+      const provider = createMockProvider();
+      // Provider returns a client with a human-readable name
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'My Portal App',
+          organizationId: undefined,
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/login');
+      const ctx = createMockCtx({
+        body: { email: 'unknown@test.com', password: 'pass', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      // The error page should still show the human-readable client name
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          interaction: expect.objectContaining({
+            client: { clientName: 'My Portal App' },
+          }),
         }),
       );
     });

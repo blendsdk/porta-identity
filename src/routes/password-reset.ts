@@ -41,6 +41,7 @@ import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
 import type { Organization } from '../organizations/types.js';
+import { tenantResolver } from '../middleware/tenant-resolver.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,24 +109,25 @@ async function renderAndRespond(
  */
 export function createPasswordResetRouter(): Router {
   const router = new Router();
+  const resolve = tenantResolver();
 
   // GET /:orgSlug/auth/forgot-password — Show forgot password form
-  router.get('/:orgSlug/auth/forgot-password', async (ctx) => {
+  router.get('/:orgSlug/auth/forgot-password', resolve, async (ctx) => {
     await showForgotPassword(ctx as AuthContext);
   });
 
   // POST /:orgSlug/auth/forgot-password — Process forgot password request
-  router.post('/:orgSlug/auth/forgot-password', async (ctx) => {
+  router.post('/:orgSlug/auth/forgot-password', resolve, async (ctx) => {
     await processForgotPassword(ctx as AuthContext);
   });
 
   // GET /:orgSlug/auth/reset-password/:token — Show reset password form
-  router.get('/:orgSlug/auth/reset-password/:token', async (ctx) => {
+  router.get('/:orgSlug/auth/reset-password/:token', resolve, async (ctx) => {
     await showResetPassword(ctx as AuthContext);
   });
 
   // POST /:orgSlug/auth/reset-password/:token — Process password reset
-  router.post('/:orgSlug/auth/reset-password/:token', async (ctx) => {
+  router.post('/:orgSlug/auth/reset-password/:token', resolve, async (ctx) => {
     await processResetPassword(ctx as AuthContext);
   });
 

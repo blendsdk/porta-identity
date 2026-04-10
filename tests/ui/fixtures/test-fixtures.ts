@@ -23,6 +23,8 @@
 
 import crypto from 'node:crypto';
 import { test as base, expect, type Page } from '@playwright/test';
+import { createMailCapture, type MailCapture } from './mail-capture.js';
+import { createDbHelpers, type DbHelpers } from './db-helpers.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +37,8 @@ import { test as base, expect, type Page } from '@playwright/test';
  * after creating a full test tenant (org → app → client → user).
  */
 export interface TestData {
+  // ── Phase 1 fields (existing) ──────────────────────────────────────
+
   /** Organization slug — used in URL paths (e.g., /:orgSlug/auth/...) */
   orgSlug: string;
   /** OIDC client_id for the test application (public client) */
@@ -59,6 +63,34 @@ export interface TestData {
   confUserEmail: string;
   /** Confidential client user password */
   confUserPassword: string;
+
+  // ── Phase 2 fields (user status tests) ─────────────────────────────
+
+  /** Email of a user with 'suspended' status */
+  suspendedUserEmail: string;
+  /** Email of a user with 'inactive' status */
+  inactiveUserEmail: string;
+  /** Email of a user with 'locked' status */
+  lockedUserEmail: string;
+  /** Email of an active user that can be locked during tests */
+  lockableUserEmail: string;
+  /** Password for the lockable user */
+  lockableUserPassword: string;
+  /** Email of an inactive user with no password (simulates pending invitation) */
+  invitedUserEmail: string;
+  /** Email of an active user for password reset tests */
+  resettableUserEmail: string;
+  /** Current password of the resettable user */
+  resettableUserPassword: string;
+  /** UUID of the resettable user — needed for token creation */
+  resettableUserId: string;
+
+  // ── Phase 2 fields (tenant isolation tests) ────────────────────────
+
+  /** Slug of an org with 'suspended' status */
+  suspendedOrgSlug: string;
+  /** Slug of an org with 'archived' status */
+  archivedOrgSlug: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +131,10 @@ export const test = base.extend<{
   testData: TestData;
   /** Navigate browser to login page via OIDC auth request with PKCE */
   startAuthFlow: (page: Page) => Promise<string>;
+  /** Mail capture fixture — read/search/wait for MailHog emails */
+  mailCapture: MailCapture;
+  /** Database helper fixture — direct DB/Redis access for test setup */
+  dbHelpers: DbHelpers;
 }>({
   /**
    * Fixture: testData
@@ -121,6 +157,21 @@ export const test = base.extend<{
       confClientSecret: process.env.TEST_CONF_CLIENT_SECRET!,
       confUserEmail: process.env.TEST_CONF_USER_EMAIL!,
       confUserPassword: process.env.TEST_CONF_USER_PASSWORD!,
+
+      // Phase 2: Additional users for status tests
+      suspendedUserEmail: process.env.UI_TEST_SUSPENDED_USER_EMAIL!,
+      inactiveUserEmail: process.env.UI_TEST_INACTIVE_USER_EMAIL!,
+      lockedUserEmail: process.env.UI_TEST_LOCKED_USER_EMAIL!,
+      lockableUserEmail: process.env.UI_TEST_LOCKABLE_USER_EMAIL!,
+      lockableUserPassword: process.env.UI_TEST_LOCKABLE_USER_PASSWORD!,
+      invitedUserEmail: process.env.UI_TEST_INVITED_USER_EMAIL!,
+      resettableUserEmail: process.env.UI_TEST_RESETTABLE_USER_EMAIL!,
+      resettableUserPassword: process.env.UI_TEST_RESETTABLE_USER_PASSWORD!,
+      resettableUserId: process.env.UI_TEST_RESETTABLE_USER_ID!,
+
+      // Phase 2: Additional orgs for tenant isolation tests
+      suspendedOrgSlug: process.env.UI_TEST_SUSPENDED_ORG_SLUG!,
+      archivedOrgSlug: process.env.UI_TEST_ARCHIVED_ORG_SLUG!,
     });
   },
 
@@ -168,6 +219,44 @@ export const test = base.extend<{
     };
 
     await use(startFlow);
+  },
+
+  /**
+   * Fixture: mailCapture
+   *
+   * Provides MailHog API integration for capturing and inspecting
+   * emails sent during tests. Use to verify password reset, magic link,
+   * and invitation emails.
+   *
+   * Usage:
+   * ```ts
+   * const email = await mailCapture.waitForEmail('user@test.com');
+   * const link = mailCapture.extractLink(email, /\/reset\/[A-Za-z0-9_-]+/);
+   * ```
+   */
+  // eslint-disable-next-line no-empty-pattern
+  mailCapture: async ({}, use) => {
+    const capture = createMailCapture();
+    await use(capture);
+  },
+
+  /**
+   * Fixture: dbHelpers
+   *
+   * Provides direct database and Redis access for test setup operations
+   * that cannot be done through the browser UI (token creation, status
+   * updates, rate limit resets).
+   *
+   * Usage:
+   * ```ts
+   * const token = await dbHelpers.createPasswordResetToken(userId, orgId);
+   * await dbHelpers.resetAllRateLimits();
+   * ```
+   */
+  // eslint-disable-next-line no-empty-pattern
+  dbHelpers: async ({}, use) => {
+    const helpers = createDbHelpers();
+    await use(helpers);
   },
 });
 

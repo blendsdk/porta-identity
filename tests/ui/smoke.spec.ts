@@ -32,4 +32,23 @@ test.describe('UI test infrastructure', () => {
     expect(testData.userPassword).toBeTruthy();
     expect(testData.baseUrl).toContain('http://localhost:49200');
   });
+
+  test('Phase 2 user fixtures are populated', async ({ testData }) => {
+    // Verify additional user data for status/error state tests
+    expect(testData.suspendedUserEmail).toBeTruthy();
+    expect(testData.inactiveUserEmail).toBeTruthy();
+    expect(testData.lockedUserEmail).toBeTruthy();
+    expect(testData.lockableUserEmail).toBeTruthy();
+    expect(testData.lockableUserPassword).toBeTruthy();
+    expect(testData.invitedUserEmail).toBeTruthy();
+    expect(testData.resettableUserEmail).toBeTruthy();
+    expect(testData.resettableUserPassword).toBeTruthy();
+    expect(testData.resettableUserId).toBeTruthy();
+  });
+
+  test('Phase 2 org fixtures are populated', async ({ testData }) => {
+    // Verify additional org data for tenant isolation tests
+    expect(testData.suspendedOrgSlug).toBe('suspended-org');
+    expect(testData.archivedOrgSlug).toBe('archived-org');
+  });
 });
