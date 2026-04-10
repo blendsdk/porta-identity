@@ -2,7 +2,7 @@
 <h1>{{t "invitation.title"}}</h1>
 <p class="text-muted mb-4">{{t "invitation.description" orgName=orgName}}</p>
 
-<form method="POST" action="/{{orgSlug}}/accept-invite">
+<form method="POST" action="/{{orgSlug}}/auth/accept-invite/{{token}}">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
   <input type="hidden" name="token" value="{{token}}">
 

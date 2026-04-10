@@ -21,6 +21,7 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
+import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { hashToken } from '../auth/tokens.js';
 import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
@@ -81,8 +82,13 @@ function buildBrandingFromOrg(org: Organization) {
 export function createMagicLinkRouter(provider: Provider): Router {
   const router = new Router();
 
+  // Tenant resolver — resolves orgSlug to organization and sets ctx.state.organization.
+  // Applied at route level because this router is mounted directly on the Koa app
+  // (not under the OIDC catch-all router which has its own tenant resolver).
+  const resolve = tenantResolver();
+
   // GET /:orgSlug/auth/magic-link/:token — Verify magic link
-  router.get('/:orgSlug/auth/magic-link/:token', async (ctx) => {
+  router.get('/:orgSlug/auth/magic-link/:token', resolve, async (ctx) => {
     await verifyMagicLink(ctx as AuthContext, provider);
   });
 

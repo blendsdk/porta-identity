@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-10 21:24
-> **Progress**: 10/38 tasks (26%)
+> **Last Updated**: 2026-04-10 22:08
+> **Progress**: 13/38 tasks (34%)
 
 ## Overview
 
@@ -265,9 +265,9 @@ Templates use `{{interaction.client.clientName}}` in i18n strings like `"Sign in
 - [ ] 2.1.3 Implement reset-password-abuse.spec.ts (4 tests)
 
 ### Phase 3: Magic Link & Invitation Tests
-- [ ] 3.1.1 Implement magic-link-verify.spec.ts (6 tests)
-- [ ] 3.1.2 Implement magic-link-abuse.spec.ts (4 tests)
-- [ ] 3.1.3 Implement invitation.spec.ts (9 tests)
+- [x] 3.1.1 Implement magic-link-verify.spec.ts (5 passing + 1 fixme) ✅ (completed: 2026-04-10 22:05)
+- [x] 3.1.2 Implement magic-link-abuse.spec.ts (4 tests) ✅ (completed: 2026-04-10 22:05)
+- [x] 3.1.3 Implement invitation.spec.ts (9 tests) ✅ (completed: 2026-04-10 22:05)
 
 ### Phase 4: Login States & Consent Tests
 - [ ] 4.1.1 Implement login-error-states.spec.ts (9 tests)

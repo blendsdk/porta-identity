@@ -22,6 +22,7 @@
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
+import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import { hashToken } from '../auth/tokens.js';
 import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
@@ -100,13 +101,18 @@ async function renderAndRespond(
 export function createInvitationRouter(): Router {
   const router = new Router();
 
+  // Tenant resolver — resolves orgSlug to organization and sets ctx.state.organization.
+  // Applied at route level because this router is mounted directly on the Koa app
+  // (not under the OIDC catch-all router which has its own tenant resolver).
+  const resolve = tenantResolver();
+
   // GET /:orgSlug/auth/accept-invite/:token — Show accept invite form
-  router.get('/:orgSlug/auth/accept-invite/:token', async (ctx) => {
+  router.get('/:orgSlug/auth/accept-invite/:token', resolve, async (ctx) => {
     await showAcceptInvite(ctx as AuthContext);
   });
 
   // POST /:orgSlug/auth/accept-invite/:token — Process invitation acceptance
-  router.post('/:orgSlug/auth/accept-invite/:token', async (ctx) => {
+  router.post('/:orgSlug/auth/accept-invite/:token', resolve, async (ctx) => {
     await processAcceptInvite(ctx as AuthContext);
   });
 
