@@ -23,7 +23,7 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
-import { generateCsrfToken, verifyCsrfToken } from '../auth/csrf.js';
+import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import {
   checkRateLimit,
   resetRateLimit,
@@ -48,6 +48,8 @@ import { getSystemConfigNumber } from '../lib/system-config.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
+import { getClientByClientId } from '../clients/service.js';
+import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 
 // ---------------------------------------------------------------------------
@@ -130,6 +132,38 @@ async function renderAndRespond(
   ctx.status = statusCode;
   ctx.type = 'text/html';
   ctx.body = html;
+}
+
+/**
+ * Resolve the organization from the OIDC interaction's client_id.
+ *
+ * Interaction routes (`/interaction/:uid`) don't go through the tenant
+ * resolver middleware, so `ctx.state.organization` is not set automatically.
+ * This helper resolves the org by looking up the client → organization chain
+ * from the interaction's `client_id` parameter, and sets `ctx.state.organization`.
+ *
+ * @param ctx - Koa context to populate with organization
+ * @param clientId - OIDC client_id from the interaction params
+ * @throws Error if client or organization cannot be found
+ */
+async function resolveOrganizationForInteraction(
+  ctx: InteractionContext,
+  clientId: string,
+): Promise<void> {
+  // If already resolved (e.g., by tenant resolver), skip
+  if (ctx.state.organization) return;
+
+  const client = await getClientByClientId(clientId);
+  if (!client) {
+    throw new Error(`Client not found for interaction: ${clientId}`);
+  }
+
+  const org = await getOrganizationById(client.organizationId);
+  if (!org) {
+    throw new Error(`Organization not found for client: ${client.organizationId}`);
+  }
+
+  ctx.state.organization = org;
 }
 
 /**
@@ -238,6 +272,11 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
     const { prompt, params } = interaction;
 
+    // Resolve organization from the interaction's client_id.
+    // Interaction routes don't go through the tenant resolver middleware,
+    // so we resolve the org from the client → organization chain.
+    await resolveOrganizationForInteraction(ctx, params.client_id as string);
+
     // If the prompt is consent, redirect to the consent page
     if (prompt.name === 'consent') {
       ctx.redirect(`/interaction/${interaction.uid}/consent`);
@@ -256,6 +295,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
 
     // Generate CSRF token for form protection
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
 
     // Pre-fill email from login_hint if provided
     const loginHint = (params.login_hint as string) ?? '';
@@ -272,8 +312,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
       email: loginHint,
     };
 
-    // Store CSRF token in the interaction session for verification on POST
-    // We embed it in the page and verify it on submission
+    // Render the login page with CSRF token in both cookie and hidden field
     await renderAndRespond(ctx, 'login', context);
   } catch (error) {
     logger.error({ error, uid: ctx.params.uid }, 'Failed to show login page');
@@ -296,21 +335,24 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
  * @param provider - OIDC provider instance
  */
 async function processLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
-
-  // Resolve locale for error messages
-  const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
-  const t = getTranslationFunction(locale, org.slug);
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
-    // Step 1: Verify CSRF token
+    // Resolve organization from the interaction's client_id
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
+
+    // Resolve locale for error messages
+    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const t = getTranslationFunction(locale, org.slug);
+
+    // Step 1: Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
       await renderLoginWithError(ctx, interaction, t, locale, email, t('errors.csrf_invalid'));
@@ -483,20 +525,23 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
  * @param provider - OIDC provider instance
  */
 async function handleSendMagicLink(ctx: InteractionContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
-
-  // Resolve locale for page rendering
-  const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
-  const t = getTranslationFunction(locale, org.slug);
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
-    // Verify CSRF token
+    // Resolve organization from the interaction's client_id
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
+
+    // Resolve locale for page rendering
+    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const t = getTranslationFunction(locale, org.slug);
+
+    // Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
       await renderLoginWithError(ctx, interaction, t, locale, email, t('errors.csrf_invalid'));
@@ -595,6 +640,9 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
     const { prompt, params } = interaction;
+
+    // Resolve organization from the interaction's client_id
+    await resolveOrganizationForInteraction(ctx, params.client_id as string);
     const org = ctx.state.organization;
 
     // Resolve locale for the consent page
@@ -615,10 +663,23 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
         // Auto-consent: finish interaction immediately with consent grant
         const grant = new provider.Grant({ accountId: interaction.session?.accountId, clientId });
 
-        // Grant all requested scopes and claims
-        const requestedScopes = (params.scope as string)?.split(' ') ?? [];
-        for (const scope of requestedScopes) {
-          grant.addOIDCScope(scope);
+        // Use prompt.details to grant exactly what the provider requires
+        const details = prompt.details as Record<string, unknown>;
+
+        if (details.missingOIDCScope) {
+          const scopes = details.missingOIDCScope as Iterable<string>;
+          grant.addOIDCScope([...scopes].join(' '));
+        }
+        if (details.missingOIDCClaims) {
+          const claims = details.missingOIDCClaims as Iterable<string>;
+          grant.addOIDCClaims([...claims]);
+        }
+        if (details.missingResourceScopes) {
+          for (const [indicator, scopes] of Object.entries(
+            details.missingResourceScopes as Record<string, Iterable<string>>
+          )) {
+            grant.addResourceScope(indicator, [...scopes].join(' '));
+          }
         }
 
         const grantId = await grant.save();
@@ -644,6 +705,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
 
     // Third-party client: show the consent page
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const requestedScopes = ((params.scope as string) ?? '').split(' ').filter(Boolean);
 
     const context: TemplateContext = {
@@ -677,14 +739,17 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
  * @param provider - OIDC provider instance
  */
 async function processConsent(ctx: InteractionContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
   const decision = body.decision; // 'approve' or 'deny'
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
 
     // Verify CSRF token
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
@@ -695,17 +760,35 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
     }
 
     if (decision === 'approve') {
-      // Create a grant for the approved scopes
+      // Create a grant for the approved scopes and claims
       const clientId = interaction.params.client_id as string;
       const grant = new provider.Grant({
         accountId: interaction.session?.accountId,
         clientId,
       });
 
-      // Grant all requested scopes
-      const requestedScopes = ((interaction.params.scope as string) ?? '').split(' ').filter(Boolean);
-      for (const scope of requestedScopes) {
-        grant.addOIDCScope(scope);
+      // Use prompt.details to grant exactly what the provider requires
+      const details = interaction.prompt.details as Record<string, unknown>;
+
+      // Grant missing OIDC scopes
+      if (details.missingOIDCScope) {
+        const scopes = details.missingOIDCScope as Iterable<string>;
+        grant.addOIDCScope([...scopes].join(' '));
+      }
+
+      // Grant missing OIDC claims
+      if (details.missingOIDCClaims) {
+        const claims = details.missingOIDCClaims as Iterable<string>;
+        grant.addOIDCClaims([...claims]);
+      }
+
+      // Grant missing resource scopes
+      if (details.missingResourceScopes) {
+        for (const [indicator, scopes] of Object.entries(
+          details.missingResourceScopes as Record<string, Iterable<string>>
+        )) {
+          grant.addResourceScope(indicator, [...scopes].join(' '));
+        }
       }
 
       const grantId = await grant.save();
@@ -760,10 +843,12 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
  * @param provider - OIDC provider instance
  */
 async function abortInteraction(ctx: InteractionContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
-
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
 
     writeAuditLog({
       organizationId: org.id,
@@ -814,6 +899,7 @@ async function renderLoginWithError(
 ): Promise<void> {
   const org = ctx.state.organization;
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
     ...buildBaseContext(ctx, locale, csrfToken, org.slug),

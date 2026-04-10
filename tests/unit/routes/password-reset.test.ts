@@ -18,6 +18,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/auth/csrf.js', () => ({
   generateCsrfToken: vi.fn().mockReturnValue('csrf-token-abc'),
   verifyCsrfToken: vi.fn().mockReturnValue(true),
+  setCsrfCookie: vi.fn(),
+  getCsrfFromCookie: vi.fn().mockReturnValue('csrf-token-abc'),
 }));
 
 vi.mock('../../../src/auth/rate-limiter.js', () => ({
@@ -130,6 +132,10 @@ function createMockCtx(overrides: {
     get type() { return contentType; },
     set type(v: string) { contentType = v; },
     state: { organization: createMockOrg() },
+    cookies: {
+      get: vi.fn().mockReturnValue('csrf-token-abc'),
+      set: vi.fn(),
+    },
     get: vi.fn().mockReturnValue(''),
     set: vi.fn((n: string, v: string) => { headers[n] = v; }),
     _headers: headers,
@@ -190,7 +196,7 @@ describe('password reset routes', () => {
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'forgot-password');
-      const ctx = createMockCtx({ body: { email: 'unknown@test.com', _csrf: 'tok', _csrfStored: 'tok' } });
+      const ctx = createMockCtx({ body: { email: 'unknown@test.com', _csrf: 'tok' } });
 
       await exec(layer!, ctx);
 
@@ -209,7 +215,7 @@ describe('password reset routes', () => {
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'forgot-password');
-      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'tok', _csrfStored: 'tok' } });
+      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'tok' } });
 
       await exec(layer!, ctx);
 
@@ -230,7 +236,7 @@ describe('password reset routes', () => {
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'forgot-password');
-      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'bad', _csrfStored: 'good' } });
+      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'bad' } });
 
       await exec(layer!, ctx);
 
@@ -246,7 +252,7 @@ describe('password reset routes', () => {
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'forgot-password');
-      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'tok', _csrfStored: 'tok' } });
+      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'tok' } });
 
       await exec(layer!, ctx);
 
@@ -308,7 +314,7 @@ describe('password reset routes', () => {
       const layer = findLayer(router, 'POST', 'reset-password');
       const ctx = createMockCtx({
         params: { token: 'valid-token' },
-        body: { password: 'NewSecurePass123!', confirmPassword: 'NewSecurePass123!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'NewSecurePass123!', confirmPassword: 'NewSecurePass123!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -337,7 +343,7 @@ describe('password reset routes', () => {
       const layer = findLayer(router, 'POST', 'reset-password');
       const ctx = createMockCtx({
         params: { token: 'valid-token' },
-        body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad', _csrfStored: 'good' },
+        body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad' },
       });
 
       await exec(layer!, ctx);
@@ -356,7 +362,7 @@ describe('password reset routes', () => {
       const layer = findLayer(router, 'POST', 'reset-password');
       const ctx = createMockCtx({
         params: { token: 'expired-token' },
-        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -374,7 +380,7 @@ describe('password reset routes', () => {
       const layer = findLayer(router, 'POST', 'reset-password');
       const ctx = createMockCtx({
         params: { token: 'valid-token' },
-        body: { password: 'Password1!', confirmPassword: 'Different!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'Password1!', confirmPassword: 'Different!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -393,7 +399,7 @@ describe('password reset routes', () => {
       const layer = findLayer(router, 'POST', 'reset-password');
       const ctx = createMockCtx({
         params: { token: 'valid-token' },
-        body: { password: 'short', confirmPassword: 'short', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'short', confirmPassword: 'short', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);

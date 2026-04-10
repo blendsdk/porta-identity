@@ -24,7 +24,7 @@ export {
 export type { TokenTable, TokenRecord } from './token-repository.js';
 
 // CSRF protection
-export { generateCsrfToken, verifyCsrfToken } from './csrf.js';
+export { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from './csrf.js';
 
 // Rate limiting
 export {

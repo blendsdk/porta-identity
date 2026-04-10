@@ -107,17 +107,16 @@ export function outputResult(
 }
 
 /**
- * Truncate a string for table display.
+ * Return an ID string for table display.
  *
- * UUIDs and long fields are shortened to fit table columns.
- * Shows the first `length` characters followed by "...".
+ * Previously truncated UUIDs to 8 characters, but full IDs are needed
+ * for copy-paste into subsequent CLI commands. Now returns the full string.
  *
- * @param id - The string to truncate
- * @param length - Maximum length before truncation (default: 8)
- * @returns The original string if short enough, or truncated with "..."
+ * @param id - The string to display
+ * @returns The full ID string
  */
-export function truncateId(id: string, length = 8): string {
-  return id.length > length ? id.substring(0, length) + '...' : id;
+export function truncateId(id: string): string {
+  return id;
 }
 
 /**

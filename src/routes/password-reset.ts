@@ -22,7 +22,7 @@
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
-import { generateCsrfToken, verifyCsrfToken } from '../auth/csrf.js';
+import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import {
   checkRateLimit,
   buildPasswordResetRateLimitKey,
@@ -152,6 +152,7 @@ async function showForgotPassword(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
@@ -184,7 +185,7 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   const locale = await resolveLocale(
     undefined,
@@ -193,10 +194,11 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
 
-  // Step 1: Verify CSRF token
+  // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on forgot-password');
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -226,6 +228,7 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
     });
 
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -284,6 +287,7 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
 
   // Step 4: Always show "check your email" page — prevents user enumeration
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,
@@ -335,6 +339,7 @@ async function showResetPassword(ctx: AuthContext): Promise<void> {
 
   // Token is valid — show the reset password form
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,
@@ -368,7 +373,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
   const password = body.password ?? '';
   const confirmPassword = body.confirmPassword ?? '';
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   const locale = await resolveLocale(
     undefined,
@@ -377,7 +382,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
 
-  // Step 1: Verify CSRF token
+  // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on reset-password');
     await renderResetFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.csrf_invalid'), 403);
@@ -443,6 +448,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
 
     // Step 9: Render success page
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -484,6 +490,7 @@ async function renderResetFormWithError(
   statusCode = 200,
 ): Promise<void> {
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,

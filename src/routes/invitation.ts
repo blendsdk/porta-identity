@@ -22,7 +22,7 @@
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
-import { generateCsrfToken, verifyCsrfToken } from '../auth/csrf.js';
+import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import { hashToken } from '../auth/tokens.js';
 import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
@@ -143,6 +143,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
   if (!tokenRecord) {
     // Token is invalid, expired, or already used — show expired page
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -157,6 +158,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // Token is valid — show the accept invite form
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,
@@ -190,7 +192,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   const password = body.password ?? '';
   const confirmPassword = body.confirmPassword ?? '';
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   const locale = await resolveLocale(
     undefined,
@@ -199,7 +201,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
 
-  // Step 1: Verify CSRF token
+  // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on accept-invite');
     await renderInviteFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.csrf_invalid'), 403);
@@ -213,6 +215,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   if (!tokenRecord) {
     // Token expired between page load and form submission
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -263,6 +266,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
 
     // Step 9: Render success page
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -304,6 +308,7 @@ async function renderInviteFormWithError(
   statusCode = 200,
 ): Promise<void> {
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,

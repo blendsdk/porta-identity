@@ -205,26 +205,19 @@ describe('CLI Output Helpers', () => {
   });
 
   describe('truncateId()', () => {
-    it('should truncate strings longer than default length', () => {
+    it('should return full UUID without truncation', () => {
       const uuid = '550e8400-e29b-41d4-a716-446655440000';
 
-      expect(truncateId(uuid)).toBe('550e8400...');
+      expect(truncateId(uuid)).toBe(uuid);
     });
 
-    it('should not truncate strings at or under default length', () => {
+    it('should return short strings as-is', () => {
       expect(truncateId('12345678')).toBe('12345678');
-    });
-
-    it('should not truncate short strings', () => {
       expect(truncateId('abc')).toBe('abc');
     });
 
-    it('should respect custom length parameter', () => {
-      expect(truncateId('abcdefghij', 5)).toBe('abcde...');
-    });
-
-    it('should handle exact custom length', () => {
-      expect(truncateId('abcde', 5)).toBe('abcde');
+    it('should return long strings as-is (no truncation)', () => {
+      expect(truncateId('abcdefghij')).toBe('abcdefghij');
     });
 
     it('should handle empty string', () => {

@@ -27,6 +27,7 @@ import { mapRowToClientSecret } from './types.js';
 export interface InsertSecretData {
   clientId: string;
   secretHash: string;
+  secretSha256: string | null;
   label: string | null;
   expiresAt: Date | null;
 }
@@ -43,10 +44,10 @@ export async function insertSecret(data: InsertSecretData): Promise<ClientSecret
   const pool = getPool();
 
   const result = await pool.query<ClientSecretRow>(
-    `INSERT INTO client_secrets (client_id, secret_hash, label, expires_at)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO client_secrets (client_id, secret_hash, secret_sha256, label, expires_at)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [data.clientId, data.secretHash, data.label, data.expiresAt],
+    [data.clientId, data.secretHash, data.secretSha256, data.label, data.expiresAt],
   );
 
   return mapRowToClientSecret(result.rows[0]);
@@ -183,6 +184,34 @@ export async function cleanupExpiredSecrets(retentionDays: number = 30): Promise
   );
 
   return result.rowCount ?? 0;
+}
+
+/**
+ * Get the SHA-256 hash of the most recent active, non-expired secret.
+ *
+ * Used by findForOidc() to include the SHA-256 hash as client_secret
+ * in oidc-provider metadata. Returns null if no active secret has a
+ * SHA-256 hash (e.g., secrets created before migration 013).
+ *
+ * @param clientId - Client internal UUID
+ * @returns SHA-256 hex hash string, or null if none available
+ */
+export async function getLatestActiveSha256(clientId: string): Promise<string | null> {
+  const pool = getPool();
+
+  const result = await pool.query<{ secret_sha256: string }>(
+    `SELECT secret_sha256 FROM client_secrets
+     WHERE client_id = $1
+       AND status = 'active'
+       AND secret_sha256 IS NOT NULL
+       AND (expires_at IS NULL OR expires_at > NOW())
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [clientId],
+  );
+
+  if (result.rows.length === 0) return null;
+  return result.rows[0].secret_sha256;
 }
 
 /**

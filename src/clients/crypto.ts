@@ -12,7 +12,7 @@
  * in a separate thread via the native binding.
  */
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
 
 /**
@@ -70,4 +70,19 @@ export async function hashSecret(plaintext: string): Promise<string> {
  */
 export async function verifySecretHash(hash: string, plaintext: string): Promise<boolean> {
   return argon2.verify(hash, plaintext);
+}
+
+/**
+ * Compute SHA-256 hash of a client secret.
+ *
+ * Used for oidc-provider integration where the secret hash is stored
+ * in the database and compared against the hashed presented secret.
+ * SHA-256 is appropriate for machine-generated, high-entropy secrets
+ * (48 bytes / 384 bits of randomness — preimage attacks infeasible).
+ *
+ * @param plaintext - The secret to hash
+ * @returns Hex-encoded SHA-256 hash (64 characters)
+ */
+export function sha256Secret(plaintext: string): string {
+  return createHash('sha256').update(plaintext).digest('hex');
 }

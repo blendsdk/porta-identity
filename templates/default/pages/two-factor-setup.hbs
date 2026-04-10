@@ -28,7 +28,6 @@
 
   <form method="POST" action="/interaction/{{interaction.uid}}/two-factor/setup">
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
-    <input type="hidden" name="_csrfStored" value="{{csrfToken}}">
     <input type="hidden" name="setupMethod" value="totp">
 
     <div class="form-group">
@@ -61,7 +60,6 @@
 
 <form method="POST" action="/interaction/{{interaction.uid}}/two-factor/setup">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
-  <input type="hidden" name="_csrfStored" value="{{csrfToken}}">
   <input type="hidden" name="setupMethod" value="email">
   <button type="submit" class="btn-secondary">{{t "two-factor.use_email_instead"}}</button>
 </form>

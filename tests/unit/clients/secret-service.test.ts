@@ -15,6 +15,7 @@ vi.mock('../../../src/clients/secret-repository.js', () => ({
 vi.mock('../../../src/clients/crypto.js', () => ({
   generateSecret: vi.fn().mockReturnValue('generated-plaintext-secret-abc'),
   hashSecret: vi.fn().mockResolvedValue('$argon2id$hashed-secret'),
+  sha256Secret: vi.fn().mockReturnValue('abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'),
   verifySecretHash: vi.fn(),
 }));
 
@@ -87,10 +88,11 @@ describe('secret service', () => {
       expect(genSecret).toHaveBeenCalled();
       expect(hashSecret).toHaveBeenCalledWith('generated-plaintext-secret-abc');
 
-      // Should insert with the hash
+      // Should insert with both hashes
       expect(insertSecret).toHaveBeenCalledWith({
         clientId: 'client-db-uuid-1',
         secretHash: '$argon2id$hashed-secret',
+        secretSha256: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
         label: 'production key',
         expiresAt: null,
       });

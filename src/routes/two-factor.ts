@@ -20,7 +20,7 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
-import { generateCsrfToken, verifyCsrfToken } from '../auth/csrf.js';
+import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import { checkRateLimit, buildRateLimitKey, type RateLimitConfig } from '../auth/rate-limiter.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
@@ -229,6 +229,7 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
     const t = getTranslationFunction(locale, org.slug);
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
 
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
@@ -269,7 +270,7 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
   const code = (body.code ?? '').trim();
   const codeType = body.codeType ?? 'otp'; // 'otp', 'totp', or 'recovery'
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
@@ -283,7 +284,7 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
     const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
     const t = getTranslationFunction(locale, org.slug);
 
-    // Verify CSRF token
+    // Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on 2FA verify');
       await renderTwoFactorWithError(ctx, interaction.uid, pending, locale, t, t('errors.csrf_invalid'));
@@ -456,6 +457,7 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
     const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
     const t = getTranslationFunction(locale, org.slug);
     const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
 
     // Start TOTP setup — generate secret and QR code
     const setupResult = await setupTotp(pending.pendingAccountId, pending.email, org.slug);
@@ -498,7 +500,7 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
   const body = ctx.request.body as Record<string, string>;
   const code = (body.code ?? '').trim();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = body._csrfStored ?? '';
+  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
   // setupMethod determines whether to use TOTP or email OTP for setup
   const setupMethod = body.setupMethod ?? 'totp';
 
@@ -627,6 +629,7 @@ async function renderTwoFactorWithError(
   statusCode = 200,
 ): Promise<void> {
   const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
     ...buildBaseContext(ctx, locale, csrfToken, ctx.state.organization.slug),

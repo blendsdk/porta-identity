@@ -28,6 +28,7 @@ import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { healthCheck } from './middleware/health.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
+import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
@@ -112,9 +113,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(customClaimRouter.routes());
   app.use(customClaimRouter.allowedMethods());
 
-  // OIDC interaction routes — mounted at /interaction/:uid/*
-  // These must be before the OIDC catch-all so the provider can redirect here.
-  // Only mounted when provider is available (interaction handlers need it).
+  // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
+  // These must be at the root (not under /:orgSlug) because the provider sets
+  // interaction cookie paths relative to /interaction/{uid}, and the browser
+  // must send those cookies when navigating to the interaction URL.
+  // Organization context is resolved from the interaction's client_id.
   if (oidcProvider) {
     const interactionRouter = createInteractionRouter(oidcProvider);
     app.use(interactionRouter.routes());
@@ -154,6 +157,11 @@ export function createApp(oidcProvider?: Provider): Koa {
 
     // Tenant resolver validates the org slug and sets ctx.state.organization
     oidcRouter.use(tenantResolver());
+
+    // Pre-hash client secrets with SHA-256 before oidc-provider processes them.
+    // This enables secure secret storage: we store SHA-256 hashes in the DB,
+    // the middleware hashes the presented secret, and oidc-provider compares them.
+    oidcRouter.use(clientSecretHash());
 
     // Delegate all OIDC requests to node-oidc-provider's callback handler.
     // URL rewriting strips the /:orgSlug prefix so the provider sees

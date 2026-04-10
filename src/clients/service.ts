@@ -16,7 +16,7 @@
  *   - revoke:     active|inactive → revoked (permanent, cannot be undone)
  *
  * The findForOidc() function maps internal Client objects to oidc-provider
- * metadata format, used by the client-finder during token requests.
+ * metadata format, used by the adapter factory during OIDC operations.
  */
 
 import type {
@@ -34,6 +34,7 @@ import {
   updateClient as repoUpdateClient,
   listClients as repoListClients,
 } from './repository.js';
+import { getLatestActiveSha256 } from './secret-repository.js';
 import {
   getCachedClientByClientId,
   getCachedClientById,
@@ -441,7 +442,7 @@ export async function revokeClient(
  *
  * This function is the bridge between Porta's internal client model and
  * the metadata shape expected by node-oidc-provider. It's called by the
- * client-finder during OIDC flows (authorization, token exchange, etc.).
+ * adapter factory during OIDC flows (authorization, token exchange, etc.).
  *
  * Returns undefined (not null) for compatibility with oidc-provider which
  * expects undefined for "client not found".
@@ -459,8 +460,8 @@ export async function findForOidc(
     return undefined;
   }
 
-  // Map internal model to oidc-provider metadata format
-  return {
+  // Build base oidc-provider metadata
+  const metadata: Record<string, unknown> = {
     client_id: client.clientId,
     client_name: client.clientName,
     application_type: client.applicationType,
@@ -472,12 +473,26 @@ export async function findForOidc(
     token_endpoint_auth_method: client.clientType === 'public'
       ? 'none'
       : client.tokenEndpointAuthMethod,
+    // Porta uses ES256 signing keys — must declare this explicitly
+    // or oidc-provider defaults to RS256 and rejects the client.
+    id_token_signed_response_alg: 'ES256',
     // allowed_origins needed for CORS checks on OIDC endpoints
     'urn:porta:allowed_origins': client.allowedOrigins,
-    // Client type needed by client-finder for decision matrix
-    // (determines whether secret verification is required)
+    // Client type for internal use
     'urn:porta:client_type': client.clientType,
   };
+
+  // For confidential clients, include the SHA-256 hash as client_secret.
+  // oidc-provider will compare this against the SHA-256 of the presented
+  // secret (pre-hashed by the client-secret-hash middleware).
+  if (client.clientType === 'confidential') {
+    const sha256Hash = await getLatestActiveSha256(client.id);
+    if (sha256Hash) {
+      metadata.client_secret = sha256Hash;
+    }
+  }
+
+  return metadata;
 }
 
 /**
@@ -488,7 +503,7 @@ export async function findForOidc(
  * - Client must exist and be active
  * - Client must be confidential (public clients have no secrets)
  *
- * Used by the client-finder during token endpoint authentication.
+ * Used during token endpoint authentication via the admin API.
  *
  * @param clientId - The OIDC client_id (external identifier)
  * @param plaintext - The presented secret to verify

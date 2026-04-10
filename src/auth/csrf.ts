@@ -1,27 +1,30 @@
 /**
  * CSRF token generation and verification.
  *
- * Provides double-submit cookie protection for server-rendered forms.
+ * Provides cookie-based synchronized token protection for server-rendered forms.
  * Tokens are generated with crypto.randomBytes and verified using
  * crypto.timingSafeEqual to prevent timing attacks.
  *
- * Usage in forms:
- *   1. Generate token → store in session and embed in hidden form field
- *   2. On submit → compare session token with form field token
+ * Pattern:
+ *   1. On GET (render form): generate token → set HttpOnly SameSite=Lax cookie
+ *      → embed same token in hidden form field `_csrf`
+ *   2. On POST (process form): read `_csrf` from cookie → read `_csrf` from
+ *      form body → compare with verifyCsrfToken(cookieValue, formValue)
  *   3. Reject if mismatch (CSRF attack) or missing
  *
  * @example
  *   // In route handler (render form):
  *   const token = generateCsrfToken();
- *   ctx.session.csrfToken = token;
+ *   setCsrfCookie(ctx, token);
  *   await renderPage('login', { csrfToken: token });
  *
  *   // In route handler (process form):
- *   const valid = verifyCsrfToken(ctx.session.csrfToken, ctx.request.body._csrf);
+ *   const valid = verifyCsrfToken(getCsrfFromCookie(ctx), ctx.request.body._csrf);
  *   if (!valid) ctx.throw(403, 'Invalid CSRF token');
  */
 
 import crypto from 'node:crypto';
+import type { Context } from 'koa';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,6 +32,9 @@ import crypto from 'node:crypto';
 
 /** Number of random bytes for CSRF tokens (32 bytes = 256 bits of entropy) */
 const CSRF_TOKEN_BYTES = 32;
+
+/** Cookie name for CSRF token */
+const CSRF_COOKIE_NAME = '_csrf';
 
 // ---------------------------------------------------------------------------
 // Generation
@@ -79,4 +85,42 @@ export function verifyCsrfToken(expected: string | undefined, actual: string | u
   }
 
   return crypto.timingSafeEqual(expectedBuf, actualBuf);
+}
+
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Set the CSRF token as an HttpOnly cookie on the response.
+ * Call this in every GET handler that renders a form.
+ *
+ * The cookie uses:
+ *  - `httpOnly: true` — prevents JavaScript access (XSS safe)
+ *  - `sameSite: 'lax'` — blocks cross-site POST but allows navigational GET
+ *  - `secure` — HTTPS-only in production
+ *  - `path: '/'` — available to all routes
+ *
+ * @param ctx - Koa context
+ * @param token - CSRF token (from generateCsrfToken())
+ */
+export function setCsrfCookie(ctx: Context, token: string): void {
+  ctx.cookies.set(CSRF_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    overwrite: true,
+  });
+}
+
+/**
+ * Read the CSRF token from the request cookie.
+ * Call this in every POST handler to get the "expected" (trusted) token.
+ *
+ * @param ctx - Koa context
+ * @returns The CSRF token from the cookie, or undefined if not set
+ */
+export function getCsrfFromCookie(ctx: Context): string | undefined {
+  return ctx.cookies.get(CSRF_COOKIE_NAME) ?? undefined;
 }

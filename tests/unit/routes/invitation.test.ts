@@ -16,6 +16,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/auth/csrf.js', () => ({
   generateCsrfToken: vi.fn().mockReturnValue('csrf-token-abc'),
   verifyCsrfToken: vi.fn().mockReturnValue(true),
+  setCsrfCookie: vi.fn(),
+  getCsrfFromCookie: vi.fn().mockReturnValue('csrf-token-abc'),
 }));
 
 vi.mock('../../../src/auth/tokens.js', () => ({
@@ -102,6 +104,10 @@ function createMockCtx(overrides: {
     get type() { return contentType; },
     set type(v: string) { contentType = v; },
     state: { organization: createMockOrg() },
+    cookies: {
+      get: vi.fn().mockReturnValue('csrf-token-abc'),
+      set: vi.fn(),
+    },
     get: vi.fn().mockReturnValue(''),
   };
 }
@@ -178,7 +184,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -206,7 +212,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad', _csrfStored: 'good' },
+        body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad' },
       });
 
       await exec(layer!, ctx);
@@ -224,7 +230,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -242,7 +248,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'Password1!', confirmPassword: 'Different!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'Password1!', confirmPassword: 'Different!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -260,7 +266,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'x', confirmPassword: 'x', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'x', confirmPassword: 'x', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -278,7 +284,7 @@ describe('invitation routes', () => {
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
       const ctx = createMockCtx({
-        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);

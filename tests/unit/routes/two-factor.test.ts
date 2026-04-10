@@ -14,6 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/auth/csrf.js', () => ({
   generateCsrfToken: vi.fn().mockReturnValue('csrf-token-123'),
   verifyCsrfToken: vi.fn().mockReturnValue(true),
+  setCsrfCookie: vi.fn(),
+  getCsrfFromCookie: vi.fn().mockReturnValue('csrf-token-123'),
 }));
 
 vi.mock('../../../src/auth/rate-limiter.js', () => ({
@@ -130,10 +132,13 @@ function createMockCtx(bodyOverrides: Record<string, string> = {}) {
       body: {
         code: '123456',
         codeType: 'otp',
-        _csrf: 'csrf-token',
-        _csrfStored: 'csrf-stored',
+        _csrf: 'csrf-token-123',
         ...bodyOverrides,
       },
+    },
+    cookies: {
+      get: vi.fn().mockReturnValue('csrf-token-123'),
+      set: vi.fn(),
     },
     redirect: vi.fn(),
     get: vi.fn().mockReturnValue('en'),

@@ -18,7 +18,7 @@
  * This service is consumed by:
  *   - The client service (initial secret on confidential client creation)
  *   - The API routes (secret rotation, revocation)
- *   - The OIDC token endpoint (secret verification via client-finder)
+ *   - The OIDC token endpoint (secret verification via admin API)
  */
 
 import type { ClientSecret, SecretWithPlaintext, CreateSecretInput } from './types.js';
@@ -31,7 +31,7 @@ import {
   updateLastUsedAt,
   cleanupExpiredSecrets,
 } from './secret-repository.js';
-import { generateSecret, hashSecret, verifySecretHash } from './crypto.js';
+import { generateSecret, hashSecret, sha256Secret, verifySecretHash } from './crypto.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import { ClientNotFoundError, ClientValidationError } from './errors.js';
@@ -66,10 +66,14 @@ export async function generateAndStore(
   // Hash with Argon2id — only the hash is stored
   const secretHash = await hashSecret(plaintext);
 
+  // Compute SHA-256 for oidc-provider client authentication
+  const secretSha256 = sha256Secret(plaintext);
+
   // Insert into database
   const secret = await insertSecret({
     clientId: clientDbId,
     secretHash,
+    secretSha256,
     label: input.label ?? null,
     expiresAt: input.expiresAt ?? null,
   });

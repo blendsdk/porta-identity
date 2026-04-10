@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { generateCsrfToken, verifyCsrfToken } from '../../../src/auth/csrf.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../../../src/auth/csrf.js';
+import type { Context } from 'koa';
 
 describe('generateCsrfToken', () => {
   it('should return a non-empty string', () => {
@@ -82,5 +83,102 @@ describe('verifyCsrfToken', () => {
 
   it('should reject different unicode strings', () => {
     expect(verifyCsrfToken('token-α', 'token-β')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setCsrfCookie
+// ---------------------------------------------------------------------------
+
+describe('setCsrfCookie', () => {
+  function createMockCtx(): Context {
+    const setCookie = vi.fn();
+    return { cookies: { set: setCookie, get: vi.fn() } } as unknown as Context;
+  }
+
+  beforeEach(() => {
+    delete process.env.NODE_ENV;
+  });
+
+  it('should set an HttpOnly SameSite=Lax cookie named _csrf', () => {
+    const ctx = createMockCtx();
+    setCsrfCookie(ctx, 'test-token-abc');
+
+    expect(ctx.cookies.set).toHaveBeenCalledOnce();
+    expect(ctx.cookies.set).toHaveBeenCalledWith('_csrf', 'test-token-abc', {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: false,
+      overwrite: true,
+    });
+  });
+
+  it('should set secure=true when NODE_ENV is production', () => {
+    process.env.NODE_ENV = 'production';
+    const ctx = createMockCtx();
+    setCsrfCookie(ctx, 'prod-token');
+
+    expect(ctx.cookies.set).toHaveBeenCalledWith('_csrf', 'prod-token', {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: true,
+      overwrite: true,
+    });
+  });
+
+  it('should set secure=false when NODE_ENV is not production', () => {
+    process.env.NODE_ENV = 'test';
+    const ctx = createMockCtx();
+    setCsrfCookie(ctx, 'dev-token');
+
+    expect(ctx.cookies.set).toHaveBeenCalledWith(
+      '_csrf',
+      'dev-token',
+      expect.objectContaining({ secure: false }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getCsrfFromCookie
+// ---------------------------------------------------------------------------
+
+describe('getCsrfFromCookie', () => {
+  it('should return the cookie value when _csrf cookie is set', () => {
+    const ctx = {
+      cookies: { get: vi.fn().mockReturnValue('my-csrf-token') },
+    } as unknown as Context;
+
+    expect(getCsrfFromCookie(ctx)).toBe('my-csrf-token');
+    expect(ctx.cookies.get).toHaveBeenCalledWith('_csrf');
+  });
+
+  it('should return undefined when _csrf cookie is not set', () => {
+    const ctx = {
+      cookies: { get: vi.fn().mockReturnValue(undefined) },
+    } as unknown as Context;
+
+    expect(getCsrfFromCookie(ctx)).toBeUndefined();
+  });
+
+  it('should return undefined when cookies.get returns null-ish', () => {
+    // Koa cookies.get can return undefined when the cookie does not exist
+    const ctx = {
+      cookies: { get: vi.fn().mockReturnValue(null) },
+    } as unknown as Context;
+
+    // Our ?? undefined normalizes null to undefined
+    expect(getCsrfFromCookie(ctx)).toBeUndefined();
+  });
+
+  it('should return the token as-is (no transformation)', () => {
+    const token = generateCsrfToken();
+    const ctx = {
+      cookies: { get: vi.fn().mockReturnValue(token) },
+    } as unknown as Context;
+
+    expect(getCsrfFromCookie(ctx)).toBe(token);
   });
 });

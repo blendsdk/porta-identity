@@ -18,6 +18,7 @@
 
 import { PostgresAdapter } from './postgres-adapter.js';
 import { RedisAdapter } from './redis-adapter.js';
+import { findForOidc } from '../clients/service.js';
 import type { AdapterPayload } from './postgres-adapter.js';
 
 /**
@@ -70,7 +71,12 @@ export function createAdapterFactory() {
     /** The underlying adapter (Redis or PostgreSQL) */
     public delegate: PostgresAdapter | RedisAdapter;
 
+    /** The OIDC model name this adapter instance handles */
+    public name: string;
+
     constructor(name: string) {
+      this.name = name;
+
       // Route to the appropriate adapter based on the model name
       if (REDIS_MODELS.has(name)) {
         this.delegate = new RedisAdapter(name);
@@ -84,8 +90,17 @@ export function createAdapterFactory() {
       return this.delegate.upsert(id, payload, expiresIn);
     }
 
-    /** Find an artifact by its primary ID */
+    /**
+     * Find an artifact by its primary ID.
+     *
+     * For the 'Client' model, routes to findForOidc() which resolves
+     * clients from the clients table (not oidc_payloads). This is the
+     * bridge between Porta's client management and oidc-provider.
+     */
     async find(id: string): Promise<AdapterPayload | undefined> {
+      if (this.name === 'Client') {
+        return findForOidc(id) as Promise<AdapterPayload | undefined>;
+      }
       return this.delegate.find(id);
     }
 

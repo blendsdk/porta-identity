@@ -4,6 +4,7 @@ import {
   generateSecret,
   hashSecret,
   verifySecretHash,
+  sha256Secret,
 } from '../../../src/clients/crypto.js';
 
 describe('client crypto', () => {
@@ -108,6 +109,30 @@ describe('client crypto', () => {
       const verified = await verifySecretHash(hash, plaintext);
 
       expect(verified).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // sha256Secret
+  // -------------------------------------------------------------------------
+
+  describe('sha256Secret', () => {
+    it('should return a 64-character hex string', () => {
+      const hash = sha256Secret('test-secret');
+      expect(hash).toHaveLength(64);
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('should be deterministic (same input → same output)', () => {
+      const hash1 = sha256Secret('identical-secret');
+      const hash2 = sha256Secret('identical-secret');
+      expect(hash1).toBe(hash2);
+    });
+
+    it('should produce different hashes for different inputs', () => {
+      const hash1 = sha256Secret('secret-one');
+      const hash2 = sha256Secret('secret-two');
+      expect(hash1).not.toBe(hash2);
     });
   });
 });

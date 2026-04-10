@@ -4,3 +4,6 @@ dist/
 *.log
 coverage/
 .DS_Store
+scripts/tmp-*
+test-results/
+playwright-report/

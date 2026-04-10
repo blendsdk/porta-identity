@@ -45,6 +45,10 @@ vi.mock('../../../src/clients/secret-service.js', () => ({
   verify: vi.fn(),
 }));
 
+vi.mock('../../../src/clients/secret-repository.js', () => ({
+  getLatestActiveSha256: vi.fn().mockResolvedValue(null),
+}));
+
 import {
   insertClient,
   findClientById,

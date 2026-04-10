@@ -48,6 +48,7 @@ describe('secret repository', () => {
       const result = await insertSecret({
         clientId: 'client-uuid-1',
         secretHash: '$argon2id$hash',
+        secretSha256: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
         label: 'production-key',
         expiresAt: new Date('2027-01-01T00:00:00Z'),
       });

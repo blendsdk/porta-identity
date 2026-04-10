@@ -11,15 +11,17 @@
   </ul>
 {{/if}}
 
-<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/confirm">
+<form method="POST" action="/interaction/{{interaction.uid}}/confirm">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
+  <input type="hidden" name="decision" value="approve">
 
   <div class="form-group">
     <button type="submit" class="btn-primary">{{t "consent.approve"}}</button>
   </div>
 </form>
 
-<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/abort">
+<form method="POST" action="/interaction/{{interaction.uid}}/confirm">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
+  <input type="hidden" name="decision" value="deny">
   <button type="submit" class="btn-secondary">{{t "consent.deny"}}</button>
 </form>

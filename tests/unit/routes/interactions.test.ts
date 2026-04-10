@@ -25,6 +25,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/auth/csrf.js', () => ({
   generateCsrfToken: vi.fn().mockReturnValue('csrf-token-abc'),
   verifyCsrfToken: vi.fn().mockReturnValue(true),
+  setCsrfCookie: vi.fn(),
+  getCsrfFromCookie: vi.fn().mockReturnValue('csrf-token-abc'),
 }));
 
 vi.mock('../../../src/auth/rate-limiter.js', () => ({
@@ -135,7 +137,15 @@ function createMockOrg(overrides: Partial<Organization> = {}): Organization {
 function createMockInteraction(overrides: Record<string, unknown> = {}) {
   return {
     uid: 'interaction-uid-123',
-    prompt: { name: 'login', reasons: [] },
+    prompt: {
+      name: 'login',
+      reasons: [],
+      details: {
+        missingOIDCScope: new Set(['openid', 'profile', 'email']),
+        missingOIDCClaims: new Set<string>(),
+        missingResourceScopes: {},
+      },
+    },
     params: {
       client_id: 'client-id-abc',
       scope: 'openid profile email',
@@ -151,6 +161,8 @@ function createMockInteraction(overrides: Record<string, unknown> = {}) {
 function createMockProvider() {
   const mockGrant = {
     addOIDCScope: vi.fn(),
+    addOIDCClaims: vi.fn(),
+    addResourceScope: vi.fn(),
     save: vi.fn().mockResolvedValue('grant-id-123'),
   };
 
@@ -208,6 +220,10 @@ function createMockCtx(overrides: {
     set type(v: string) { contentType = v; },
     state: {
       organization: createMockOrg(overrides.org),
+    },
+    cookies: {
+      get: vi.fn().mockReturnValue('csrf-token-abc'),
+      set: vi.fn(),
     },
     get: vi.fn().mockReturnValue(''), // ctx.get('Accept-Language')
     set: vi.fn((name: string, value: string) => { headers[name] = value; }),
@@ -356,7 +372,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'correct-password', _csrf: 'token', _csrfStored: 'token' },
+        body: { email: 'user@test.com', password: 'correct-password', _csrf: 'csrf-token-abc' },
       });
 
       await exec(layer!, ctx);
@@ -393,7 +409,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'bad', _csrfStored: 'good' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'bad' },
       });
 
       await exec(layer!, ctx);
@@ -421,7 +437,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -448,7 +464,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'unknown@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'unknown@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -475,7 +491,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -496,7 +512,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -517,7 +533,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -539,7 +555,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'wrong', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'wrong', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -567,7 +583,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/login');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -599,7 +615,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/magic-link');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -642,7 +658,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/magic-link');
       const ctx = createMockCtx({
-        body: { email: 'unknown@test.com', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'unknown@test.com', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -666,7 +682,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/magic-link');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -688,7 +704,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/magic-link');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', _csrf: 'bad', _csrfStored: 'good' },
+        body: { email: 'user@test.com', _csrf: 'bad' },
       });
 
       await exec(layer!, ctx);
@@ -716,7 +732,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/magic-link');
       const ctx = createMockCtx({
-        body: { email: 'user@test.com', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { email: 'user@test.com', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -833,7 +849,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/confirm');
       const ctx = createMockCtx({
-        body: { decision: 'approve', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { decision: 'approve', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -861,7 +877,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/confirm');
       const ctx = createMockCtx({
-        body: { decision: 'deny', _csrf: 'tok', _csrfStored: 'tok' },
+        body: { decision: 'deny', _csrf: 'tok' },
       });
 
       await exec(layer!, ctx);
@@ -886,7 +902,7 @@ describe('interaction routes', () => {
       const router = createInteractionRouter(provider as never);
       const layer = findLayer(router, 'POST', '/:uid/confirm');
       const ctx = createMockCtx({
-        body: { decision: 'approve', _csrf: 'bad', _csrfStored: 'good' },
+        body: { decision: 'approve', _csrf: 'bad' },
       });
 
       await exec(layer!, ctx);

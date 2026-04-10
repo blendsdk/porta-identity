@@ -2,7 +2,7 @@
 <h1>{{t "login.title"}}</h1>
 <p class="text-muted mb-4">{{t "login.subtitle" clientName=interaction.client.clientName}}</p>
 
-<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/login">
+<form method="POST" action="/interaction/{{interaction.uid}}/login">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
   <div class="form-group">
@@ -24,7 +24,7 @@
 
 <div class="divider"><span>{{t "login.or_divider"}}</span></div>
 
-<form method="POST" action="/{{orgSlug}}/interaction/{{interaction.uid}}/magic-link">
+<form method="POST" action="/interaction/{{interaction.uid}}/magic-link">
   <input type="hidden" name="_csrf" value="{{csrfToken}}">
   <input type="hidden" name="email" value="">
   <button type="submit" class="btn-secondary" id="magic-link-btn">{{t "login.magic_link_button"}}</button>

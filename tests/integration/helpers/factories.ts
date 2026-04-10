@@ -37,7 +37,7 @@ import {
 import type { Client } from '../../../src/clients/types.js';
 
 import { insertSecret } from '../../../src/clients/secret-repository.js';
-import { generateClientId, generateSecret, hashSecret } from '../../../src/clients/crypto.js';
+import { generateClientId, generateSecret, hashSecret, sha256Secret } from '../../../src/clients/crypto.js';
 
 import { insertUser, type InsertUserData } from '../../../src/users/repository.js';
 import type { User } from '../../../src/users/types.js';
@@ -208,12 +208,16 @@ export async function createTestClientWithSecret(
 ): Promise<{ client: Client; clientSecret: string }> {
   const client = await createTestClient(organizationId, applicationId, overrides);
 
-  // Generate and hash a secret, then insert into client_secrets table
+  // Generate and hash a secret, then insert into client_secrets table.
+  // Both Argon2id (for verification) and SHA-256 (for OIDC provider lookup)
+  // are stored — the SHA-256 is used as client_secret in oidc-provider metadata.
   const plainSecret = generateSecret();
   const secretHash = await hashSecret(plainSecret);
+  const secretSha256 = sha256Secret(plainSecret);
   await insertSecret({
     clientId: client.id,
     secretHash,
+    secretSha256,
     label: 'test-secret',
     expiresAt: null,
   });
