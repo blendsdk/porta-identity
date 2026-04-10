@@ -123,4 +123,54 @@ describe('configuration builder', () => {
     expect(config.responseTypes).toEqual(['code']);
   });
 
+  // ── Resource Indicators: defaultResource conditional logic ──────────
+  // The defaultResource function must only audience-restrict tokens when the
+  // client explicitly requests a resource via the `resource` parameter. When
+  // no resource is requested (oneOf is undefined), it must return undefined
+  // so that tokens work with the /me (userinfo) endpoint.
+
+  it('defaultResource returns undefined when no resource is requested', async () => {
+    const config = buildProviderConfiguration(createDefaultParams());
+    const features = config.features as Record<string, Record<string, unknown>>;
+    const defaultResource = features.resourceIndicators.defaultResource as (
+      ctx: unknown,
+      client: unknown,
+      oneOf?: string,
+    ) => Promise<string | undefined>;
+
+    // When oneOf is undefined (no resource parameter in auth request),
+    // defaultResource should return undefined → unrestricted token
+    const result = await defaultResource({}, {}, undefined);
+    expect(result).toBeUndefined();
+  });
+
+  it('defaultResource returns the resource when explicitly requested', async () => {
+    const config = buildProviderConfiguration(createDefaultParams());
+    const features = config.features as Record<string, Record<string, unknown>>;
+    const defaultResource = features.resourceIndicators.defaultResource as (
+      ctx: unknown,
+      client: unknown,
+      oneOf?: string,
+    ) => Promise<string | undefined>;
+
+    // When oneOf is a string (explicit resource parameter), defaultResource
+    // should return it as-is → audience-restricted token
+    const result = await defaultResource({}, {}, 'urn:porta:default');
+    expect(result).toBe('urn:porta:default');
+  });
+
+  it('defaultResource returns custom resource URN when explicitly requested', async () => {
+    const config = buildProviderConfiguration(createDefaultParams());
+    const features = config.features as Record<string, Record<string, unknown>>;
+    const defaultResource = features.resourceIndicators.defaultResource as (
+      ctx: unknown,
+      client: unknown,
+      oneOf?: string,
+    ) => Promise<string | undefined>;
+
+    // Any custom resource URN should pass through unchanged
+    const result = await defaultResource({}, {}, 'https://api.example.com');
+    expect(result).toBe('https://api.example.com');
+  });
+
 });

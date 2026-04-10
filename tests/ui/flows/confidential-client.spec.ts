@@ -196,28 +196,19 @@ test.describe('Confidential Client OIDC Flow', () => {
 
     // ── Step 8: UserInfo Request ───────────────────────────────────────
     // GET the userinfo endpoint with the access token.
-    //
-    // NOTE: When resourceIndicators is enabled with a defaultResource, access
-    // tokens are audience-restricted to the resource server (urn:porta:default).
-    // The userinfo endpoint may reject these tokens with 401 "invalid_token"
-    // because they are intended for the resource server, not the OP's userinfo.
-    // This is expected oidc-provider behavior, not a confidential client issue.
-    // If userinfo returns 200, we validate the full response; otherwise we
-    // verify the token was already validated via introspection (Step 7).
+    // With the resourceIndicators fix (defaultResource returns undefined when
+    // no resource is requested), tokens are no longer unconditionally audience-
+    // restricted. The /me endpoint should now return 200 with user claims.
     const userinfoUrl = `${testData.baseUrl}/${testData.confOrgSlug}/me`;
     const userinfoResponse = await fetch(userinfoUrl, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (userinfoResponse.status === 200) {
-      const userinfoData = (await userinfoResponse.json()) as Record<string, unknown>;
-      expect(userinfoData.sub).toBe(subject);
-      expect(userinfoData.email).toBe(testData.confUserEmail);
-    } else {
-      // Expected with resource indicators — token is audience-restricted
-      // The introspection in Step 7 already proved the token is valid
-      expect(userinfoResponse.status).toBe(401);
-    }
+    // Strict assertion — /me must return 200 with correct user claims
+    expect(userinfoResponse.status).toBe(200);
+    const userinfoData = (await userinfoResponse.json()) as Record<string, unknown>;
+    expect(userinfoData.sub).toBe(subject);
+    expect(userinfoData.email).toBe(testData.confUserEmail);
   });
 });

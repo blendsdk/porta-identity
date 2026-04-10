@@ -68,7 +68,13 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       // Enable resource indicators (RFC 8707)
       resourceIndicators: {
         enabled: true,
-        defaultResource: () => 'urn:porta:default',
+        // Only audience-restrict tokens when the client explicitly requests a resource.
+        // When oneOf is undefined (no `resource` param in auth request), returning
+        // undefined produces a standard, unrestricted token that works with /me (userinfo).
+        // Previously this unconditionally returned 'urn:porta:default', which audience-
+        // restricted EVERY token and caused the userinfo endpoint to reject them all.
+        defaultResource: async (_ctx: unknown, _client: unknown, oneOf?: string) =>
+          oneOf ?? undefined,
         getResourceServerInfo: () => ({
           scope: 'openid profile email',
           audience: 'urn:porta:default',
