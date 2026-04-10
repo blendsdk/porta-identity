@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-10 23:25
-> **Progress**: 19/38 tasks (50%)
+> **Last Updated**: 2026-04-10 23:43
+> **Progress**: 21/38 tasks (55%)
 
 ## Overview
 
@@ -274,8 +274,8 @@ Templates use `{{interaction.client.clientName}}` in i18n strings like `"Sign in
 - [x] 4.1.2 Implement consent-edge-cases.spec.ts (5 tests) ✅ (completed: 2026-04-10 23:20)
 
 ### Phase 5: Interaction Lifecycle & 2FA Edge Cases
-- [ ] 5.1.1 Implement interaction-lifecycle.spec.ts (6 tests)
-- [ ] 5.1.2 Implement two-factor-edge-cases.spec.ts (8 tests)
+- [x] 5.1.1 Implement interaction-lifecycle.spec.ts (6 tests) ✅ (completed: 2026-04-10 23:43)
+- [x] 5.1.2 Implement two-factor-edge-cases.spec.ts (8 tests, all fixme — cross-process 2FA state) ✅ (completed: 2026-04-10 23:43)
 
 ### Phase 6: Security & Tenant Isolation
 - [ ] 6.1.1 Implement tenant-isolation.spec.ts (4 tests)
