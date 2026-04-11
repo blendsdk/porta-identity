@@ -132,15 +132,15 @@ const USERS: UserDef[] = [
 
 /** RBAC role definitions for the shared Playground application. */
 const ROLE_DEFS = [
-  { slug: 'admin', name: 'Admin', description: 'Full admin access', permissions: ['manage:users', 'manage:settings'] },
-  { slug: 'viewer', name: 'Viewer', description: 'Read-only access', permissions: ['read:data'] },
+  { slug: 'admin', name: 'Admin', description: 'Full admin access', permissions: ['app:users:manage', 'app:settings:manage'] },
+  { slug: 'viewer', name: 'Viewer', description: 'Read-only access', permissions: ['app:data:read'] },
 ];
 
 /** RBAC permission definitions — the union of all role permissions. */
 const PERMISSION_DEFS = [
-  { slug: 'manage:users', name: 'Manage Users', description: 'Create, update, delete users' },
-  { slug: 'manage:settings', name: 'Manage Settings', description: 'Modify application settings' },
-  { slug: 'read:data', name: 'Read Data', description: 'View application data' },
+  { slug: 'app:users:manage', name: 'Manage Users', description: 'Create, update, delete users' },
+  { slug: 'app:settings:manage', name: 'Manage Settings', description: 'Modify application settings' },
+  { slug: 'app:data:read', name: 'Read Data', description: 'View application data' },
 ];
 
 /** Custom claim definitions for the shared application. */
