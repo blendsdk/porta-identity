@@ -171,6 +171,12 @@ function registerHelpers(): void {
   Handlebars.registerHelper('year', function () {
     return new Date().getFullYear();
   });
+
+  // String concatenation helper — {{concat "prefix_" value}}
+  Handlebars.registerHelper('concat', function (...args: unknown[]) {
+    // Last argument is the Handlebars options object — exclude it
+    return args.slice(0, -1).join('');
+  });
 }
 
 // ---------------------------------------------------------------------------

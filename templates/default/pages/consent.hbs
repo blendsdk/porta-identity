@@ -6,7 +6,7 @@
   <p style="font-weight: 500;">{{t "consent.scopes_heading"}}</p>
   <ul class="scope-list">
     {{#each scopes}}
-      <li>{{this}}</li>
+      <li>{{t (concat "consent.scope_" this)}}</li>
     {{/each}}
   </ul>
 {{/if}}

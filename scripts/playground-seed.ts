@@ -318,7 +318,7 @@ async function main() {
           redirectUris: [PLAYGROUND_REDIRECT],
           postLogoutRedirectUris: [PLAYGROUND_POST_LOGOUT],
           grantTypes: ['authorization_code', 'refresh_token'],
-          scope: 'openid profile email',
+          scope: 'openid profile email offline_access',
         });
         pubClient = result.client;
         console.log(`  ✅ Client "${clientName}" created: ${pubClient.clientId}`);
@@ -351,7 +351,7 @@ async function main() {
         redirectUris: [PLAYGROUND_REDIRECT],
         postLogoutRedirectUris: [PLAYGROUND_POST_LOGOUT],
         grantTypes: ['authorization_code', 'refresh_token'],
-        scope: 'openid profile email',
+        scope: 'openid profile email offline_access',
       });
       confClient = result.client;
       console.log(`  ✅ Client "${confClientName}" created: ${confClient.clientId}`);

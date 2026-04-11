@@ -515,7 +515,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid_credentials'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid'));
       return;
     }
 
@@ -548,7 +548,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid_credentials'));
+      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid'));
       return;
     }
 

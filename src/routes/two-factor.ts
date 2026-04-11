@@ -34,6 +34,7 @@ import {
   verifyRecoveryCode as verifyRecoveryCodeService,
   sendOtpCode,
   setupTotp,
+  getPendingTotpSetupInfo,
   setupEmailOtp,
   confirmTotpSetup,
 } from '../two-factor/service.js';
@@ -480,8 +481,27 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
 
-    // Start TOTP setup — generate secret and QR code
-    const setupResult = await setupTotp(pending.pendingAccountId, pending.email, org.slug);
+    // Check for existing pending TOTP setup (avoids regenerating on page reload/error retry)
+    const existingSetup = await getPendingTotpSetupInfo(pending.pendingAccountId, pending.email, org.slug);
+
+    let qrCodeDataUri: string;
+    let totpSecret: string;
+    let recoveryCodes: string[] | undefined;
+
+    if (existingSetup) {
+      // Reuse existing pending setup — don't regenerate the secret
+      qrCodeDataUri = existingSetup.qrCodeDataUri;
+      totpSecret = existingSetup.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
+    } else {
+      // No pending setup — generate a fresh one
+      const setupResult = await setupTotp(pending.pendingAccountId, pending.email, org.slug);
+      qrCodeDataUri = setupResult.qrCodeDataUri!;
+      totpSecret = setupResult.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
+      recoveryCodes = setupResult.recoveryCodes;
+    }
+
+    // Check for error indicator from failed verification redirect
+    const errorParam = (ctx.query.error as string) ?? '';
 
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
@@ -493,9 +513,10 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
         client: { clientName: '' },
       },
       method: 'totp',
-      qrCodeDataUri: setupResult.qrCodeDataUri,
-      totpSecret: setupResult.totpUri?.split('secret=')[1]?.split('&')[0] ?? '',
-      recoveryCodes: setupResult.recoveryCodes,
+      qrCodeDataUri,
+      totpSecret,
+      recoveryCodes,
+      flash: errorParam === 'invalid_code' ? { error: t('two-factor.error_invalid_code') } : undefined,
     };
 
     await renderAndRespond(ctx, 'two-factor-setup', context);

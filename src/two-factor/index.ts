@@ -91,6 +91,7 @@ export {
 export {
   setupEmailOtp,
   setupTotp,
+  getPendingTotpSetupInfo,
   confirmTotpSetup,
   sendOtpCode,
   verifyOtp,

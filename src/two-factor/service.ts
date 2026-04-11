@@ -238,6 +238,47 @@ export async function setupTotp(
 }
 
 /**
+ * Retrieve existing pending (unverified) TOTP setup info.
+ *
+ * If a user has a pending TOTP setup (unverified record in DB), this
+ * decrypts the secret and regenerates the QR code for display.
+ * Does NOT regenerate the secret — preserves the existing one.
+ *
+ * Returns null if no pending setup exists.
+ *
+ * @param userId - User UUID
+ * @param email - User email (for TOTP URI display)
+ * @param orgSlug - Organization slug (used as TOTP issuer)
+ * @returns Setup info with QR code and secret, or null if no pending setup
+ */
+export async function getPendingTotpSetupInfo(
+  userId: string,
+  email: string,
+  orgSlug: string,
+): Promise<{ totpUri: string; qrCodeDataUri: string; totpSecret: string } | null> {
+  const totp = await findTotpByUserId(userId);
+  if (!totp || totp.verified) {
+    return null;
+  }
+
+  // Decrypt the existing secret
+  const encryptionKey = getEncryptionKey();
+  const secret = decryptTotpSecret(
+    totp.encryptedSecret,
+    totp.encryptionIv,
+    totp.encryptionTag,
+    encryptionKey,
+  );
+
+  // Regenerate the URI and QR code from the existing secret
+  const issuer = `Porta (${orgSlug})`;
+  const totpUri = generateTotpUri(secret, email, issuer);
+  const qrCodeDataUri = await generateQrCodeDataUri(totpUri);
+
+  return { totpUri, qrCodeDataUri, totpSecret: secret };
+}
+
+/**
  * Confirm TOTP setup by verifying the user's first TOTP code.
  *
  * Called after the user scans the QR code and enters a TOTP code

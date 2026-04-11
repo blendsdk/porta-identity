@@ -8,5 +8,6 @@
   "scope_profile": "Access your profile information",
   "scope_email": "Access your email address",
   "scope_phone": "Access your phone number",
-  "scope_address": "Access your address"
+  "scope_address": "Access your address",
+  "scope_offline_access": "Stay signed in (offline access)"
 }

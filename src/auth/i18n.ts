@@ -52,6 +52,7 @@ const NAMESPACES = [
   'logout',
   'errors',
   'emails',
+  'two-factor',
 ] as const;
 
 /** Hardcoded fallback locale when all resolution steps fail */
