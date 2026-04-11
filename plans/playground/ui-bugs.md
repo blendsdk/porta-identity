@@ -139,6 +139,25 @@
 - **Fix:** Modified `registerHandlebarsI18nHelper()` in `src/auth/i18n.ts` to fall back to `options.data.root.t` (the root template context) when `this.t` is not available. This is the standard Handlebars pattern for accessing root context inside `{{#each}}` blocks.
 - **Status:** ✅ Fixed
 
+### BUG-11: Multiple raw i18n error keys shown instead of translated messages
+- **Scenario:** Various flows — any page that shows error messages (expired interaction, CSRF, rate limit, etc.)
+- **Steps to reproduce:**
+  1. Let an OIDC interaction expire (wait or use a stale URL)
+  2. See error page showing raw key `errors.interaction_expired`
+- **Expected:** Translated error messages (e.g., "Your session has expired. Please start the sign-in process again.")
+- **Actual:** Shows raw i18n keys because the translation keys were missing from locale files
+- **Missing keys found (comprehensive audit):**
+  - `errors.interaction_expired` — 6 call sites in interactions.ts
+  - `errors.csrf_invalid` — 5 call sites across routes
+  - `errors.rate_limit_exceeded` — 4 call sites across routes
+  - `errors.magic_link_expired` — 2 call sites in magic-link.ts
+  - `errors.reset_link_expired` — 2 call sites in password-reset.ts
+  - `login.error_account_inactive` — 1 call site in interactions.ts
+  - `forgot-password.check_email` — 1 call site in password-reset.ts
+- **Severity:** high
+- **Fix:** Added all 7 missing translation keys to their respective locale files: `errors.json` (5 keys), `login.json` (1 key), `forgot-password.json` (1 key). Also verified all 82 template `{{t}}` keys resolve correctly.
+- **Status:** ✅ Fixed
+
 <!-- Template for new bugs:
 
 ### BUG-XX: [Short title]
