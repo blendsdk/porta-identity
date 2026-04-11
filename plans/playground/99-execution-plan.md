@@ -272,9 +272,9 @@ seed data, and one-command startup.
 - [x] 4.2.3 Implement config panel ✅ (completed: 2026-04-11 17:53)
 
 ### Phase 5: Polish & Verification
-- [ ] 5.1.1 Write playground/README.md
-- [ ] 5.1.2 End-to-end test: Normal Login scenario
-- [ ] 5.1.3 End-to-end test: Email OTP + TOTP + Consent scenarios
+- [x] 5.1.1 Write playground/README.md ✅ (completed: 2026-04-11 17:55)
+- [ ] 5.1.2 End-to-end test: Normal Login scenario (manual: run `yarn playground`)
+- [ ] 5.1.3 End-to-end test: Email OTP + TOTP + Consent scenarios (manual)
 - [ ] 5.1.4 Run `yarn verify` to confirm no regressions
 
 ---
