@@ -735,6 +735,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
       t,
       email,
+      loginUrl: `/interaction/${interaction.uid}`,
     };
 
     await renderAndRespond(ctx, 'magic-link-sent', context);
