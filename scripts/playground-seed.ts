@@ -314,7 +314,7 @@ async function main() {
           applicationId: app.id,
           clientName,
           clientType: 'public',
-          applicationType: 'spa',
+          applicationType: 'web',
           redirectUris: [PLAYGROUND_REDIRECT],
           postLogoutRedirectUris: [PLAYGROUND_POST_LOGOUT],
           grantTypes: ['authorization_code', 'refresh_token'],
