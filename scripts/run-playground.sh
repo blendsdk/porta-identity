@@ -112,7 +112,7 @@ echo "════════════════════════�
 echo ""
 
 cd playground
-npx sirv-cli . --port 4000 --single --no-clear &
+npx sirv-cli . --port 4000 --single --no-clear --dev &
 PLAYGROUND_PID=$!
 
 # Wait for either process to exit
