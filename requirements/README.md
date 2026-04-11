@@ -1,7 +1,7 @@
 # Porta v5 — Requirements Documents
 
 > **Project**: Porta v5 — Multi-Tenant OIDC Provider
-> **Status**: Requirements In Progress (RD-13 added)
+> **Status**: Requirements In Progress (RD-14 through RD-17 added)
 > **Created**: 2026-04-08
 > **Architecture**: Koa + TypeScript + node-oidc-provider + PostgreSQL + Redis
 
@@ -28,6 +28,10 @@ Porta v5 is a multi-tenant OIDC provider built on top of [node-oidc-provider](ht
 | **RD-11** | [Deployment & Blue-Green](RD-11-deployment.md) | Production Docker, blue-green deployment, health checks | RD-01, All |
 | **RD-12** | [Two-Factor Authentication (2FA)](RD-12-two-factor-authentication.md) | Email OTP, TOTP authenticator, recovery codes, org 2FA policy | RD-02, RD-04, RD-06, RD-07 |
 | **RD-13** | [Admin Authentication & CLI v2](RD-13-admin-auth-cli-v2.md) | Secure admin API, CLI OIDC login, bootstrap command, HTTP migration | RD-03, RD-05, RD-08, RD-09 |
+| **RD-14** | [Playground Application](RD-14-playground-application.md) | Vanilla HTML/JS SPA for testing all OIDC flows, token inspection, 2FA scenarios | RD-03, RD-07, RD-12 |
+| **RD-15** | [Playground Infrastructure & Seed Data](RD-15-playground-infrastructure.md) | Enhanced seed script, multi-org/multi-user test data, one-command startup | RD-14, RD-04, RD-05, RD-06, RD-12 |
+| **RD-16** | [Scope Translation & UI Polish](RD-16-scope-translation-ui-polish.md) | Fix consent scope display, scope translation system, template audit | RD-07 |
+| **RD-17** | [Setup & Usage Documentation](RD-17-setup-documentation.md) | Quickstart guide, architecture overview, CLI cheat sheet, integration guide | RD-14, RD-15 |
 
 ## Dependency Graph
 
@@ -49,6 +53,8 @@ RD-01 (Scaffolding)
   │     │     │           └── RD-08 (RBAC & Custom Claims)
   │     │     │
   │     │     └── RD-07 (Auth Workflows & Login UI)
+  │     │           │
+  │     │           └── RD-16 (Scope Translation & UI Polish)
   │     │
   │     └── RD-09 (CLI) ─── depends on RD-04 through RD-08
   │
@@ -56,7 +62,13 @@ RD-01 (Scaffolding)
   │
   ├── RD-11 (Deployment) ─── cross-cutting, all RDs
   │
-  └── RD-12 (2FA) ─── depends on RD-02, RD-04, RD-06, RD-07
+  ├── RD-12 (2FA) ─── depends on RD-02, RD-04, RD-06, RD-07
+  │
+  └── RD-14 (Playground App) ─── depends on RD-03, RD-07, RD-12
+        │
+        └── RD-15 (Playground Infrastructure) ─── depends on RD-04, RD-05, RD-06, RD-12
+              │
+              └── RD-17 (Setup Documentation) ─── depends on RD-14, RD-15
 ```
 
 ## Suggested Implementation Order
@@ -67,6 +79,7 @@ RD-01 (Scaffolding)
 | **B: Domain Model** | RD-04 → RD-05 → RD-06 | Organizations, applications, users |
 | **C: Auth & Authz** | RD-07 → RD-08 → RD-12 | Login flows, RBAC, custom claims, 2FA |
 | **D: Tooling** | RD-09 → RD-10 → RD-11 | CLI, testing, deployment |
+| **E: Polish & Playground** | RD-16 → RD-14 → RD-15 → RD-17 | Scope fix, playground app, seed data, documentation |
 
 ## Key Architecture Decisions
 
