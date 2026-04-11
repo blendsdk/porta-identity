@@ -32,9 +32,16 @@ import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { generateCsrfToken } from '../auth/csrf.js';
 import { getUserById, recordLogin, markEmailVerified } from '../users/service.js';
-import { createMagicLinkSession } from '../auth/magic-link-session.js';
+import {
+  createMagicLinkSession,
+  createMagicLinkPreAuth,
+  getMagicLinkAuthContext,
+  buildAuthorizationUrl,
+  renderRedirectPage,
+} from '../auth/magic-link-session.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
+import { config } from '../config/index.js';
 import type { Organization } from '../organizations/types.js';
 
 // ---------------------------------------------------------------------------
@@ -190,11 +197,52 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
       ipAddress: ctx.ip,
     });
 
-    // Step 8: Create _ml_session and redirect to interaction login page
-    // The login handler will detect the session and either:
-    //   - Complete the OIDC flow (same browser — interaction cookies present)
-    //   - Show a success page (different browser — no interaction cookies)
+    // Step 8: Complete the OIDC flow
+    //
+    // Two paths depending on whether auth context is available:
+    //
+    // A) Pre-auth flow (preferred, cross-browser safe):
+    //    Auth context was stored in Redis when the magic link was sent.
+    //    We reconstruct the original authorization URL, set a _ml_preauth
+    //    cookie, and render a redirect page (HTML + JS, not 302, to avoid
+    //    Safari ITP issues). The OIDC provider creates a fresh interaction,
+    //    and showLogin() auto-completes it using the pre-auth cookie.
+    //
+    // B) Legacy flow (backward compat, same-browser only):
+    //    For magic links generated before the pre-auth flow was deployed.
+    //    Creates _ml_session cookie and redirects to /interaction/:uid.
+    //    Only works if opened in the same browser.
     if (interactionUid) {
+      // Try the pre-auth flow first (auth context stored when link was sent)
+      const authContext = await getMagicLinkAuthContext(interactionUid);
+
+      if (authContext) {
+        // Pre-auth flow: set cookie and redirect to original auth URL
+        await createMagicLinkPreAuth(ctx, {
+          userId: user.id,
+          organizationId: org.id,
+        });
+
+        const authUrl = buildAuthorizationUrl(config.issuerBaseUrl, authContext);
+
+        logger.info(
+          { interactionUid, userId: user.id, clientId: authContext.clientId },
+          'Magic link verified — rendering redirect page to authorization endpoint (pre-auth flow)',
+        );
+
+        // Render HTML page with spinner + JS redirect (not 302)
+        // This ensures the _ml_preauth cookie is set on a 200 response,
+        // avoiding Safari ITP issues with cookies on 302 redirects.
+        renderRedirectPage(ctx, authUrl);
+        return;
+      }
+
+      // Fallback: legacy flow (no auth context — link was sent before upgrade)
+      logger.info(
+        { interactionUid, userId: user.id },
+        'Magic link verified — using legacy session flow (no auth context found)',
+      );
+
       await createMagicLinkSession(ctx, {
         userId: user.id,
         interactionUid,
@@ -204,12 +252,60 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
       return;
     }
 
-    // If no interaction UID, redirect to login with a success flash message
-    // (magic link opened without an OIDC flow in progress)
-    ctx.redirect(`/${org.slug}/auth/forgot-password?flash=magic_link_success`);
+    // No interaction UID — magic link opened outside an OIDC flow.
+    // Show the magic link success page (standalone authentication confirmation).
+    logger.info(
+      { userId: user.id },
+      'Magic link verified without interaction UID — showing success page',
+    );
+    await renderSuccessPageForAuth(ctx, org, locale, t);
   } catch (error) {
     logger.error({ error }, 'Failed to verify magic link');
     await renderErrorPageForAuth(ctx, org, locale, t, t('errors.generic'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: render success page for auth routes
+// ---------------------------------------------------------------------------
+
+/**
+ * Render a success page when a magic link is verified outside an OIDC flow.
+ *
+ * This handles the edge case where a magic link URL doesn't have an
+ * interaction UID (e.g., link was malformed or interaction expired).
+ * Shows a generic "email verified" confirmation instead of redirecting
+ * to the forgot-password page.
+ *
+ * @param ctx - Koa context
+ * @param org - Organization for branding
+ * @param locale - Resolved locale
+ * @param t - Translation function
+ */
+async function renderSuccessPageForAuth(
+  ctx: Context,
+  org: Organization,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): Promise<void> {
+  try {
+    const csrfToken = generateCsrfToken();
+    const context: TemplateContext = {
+      branding: buildBrandingFromOrg(org),
+      locale,
+      t,
+      csrfToken,
+      orgSlug: org.slug,
+    };
+
+    const html = await renderPage('magic-link-success', context);
+    ctx.status = 200;
+    ctx.type = 'text/html';
+    ctx.body = html;
+  } catch (renderError) {
+    logger.error({ renderError }, 'Failed to render magic link success page');
+    ctx.status = 200;
+    ctx.body = 'Your email has been verified. You may close this tab.';
   }
 }
 

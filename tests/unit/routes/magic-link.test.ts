@@ -47,6 +47,24 @@ vi.mock('../../../src/users/service.js', () => ({
 
 vi.mock('../../../src/auth/magic-link-session.js', () => ({
   createMagicLinkSession: vi.fn().mockResolvedValue(undefined),
+  createMagicLinkPreAuth: vi.fn().mockResolvedValue(undefined),
+  getMagicLinkAuthContext: vi.fn().mockResolvedValue({
+    clientId: 'client-id-1',
+    redirectUri: 'http://localhost:4000/callback.html',
+    scope: 'openid profile email',
+    state: 'original-state-abc',
+    nonce: 'nonce-123',
+    codeChallenge: 'challenge-xyz',
+    codeChallengeMethod: 'S256',
+    responseType: 'code',
+    orgSlug: 'test-org',
+  }),
+  buildAuthorizationUrl: vi.fn().mockReturnValue('http://localhost:3000/test-org/auth?client_id=client-id-1&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fcallback.html&response_type=code&scope=openid+profile+email&state=original-state-abc'),
+  renderRedirectPage: vi.fn(),
+}));
+
+vi.mock('../../../src/config/index.js', () => ({
+  config: { issuerBaseUrl: 'http://localhost:3000' },
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
@@ -132,10 +150,24 @@ describe('magic link routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(templateEngine.renderPage).mockResolvedValue('<html>rendered</html>');
+    // Restore default mock return values that individual tests may override.
+    // vi.clearAllMocks() clears call history but does NOT reset mockReturnValue.
+    vi.mocked(mlSession.getMagicLinkAuthContext).mockResolvedValue({
+      clientId: 'client-id-1',
+      redirectUri: 'http://localhost:4000/callback.html',
+      scope: 'openid profile email',
+      state: 'original-state-abc',
+      nonce: 'nonce-123',
+      codeChallenge: 'challenge-xyz',
+      codeChallengeMethod: 'S256',
+      responseType: 'code',
+      orgSlug: 'test-org',
+    });
+    vi.mocked(mlSession.createMagicLinkPreAuth).mockResolvedValue(undefined);
   });
 
   describe('GET /:orgSlug/auth/magic-link/:token — verifyMagicLink', () => {
-    it('should verify valid token and create _ml_session + redirect to interaction', async () => {
+    it('should verify valid token and use pre-auth flow with redirect page', async () => {
       const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
       const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
       vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
@@ -153,21 +185,50 @@ describe('magic link routes', () => {
       expect(userService.markEmailVerified).toHaveBeenCalledWith('user-uuid-1');
       // Should record login
       expect(userService.recordLogin).toHaveBeenCalledWith('user-uuid-1');
-      // Should create _ml_session with correct data
-      expect(mlSession.createMagicLinkSession).toHaveBeenCalledWith(
+      // Should get auth context from Redis
+      expect(mlSession.getMagicLinkAuthContext).toHaveBeenCalledWith('interaction-uid-1');
+      // Should create pre-auth session (NOT legacy _ml_session)
+      expect(mlSession.createMagicLinkPreAuth).toHaveBeenCalledWith(
         ctx,
-        {
-          userId: 'user-uuid-1',
-          interactionUid: 'interaction-uid-1',
-          organizationId: 'org-uuid-1',
-        },
+        { userId: 'user-uuid-1', organizationId: 'org-uuid-1' },
       );
-      // Should redirect to interaction page
-      expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1');
+      // Should build authorization URL and render redirect page
+      expect(mlSession.buildAuthorizationUrl).toHaveBeenCalledWith(
+        'http://localhost:3000',
+        expect.objectContaining({ clientId: 'client-id-1' }),
+      );
+      expect(mlSession.renderRedirectPage).toHaveBeenCalledWith(ctx, expect.any(String));
+      // Should NOT use legacy _ml_session flow
+      expect(mlSession.createMagicLinkSession).not.toHaveBeenCalled();
+      expect(ctx.redirect).not.toHaveBeenCalled();
       // Should audit log
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'user.login.magic_link' }),
       );
+    });
+
+    it('should fall back to legacy _ml_session when no auth context found', async () => {
+      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
+      const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
+      vi.mocked(userService.getUserById).mockResolvedValue(user as never);
+      // No auth context — simulate magic link generated before pre-auth deployment
+      vi.mocked(mlSession.getMagicLinkAuthContext).mockResolvedValue(null);
+
+      const router = createMagicLinkRouter();
+      const layer = findLayer(router, 'GET', 'magic-link');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      // Should use legacy _ml_session flow
+      expect(mlSession.createMagicLinkSession).toHaveBeenCalledWith(
+        ctx,
+        { userId: 'user-uuid-1', interactionUid: 'interaction-uid-1', organizationId: 'org-uuid-1' },
+      );
+      expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1');
+      // Should NOT use pre-auth flow
+      expect(mlSession.createMagicLinkPreAuth).not.toHaveBeenCalled();
     });
 
     it('should show error page for invalid/expired token', async () => {
@@ -229,7 +290,7 @@ describe('magic link routes', () => {
       expect(ctx.status).toBe(400);
     });
 
-    it('should redirect to forgot-password when no interaction UID provided', async () => {
+    it('should show success page when no interaction UID provided', async () => {
       const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
       const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
       vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
@@ -242,18 +303,23 @@ describe('magic link routes', () => {
 
       await exec(layer!, ctx);
 
-      // Without interaction UID, should redirect to forgot-password
-      expect(ctx.redirect).toHaveBeenCalledWith(expect.stringContaining('/auth/forgot-password'));
-      // Should NOT create _ml_session
+      // Without interaction UID, should render magic-link-success page
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'magic-link-success',
+        expect.objectContaining({ orgSlug: 'test-org' }),
+      );
+      expect(ctx.status).toBe(200);
+      // Should NOT create _ml_session or pre-auth
       expect(mlSession.createMagicLinkSession).not.toHaveBeenCalled();
+      expect(mlSession.createMagicLinkPreAuth).not.toHaveBeenCalled();
     });
 
-    it('should still redirect when _ml_session creation fails gracefully', async () => {
+    it('should show error page when pre-auth creation fails', async () => {
       const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
       const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
       vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
       vi.mocked(userService.getUserById).mockResolvedValue(user as never);
-      vi.mocked(mlSession.createMagicLinkSession).mockRejectedValue(new Error('Redis down'));
+      vi.mocked(mlSession.createMagicLinkPreAuth).mockRejectedValue(new Error('Redis down'));
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
