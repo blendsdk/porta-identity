@@ -394,8 +394,10 @@ export function getTranslationFunction(
  */
 export function registerHandlebarsI18nHelper(): void {
   Handlebars.registerHelper('t', function (this: Record<string, unknown>, key: string, options: Handlebars.HelperOptions) {
-    // The translation function is passed in the template context
-    const t = this.t as ((k: string, opts?: Record<string, unknown>) => string) | undefined;
+    // The translation function is passed in the template context.
+    // Inside {{#each}} blocks, `this` is the current item (e.g., a string),
+    // so we fall back to the root context to find the `t` function.
+    const t = (this.t ?? (options?.data?.root as Record<string, unknown> | undefined)?.t) as ((k: string, opts?: Record<string, unknown>) => string) | undefined;
     if (!t) {
       // No translation function available — return the key as fallback
       logger.warn({ key }, 'Handlebars {{t}} helper called without translation function in context');

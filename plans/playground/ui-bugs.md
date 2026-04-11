@@ -125,6 +125,20 @@
 - **Severity:** high
 - **Note:** Same root cause as BUG-04 — the `two-factor.*` translation keys are missing from locale files
 
+### BUG-10: Consent scope translations fail inside {{#each}} block — Handlebars context scoping issue
+- **Scenario:** Any org / any user — consent screen after login
+- **Steps to reproduce:**
+  1. Log in successfully with any user
+  2. Arrive at the consent page
+  3. Observe the scope list
+- **Expected:** Translated scope descriptions (e.g., "Verify your identity", "Access your profile information", "Access your email address")
+- **Actual:** Shows raw i18n keys: `consent.scope_openid`, `consent.scope_profile`, `consent.scope_email`
+- **Screenshot/Console:** —
+- **Severity:** high
+- **Root cause:** The Handlebars `{{t}}` helper reads `this.t` for the translation function. Inside `{{#each scopes}}`, `this` is the current scope string (e.g., `"openid"`), not the parent context. So `this.t` is `undefined` and the helper falls back to returning the raw key.
+- **Fix:** Modified `registerHandlebarsI18nHelper()` in `src/auth/i18n.ts` to fall back to `options.data.root.t` (the root template context) when `this.t` is not available. This is the standard Handlebars pattern for accessing root context inside `{{#each}}` blocks.
+- **Status:** ✅ Fixed
+
 <!-- Template for new bugs:
 
 ### BUG-XX: [Short title]
