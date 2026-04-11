@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Porta Playground</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header: Logo, status indicators, theme toggle -->
+  <header id="header">
+    <h1>🎮 Porta Playground</h1>
+    <div id="status-bar">
+      <span id="status-porta" class="status-dot" title="Porta">●</span>
+      <span id="status-mailhog" class="status-dot" title="MailHog">●</span>
+      <span id="status-auth" class="status-dot" title="Auth State">●</span>
+    </div>
+    <button id="theme-toggle" title="Toggle theme">🌙</button>
+  </header>
+
+  <main>
+    <!-- Left: Scenario selector + config panel -->
+    <aside id="sidebar">
+      <section id="scenarios">
+        <h2>Test Scenarios</h2>
+        <!-- Scenario buttons rendered by app.js -->
+      </section>
+      <section id="config-panel">
+        <h2>Configuration</h2>
+        <label>Organization
+          <select id="config-org"></select>
+        </label>
+        <label>Client Type
+          <select id="config-client-type">
+            <option value="public">Public (PKCE)</option>
+            <option value="confidential">Confidential</option>
+          </select>
+        </label>
+        <div id="config-details">
+          <!-- Discovery URL, Client ID, Redirect URI, Scopes -->
+        </div>
+      </section>
+      <a href="http://localhost:8025" target="_blank" class="mailhog-link">
+        📧 Open MailHog
+      </a>
+    </aside>
+
+    <!-- Right: Dashboard (tokens, userinfo, event log) -->
+    <section id="dashboard">
+      <!-- Shown when logged out -->
+      <div id="logged-out-view">
+        <p>Select a scenario or click Login to start an OIDC flow.</p>
+        <button id="btn-login" class="btn-primary">Login</button>
+      </div>
+
+      <!-- Shown when logged in -->
+      <div id="logged-in-view" hidden>
+        <div id="action-bar">
+          <button id="btn-userinfo" class="btn">UserInfo</button>
+          <button id="btn-refresh" class="btn">Refresh Token</button>
+          <button id="btn-logout" class="btn">Logout</button>
+          <button id="btn-relogin" class="btn btn-secondary">Re-login</button>
+        </div>
+
+        <div id="token-dashboard">
+          <h2>Tokens</h2>
+          <div id="id-token-panel" class="token-panel"></div>
+          <div id="access-token-panel" class="token-panel"></div>
+          <div id="refresh-token-panel" class="token-panel"></div>
+        </div>
+
+        <div id="userinfo-panel" hidden>
+          <h2>UserInfo Response</h2>
+          <pre id="userinfo-json"></pre>
+        </div>
+      </div>
+
+      <!-- Event log (always visible) -->
+      <section id="event-log">
+        <h2>Event Log</h2>
+        <div id="events"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Porta Playground — Callback</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="callback-status">
+    <h2>Processing login...</h2>
+    <p id="callback-message">Exchanging authorization code for tokens...</p>
+  </div>
+  <script type="module">
+    import { handleCallback } from '/js/auth.js';
+    handleCallback();
+  </script>
+</body>
+</html>

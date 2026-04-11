@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-11 17:44
-> **Progress**: 13/24 tasks (54%)
+> **Progress**: 22/24 tasks (92%)
 
 ## Overview
 
@@ -254,22 +254,22 @@ seed data, and one-command startup.
 - [x] 2.1.5 Update .gitignore for playground artifacts ✅ (completed: 2026-04-11 17:47)
 
 ### Phase 3: Playground App Skeleton
-- [ ] 3.1.1 Create index.html with layout structure
-- [ ] 3.1.2 Create callback.html for OIDC redirect
-- [ ] 3.1.3 Create style.css with dark/light theme variables
-- [ ] 3.1.4 Download and vendor oidc-client-ts browser bundle
+- [x] 3.1.1 Create index.html with layout structure ✅ (completed: 2026-04-11 17:49)
+- [x] 3.1.2 Create callback.html for OIDC redirect ✅ (completed: 2026-04-11 17:49)
+- [x] 3.1.3 Create style.css with dark/light theme variables ✅ (completed: 2026-04-11 17:50)
+- [x] 3.1.4 Download and vendor oidc-client-ts browser bundle ✅ (completed: 2026-04-11 17:51)
 
 ### Phase 3 (continued): Core JS Modules
-- [ ] 3.2.1 Create config.js with loadConfig, getOrgSettings, SCENARIOS
-- [ ] 3.2.2 Create auth.js with UserManager, login/logout/callback
-- [ ] 3.2.3 Create ui.js with status indicators, event log, theme
+- [x] 3.2.1 Create config.js with loadConfig, getOrgSettings, SCENARIOS ✅ (completed: 2026-04-11 17:52)
+- [x] 3.2.2 Create auth.js with UserManager, login/logout/callback ✅ (completed: 2026-04-11 17:52)
+- [x] 3.2.3 Create ui.js with status indicators, event log, theme ✅ (completed: 2026-04-11 17:52)
 
 ### Phase 4: Playground App Features
-- [ ] 4.1.1 Create tokens.js with JWT decode and token panels
-- [ ] 4.1.2 Create userinfo.js with fetch and display
-- [ ] 4.2.1 Create app.js init, scenario rendering, org selector
-- [ ] 4.2.2 Implement all button handlers
-- [ ] 4.2.3 Implement config panel
+- [x] 4.1.1 Create tokens.js with JWT decode and token panels ✅ (completed: 2026-04-11 17:53)
+- [x] 4.1.2 Create userinfo.js with fetch and display ✅ (completed: 2026-04-11 17:53)
+- [x] 4.2.1 Create app.js init, scenario rendering, org selector ✅ (completed: 2026-04-11 17:53)
+- [x] 4.2.2 Implement all button handlers ✅ (completed: 2026-04-11 17:53)
+- [x] 4.2.3 Implement config panel ✅ (completed: 2026-04-11 17:53)
 
 ### Phase 5: Polish & Verification
 - [ ] 5.1.1 Write playground/README.md
