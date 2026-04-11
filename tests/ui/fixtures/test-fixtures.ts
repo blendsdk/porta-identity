@@ -91,6 +91,28 @@ export interface TestData {
   suspendedOrgSlug: string;
   /** Slug of an org with 'archived' status */
   archivedOrgSlug: string;
+
+  // ── 2FA fields (seeded 2FA-enabled users) ──────────────────────────
+
+  /** Email of a user with email OTP 2FA enabled */
+  twoFactorEmailUser: string;
+  /** Email of a user with TOTP 2FA enabled */
+  twoFactorTotpUser: string;
+  /** Plaintext TOTP secret (base32) for generating valid codes in tests */
+  totpSecret: string;
+  /** Plaintext recovery codes for the TOTP user */
+  recoveryCodes: string[];
+
+  // ── 2FA TOTP setup tenant (org requires TOTP, user not enrolled) ───
+
+  /** Org slug of the TOTP-setup tenant (org has required_totp policy) */
+  twoFaSetupOrgSlug: string;
+  /** Client ID of the TOTP-setup tenant */
+  twoFaSetupClientId: string;
+  /** Email of the user who needs to enroll in TOTP */
+  twoFaSetupUserEmail: string;
+  /** Password of the TOTP-setup user */
+  twoFaSetupUserPassword: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +194,18 @@ export const test = base.extend<{
       // Phase 2: Additional orgs for tenant isolation tests
       suspendedOrgSlug: process.env.UI_TEST_SUSPENDED_ORG_SLUG!,
       archivedOrgSlug: process.env.UI_TEST_ARCHIVED_ORG_SLUG!,
+
+      // 2FA test data — seeded users with 2FA enabled
+      twoFactorEmailUser: process.env.UI_TEST_2FA_EMAIL_USER!,
+      twoFactorTotpUser: process.env.UI_TEST_2FA_TOTP_USER!,
+      totpSecret: process.env.UI_TEST_TOTP_SECRET!,
+      recoveryCodes: JSON.parse(process.env.UI_TEST_RECOVERY_CODES || '[]') as string[],
+
+      // 2FA TOTP setup tenant — org requires TOTP, user not enrolled
+      twoFaSetupOrgSlug: process.env.UI_TEST_2FA_SETUP_ORG_SLUG!,
+      twoFaSetupClientId: process.env.UI_TEST_2FA_SETUP_CLIENT_ID!,
+      twoFaSetupUserEmail: process.env.UI_TEST_2FA_SETUP_USER_EMAIL!,
+      twoFaSetupUserPassword: process.env.UI_TEST_2FA_SETUP_USER_PASSWORD!,
     });
   },
 

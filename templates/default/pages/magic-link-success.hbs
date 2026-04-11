@@ -1,0 +1,15 @@
+{{!-- Magic link success: "You're signed in" (cross-browser flow) --}}
+{{!--
+  Shown when a magic link is opened in a different browser than the one
+  that started the OIDC authorization flow. The user IS authenticated,
+  but the OIDC flow can't be completed in this browser.
+
+  Security: This page is ONLY rendered when a valid _ml_session cookie
+  was present and consumed. The session is single-use (Redis key deleted),
+  so this page cannot be shown by URL crafting or replay.
+--}}
+<div class="text-center">
+  <h1>{{t "magic-link.success_title"}}</h1>
+  <p class="text-muted mb-4">{{t "magic-link.success_message"}}</p>
+  <p class="text-muted">{{t "magic-link.success_hint"}}</p>
+</div>

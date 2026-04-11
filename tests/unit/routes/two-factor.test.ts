@@ -67,6 +67,13 @@ vi.mock('../../../src/lib/logger.js', () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// Mock resolveOrganizationForInteraction — tests set ctx.state.organization
+// directly in createMockCtx, so we just need a no-op to skip the real
+// client_id → organization lookup chain.
+vi.mock('../../../src/routes/interactions.js', () => ({
+  resolveOrganizationForInteraction: vi.fn().mockResolvedValue(undefined),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
@@ -88,6 +95,7 @@ function createMockProvider(pendingTwoFactor: unknown = null) {
   return {
     interactionDetails: vi.fn().mockResolvedValue({
       uid: 'interaction-uid-1',
+      params: { client_id: 'client-1' },
       result: pendingTwoFactor ? { twoFactor: pendingTwoFactor } : {},
     }),
     interactionFinished: vi.fn().mockResolvedValue(undefined),

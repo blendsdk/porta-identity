@@ -3,7 +3,10 @@
  *
  * Handles the callback when a user clicks the magic link in their email.
  * Verifies the token, marks the user's email as verified, records the login,
- * and resumes the OIDC interaction flow.
+ * and creates a short-lived `_ml_session` in Redis. Then redirects to the
+ * interaction login page where the session is detected and either:
+ *   - Same browser: OIDC flow completes seamlessly via interactionFinished()
+ *   - Different browser: success page is shown ("You're signed in")
  *
  * Route structure:
  *   GET /:orgSlug/auth/magic-link/:token → verifyMagicLink
@@ -15,12 +18,12 @@
  *   - Token is hashed (SHA-256) before DB lookup — plaintext never stored
  *   - Token is single-use (marked as used after verification)
  *   - Expired/used tokens show a generic error page
+ *   - `_ml_session` is HttpOnly, 5-min TTL, single-use (Redis-backed)
  *   - Audit logging for all magic link events
  */
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
-import type Provider from 'oidc-provider';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { hashToken } from '../auth/tokens.js';
 import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
@@ -29,6 +32,7 @@ import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { generateCsrfToken } from '../auth/csrf.js';
 import { getUserById, recordLogin, markEmailVerified } from '../users/service.js';
+import { createMagicLinkSession } from '../auth/magic-link-session.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -73,13 +77,12 @@ function buildBrandingFromOrg(org: Organization) {
  * Create the magic link auth router.
  *
  * Handles magic link token verification at /:orgSlug/auth/magic-link/:token.
- * Requires a Provider instance to resume the OIDC interaction after
- * successful magic link authentication.
+ * No longer requires a Provider instance — authentication is completed via
+ * the `_ml_session` cookie and the interaction login handler.
  *
- * @param provider - node-oidc-provider instance
  * @returns Koa router with magic link routes
  */
-export function createMagicLinkRouter(provider: Provider): Router {
+export function createMagicLinkRouter(): Router {
   const router = new Router();
 
   // Tenant resolver — resolves orgSlug to organization and sets ctx.state.organization.
@@ -89,7 +92,7 @@ export function createMagicLinkRouter(provider: Provider): Router {
 
   // GET /:orgSlug/auth/magic-link/:token — Verify magic link
   router.get('/:orgSlug/auth/magic-link/:token', resolve, async (ctx) => {
-    await verifyMagicLink(ctx as AuthContext, provider);
+    await verifyMagicLink(ctx as AuthContext);
   });
 
   return router;
@@ -100,7 +103,7 @@ export function createMagicLinkRouter(provider: Provider): Router {
 // ---------------------------------------------------------------------------
 
 /**
- * Verify a magic link token and complete the authentication flow.
+ * Verify a magic link token and set up the `_ml_session` for flow completion.
  *
  * 1. Hashes the token from URL params for DB lookup
  * 2. Finds the valid (unused, non-expired) token record
@@ -110,12 +113,14 @@ export function createMagicLinkRouter(provider: Provider): Router {
  *    b. Marks the user's email as verified
  *    c. Records the login (increments login count)
  *    d. Writes audit log for magic link login
- *    e. Resumes the OIDC flow via provider.interactionFinished()
+ *    e. Creates `_ml_session` in Redis (5-min TTL, single-use)
+ *    f. Redirects to `/interaction/{uid}` where the login handler
+ *       detects the session and completes the OIDC flow (same browser)
+ *       or shows a success page (different browser)
  *
  * @param ctx - Koa context with organization state
- * @param provider - OIDC provider instance
  */
-async function verifyMagicLink(ctx: AuthContext, provider: Provider): Promise<void> {
+async function verifyMagicLink(ctx: AuthContext): Promise<void> {
   const org = ctx.state.organization;
   const tokenPlaintext = ctx.params.token;
   const interactionUid = (ctx.query.interaction as string) ?? '';
@@ -185,28 +190,22 @@ async function verifyMagicLink(ctx: AuthContext, provider: Provider): Promise<vo
       ipAddress: ctx.ip,
     });
 
-    // Step 8: Resume OIDC flow if interaction UID is provided
+    // Step 8: Create _ml_session and redirect to interaction login page
+    // The login handler will detect the session and either:
+    //   - Complete the OIDC flow (same browser — interaction cookies present)
+    //   - Show a success page (different browser — no interaction cookies)
     if (interactionUid) {
-      try {
-        const result = {
-          login: { accountId: user.id },
-        };
-
-        await provider.interactionFinished(ctx.req, ctx.res, result, {
-          mergeWithLastSubmission: false,
-        });
-        return;
-      } catch (interactionError) {
-        // Interaction may have expired — log and show success page instead
-        logger.warn(
-          { error: interactionError, uid: interactionUid },
-          'Failed to resume OIDC interaction after magic link — interaction may have expired',
-        );
-      }
+      await createMagicLinkSession(ctx, {
+        userId: user.id,
+        interactionUid,
+        organizationId: org.id,
+      });
+      ctx.redirect(`/interaction/${interactionUid}`);
+      return;
     }
 
-    // If no interaction UID or interaction expired, redirect to login
-    // with a success flash message
+    // If no interaction UID, redirect to login with a success flash message
+    // (magic link opened without an OIDC flow in progress)
     ctx.redirect(`/${org.slug}/auth/forgot-password?flash=magic_link_success`);
   } catch (error) {
     logger.error({ error }, 'Failed to verify magic link');

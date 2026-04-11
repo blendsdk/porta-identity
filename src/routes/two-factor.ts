@@ -40,6 +40,7 @@ import {
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
+import { resolveOrganizationForInteraction } from './interactions.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,6 +218,12 @@ export function createTwoFactorRouter(provider: Provider): Router {
 async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise<void> {
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id.
+    // 2FA routes don't go through the tenant resolver middleware,
+    // so we resolve the org from the client → organization chain.
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+
     const pending = getPendingTwoFactor(interaction);
 
     if (!pending) {
@@ -265,7 +272,6 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
  * @param provider - OIDC provider instance
  */
 async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const code = (body.code ?? '').trim();
   const codeType = body.codeType ?? 'otp'; // 'otp', 'totp', or 'recovery'
@@ -274,6 +280,12 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id.
+    // 2FA routes don't go through the tenant resolver middleware.
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
+
     const pending = getPendingTwoFactor(interaction);
 
     if (!pending) {
@@ -378,10 +390,14 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
  * @param provider - OIDC provider instance
  */
 async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
-
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id.
+    // 2FA routes don't go through the tenant resolver middleware.
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
+
     const pending = getPendingTwoFactor(interaction);
 
     if (!pending || pending.method !== 'email') {
@@ -446,6 +462,11 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
 async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Promise<void> {
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id.
+    // 2FA routes don't go through the tenant resolver middleware.
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+
     const pending = getPendingTwoFactor(interaction);
 
     if (!pending) {
@@ -496,7 +517,6 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
  * @param provider - OIDC provider instance
  */
 async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Promise<void> {
-  const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const code = (body.code ?? '').trim();
   const submittedCsrf = body._csrf ?? '';
@@ -506,6 +526,12 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
+
+    // Resolve organization from the interaction's client_id.
+    // 2FA routes don't go through the tenant resolver middleware.
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    const org = ctx.state.organization;
+
     const pending = getPendingTwoFactor(interaction);
 
     if (!pending) {

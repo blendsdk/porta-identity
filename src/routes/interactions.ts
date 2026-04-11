@@ -51,6 +51,10 @@ import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
+import {
+  hasMagicLinkSession,
+  consumeMagicLinkSession,
+} from '../auth/magic-link-session.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,11 +146,14 @@ async function renderAndRespond(
  * This helper resolves the org by looking up the client → organization chain
  * from the interaction's `client_id` parameter, and sets `ctx.state.organization`.
  *
+ * Also used by two-factor routes which share the same `/interaction` prefix
+ * and likewise don't go through the tenant resolver middleware.
+ *
  * @param ctx - Koa context to populate with organization
  * @param clientId - OIDC client_id from the interaction params
  * @throws Error if client or organization cannot be found
  */
-async function resolveOrganizationForInteraction(
+export async function resolveOrganizationForInteraction(
   ctx: InteractionContext,
   clientId: string,
 ): Promise<void> {
@@ -279,6 +286,12 @@ export function createInteractionRouter(provider: Provider): Router {
 /**
  * Show the login page for an OIDC interaction.
  *
+ * Checks for a `_ml_session` cookie first (set by the magic link handler).
+ * If present, consumes the session and either:
+ *   - Completes the OIDC flow via interactionFinished() (same browser)
+ *   - Shows a "You're signed in" success page (different browser)
+ *
+ * If no magic link session, falls through to the normal login flow:
  * 1. Loads the interaction details from the provider
  * 2. If the prompt is "consent", redirects to the consent page
  * 3. Resolves the locale from OIDC params, Accept-Language, and org default
@@ -289,6 +302,49 @@ export function createInteractionRouter(provider: Provider): Router {
  * @param provider - OIDC provider instance
  */
 async function showLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
+  // -----------------------------------------------------------------------
+  // Magic link session detection — handles cross-browser magic link flow
+  // -----------------------------------------------------------------------
+  if (hasMagicLinkSession(ctx)) {
+    const session = await consumeMagicLinkSession(ctx);
+
+    if (session) {
+      // Resolve organization from the session data for branding
+      const org = await getOrganizationById(session.organizationId);
+
+      // Try to complete the OIDC flow (same browser — interaction cookies present)
+      try {
+        const result = {
+          login: { accountId: session.userId },
+        };
+
+        await provider.interactionFinished(ctx.req, ctx.res, result, {
+          mergeWithLastSubmission: false,
+        });
+        return; // Success! Browser redirected to callback with code
+      } catch {
+        // Different browser — interaction cookies not present, or interaction expired.
+        // Show the magic link success page instead.
+        logger.info(
+          { uid: session.interactionUid, userId: session.userId },
+          'Magic link: interaction cookies not present — showing success page (cross-browser)',
+        );
+
+        if (org) {
+          await renderMagicLinkSuccessPage(ctx, org);
+        } else {
+          // Fallback: org not found (shouldn't happen, but be safe)
+          await renderErrorPage(ctx, 'errors.generic');
+        }
+        return;
+      }
+    }
+    // Invalid/expired session — fall through to normal login
+  }
+
+  // -----------------------------------------------------------------------
+  // Normal login flow
+  // -----------------------------------------------------------------------
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
     const { prompt, params } = interaction;
@@ -343,6 +399,43 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     logger.error({ error, uid: ctx.params.uid }, 'Failed to show login page');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
+}
+
+/**
+ * Render the magic link success page — "You're signed in".
+ *
+ * Shown when a magic link is opened in a different browser than the one
+ * that started the OIDC authorization flow. The OIDC flow can't be
+ * completed (no interaction cookies), but the user IS authenticated.
+ *
+ * Security guard: this function is ONLY called when a valid `_ml_session`
+ * was present and successfully consumed. The `_ml_session` is single-use
+ * (Redis key deleted), so this page cannot be shown twice or by URL crafting.
+ *
+ * @param ctx - Koa context
+ * @param org - Organization for branding
+ */
+async function renderMagicLinkSuccessPage(
+  ctx: InteractionContext,
+  org: Organization,
+): Promise<void> {
+  const locale = await resolveLocale(
+    undefined,
+    ctx.get('Accept-Language') || undefined,
+    org.defaultLocale,
+  );
+  const t = getTranslationFunction(locale, org.slug);
+  const csrfToken = generateCsrfToken();
+
+  const context: TemplateContext = {
+    branding: buildBrandingFromOrg(org),
+    locale,
+    t,
+    csrfToken,
+    orgSlug: org.slug,
+  };
+
+  await renderAndRespond(ctx, 'magic-link-success', context);
 }
 
 /**

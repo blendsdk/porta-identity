@@ -136,6 +136,9 @@ export interface DbHelpers {
 
   /** Get organization ID by slug */
   getOrgIdBySlug(slug: string): Promise<string>;
+
+  /** Expire all active OTP codes (for testing expired-code error path) */
+  expireAllOtpCodes(): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -433,6 +436,20 @@ async function getOrgIdBySlug(slug: string): Promise<string> {
   return result.rows[0].id;
 }
 
+/**
+ * Expire all active OTP codes in the two_factor_otp_codes table.
+ *
+ * Sets expires_at to 1 hour in the past for all unused codes, making
+ * them appear expired to the verification logic. Used to test the
+ * "expired OTP code" error path in 2FA flows.
+ */
+async function expireAllOtpCodes(): Promise<void> {
+  const db = getTestPool();
+  await db.query(
+    `UPDATE two_factor_otp_codes SET expires_at = NOW() - INTERVAL '1 hour' WHERE used_at IS NULL`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Fixture Factory
 // ---------------------------------------------------------------------------
@@ -458,5 +475,6 @@ export function createDbHelpers(): DbHelpers {
     isEmailVerified,
     getUserPasswordHash,
     getOrgIdBySlug,
+    expireAllOtpCodes,
   };
 }

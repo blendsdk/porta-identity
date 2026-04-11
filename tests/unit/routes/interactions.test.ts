@@ -95,6 +95,11 @@ vi.mock('../../../src/config/index.js', () => ({
   },
 }));
 
+vi.mock('../../../src/auth/magic-link-session.js', () => ({
+  hasMagicLinkSession: vi.fn().mockReturnValue(false),
+  consumeMagicLinkSession: vi.fn().mockResolvedValue(null),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------

@@ -160,12 +160,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Auth routes — magic link, password reset, invitation
   // These are org-scoped via /:orgSlug/auth/* and use tenant resolution.
   // Mounted before the OIDC catch-all to prevent it from swallowing auth paths.
-  if (oidcProvider) {
-    // Magic link needs the provider to resume OIDC interactions
-    const magicLinkRouter = createMagicLinkRouter(oidcProvider);
-    app.use(magicLinkRouter.routes());
-    app.use(magicLinkRouter.allowedMethods());
-  }
+  // Magic link no longer needs the provider — authentication is completed via
+  // the _ml_session cookie and the interaction login handler.
+  const magicLinkRouter = createMagicLinkRouter();
+  app.use(magicLinkRouter.routes());
+  app.use(magicLinkRouter.allowedMethods());
 
   // Password reset and invitation routes don't need the provider
   const passwordResetRouter = createPasswordResetRouter();

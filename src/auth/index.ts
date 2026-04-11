@@ -63,3 +63,12 @@ export { initI18n, resolveLocale, getTranslationFunction, registerHandlebarsI18n
 // Template engine
 export { initTemplateEngine, renderPage } from './template-engine.js';
 export type { TemplateContext } from './template-engine.js';
+
+// Magic link session (cross-browser flow)
+export {
+  createMagicLinkSession,
+  consumeMagicLinkSession,
+  hasMagicLinkSession,
+  clearMagicLinkSessionCookie,
+} from './magic-link-session.js';
+export type { MagicLinkSessionData } from './magic-link-session.js';

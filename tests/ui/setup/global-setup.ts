@@ -34,6 +34,17 @@ import {
 } from '../../helpers/constants.js';
 
 // ---------------------------------------------------------------------------
+// 2FA test constants — encryption key matching the server's dev/test fallback
+// ---------------------------------------------------------------------------
+
+/**
+ * Dev/test encryption key — must match DEV_ENCRYPTION_KEY in src/two-factor/service.ts.
+ * The server falls back to this when TWO_FACTOR_ENCRYPTION_KEY is not set.
+ * We use the same key here to encrypt TOTP secrets during seeding.
+ */
+const TEST_2FA_ENCRYPTION_KEY = 'a'.repeat(64);
+
+// ---------------------------------------------------------------------------
 // Phase 2 seed data — additional users and orgs for status/error tests
 // ---------------------------------------------------------------------------
 
@@ -250,6 +261,88 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     );
   }
 
+  // ── Step 9d: Seed 2FA-enabled users ─────────────────────────────────
+  // Create users with email OTP and TOTP 2FA enabled. These are seeded
+  // here (in the server process) so the server's in-memory cache sees the
+  // correct state — unlike the previous approach of updating from Playwright
+  // workers which ran in a separate process.
+  const { encryptTotpSecret } = await import('../../../src/two-factor/crypto.js');
+  const { generateTotpSecret } = await import('../../../src/two-factor/totp.js');
+  const { generateRecoveryCodes, hashRecoveryCode } = await import('../../../src/two-factor/recovery.js');
+
+  // 1. Email OTP user — has 2FA enabled with 'email' method
+  const { user: twoFaEmailUser } = await createTestUserWithPassword(
+    tenant.org.id,
+    DEFAULT_TEST_PASSWORD,
+    {
+      email: 'ui-test-2fa-email@test.local',
+      givenName: 'TwoFA',
+      familyName: 'Email',
+      emailVerified: true,
+    },
+  );
+  await pool.query(
+    `UPDATE users SET two_factor_enabled = true, two_factor_method = 'email' WHERE id = $1`,
+    [twoFaEmailUser.id],
+  );
+
+  // 2. TOTP user — has 2FA enabled with 'totp' method + encrypted secret + recovery codes
+  const { user: twoFaTotpUser } = await createTestUserWithPassword(
+    tenant.org.id,
+    DEFAULT_TEST_PASSWORD,
+    {
+      email: 'ui-test-2fa-totp@test.local',
+      givenName: 'TwoFA',
+      familyName: 'TOTP',
+      emailVerified: true,
+    },
+  );
+
+  // Generate TOTP secret, encrypt it, and store in user_totp table
+  const totpSecret = generateTotpSecret();
+  const { encrypted, iv, tag } = encryptTotpSecret(totpSecret, TEST_2FA_ENCRYPTION_KEY);
+  await pool.query(
+    `INSERT INTO user_totp (id, user_id, encrypted_secret, encryption_iv, encryption_tag, verified)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, true)`,
+    [twoFaTotpUser.id, encrypted, iv, tag],
+  );
+  await pool.query(
+    `UPDATE users SET two_factor_enabled = true, two_factor_method = 'totp' WHERE id = $1`,
+    [twoFaTotpUser.id],
+  );
+
+  // 3. Generate and store recovery codes for the TOTP user
+  const recoveryCodes = generateRecoveryCodes(10);
+  for (const code of recoveryCodes) {
+    const codeHash = await hashRecoveryCode(code);
+    await pool.query(
+      `INSERT INTO two_factor_recovery_codes (id, user_id, code_hash)
+       VALUES (gen_random_uuid(), $1, $2)`,
+      [twoFaTotpUser.id, codeHash],
+    );
+  }
+
+  // 4. TOTP setup tenant — org requires TOTP, user has NOT enrolled yet.
+  //    When this user logs in, requiresTwoFactor() returns true and the
+  //    server redirects to /two-factor/setup for TOTP enrollment.
+  const twoFaSetupTenant = await createFullTestTenant({
+    orgOverrides: { name: '2FA Setup Test Org' },
+    clientOverrides: {
+      clientName: '2FA Setup Client',
+      redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+    },
+    userOverrides: {
+      email: 'ui-test-2fa-setup@test.local',
+      givenName: 'TwoFA',
+      familyName: 'Setup',
+    },
+  });
+  // Set the org's 2FA policy to 'required_totp' — forces TOTP enrollment on login
+  await pool.query(
+    `UPDATE organizations SET two_factor_policy = 'required_totp' WHERE id = $1`,
+    [twoFaSetupTenant.org.id],
+  );
+
   // ── Step 10: Export test data as environment variables ──────────────
   // Playwright fixtures read these to provide testData to each spec file
   const baseUrl = `http://localhost:${UI_TEST_PORT}`;
@@ -282,6 +375,19 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // Phase 2: Additional org slugs for tenant isolation tests
   process.env.UI_TEST_SUSPENDED_ORG_SLUG = 'suspended-org';
   process.env.UI_TEST_ARCHIVED_ORG_SLUG = 'archived-org';
+
+  // 2FA test data — seeded users with 2FA enabled
+  process.env.UI_TEST_2FA_EMAIL_USER = 'ui-test-2fa-email@test.local';
+  process.env.UI_TEST_2FA_TOTP_USER = 'ui-test-2fa-totp@test.local';
+  process.env.UI_TEST_TOTP_SECRET = totpSecret;
+  process.env.UI_TEST_RECOVERY_CODES = JSON.stringify(recoveryCodes);
+
+  // 2FA TOTP setup tenant — org requires TOTP, user has NOT enrolled yet
+  // When this user logs in, the server redirects to /two-factor/setup
+  process.env.UI_TEST_2FA_SETUP_ORG_SLUG = twoFaSetupTenant.org.slug;
+  process.env.UI_TEST_2FA_SETUP_CLIENT_ID = twoFaSetupTenant.client.clientId;
+  process.env.UI_TEST_2FA_SETUP_USER_EMAIL = twoFaSetupTenant.user.email;
+  process.env.UI_TEST_2FA_SETUP_USER_PASSWORD = twoFaSetupTenant.password ?? DEFAULT_TEST_PASSWORD;
 
   // Store server reference for teardown — Playwright runs setup/teardown
   // in the same process, so module-level state persists
