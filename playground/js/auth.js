@@ -66,6 +66,9 @@ export async function login() {
   }
   try {
     logEvent('info', 'Starting OIDC login redirect...');
+    // Store current auth settings so callback.html can reconstruct the UserManager
+    sessionStorage.setItem('playground_authority', userManager.settings.authority);
+    sessionStorage.setItem('playground_client_id', userManager.settings.client_id);
     await userManager.signinRedirect();
   } catch (err) {
     logEvent('error', `Login failed: ${err.message}`);
@@ -78,9 +81,13 @@ export async function login() {
  */
 export async function handleCallback() {
   try {
+    // Restore the authority and client_id that were used for the login redirect
+    const authority = sessionStorage.getItem('playground_authority') || 'http://localhost:3000';
+    const clientId = sessionStorage.getItem('playground_client_id') || 'placeholder';
+
     const tempManager = new UserManager({
-      authority: 'http://localhost:3000', // Placeholder — signinCallback reads from state
-      client_id: 'placeholder',
+      authority,
+      client_id: clientId,
       redirect_uri: 'http://localhost:4000/callback.html',
       response_type: 'code',
       scope: 'openid profile email',
