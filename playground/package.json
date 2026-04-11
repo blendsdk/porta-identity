@@ -1,0 +1,12 @@
+{
+  "name": "porta-playground",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive OIDC playground for testing Porta auth flows",
+  "scripts": {
+    "start": "npx sirv-cli . --port 4000 --single --no-clear"
+  },
+  "devDependencies": {
+    "sirv-cli": "^3.0.0"
+  }
+}

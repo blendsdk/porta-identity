@@ -7,3 +7,7 @@ coverage/
 scripts/tmp-*
 test-results/
 playwright-report/
+
+# Playground generated artifacts
+playground/config.generated.js
+playground/node_modules/

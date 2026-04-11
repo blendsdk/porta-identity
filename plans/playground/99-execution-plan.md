@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-11 17:44
-> **Progress**: 8/24 tasks (33%)
+> **Progress**: 13/24 tasks (54%)
 
 ## Overview
 
@@ -247,11 +247,11 @@ seed data, and one-command startup.
 - [x] 1.2.4 Implement config.generated.js output and summary table ✅ (completed: 2026-04-11 17:42)
 
 ### Phase 2: Startup Infrastructure
-- [ ] 2.1.1 Create run-playground.sh (Docker, seed, Porta, sirv)
-- [ ] 2.1.2 Create run-playground-stop.sh and run-playground-reset.sh
-- [ ] 2.1.3 Add playground scripts to package.json
-- [ ] 2.1.4 Create playground/package.json with sirv-cli dependency
-- [ ] 2.1.5 Update .gitignore for playground artifacts
+- [x] 2.1.1 Create run-playground.sh (Docker, seed, Porta, sirv) ✅ (completed: 2026-04-11 17:47)
+- [x] 2.1.2 Create run-playground-stop.sh and run-playground-reset.sh ✅ (completed: 2026-04-11 17:47)
+- [x] 2.1.3 Add playground scripts to package.json ✅ (completed: 2026-04-11 17:47)
+- [x] 2.1.4 Create playground/package.json with sirv-cli dependency ✅ (completed: 2026-04-11 17:47)
+- [x] 2.1.5 Update .gitignore for playground artifacts ✅ (completed: 2026-04-11 17:47)
 
 ### Phase 3: Playground App Skeleton
 - [ ] 3.1.1 Create index.html with layout structure
