@@ -480,6 +480,9 @@ export async function findForOidc(
     'urn:porta:allowed_origins': client.allowedOrigins,
     // Client type for internal use
     'urn:porta:client_type': client.clientType,
+    // Organization ID — used by auto-consent logic in showConsent() to
+    // identify first-party clients (same org → skip consent screen)
+    organizationId: client.organizationId,
   };
 
   // For confidential clients, include the SHA-256 hash as client_secret.

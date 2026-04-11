@@ -409,9 +409,13 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // so we resolve the org from the client → organization chain.
     await resolveOrganizationForInteraction(ctx, params.client_id as string);
 
-    // If the prompt is consent, redirect to the consent page
+    // If the prompt is consent, handle it directly (no redirect).
+    // Redirecting to /consent as a separate request can lose the interaction
+    // cookie in some flows (e.g., pre-auth magic link), because the cookie
+    // was set by the provider on the redirect chain and a Koa redirect
+    // doesn't carry it forward reliably.
     if (prompt.name === 'consent') {
-      ctx.redirect(`/interaction/${interaction.uid}/consent`);
+      await showConsent(ctx, provider);
       return;
     }
 

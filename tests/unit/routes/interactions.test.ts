@@ -310,10 +310,20 @@ describe('interaction routes', () => {
       expect(ctx.body).toBe('<html>rendered</html>');
     });
 
-    it('should redirect to consent page when prompt is consent', async () => {
+    it('should handle consent prompt by calling showConsent directly', async () => {
       const provider = createMockProvider();
       provider.interactionDetails.mockResolvedValue(
-        createMockInteraction({ prompt: { name: 'consent', reasons: [] } }),
+        createMockInteraction({
+          prompt: {
+            name: 'consent',
+            reasons: [],
+            details: {
+              missingOIDCScope: new Set(['openid', 'profile', 'email']),
+              missingOIDCClaims: new Set<string>(),
+              missingResourceScopes: {},
+            },
+          },
+        }),
       );
 
       const router = createInteractionRouter(provider as never);
@@ -322,9 +332,14 @@ describe('interaction routes', () => {
 
       await exec(layer!, ctx);
 
-      expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-123/consent');
-      // Should NOT render a page
-      expect(templateEngine.renderPage).not.toHaveBeenCalled();
+      // showLogin detects consent and calls showConsent() directly (no redirect).
+      // Since the mock client has organizationId: undefined (third-party),
+      // the consent template is rendered instead of auto-consent.
+      expect(ctx.redirect).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'consent',
+        expect.objectContaining({ orgSlug: 'test-org' }),
+      );
     });
 
     it('should pre-fill email from login_hint parameter', async () => {

@@ -154,5 +154,16 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // CORS handler — checks client's allowed_origins
     clientBasedCORS,
+
+    // Extra client metadata properties — tell the provider to preserve
+    // these custom fields from the adapter's findClient response.
+    // Without this, node-oidc-provider strips all unknown properties.
+    extraClientMetadata: {
+      properties: [
+        'organizationId',
+        'urn:porta:allowed_origins',
+        'urn:porta:client_type',
+      ],
+    },
   };
 }
