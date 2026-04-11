@@ -158,6 +158,20 @@
 - **Fix:** Added all 7 missing translation keys to their respective locale files: `errors.json` (5 keys), `login.json` (1 key), `forgot-password.json` (1 key). Also verified all 82 template `{{t}}` keys resolve correctly.
 - **Status:** ✅ Fixed
 
+### BUG-13: Magic link callback fails with "authority mismatch" in new tab
+- **Scenario:** No 2FA org — magic link login flow via MailHog
+- **Steps to reproduce:**
+  1. Select "Magic Link" scenario, click Login
+  2. Request magic link on login page
+  3. Open MailHog, click the magic link (opens in new tab)
+  4. Porta verifies token, redirects to callback
+- **Expected:** Callback page exchanges code for tokens successfully
+- **Actual:** Shows "Login failed: authority mismatch on settings vs. signin state"
+- **Severity:** critical
+- **Root cause:** The playground used `sessionStorage` for both OIDC state (PKCE code_verifier, nonce, authority) and authority/clientId settings. `sessionStorage` is per-tab, so when the magic link opens in a new tab from MailHog, the callback page can't find the matching OIDC state or authority.
+- **Fix:** Switched playground's `oidc-client-ts` to use `localStorage` for `userStore`, `stateStore`, and authority/clientId persistence. `localStorage` is shared across all tabs at the same origin, so cross-tab magic link flows work correctly.
+- **Status:** ✅ Fixed
+
 <!-- Template for new bugs:
 
 ### BUG-XX: [Short title]

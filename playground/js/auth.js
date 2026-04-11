@@ -21,7 +21,11 @@ export function initAuth(settings) {
     post_logout_redirect_uri: 'http://localhost:4000/',
     response_type: 'code',
     scope: 'openid profile email',
-    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+    // Use localStorage for both user and state storage so that cross-tab flows
+    // (e.g., magic link opened from MailHog in a new tab) can complete the
+    // OIDC callback with access to the original PKCE state and authority.
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
+    stateStore: new WebStorageStateStore({ store: window.localStorage }),
     // Disable automatic silent renew to keep playground simple
     automaticSilentRenew: false,
   };
@@ -66,9 +70,11 @@ export async function login() {
   }
   try {
     logEvent('info', 'Starting OIDC login redirect...');
-    // Store current auth settings so callback.html can reconstruct the UserManager
-    sessionStorage.setItem('playground_authority', userManager.settings.authority);
-    sessionStorage.setItem('playground_client_id', userManager.settings.client_id);
+    // Store current auth settings so callback.html can reconstruct the UserManager.
+    // Uses localStorage (not sessionStorage) so the settings survive cross-tab
+    // navigation — e.g., when a magic link opens in a new tab from MailHog.
+    localStorage.setItem('playground_authority', userManager.settings.authority);
+    localStorage.setItem('playground_client_id', userManager.settings.client_id);
     await userManager.signinRedirect();
   } catch (err) {
     logEvent('error', `Login failed: ${err.message}`);
@@ -81,9 +87,11 @@ export async function login() {
  */
 export async function handleCallback() {
   try {
-    // Restore the authority and client_id that were used for the login redirect
-    const authority = sessionStorage.getItem('playground_authority') || 'http://localhost:3000';
-    const clientId = sessionStorage.getItem('playground_client_id') || 'placeholder';
+    // Restore the authority and client_id that were used for the login redirect.
+    // Reads from localStorage (shared across tabs) so magic link flows work
+    // even when the callback opens in a different tab than the original login.
+    const authority = localStorage.getItem('playground_authority') || 'http://localhost:3000';
+    const clientId = localStorage.getItem('playground_client_id') || 'placeholder';
 
     const tempManager = new UserManager({
       authority,
@@ -91,7 +99,9 @@ export async function handleCallback() {
       redirect_uri: 'http://localhost:4000/callback.html',
       response_type: 'code',
       scope: 'openid profile email',
-      userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+      // Must match the storage used during signinRedirect (localStorage)
+      userStore: new WebStorageStateStore({ store: window.localStorage }),
+      stateStore: new WebStorageStateStore({ store: window.localStorage }),
     });
 
     const user = await tempManager.signinRedirectCallback();
