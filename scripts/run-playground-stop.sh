@@ -10,13 +10,17 @@
 
 echo "🛑 Stopping playground..."
 
+# Kill BFF playground on port 4001
+fuser -k 4001/tcp 2>/dev/null || true
+echo "  ✅ BFF playground stopped"
+
+# Kill SPA playground server on port 4000
+fuser -k 4000/tcp 2>/dev/null || true
+echo "  ✅ SPA playground stopped"
+
 # Kill Porta server on port 3000
 fuser -k 3000/tcp 2>/dev/null || true
 echo "  ✅ Porta stopped"
-
-# Kill playground server on port 4000
-fuser -k 4000/tcp 2>/dev/null || true
-echo "  ✅ Playground stopped"
 
 # Optionally stop Docker services
 if [ "$1" = "--docker" ]; then

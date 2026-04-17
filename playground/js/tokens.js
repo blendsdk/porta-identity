@@ -54,6 +54,60 @@ export function clearTokenPanels() {
 }
 
 // ---------------------------------------------------------------------------
+// Authorization claims renderer
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract and render authorization claims (roles, permissions, profile)
+ * from a token payload. Returns an HTML string for the authorization section,
+ * or an empty string if no authorization claims are present.
+ *
+ * @param {object} payload - Decoded JWT payload
+ * @returns {string} HTML string for the authorization claims section
+ */
+function renderAuthorizationClaims(payload) {
+  if (!payload) return '';
+
+  const roles = payload.roles;
+  const permissions = payload.permissions;
+  const customClaimKeys = ['department', 'employee_id', 'cost_center', 'job_title'];
+  const customClaims = customClaimKeys
+    .filter(key => payload[key] != null)
+    .map(key => ({ key, value: payload[key] }));
+
+  // No authorization data — return empty
+  if (!roles?.length && !permissions?.length && !customClaims.length) return '';
+
+  let html = '<div class="authz-claims">';
+  html += '<h4>🔐 Authorization Claims</h4>';
+
+  if (roles?.length) {
+    html += '<div class="claim-row"><span class="claim-label">Roles:</span>';
+    html += roles.map(r => `<span class="role-badge">${r}</span>`).join(' ');
+    html += '</div>';
+  }
+
+  if (permissions?.length) {
+    html += '<div class="claim-row"><span class="claim-label">Permissions:</span>';
+    html += permissions.map(p => `<span class="perm-tag">${p}</span>`).join(' ');
+    html += '</div>';
+  }
+
+  if (customClaims.length) {
+    html += '<div class="claim-row"><span class="claim-label">Profile:</span>';
+    html += '<table class="claim-table">';
+    for (const { key, value } of customClaims) {
+      const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      html += `<tr><td>${label}</td><td>${value}</td></tr>`;
+    }
+    html += '</table></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ---------------------------------------------------------------------------
 // Individual token renderers
 // ---------------------------------------------------------------------------
 
@@ -65,8 +119,11 @@ function renderIdToken(user) {
     return;
   }
   const decoded = decodeJwt(token);
+  // Show authorization claims summary above the raw JSON
+  const authzHtml = renderAuthorizationClaims(decoded?.payload);
   panel.innerHTML = `
     <h3>🆔 ID Token</h3>
+    ${authzHtml}
     <div class="token-section">
       <div class="token-section-label">Header</div>
       <pre>${JSON.stringify(decoded?.header, null, 2)}</pre>
@@ -87,9 +144,11 @@ function renderAccessToken(user) {
   }
   const decoded = decodeJwt(token);
   if (decoded) {
-    // JWT access token — show decoded
+    // JWT access token — show decoded with authorization claims highlight
+    const authzHtml = renderAuthorizationClaims(decoded.payload);
     panel.innerHTML = `
       <h3>🔑 Access Token (JWT)</h3>
+      ${authzHtml}
       <div class="token-section">
         <div class="token-section-label">Header</div>
         <pre>${JSON.stringify(decoded.header, null, 2)}</pre>

@@ -4,9 +4,9 @@
  * Handles the callback when a user clicks the magic link in their email.
  * Verifies the token, marks the user's email as verified, records the login,
  * and creates a short-lived `_ml_session` in Redis. Then redirects to the
- * interaction login page where the session is detected and either:
- *   - Same browser: OIDC flow completes seamlessly via interactionFinished()
- *   - Different browser: success page is shown ("You're signed in")
+ * interaction login page where the session cookie is detected and either:
+ *   - **Same browser**: OIDC flow completes seamlessly via interactionFinished()
+ *   - **Different browser**: success page shown ("return to original browser")
  *
  * Route structure:
  *   GET /:orgSlug/auth/magic-link/:token → verifyMagicLink
@@ -34,14 +34,9 @@ import { generateCsrfToken } from '../auth/csrf.js';
 import { getUserById, recordLogin, markEmailVerified } from '../users/service.js';
 import {
   createMagicLinkSession,
-  createMagicLinkPreAuth,
-  getMagicLinkAuthContext,
-  buildAuthorizationUrl,
-  renderRedirectPage,
 } from '../auth/magic-link-session.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import { config } from '../config/index.js';
 import type { Organization } from '../organizations/types.js';
 
 // ---------------------------------------------------------------------------
@@ -121,9 +116,10 @@ export function createMagicLinkRouter(): Router {
  *    c. Records the login (increments login count)
  *    d. Writes audit log for magic link login
  *    e. Creates `_ml_session` in Redis (5-min TTL, single-use)
- *    f. Redirects to `/interaction/{uid}` where the login handler
- *       detects the session and completes the OIDC flow (same browser)
- *       or shows a success page (different browser)
+ *    f. Redirects to `/interaction/{uid}` where the interaction handler
+ *       detects the session cookie and completes the OIDC flow (same
+ *       browser) or shows a "return to original browser" page (different
+ *       browser)
  *
  * @param ctx - Koa context with organization state
  */
@@ -197,52 +193,12 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
       ipAddress: ctx.ip,
     });
 
-    // Step 8: Complete the OIDC flow
+    // Step 8: Complete the OIDC flow via _ml_session cookie.
     //
-    // Two paths depending on whether auth context is available:
-    //
-    // A) Pre-auth flow (preferred, cross-browser safe):
-    //    Auth context was stored in Redis when the magic link was sent.
-    //    We reconstruct the original authorization URL, set a _ml_preauth
-    //    cookie, and render a redirect page (HTML + JS, not 302, to avoid
-    //    Safari ITP issues). The OIDC provider creates a fresh interaction,
-    //    and showLogin() auto-completes it using the pre-auth cookie.
-    //
-    // B) Legacy flow (backward compat, same-browser only):
-    //    For magic links generated before the pre-auth flow was deployed.
-    //    Creates _ml_session cookie and redirects to /interaction/:uid.
-    //    Only works if opened in the same browser.
+    // Create a magic link session and redirect to the interaction handler.
+    // The interaction handler will detect the session cookie and complete
+    // the OIDC flow (same browser) or show a success page (different browser).
     if (interactionUid) {
-      // Try the pre-auth flow first (auth context stored when link was sent)
-      const authContext = await getMagicLinkAuthContext(interactionUid);
-
-      if (authContext) {
-        // Pre-auth flow: set cookie and redirect to original auth URL
-        await createMagicLinkPreAuth(ctx, {
-          userId: user.id,
-          organizationId: org.id,
-        });
-
-        const authUrl = buildAuthorizationUrl(config.issuerBaseUrl, authContext);
-
-        logger.info(
-          { interactionUid, userId: user.id, clientId: authContext.clientId },
-          'Magic link verified — rendering redirect page to authorization endpoint (pre-auth flow)',
-        );
-
-        // Render HTML page with spinner + JS redirect (not 302)
-        // This ensures the _ml_preauth cookie is set on a 200 response,
-        // avoiding Safari ITP issues with cookies on 302 redirects.
-        renderRedirectPage(ctx, authUrl);
-        return;
-      }
-
-      // Fallback: legacy flow (no auth context — link was sent before upgrade)
-      logger.info(
-        { interactionUid, userId: user.id },
-        'Magic link verified — using legacy session flow (no auth context found)',
-      );
-
       await createMagicLinkSession(ctx, {
         userId: user.id,
         interactionUid,

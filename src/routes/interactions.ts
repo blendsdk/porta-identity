@@ -54,9 +54,6 @@ import type { Organization } from '../organizations/types.js';
 import {
   hasMagicLinkSession,
   consumeMagicLinkSession,
-  hasMagicLinkPreAuth,
-  consumeMagicLinkPreAuth,
-  storeMagicLinkAuthContext,
 } from '../auth/magic-link-session.js';
 
 // ---------------------------------------------------------------------------
@@ -306,59 +303,7 @@ export function createInteractionRouter(provider: Provider): Router {
  */
 async function showLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
   // -----------------------------------------------------------------------
-  // Pre-auth detection — cross-browser magic link flow (preferred path)
-  // -----------------------------------------------------------------------
-  // When a magic link is opened on any browser/device, the magic link handler
-  // creates a `_ml_preauth` cookie and redirects to the authorization endpoint.
-  // The provider creates a new interaction, and we land here. The pre-auth
-  // cookie tells us the user is already authenticated — auto-complete login.
-  if (hasMagicLinkPreAuth(ctx)) {
-    const preAuth = await consumeMagicLinkPreAuth(ctx);
-
-    if (preAuth) {
-      try {
-        logger.info(
-          { uid: ctx.params.uid, userId: preAuth.userId },
-          'Magic link pre-auth detected — auto-completing login',
-        );
-
-        // Record the login (increments login count, updates last_login_at)
-        await recordLogin(preAuth.userId);
-
-        // Audit: magic link login via pre-auth (cross-browser)
-        writeAuditLog({
-          organizationId: preAuth.organizationId,
-          userId: preAuth.userId,
-          eventType: 'user.login.magic_link',
-          eventCategory: 'authentication',
-          description: 'Magic link login completed via pre-auth (cross-browser)',
-          ipAddress: ctx.ip,
-        });
-
-        // Complete the OIDC interaction — the provider issues the code and
-        // redirects to the client's redirect_uri with the original state
-        const result = {
-          login: { accountId: preAuth.userId },
-        };
-
-        await provider.interactionFinished(ctx.req, ctx.res, result, {
-          mergeWithLastSubmission: false,
-        });
-        return;
-      } catch (error) {
-        // This shouldn't fail because the pre-auth flow creates a fresh
-        // interaction in this browser. Log and fall through to normal login.
-        logger.error(
-          { error, uid: ctx.params.uid, userId: preAuth.userId },
-          'Failed to complete pre-auth login — falling through to normal login',
-        );
-      }
-    }
-    // Invalid/expired pre-auth — fall through to normal login
-  }
-
-  // -----------------------------------------------------------------------
-  // Legacy magic link session detection (backward compat, same-browser only)
+  // Magic link session detection
   // -----------------------------------------------------------------------
   if (hasMagicLinkSession(ctx)) {
     const session = await consumeMagicLinkSession(ctx);
@@ -766,22 +711,6 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       // Store token hash in database
       await insertToken('magic_link_tokens', user.id, hash, expiresAt);
 
-      // Store the original OIDC authorization parameters in Redis so the
-      // magic link handler can reconstruct the authorization URL on any
-      // browser/device. This preserves the client's state, PKCE, nonce, etc.
-      const params = interaction.params;
-      await storeMagicLinkAuthContext(interaction.uid, {
-        clientId: params.client_id as string,
-        redirectUri: params.redirect_uri as string,
-        scope: (params.scope as string) ?? 'openid',
-        state: params.state as string | undefined,
-        nonce: params.nonce as string | undefined,
-        codeChallenge: params.code_challenge as string | undefined,
-        codeChallengeMethod: params.code_challenge_method as string | undefined,
-        responseType: (params.response_type as string) ?? 'code',
-        orgSlug: org.slug,
-      });
-
       // Build the magic link URL with the interaction UID for flow resumption
       const magicLinkUrl = `${config.issuerBaseUrl}/${org.slug}/auth/magic-link/${plaintext}?interaction=${interaction.uid}`;
 
@@ -874,6 +803,14 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
           )) {
             grant.addResourceScope(indicator, [...scopes].join(' '));
           }
+        }
+
+        // Explicitly grant offline_access if requested — node-oidc-provider
+        // treats it as a consent signal and may not include it in missingOIDCScope,
+        // but the Grant must include it for a refresh_token to be issued.
+        const requestedScope = (params.scope as string) ?? '';
+        if (requestedScope.includes('offline_access')) {
+          grant.addOIDCScope('offline_access');
         }
 
         const grantId = await grant.save();
@@ -983,6 +920,12 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
         )) {
           grant.addResourceScope(indicator, [...scopes].join(' '));
         }
+      }
+
+      // Explicitly grant offline_access if requested (see showConsent for details)
+      const requestedScope = (interaction.params.scope as string) ?? '';
+      if (requestedScope.includes('offline_access')) {
+        grant.addOIDCScope('offline_access');
       }
 
       const grantId = await grant.save();

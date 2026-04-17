@@ -5,7 +5,8 @@
   "error_rate_limited": "Too many magic link requests. Please try again later.",
   "error_token_expired": "This sign-in link has expired. Please request a new one.",
   "error_token_invalid": "This sign-in link is invalid. Please request a new one.",
-  "success_title": "You're signed in",
-  "success_message": "You have been signed in successfully.",
-  "success_hint": "You can close this tab and return to the application where you started."
+  "success_title": "Email verified",
+  "success_message": "Your sign-in link has been verified successfully.",
+  "success_hint": "Please return to the browser where you started the sign-in and the login will complete automatically.",
+  "success_close_tab": "You can safely close this tab."
 }

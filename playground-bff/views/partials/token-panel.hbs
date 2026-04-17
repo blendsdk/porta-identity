@@ -1,0 +1,26 @@
+<div class="panel token-panel" id="panel-{{panelId}}">
+  <div class="panel-header">
+    <h4>{{title}}</h4>
+    {{#if hasToken}}
+      <span class="badge badge-success">Present</span>
+    {{else}}
+      <span class="badge badge-muted">Empty</span>
+    {{/if}}
+  </div>
+  {{#if hasToken}}
+    <div class="panel-body">
+      {{#if decoded}}
+        <details open>
+          <summary>Payload</summary>
+          {{{json decoded.payload}}}
+        </details>
+        <details>
+          <summary>Header</summary>
+          {{{json decoded.header}}}
+        </details>
+      {{else}}
+        <div class="token-raw">{{tokenValue}}</div>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

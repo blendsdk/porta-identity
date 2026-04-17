@@ -1,0 +1,51 @@
+<div class="welcome-card" style="max-width:900px">
+  <h2>🤖 Machine-to-Machine (M2M) Demo</h2>
+  <p>
+    This page demonstrates the <strong>client_credentials</strong> grant type.
+    No user interaction is needed — the BFF server authenticates directly
+    with Porta using its own client ID and secret.
+  </p>
+
+  <div class="m2m-config info-block">
+    <div class="info-row">
+      <span class="info-label">Client ID:</span>
+      <span class="info-value">{{truncate m2mClientId 24}}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Org:</span>
+      <span class="info-value">{{m2mOrgSlug}}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Grant Type:</span>
+      <span class="info-value">client_credentials</span>
+    </div>
+  </div>
+
+  <div class="m2m-actions">
+    <button class="btn btn-primary" id="btn-m2m-token">Request Token</button>
+    <button class="btn btn-secondary" id="btn-m2m-introspect">Introspect</button>
+    <button class="btn btn-danger" id="btn-m2m-revoke">Revoke</button>
+  </div>
+
+  <div class="panels-grid">
+    <div class="panel result-panel">
+      <div class="panel-header">
+        <h4>M2M Token Response</h4>
+      </div>
+      <div class="panel-body" id="m2m-token-result">
+        <p class="muted">Click "Request Token" to perform client_credentials grant</p>
+      </div>
+    </div>
+
+    <div class="panel result-panel">
+      <div class="panel-header">
+        <h4>Introspection / Revocation</h4>
+      </div>
+      <div class="panel-body" id="m2m-action-result">
+        <p class="muted">Introspect or revoke the M2M token</p>
+      </div>
+    </div>
+  </div>
+
+  {{> event-log}}
+</div>

@@ -1,0 +1,145 @@
+{{#if isAuthenticated}}
+  <div class="auth-status authenticated">
+    <span class="status-dot green"></span>
+    Authenticated as <strong>{{userName}}</strong> via <strong>{{orgName}}</strong>
+    <span class="expires-badge">Expires: {{expiresIn expiresAt}}</span>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" id="btn-userinfo">UserInfo</button>
+    <button class="btn btn-secondary" id="btn-refresh">Refresh Tokens</button>
+    <button class="btn btn-secondary" id="btn-introspect">Introspect</button>
+    <form method="POST" action="/auth/logout" class="inline-form">
+      <button class="btn btn-danger" type="submit">Logout</button>
+    </form>
+  </div>
+
+  {{#if hasAuthzData}}
+    <div class="panel auth-panel">
+      <div class="panel-header">
+        <h4>🔐 Authorization</h4>
+      </div>
+      <div class="panel-body auth-body">
+        {{#if roles.length}}
+          <div class="auth-section">
+            <label>Roles</label>
+            <div class="auth-badges">
+              {{#each roles}}
+                <span class="badge badge-role">{{this}}</span>
+              {{/each}}
+            </div>
+          </div>
+        {{/if}}
+
+        {{#if permissions.length}}
+          <div class="auth-section">
+            <label>Permissions</label>
+            <div class="auth-tags">
+              {{#each permissions}}
+                <span class="tag tag-permission">{{this}}</span>
+              {{/each}}
+            </div>
+          </div>
+        {{/if}}
+
+        <div class="auth-section">
+          <label>Profile Attributes</label>
+          <table class="auth-table">
+            {{#if customClaims.department}}
+              <tr><td class="attr-key">Department</td><td>{{customClaims.department}}</td></tr>
+            {{/if}}
+            {{#if customClaims.employee_id}}
+              <tr><td class="attr-key">Employee ID</td><td>{{customClaims.employee_id}}</td></tr>
+            {{/if}}
+            {{#if customClaims.cost_center}}
+              <tr><td class="attr-key">Cost Center</td><td>{{customClaims.cost_center}}</td></tr>
+            {{/if}}
+            {{#if customClaims.job_title}}
+              <tr><td class="attr-key">Job Title</td><td>{{customClaims.job_title}}</td></tr>
+            {{/if}}
+          </table>
+        </div>
+      </div>
+    </div>
+  {{/if}}
+
+  <div class="panels-grid">
+    {{> token-panel panelId="id-token" title="ID Token" hasToken=hasIdToken decoded=idToken}}
+    {{> token-panel panelId="access-token" title="Access Token" hasToken=hasAccessToken decoded=accessToken}}
+    {{> token-panel panelId="refresh-token" title="Refresh Token" hasToken=hasRefreshToken tokenValue=refreshTokenPreview}}
+  </div>
+
+  <div class="panels-grid">
+    <div class="panel result-panel" id="panel-userinfo">
+      <div class="panel-header">
+        <h4>UserInfo Response</h4>
+      </div>
+      <div class="panel-body" id="userinfo-result">
+        <p class="muted">Click "UserInfo" to fetch claims from Porta</p>
+      </div>
+    </div>
+
+    <div class="panel result-panel" id="panel-introspect">
+      <div class="panel-header">
+        <h4>Introspection Response</h4>
+      </div>
+      <div class="panel-body" id="introspect-result">
+        <p class="muted">Click "Introspect" to check token status</p>
+      </div>
+    </div>
+  </div>
+
+  {{> event-log}}
+
+{{else}}
+  <div class="welcome-card">
+    <h2>🔒 BFF Playground</h2>
+    <p>
+      This playground demonstrates the <strong>Backend-for-Frontend (BFF)</strong> pattern
+      for OIDC authentication. Unlike the SPA playground, tokens are stored
+      <strong>server-side</strong> in Redis sessions. The browser only receives an
+      HttpOnly session cookie.
+    </p>
+
+    <div class="comparison-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>SPA Playground</th>
+            <th>BFF Playground</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Client Type</td>
+            <td>Public</td>
+            <td>Confidential</td>
+          </tr>
+          <tr>
+            <td>Token Storage</td>
+            <td>Browser (memory/localStorage)</td>
+            <td>Server-side (Redis)</td>
+          </tr>
+          <tr>
+            <td>Token Exposure</td>
+            <td>Visible to JavaScript</td>
+            <td>Never sent to browser</td>
+          </tr>
+          <tr>
+            <td>Auth Method</td>
+            <td>None (public client)</td>
+            <td>client_secret_post</td>
+          </tr>
+          <tr>
+            <td>PKCE</td>
+            <td>✅ Required</td>
+            <td>✅ Required</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Select a scenario from the sidebar to begin, or click a direct org login button.</p>
+  </div>
+{{/if}}

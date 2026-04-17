@@ -113,15 +113,43 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       Grant: ttl.grant,
     },
 
+    // Issue refresh tokens for clients that support them.
+    // The default oidc-provider implementation only checks code.scopes.has('offline_access'),
+    // but offline_access may not propagate to the code scopes in all consent flows.
+    // This explicit function ensures refresh tokens are issued whenever the client
+    // lists 'refresh_token' in its grant_types AND the auth request included offline_access.
+    issueRefreshToken: async (
+      _ctx: unknown,
+      client: { grantTypeAllowed: (type: string) => boolean },
+      code: { scopes: Set<string> },
+    ) => {
+      return client.grantTypeAllowed('refresh_token') && (
+        code.scopes.has('offline_access') ||
+        // Fallback: also issue for confidential web clients (web + auth method != none)
+        ((client as Record<string, unknown>).applicationType === 'web' &&
+         (client as Record<string, unknown>).tokenEndpointAuthMethod !== 'none')
+      );
+    },
+
     // Enable refresh token rotation — each refresh generates a new token
     rotateRefreshToken: true,
 
     // Standard OIDC scopes
     scopes: ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'],
 
-    // Standard OIDC claims mapping per scope
+    // OIDC claims mapping per scope.
+    // Standard claims follow OpenID Connect Core §5.4.
+    // Custom claims (roles, permissions, ERP attributes) are mapped to
+    // 'openid' so they are always included when the openid scope is granted.
+    // This follows the Auth0/Okta/Azure AD pattern of always-include custom claims.
     claims: {
-      openid: ['sub'],
+      openid: [
+        'sub',
+        // RBAC claims — always included
+        'roles', 'permissions',
+        // Custom ERP claims — always included
+        'department', 'employee_id', 'cost_center', 'job_title',
+      ],
       profile: [
         'name', 'given_name', 'family_name', 'middle_name', 'nickname',
         'preferred_username', 'profile', 'picture', 'website',

@@ -8,6 +8,7 @@
  *
  * Outputs:
  *   - playground/config.generated.js — consumed by the playground SPA
+ *   - playground-bff/config.generated.json — consumed by the BFF playground server
  *   - Console summary table with all credentials and IDs
  *
  * Idempotent: safe to re-run. Existing resources are reused via find-or-create.
@@ -88,7 +89,8 @@ const USERS: UserDef[] = [
   {
     orgKey: 'no2fa', email: 'user@no2fa.local', givenName: 'Active', familyName: 'User',
     password: SHARED_PASSWORD, targetStatus: 'active', twoFactorSetup: 'skip',
-    assignRoles: ['admin'], claims: { department: 'Engineering', employee_id: 'EMP-001' },
+    assignRoles: ['erp-admin'],
+    claims: { department: 'Engineering', employee_id: 'EMP-001', cost_center: 'CC-1000', job_title: 'Platform Engineer' },
   },
   {
     orgKey: 'no2fa', email: 'inactive@no2fa.local', givenName: 'Inactive', familyName: 'User',
@@ -103,14 +105,16 @@ const USERS: UserDef[] = [
   {
     orgKey: 'email2fa', email: 'user@email2fa.local', givenName: 'Email', familyName: 'OTP User',
     password: SHARED_PASSWORD, targetStatus: 'active', twoFactorSetup: 'email',
-    assignRoles: ['viewer'],
+    assignRoles: ['finance-manager'],
+    claims: { department: 'Finance', employee_id: 'EMP-042', cost_center: 'CC-2000', job_title: 'Finance Manager' },
   },
 
   // TOTP 2FA org — 1 enrolled user + 1 fresh user (triggers setup flow)
   {
     orgKey: 'totp2fa', email: 'user@totp2fa.local', givenName: 'TOTP', familyName: 'User',
     password: SHARED_PASSWORD, targetStatus: 'active', twoFactorSetup: 'totp',
-    assignRoles: ['admin'],
+    assignRoles: ['warehouse-operator'],
+    claims: { department: 'Logistics', employee_id: 'EMP-099', cost_center: 'CC-3000', job_title: 'Warehouse Lead' },
   },
   {
     orgKey: 'totp2fa', email: 'fresh@totp2fa.local', givenName: 'Fresh', familyName: 'User',
@@ -121,32 +125,55 @@ const USERS: UserDef[] = [
   {
     orgKey: 'optional2fa', email: 'user@optional2fa.local', givenName: 'Optional', familyName: 'User',
     password: SHARED_PASSWORD, targetStatus: 'active', twoFactorSetup: 'skip',
+    assignRoles: ['sales-rep'],
+    claims: { department: 'Sales', employee_id: 'EMP-155', cost_center: 'CC-4000', job_title: 'Account Executive' },
   },
 
   // Third-party org — 1 user for consent-required scenario
   {
     orgKey: 'thirdparty', email: 'user@thirdparty.local', givenName: 'ThirdParty', familyName: 'User',
     password: SHARED_PASSWORD, targetStatus: 'active', twoFactorSetup: 'skip',
+    assignRoles: ['hr-specialist'],
+    claims: { department: 'Human Resources', employee_id: 'EMP-200', cost_center: 'CC-5000', job_title: 'HR Business Partner' },
   },
 ];
 
-/** RBAC role definitions for the shared Playground application. */
+/** RBAC role definitions for the shared Playground ERP application. */
 const ROLE_DEFS = [
-  { slug: 'admin', name: 'Admin', description: 'Full admin access', permissions: ['app:users:manage', 'app:settings:manage'] },
-  { slug: 'viewer', name: 'Viewer', description: 'Read-only access', permissions: ['app:data:read'] },
+  { slug: 'erp-admin', name: 'ERP Administrator', description: 'Full system access',
+    permissions: ['erp:invoices:read', 'erp:invoices:write', 'erp:orders:read', 'erp:orders:write',
+                  'erp:inventory:read', 'erp:inventory:write', 'erp:employees:read', 'erp:employees:write',
+                  'erp:reports:read', 'erp:settings:manage'] },
+  { slug: 'finance-manager', name: 'Finance Manager', description: 'Financial operations and reporting',
+    permissions: ['erp:invoices:read', 'erp:invoices:write', 'erp:reports:read'] },
+  { slug: 'warehouse-operator', name: 'Warehouse Operator', description: 'Inventory and order fulfillment',
+    permissions: ['erp:inventory:read', 'erp:inventory:write', 'erp:orders:read'] },
+  { slug: 'sales-rep', name: 'Sales Representative', description: 'Customer orders and invoice viewing',
+    permissions: ['erp:orders:read', 'erp:orders:write', 'erp:invoices:read'] },
+  { slug: 'hr-specialist', name: 'HR Specialist', description: 'Employee record management',
+    permissions: ['erp:employees:read', 'erp:employees:write'] },
 ];
 
 /** RBAC permission definitions — the union of all role permissions. */
 const PERMISSION_DEFS = [
-  { slug: 'app:users:manage', name: 'Manage Users', description: 'Create, update, delete users' },
-  { slug: 'app:settings:manage', name: 'Manage Settings', description: 'Modify application settings' },
-  { slug: 'app:data:read', name: 'Read Data', description: 'View application data' },
+  { slug: 'erp:invoices:read', name: 'View Invoices', description: 'Access to view invoice records' },
+  { slug: 'erp:invoices:write', name: 'Manage Invoices', description: 'Create, edit, and approve invoices' },
+  { slug: 'erp:orders:read', name: 'View Orders', description: 'Access to view sales/purchase orders' },
+  { slug: 'erp:orders:write', name: 'Manage Orders', description: 'Create and edit orders' },
+  { slug: 'erp:inventory:read', name: 'View Inventory', description: 'Access to view stock levels' },
+  { slug: 'erp:inventory:write', name: 'Manage Inventory', description: 'Adjust stock, manage warehouses' },
+  { slug: 'erp:employees:read', name: 'View Employees', description: 'Access to view employee records' },
+  { slug: 'erp:employees:write', name: 'Manage Employees', description: 'Create, edit employee records' },
+  { slug: 'erp:reports:read', name: 'View Reports', description: 'Access to financial and operational reports' },
+  { slug: 'erp:settings:manage', name: 'System Settings', description: 'Manage ERP system configuration' },
 ];
 
 /** Custom claim definitions for the shared application. */
 const CLAIM_DEFS = [
   { claimName: 'department', claimType: 'string' as const, description: 'Department name' },
   { claimName: 'employee_id', claimType: 'string' as const, description: 'Employee identifier' },
+  { claimName: 'cost_center', claimType: 'string' as const, description: 'Cost center code' },
+  { claimName: 'job_title', claimType: 'string' as const, description: 'Job title / position' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -173,7 +200,7 @@ async function main() {
   const { createClient, listClientsByApplication, generateSecret } = await import('../src/clients/index.js');
   const { createUser, getUserByEmail, reactivateUser, suspendUser, deactivateUser } = await import('../src/users/index.js');
   const { createRole, findRoleBySlug, createPermission, listPermissionsByApplication, assignPermissionsToRole } = await import('../src/rbac/index.js');
-  const { assignRoleToUser } = await import('../src/rbac/index.js');
+  const { assignRolesToUser } = await import('../src/rbac/index.js');
   const { createDefinition, listDefinitions, setValue } = await import('../src/custom-claims/index.js');
   const { setupEmailOtp, setupTotp, confirmTotpSetup, getTwoFactorStatus } = await import('../src/two-factor/index.js');
 
@@ -186,6 +213,11 @@ async function main() {
   let confidentialClientId = '';
   let confidentialSecret = '';
   let appId = '';
+
+  // BFF + M2M client tracking — populated in Phase D
+  const bffClients = new Map<string, { clientId: string; secret: string }>();
+  let m2mClientId = '';
+  let m2mSecret = '';
 
   try {
     // -----------------------------------------------------------------------
@@ -362,6 +394,78 @@ async function main() {
     confidentialClientId = confClient.clientId;
     confidentialSecret = secretResult.plaintext;
     console.log(`  🔑 Confidential client secret: ${confidentialSecret}`);
+
+    // BFF confidential clients — one per org for multi-org scenario support.
+    // These redirect to the BFF server (port 4001) instead of the SPA (port 4000).
+    const BFF_REDIRECT = 'http://localhost:4001/auth/callback';
+    const BFF_POST_LOGOUT = 'http://localhost:4001';
+
+    for (const def of ORGS) {
+      const oId = orgIds.get(def.key)!;
+      const bffClientName = `BFF Playground (${def.name})`;
+
+      const allClients = await listClientsByApplication(app.id, { page: 1, pageSize: 200 });
+      let bffClient = allClients.data.find((c: { clientName: string }) => c.clientName === bffClientName);
+
+      if (bffClient) {
+        console.log(`  ⚠️  Client "${bffClientName}" exists: ${bffClient.clientId}`);
+      } else {
+        const result = await createClient({
+          organizationId: oId,
+          applicationId: app.id,
+          clientName: bffClientName,
+          clientType: 'confidential',
+          applicationType: 'web',
+          redirectUris: [BFF_REDIRECT],
+          postLogoutRedirectUris: [BFF_POST_LOGOUT],
+          grantTypes: ['authorization_code', 'refresh_token'],
+          tokenEndpointAuthMethod: 'client_secret_post',
+          scope: 'openid profile email offline_access',
+        });
+        bffClient = result.client;
+        console.log(`  ✅ Client "${bffClientName}" created: ${bffClient.clientId}`);
+      }
+
+      // Always generate a fresh secret for the BFF client
+      const bffSecretResult = await generateSecret(bffClient.id);
+      bffClients.set(def.key, {
+        clientId: bffClient.clientId,
+        secret: bffSecretResult.plaintext,
+      });
+    }
+    console.log('  🔑 BFF clients created (one per org)');
+
+    // M2M service client — single client for client_credentials grant demo.
+    // No redirect URIs needed since M2M flow has no user interaction.
+    const m2mClientName = 'M2M Service Client';
+    const allClientsForM2m = await listClientsByApplication(app.id, { page: 1, pageSize: 200 });
+    let m2mClient = allClientsForM2m.data.find((c: { clientName: string }) => c.clientName === m2mClientName);
+
+    if (m2mClient) {
+      console.log(`  ⚠️  Client "${m2mClientName}" exists: ${m2mClient.clientId}`);
+    } else {
+      const result = await createClient({
+        organizationId: orgIds.get('no2fa')!,
+        applicationId: app.id,
+        clientName: m2mClientName,
+        clientType: 'confidential',
+        applicationType: 'web',
+        // Placeholder URI — client_credentials grant never redirects, but the
+        // validator requires at least one URI. This is never actually used.
+        redirectUris: ['http://localhost:4001/m2m/callback'],
+        grantTypes: ['client_credentials'],
+        tokenEndpointAuthMethod: 'client_secret_post',
+        scope: 'openid',
+      });
+      m2mClient = result.client;
+      console.log(`  ✅ Client "${m2mClientName}" created: ${m2mClient.clientId}`);
+    }
+
+    // Always generate a fresh secret for the M2M client
+    const m2mSecretResult = await generateSecret(m2mClient.id);
+    m2mClientId = m2mClient.clientId;
+    m2mSecret = m2mSecretResult.plaintext;
+    console.log(`  🔑 M2M client secret: ${m2mSecret}`);
     console.log();
 
     // -----------------------------------------------------------------------
@@ -469,7 +573,7 @@ async function main() {
             continue;
           }
           try {
-            await assignRoleToUser(userId, roleId, oId);
+            await assignRolesToUser(userId, [roleId]);
             console.log(`  ✅ Assigned role "${roleSlug}" to "${def.email}"`);
           } catch {
             // May already be assigned — that's fine
@@ -549,12 +653,63 @@ async function main() {
       fs.mkdirSync(configDir, { recursive: true });
     }
     fs.writeFileSync(configPath, configContent, 'utf-8');
-    console.log(`  ✅ Config written to: ${configPath}\n`);
+    console.log(`  ✅ SPA config written to: ${configPath}`);
+
+    // BFF config — JSON format consumed by the BFF playground server.
+    // Includes client secrets (needed for confidential client auth).
+    const bffConfigObj = {
+      portaUrl: 'http://localhost:3000',
+      bffUrl: 'http://localhost:4001',
+      mailhogUrl: 'http://localhost:8025',
+      redis: { host: 'localhost', port: 6379 },
+      organizations: Object.fromEntries(
+        [...orgMap.entries()].map(([key, data]) => [
+          key,
+          {
+            id: data.id,
+            slug: data.slug,
+            name: data.name,
+            clientId: bffClients.get(key)!.clientId,
+            clientSecret: bffClients.get(key)!.secret,
+            twoFactorPolicy: data.twoFactorPolicy,
+          },
+        ]),
+      ),
+      m2m: {
+        clientId: m2mClientId,
+        clientSecret: m2mSecret,
+        orgSlug: 'playground-no2fa',
+      },
+      users: Object.fromEntries(
+        USERS.filter((u) => u.targetStatus === 'active').map((u) => [
+          u.email,
+          { password: u.password, orgKey: u.orgKey },
+        ]),
+      ),
+      scenarios: {
+        normalLogin: { orgKey: 'no2fa', userEmail: 'user@no2fa.local', description: 'Standard password login (no 2FA)' },
+        emailOtp: { orgKey: 'email2fa', userEmail: 'user@email2fa.local', description: 'Login with email OTP verification' },
+        totpAuth: { orgKey: 'totp2fa', userEmail: 'user@totp2fa.local', description: 'Login with TOTP authenticator' },
+        recoveryCode: { orgKey: 'totp2fa', userEmail: 'user@totp2fa.local', description: 'Login using a recovery code' },
+        magicLink: { orgKey: 'no2fa', userEmail: 'user@no2fa.local', description: 'Passwordless magic link login' },
+        thirdPartyConsent: { orgKey: 'thirdparty', userEmail: 'user@thirdparty.local', description: 'Login with consent prompt' },
+        passwordReset: { orgKey: 'no2fa', userEmail: 'user@no2fa.local', description: 'Reset password flow' },
+        totpSetup: { orgKey: 'totp2fa', userEmail: 'fresh@totp2fa.local', description: 'New user TOTP enrollment during login' },
+      },
+    };
+
+    const bffConfigPath = path.resolve(import.meta.dirname ?? '.', '..', 'playground-bff', 'config.generated.json');
+    const bffConfigDir = path.dirname(bffConfigPath);
+    if (!fs.existsSync(bffConfigDir)) {
+      fs.mkdirSync(bffConfigDir, { recursive: true });
+    }
+    fs.writeFileSync(bffConfigPath, JSON.stringify(bffConfigObj, null, 2), 'utf-8');
+    console.log(`  ✅ BFF config written to: ${bffConfigPath}\n`);
 
     // -----------------------------------------------------------------------
     // Phase I: Summary
     // -----------------------------------------------------------------------
-    printSummary(orgMap, confidentialClientId, confidentialSecret);
+    printSummary(orgMap, confidentialClientId, confidentialSecret, bffClients, m2mClientId, m2mSecret);
   } finally {
     await disconnectRedis();
     await disconnectDatabase();
@@ -567,11 +722,15 @@ async function main() {
 
 /**
  * Print a formatted summary of all seeded resources with credentials and URLs.
+ * Includes SPA clients, BFF clients, M2M client, users, and TOTP secrets.
  */
 function printSummary(
   orgMap: Map<string, { id: string; slug: string; name: string; clientId: string; twoFactorPolicy: string }>,
   confClientId: string,
   confSecret: string,
+  bffClients: Map<string, { clientId: string; secret: string }>,
+  m2mClientId: string,
+  m2mSecret: string,
 ): void {
   const SEP = '═'.repeat(72);
   const LINE = '─'.repeat(72);
@@ -599,11 +758,26 @@ function printSummary(
   }
   console.log();
 
-  // Confidential client
-  console.log('Confidential Client:');
+  // Confidential client (SPA)
+  console.log('Confidential Client (SPA):');
   console.log(`  Client ID:     ${confClientId}`);
   console.log(`  Client Secret: ${confSecret}`);
   console.log(`  Auth Method:   client_secret_basic`);
+  console.log();
+
+  // BFF playground clients
+  console.log('BFF Playground:');
+  console.log(`  URL:           http://localhost:4001`);
+  console.log(`  Clients:       ${bffClients.size} (one per org)`);
+  console.log(`  Auth Method:   client_secret_post`);
+  console.log();
+
+  // M2M client
+  console.log('M2M Client:');
+  console.log(`  Client ID:     ${m2mClientId}`);
+  console.log(`  Client Secret: ${m2mSecret}`);
+  console.log(`  Auth Method:   client_secret_post`);
+  console.log(`  Grant:         client_credentials`);
   console.log();
 
   // TOTP secrets (if any)
@@ -619,10 +793,11 @@ function printSummary(
 
   // Quick reference
   console.log('Quick Reference:');
-  console.log('  Porta:       http://localhost:3000');
-  console.log('  Playground:  http://localhost:4000');
-  console.log('  MailHog:     http://localhost:8025');
-  console.log(`  Discovery:   http://localhost:3000/playground-no2fa/.well-known/openid-configuration`);
+  console.log('  Porta:        http://localhost:3000');
+  console.log('  SPA:          http://localhost:4000');
+  console.log('  BFF:          http://localhost:4001');
+  console.log('  MailHog:      http://localhost:8025');
+  console.log(`  Discovery:    http://localhost:3000/playground-no2fa/.well-known/openid-configuration`);
   console.log();
   console.log(SEP);
 }

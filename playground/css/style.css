@@ -440,6 +440,30 @@ main {
   color: var(--accent);
 }
 
+/* ---------- Authorization Claims ---------- */
+
+.authz-claims {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid #6366f1;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.authz-claims h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.claim-row { margin-bottom: 0.5rem; }
+.claim-label { font-weight: 600; color: var(--text-muted); margin-right: 0.5rem; }
+.role-badge { background: #6366f1; color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; }
+.perm-tag { background: var(--bg-input); padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; font-family: monospace; border: 1px solid var(--border); }
+.claim-table { margin-top: 0.25rem; }
+.claim-table td { padding: 2px 8px; font-size: 0.85rem; }
+.claim-table td:first-child { font-weight: 600; color: var(--text-muted); }
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 768px) {

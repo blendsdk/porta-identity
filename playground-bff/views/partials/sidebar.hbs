@@ -1,0 +1,59 @@
+<aside class="sidebar">
+  <section class="sidebar-section">
+    <h3>🎯 Auth Scenarios</h3>
+    <div class="scenario-list">
+      {{#each scenarios}}
+        <a href="/auth/login?scenario={{@key}}" class="scenario-btn" title="{{this.description}}">
+          {{this.description}}
+        </a>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="sidebar-section">
+    <h3>🏢 Direct Org Login</h3>
+    <div class="org-list">
+      {{#each organizations}}
+        <a href="/auth/login?org={{@key}}" class="org-btn">
+          {{this.name}}
+          <span class="badge">{{this.twoFactorPolicy}}</span>
+        </a>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="sidebar-section">
+    <h3>ℹ️ Info</h3>
+    <div class="info-block">
+      <div class="info-row">
+        <span class="info-label">Pattern:</span>
+        <span class="info-value">BFF (Backend-for-Frontend)</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Client Type:</span>
+        <span class="info-value">Confidential</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Auth Method:</span>
+        <span class="info-value">client_secret_post</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Flow:</span>
+        <span class="info-value">Auth Code + PKCE</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Token Storage:</span>
+        <span class="info-value">Server-side (Redis)</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sidebar-section">
+    <h3>🔗 Links</h3>
+    <div class="link-list">
+      <a href="{{portaUrl}}" target="_blank" rel="noopener">Porta Server</a>
+      <a href="{{mailhogUrl}}" target="_blank" rel="noopener">MailHog (Emails)</a>
+      <a href="http://localhost:4000" target="_blank" rel="noopener">SPA Playground</a>
+    </div>
+  </section>
+</aside>

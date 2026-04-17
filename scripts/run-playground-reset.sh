@@ -20,13 +20,18 @@ echo "🔄 Resetting playground data..."
 bash scripts/run-playground-stop.sh 2>/dev/null || true
 
 # Drop and recreate the public schema (wipes all tables)
-echo "[1/2] Resetting database..."
+echo "[1/3] Resetting database..."
 docker compose -f docker/docker-compose.yml exec -T postgres \
   psql -U porta -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" porta
 echo "  ✅ Database reset"
 
+# Flush Redis cache (stale org/client/user data from previous seed)
+echo "[2/3] Flushing Redis cache..."
+docker compose -f docker/docker-compose.yml exec -T redis redis-cli FLUSHDB
+echo "  ✅ Redis flushed"
+
 # Re-run seed (includes migrations)
-echo "[2/2] Re-running seed..."
+echo "[3/3] Re-running seed..."
 yarn tsx scripts/playground-seed.ts
 echo "  ✅ Seed complete"
 
