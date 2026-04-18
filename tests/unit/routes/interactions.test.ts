@@ -572,7 +572,7 @@ describe('interaction routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'login',
         expect.objectContaining({
-          flash: { error: expect.stringContaining('invalid_credentials') },
+          flash: { error: expect.stringContaining('error_invalid') },
         }),
       );
 
@@ -662,7 +662,7 @@ describe('interaction routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'login',
         expect.objectContaining({
-          flash: { error: expect.stringContaining('invalid_credentials') },
+          flash: { error: expect.stringContaining('error_invalid') },
         }),
       );
 

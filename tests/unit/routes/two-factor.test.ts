@@ -55,6 +55,7 @@ vi.mock('../../../src/two-factor/service.js', () => ({
     totpUri: 'otpauth://totp/Test?secret=ABC&issuer=Porta',
     qrCodeDataUri: 'data:image/png;base64,abc',
   }),
+  getPendingTotpSetupInfo: vi.fn().mockResolvedValue(null),
   setupEmailOtp: vi.fn().mockResolvedValue({ method: 'email', recoveryCodes: ['CODE-0001'] }),
   confirmTotpSetup: vi.fn().mockResolvedValue(true),
 }));
@@ -122,6 +123,7 @@ function createMockCtx(bodyOverrides: Record<string, string> = {}) {
     req: {},
     res: {},
     params: { uid: 'interaction-uid-1' },
+    query: {},
     state: {
       organization: {
         id: 'org-1',
