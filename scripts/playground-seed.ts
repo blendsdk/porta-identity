@@ -66,8 +66,12 @@ interface UserDef {
 // ---------------------------------------------------------------------------
 
 /**
- * Five organizations covering all 2FA policy scenarios.
- * 'optional' = no 2FA required (users may enable if they want).
+ * Organization definitions.
+ *
+ * Covers 2FA policy scenarios plus a dedicated `passwordOnly` org whose
+ * `defaultLoginMethods` is `['password']` — used by the Phase 10 playground
+ * demo to prove that per-org login-method defaults propagate to clients that
+ * do not set a per-client override (client.loginMethods = null).
  */
 const ORGS: OrgDef[] = [
   { key: 'no2fa', name: 'No 2FA Org', slug: 'playground-no2fa', twoFactorPolicy: 'optional' },
@@ -75,7 +79,21 @@ const ORGS: OrgDef[] = [
   { key: 'totp2fa', name: 'TOTP 2FA Org', slug: 'playground-totp2fa', twoFactorPolicy: 'required_totp' },
   { key: 'optional2fa', name: 'Optional 2FA Org', slug: 'playground-optional2fa', twoFactorPolicy: 'optional' },
   { key: 'thirdparty', name: 'Third-Party Org', slug: 'playground-thirdparty', twoFactorPolicy: 'optional' },
+  { key: 'passwordOnly', name: 'Password-Only Org', slug: 'playground-passwordonly', twoFactorPolicy: 'optional' },
 ];
+
+/**
+ * Per-organization default login methods. Orgs absent from this map fall
+ * back to the DB default (`{password, magic_link}`), which is enforced by
+ * `updateOrganization()` during the idempotent seed pass.
+ *
+ * The `passwordOnly` org exists explicitly to demonstrate that the resolver
+ * picks up org defaults when a client's `loginMethods` is `null` (inherit).
+ */
+const ORG_DEFAULT_LOGIN_METHODS: Record<string, ('password' | 'magic_link')[]> = {
+  passwordOnly: ['password'],
+};
+
 
 /** Shared password for all playground users — easy to remember for testing. */
 const SHARED_PASSWORD = 'Playground123!';
@@ -219,6 +237,12 @@ async function main() {
   let m2mClientId = '';
   let m2mSecret = '';
 
+  // Login-method demo clients — populated in Phase D. See
+  // plans/client-login-methods/08-playground-integration.md for the matrix.
+  const loginMethodClients = new Map<string, { clientId: string; orgSlug: string; label: string; loginMethods: ('password' | 'magic_link')[] | null }>();
+  const loginMethodBffClients = new Map<string, { clientId: string; secret: string; orgKey: string; label: string; loginMethods: ('password' | 'magic_link')[] | null }>();
+
+
   try {
     // -----------------------------------------------------------------------
     // Phase A: Migrations
@@ -241,11 +265,24 @@ async function main() {
         org = await createOrganization({ name: def.name, slug: def.slug });
         console.log(`  ✅ Org "${def.name}" created: ${org.id}`);
       }
-      // Always update 2FA policy to match definition (idempotent)
-      await updateOrganization(org.id, { twoFactorPolicy: def.twoFactorPolicy });
+      // Always update 2FA policy and optional default login methods to match
+      // the definition (idempotent — service layer no-ops unchanged values).
+      const updateInput: {
+        twoFactorPolicy: OrgDef['twoFactorPolicy'];
+        defaultLoginMethods?: ('password' | 'magic_link')[];
+      } = { twoFactorPolicy: def.twoFactorPolicy };
+      const orgDefaultMethods = ORG_DEFAULT_LOGIN_METHODS[def.key];
+      if (orgDefaultMethods) {
+        updateInput.defaultLoginMethods = orgDefaultMethods;
+      }
+      await updateOrganization(org.id, updateInput);
+      if (orgDefaultMethods) {
+        console.log(`  🔐 Org "${def.name}" defaultLoginMethods → [${orgDefaultMethods.join(', ')}]`);
+      }
       orgIds.set(def.key, org.id);
     }
     console.log();
+
 
     // -----------------------------------------------------------------------
     // Phase C: Application, RBAC, Custom Claims
@@ -466,7 +503,167 @@ async function main() {
     m2mClientId = m2mClient.clientId;
     m2mSecret = m2mSecretResult.plaintext;
     console.log(`  🔑 M2M client secret: ${m2mSecret}`);
+
+    // -----------------------------------------------------------------------
+    // Phase D.1: Login-method demo clients
+    //
+    // Two SPA clients with explicit login-method overrides plus one BFF
+    // client with a password-only override. The `both` profile reuses the
+    // existing `Playground SPA (No 2FA Org)` client (null override → inherit
+    // org default `{password, magic_link}`) and the `orgForced` profile
+    // reuses the `Playground SPA (Password-Only Org)` client (null override
+    // → inherits org's `['password']` default).
+    //
+    // See plans/client-login-methods/08-playground-integration.md.
+    // -----------------------------------------------------------------------
     console.log();
+    console.log('  🎯 Login-method demo clients...');
+
+    /** SPA demo-client definitions — all live under the `no2fa` org. */
+    const loginMethodSpaDefs: Array<{
+      key: 'password' | 'magic';
+      clientName: string;
+      label: string;
+      loginMethods: ('password' | 'magic_link')[];
+    }> = [
+      { key: 'password', clientName: 'Playground SPA (Password Only)', label: 'Password only', loginMethods: ['password'] },
+      { key: 'magic', clientName: 'Playground SPA (Magic Link Only)', label: 'Magic link only', loginMethods: ['magic_link'] },
+    ];
+
+    for (const demo of loginMethodSpaDefs) {
+      const orgId = orgIds.get('no2fa')!;
+      const existing = await listClientsByApplication(app.id, { page: 1, pageSize: 200 });
+      let client = existing.data.find((c: { clientName: string }) => c.clientName === demo.clientName);
+      if (client) {
+        console.log(`    ⚠️  Client "${demo.clientName}" exists: ${client.clientId}`);
+      } else {
+        const result = await createClient({
+          organizationId: orgId,
+          applicationId: app.id,
+          clientName: demo.clientName,
+          clientType: 'public',
+          applicationType: 'web',
+          redirectUris: [PLAYGROUND_REDIRECT],
+          postLogoutRedirectUris: [PLAYGROUND_POST_LOGOUT],
+          grantTypes: ['authorization_code', 'refresh_token'],
+          scope: 'openid profile email offline_access',
+          loginMethods: demo.loginMethods,
+        });
+        client = result.client;
+        console.log(`    ✅ Client "${demo.clientName}" created: ${client.clientId}`);
+      }
+      loginMethodClients.set(demo.key, {
+        clientId: client.clientId,
+        orgSlug: 'playground-no2fa',
+        label: demo.label,
+        loginMethods: demo.loginMethods,
+      });
+    }
+
+    // "both" profile → reuse the existing `Playground SPA (No 2FA Org)` client;
+    // it inherits the org default which is `{password, magic_link}`.
+    loginMethodClients.set('both', {
+      clientId: orgMap.get('no2fa')!.clientId,
+      orgSlug: 'playground-no2fa',
+      label: 'Both (password + magic link)',
+      loginMethods: null,
+    });
+
+    // "orgForced" profile → reuse the `Playground SPA (Password-Only Org)`
+    // client; client.loginMethods is null so it inherits the org's
+    // `['password']` default.
+    loginMethodClients.set('orgForced', {
+      clientId: orgMap.get('passwordOnly')!.clientId,
+      orgSlug: 'playground-passwordonly',
+      label: 'Password-only (via org default)',
+      loginMethods: null,
+    });
+
+    // Password-only BFF demo client — separate from the default `BFF
+    // Playground (No 2FA Org)` which inherits org defaults.
+    const bffPasswordClientName = 'BFF Playground (Password Only)';
+    const bffPasswordLookup = await listClientsByApplication(app.id, { page: 1, pageSize: 200 });
+    let bffPasswordClient = bffPasswordLookup.data.find((c: { clientName: string }) => c.clientName === bffPasswordClientName);
+    if (bffPasswordClient) {
+      console.log(`    ⚠️  Client "${bffPasswordClientName}" exists: ${bffPasswordClient.clientId}`);
+    } else {
+      const result = await createClient({
+        organizationId: orgIds.get('no2fa')!,
+        applicationId: app.id,
+        clientName: bffPasswordClientName,
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: [BFF_REDIRECT],
+        postLogoutRedirectUris: [BFF_POST_LOGOUT],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        tokenEndpointAuthMethod: 'client_secret_post',
+        scope: 'openid profile email offline_access',
+        loginMethods: ['password'],
+      });
+      bffPasswordClient = result.client;
+      console.log(`    ✅ Client "${bffPasswordClientName}" created: ${bffPasswordClient.clientId}`);
+    }
+    const bffPasswordSecret = await generateSecret(bffPasswordClient.id);
+    loginMethodBffClients.set('password', {
+      clientId: bffPasswordClient.clientId,
+      secret: bffPasswordSecret.plaintext,
+      orgKey: 'no2fa',
+      label: 'Password only',
+      loginMethods: ['password'],
+    });
+
+    // Magic-link-only BFF demo client — mirrors the SPA `magic` profile so a
+    // confidential-client flow can demonstrate a passwordless login. The
+    // upstream Porta login page renders the email + "Send magic link" form
+    // only; after the user clicks the MailHog-delivered link they land on
+    // `/auth/callback` with a fresh authorization code like any other flow.
+    const bffMagicClientName = 'BFF Playground (Magic Link Only)';
+    const bffMagicLookup = await listClientsByApplication(app.id, { page: 1, pageSize: 200 });
+    let bffMagicClient = bffMagicLookup.data.find((c: { clientName: string }) => c.clientName === bffMagicClientName);
+    if (bffMagicClient) {
+      console.log(`    ⚠️  Client "${bffMagicClientName}" exists: ${bffMagicClient.clientId}`);
+    } else {
+      const result = await createClient({
+        organizationId: orgIds.get('no2fa')!,
+        applicationId: app.id,
+        clientName: bffMagicClientName,
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: [BFF_REDIRECT],
+        postLogoutRedirectUris: [BFF_POST_LOGOUT],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        tokenEndpointAuthMethod: 'client_secret_post',
+        scope: 'openid profile email offline_access',
+        loginMethods: ['magic_link'],
+      });
+      bffMagicClient = result.client;
+      console.log(`    ✅ Client "${bffMagicClientName}" created: ${bffMagicClient.clientId}`);
+    }
+    // Always rotate the secret on each seed run, mirroring the `password`
+    // profile — confidential-client demos need a known secret in the
+    // generated config, and the previous secret is invalidated on rotation.
+    const bffMagicSecret = await generateSecret(bffMagicClient.id);
+    loginMethodBffClients.set('magic', {
+      clientId: bffMagicClient.clientId,
+      secret: bffMagicSecret.plaintext,
+      orgKey: 'no2fa',
+      label: 'Magic link only',
+      loginMethods: ['magic_link'],
+    });
+
+    // "default" BFF profile → reuse the existing `BFF Playground (No 2FA Org)`
+    // client, which inherits org defaults (`{password, magic_link}`).
+    const defaultBff = bffClients.get('no2fa')!;
+    loginMethodBffClients.set('default', {
+      clientId: defaultBff.clientId,
+      secret: defaultBff.secret,
+      orgKey: 'no2fa',
+      label: 'Both (password + magic link)',
+      loginMethods: null,
+    });
+
+    console.log();
+
 
     // -----------------------------------------------------------------------
     // Phase E: Users
@@ -618,6 +815,12 @@ async function main() {
         clientId: confidentialClientId,
         // Secret is printed to console only — NOT stored in config for security
       },
+      // Login-method demo profiles — consumed by playground/js/config.js.
+      // Each entry is a `{ clientId, orgSlug, label, loginMethods }` tuple
+      // where `loginMethods` is the per-client override (or null = inherit).
+      loginMethodClients: Object.fromEntries(
+        [...loginMethodClients.entries()].map(([key, value]) => [key, value]),
+      ),
       users: Object.fromEntries(
         USERS.filter((u) => u.targetStatus === 'active').map((u) => [
           u.email,
@@ -637,6 +840,7 @@ async function main() {
     };
 
     // Write as an ES module for the playground SPA to import
+
     const configContent = [
       '// @ts-nocheck — Auto-generated by scripts/playground-seed.ts',
       '// Run: yarn tsx scripts/playground-seed.ts',
@@ -680,6 +884,19 @@ async function main() {
         clientSecret: m2mSecret,
         orgSlug: 'playground-no2fa',
       },
+      // Login-method client profiles for BFF — selected via `BFF_CLIENT_PROFILE`
+      // at runtime. Keys must include `default` (fallback profile) to preserve
+      // the out-of-the-box behaviour; additional profiles expose per-client
+      // overrides (e.g., `password` → password-only client).
+      loginMethodClients: Object.fromEntries(
+        [...loginMethodBffClients.entries()].map(([key, value]) => [key, {
+          clientId: value.clientId,
+          clientSecret: value.secret,
+          orgKey: value.orgKey,
+          label: value.label,
+          loginMethods: value.loginMethods,
+        }]),
+      ),
       users: Object.fromEntries(
         USERS.filter((u) => u.targetStatus === 'active').map((u) => [
           u.email,
@@ -699,6 +916,7 @@ async function main() {
     };
 
     const bffConfigPath = path.resolve(import.meta.dirname ?? '.', '..', 'playground-bff', 'config.generated.json');
+
     const bffConfigDir = path.dirname(bffConfigPath);
     if (!fs.existsSync(bffConfigDir)) {
       fs.mkdirSync(bffConfigDir, { recursive: true });
@@ -709,7 +927,17 @@ async function main() {
     // -----------------------------------------------------------------------
     // Phase I: Summary
     // -----------------------------------------------------------------------
-    printSummary(orgMap, confidentialClientId, confidentialSecret, bffClients, m2mClientId, m2mSecret);
+    printSummary(
+      orgMap,
+      confidentialClientId,
+      confidentialSecret,
+      bffClients,
+      m2mClientId,
+      m2mSecret,
+      loginMethodClients,
+      loginMethodBffClients,
+    );
+
   } finally {
     await disconnectRedis();
     await disconnectDatabase();
@@ -731,7 +959,10 @@ function printSummary(
   bffClients: Map<string, { clientId: string; secret: string }>,
   m2mClientId: string,
   m2mSecret: string,
+  loginMethodClients: Map<string, { clientId: string; orgSlug: string; label: string; loginMethods: ('password' | 'magic_link')[] | null }>,
+  loginMethodBffClients: Map<string, { clientId: string; secret: string; orgKey: string; label: string; loginMethods: ('password' | 'magic_link')[] | null }>,
 ): void {
+
   const SEP = '═'.repeat(72);
   const LINE = '─'.repeat(72);
 
@@ -780,8 +1011,32 @@ function printSummary(
   console.log(`  Grant:         client_credentials`);
   console.log();
 
+  // Login-method demo profiles — rendered as side-by-side SPA + BFF tables
+  // so contributors can inspect which client/org combination each scenario
+  // exercises and whether it uses the client override or inherits from org.
+  if (loginMethodClients.size > 0 || loginMethodBffClients.size > 0) {
+    console.log('Login-Method Demo (SPA):');
+    console.log(`  ${'Profile'.padEnd(12)} ${'Label'.padEnd(32)} ${'Org Slug'.padEnd(26)} Client ID`);
+    console.log(`  ${LINE}`);
+    for (const [key, v] of loginMethodClients) {
+      const shortId = v.clientId.length > 16 ? v.clientId.slice(0, 16) + '…' : v.clientId;
+      console.log(`  ${key.padEnd(12)} ${v.label.padEnd(32)} ${v.orgSlug.padEnd(26)} ${shortId}`);
+    }
+    console.log();
+    console.log('Login-Method Demo (BFF):');
+    console.log(`  ${'Profile'.padEnd(12)} ${'Label'.padEnd(32)} ${'Org Key'.padEnd(16)} Client ID`);
+    console.log(`  ${LINE}`);
+    for (const [key, v] of loginMethodBffClients) {
+      const shortId = v.clientId.length > 16 ? v.clientId.slice(0, 16) + '…' : v.clientId;
+      console.log(`  ${key.padEnd(12)} ${v.label.padEnd(32)} ${v.orgKey.padEnd(16)} ${shortId}`);
+    }
+    console.log('  (Use BFF_CLIENT_PROFILE=<profile> to switch BFF client)');
+    console.log();
+  }
+
   // TOTP secrets (if any)
   if (totpSecrets.length > 0) {
+
     console.log('TOTP Setup Info:');
     for (const info of totpSecrets) {
       console.log(`  ${info.email}:`);
