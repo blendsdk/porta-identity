@@ -138,6 +138,120 @@ describe('Schema Structure', () => {
     expect(names).toContain('two_factor_method');
   });
 
+  // Migration 014 — Configurable Login Methods
+  // See: plans/client-login-methods/03-database-schema.md
+  it('organizations.default_login_methods exists as NOT NULL TEXT[]', async () => {
+    const columns = await getColumns('organizations');
+    const col = columns.find((c) => c.column_name === 'default_login_methods');
+    expect(col).toBeDefined();
+    expect(col!.is_nullable).toBe('NO');
+    // Postgres reports TEXT[] as 'ARRAY' in information_schema.data_type
+    expect(col!.data_type).toBe('ARRAY');
+  });
+
+  it('organizations.default_login_methods defaults to {password, magic_link}', async () => {
+    const pool = getPool();
+    // Insert an org without specifying default_login_methods — should pick up the column default
+    const res = await pool.query(
+      `INSERT INTO organizations (name, slug)
+       VALUES ('Login Methods Default Test', 'login-methods-default-test')
+       RETURNING default_login_methods`,
+    );
+    expect(res.rows[0].default_login_methods).toEqual(['password', 'magic_link']);
+    // Cleanup
+    await pool.query(`DELETE FROM organizations WHERE slug = 'login-methods-default-test'`);
+  });
+
+  it('clients.login_methods exists as nullable TEXT[]', async () => {
+    const columns = await getColumns('clients');
+    const col = columns.find((c) => c.column_name === 'login_methods');
+    expect(col).toBeDefined();
+    expect(col!.is_nullable).toBe('YES');
+    expect(col!.data_type).toBe('ARRAY');
+  });
+
+  it('clients.login_methods defaults to NULL (inherit from org)', async () => {
+    const pool = getPool();
+    // Use random suffix to avoid collisions from prior failed runs leaving orphan rows
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const orgSlug = `lm-client-default-test-${suffix}`;
+    const appSlug = `lm-client-default-app-${suffix}`;
+    const clientIdVal = `lm-client-default-client-${suffix}`;
+    let orgId: string | undefined;
+    let appId: string | undefined;
+    try {
+      const orgRes = await pool.query(
+        `INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id`,
+        ['Login Methods Client Default Test', orgSlug],
+      );
+      orgId = orgRes.rows[0].id;
+      // Applications are global (not per-org) — see migrations/003_applications.sql
+      const appRes = await pool.query(
+        `INSERT INTO applications (name, slug) VALUES ($1, $2) RETURNING id`,
+        ['Test App LM Default', appSlug],
+      );
+      appId = appRes.rows[0].id;
+
+      const clientRes = await pool.query(
+        `INSERT INTO clients (organization_id, application_id, client_id, client_name, client_type)
+         VALUES ($1, $2, $3, 'LM Client', 'public')
+         RETURNING login_methods`,
+        [orgId, appId, clientIdVal],
+      );
+      // NULL is the canonical "inherit" sentinel
+      expect(clientRes.rows[0].login_methods).toBeNull();
+    } finally {
+      // Cleanup — clients cascade with org delete; application is global, drop explicitly
+      if (orgId) await pool.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
+      if (appId) await pool.query(`DELETE FROM applications WHERE id = $1`, [appId]);
+    }
+  });
+
+  it('clients.login_methods accepts non-null arrays', async () => {
+    const pool = getPool();
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const orgSlug = `lm-override-test-${suffix}`;
+    const appSlug = `lm-override-app-${suffix}`;
+    const clientIdVal = `lm-override-client-${suffix}`;
+    let orgId: string | undefined;
+    let appId: string | undefined;
+    try {
+      const orgRes = await pool.query(
+        `INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id`,
+        ['Login Methods Override Test', orgSlug],
+      );
+      orgId = orgRes.rows[0].id;
+      const appRes = await pool.query(
+        `INSERT INTO applications (name, slug) VALUES ($1, $2) RETURNING id`,
+        ['Test App LM Override', appSlug],
+      );
+      appId = appRes.rows[0].id;
+
+      // Override at client level
+      const clientRes = await pool.query(
+        `INSERT INTO clients (organization_id, application_id, client_id, client_name, client_type, login_methods)
+         VALUES ($1, $2, $3, 'LM Override', 'public', ARRAY['magic_link']::TEXT[])
+         RETURNING login_methods`,
+        [orgId, appId, clientIdVal],
+      );
+      expect(clientRes.rows[0].login_methods).toEqual(['magic_link']);
+    } finally {
+      if (orgId) await pool.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
+      if (appId) await pool.query(`DELETE FROM applications WHERE id = $1`, [appId]);
+    }
+  });
+
+  it('seeded super-admin org inherits the default_login_methods column default', async () => {
+    const pool = getPool();
+    // The super-admin org was inserted by 011_seed.sql BEFORE 014 added the column,
+    // so the migration's column DEFAULT is what backfilled this row's value.
+    const res = await pool.query(
+      `SELECT default_login_methods FROM organizations WHERE slug = 'porta-admin'`,
+    );
+    expect(res.rowCount).toBe(1);
+    expect(res.rows[0].default_login_methods).toEqual(['password', 'magic_link']);
+  });
+
   it('user_totp table has expected columns', async () => {
     const columns = await getColumns('user_totp');
     const names = columns.map((c) => c.column_name);

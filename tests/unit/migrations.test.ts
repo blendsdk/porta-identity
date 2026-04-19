@@ -149,5 +149,50 @@ describe('Migration File Validation', () => {
       expect(downSection).toContain('DROP COLUMN IF EXISTS two_factor_enabled');
       expect(downSection).toContain('DROP COLUMN IF EXISTS two_factor_policy');
     });
+
+    it('014_login_methods.sql adds default_login_methods to organizations', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '014_login_methods.sql'), 'utf-8');
+      expect(content).toContain('ALTER TABLE organizations');
+      expect(content).toContain('default_login_methods');
+      expect(content).toContain('TEXT[]');
+      // Default value uses explicit ARRAY[...]::TEXT[] form
+      expect(content).toContain("ARRAY['password', 'magic_link']::TEXT[]");
+      // NOT NULL default — see plans/client-login-methods/03-database-schema.md
+      expect(content).toContain('NOT NULL');
+    });
+
+    it('014_login_methods.sql adds login_methods to clients (nullable)', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '014_login_methods.sql'), 'utf-8');
+      expect(content).toContain('ALTER TABLE clients');
+      expect(content).toContain('login_methods TEXT[]');
+      // NULL default — NULL means "inherit from org default"
+      expect(content).toContain('DEFAULT NULL');
+    });
+
+    it('014_login_methods.sql includes COMMENT ON COLUMN for both columns', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '014_login_methods.sql'), 'utf-8');
+      // Self-documenting columns help operators understand the inheritance model
+      expect(content).toContain('COMMENT ON COLUMN organizations.default_login_methods');
+      expect(content).toContain('COMMENT ON COLUMN clients.login_methods');
+    });
+
+    it('014_login_methods.sql has proper down migration', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '014_login_methods.sql'), 'utf-8');
+      const downSection = content.slice(content.indexOf('-- Down Migration'));
+      expect(downSection).toContain('DROP COLUMN IF EXISTS login_methods');
+      expect(downSection).toContain('DROP COLUMN IF EXISTS default_login_methods');
+    });
+
+    it('014_login_methods.sql does NOT add a value CHECK constraint (future-proof)', () => {
+      const content = readFileSync(join(MIGRATIONS_DIR, '014_login_methods.sql'), 'utf-8');
+      const upSection = content.slice(
+        content.indexOf('-- Up Migration'),
+        content.indexOf('-- Down Migration'),
+      );
+      // No CHECK on login_methods values — adding sso/passkey later requires zero migration.
+      // Validation happens at the service layer against the LoginMethod TypeScript union.
+      expect(upSection).not.toMatch(/CHECK\s*\([^)]*login_methods/i);
+      expect(upSection).not.toMatch(/CHECK\s*\([^)]*default_login_methods/i);
+    });
   });
 });
