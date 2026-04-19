@@ -25,6 +25,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
 import { logger } from '../lib/logger.js';
+import type { LoginMethod } from '../clients/types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -85,6 +86,49 @@ export interface TemplateContext {
 
   /** Organization slug for route building and template overrides */
   orgSlug: string;
+
+  /**
+   * Whether to render the password login form on the login page.
+   *
+   * Derived from `resolveLoginMethods(org, client)` — true when 'password'
+   * is in the effective login methods. Only set on login-page renders.
+   */
+  showPassword?: boolean;
+
+  /**
+   * Whether to render the magic-link button on the login page.
+   *
+   * Derived from `resolveLoginMethods(org, client)` — true when 'magic_link'
+   * is in the effective login methods. Only set on login-page renders.
+   */
+  showMagicLink?: boolean;
+
+  /**
+   * Whether to render the "or" divider between password + magic-link forms.
+   *
+   * True only when BOTH methods are enabled; the divider is omitted for
+   * single-method configurations to avoid an awkward one-sided divider.
+   */
+  showDivider?: boolean;
+
+  /**
+   * Effective login methods resolved for the current client/org.
+   *
+   * Included for template debugging and future extensibility (e.g., showing
+   * a method-specific header or help text). Not currently rendered in the
+   * default template.
+   */
+  loginMethods?: LoginMethod[];
+
+  /**
+   * Pre-filled email hint from the OIDC `login_hint` authorization parameter.
+   *
+   * Sanitized (trimmed + length-capped at RFC 5321 max of 320 chars) by the
+   * interaction handler. Templates inject this into `value="..."` of email
+   * inputs; Handlebars HTML-escapes by default so XSS via `login_hint` is
+   * blocked at the template boundary.
+   */
+  emailHint?: string;
 
   /** Page-specific data (varies by page) */
   [key: string]: unknown;

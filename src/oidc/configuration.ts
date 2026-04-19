@@ -191,6 +191,11 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
         'organizationId',
         'urn:porta:allowed_origins',
         'urn:porta:client_type',
+        // Per-client login method override. Raw value from findForOidc():
+        //   null       → inherit organization.defaultLoginMethods
+        //   string[]   → explicit override (subset of ['password','magic_link'])
+        // Resolved to effective methods inside the interaction route handlers.
+        'urn:porta:login_methods',
       ],
     },
   };

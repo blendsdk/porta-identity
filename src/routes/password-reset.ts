@@ -42,6 +42,7 @@ import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
 import type { Organization } from '../organizations/types.js';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
+import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,6 +140,61 @@ export function createPasswordResetRouter(): Router {
 // ---------------------------------------------------------------------------
 
 /**
+ * Enforce that the organization default supports password login.
+ *
+ * The forgot-password / reset-password flows belong exclusively to the
+ * password login method. Offering them when the org has disabled password
+ * login entirely would be confusing (resetting a password that can't be
+ * used) and would leak that password auth is structurally possible.
+ *
+ * This check is org-level only, not client-level: the password-reset routes
+ * don't carry an interaction UID or client_id, so we have no way to scope
+ * the check to a specific client. Org-level enforcement is the right layer
+ * for "is password auth possible anywhere in this tenant?".
+ *
+ * Uses {@link resolveLoginMethods} with `loginMethods: null` so the resolver
+ * returns the org's `defaultLoginMethods` verbatim.
+ *
+ * @param ctx - Koa context with organization state
+ * @param t - Translation function for the error page
+ * @param locale - Resolved locale
+ * @returns `true` when password is allowed and the caller should proceed;
+ *          `false` when the caller must return immediately (the error page
+ *          has already been rendered).
+ */
+async function enforcePasswordMethod(
+  ctx: AuthContext,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  locale: string,
+): Promise<boolean> {
+  const org = ctx.state.organization;
+  const effective = resolveLoginMethods(org, { loginMethods: null });
+  if (effective.includes('password')) return true;
+
+  writeAuditLog({
+    organizationId: org.id,
+    eventType: 'security.login_method_disabled',
+    eventCategory: 'security',
+    description: `Password-reset route accessed on org where password method is disabled (${ctx.path})`,
+    ipAddress: ctx.ip,
+    metadata: {
+      route: ctx.path,
+      attemptedMethod: 'password',
+      effectiveMethods: effective,
+    },
+  });
+
+  await renderErrorPageForAuth(
+    ctx,
+    org,
+    locale,
+    t,
+    t('errors.login_method_disabled'),
+  );
+  return false;
+}
+
+/**
  * Show the forgot-password form.
  *
  * Renders the forgot-password page with a CSRF token for form protection.
@@ -153,6 +209,10 @@ async function showForgotPassword(ctx: AuthContext): Promise<void> {
     org.defaultLocale,
   );
   const t = getTranslationFunction(locale, org.slug);
+
+  // Block the entire forgot-password UI when password auth is org-disabled.
+  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
+
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
 
@@ -195,6 +255,10 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
     org.defaultLocale,
   );
   const t = getTranslationFunction(locale, org.slug);
+
+  // Enforce password method BEFORE CSRF to avoid revealing whether the
+  // endpoint is active based on CSRF errors vs. method errors.
+  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
 
   // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
@@ -322,6 +386,8 @@ async function showResetPassword(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
 
+  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
+
   // Validate the token
   const tokenHash = hashToken(tokenPlaintext);
   const tokenRecord = await findValidToken('password_reset_tokens', tokenHash);
@@ -383,6 +449,8 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     org.defaultLocale,
   );
   const t = getTranslationFunction(locale, org.slug);
+
+  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
 
   // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {

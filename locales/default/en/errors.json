@@ -15,5 +15,7 @@
   "code_label": "Error code",
   "org_not_found": "Organization not found.",
   "org_suspended": "This organization has been suspended.",
-  "org_archived": "This organization is no longer active."
+  "org_archived": "This organization is no longer active.",
+  "login_method_disabled": "This authentication method is not available for this application.",
+  "no_login_methods_configured": "No authentication methods are configured for this application. Please contact your administrator."
 }

@@ -55,6 +55,8 @@ import {
   hasMagicLinkSession,
   consumeMagicLinkSession,
 } from '../auth/magic-link-session.js';
+import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
+import type { LoginMethod } from '../clients/types.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,6 +84,40 @@ interface InteractionContext extends Context {
  * @param org - Organization with branding fields
  * @returns Branding context for templates
  */
+/**
+ * Resolve the effective login methods for an OIDC provider Client.
+ *
+ * Reads the raw `urn:porta:login_methods` metadata (set by {@link findForOidc}
+ * on the clients service) and applies the inheritance rule via
+ * {@link resolveLoginMethods}:
+ *   - `null` / missing / malformed  → inherit `org.defaultLoginMethods`
+ *   - explicit non-empty array       → use it verbatim
+ *
+ * Malformed metadata (e.g., from a misconfigured adapter) is treated as
+ * `null` to match the safe-fallback semantics of the raw resolver — the
+ * organization default governs in that case rather than failing closed,
+ * which would break all logins if a single client's metadata were corrupt.
+ *
+ * @param client - OIDC provider Client instance (or null/undefined — safe fallback)
+ * @param org - Organization owning the client (read for `defaultLoginMethods`)
+ * @returns Resolved `LoginMethod[]` (always non-empty, matches resolver contract)
+ */
+function resolveLoginMethodsFromOidcClient(
+  client: unknown,
+  org: Pick<Organization, 'defaultLoginMethods'>,
+): LoginMethod[] {
+  // oidc-provider's Client objects expose metadata() → Record<string, unknown>.
+  // Missing client or missing metadata function → treat as fully inherited.
+  const metadata = (client as { metadata?: () => Record<string, unknown> } | null | undefined)
+    ?.metadata?.();
+  const raw = metadata?.['urn:porta:login_methods'];
+  // Defensive: accept only null or string[]; treat anything else as null.
+  const normalized: LoginMethod[] | null = Array.isArray(raw)
+    ? (raw as LoginMethod[])
+    : null;
+  return resolveLoginMethods(org, { loginMethods: normalized });
+}
+
 function buildBrandingFromOrg(org: Organization) {
   return {
     logoUrl: org.brandingLogoUrl,
@@ -378,12 +414,33 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
 
-    // Pre-fill email from login_hint if provided
-    const loginHint = (params.login_hint as string) ?? '';
+    // Pre-fill email from login_hint if provided.
+    //
+    // login_hint comes from the client-supplied authorization URL — OIDC spec
+    // allows any opaque identifier, not just emails, so we do NOT validate
+    // format. We DO defensively trim and length-cap at RFC 5321 max (320 chars)
+    // to avoid pathological template renders. Handlebars HTML-escapes on
+    // interpolation, which blocks XSS via the value="" attribute.
+    const rawHint = typeof params.login_hint === 'string'
+      ? params.login_hint.trim().slice(0, 320)
+      : '';
+    const emailHint = rawHint.length > 0 ? rawHint : undefined;
 
     // Resolve human-readable client name from OIDC provider metadata.
     // Falls back to the raw client_id if not found.
-    const clientName = await resolveClientName(provider, params.client_id as string);
+    const oidcClient = await provider.Client.find(params.client_id as string);
+    const clientName = (oidcClient?.metadata()?.client_name as string) ?? (params.client_id as string);
+
+    // Resolve the effective login methods from the client's OIDC metadata.
+    // When no client is found (edge case — client deleted mid-flow), fall back
+    // to the org default methods so the user sees SOMETHING actionable instead
+    // of a blank page.
+    const effectiveMethods = oidcClient
+      ? resolveLoginMethodsFromOidcClient(oidcClient, org)
+      : org.defaultLoginMethods;
+
+    const showPassword = effectiveMethods.includes('password');
+    const showMagicLink = effectiveMethods.includes('magic_link');
 
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
@@ -394,7 +451,13 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
         params: params as Record<string, unknown>,
         client: { clientName },
       },
-      email: loginHint,
+      email: emailHint ?? '',
+      emailHint,
+      // Login method rendering flags — consumed by login.hbs
+      showPassword,
+      showMagicLink,
+      showDivider: showPassword && showMagicLink,
+      loginMethods: effectiveMethods,
     };
 
     // Render the login page with CSRF token in both cookie and hidden field
@@ -478,6 +541,50 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
       await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+      return;
+    }
+
+    // Step 1.5: Enforce login method — 'password' must be allowed for this client.
+    //
+    // This check protects against three scenarios:
+    //   1. User submits the password form after an admin switched the client
+    //      to magic-link-only (stale form cached in the browser).
+    //   2. Adversary crafts a direct POST to bypass the UI guard (the template
+    //      hides the password form, but a raw POST from curl/Postman still
+    //      reaches this handler).
+    //   3. Browser back button resurrects the form after login method change.
+    //
+    // Rendering the login page (not a raw 403) preserves CSRF/state and gives
+    // the user a clear, actionable error message.
+    const oidcClientForLogin = await provider.Client.find(interaction.params.client_id as string);
+    const effectiveLoginMethods = oidcClientForLogin
+      ? resolveLoginMethodsFromOidcClient(oidcClientForLogin, org)
+      : org.defaultLoginMethods;
+
+    if (!effectiveLoginMethods.includes('password')) {
+      logger.warn(
+        { uid: interaction.uid, email, clientId: interaction.params.client_id },
+        'Password login attempted for client where method is disabled',
+      );
+
+      writeAuditLog({
+        organizationId: org.id,
+        eventType: 'security.login_method_disabled',
+        eventCategory: 'security',
+        description: `Password login attempted on client where method is disabled (${email})`,
+        ipAddress: ctx.ip,
+        metadata: {
+          clientId: interaction.params.client_id,
+          attemptedMethod: 'password',
+          effectiveMethods: effectiveLoginMethods,
+        },
+      });
+
+      await renderLoginWithError(
+        ctx, provider, interaction, t, locale, email,
+        t('errors.login_method_disabled'),
+        403,
+      );
       return;
     }
 
@@ -667,6 +774,43 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
       await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+      return;
+    }
+
+    // Enforce login method — 'magic_link' must be allowed for this client.
+    // Mirror of the password-login enforcement above. Same rationale: backend
+    // is the authoritative guard; the template hiding the button is cosmetic.
+    const oidcClientForMagicLink = await provider.Client.find(
+      interaction.params.client_id as string,
+    );
+    const effectiveMagicLinkMethods = oidcClientForMagicLink
+      ? resolveLoginMethodsFromOidcClient(oidcClientForMagicLink, org)
+      : org.defaultLoginMethods;
+
+    if (!effectiveMagicLinkMethods.includes('magic_link')) {
+      logger.warn(
+        { uid: interaction.uid, email, clientId: interaction.params.client_id },
+        'Magic link attempted for client where method is disabled',
+      );
+
+      writeAuditLog({
+        organizationId: org.id,
+        eventType: 'security.login_method_disabled',
+        eventCategory: 'security',
+        description: `Magic link attempted on client where method is disabled (${email})`,
+        ipAddress: ctx.ip,
+        metadata: {
+          clientId: interaction.params.client_id,
+          attemptedMethod: 'magic_link',
+          effectiveMethods: effectiveMagicLinkMethods,
+        },
+      });
+
+      await renderLoginWithError(
+        ctx, provider, interaction, t, locale, email,
+        t('errors.login_method_disabled'),
+        403,
+      );
       return;
     }
 

@@ -159,6 +159,20 @@ describe('configuration builder', () => {
     expect(result).toBe('urn:porta:default');
   });
 
+  // ── extraClientMetadata.properties ─────────────────────────────────
+  // node-oidc-provider strips unknown properties from client metadata unless
+  // they're declared here. We must preserve 'urn:porta:login_methods' so the
+  // interaction routes can resolve the effective login methods per client.
+
+  it('extraClientMetadata.properties includes login-method and tenant keys', () => {
+    const config = buildProviderConfiguration(createDefaultParams());
+    const extra = config.extraClientMetadata as { properties: string[] };
+    expect(extra.properties).toContain('organizationId');
+    expect(extra.properties).toContain('urn:porta:allowed_origins');
+    expect(extra.properties).toContain('urn:porta:client_type');
+    expect(extra.properties).toContain('urn:porta:login_methods');
+  });
+
   it('defaultResource returns custom resource URN when explicitly requested', async () => {
     const config = buildProviderConfiguration(createDefaultParams());
     const features = config.features as Record<string, Record<string, unknown>>;

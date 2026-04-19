@@ -132,6 +132,9 @@ function createMockOrg(overrides: Partial<Organization> = {}): Organization {
     brandingCompanyName: 'Test Corp',
     brandingCustomCss: null,
     defaultLocale: 'en',
+    // Default to both methods enabled — existing tests are agnostic to
+    // login-method enforcement, so keep the permissive default here.
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     ...overrides,
@@ -186,6 +189,9 @@ function createMockProvider() {
         metadata: () => ({
           client_name: 'Test App',
           organizationId: undefined, // third-party by default
+          // Default to null (inherit from org) — enforcement tests override
+          // this to ['password'] or ['magic_link'] to exercise the guards.
+          'urn:porta:login_methods': null,
         }),
       }),
     },
@@ -879,6 +885,199 @@ describe('interaction routes', () => {
 
       // Should NOT send email
       expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // Login-method enforcement (RD-13 Phase 5.2)
+  //
+  // These tests verify that the handlers consult `urn:porta:login_methods`
+  // from the OIDC client metadata and reject attempts that don't match the
+  // allowed methods. The UI guard in login.hbs is cosmetic; these checks are
+  // the authoritative enforcement layer.
+  // =========================================================================
+
+  describe('login method enforcement', () => {
+    it('should block password login when client allows only magic_link', async () => {
+      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
+      vi.mocked(userService.verifyUserPassword).mockResolvedValue(true);
+
+      const provider = createMockProvider();
+      // Client restricted to magic_link only
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'ML-Only App',
+          'urn:porta:login_methods': ['magic_link'],
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/login');
+      const ctx = createMockCtx({
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      // Handler should render login page with the "method disabled" flash
+      // error, NOT finish the interaction, and NOT even call getUserByEmail.
+      expect(ctx.status).toBe(403);
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          flash: { error: expect.stringContaining('login_method_disabled') },
+        }),
+      );
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(userService.getUserByEmail).not.toHaveBeenCalled();
+
+      // And it should audit the attempt as a security event (not a login failure)
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'security.login_method_disabled',
+          eventCategory: 'security',
+        }),
+      );
+    });
+
+    it('should block magic_link when client allows only password', async () => {
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'PW-Only App',
+          'urn:porta:login_methods': ['password'],
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/magic-link');
+      const ctx = createMockCtx({ body: { email: 'user@test.com', _csrf: 'tok' } });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(403);
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          flash: { error: expect.stringContaining('login_method_disabled') },
+        }),
+      );
+      // Must not even touch the magic-link machinery
+      expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
+      expect(tokenRepo.insertToken).not.toHaveBeenCalled();
+      expect(userService.getUserByEmail).not.toHaveBeenCalled();
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'security.login_method_disabled' }),
+      );
+    });
+
+    it('should inherit org default when client metadata is null', async () => {
+      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
+      vi.mocked(userService.verifyUserPassword).mockResolvedValue(true);
+
+      const provider = createMockProvider();
+      // Client metadata is null → should inherit from org.defaultLoginMethods.
+      // Override org to magic-link only — password login should then be blocked.
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'Inheriting App',
+          'urn:porta:login_methods': null,
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/login');
+      const ctx = createMockCtx({
+        body: { email: 'user@test.com', password: 'pass', _csrf: 'tok' },
+        org: { defaultLoginMethods: ['magic_link'] },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(403);
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+    });
+
+    it('should render login with both-method flags when methods include both', async () => {
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'Full App',
+          'urn:porta:login_methods': ['password', 'magic_link'],
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          showPassword: true,
+          showMagicLink: true,
+          showDivider: true,
+          loginMethods: ['password', 'magic_link'],
+        }),
+      );
+    });
+
+    it('should render login with only password flag when client is password-only', async () => {
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'PW-Only App',
+          'urn:porta:login_methods': ['password'],
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          showPassword: true,
+          showMagicLink: false,
+          showDivider: false,
+        }),
+      );
+    });
+
+    it('should propagate login_hint as emailHint on the login page', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockResolvedValue(
+        createMockInteraction({
+          params: {
+            client_id: 'client-id-abc',
+            scope: 'openid',
+            login_hint: '  Alice@Example.com  ', // with surrounding whitespace
+          },
+        }),
+      );
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      // trimmed + propagated as-is (no lowercase — may be a non-email hint)
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'login',
+        expect.objectContaining({
+          email: 'Alice@Example.com',
+          emailHint: 'Alice@Example.com',
+        }),
+      );
     });
   });
 

@@ -105,6 +105,10 @@ function createMockOrg(overrides: Partial<Organization> = {}): Organization {
     isSuperAdmin: false, brandingLogoUrl: null, brandingFaviconUrl: null,
     brandingPrimaryColor: '#3B82F6', brandingCompanyName: 'Test Corp',
     brandingCustomCss: null, defaultLocale: 'en',
+    // Default to both methods enabled so existing tests (which don't care
+    // about login-method enforcement) keep their current behavior. Tests
+    // that explicitly verify the magic-link-only case override this.
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01'),
     ...overrides,
   };
@@ -408,6 +412,123 @@ describe('password reset routes', () => {
         'reset-password',
         expect.objectContaining({ flash: { error: 'Password too short' } }),
       );
+    });
+  });
+
+  // =========================================================================
+  // Login-method enforcement (RD-13 Phase 5.2)
+  //
+  // Password-reset routes are password-only flows. When the org has disabled
+  // password login entirely (`defaultLoginMethods = ['magic_link']`), all four
+  // endpoints must refuse to serve — rendering an error page instead of the
+  // form, bypassing CSRF/token checks, and writing a security audit event.
+  // =========================================================================
+
+  describe('login method enforcement (password disabled)', () => {
+    function pwDisabledCtx(overrides: {
+      params?: Record<string, string>;
+      body?: Record<string, string>;
+    } = {}) {
+      const ctx = createMockCtx(overrides);
+      ctx.state.organization = createMockOrg({ defaultLoginMethods: ['magic_link'] });
+      return ctx;
+    }
+
+    it('should block GET /forgot-password with error page and audit', async () => {
+      const router = createPasswordResetRouter();
+      const layer = findLayer(router, 'GET', 'forgot-password');
+      const ctx = pwDisabledCtx();
+
+      await exec(layer!, ctx);
+
+      // Should render error page (not the forgot-password form)
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({
+          errorMessage: expect.stringContaining('login_method_disabled'),
+        }),
+      );
+      expect(templateEngine.renderPage).not.toHaveBeenCalledWith(
+        'forgot-password',
+        expect.anything(),
+      );
+      expect(ctx.status).toBe(400);
+
+      // Should audit the block as a security event
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'security.login_method_disabled',
+          eventCategory: 'security',
+        }),
+      );
+    });
+
+    it('should block POST /forgot-password before CSRF check and before any token work', async () => {
+      // Make sure no user/token logic runs even if the body looks valid.
+      const mockUser = { id: 'user-uuid-1', email: 'u@test.com', givenName: 'X', familyName: 'Y' };
+      vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
+
+      const router = createPasswordResetRouter();
+      const layer = findLayer(router, 'POST', 'forgot-password');
+      const ctx = pwDisabledCtx({ body: { email: 'u@test.com', _csrf: 'tok' } });
+
+      await exec(layer!, ctx);
+
+      // Error page, not the form
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({
+          errorMessage: expect.stringContaining('login_method_disabled'),
+        }),
+      );
+      // Must NOT touch token generation or email sending
+      expect(tokenRepo.insertToken).not.toHaveBeenCalled();
+      expect(tokenRepo.invalidateUserTokens).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it('should block GET /reset-password/:token without validating the token', async () => {
+      const router = createPasswordResetRouter();
+      const layer = findLayer(router, 'GET', 'reset-password');
+      const ctx = pwDisabledCtx({ params: { token: 'any-token' } });
+
+      await exec(layer!, ctx);
+
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({
+          errorMessage: expect.stringContaining('login_method_disabled'),
+        }),
+      );
+      // Token lookup must be skipped — we reject at the method layer
+      expect(tokenRepo.findValidToken).not.toHaveBeenCalled();
+    });
+
+    it('should block POST /reset-password/:token without setting the password', async () => {
+      // Even if all other checks would pass, method enforcement must fire first.
+      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+      } as never);
+
+      const router = createPasswordResetRouter();
+      const layer = findLayer(router, 'POST', 'reset-password');
+      const ctx = pwDisabledCtx({
+        params: { token: 'valid-token' },
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({
+          errorMessage: expect.stringContaining('login_method_disabled'),
+        }),
+      );
+      // The password must NOT have been set
+      expect(userService.setUserPassword).not.toHaveBeenCalled();
+      expect(tokenRepo.markTokenUsed).not.toHaveBeenCalled();
     });
   });
 
