@@ -14,6 +14,37 @@
     </form>
   </div>
 
+  {{#if activeLoginMethod}}
+    <div class="panel login-method-panel">
+      <div class="panel-header">
+        <h4>🔑 Active Login-Method Profile</h4>
+      </div>
+      <div class="panel-body">
+        <p class="muted">
+          The BFF is running with <code>BFF_CLIENT_PROFILE={{activeLoginMethod.key}}</code>.
+          All OIDC flows use the profile's client; the Porta login page renders
+          the effective login methods below.
+        </p>
+        <table class="auth-table">
+          <tr><td class="attr-key">Profile</td><td>{{activeLoginMethod.label}} ({{activeLoginMethod.key}})</td></tr>
+          <tr><td class="attr-key">Org Key</td><td>{{activeLoginMethod.orgKey}}</td></tr>
+          <tr><td class="attr-key">Client ID</td><td><code>{{activeLoginMethod.clientId}}</code></td></tr>
+          <tr>
+            <td class="attr-key">Override</td>
+            <td>
+              {{#if activeLoginMethod.loginMethods}}
+                <code>[{{#each activeLoginMethod.loginMethods}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}]</code>
+              {{else}}
+                <em>none — inherits org default</em>
+              {{/if}}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  {{/if}}
+
+
   {{#if hasAuthzData}}
     <div class="panel auth-panel">
       <div class="panel-header">
@@ -141,5 +172,51 @@
     </div>
 
     <p>Select a scenario from the sidebar to begin, or click a direct org login button.</p>
+
+    {{#if hasLoginMethodProfiles}}
+      <div class="panel login-method-panel">
+        <div class="panel-header">
+          <h4>🔑 Login-Method Demo Profiles</h4>
+        </div>
+        <div class="panel-body">
+          <p class="muted">
+            Restart the BFF with
+            <code>BFF_CLIENT_PROFILE=&lt;profile&gt;</code> to switch which
+            client is used by all auth flows. The active row is highlighted
+            below and also available as JSON at
+            <a href="/debug/login-methods"><code>/debug/login-methods</code></a>.
+          </p>
+          <table class="auth-table login-method-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                <th>Label</th>
+                <th>Org</th>
+                <th>Override</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each loginMethodProfiles}}
+                <tr class="{{#if active}}active-row{{/if}}">
+                  <td><code>{{key}}</code></td>
+                  <td>{{label}}</td>
+                  <td>{{orgKey}}</td>
+                  <td>
+                    {{#if loginMethods}}
+                      <code>[{{#each loginMethods}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}]</code>
+                    {{else}}
+                      <em>inherit</em>
+                    {{/if}}
+                  </td>
+                  <td>{{#if active}}✅{{else}}—{{/if}}</td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {{/if}}
   </div>
 {{/if}}
+

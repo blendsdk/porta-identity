@@ -54,7 +54,35 @@
       <div id="logged-out-view">
         <p>Select a scenario or click Login to start an OIDC flow.</p>
         <button id="btn-login" class="btn-primary">Login</button>
+
+        <!--
+          Login Method Demo card
+          ---------------------------
+          Starts an authorization_code flow using a dedicated OIDC client
+          whose `login_methods` (or inherited org default) forces a specific
+          combination of login methods on the Porta login page.
+
+          Populated from PLAYGROUND_CONFIG.loginMethodClients.
+          See plans/client-login-methods/08-playground-integration.md.
+        -->
+        <section id="login-method-demo" class="demo-card">
+          <h2>Login Method Demo</h2>
+          <p class="demo-description">
+            Exercise the per-client <code>login_methods</code> override. Each
+            profile uses a different OIDC client so the login page renders
+            with a different combination of buttons. See the confirmation
+            panel below for the expected UI.
+          </p>
+          <label class="demo-label">Login-method profile
+            <select id="login-method-profile"></select>
+          </label>
+          <div id="login-method-details" class="demo-details"></div>
+          <button id="btn-login-method" class="btn-primary" type="button">
+            Start login with this profile
+          </button>
+        </section>
       </div>
+
 
       <!-- Shown when logged in -->
       <div id="logged-in-view" hidden>

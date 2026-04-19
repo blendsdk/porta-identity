@@ -343,6 +343,45 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     [twoFaSetupTenant.org.id],
   );
 
+  // ── Step 9e: Seed login-method tenants ──────────────────────────────
+  // Two dedicated tenants whose CLIENT overrides the effective login methods:
+  //   - password-only: client.login_methods = ['password']
+  //   - magic-link-only: client.login_methods = ['magic_link']
+  // Both orgs keep the org default (['password', 'magic_link']); the
+  // per-client override is what drives the login page rendering + POST
+  // enforcement that tests/ui/flows/login-methods.spec.ts exercises.
+  //
+  // We use separate tenants (not the primary `tenant`) so these tests can
+  // run in parallel with password-login / magic-link regression tests
+  // without any risk of cross-contamination.
+  const passwordOnlyTenant = await createFullTestTenant({
+    orgOverrides: { name: 'Password-Only Login Methods Org' },
+    clientOverrides: {
+      clientName: 'Password-Only Client',
+      redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+      loginMethods: ['password'],
+    },
+    userOverrides: {
+      email: 'ui-test-lm-password-only@test.local',
+      givenName: 'LM',
+      familyName: 'PasswordOnly',
+    },
+  });
+
+  const magicLinkOnlyTenant = await createFullTestTenant({
+    orgOverrides: { name: 'Magic-Link-Only Login Methods Org' },
+    clientOverrides: {
+      clientName: 'Magic-Link-Only Client',
+      redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+      loginMethods: ['magic_link'],
+    },
+    userOverrides: {
+      email: 'ui-test-lm-magic-only@test.local',
+      givenName: 'LM',
+      familyName: 'MagicOnly',
+    },
+  });
+
   // ── Step 10: Export test data as environment variables ──────────────
   // Playwright fixtures read these to provide testData to each spec file
   const baseUrl = `http://localhost:${UI_TEST_PORT}`;
@@ -388,6 +427,21 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.UI_TEST_2FA_SETUP_CLIENT_ID = twoFaSetupTenant.client.clientId;
   process.env.UI_TEST_2FA_SETUP_USER_EMAIL = twoFaSetupTenant.user.email;
   process.env.UI_TEST_2FA_SETUP_USER_PASSWORD = twoFaSetupTenant.password ?? DEFAULT_TEST_PASSWORD;
+
+  // Login-method tenants — client.login_methods = ['password'] and ['magic_link']
+  // Used by tests/ui/flows/login-methods.spec.ts to verify template rendering
+  // and POST-enforcement in each mode without racing the primary tenant.
+  process.env.UI_TEST_LM_PASSWORD_ONLY_ORG_SLUG = passwordOnlyTenant.org.slug;
+  process.env.UI_TEST_LM_PASSWORD_ONLY_CLIENT_ID = passwordOnlyTenant.client.clientId;
+  process.env.UI_TEST_LM_PASSWORD_ONLY_USER_EMAIL = passwordOnlyTenant.user.email;
+  process.env.UI_TEST_LM_PASSWORD_ONLY_USER_PASSWORD =
+    passwordOnlyTenant.password ?? DEFAULT_TEST_PASSWORD;
+
+  process.env.UI_TEST_LM_MAGIC_LINK_ONLY_ORG_SLUG = magicLinkOnlyTenant.org.slug;
+  process.env.UI_TEST_LM_MAGIC_LINK_ONLY_CLIENT_ID = magicLinkOnlyTenant.client.clientId;
+  process.env.UI_TEST_LM_MAGIC_LINK_ONLY_USER_EMAIL = magicLinkOnlyTenant.user.email;
+  process.env.UI_TEST_LM_MAGIC_LINK_ONLY_USER_PASSWORD =
+    magicLinkOnlyTenant.password ?? DEFAULT_TEST_PASSWORD;
 
   // Store server reference for teardown — Playwright runs setup/teardown
   // in the same process, so module-level state persists

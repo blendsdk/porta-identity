@@ -49,7 +49,38 @@ yarn playground:reset
 | 7 | **Password Reset** | playground-no2fa | Forgot password flow via email |
 | 8 | **TOTP Setup** | playground-totp2fa | Fresh user sees TOTP enrollment |
 
+## Login Method Demo
+
+The dashboard ships a dedicated **"Login Method Demo"** card that exercises
+the per-client `login_methods` override. Each profile points at a different
+OIDC client so the Porta login page renders with a specific combination of
+buttons.
+
+| Profile | Client | Override | Effective | Expected UI |
+|---------|--------|----------|-----------|-------------|
+| **Password only** | `Playground SPA (Password Only)` (org `playground-no2fa`) | `['password']` | `password` | Password form only |
+| **Magic link only** | `Playground SPA (Magic Link Only)` (org `playground-no2fa`) | `['magic_link']` | `magic_link` | "Email me a login link" only |
+| **Both** | `Playground SPA (No 2FA Org)` (org `playground-no2fa`) | *none* | `password, magic_link` (from org default) | Both buttons |
+| **Password-only (via org default)** | `Playground SPA (Password-Only Org)` (org `playground-passwordonly`) | *none* | `password` (from org default) | Password form only |
+
+The "via org default" profile proves the resolution rule: when a client's
+`login_methods` is `null`, the organisation's `default_login_methods` takes
+effect. The seed script sets `defaultLoginMethods = ['password']` on the
+`playground-passwordonly` org specifically to demonstrate this.
+
+**Usage:**
+
+1. Start the playground (`yarn playground`).
+2. In the dashboard, pick a profile from the **Login Method Demo** dropdown.
+3. Review the confirmation panel — it shows the effective login methods, the
+   resolution source (`client` / `org` / `fallback`), and the expected UI.
+4. Click **"Start login with this profile"** — Porta will redirect to the
+   login page rendered for that profile's client.
+5. Log in with any seeded user for the org (e.g. `user@no2fa.local` /
+   `Playground123!` for the `no2fa` profiles).
+
 ## Test Users
+
 
 All users have password: `Playground1!`
 

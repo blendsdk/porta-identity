@@ -156,7 +156,28 @@ export async function logout() {
 }
 
 /**
+ * Start an OIDC login flow with a dedicated login-method demo client.
+ *
+ * Unlike `login()` — which reuses whatever `UserManager` was set up for the
+ * currently-selected organisation — this helper re-initialises the manager
+ * with the profile's authority + client_id so the authorization code flow
+ * hits the Porta tenant that exposes the desired login-method override.
+ *
+ * The profile is the shape returned by `getProfileSettings()` in config.js.
+ * @param {{ authority: string, clientId: string }} profileSettings
+ */
+export async function loginWithProfile(profileSettings) {
+  initAuth(profileSettings);
+  logEvent(
+    'info',
+    `Login-method demo → authority=${profileSettings.authority}, client=${profileSettings.clientId}`,
+  );
+  await login();
+}
+
+/**
  * Try to load an existing user from session storage.
+
  * Called on page load to restore previous login state.
  * @returns {Promise<object|null>} Existing user or null
  */

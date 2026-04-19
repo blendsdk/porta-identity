@@ -44,9 +44,103 @@ export function getOrgSettings(orgKey) {
 }
 
 /**
+ * Default login methods for organisations, mirrored from the seed script's
+ * `ORG_DEFAULT_LOGIN_METHODS` map. Used for display only — the server is the
+ * single source of truth at request time.
+ */
+const ORG_DEFAULT_LOGIN_METHODS = {
+  passwordOnly: ['password'],
+};
+
+/** Fallback (matches the DB DEFAULT for organisations). */
+const DEFAULT_LOGIN_METHODS = ['password', 'magic_link'];
+
+/** Map org slug → orgKey, so we can look up defaults from a seeded client. */
+function orgKeyForSlug(slug) {
+  if (!playgroundConfig?.organizations) return null;
+  for (const [key, org] of Object.entries(playgroundConfig.organizations)) {
+    if (org.slug === slug) return key;
+  }
+  return null;
+}
+
+/**
+ * Resolve the effective login methods for a demo profile.
+ * Mirrors the server-side resolution rule: client override wins, else org
+ * default, else the hard-coded fallback.
+ *
+ * @param {{ loginMethods: string[]|null, orgSlug: string }} profile
+ * @returns {{ methods: string[], source: 'client'|'org'|'fallback' }}
+ */
+export function resolveLoginMethods(profile) {
+  if (Array.isArray(profile.loginMethods) && profile.loginMethods.length > 0) {
+    return { methods: [...profile.loginMethods], source: 'client' };
+  }
+  const orgKey = orgKeyForSlug(profile.orgSlug);
+  const orgDefault = orgKey ? ORG_DEFAULT_LOGIN_METHODS[orgKey] : null;
+  if (orgDefault && orgDefault.length > 0) {
+    return { methods: [...orgDefault], source: 'org' };
+  }
+  return { methods: [...DEFAULT_LOGIN_METHODS], source: 'fallback' };
+}
+
+/**
+ * Get the ordered list of login-method demo profiles from the loaded config.
+ * Returns an empty list if the config was generated before Phase 10.
+ *
+ * Each entry is shaped as:
+ *   { key, clientId, orgSlug, label, loginMethods }
+ *
+ * where `key` is the object key from `loginMethodClients` (e.g. "password",
+ * "magic", "both", "orgForced"), and `loginMethods` is the per-client
+ * override array or `null` when the client inherits from its organization.
+ *
+ * @returns {Array<{
+ *   key: string,
+ *   clientId: string,
+ *   orgSlug: string,
+ *   label: string,
+ *   loginMethods: string[]|null,
+ * }>}
+ */
+export function getLoginMethodProfiles() {
+  const map = playgroundConfig?.loginMethodClients;
+  if (!map) return [];
+  return Object.entries(map).map(([key, value]) => ({ key, ...value }));
+}
+
+/** Find a single login-method profile by its key, or `null` if unknown. */
+export function findLoginMethodProfile(profileKey) {
+  const profiles = getLoginMethodProfiles();
+  return profiles.find((p) => p.key === profileKey) ?? null;
+}
+
+/**
+ * Translate a profile into the OIDC settings needed by `initAuth()`.
+ * Authority is derived from the profile's org slug so magic-link profiles
+ * that point at the password-only org still hit the correct tenant path.
+ */
+export function getProfileSettings(profile) {
+  if (!playgroundConfig) throw new Error('Config not loaded');
+  return {
+    authority: `${playgroundConfig.portaUrl}/${profile.orgSlug}`,
+    clientId: profile.clientId,
+    orgSlug: profile.orgSlug,
+    orgName: profile.label,
+    // 2FA policy is pulled from the owning org when available; profiles that
+    // reuse a seed org will see its real policy, profiles referencing a
+    // missing org fall back to "optional" so UI doesn't break.
+    twoFactorPolicy:
+      playgroundConfig.organizations?.[orgKeyForSlug(profile.orgSlug)]?.twoFactorPolicy
+        ?? 'optional',
+  };
+}
+
+/**
  * Scenario definitions with descriptions and hints.
  * Each scenario maps to an org + user + flow description.
  */
+
 export const SCENARIOS = [
   {
     id: 'normalLogin',

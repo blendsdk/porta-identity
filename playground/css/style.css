@@ -477,3 +477,58 @@ main {
     max-height: 40vh;
   }
 }
+
+/* ---------- Login-method demo card (Phase 10) ---------- */
+
+.demo-card {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card, var(--bg-input));
+}
+.demo-card h2 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+.demo-description { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1rem 0; }
+.demo-description code {
+  background: var(--bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+.demo-label { display: block; margin-bottom: 0.75rem; font-size: 0.85rem; }
+.demo-label select { width: 100%; margin-top: 0.25rem; }
+.demo-details {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  font-family: monospace;
+  margin-bottom: 0.75rem;
+}
+.demo-details .detail-row { margin-bottom: 0.35rem; }
+.demo-details .detail-row:last-child { margin-bottom: 0; }
+.demo-details .detail-label {
+  display: inline-block;
+  width: 110px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.demo-details .source-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+}
+.demo-details .source-client { background: #059669; color: #fff; }
+.demo-details .source-org { background: #d97706; color: #fff; }
+.demo-details .expected-ui {
+  background: var(--bg-page, rgba(99, 102, 241, 0.08));
+  border-left: 3px solid #6366f1;
+  padding: 0.4rem 0.6rem;
+  margin-top: 0.5rem;
+  border-radius: 2px;
+}

@@ -113,6 +113,26 @@ export interface TestData {
   twoFaSetupUserEmail: string;
   /** Password of the TOTP-setup user */
   twoFaSetupUserPassword: string;
+
+  // ── Login-method tenants (client.login_methods override) ──────────
+
+  /** Org slug of the tenant whose client has login_methods=['password'] */
+  lmPasswordOnlyOrgSlug: string;
+  /** Client ID of the password-only client */
+  lmPasswordOnlyClientId: string;
+  /** Email of the user in the password-only tenant */
+  lmPasswordOnlyUserEmail: string;
+  /** Password of the user in the password-only tenant */
+  lmPasswordOnlyUserPassword: string;
+
+  /** Org slug of the tenant whose client has login_methods=['magic_link'] */
+  lmMagicLinkOnlyOrgSlug: string;
+  /** Client ID of the magic-link-only client */
+  lmMagicLinkOnlyClientId: string;
+  /** Email of the user in the magic-link-only tenant */
+  lmMagicLinkOnlyUserEmail: string;
+  /** Password of the user in the magic-link-only tenant (unused — UI has no password form — but seeded for parity) */
+  lmMagicLinkOnlyUserPassword: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +226,16 @@ export const test = base.extend<{
       twoFaSetupClientId: process.env.UI_TEST_2FA_SETUP_CLIENT_ID!,
       twoFaSetupUserEmail: process.env.UI_TEST_2FA_SETUP_USER_EMAIL!,
       twoFaSetupUserPassword: process.env.UI_TEST_2FA_SETUP_USER_PASSWORD!,
+
+      // Login-method tenants — password-only and magic-link-only clients
+      lmPasswordOnlyOrgSlug: process.env.UI_TEST_LM_PASSWORD_ONLY_ORG_SLUG!,
+      lmPasswordOnlyClientId: process.env.UI_TEST_LM_PASSWORD_ONLY_CLIENT_ID!,
+      lmPasswordOnlyUserEmail: process.env.UI_TEST_LM_PASSWORD_ONLY_USER_EMAIL!,
+      lmPasswordOnlyUserPassword: process.env.UI_TEST_LM_PASSWORD_ONLY_USER_PASSWORD!,
+      lmMagicLinkOnlyOrgSlug: process.env.UI_TEST_LM_MAGIC_LINK_ONLY_ORG_SLUG!,
+      lmMagicLinkOnlyClientId: process.env.UI_TEST_LM_MAGIC_LINK_ONLY_CLIENT_ID!,
+      lmMagicLinkOnlyUserEmail: process.env.UI_TEST_LM_MAGIC_LINK_ONLY_USER_EMAIL!,
+      lmMagicLinkOnlyUserPassword: process.env.UI_TEST_LM_MAGIC_LINK_ONLY_USER_PASSWORD!,
     });
   },
 

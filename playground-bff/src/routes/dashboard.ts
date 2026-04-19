@@ -11,8 +11,10 @@
 
 import type Router from '@koa/router';
 import type { BffConfig } from '../config.js';
+import { getActiveLoginMethodProfile } from '../config.js';
 import { decodeJwt } from '../helpers/jwt.js';
 import { render } from '../helpers/template.js';
+
 
 /**
  * Register the dashboard route.
@@ -61,6 +63,30 @@ export function createDashboardRoutes(router: Router, config: BffConfig): void {
       ? `${refreshTokenRaw.slice(0, 20)}…`
       : null;
 
+    // Login-method panel data — mirrors GET /debug/login-methods so users can
+    // see which demo client is active in the dashboard without hitting the
+    // debug endpoint. Secrets are scrubbed before rendering.
+    const active = getActiveLoginMethodProfile();
+    const loginMethodProfiles = Object.entries(config.loginMethodClients ?? {}).map(
+      ([key, v]) => ({
+        key,
+        label: v.label,
+        orgKey: v.orgKey,
+        clientId: v.clientId,
+        loginMethods: v.loginMethods,
+        active: active?.key === key,
+      }),
+    );
+    const activeLoginMethod = active
+      ? {
+          key: active.key,
+          label: active.config.label,
+          orgKey: active.config.orgKey,
+          clientId: active.config.clientId,
+          loginMethods: active.config.loginMethods,
+        }
+      : null;
+
     const html = render('dashboard', {
       activePage: 'dashboard',
       isAuthenticated,
@@ -78,12 +104,17 @@ export function createDashboardRoutes(router: Router, config: BffConfig): void {
       permissions,
       customClaims,
       hasAuthzData,
+      // Login-method demo panel
+      activeLoginMethod,
+      loginMethodProfiles,
+      hasLoginMethodProfiles: loginMethodProfiles.length > 0,
       // Sidebar data
       scenarios: config.scenarios,
       organizations: config.organizations,
       portaUrl: config.portaUrl,
       mailhogUrl: config.mailhogUrl,
     });
+
 
     ctx.type = 'text/html';
     ctx.body = html;

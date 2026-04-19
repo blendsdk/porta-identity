@@ -30,6 +30,8 @@ import { createAuthRoutes } from './routes/auth.js';
 import { createDashboardRoutes } from './routes/dashboard.js';
 import { createApiRoutes } from './routes/api.js';
 import { createM2mRoutes } from './routes/m2m.js';
+import { createDebugRoutes } from './routes/debug.js';
+
 
 // ===========================================================================
 // Startup
@@ -74,7 +76,11 @@ createApiRoutes(router, config);
 // M2M demo — /m2m, /m2m/token, /m2m/introspect, /m2m/revoke
 createM2mRoutes(router, config);
 
+// Debug routes — /debug/login-methods (dev-only)
+createDebugRoutes(router, config);
+
 app.use(router.routes());
+
 app.use(router.allowedMethods());
 
 // ---------------------------------------------------------------------------

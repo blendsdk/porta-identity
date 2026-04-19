@@ -9,7 +9,15 @@
  * Uses the shared `testData` fixture (seeded org → app → client → user)
  * and `startAuthFlow` helper to initiate an OIDC authorization request.
  *
+ * Depends on the **primary test tenant** which inherits the default
+ * organization login methods `['password', 'magic_link']`. If the primary
+ * tenant is ever reconfigured to disable password auth, these tests will
+ * fail deterministically at the `#password` / magic-link-button visibility
+ * asserts — see `tests/ui/flows/login-methods.spec.ts` for the
+ * per-client override coverage.
+ *
  * @see plans/ui-testing/05-playwright-tests.md — Password Login spec
+ * @see tests/ui/flows/login-methods.spec.ts — Configurable login methods
  */
 
 import { test, expect } from '../fixtures/test-fixtures.js';
@@ -62,8 +70,14 @@ test.describe('Password Login Flow', () => {
     await expect(page.locator('#password')).toBeVisible();
     // Verify submit button exists (login form has btn-primary)
     await expect(page.locator('button.btn-primary')).toBeVisible();
-    // Verify magic link button exists
+    // Verify magic link button exists — confirms the primary tenant
+    // inherits BOTH login methods (password + magic_link). If this asserts
+    // fails, check whether the primary tenant's login_methods were
+    // accidentally narrowed in global-setup.
     await expect(page.locator('#magic-link-btn')).toBeVisible();
+    // Sanity check: the divider between the two forms is rendered only
+    // when both methods are active on the effective login methods set.
+    await expect(page.locator('.divider')).toBeVisible();
   });
 
   test('should have CSRF token in hidden form field', async ({

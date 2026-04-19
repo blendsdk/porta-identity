@@ -724,3 +724,136 @@ function csrfProtection(ctx: KoaContext, next: Next): Promise<void> {
 26. [ ] Accept-invite page allows user to set initial password
 27. [ ] Invitation tokens are single-use and expire per config (7 days default)
 28. [ ] Expired/invalid invitation token shows friendly error page
+
+---
+
+## Addendum: Configurable Login Methods (2026-04-19)
+
+**Implementation plan:** [`plans/client-login-methods/99-execution-plan.md`](../plans/client-login-methods/99-execution-plan.md)
+
+This addendum extends RD-07 with an explicit contract for **per-tenant +
+per-client login method configuration**. It does **not** replace any of the
+existing acceptance criteria — it layers a new configuration dimension on top.
+
+### Motivation
+
+Historically every organization on Porta exposed both password-based login
+**and** passwordless magic-link login on every client. Tenants increasingly
+need to restrict which methods are available — e.g., password-only for
+regulated internal tools, magic-link-only for consumer-facing kiosks, or a
+bespoke combination per application.
+
+### Data Model
+
+- `organizations.default_login_methods` — `NOT NULL TEXT[]` with DB DEFAULT
+  `ARRAY['password', 'magic_link']`. Every org always has a concrete default.
+- `clients.login_methods` — nullable `TEXT[]` where:
+  - `NULL` (the DB default) = **inherit** from the owning organization.
+  - Non-null array = **override** the org default with the listed methods.
+- Allowed values (union `LoginMethod`): `'password' | 'magic_link'`.
+  Empty arrays are rejected at the service layer.
+
+### Resolution Rule
+
+The helper `resolveLoginMethods(org, client)` in `src/clients/resolve-login-methods.ts`
+is the single source of truth:
+
+```text
+client.loginMethods is non-null AND non-empty  →  return client.loginMethods
+otherwise                                       →  return org.defaultLoginMethods
+```
+
+The resolver is a pure function — used consistently by the OIDC interaction
+layer, the admin API, and the CLI to project effective methods.
+
+### Enforcement Points
+
+Enforcement runs **before** CSRF verification, rate-limiting, and user lookup
+so disabled methods cannot leak identity information or consume rate-limit
+budget. All enforcement sites emit a `security.login_method_disabled` audit
+event and return HTTP 403 with the localized `errors.login_method_disabled`
+message.
+
+| Location                                           | Blocked When                                |
+| -------------------------------------------------- | ------------------------------------------- |
+| `POST /interaction/:uid/login`                     | `password` not in effective methods         |
+| `POST /interaction/:uid/magic-link`                | `magic_link` not in effective methods       |
+| `GET  /:orgSlug/auth/forgot-password`              | `password` not in org default methods       |
+| `POST /:orgSlug/auth/forgot-password`              | `password` not in org default methods       |
+| `POST /:orgSlug/auth/reset-password/:token`        | `password` not in org default methods       |
+
+`forgot-password` / `reset-password` routes cannot know which client the user
+started from (the URL has no `client_id`), so they enforce against the
+organization default only — equivalent to `resolveLoginMethods(org, { loginMethods: null })`.
+
+### Template Behavior
+
+`templates/default/pages/login.hbs` renders four distinct modes:
+
+| Effective Methods         | UI Surface                                                    |
+| ------------------------- | ------------------------------------------------------------- |
+| `[password, magic_link]`  | Password form + divider + magic-link form + JS email-copy     |
+| `[password]`              | Password form only (no divider, no magic-link form)           |
+| `[magic_link]`            | Standalone magic-link form with its own email input           |
+| `[]` (defensive)          | Fallback alert using `errors.no_login_methods_configured`     |
+
+The "Forgot password?" link is wrapped in `{{#if showPassword}}` so it is
+hidden when password-based login is disabled. The OIDC `login_hint` query
+parameter is trimmed and capped at 320 characters (RFC 5321 max) before being
+piped into `{{emailHint}}` on both email inputs.
+
+### Admin API Surface
+
+- `POST /api/admin/organizations`, `PATCH /api/admin/organizations/:id` —
+  accept `defaultLoginMethods: LoginMethod[]` (min length 1).
+- `POST /api/admin/clients`, `PATCH /api/admin/clients/:id` — accept
+  `loginMethods: LoginMethod[] | null` (three-state semantics: omit = leave
+  alone, `null` = clear override / inherit, array = set override).
+- GET responses on `/api/admin/clients/*` include an additional
+  `effectiveLoginMethods: LoginMethod[]` field (server-resolved) so API
+  consumers never have to replicate the inheritance rule client-side.
+
+### CLI Surface
+
+- `porta org create|update --login-methods password,magic_link`
+- `porta client create|update --login-methods password` (or `magic_link,password`)
+- `porta client create|update --login-methods inherit` — clears the client
+  override back to the org default.
+- `porta org show` displays a `Default Login Methods` row.
+- `porta client show` displays two rows: `Login Methods (raw)` (renders
+  `inherit` when `null`) and `Effective Login Methods` (resolved).
+
+Invalid `--login-methods` input fails fast **before** opening DB/Redis
+connections via `parseLoginMethodsFlag` in `src/cli/parsers.ts`.
+
+### Audit Events
+
+- `organization.updated` / `client.updated` — capture
+  `previousDefaultLoginMethods → newDefaultLoginMethods` or
+  `previousLoginMethods → newLoginMethods` when the field changes.
+- `security.login_method_disabled` — written on every 403 from the
+  enforcement layer. Metadata includes the attempted method, the effective
+  methods, and the organization + client IDs.
+
+### Additional Acceptance Criteria
+
+29. [x] `organizations.default_login_methods` column exists, NOT NULL, defaults to `['password', 'magic_link']`
+30. [x] `clients.login_methods` column exists, nullable (`NULL` = inherit)
+31. [x] `resolveLoginMethods(org, client)` returns the effective methods array
+32. [x] Login UI renders correctly in all four modes (both / password-only / magic-link-only / fallback)
+33. [x] `POST /login` returns 403 when `password` is not in effective methods
+34. [x] `POST /magic-link` returns 403 when `magic_link` is not in effective methods
+35. [x] Forgot-password (GET + POST) + reset-password (POST) return 403 when the org default disables `password`
+36. [x] Enforcement runs **before** CSRF, rate-limit, and user lookup (verified via pentest suite)
+37. [x] Enforcement writes a `security.login_method_disabled` audit event
+38. [x] Response body for 403 does not leak the internal method name
+39. [x] `login_hint` is sanitized (length-capped, HTML-escaped) before templating
+40. [x] Admin API `defaultLoginMethods` rejects empty arrays and unknown methods
+41. [x] Admin API `loginMethods` supports the three states: omit / `null` / array
+42. [x] GET responses include a server-computed `effectiveLoginMethods` field on clients
+43. [x] `porta org` and `porta client` CLIs accept `--login-methods` with validation before bootstrap
+44. [x] `porta client` accepts the `inherit` sentinel to clear an override
+45. [x] E2E scenarios verify all six enforcement cases end-to-end
+46. [x] Pentest scenarios verify no bypass via CSRF-less requests, enumeration deltas, mass-assignment, or `login_hint` XSS
+47. [x] Playwright UI scenarios verify the login page renders correctly in all three visible modes
+

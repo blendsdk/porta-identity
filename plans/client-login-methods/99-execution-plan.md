@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-19 14:35
-> **Progress**: 51/58 tasks (88%)
+> **Last Updated**: 2026-04-19 17:00 (Phase 9 Session C complete)
+> **Progress**: 61/76 tasks (80%) — Phases 1–9 complete; Phase 10 (playground integration) pending
 
 
 ## Overview
@@ -299,15 +299,15 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                                  | File                             |
 | ----- | ------------------------------------------------------------------------------------- | -------------------------------- |
-| 7.1.1 | Update `src/routes/organizations.ts` Zod schemas + handlers                           | `src/routes/organizations.ts`    |
-| 7.1.2 | Update `src/routes/clients.ts` Zod schemas + handlers; add `effectiveLoginMethods` to GET responses | `src/routes/clients.ts` |
-| 7.1.3 | Update `tests/unit/routes/organizations.test.ts`                                      | `tests/unit/routes/organizations.test.ts` |
-| 7.1.4 | Update `tests/unit/routes/clients.test.ts`                                            | `tests/unit/routes/clients.test.ts` |
+| 7.1.1 ✅ | Update `src/routes/organizations.ts` Zod schemas + handlers                           | `src/routes/organizations.ts`    |
+| 7.1.2 ✅ | Update `src/routes/clients.ts` Zod schemas + handlers; add `effectiveLoginMethods` to GET responses | `src/routes/clients.ts` |
+| 7.1.3 ✅ | Update `tests/unit/routes/organizations.test.ts`                                      | `tests/unit/routes/organizations.test.ts` |
+| 7.1.4 ✅ | Update `tests/unit/routes/clients.test.ts`                                            | `tests/unit/routes/clients.test.ts` |
 
 **Deliverables**:
-- [ ] API accepts + rejects correctly
-- [ ] GET responses include `effectiveLoginMethods`
-- [ ] Route tests pass
+- [x] API accepts + rejects correctly
+- [x] GET responses include `effectiveLoginMethods`
+- [x] Route tests pass
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- routes/organizations routes/clients && yarn lint`
 
@@ -359,23 +359,43 @@ Implements organization-default + per-client override login-method configuration
 **Reference**: [07-testing-strategy.md](07-testing-strategy.md)
 **Objective**: Full verification.
 
+This phase was split across three sub-sessions to keep each diff reviewable:
+- **Session A** — E2E (9.1.1) + Pentest (9.1.2) + RD-07 addendum (9.1.5)
+- **Session B** — UI Playwright spec (9.1.3) + UI regression updates (9.1.4)
+- **Session C** — Full `yarn verify` (9.1.6) + project.md refresh (9.1.7)
+
 **Tasks**:
 
 | #     | Task                                                            | File                                    |
 | ----- | --------------------------------------------------------------- | --------------------------------------- |
-| 9.1.1 | Create `tests/e2e/login-methods.spec.ts` covering 6 scenarios   | `tests/e2e/login-methods.spec.ts`       |
-| 9.1.2 | Add pentest cases for CSRF + info-leak + mass-assignment + forgot-password enforcement + `login_hint` XSS | `tests/pentest/login-methods.test.ts`   |
-| 9.1.3 | Create `tests/ui/flows/login-methods.spec.ts` — 6 Playwright scenarios (password-only, magic-only, both, forgot-link hidden, `login_hint` prefill, POST enforcement via direct fetch) | `tests/ui/flows/login-methods.spec.ts` |
-| 9.1.4 | Update regression asserts in `tests/ui/flows/password-login.spec.ts` + `tests/ui/flows/magic-link.spec.ts` | `tests/ui/flows/password-login.spec.ts` + `tests/ui/flows/magic-link.spec.ts` |
-| 9.1.5 | Append "Addendum: Configurable Login Methods" section to `requirements/RD-07-auth-workflows-login-ui.md` linking to this plan | `requirements/RD-07-auth-workflows-login-ui.md` |
-| 9.1.6 | Full verify run (`yarn verify` + `yarn test:ui` if in scope)    | —                                       |
-| 9.1.7 | Re-analyze project with `analyze_project` + update `.clinerules/project.md` | `.clinerules/project.md`        |
+| 9.1.1 ✅ | Create `tests/e2e/login-methods.spec.ts` covering 6 scenarios   | `tests/e2e/auth/login-methods.spec.ts`       |
+| 9.1.2 ✅ | Add pentest cases for CSRF + info-leak + mass-assignment + forgot-password enforcement + `login_hint` XSS | `tests/pentest/auth-bypass/login-methods-bypass.test.ts`   |
+| 9.1.3 ✅ | Create `tests/ui/flows/login-methods.spec.ts` — 8 Playwright scenarios (password-only, magic-only, both, forgot-link hidden, `login_hint` prefill, POST enforcement via direct fetch) | `tests/ui/flows/login-methods.spec.ts` |
+| 9.1.4 ✅ | Update regression asserts in `tests/ui/flows/password-login.spec.ts` + `tests/ui/flows/magic-link.spec.ts` | `tests/ui/flows/password-login.spec.ts` + `tests/ui/flows/magic-link.spec.ts` |
+| 9.1.5 ✅ | Append "Addendum: Configurable Login Methods" section to `requirements/RD-07-auth-workflows-login-ui.md` linking to this plan | `requirements/RD-07-auth-workflows-login-ui.md` |
+| 9.1.6 ✅ | Full verify run (`yarn verify`) — 2,171/2,171 tests pass in 77.58s across 120 files, build + lint clean | —                                       |
+| 9.1.7 ✅ | Re-analyze project with `analyze_project` + surgical merge into `.clinerules/project.md` | `.clinerules/project.md`        |
 
 **Deliverables**:
-- [ ] All E2E scenarios pass
-- [ ] Pentest scenarios pass
-- [ ] `yarn verify` green end-to-end
-- [ ] `project.md` reflects new module layout
+- [x] All E2E scenarios pass
+- [x] Pentest scenarios pass
+- [x] `yarn verify` green end-to-end (2,171 tests, 0 failures)
+- [x] `project.md` reflects new login-methods module rule + RD-13..17 + updated migration/test counts
+
+**Completion Notes (2026-04-19, Sessions A + B + C)**:
+- **E2E** (`tests/e2e/auth/login-methods.spec.ts`) covers the six canonical flows — password-only blocks magic-link POST, magic-link-only blocks password POST, both-methods allows both, org inheritance (client override = NULL), org default override, forgot-password 403 when password disabled. Each scenario asserts 403 status + audit-event write.
+- **Pentest** (`tests/pentest/auth-bypass/login-methods-bypass.test.ts`) covers CSRF under disabled methods, information-leak parity between 403 and 401 responses, mass-assignment rejection on admin endpoints, and `login_hint` XSS defence (HTML-entity encoding check). All assertions verify the enforcement runs **before** CSRF / rate-limit / user lookup so probes can't be used for enumeration.
+- **UI** (`tests/ui/flows/login-methods.spec.ts`) — 8 Playwright scenarios: password-only rendering, magic-only rendering, both rendering + divider visibility, forgot-password link hidden when password disabled, `login_hint` prefills email input (both forms), direct-fetch POST enforcement returns 403, magic-link email → success → token exchange round-trip, seeded test clients reset between suites.
+- **UI regression** updates (`password-login.spec.ts` + `magic-link.spec.ts`) now assert that the default seeded client renders **both** forms (password + magic-link + divider) so the baseline specs guard against regressions that would silently disable one form.
+- **RD-07 addendum** appended to `requirements/RD-07-auth-workflows-login-ui.md` documenting the configurable login-methods feature, linking back to `plans/client-login-methods/` for implementation details.
+- **`yarn verify`** (Session C): 120 test files, 2,171 tests, 0 failures, 77.58s. Build + lint clean. No regressions from Phase 1–8 backend or Session B UI changes.
+- **`.clinerules/project.md`** (Session C): `analyze_project` regressed the file (reclassified as "library", dropped `yarn verify`/`docker:up`/`dev`, collapsed Directory Layout). Did NOT accept wholesale output. Applied surgical `replace_in_file` edits instead:
+  - `Last Updated` bumped to `2026-04-19 (after client-login-methods feature completion)`
+  - Requirements count: `12` → `17` (added RD-13 admin-auth CLI v2, RD-14 playground application, RD-15 playground infrastructure, RD-16 scope translation/UI polish, RD-17 setup documentation)
+  - Migration count in Directory Layout: `001–011` → `001–014`
+  - New "Login methods module" Special-Rules bullet describing resolution rule, 5-endpoint enforcement, 4 template rendering modes, admin API + CLI support
+  - Test-suite line: `1,818 unit+integration across 112 files` → `2,171 unit+integration across 120 files passing, zero failures (~78s)`, plus E2E/pentest/UI counts
+  - All user-customized sections (full Directory Layout annotations, Commands, Toolchain details, Coding Conventions, Git Conventions) preserved verbatim
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -486,10 +506,10 @@ clear && sleep 3 && bash scripts/playground-bff-smoke.sh
 - [x] 6.1.6 Wire `{{emailHint}}` into both email inputs
 
 ### Phase 7: Admin API
-- [ ] 7.1.1 Update `routes/organizations.ts` Zod + handlers
-- [ ] 7.1.2 Update `routes/clients.ts` Zod + handlers + `effectiveLoginMethods`
-- [ ] 7.1.3 Update `routes/organizations.test.ts`
-- [ ] 7.1.4 Update `routes/clients.test.ts`
+- [x] 7.1.1 Update `routes/organizations.ts` Zod + handlers
+- [x] 7.1.2 Update `routes/clients.ts` Zod + handlers + `effectiveLoginMethods`
+- [x] 7.1.3 Update `routes/organizations.test.ts`
+- [x] 7.1.4 Update `routes/clients.test.ts`
 
 ### Phase 8: CLI
 - [x] 8.1.1 Create `parseLoginMethodsFlag()` helper
@@ -502,13 +522,13 @@ clear && sleep 3 && bash scripts/playground-bff-smoke.sh
 - [x] 8.1.8 Update `cli/commands/client.test.ts`
 
 ### Phase 9: E2E + UI + Pentest + RD-07 Addendum + Verify
-- [ ] 9.1.1 Create `tests/e2e/login-methods.spec.ts`
-- [ ] 9.1.2 Create `tests/pentest/login-methods.test.ts`
-- [ ] 9.1.3 Create `tests/ui/flows/login-methods.spec.ts` (Playwright)
-- [ ] 9.1.4 Update regression asserts in password-login + magic-link UI specs
-- [ ] 9.1.5 Append RD-07 addendum for configurable login methods
-- [ ] 9.1.6 Full `yarn verify`
-- [ ] 9.1.7 Re-analyze + update `.clinerules/project.md`
+- [x] 9.1.1 Create `tests/e2e/auth/login-methods.spec.ts`
+- [x] 9.1.2 Create `tests/pentest/auth-bypass/login-methods-bypass.test.ts`
+- [x] 9.1.3 Create `tests/ui/flows/login-methods.spec.ts` (Playwright, 8 scenarios)
+- [x] 9.1.4 Update regression asserts in password-login + magic-link UI specs
+- [x] 9.1.5 Append RD-07 addendum for configurable login methods
+- [x] 9.1.6 Full `yarn verify` — 2,171/2,171 passing, 77.58s
+- [x] 9.1.7 Re-analyze + surgical merge into `.clinerules/project.md`
 
 ### Phase 10: Playground Integration
 - [ ] 10.1.1 Extend `scripts/playground-seed.ts` (org + 5 clients + generated config)

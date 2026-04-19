@@ -113,7 +113,35 @@ check "GET /css/style.css returns 200" "$BFF_URL/css/style.css" "200"
 check "GET /js/app.js returns 200" "$BFF_URL/js/app.js" "200"
 echo ""
 
+# 7. Login-method demo (Phase 10)
+# ----------------------------------------------------------------------------
+# The BFF exposes GET /debug/login-methods which returns JSON describing the
+# currently-active login-method profile + the catalog of all profiles. These
+# assertions verify the route is wired and that clientSecret is never leaked.
+echo "7. Login-Method Debug Route"
+check "GET /debug/login-methods returns 200" "$BFF_URL/debug/login-methods" "200"
+
+DEBUG_BODY=$(curl -s "$BFF_URL/debug/login-methods" 2>/dev/null || echo "")
+if echo "$DEBUG_BODY" | grep -q '"profiles"'; then
+  echo "  ✅ Debug body contains profiles catalog"
+  PASS=$((PASS + 1))
+else
+  echo "  ❌ Debug body missing 'profiles' key"
+  FAIL=$((FAIL + 1))
+fi
+
+# Safety check: the debug endpoint MUST NOT leak client secrets.
+if echo "$DEBUG_BODY" | grep -q 'clientSecret'; then
+  echo "  ❌ Debug body leaks clientSecret (security regression!)"
+  FAIL=$((FAIL + 1))
+else
+  echo "  ✅ Debug body does not leak clientSecret"
+  PASS=$((PASS + 1))
+fi
+echo ""
+
 # Summary
+
 TOTAL=$((PASS + FAIL))
 echo "════════════════════════════"
 if [ $FAIL -eq 0 ]; then

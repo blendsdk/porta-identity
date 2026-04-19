@@ -295,3 +295,26 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.82rem; color: 
   .sidebar { max-height: none; border-right: none; border-bottom: 1px solid var(--border-color); }
   .panels-grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Login-method demo panel (Phase 10) ---- */
+.login-method-panel { margin: 1rem 0; }
+.login-method-table th,
+.login-method-table td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  text-align: left;
+}
+.login-method-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+.login-method-table tr.active-row {
+  background: rgba(99, 102, 241, 0.12);
+}
+.login-method-table tr.active-row td {
+  font-weight: 600;
+}

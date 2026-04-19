@@ -2,8 +2,26 @@
  * Main app module — orchestrates the playground.
  * Initializes config, renders scenarios, wires buttons, handles login state.
  */
-import { loadConfig, getConfig, getOrgSettings, SCENARIOS } from '/js/config.js';
-import { initAuth, login, logout, refreshToken, loadExistingUser, getUser } from '/js/auth.js';
+import {
+  loadConfig,
+  getConfig,
+  getOrgSettings,
+  SCENARIOS,
+  getLoginMethodProfiles,
+  findLoginMethodProfile,
+  getProfileSettings,
+  resolveLoginMethods,
+} from '/js/config.js';
+import {
+  initAuth,
+  login,
+  logout,
+  refreshToken,
+  loadExistingUser,
+  getUser,
+  loginWithProfile,
+} from '/js/auth.js';
+
 import { logEvent, checkServiceStatus, updateAuthStatus, showLoggedInView, showLoggedOutView, initThemeToggle } from '/js/ui.js';
 import { renderTokenPanels, clearTokenPanels } from '/js/tokens.js';
 import { fetchUserInfo, renderUserInfo } from '/js/userinfo.js';
@@ -40,8 +58,12 @@ async function init() {
   // Populate org selector
   populateOrgSelector(config);
 
+  // Populate login-method demo dropdown (no-op when config has no profiles)
+  populateLoginMethodDemo(config);
+
   // Wire button handlers
   wireButtons();
+
 
   // Check for existing session (after callback redirect)
   const defaultOrg = 'no2fa';
@@ -170,6 +192,81 @@ function updateConfigDetails(settings) {
 }
 
 // ---------------------------------------------------------------------------
+// Login-method demo card
+// ---------------------------------------------------------------------------
+
+/**
+ * Populate the `<select id="login-method-profile">` dropdown with the demo
+ * profiles shipped in `loginMethodClients`. If the config predates Phase 10
+ * (older seed), the whole card is hidden so existing setups keep working.
+ * Re-renders the detail panel when the selection changes.
+ */
+function populateLoginMethodDemo(config) {
+  const card = document.getElementById('login-method-demo');
+  if (!card) return;
+
+  const profiles = getLoginMethodProfiles();
+  if (profiles.length === 0) {
+    // Older seed — hide the card entirely so users don't see a broken widget.
+    card.hidden = true;
+    return;
+  }
+
+  const select = document.getElementById('login-method-profile');
+  select.innerHTML = '';
+  for (const profile of profiles) {
+    const option = document.createElement('option');
+    option.value = profile.key;
+    option.textContent = profile.label;
+    select.appendChild(option);
+  }
+
+  // Render once on load and whenever the selection changes.
+  renderLoginMethodDetails(select.value);
+  select.addEventListener('change', (e) => {
+    renderLoginMethodDetails(e.target.value);
+  });
+}
+
+/**
+ * Render the confirmation panel for a given profile, showing which client
+ * the flow will use and what buttons to expect on the login page.
+ */
+function renderLoginMethodDetails(profileKey) {
+  const panel = document.getElementById('login-method-details');
+  if (!panel) return;
+
+  const profile = findLoginMethodProfile(profileKey);
+  if (!profile) {
+    panel.innerHTML = '<em>Select a profile to see details.</em>';
+    return;
+  }
+
+  const { methods, source } = resolveLoginMethods(profile);
+  const overrideLabel = profile.loginMethods
+    ? `Set on client: [${profile.loginMethods.join(', ')}]`
+    : 'Not set — inherits org default';
+  const expectedButtons = [];
+  if (methods.includes('password')) expectedButtons.push('Password form');
+  if (methods.includes('magic_link')) expectedButtons.push('"Email me a login link"');
+  const expectedSummary = expectedButtons.length > 0
+    ? expectedButtons.join(' + ')
+    : 'None (login page blocked)';
+
+  panel.innerHTML = `
+    <div class="detail-row"><span class="detail-label">Client ID</span>${profile.clientId}</div>
+    <div class="detail-row"><span class="detail-label">Org slug</span>${profile.orgSlug}</div>
+    <div class="detail-row"><span class="detail-label">Client override</span>${overrideLabel}</div>
+    <div class="detail-row">
+      <span class="detail-label">Effective</span>
+      [${methods.join(', ')}]
+      <span class="source-badge source-${source}">via ${source}</span>
+    </div>
+    <div class="expected-ui"><strong>Expected UI:</strong> ${expectedSummary}</div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // Button Handlers
 // ---------------------------------------------------------------------------
 
@@ -177,6 +274,22 @@ function wireButtons() {
   document.getElementById('btn-login').addEventListener('click', async () => {
     await login();
   });
+
+  // Login-method demo — bind only when the card is present (config-aware).
+  const demoButton = document.getElementById('btn-login-method');
+  if (demoButton) {
+    demoButton.addEventListener('click', async () => {
+      const select = document.getElementById('login-method-profile');
+      const profile = findLoginMethodProfile(select?.value);
+      if (!profile) {
+        logEvent('error', 'No login-method profile selected');
+        return;
+      }
+      const settings = getProfileSettings(profile);
+      await loginWithProfile(settings);
+    });
+  }
+
 
   document.getElementById('btn-logout').addEventListener('click', async () => {
     clearTokenPanels();

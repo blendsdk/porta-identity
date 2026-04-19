@@ -12,7 +12,15 @@
  * Anti-enumeration: submitting a non-existent email shows the same
  * "check your email" confirmation — no indication of whether the user exists.
  *
+ * Depends on the **primary test tenant** whose client inherits the default
+ * org login methods `['password', 'magic_link']` — magic link must be in
+ * the effective set for these tests to pass. If the primary tenant is ever
+ * reconfigured to disable magic link, `#magic-link-btn` will be absent and
+ * the tests will fail at the click step. See
+ * `tests/ui/flows/login-methods.spec.ts` for per-client override coverage.
+ *
  * @see plans/ui-testing/05-playwright-tests.md — Magic Link spec
+ * @see tests/ui/flows/login-methods.spec.ts — Configurable login methods
  */
 
 import { test, expect } from '../fixtures/test-fixtures.js';
@@ -36,6 +44,12 @@ test.describe('Magic Link Flow', () => {
     // 1. Navigate to login page via OIDC auth flow
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
+
+    // Sanity check: the magic-link button only renders when magic_link is in
+    // the effective login methods set for the current client. If this ever
+    // stops matching, the primary tenant was likely reconfigured — see
+    // tests/ui/flows/login-methods.spec.ts for per-client coverage.
+    await expect(page.locator('#magic-link-btn')).toBeVisible();
 
     // 2. Fill in the email field (magic link form copies it via JS)
     await page.fill('#email', testData.userEmail);
