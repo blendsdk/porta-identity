@@ -105,12 +105,16 @@ function createTestClient(overrides: Partial<Client> = {}): Client {
     tokenEndpointAuthMethod: 'client_secret_basic',
     allowedOrigins: ['https://example.com'],
     requirePkce: true,
+    // Default to null = inherit org default. Service-level tests that
+    // target login-method validation pass an explicit override via overrides.
+    loginMethods: null,
     status: 'active',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }
+
 
 /** Standard create input */
 function createTestInput(overrides: Partial<CreateClientInput> = {}): CreateClientInput {
@@ -658,4 +662,206 @@ describe('client service', () => {
       expect(verify).not.toHaveBeenCalled();
     });
   });
+
+  // =========================================================================
+  // loginMethods — validation, persistence, audit, OIDC exposure
+  //
+  // These tests exercise the three-state contract (undefined / null / array)
+  // and the audit-log diff behaviour added to createClient / updateClient.
+  // =========================================================================
+
+  describe('createClient — loginMethods', () => {
+    beforeEach(() => {
+      // Common active-org + active-app arrangement for this group.
+      // vi.clearAllMocks() in the outer beforeEach resets call history but
+      // NOT mockReturnValue() implementations — earlier tests flip
+      // validateRedirectUris to isValid:false, so we must restore it here
+      // or the URI validator will short-circuit every create in this group.
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeOrg);
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeApp);
+      (validateRedirectUris as ReturnType<typeof vi.fn>).mockReturnValue({ isValid: true });
+    });
+
+
+    it('omits the loginMethods key entirely when input is undefined (DB default applies)', async () => {
+      const client = createTestClient({ loginMethods: null });
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      await createClient(createTestInput(), 'actor-1');
+
+      // When the caller omits loginMethods, the service must NOT pass the
+      // key into insertClient — that way the repo omits the column from
+      // the INSERT, and PostgreSQL's DEFAULT NULL applies. Passing null
+      // explicitly would bypass any future DB-level default change.
+      const insertCall = (insertClient as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect('loginMethods' in insertCall).toBe(false);
+    });
+
+    it('passes explicit null through to the repository when input is null', async () => {
+      const client = createTestClient({ loginMethods: null });
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      await createClient(createTestInput({ loginMethods: null }), 'actor-1');
+
+      expect(insertClient).toHaveBeenCalledWith(
+        expect.objectContaining({ loginMethods: null }),
+      );
+    });
+
+    it('normalizes a non-empty array before insert (dedup, order preserved)', async () => {
+      const client = createTestClient({ loginMethods: ['password', 'magic_link'] });
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      // Duplicate 'password' should collapse; order is preserved.
+      await createClient(
+        createTestInput({ loginMethods: ['password', 'password', 'magic_link'] }),
+        'actor-1',
+      );
+
+      expect(insertClient).toHaveBeenCalledWith(
+        expect.objectContaining({ loginMethods: ['password', 'magic_link'] }),
+      );
+    });
+
+    it('rejects an empty array with ClientValidationError', async () => {
+      await expect(
+        createClient(createTestInput({ loginMethods: [] })),
+      ).rejects.toThrow(ClientValidationError);
+      // Repo must never be called when validation fails — otherwise we'd
+      // risk producing half-initialized state on retry.
+      expect(insertClient).not.toHaveBeenCalled();
+    });
+
+    it('rejects unknown method values with ClientValidationError', async () => {
+      await expect(
+        createClient(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          createTestInput({ loginMethods: ['password', 'telepathy' as any] }),
+        ),
+      ).rejects.toThrow(/invalid method "telepathy"/);
+      expect(insertClient).not.toHaveBeenCalled();
+    });
+
+    it('audit log includes the persisted loginMethods value', async () => {
+      const client = createTestClient({ loginMethods: ['password'] });
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      await createClient(createTestInput({ loginMethods: ['password'] }), 'actor-1');
+
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'client.created',
+          metadata: expect.objectContaining({ loginMethods: ['password'] }),
+        }),
+      );
+    });
+  });
+
+  describe('updateClient — loginMethods', () => {
+    it('leaves the field alone when the key is absent (partial update)', async () => {
+      const updated = createTestClient({ clientName: 'Renamed' });
+      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
+
+      await updateClient('client-db-uuid-1', { clientName: 'Renamed' }, 'actor-1');
+
+      const updateCall = (repoUpdateClient as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect('loginMethods' in updateCall).toBe(false);
+    });
+
+    it('passes null through when clearing the override explicitly', async () => {
+      const before = createTestClient({ loginMethods: ['password'] });
+      const after = createTestClient({ loginMethods: null });
+      (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
+      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
+
+      await updateClient('client-db-uuid-1', { loginMethods: null }, 'actor-1');
+
+      expect(repoUpdateClient).toHaveBeenCalledWith(
+        'client-db-uuid-1',
+        expect.objectContaining({ loginMethods: null }),
+      );
+    });
+
+    it('normalizes a non-empty array before update', async () => {
+      const before = createTestClient({ loginMethods: null });
+      const after = createTestClient({ loginMethods: ['magic_link', 'password'] });
+      (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
+      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
+
+      await updateClient(
+        'client-db-uuid-1',
+        { loginMethods: ['magic_link', 'magic_link', 'password'] },
+      );
+
+      expect(repoUpdateClient).toHaveBeenCalledWith(
+        'client-db-uuid-1',
+        expect.objectContaining({ loginMethods: ['magic_link', 'password'] }),
+      );
+    });
+
+    it('rejects an empty array without touching the repository', async () => {
+      await expect(
+        updateClient('client-db-uuid-1', { loginMethods: [] }),
+      ).rejects.toThrow(ClientValidationError);
+      expect(repoUpdateClient).not.toHaveBeenCalled();
+    });
+
+    it('audit log records previous → new transition when field changes', async () => {
+      const before = createTestClient({ loginMethods: ['password'] });
+      const after = createTestClient({ loginMethods: ['password', 'magic_link'] });
+      (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
+      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
+
+      await updateClient(
+        'client-db-uuid-1',
+        { loginMethods: ['password', 'magic_link'] },
+        'actor-1',
+      );
+
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'client.updated',
+          metadata: expect.objectContaining({
+            previousLoginMethods: ['password'],
+            newLoginMethods: ['password', 'magic_link'],
+          }),
+        }),
+      );
+    });
+
+    it('audit log does NOT include login-method diff when key is absent', async () => {
+      const updated = createTestClient({ clientName: 'Renamed' });
+      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
+
+      await updateClient('client-db-uuid-1', { clientName: 'Renamed' }, 'actor-1');
+
+      const auditCall = (writeAuditLog as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(auditCall.metadata).not.toHaveProperty('previousLoginMethods');
+      expect(auditCall.metadata).not.toHaveProperty('newLoginMethods');
+    });
+  });
+
+  describe('findForOidc — loginMethods URN', () => {
+    it('exposes null as-is under urn:porta:login_methods when inheriting', async () => {
+      const client = createTestClient({ loginMethods: null });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const result = await findForOidc('generated-client-id-abc123');
+
+      // The resolver runs in the interaction layer — here we only verify
+      // that the raw override value is surfaced untouched so the resolver
+      // can combine it with the org default.
+      expect(result!['urn:porta:login_methods']).toBeNull();
+    });
+
+    it('exposes the validated array under urn:porta:login_methods when overridden', async () => {
+      const client = createTestClient({ loginMethods: ['magic_link'] });
+      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const result = await findForOidc('generated-client-id-abc123');
+
+      expect(result!['urn:porta:login_methods']).toEqual(['magic_link']);
+    });
+  });
 });
+

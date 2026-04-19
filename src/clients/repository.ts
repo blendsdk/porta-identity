@@ -18,6 +18,7 @@ import type {
   Client,
   ClientRow,
   ListClientsOptions,
+  LoginMethod,
   PaginatedResult,
 } from './types.js';
 import { mapRowToClient } from './types.js';
@@ -42,6 +43,16 @@ export interface InsertClientData {
   tokenEndpointAuthMethod: string;
   allowedOrigins: string[];
   requirePkce: boolean;
+  /**
+   * Optional per-client login-method override.
+   *   - omitted → column is persisted as `NULL` via the `DEFAULT NULL` clause
+   *     (caller inherits org defaults at resolve time)
+   *   - explicit `null` → same as omitted
+   *   - non-empty array → stored as-is
+   *
+   * The service layer is responsible for validation + normalization.
+   */
+  loginMethods?: LoginMethod[] | null;
 }
 
 /**
@@ -50,6 +61,10 @@ export interface InsertClientData {
  * Uses RETURNING * to get the full row back in a single round trip.
  * The client_id (OIDC identifier) must be unique (enforced by DB constraint).
  *
+ * Builds the column list dynamically so `login_methods` can be omitted —
+ * letting the DB `DEFAULT NULL` fire for callers that don't know about the
+ * column. When explicitly set (even to `null`), the value is included.
+ *
  * @param data - Client data to insert
  * @returns The newly created client
  * @throws If client_id already exists (unique constraint violation)
@@ -57,35 +72,54 @@ export interface InsertClientData {
 export async function insertClient(data: InsertClientData): Promise<Client> {
   const pool = getPool();
 
-  const result = await pool.query<ClientRow>(
-    `INSERT INTO clients (
-       organization_id, application_id, client_id, client_name,
-       client_type, application_type, redirect_uris,
-       post_logout_redirect_uris, grant_types, response_types,
-       scope, token_endpoint_auth_method, allowed_origins, require_pkce
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-     RETURNING *`,
-    [
-      data.organizationId,
-      data.applicationId,
-      data.clientId,
-      data.clientName,
-      data.clientType,
-      data.applicationType,
-      data.redirectUris,
-      data.postLogoutRedirectUris,
-      data.grantTypes,
-      data.responseTypes,
-      data.scope,
-      data.tokenEndpointAuthMethod,
-      data.allowedOrigins,
-      data.requirePkce,
-    ],
-  );
+  const columns: string[] = [
+    'organization_id',
+    'application_id',
+    'client_id',
+    'client_name',
+    'client_type',
+    'application_type',
+    'redirect_uris',
+    'post_logout_redirect_uris',
+    'grant_types',
+    'response_types',
+    'scope',
+    'token_endpoint_auth_method',
+    'allowed_origins',
+    'require_pkce',
+  ];
+  const values: unknown[] = [
+    data.organizationId,
+    data.applicationId,
+    data.clientId,
+    data.clientName,
+    data.clientType,
+    data.applicationType,
+    data.redirectUris,
+    data.postLogoutRedirectUris,
+    data.grantTypes,
+    data.responseTypes,
+    data.scope,
+    data.tokenEndpointAuthMethod,
+    data.allowedOrigins,
+    data.requirePkce,
+  ];
+
+  // Include login_methods only when the caller passed the key (including
+  // explicit null). Omission → DB default (NULL) fires naturally.
+  if (Object.prototype.hasOwnProperty.call(data, 'loginMethods')) {
+    columns.push('login_methods');
+    values.push(data.loginMethods ?? null);
+  }
+
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+  const sql = `INSERT INTO clients (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+
+  const result = await pool.query<ClientRow>(sql, values);
 
   return mapRowToClient(result.rows[0]);
 }
+
 
 // ===========================================================================
 // Find
@@ -143,6 +177,17 @@ export interface UpdateClientData {
   allowedOrigins?: string[];
   requirePkce?: boolean;
   status?: string;
+  /**
+   * Per-client login-method override. Three-state semantics distinguish
+   * "leave alone" from "clear the override":
+   *   - `undefined` → field is NOT in the SET clause (existing value preserved)
+   *   - `null` → SET login_methods = NULL (clear — revert to inheriting org default)
+   *   - non-empty array → SET login_methods = array
+   *
+   * The service layer is responsible for rejecting empty arrays and for
+   * validating array contents before delegating here.
+   */
+  loginMethods?: LoginMethod[] | null;
 }
 
 /**
@@ -160,16 +205,27 @@ const CLIENT_FIELD_TO_COLUMN: Record<string, string> = {
   allowedOrigins: 'allowed_origins',
   requirePkce: 'require_pkce',
   status: 'status',
+  loginMethods: 'login_methods',
 };
 
 /**
  * Update a client's fields using a dynamic SET clause.
  *
- * Only explicitly provided fields (not undefined) are included in the
- * UPDATE statement. The `updated_at` column is handled by the DB trigger.
+ * Only explicitly provided fields are included in the UPDATE statement,
+ * enabling partial updates. The `updated_at` column is handled by the DB
+ * trigger.
+ *
+ * Null-aware logic for `loginMethods`:
+ *   - `undefined` → column omitted from SET (existing value preserved)
+ *   - `null` → SET login_methods = NULL (clears the per-client override)
+ *   - array → SET login_methods = <array>
+ *
+ * To distinguish these three cases, the iteration checks `hasOwnProperty`
+ * on the input — `undefined` keys are treated as absent, while `null` and
+ * arrays are both persisted.
  *
  * @param id - Client internal UUID
- * @param data - Fields to update (only non-undefined fields are applied)
+ * @param data - Fields to update
  * @returns Updated client
  * @throws Error if client not found or no fields provided
  */
@@ -185,8 +241,12 @@ export async function updateClient(
   let paramIndex = 2;
 
   for (const [field, column] of Object.entries(CLIENT_FIELD_TO_COLUMN)) {
+    // For non-nullable fields, presence check via `!== undefined` works.
+    // For nullable fields (loginMethods), we need to persist explicit null
+    // too — so use hasOwnProperty to include all keys the caller passed.
+    const hasKey = Object.prototype.hasOwnProperty.call(data, field);
     const value = data[field as keyof UpdateClientData];
-    if (value !== undefined) {
+    if (hasKey && value !== undefined) {
       setClauses.push(`${column} = $${paramIndex}`);
       values.push(value);
       paramIndex++;
@@ -206,6 +266,7 @@ export async function updateClient(
 
   return mapRowToClient(result.rows[0]);
 }
+
 
 // ===========================================================================
 // List

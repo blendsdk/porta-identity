@@ -20,12 +20,15 @@ function createClientRow(overrides: Partial<ClientRow> = {}): ClientRow {
     token_endpoint_auth_method: 'client_secret_basic',
     allowed_origins: ['https://example.com'],
     require_pkce: true,
+    // login_methods is nullable; null means "inherit org default" (the common case).
+    login_methods: null,
     status: 'active',
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }
+
 
 /** Standard test secret row */
 function createSecretRow(overrides: Partial<ClientSecretRow> = {}): ClientSecretRow {
@@ -97,7 +100,36 @@ describe('client types', () => {
       expect(client.clientType).toBe('public');
       expect(client.applicationType).toBe('spa');
     });
+
+    // -----------------------------------------------------------------------
+    // login_methods mapping
+    // -----------------------------------------------------------------------
+    // The DB column is a nullable TEXT[] where `null` is the sentinel for
+    // "inherit from the organization default". A non-null array means the
+    // client has an explicit override. Both states must round-trip faithfully.
+
+    it('should preserve null login_methods (inherit sentinel)', () => {
+      const row = createClientRow({ login_methods: null });
+      const client = mapRowToClient(row);
+
+      expect(client.loginMethods).toBeNull();
+    });
+
+    it('should map non-null login_methods to LoginMethod[]', () => {
+      const row = createClientRow({ login_methods: ['password'] });
+      const client = mapRowToClient(row);
+
+      expect(client.loginMethods).toEqual(['password']);
+    });
+
+    it('should map a multi-element login_methods override', () => {
+      const row = createClientRow({ login_methods: ['password', 'magic_link'] });
+      const client = mapRowToClient(row);
+
+      expect(client.loginMethods).toEqual(['password', 'magic_link']);
+    });
   });
+
 
   describe('mapRowToClientSecret', () => {
     it('should map snake_case fields to camelCase', () => {

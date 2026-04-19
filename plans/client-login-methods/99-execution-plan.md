@@ -2,8 +2,9 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-19 12:40
-> **Progress**: 17/58 tasks (29%)
+> **Last Updated**: 2026-04-19 13:28
+> **Progress**: 25/58 tasks (43%)
+
 
 ## Overview
 
@@ -144,16 +145,16 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                                 | File                                    |
 | ----- | ------------------------------------------------------------------------------------ | --------------------------------------- |
-| 4.1.1 | Add `loginMethods` to `Client`, `CreateClientInput`, `UpdateClientInput`, `ClientRow`, update `mapRowToClient` | `src/clients/types.ts` |
-| 4.1.2 | Update `insertClient`, `updateClient` (dynamic SET with null-aware logic), `findClientById`, `findClientByClientId`, `listClients` | `src/clients/repository.ts` |
-| 4.1.3 | Verify cache serialization via roundtrip test                                        | `src/clients/cache.ts` (no code); `tests/unit/clients/cache.test.ts` |
-| 4.1.4 | Update `tests/unit/clients/types.test.ts`                                             | `tests/unit/clients/types.test.ts`       |
-| 4.1.5 | Update `tests/unit/clients/repository.test.ts`                                        | `tests/unit/clients/repository.test.ts`  |
+| 4.1.1 ✅ | Add `loginMethods` to `Client`, `CreateClientInput`, `UpdateClientInput`, `ClientRow`, update `mapRowToClient` | `src/clients/types.ts` |
+| 4.1.2 ✅ | Update `insertClient`, `updateClient` (dynamic SET with null-aware logic), `findClientById`, `findClientByClientId`, `listClients` | `src/clients/repository.ts` |
+| 4.1.3 ✅ | Verify cache serialization via roundtrip test                                        | `src/clients/cache.ts` (no code); `tests/unit/clients/cache.test.ts` |
+| 4.1.4 ✅ | Update `tests/unit/clients/types.test.ts`                                             | `tests/unit/clients/types.test.ts`       |
+| 4.1.5 ✅ | Update `tests/unit/clients/repository.test.ts`                                        | `tests/unit/clients/repository.test.ts`  |
 
 **Deliverables**:
-- [ ] Clients types + repo fully aware of `loginMethods`
-- [ ] Null + array roundtrip tested
-- [ ] All clients unit tests pass
+- [x] Clients types + repo fully aware of `loginMethods`
+- [x] Null + array roundtrip tested
+- [x] All clients unit tests pass
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- clients && yarn lint`
 
@@ -166,16 +167,27 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                                       | File                                        |
 | ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| 4.2.1 | Add validation + normalization to `createClient` / `updateClient` + audit-log diff          | `src/clients/service.ts`                    |
-| 4.2.2 | Expose `urn:porta:login_methods` in `findForOidc()`                                         | `src/clients/service.ts`                    |
-| 4.2.3 | Update `tests/unit/clients/service.test.ts` for all validation paths + `findForOidc` output | `tests/unit/clients/service.test.ts`        |
+| 4.2.1 ✅ | Add validation + normalization to `createClient` / `updateClient` + audit-log diff          | `src/clients/service.ts`                    |
+| 4.2.2 ✅ | Expose `urn:porta:login_methods` in `findForOidc()`                                         | `src/clients/service.ts`                    |
+| 4.2.3 ✅ | Update `tests/unit/clients/service.test.ts` for all validation paths + `findForOidc` output | `tests/unit/clients/service.test.ts`        |
 
 **Deliverables**:
-- [ ] Service validates create + update paths
-- [ ] `findForOidc` output verified in tests
-- [ ] No regressions
+- [x] Service validates create + update paths
+- [x] `findForOidc` output verified in tests
+- [x] No regressions
+
+**Completion Notes (2026-04-19)**:
+- `Client.loginMethods` typed as `LoginMethod[] | null` — **nullable on the model**: `null` means "inherit from org default", non-null = validated override. Mapper preserves `null` as sentinel (in contrast to Organization where the column is `NOT NULL`).
+- Repository `INSERT` builds the column list dynamically: `loginMethods: undefined` → column omitted (DB DEFAULT NULL fires); `loginMethods: null` → column explicitly inserted as `NULL`; array → inserted as TEXT[]. The `FIELD_TO_COLUMN` map picks the field up for updates automatically. Dynamic SET clause already handled `NULL` values via parameterized binds — no null-aware branching needed.
+- Service `validateClientLoginMethods()` (private helper) enforces the three-state contract: `undefined` / `null` / non-empty array of valid `LoginMethod` values. Empty arrays and unknown methods throw `ClientValidationError`.
+- `createClient` uses spread-if-defined to preserve the "column-omitted" semantics: when `loginMethods` is `undefined` the key is dropped from the `insertClient` payload entirely. Explicit `null` passes through so callers can document "this client inherits" intent.
+- `updateClient` uses `Object.prototype.hasOwnProperty.call(input, 'loginMethods')` to distinguish "key absent" (leave alone) from "key present with null" (clear override). Audit log captures `previousLoginMethods → newLoginMethods` **only when the field changed**, so routine updates stay readable.
+- `findForOidc()` exposes the raw override value under `urn:porta:login_methods` (the raw `null`-or-array from the DB). Resolution happens in the interaction layer (Phase 5), not here — this keeps the metadata layer a pure projection of DB state.
+- New tests: types (4 cases — null, array, mapper override, etc.), repository (4 cases — insert omission, insert null, update null, update array with normalization), service (14 cases across create/update/findForOidc).
+- `yarn test:unit` → 1937 tests passing (up from 1923). Lint: 0 errors (40 pre-existing warnings). Build (`tsc`): clean.
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- clients/service && yarn lint`
+
 
 ---
 
@@ -412,14 +424,15 @@ clear && sleep 3 && bash scripts/playground-bff-smoke.sh
 - [x] 3.1.7 Update `organizations/service.test.ts`
 
 ### Phase 4: Clients module
-- [ ] 4.1.1 Extend `Client` types + `mapRowToClient`
-- [ ] 4.1.2 Update `clients/repository.ts` CRUD with null-aware UPDATE
-- [ ] 4.1.3 Verify cache roundtrip test
-- [ ] 4.1.4 Update `clients/types.test.ts`
-- [ ] 4.1.5 Update `clients/repository.test.ts`
-- [ ] 4.2.1 Add validation + audit to `clients/service.ts`
-- [ ] 4.2.2 Expose `urn:porta:login_methods` in `findForOidc()`
-- [ ] 4.2.3 Update `clients/service.test.ts`
+- [x] 4.1.1 Extend `Client` types + `mapRowToClient`
+- [x] 4.1.2 Update `clients/repository.ts` CRUD with null-aware UPDATE
+- [x] 4.1.3 Verify cache roundtrip test
+- [x] 4.1.4 Update `clients/types.test.ts`
+- [x] 4.1.5 Update `clients/repository.test.ts`
+- [x] 4.2.1 Add validation + audit to `clients/service.ts`
+- [x] 4.2.2 Expose `urn:porta:login_methods` in `findForOidc()`
+- [x] 4.2.3 Update `clients/service.test.ts`
+
 
 ### Phase 5: OIDC + interactions
 - [ ] 5.1.1 Add `urn:porta:login_methods` to `extraClientMetadata.properties`

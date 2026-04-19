@@ -23,10 +23,12 @@ import type {
   Client,
   ClientWithSecret,
   CreateClientInput,
+  LoginMethod,
   UpdateClientInput,
   ListClientsOptions,
   PaginatedResult,
 } from './types.js';
+import { LOGIN_METHODS } from './types.js';
 import {
   insertClient,
   findClientById,
@@ -49,11 +51,57 @@ import {
   getDefaultResponseTypes,
   getDefaultScope,
 } from './validators.js';
+import { normalizeLoginMethods } from './resolve-login-methods.js';
+
 import { verify } from './secret-service.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { ClientNotFoundError, ClientValidationError } from './errors.js';
 import { getApplicationById } from '../applications/service.js';
 import { getOrganizationById } from '../organizations/service.js';
+
+// ===========================================================================
+// Validation helpers (private)
+// ===========================================================================
+
+/**
+ * Validate + normalize a client-level `loginMethods` override.
+ *
+ * Three-state input:
+ *   - `undefined` → returns `undefined` (caller must preserve "leave alone"
+ *     semantics on update and "inherit from org default" on create)
+ *   - `null` → returns `null` (caller clears the override / inherits)
+ *   - non-empty array → returns the normalized (deduplicated, order-preserving)
+ *     array with only recognized {@link LoginMethod} entries
+ *
+ * Throws {@link ClientValidationError} when:
+ *   - the value is neither `undefined`, `null`, nor an array
+ *   - the array is empty (empty = "no login possible" and is never valid)
+ *   - any element is not a valid {@link LoginMethod}
+ *
+ * Empty arrays are rejected explicitly so the DB column carries either
+ * "override present with ≥1 method" or "null = inherit". This mirrors the
+ * contract documented on `UpdateClientInput.loginMethods`.
+ */
+function validateClientLoginMethods(
+  methods: LoginMethod[] | null | undefined,
+): LoginMethod[] | null | undefined {
+  if (methods === undefined) return undefined;
+  if (methods === null) return null;
+  if (!Array.isArray(methods) || methods.length === 0) {
+    throw new ClientValidationError(
+      'loginMethods: must be a non-empty array, null, or omitted',
+    );
+  }
+  for (const m of methods) {
+    if (!LOGIN_METHODS.includes(m)) {
+      throw new ClientValidationError(
+        `loginMethods: invalid method "${String(m)}"`,
+      );
+    }
+  }
+  return normalizeLoginMethods(methods);
+}
+
 
 // ===========================================================================
 // Client CRUD
@@ -125,6 +173,11 @@ export async function createClient(
     getDefaultTokenEndpointAuthMethod(input.clientType);
   const requirePkce = input.requirePkce ?? true;
 
+  // Validate + normalize the login-method override (may throw). Three-state
+  // input: undefined → column omitted → DB DEFAULT NULL → inherit.
+  // null → inherit explicitly. Array → override with validated methods.
+  const loginMethods = validateClientLoginMethods(input.loginMethods);
+
   // Generate a unique OIDC client_id
   const clientId = generateClientId();
 
@@ -144,12 +197,17 @@ export async function createClient(
     tokenEndpointAuthMethod,
     allowedOrigins: input.allowedOrigins ?? [],
     requirePkce,
+    // Pass through validated value as-is: `undefined` triggers column
+    // omission (DB default), `null` inserts NULL explicitly, array inserts
+    // the validated methods. The repo honors all three states.
+    ...(loginMethods !== undefined ? { loginMethods } : {}),
   });
 
   // Cache the new client
   await cacheClient(client);
 
-  // Audit log (fire-and-forget)
+  // Audit log (fire-and-forget) — include the persisted loginMethods value
+  // so operator history captures whether the client inherits or overrides.
   await writeAuditLog({
     organizationId: input.organizationId,
     eventType: 'client.created',
@@ -162,12 +220,14 @@ export async function createClient(
       clientType: client.clientType,
       applicationType: client.applicationType,
       applicationId: input.applicationId,
+      loginMethods: client.loginMethods,
     },
   });
 
   // Return without secret — caller must use secret service for confidential clients
   return { client, secret: null };
 }
+
 
 // ---------------------------------------------------------------------------
 // Read
@@ -256,6 +316,24 @@ export async function updateClient(
   if (input.allowedOrigins !== undefined) updateData.allowedOrigins = input.allowedOrigins;
   if (input.requirePkce !== undefined) updateData.requirePkce = input.requirePkce;
 
+  // Validate + normalize the login-method override if the caller passed the
+  // key (including `null` = clear). Capture the previous value first for the
+  // audit log diff — we use the cache-aware accessor so stale reads don't
+  // sneak in; if the client doesn't exist the repo update below will throw
+  // and we short-circuit before audit.
+  let previousLoginMethods: LoginMethod[] | null | undefined;
+  if (Object.prototype.hasOwnProperty.call(input, 'loginMethods')) {
+    const normalized = validateClientLoginMethods(input.loginMethods);
+    // normalized is either null or a validated array here (undefined is only
+    // returned when the key is absent, which we already filtered out).
+    updateData.loginMethods = normalized;
+
+    const existing = await getClientById(id);
+    if (existing) {
+      previousLoginMethods = existing.loginMethods;
+    }
+  }
+
   let client: Client;
   try {
     client = await repoUpdateClient(id, updateData);
@@ -270,21 +348,30 @@ export async function updateClient(
   await invalidateClientCache(client.clientId, client.id);
   await cacheClient(client);
 
-  // Audit log (fire-and-forget)
+  // Audit log (fire-and-forget) — record the old → new login-methods
+  // transition only when the field actually changed, so audit history
+  // stays readable for updates that touch other fields.
+  const auditMetadata: Record<string, unknown> = {
+    clientDbId: client.id,
+    clientId: client.clientId,
+    fields: Object.keys(updateData),
+  };
+  if (previousLoginMethods !== undefined) {
+    auditMetadata.previousLoginMethods = previousLoginMethods;
+    auditMetadata.newLoginMethods = client.loginMethods;
+  }
+
   await writeAuditLog({
     organizationId: client.organizationId,
     eventType: 'client.updated',
     eventCategory: 'admin',
     actorId,
-    metadata: {
-      clientDbId: client.id,
-      clientId: client.clientId,
-      fields: Object.keys(updateData),
-    },
+    metadata: auditMetadata,
   });
 
   return client;
 }
+
 
 // ---------------------------------------------------------------------------
 // List
@@ -480,10 +567,18 @@ export async function findForOidc(
     'urn:porta:allowed_origins': client.allowedOrigins,
     // Client type for internal use
     'urn:porta:client_type': client.clientType,
+    // Per-client login-methods override. Null means "inherit org default";
+    // a non-null array is the validated override. The OIDC configuration
+    // layer registers this URN under `extraClientMetadata.properties` so
+    // oidc-provider preserves it on the client metadata object passed to
+    // the interaction handlers — where `resolveLoginMethodsFromOidcClient()`
+    // combines it with the org default to compute the effective methods.
+    'urn:porta:login_methods': client.loginMethods,
     // Organization ID — used by auto-consent logic in showConsent() to
     // identify first-party clients (same org → skip consent screen)
     organizationId: client.organizationId,
   };
+
 
   // For confidential clients, include the SHA-256 hash as client_secret.
   // oidc-provider will compare this against the SHA-256 of the presented

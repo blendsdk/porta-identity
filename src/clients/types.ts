@@ -68,10 +68,22 @@ export interface Client {
   tokenEndpointAuthMethod: string;
   allowedOrigins: string[];
   requirePkce: boolean;
+  /**
+   * Per-client login-method override.
+   *   - `null` → inherit from the organization's `defaultLoginMethods`
+   *   - non-empty array → use these methods exclusively
+   *
+   * An empty array is never persisted (rejected by the service layer). The
+   * {@link ./resolve-login-methods.ts | resolveLoginMethods} helper combines
+   * this with the org default to produce the effective methods for render
+   * and enforcement.
+   */
+  loginMethods: LoginMethod[] | null;
   status: ClientStatus;
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 /** Client secret record (camelCase) — secret_hash is NEVER exposed via this type */
 export interface ClientSecret {
@@ -120,6 +132,16 @@ export interface CreateClientInput {
   allowedOrigins?: string[];
   requirePkce?: boolean;
   secretLabel?: string;
+  /**
+   * Optional per-client login-method override set at creation time.
+   *   - omitted → field persists as `null` (inherit from org default)
+   *   - explicit `null` → same as omitted (inherit)
+   *   - non-empty array → use these methods exclusively
+   *
+   * The service layer validates and normalizes the value. Empty arrays are
+   * rejected; an empty array means "no login possible" and is never valid.
+   */
+  loginMethods?: LoginMethod[] | null;
 }
 
 /** Input for updating a client (partial) */
@@ -133,7 +155,17 @@ export interface UpdateClientInput {
   tokenEndpointAuthMethod?: string;
   allowedOrigins?: string[];
   requirePkce?: boolean;
+  /**
+   * Per-client login-method override. Three-state input:
+   *   - `undefined` → leave the current value alone (partial update)
+   *   - `null` → clear any existing override (revert to inheriting org default)
+   *   - non-empty array → replace with these methods
+   *
+   * Empty arrays are rejected by the service validator.
+   */
+  loginMethods?: LoginMethod[] | null;
 }
+
 
 /** Input for creating a secret */
 export interface CreateSecretInput {
@@ -183,10 +215,16 @@ export interface ClientRow {
   token_endpoint_auth_method: string;
   allowed_origins: string[];
   require_pkce: boolean;
+  /**
+   * Nullable TEXT[] column. `null` means "inherit org default".
+   * Stored as-is by pg; the domain mapper preserves the null sentinel.
+   */
+  login_methods: string[] | null;
   status: string;
   created_at: Date;
   updated_at: Date;
 }
+
 
 /** Raw row from the client_secrets table */
 export interface ClientSecretRow {
@@ -227,11 +265,19 @@ export function mapRowToClient(row: ClientRow): Client {
     tokenEndpointAuthMethod: row.token_endpoint_auth_method,
     allowedOrigins: row.allowed_origins ?? [],
     requirePkce: row.require_pkce,
+    // Preserve the null sentinel — null means "inherit org default".
+    // When non-null, the DB column is a TEXT[] of valid LoginMethod values
+    // (enforced by the service-layer validator on write). Cast is safe because
+    // writes are funneled through that validator.
+    loginMethods: row.login_methods === null
+      ? null
+      : (row.login_methods as LoginMethod[]),
     status: row.status as ClientStatus,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
+
 
 /**
  * Map a snake_case client_secrets row to a camelCase ClientSecret object.

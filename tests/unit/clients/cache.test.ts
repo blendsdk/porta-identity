@@ -47,12 +47,16 @@ function createTestClient(overrides: Partial<Client> = {}): Client {
     tokenEndpointAuthMethod: 'client_secret_basic',
     allowedOrigins: ['https://example.com'],
     requirePkce: true,
+    // null = inherit from org default (the common case). Tests that need a
+    // non-null override pass an explicit array via overrides.
+    loginMethods: null,
     status: 'active',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-15T12:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('client cache', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -198,7 +202,42 @@ describe('client cache', () => {
       expect(result!.grantTypes).toEqual(['authorization_code', 'refresh_token', 'client_credentials']);
       expect(result!.allowedOrigins).toEqual(['https://a.com', 'https://b.com']);
     });
+
+    // -----------------------------------------------------------------------
+    // login_methods roundtrip
+    // -----------------------------------------------------------------------
+    // JSON.stringify preserves `null` as the literal `null` and arrays as
+    // arrays. We assert both states roundtrip without data loss or coercion
+    // so downstream readers (resolveLoginMethods) behave identically against
+    // cache hits vs fresh DB reads.
+
+    it('should roundtrip null loginMethods (inherit sentinel)', async () => {
+      const redis = createMockRedis();
+      const client = createTestClient({ loginMethods: null });
+
+      await cacheClient(client);
+
+      const serialized = redis.set.mock.calls[0][1] as string;
+      redis.get.mockResolvedValue(serialized);
+      const result = await getCachedClientByClientId(client.clientId);
+
+      expect(result!.loginMethods).toBeNull();
+    });
+
+    it('should roundtrip non-null loginMethods array', async () => {
+      const redis = createMockRedis();
+      const client = createTestClient({ loginMethods: ['password', 'magic_link'] });
+
+      await cacheClient(client);
+
+      const serialized = redis.set.mock.calls[0][1] as string;
+      redis.get.mockResolvedValue(serialized);
+      const result = await getCachedClientByClientId(client.clientId);
+
+      expect(result!.loginMethods).toEqual(['password', 'magic_link']);
+    });
   });
+
 
   // -------------------------------------------------------------------------
   // invalidateClientCache

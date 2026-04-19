@@ -35,12 +35,16 @@ function createClientRow(overrides: Partial<ClientRow> = {}): ClientRow {
     token_endpoint_auth_method: 'client_secret_basic',
     allowed_origins: ['https://example.com'],
     require_pkce: true,
+    // null sentinel = "inherit org default"; tests that need an override
+    // pass an explicit array via overrides.
+    login_methods: null,
     status: 'active',
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('client repository', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -76,7 +80,98 @@ describe('client repository', () => {
       expect(mockQuery).toHaveBeenCalledTimes(1);
       expect(mockQuery.mock.calls[0][0]).toContain('INSERT INTO clients');
     });
+
+    // -----------------------------------------------------------------------
+    // login_methods — dynamic column inclusion
+    // -----------------------------------------------------------------------
+    // When `loginMethods` is omitted from the input, the INSERT omits the
+    // column entirely so the DB `DEFAULT NULL` fires. When the key is
+    // present (even as `null`), the column is included explicitly.
+
+    it('should omit login_methods column when not provided (DB default applies)', async () => {
+      const row = createClientRow();
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await insertClient({
+        organizationId: 'org-uuid-1',
+        applicationId: 'app-uuid-1',
+        clientId: 'oidc-client-id-abc123',
+        clientName: 'Web App',
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: ['https://example.com/callback'],
+        postLogoutRedirectUris: ['https://example.com/logout'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
+        scope: 'openid profile email',
+        tokenEndpointAuthMethod: 'client_secret_basic',
+        allowedOrigins: ['https://example.com'],
+        requirePkce: true,
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      const values = mockQuery.mock.calls[0][1] as unknown[];
+      expect(sql).not.toContain('login_methods');
+      expect(values).toHaveLength(14); // no 15th value for login_methods
+    });
+
+    it('should include login_methods column when provided as array', async () => {
+      const row = createClientRow({ login_methods: ['password'] });
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await insertClient({
+        organizationId: 'org-uuid-1',
+        applicationId: 'app-uuid-1',
+        clientId: 'oidc-client-id-abc123',
+        clientName: 'Web App',
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: ['https://example.com/callback'],
+        postLogoutRedirectUris: [],
+        grantTypes: ['authorization_code'],
+        responseTypes: ['code'],
+        scope: 'openid',
+        tokenEndpointAuthMethod: 'client_secret_basic',
+        allowedOrigins: [],
+        requirePkce: true,
+        loginMethods: ['password'],
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      const values = mockQuery.mock.calls[0][1] as unknown[];
+      expect(sql).toContain('login_methods');
+      expect(values[14]).toEqual(['password']);
+    });
+
+    it('should include login_methods column when provided as explicit null', async () => {
+      const row = createClientRow();
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await insertClient({
+        organizationId: 'org-uuid-1',
+        applicationId: 'app-uuid-1',
+        clientId: 'oidc-client-id-abc123',
+        clientName: 'Web App',
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: ['https://example.com/callback'],
+        postLogoutRedirectUris: [],
+        grantTypes: ['authorization_code'],
+        responseTypes: ['code'],
+        scope: 'openid',
+        tokenEndpointAuthMethod: 'client_secret_basic',
+        allowedOrigins: [],
+        requirePkce: true,
+        loginMethods: null,
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      const values = mockQuery.mock.calls[0][1] as unknown[];
+      expect(sql).toContain('login_methods');
+      expect(values[14]).toBeNull();
+    });
   });
+
 
   // -------------------------------------------------------------------------
   // findClientById
@@ -192,7 +287,64 @@ describe('client repository', () => {
       expect(sql).toContain('redirect_uris');
       expect(sql).toContain('allowed_origins');
     });
+
+    // -----------------------------------------------------------------------
+    // login_methods — three-state UPDATE semantics
+    // -----------------------------------------------------------------------
+    // `undefined` (absent key) → column NOT in SET (preserves existing value)
+    // `null`                   → SET login_methods = NULL (clears override)
+    // `array`                  → SET login_methods = <array>
+
+    it('should omit login_methods from SET when key is absent', async () => {
+      const row = createClientRow({ client_name: 'Renamed' });
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await updateClient('client-uuid-1', { clientName: 'Renamed' });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).not.toContain('login_methods');
+    });
+
+    it('should SET login_methods = NULL when explicitly null (clears override)', async () => {
+      const row = createClientRow();
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await updateClient('client-uuid-1', { loginMethods: null });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      const values = mockQuery.mock.calls[0][1] as unknown[];
+      expect(sql).toContain('login_methods');
+      // values[0] is the ID; values[1] is the login_methods value
+      expect(values[1]).toBeNull();
+    });
+
+    it('should SET login_methods = array when provided as array', async () => {
+      const row = createClientRow({ login_methods: ['magic_link'] });
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      await updateClient('client-uuid-1', { loginMethods: ['magic_link'] });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      const values = mockQuery.mock.calls[0][1] as unknown[];
+      expect(sql).toContain('login_methods');
+      expect(values[1]).toEqual(['magic_link']);
+    });
+
+    it('should ignore undefined login_methods (treated as absent)', async () => {
+      const row = createClientRow({ client_name: 'Renamed' });
+      mockQuery.mockResolvedValue({ rows: [row] });
+
+      // Explicitly set to undefined — should not add SET clause
+      await updateClient('client-uuid-1', {
+        clientName: 'Renamed',
+        loginMethods: undefined,
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).not.toContain('login_methods');
+    });
   });
+
 
   // -------------------------------------------------------------------------
   // listClients
