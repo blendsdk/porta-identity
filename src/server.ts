@@ -27,6 +27,7 @@ import type Provider from 'oidc-provider';
 import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { healthCheck } from './middleware/health.js';
+import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { createOrganizationRouter } from './routes/organizations.js';
@@ -94,6 +95,14 @@ export function createApp(oidcProvider?: Provider): Koa {
   router.get('/health', healthCheck());
   app.use(router.routes());
   app.use(router.allowedMethods());
+
+  // Public-surface handlers — neutral response at GET /, robots.txt, favicon.
+  // Prevents the default Koa "Not Found" page at the public root without
+  // disclosing any product information to unauthenticated visitors. See
+  // src/middleware/root-page.ts for the security posture.
+  const rootPageRouter = createRootPageRouter();
+  app.use(rootPageRouter.routes());
+  app.use(rootPageRouter.allowedMethods());
 
   // Organization management API — requires super-admin authorization
   // Mounted at /api/admin/organizations (see routes/organizations.ts)

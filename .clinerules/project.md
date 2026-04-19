@@ -135,6 +135,7 @@ src/
     tenant-resolver.ts # Cache-first org resolution, status differentiation
     oidc-cors.ts     # CORS handler for OIDC endpoints
     super-admin.ts   # Super-admin authorization (isSuperAdmin check)
+    root-page.ts     # Neutral GET /, /robots.txt, /favicon.ico (no product leakage)
   oidc/              # OIDC provider modules
     configuration.ts # Provider configuration builder (PKCE, scopes, claims, TTLs)
     provider.ts      # Provider factory (creates configured Provider instance)
@@ -428,7 +429,8 @@ dist/                # TypeScript build output (gitignored)
 - **CLI module** — yargs-based admin CLI (`porta`), 10 top-level commands, direct service invocation (no HTTP), bootstrap DB+Redis → run command → shutdown, table + JSON output, confirmation prompts, 220 CLI tests
 - **Two-factor module** — Email OTP, TOTP (authenticator), recovery codes, per-org policy, login flow integration, templates, i18n, CLI admin (status/disable/reset), AES-256-GCM secret encryption, Argon2id recovery hashing
 - **Login methods module** — Per-client `login_methods` override (NULL = inherit from org) + per-org `default_login_methods` (NOT NULL, DB DEFAULT `{password,magic_link}`). Resolution via `resolveLoginMethods(org, client)`. Enforced on 5 endpoints (interaction `/login`, `/magic-link`, forgot-password GET/POST, reset-password POST) **before** CSRF/rate-limit/user-lookup with 403 + audit event `security.login_method_disabled`. Login template renders 4 modes (both / password-only / magic-link-only / empty fallback) and honours OIDC `login_hint`. Admin API + CLI support per-client override get/set/clear.
-- **Test suite** — 2,171 unit+integration tests across 120 files passing, zero failures (`yarn verify` ~78s). Plus 20+ E2E test files, 32+ pentest files, 20+ UI Playwright specs.
+- **Test suite** — 2,189 unit+integration tests across 121 files passing, zero failures (`yarn verify` ~78s). Plus 20+ E2E test files, 32+ pentest files, 20+ UI Playwright specs.
+- **Root-page handler** — `GET /`, `/robots.txt`, `/favicon.ico` served by `src/middleware/root-page.ts` with a neutral no-leakage response (no product/vendor strings, noindex headers, CSP `default-src 'none'`). Mounted after `/health` and before any `/:orgSlug/*` catch-all.
 - **Pentest coverage** — Auth bypass (SQL injection, brute force, timing, session), magic link attacks (prediction, replay, host injection, enumeration), injection (SQL, XSS, CRLF, SSTI), crypto (JWT algo confusion, manipulation, key confusion), admin security (unauthorized access, privilege escalation, IDOR, mass assignment), multi-tenant (cross-tenant auth, enumeration, slug injection), infrastructure (HTTP headers, CORS, method tampering, info disclosure)
 
 ## Cross-References
