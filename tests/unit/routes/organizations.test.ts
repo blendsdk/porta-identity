@@ -39,6 +39,7 @@ function createTestOrg(overrides: Partial<Organization> = {}): Organization {
     brandingCompanyName: null,
     brandingCustomCss: null,
     defaultLocale: 'en',
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
@@ -133,6 +134,85 @@ describe('organization routes', () => {
       await expect(
         layer!.stack[layer!.stack.length - 1](ctx as never, next),
       ).rejects.toThrow('Slug already in use');
+    });
+
+    // -----------------------------------------------------------------------
+    // defaultLoginMethods — Zod validation at the HTTP boundary
+    // -----------------------------------------------------------------------
+    describe('defaultLoginMethods', () => {
+      it('should accept a valid array and pass it to the service', async () => {
+        const org = createTestOrg({ defaultLoginMethods: ['password'] });
+        (organizationService.createOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+        const router = createOrganizationRouter();
+        const layer = router.stack.find(
+          (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations',
+        );
+
+        const ctx = createMockCtx({
+          body: { name: 'Password Only Corp', defaultLoginMethods: ['password'] },
+        });
+
+        await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(201);
+        expect(ctx.body).toEqual({ data: org });
+        expect(organizationService.createOrganization).toHaveBeenCalledWith(
+          expect.objectContaining({ defaultLoginMethods: ['password'] }),
+        );
+      });
+
+      it('should return 400 for an empty defaultLoginMethods array', async () => {
+        const router = createOrganizationRouter();
+        const layer = router.stack.find(
+          (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations',
+        );
+
+        const ctx = createMockCtx({
+          body: { name: 'Acme', defaultLoginMethods: [] },
+        });
+
+        await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(400);
+        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect(organizationService.createOrganization).not.toHaveBeenCalled();
+      });
+
+      it('should return 400 for an unknown login method', async () => {
+        const router = createOrganizationRouter();
+        const layer = router.stack.find(
+          (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations',
+        );
+
+        const ctx = createMockCtx({
+          body: { name: 'Acme', defaultLoginMethods: ['sms'] },
+        });
+
+        await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(400);
+        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect(organizationService.createOrganization).not.toHaveBeenCalled();
+      });
+
+      it('should omit defaultLoginMethods when not provided (DB DEFAULT applies)', async () => {
+        const org = createTestOrg();
+        (organizationService.createOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+        const router = createOrganizationRouter();
+        const layer = router.stack.find(
+          (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations',
+        );
+
+        const ctx = createMockCtx({ body: { name: 'Acme' } });
+
+        await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(201);
+        const calledWith = (organizationService.createOrganization as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        expect(calledWith.defaultLoginMethods).toBeUndefined();
+      });
     });
   });
 
@@ -236,6 +316,47 @@ describe('organization routes', () => {
       await expect(
         layer!.stack[layer!.stack.length - 1](ctx as never, next),
       ).rejects.toThrow('Organization not found');
+    });
+
+    it('should accept defaultLoginMethods on update and return the updated org', async () => {
+      const org = createTestOrg({ defaultLoginMethods: ['magic_link'] });
+      (organizationService.updateOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id',
+      );
+
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { defaultLoginMethods: ['magic_link'] },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(ctx.body).toEqual({ data: org });
+      expect(organizationService.updateOrganization).toHaveBeenCalledWith(
+        'org-uuid-1',
+        expect.objectContaining({ defaultLoginMethods: ['magic_link'] }),
+      );
+    });
+
+    it('should return 400 when update payload has empty defaultLoginMethods', async () => {
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id',
+      );
+
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { defaultLoginMethods: [] },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(400);
+      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect(organizationService.updateOrganization).not.toHaveBeenCalled();
     });
   });
 

@@ -35,10 +35,33 @@ import { requireSuperAdmin } from '../middleware/super-admin.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
+import * as organizationService from '../organizations/service.js';
+import type { Client } from '../clients/types.js';
+import { LOGIN_METHODS } from '../clients/types.js';
+import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
+
+/**
+ * Login method Zod schema — single source of truth for HTTP payload validation.
+ * Uses the runtime `LOGIN_METHODS` const so adding a new method only requires
+ * updating the union in `src/clients/types.ts`.
+ */
+const loginMethodSchema = z.enum(LOGIN_METHODS);
+
+/**
+ * Client-level login methods — three-state semantics at the HTTP boundary:
+ *   - field omitted → undefined  (leave unchanged / use DB default on create)
+ *   - `null`         → clear override, inherit org default
+ *   - non-empty array → explicit override
+ *
+ * `.min(1)` rejects empty arrays (service layer also rejects but the 400
+ * carries a useful validation message). `.nullable().optional()` allows
+ * both `null` and absence.
+ */
+const clientLoginMethodsSchema = z.array(loginMethodSchema).min(1).nullable();
 
 /** Schema for creating a new client */
 const createClientSchema = z.object({
@@ -57,6 +80,7 @@ const createClientSchema = z.object({
   ]).optional(),
   allowedOrigins: z.array(z.string().url()).optional(),
   requirePkce: z.boolean().optional(),
+  loginMethods: clientLoginMethodsSchema.optional(),
   secretLabel: z.string().max(255).optional(),
 });
 
@@ -73,6 +97,7 @@ const updateClientSchema = z.object({
   ]).optional(),
   allowedOrigins: z.array(z.string().url()).optional(),
   requirePkce: z.boolean().optional(),
+  loginMethods: clientLoginMethodsSchema.optional(),
 });
 
 /** Schema for listing clients with pagination and filters */
@@ -92,6 +117,36 @@ const createSecretSchema = z.object({
   label: z.string().max(255).optional(),
   expiresAt: z.coerce.date().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Response decoration helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Attach the computed `effectiveLoginMethods` field to a client before
+ * returning it over HTTP.
+ *
+ * This is the public "resolved view" — API consumers get both the raw
+ * override (`loginMethods`, possibly `null`) and the effective array
+ * (`effectiveLoginMethods`, always non-empty) so they never have to replicate
+ * the inheritance rule on their side.
+ *
+ * The domain `Client` type is *not* widened to include `effectiveLoginMethods`
+ * — that field lives only on the API response, keeping the model a pure
+ * projection of the DB row.
+ *
+ * @param client - Client from the service layer
+ * @returns Client decorated with `effectiveLoginMethods`
+ */
+async function withEffectiveLoginMethods(client: Client): Promise<Client & { effectiveLoginMethods: readonly string[] }> {
+  const org = await organizationService.getOrganizationById(client.organizationId);
+  const effectiveLoginMethods = org
+    ? resolveLoginMethods(org, client)
+    // Defensive: if the org went missing after the client was fetched, fall
+    // back to the client's explicit override if present, otherwise default.
+    : (client.loginMethods ?? ['password', 'magic_link']);
+  return { ...client, effectiveLoginMethods };
+}
 
 // ---------------------------------------------------------------------------
 // Error handler helper
@@ -155,9 +210,13 @@ export function createClientRouter(): Router {
         });
       }
 
+      // Decorate the client with its resolved `effectiveLoginMethods` so
+      // API consumers get both the raw override and the effective value.
+      const decoratedClient = await withEffectiveLoginMethods(result.client);
+
       ctx.status = 201;
       ctx.body = {
-        data: { client: result.client, secret },
+        data: { client: decoratedClient, secret },
         ...(secret ? { warning: 'Store the secret securely. It will not be shown again.' } : {}),
       };
     } catch (err) {
@@ -190,8 +249,9 @@ export function createClientRouter(): Router {
     const client = await clientService.getClientById(ctx.params.id);
     if (!client) {
       ctx.throw(404, 'Client not found');
+      return; // unreachable — keeps TS narrowing happy across the call boundary
     }
-    ctx.body = { data: client };
+    ctx.body = { data: await withEffectiveLoginMethods(client) };
   });
 
   // -------------------------------------------------------------------------
@@ -201,7 +261,7 @@ export function createClientRouter(): Router {
     try {
       const body = updateClientSchema.parse(ctx.request.body);
       const client = await clientService.updateClient(ctx.params.id, body);
-      ctx.body = { data: client };
+      ctx.body = { data: await withEffectiveLoginMethods(client) };
     } catch (err) {
       handleError(ctx, err);
     }

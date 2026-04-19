@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Client, ClientSecret, SecretWithPlaintext, ClientWithSecret } from '../../../src/clients/types.js';
+import type { Organization } from '../../../src/organizations/types.js';
 import { ClientNotFoundError, ClientValidationError } from '../../../src/clients/errors.js';
 
 // Mock all dependencies before importing the module under test
@@ -24,6 +25,12 @@ vi.mock('../../../src/clients/secret-service.js', () => ({
   cleanupExpired: vi.fn(),
 }));
 
+// The client routes resolve `effectiveLoginMethods` by calling the
+// organization service — we mock that here so the helper works end-to-end.
+vi.mock('../../../src/organizations/service.js', () => ({
+  getOrganizationById: vi.fn(),
+}));
+
 // Mock super-admin middleware to always pass through
 vi.mock('../../../src/middleware/super-admin.js', () => ({
   requireSuperAdmin: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
@@ -31,6 +38,7 @@ vi.mock('../../../src/middleware/super-admin.js', () => ({
 
 import * as clientService from '../../../src/clients/service.js';
 import * as secretService from '../../../src/clients/secret-service.js';
+import * as organizationService from '../../../src/organizations/service.js';
 import { createClientRouter } from '../../../src/routes/clients.js';
 
 // ---------------------------------------------------------------------------
@@ -55,7 +63,33 @@ function createTestClient(overrides: Partial<Client> = {}): Client {
     tokenEndpointAuthMethod: 'client_secret_basic',
     allowedOrigins: ['https://example.com'],
     requirePkce: true,
+    loginMethods: null,
     status: 'active',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    ...overrides,
+  };
+}
+
+/**
+ * Standard test organization used as the parent of the test client — only
+ * the fields read by `resolveLoginMethods()` really matter, but we keep the
+ * shape complete so the mock satisfies the full `Organization` type.
+ */
+function createTestOrg(overrides: Partial<Organization> = {}): Organization {
+  return {
+    id: 'org-uuid-1',
+    name: 'Acme Corporation',
+    slug: 'acme',
+    status: 'active',
+    isSuperAdmin: false,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    brandingPrimaryColor: null,
+    brandingCompanyName: null,
+    brandingCustomCss: null,
+    defaultLocale: 'en',
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
@@ -133,7 +167,14 @@ function findHandler(router: ReturnType<typeof createClientRouter>, method: stri
 }
 
 describe('client routes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: every call to getOrganizationById returns a fully-featured org
+    // so the `effectiveLoginMethods` decorator always has something to
+    // resolve against. Individual tests override as needed.
+    (organizationService.getOrganizationById as ReturnType<typeof vi.fn>)
+      .mockResolvedValue(createTestOrg());
+  });
 
   // -------------------------------------------------------------------------
   // POST / — Create client
@@ -164,8 +205,13 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(201);
-      const body = ctx.body as { data: { client: Client; secret: SecretWithPlaintext }; warning: string };
-      expect(body.data.client).toEqual(client);
+      const body = ctx.body as {
+        data: { client: Client & { effectiveLoginMethods: readonly string[] }; secret: SecretWithPlaintext };
+        warning: string;
+      };
+      // Client body contains all original fields + decorator
+      expect(body.data.client).toMatchObject(client);
+      expect(body.data.client.effectiveLoginMethods).toEqual(['password', 'magic_link']);
       expect(body.data.secret).toEqual(secret);
       expect(body.warning).toBe('Store the secret securely. It will not be shown again.');
     });
@@ -185,8 +231,12 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(201);
-      const body = ctx.body as { data: { client: Client; secret: null }; warning?: string };
-      expect(body.data.client).toEqual(client);
+      const body = ctx.body as {
+        data: { client: Client & { effectiveLoginMethods: readonly string[] }; secret: null };
+        warning?: string;
+      };
+      expect(body.data.client).toMatchObject(client);
+      expect(body.data.client.effectiveLoginMethods).toEqual(['password', 'magic_link']);
       expect(body.data.secret).toBeNull();
       // No warning for public clients (no secret)
       expect(body.warning).toBeUndefined();
@@ -215,6 +265,96 @@ describe('client routes', () => {
 
       await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Organization not found');
     });
+
+    // -----------------------------------------------------------------------
+    // loginMethods — Zod validation + three-state semantics
+    // -----------------------------------------------------------------------
+    describe('loginMethods', () => {
+      it('should accept loginMethods: null (inherit) and pass it to the service', async () => {
+        const client = createTestClient({ loginMethods: null });
+        const createResult: ClientWithSecret = { client, secret: null };
+        (clientService.createClient as ReturnType<typeof vi.fn>).mockResolvedValue(createResult);
+
+        const router = createClientRouter();
+        const handler = findHandler(router, 'POST', '/api/admin/clients');
+        const ctx = createMockCtx({
+          body: { ...validBody, clientType: 'public', loginMethods: null },
+        });
+
+        await handler(ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(201);
+        expect(clientService.createClient).toHaveBeenCalledWith(
+          expect.objectContaining({ loginMethods: null }),
+        );
+      });
+
+      it('should accept a valid array override', async () => {
+        const client = createTestClient({ loginMethods: ['password'] });
+        const createResult: ClientWithSecret = { client, secret: null };
+        (clientService.createClient as ReturnType<typeof vi.fn>).mockResolvedValue(createResult);
+
+        const router = createClientRouter();
+        const handler = findHandler(router, 'POST', '/api/admin/clients');
+        const ctx = createMockCtx({
+          body: { ...validBody, clientType: 'public', loginMethods: ['password'] },
+        });
+
+        await handler(ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(201);
+        expect(clientService.createClient).toHaveBeenCalledWith(
+          expect.objectContaining({ loginMethods: ['password'] }),
+        );
+        const body = ctx.body as { data: { client: Client & { effectiveLoginMethods: readonly string[] } } };
+        // With explicit override, the effective value reflects the override
+        expect(body.data.client.effectiveLoginMethods).toEqual(['password']);
+      });
+
+      it('should return 400 for an empty loginMethods array', async () => {
+        const router = createClientRouter();
+        const handler = findHandler(router, 'POST', '/api/admin/clients');
+        const ctx = createMockCtx({
+          body: { ...validBody, loginMethods: [] },
+        });
+
+        await handler(ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(400);
+        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect(clientService.createClient).not.toHaveBeenCalled();
+      });
+
+      it('should return 400 for an unknown login method', async () => {
+        const router = createClientRouter();
+        const handler = findHandler(router, 'POST', '/api/admin/clients');
+        const ctx = createMockCtx({
+          body: { ...validBody, loginMethods: ['sms'] },
+        });
+
+        await handler(ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(400);
+        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect(clientService.createClient).not.toHaveBeenCalled();
+      });
+
+      it('should omit loginMethods when not provided', async () => {
+        const client = createTestClient();
+        const createResult: ClientWithSecret = { client, secret: null };
+        (clientService.createClient as ReturnType<typeof vi.fn>).mockResolvedValue(createResult);
+
+        const router = createClientRouter();
+        const handler = findHandler(router, 'POST', '/api/admin/clients');
+        const ctx = createMockCtx({ body: { ...validBody, clientType: 'public' } });
+
+        await handler(ctx as never, vi.fn());
+
+        expect(ctx.status).toBe(201);
+        const calledWith = (clientService.createClient as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        expect(calledWith.loginMethods).toBeUndefined();
+      });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -242,7 +382,7 @@ describe('client routes', () => {
   // -------------------------------------------------------------------------
 
   describe('GET /:id — Get client by ID', () => {
-    it('should return client when found', async () => {
+    it('should return client with effectiveLoginMethods when found', async () => {
       const client = createTestClient();
       (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
@@ -252,7 +392,44 @@ describe('client routes', () => {
 
       await handler(ctx as never, vi.fn());
 
-      expect(ctx.body).toEqual({ data: client });
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data).toMatchObject(client);
+      // loginMethods=null + org default [password, magic_link] → effective inherits
+      expect(body.data.effectiveLoginMethods).toEqual(['password', 'magic_link']);
+    });
+
+    it('should return effectiveLoginMethods reflecting a client override', async () => {
+      const client = createTestClient({ loginMethods: ['magic_link'] });
+      (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients/:id');
+      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
+
+      await handler(ctx as never, vi.fn());
+
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data.loginMethods).toEqual(['magic_link']);
+      expect(body.data.effectiveLoginMethods).toEqual(['magic_link']);
+    });
+
+    it('should return effectiveLoginMethods using the org default when client has no override', async () => {
+      // Org with password-only default
+      (organizationService.getOrganizationById as ReturnType<typeof vi.fn>)
+        .mockResolvedValue(createTestOrg({ defaultLoginMethods: ['password'] }));
+
+      const client = createTestClient({ loginMethods: null });
+      (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients/:id');
+      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
+
+      await handler(ctx as never, vi.fn());
+
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data.loginMethods).toBeNull();
+      expect(body.data.effectiveLoginMethods).toEqual(['password']);
     });
 
     it('should throw 404 when not found', async () => {
@@ -271,7 +448,7 @@ describe('client routes', () => {
   // -------------------------------------------------------------------------
 
   describe('PUT /:id — Update client', () => {
-    it('should return updated client', async () => {
+    it('should return updated client with effectiveLoginMethods', async () => {
       const client = createTestClient({ clientName: 'Updated' });
       (clientService.updateClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
@@ -284,7 +461,9 @@ describe('client routes', () => {
 
       await handler(ctx as never, vi.fn());
 
-      expect(ctx.body).toEqual({ data: client });
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data).toMatchObject(client);
+      expect(body.data.effectiveLoginMethods).toEqual(['password', 'magic_link']);
     });
 
     it('should throw 404 when client not found', async () => {
@@ -299,6 +478,59 @@ describe('client routes', () => {
       });
 
       await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client not found');
+    });
+
+    it('should accept loginMethods: null to reset to inherit', async () => {
+      const client = createTestClient({ loginMethods: null });
+      (clientService.updateClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'PUT', '/api/admin/clients/:id');
+      const ctx = createMockCtx({
+        params: { id: 'client-db-uuid-1' },
+        body: { loginMethods: null },
+      });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(clientService.updateClient).toHaveBeenCalledWith(
+        'client-db-uuid-1',
+        expect.objectContaining({ loginMethods: null }),
+      );
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data.effectiveLoginMethods).toEqual(['password', 'magic_link']);
+    });
+
+    it('should accept a loginMethods array override', async () => {
+      const client = createTestClient({ loginMethods: ['magic_link'] });
+      (clientService.updateClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'PUT', '/api/admin/clients/:id');
+      const ctx = createMockCtx({
+        params: { id: 'client-db-uuid-1' },
+        body: { loginMethods: ['magic_link'] },
+      });
+
+      await handler(ctx as never, vi.fn());
+
+      const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
+      expect(body.data.effectiveLoginMethods).toEqual(['magic_link']);
+    });
+
+    it('should return 400 when update payload has empty loginMethods', async () => {
+      const router = createClientRouter();
+      const handler = findHandler(router, 'PUT', '/api/admin/clients/:id');
+      const ctx = createMockCtx({
+        params: { id: 'client-db-uuid-1' },
+        body: { loginMethods: [] },
+      });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(400);
+      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect(clientService.updateClient).not.toHaveBeenCalled();
     });
   });
 

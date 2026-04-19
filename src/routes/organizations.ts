@@ -28,15 +28,31 @@ import { z } from 'zod';
 import { requireSuperAdmin } from '../middleware/super-admin.js';
 import * as organizationService from '../organizations/service.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
+import { LOGIN_METHODS } from '../clients/types.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
 
+/**
+ * Login method Zod schema — single source of truth for HTTP payload validation.
+ * Uses the runtime `LOGIN_METHODS` const so adding a new method only requires
+ * updating the union in `src/clients/types.ts`.
+ */
+const loginMethodSchema = z.enum(LOGIN_METHODS);
+
+/**
+ * Organization-level default login methods — a non-empty array (empty arrays
+ * are rejected by the service layer and must be rejected at the HTTP boundary
+ * too so the 400 carries a useful validation message).
+ */
+const defaultLoginMethodsSchema = z.array(loginMethodSchema).min(1);
+
 const createOrganizationSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(3).max(100).optional(),
   defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
   branding: z.object({
     logoUrl: z.string().url().nullable().optional(),
     faviconUrl: z.string().url().nullable().optional(),
@@ -49,6 +65,7 @@ const createOrganizationSchema = z.object({
 const updateOrganizationSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
   branding: z.object({
     logoUrl: z.string().url().nullable().optional(),
     faviconUrl: z.string().url().nullable().optional(),
