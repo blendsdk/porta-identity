@@ -23,6 +23,7 @@ import type {
   PaginatedResult,
 } from './types.js';
 import { mapRowToOrganization } from './types.js';
+import type { LoginMethod } from '../clients/types.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -38,6 +39,12 @@ export interface InsertOrganizationData {
   brandingPrimaryColor?: string | null;
   brandingCompanyName?: string | null;
   brandingCustomCss?: string | null;
+  /**
+   * Optional org-wide default login methods. When omitted, the DB
+   * `DEFAULT ARRAY['password', 'magic_link']` clause applies. The
+   * service layer is responsible for validation + normalization.
+   */
+  defaultLoginMethods?: LoginMethod[];
 }
 
 /**
@@ -53,26 +60,39 @@ export interface InsertOrganizationData {
 export async function insertOrganization(data: InsertOrganizationData): Promise<Organization> {
   const pool = getPool();
 
-  const result = await pool.query<OrganizationRow>(
-    `INSERT INTO organizations (
-       name, slug, default_locale,
-       branding_logo_url, branding_favicon_url, branding_primary_color,
-       branding_company_name, branding_custom_css
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING *`,
-    [
-      data.name,
-      data.slug,
-      data.defaultLocale,
-      data.brandingLogoUrl ?? null,
-      data.brandingFaviconUrl ?? null,
-      data.brandingPrimaryColor ?? null,
-      data.brandingCompanyName ?? null,
-      data.brandingCustomCss ?? null,
-    ],
-  );
+  // Build the column list and value placeholders dynamically so we can omit
+  // `default_login_methods` when not provided — letting the DB DEFAULT take
+  // effect (back-compatible with callers that don't know about the column).
+  const columns: string[] = [
+    'name',
+    'slug',
+    'default_locale',
+    'branding_logo_url',
+    'branding_favicon_url',
+    'branding_primary_color',
+    'branding_company_name',
+    'branding_custom_css',
+  ];
+  const values: unknown[] = [
+    data.name,
+    data.slug,
+    data.defaultLocale,
+    data.brandingLogoUrl ?? null,
+    data.brandingFaviconUrl ?? null,
+    data.brandingPrimaryColor ?? null,
+    data.brandingCompanyName ?? null,
+    data.brandingCustomCss ?? null,
+  ];
 
+  if (data.defaultLoginMethods !== undefined) {
+    columns.push('default_login_methods');
+    values.push(data.defaultLoginMethods);
+  }
+
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+  const sql = `INSERT INTO organizations (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+
+  const result = await pool.query<OrganizationRow>(sql, values);
   return mapRowToOrganization(result.rows[0]);
 }
 
@@ -147,6 +167,7 @@ export interface UpdateOrganizationData {
   status?: string;
   defaultLocale?: string;
   twoFactorPolicy?: string;
+  defaultLoginMethods?: LoginMethod[];
   brandingLogoUrl?: string | null;
   brandingFaviconUrl?: string | null;
   brandingPrimaryColor?: string | null;
@@ -163,6 +184,7 @@ const FIELD_TO_COLUMN: Record<string, string> = {
   status: 'status',
   defaultLocale: 'default_locale',
   twoFactorPolicy: 'two_factor_policy',
+  defaultLoginMethods: 'default_login_methods',
   brandingLogoUrl: 'branding_logo_url',
   brandingFaviconUrl: 'branding_favicon_url',
   brandingPrimaryColor: 'branding_primary_color',

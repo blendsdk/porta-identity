@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-19 12:21
-> **Progress**: 6/58 tasks (10%)
+> **Last Updated**: 2026-04-19 12:40
+> **Progress**: 17/58 tasks (29%)
 
 ## Overview
 
@@ -76,15 +76,22 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                              | File                                            |
 | ----- | --------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 2.1.1 | Add `LoginMethod` union + `LOGIN_METHODS` const to `src/clients/types.ts`        | `src/clients/types.ts`                          |
-| 2.1.2 | Create `src/clients/resolve-login-methods.ts` with `resolveLoginMethods` + `normalizeLoginMethods` | `src/clients/resolve-login-methods.ts` |
-| 2.1.3 | Add unit tests for resolver + normalizer                                          | `tests/unit/clients/resolve-login-methods.test.ts` |
-| 2.1.4 | Update `src/clients/index.ts` barrel to export new symbols                        | `src/clients/index.ts`                          |
+| 2.1.1 ✅ | Add `LoginMethod` union + `LOGIN_METHODS` const to `src/clients/types.ts`        | `src/clients/types.ts`                          |
+| 2.1.2 ✅ | Create `src/clients/resolve-login-methods.ts` with `resolveLoginMethods` + `normalizeLoginMethods` | `src/clients/resolve-login-methods.ts` |
+| 2.1.3 ✅ | Add unit tests for resolver + normalizer                                          | `tests/unit/clients/resolve-login-methods.test.ts` |
+| 2.1.4 ✅ | Update `src/clients/index.ts` barrel to export new symbols                        | `src/clients/index.ts`                          |
 
 **Deliverables**:
-- [ ] `LoginMethod` type importable from `src/clients`
-- [ ] Resolver + normalizer fully unit-tested
-- [ ] Barrel exports updated
+- [x] `LoginMethod` type importable from `src/clients`
+- [x] Resolver + normalizer fully unit-tested (18 tests)
+- [x] Barrel exports updated
+
+**Completion Notes (2026-04-19)**:
+- `LoginMethod` is a string-literal union `'password' | 'magic_link'` backed by the runtime const `LOGIN_METHODS` so callers can iterate / validate without rewriting the union.
+- `resolveLoginMethods()` takes a structural `LoginMethodsClientView` (defined inline in the resolver) instead of `Pick<Client, 'loginMethods'>` so the helper compiles **before** Phase 4 wires the field onto the `Client` model. Once Phase 4 lands, the structural type stays a valid subtype of `Client` so call sites continue to compile.
+- The empty-array branch in the resolver is defensive (the service layer rejects `[]` on write) but keeps the read path safe against unexpected upstream data.
+- `normalizeLoginMethods()` deduplicates while preserving first-occurrence order — used by the org service in Phase 3 (and the client service in Phase 4) before persisting.
+- 18 unit tests cover both helpers; full unit suite + `tsc` build clean.
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- clients/resolve-login-methods && yarn lint`
 
@@ -101,18 +108,26 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                                 | File                                       |
 | ----- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
-| 3.1.1 | Add `defaultLoginMethods` to `Organization`, `CreateOrganizationInput`, `UpdateOrganizationInput`, `OrganizationRow`, update `mapRowToOrganization` | `src/organizations/types.ts` |
-| 3.1.2 | Update `insertOrganization`, `updateOrganization`, `findOrganizationById`, `findOrganizationBySlug`, `listOrganizations` in repo | `src/organizations/repository.ts` |
-| 3.1.3 | Add validation + normalization in `createOrganization` / `updateOrganization` + audit log diff | `src/organizations/service.ts`       |
-| 3.1.4 | Verify cache serialization via roundtrip test                                        | `src/organizations/cache.ts` (no code change); `tests/unit/organizations/cache.test.ts` |
-| 3.1.5 | Update `tests/unit/organizations/types.test.ts` for new field                        | `tests/unit/organizations/types.test.ts`    |
-| 3.1.6 | Update `tests/unit/organizations/repository.test.ts` for new column                  | `tests/unit/organizations/repository.test.ts` |
-| 3.1.7 | Update `tests/unit/organizations/service.test.ts` for validation + normalization    | `tests/unit/organizations/service.test.ts`  |
+| 3.1.1 ✅ | Add `defaultLoginMethods` to `Organization`, `CreateOrganizationInput`, `UpdateOrganizationInput`, `OrganizationRow`, update `mapRowToOrganization` | `src/organizations/types.ts` |
+| 3.1.2 ✅ | Update `insertOrganization`, `updateOrganization`, `findOrganizationById`, `findOrganizationBySlug`, `listOrganizations` in repo | `src/organizations/repository.ts` |
+| 3.1.3 ✅ | Add validation + normalization in `createOrganization` / `updateOrganization` + audit log diff | `src/organizations/service.ts`       |
+| 3.1.4 ✅ | Verify cache serialization via roundtrip test                                        | `src/organizations/cache.ts` (no code change); `tests/unit/organizations/cache.test.ts` |
+| 3.1.5 ✅ | Update `tests/unit/organizations/types.test.ts` for new field                        | `tests/unit/organizations/types.test.ts`    |
+| 3.1.6 ✅ | Update `tests/unit/organizations/repository.test.ts` for new column                  | `tests/unit/organizations/repository.test.ts` |
+| 3.1.7 ✅ | Update `tests/unit/organizations/service.test.ts` for validation + normalization    | `tests/unit/organizations/service.test.ts`  |
 
 **Deliverables**:
-- [ ] All orgs module tests passing with new field
-- [ ] Existing orgs tests unchanged or minimally updated via fixture
-- [ ] No regressions
+- [x] All orgs module tests passing with new field (120/120)
+- [x] Existing orgs tests unchanged or minimally updated via fixture
+- [x] No regressions (full unit suite 1911/1911 still green)
+
+**Completion Notes (2026-04-19)**:
+- `Organization.defaultLoginMethods` typed as `LoginMethod[]` (not nullable on the model) — the DB column is `NOT NULL DEFAULT ARRAY['password', 'magic_link']`, so the model always carries a non-empty array. Mapper has a defensive `?? ['password', 'magic_link']` fallback for stale caches / hand-crafted rows.
+- Repository `INSERT` builds the column list dynamically: when `defaultLoginMethods` is `undefined` the column is **omitted** from the SQL so the DB DEFAULT fires (back-compat with callers that don't know about the column). Update path adds the column to the `FIELD_TO_COLUMN` map so the existing dynamic SET clause supports it transparently.
+- Service-layer `validateDefaultLoginMethods()` (private helper) rejects non-array, empty-array, and unknown-method inputs with `OrganizationValidationError`, then deduplicates via `normalizeLoginMethods()`.
+- Update path captures the previous value via `getOrganizationById()` (cache-aware) **before** the repo update so the audit log can record `previousDefaultLoginMethods → newDefaultLoginMethods`.
+- Imports use `../clients/types.js` + `../clients/resolve-login-methods.js` directly (not the clients barrel) to keep the org→clients dependency narrow.
+- New tests: types (3 cases), repository (2 cases), service (8 cases — 5 create + 3 update), cache (1 roundtrip case). All passing.
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- organizations && yarn lint`
 
@@ -382,19 +397,19 @@ clear && sleep 3 && bash scripts/playground-bff-smoke.sh
 - [x] 1.1.6 Audit `migrations/011_seed.sql` for seed-org default coverage
 
 ### Phase 2: Shared types + resolver
-- [ ] 2.1.1 Add `LoginMethod` + `LOGIN_METHODS` to `src/clients/types.ts`
-- [ ] 2.1.2 Create `src/clients/resolve-login-methods.ts`
-- [ ] 2.1.3 Unit tests for resolver + normalizer
-- [ ] 2.1.4 Update `src/clients/index.ts` barrel
+- [x] 2.1.1 Add `LoginMethod` + `LOGIN_METHODS` to `src/clients/types.ts`
+- [x] 2.1.2 Create `src/clients/resolve-login-methods.ts`
+- [x] 2.1.3 Unit tests for resolver + normalizer
+- [x] 2.1.4 Update `src/clients/index.ts` barrel
 
 ### Phase 3: Organizations module
-- [ ] 3.1.1 Extend `Organization` types + `mapRowToOrganization`
-- [ ] 3.1.2 Update `organizations/repository.ts` CRUD
-- [ ] 3.1.3 Add validation + audit log to `organizations/service.ts`
-- [ ] 3.1.4 Verify cache roundtrip test
-- [ ] 3.1.5 Update `organizations/types.test.ts`
-- [ ] 3.1.6 Update `organizations/repository.test.ts`
-- [ ] 3.1.7 Update `organizations/service.test.ts`
+- [x] 3.1.1 Extend `Organization` types + `mapRowToOrganization`
+- [x] 3.1.2 Update `organizations/repository.ts` CRUD
+- [x] 3.1.3 Add validation + audit log to `organizations/service.ts`
+- [x] 3.1.4 Verify cache roundtrip test
+- [x] 3.1.5 Update `organizations/types.test.ts`
+- [x] 3.1.6 Update `organizations/repository.test.ts`
+- [x] 3.1.7 Update `organizations/service.test.ts`
 
 ### Phase 4: Clients module
 - [ ] 4.1.1 Extend `Client` types + `mapRowToClient`

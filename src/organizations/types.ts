@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import type { TwoFactorPolicy } from '../two-factor/types.js';
+import type { LoginMethod } from '../clients/types.js';
 
 /** Organization status values — matches the DB CHECK constraint */
 export type OrganizationStatus = 'active' | 'suspended' | 'archived';
@@ -49,6 +50,15 @@ export interface Organization {
   /** Controls whether 2FA is required for org members */
   twoFactorPolicy: TwoFactorPolicy;
 
+  /**
+   * Default login methods for all clients in this organization.
+   *
+   * Always non-empty (the DB column has `NOT NULL DEFAULT ARRAY['password',
+   * 'magic_link']` and the service layer rejects empty inputs). A client
+   * inherits this list when its own `loginMethods` is `null`.
+   */
+  defaultLoginMethods: LoginMethod[];
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -67,6 +77,12 @@ export interface CreateOrganizationInput {
   slug?: string;
   defaultLocale?: string; // Defaults to 'en'
   branding?: BrandingInput;
+  /**
+   * Optional override for the org-wide default login methods.
+   * If omitted, the database `DEFAULT ARRAY['password', 'magic_link']`
+   * applies. The service layer validates + normalizes the array.
+   */
+  defaultLoginMethods?: LoginMethod[];
 }
 
 /** Input for updating an existing organization (partial). */
@@ -75,6 +91,11 @@ export interface UpdateOrganizationInput {
   defaultLocale?: string;
   twoFactorPolicy?: TwoFactorPolicy;
   branding?: BrandingInput;
+  /**
+   * New org-wide default login methods. Must be a non-empty array of
+   * valid {@link LoginMethod} values; the service layer enforces both.
+   */
+  defaultLoginMethods?: LoginMethod[];
 }
 
 /** Branding configuration input — all fields optional/nullable. */
@@ -130,6 +151,7 @@ export interface OrganizationRow {
   branding_custom_css: string | null;
   default_locale: string;
   two_factor_policy: string;
+  default_login_methods: string[];
   created_at: Date;
   updated_at: Date;
 }
@@ -159,6 +181,13 @@ export function mapRowToOrganization(row: OrganizationRow): Organization {
     brandingCustomCss: row.branding_custom_css,
     defaultLocale: row.default_locale,
     twoFactorPolicy: row.two_factor_policy as TwoFactorPolicy,
+    // Defensive default: the DB column is NOT NULL with a sensible
+    // default, but if a stale cache or test fixture omits the field
+    // we still surface a usable value.
+    defaultLoginMethods: (row.default_login_methods ?? [
+      'password',
+      'magic_link',
+    ]) as LoginMethod[],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -43,6 +43,44 @@ import {
 import { generateSlug, validateSlug } from './slugs.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from './errors.js';
+// Import directly from the type/resolver modules (not the clients barrel)
+// to keep the org→clients dependency narrow and avoid pulling the entire
+// clients service surface into the organizations module.
+import { LOGIN_METHODS, type LoginMethod } from '../clients/types.js';
+import { normalizeLoginMethods } from '../clients/resolve-login-methods.js';
+
+// ---------------------------------------------------------------------------
+// Validation helpers (private)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate + normalize a `defaultLoginMethods` input array.
+ *
+ * Throws {@link OrganizationValidationError} when:
+ *   - the value is not an array
+ *   - the array is empty
+ *   - any element is not a valid {@link LoginMethod}
+ *
+ * Returns the normalized (deduplicated, order-preserving) array on success.
+ */
+function validateDefaultLoginMethods(
+  methods: LoginMethod[] | undefined,
+): LoginMethod[] | undefined {
+  if (methods === undefined) return undefined;
+  if (!Array.isArray(methods) || methods.length === 0) {
+    throw new OrganizationValidationError(
+      'defaultLoginMethods: must be a non-empty array',
+    );
+  }
+  for (const m of methods) {
+    if (!LOGIN_METHODS.includes(m)) {
+      throw new OrganizationValidationError(
+        `defaultLoginMethods: invalid method "${String(m)}"`,
+      );
+    }
+  }
+  return normalizeLoginMethods(methods);
+}
 
 // ---------------------------------------------------------------------------
 // Create
@@ -82,6 +120,12 @@ export async function createOrganization(
     throw new OrganizationValidationError('Slug already in use');
   }
 
+  // Validate + normalize defaultLoginMethods (throws on invalid input).
+  // Undefined → fall back to DB DEFAULT in the repository INSERT.
+  const defaultLoginMethods = validateDefaultLoginMethods(
+    input.defaultLoginMethods,
+  );
+
   // Insert into database
   const org = await insertOrganization({
     name: input.name,
@@ -92,18 +136,25 @@ export async function createOrganization(
     brandingPrimaryColor: input.branding?.primaryColor,
     brandingCompanyName: input.branding?.companyName,
     brandingCustomCss: input.branding?.customCss,
+    defaultLoginMethods,
   });
 
   // Cache the new organization
   await cacheOrganization(org);
 
-  // Audit log (fire-and-forget)
+  // Audit log (fire-and-forget) — include the resolved defaults so audit
+  // captures the effective configuration even when the caller relied on
+  // the DB DEFAULT.
   await writeAuditLog({
     organizationId: org.id,
     actorId,
     eventType: 'org.created',
     eventCategory: 'admin',
-    metadata: { slug: org.slug, name: org.name },
+    metadata: {
+      slug: org.slug,
+      name: org.name,
+      defaultLoginMethods: org.defaultLoginMethods,
+    },
   });
 
   return org;
@@ -177,6 +228,23 @@ export async function updateOrganization(
   if (input.defaultLocale !== undefined) updateData.defaultLocale = input.defaultLocale;
   if (input.twoFactorPolicy !== undefined) updateData.twoFactorPolicy = input.twoFactorPolicy;
 
+  // Validate + normalize defaultLoginMethods if provided (throws on invalid).
+  // Capture the previous value (for audit log diff) before the update is
+  // applied, so we can record the old → new transition.
+  let previousDefaultLoginMethods: LoginMethod[] | undefined;
+  if (input.defaultLoginMethods !== undefined) {
+    const normalized = validateDefaultLoginMethods(input.defaultLoginMethods);
+    updateData.defaultLoginMethods = normalized;
+
+    // Look up the current value for the audit diff. We use the cache-aware
+    // accessor so we get a Date-deserialized object back; if the org doesn't
+    // exist the repo update will throw OrganizationNotFoundError below.
+    const existing = await getOrganizationById(id);
+    if (existing) {
+      previousDefaultLoginMethods = existing.defaultLoginMethods;
+    }
+  }
+
   // Include branding fields if provided
   if (input.branding) {
     if (input.branding.logoUrl !== undefined) updateData.brandingLogoUrl = input.branding.logoUrl;
@@ -200,13 +268,21 @@ export async function updateOrganization(
   await invalidateOrganizationCache(org.slug, org.id);
   await cacheOrganization(org);
 
-  // Audit log (fire-and-forget)
+  // Audit log (fire-and-forget) — include old/new login methods when
+  // they changed, for forensic traceability.
+  const auditMetadata: Record<string, unknown> = {
+    fields: Object.keys(updateData),
+  };
+  if (input.defaultLoginMethods !== undefined) {
+    auditMetadata.previousDefaultLoginMethods = previousDefaultLoginMethods ?? null;
+    auditMetadata.newDefaultLoginMethods = org.defaultLoginMethods;
+  }
   await writeAuditLog({
     organizationId: org.id,
     actorId,
     eventType: 'org.updated',
     eventCategory: 'admin',
-    metadata: { fields: Object.keys(updateData) },
+    metadata: auditMetadata,
   });
 
   return org;

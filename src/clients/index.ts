@@ -17,6 +17,7 @@ export type {
   ApplicationType,
   ClientStatus,
   SecretStatus,
+  LoginMethod,
   ClientRow,
   ClientSecretRow,
   CreateClientInput,
@@ -25,6 +26,15 @@ export type {
   ListClientsOptions,
   PaginatedResult,
 } from './types.js';
+
+// Runtime constants
+export { LOGIN_METHODS } from './types.js';
+
+// Login-method resolution helpers
+export {
+  resolveLoginMethods,
+  normalizeLoginMethods,
+} from './resolve-login-methods.js';
 
 // Service functions — Client CRUD
 export {

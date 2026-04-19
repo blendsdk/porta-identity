@@ -20,11 +20,13 @@ function createTestRow(overrides: Partial<OrganizationRow> = {}): OrganizationRo
     branding_custom_css: '.login { color: red; }',
     two_factor_policy: 'optional',
     default_locale: 'en',
+    default_login_methods: ['password', 'magic_link'],
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-15T12:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('types', () => {
   describe('mapRowToOrganization', () => {
@@ -45,10 +47,36 @@ describe('types', () => {
         brandingCustomCss: '.login { color: red; }',
         twoFactorPolicy: 'optional',
         defaultLocale: 'en',
+        defaultLoginMethods: ['password', 'magic_link'],
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-15T12:00:00Z'),
       });
     });
+
+    it('should map default_login_methods array verbatim (single method override)', () => {
+      const row = createTestRow({ default_login_methods: ['password'] });
+      expect(mapRowToOrganization(row).defaultLoginMethods).toEqual(['password']);
+    });
+
+    it('should map default_login_methods array verbatim (magic-link only)', () => {
+      const row = createTestRow({ default_login_methods: ['magic_link'] });
+      expect(mapRowToOrganization(row).defaultLoginMethods).toEqual(['magic_link']);
+    });
+
+    it('should fall back to ["password","magic_link"] when default_login_methods is missing', () => {
+      // Defensive branch: the DB column is NOT NULL, but stale caches or
+      // hand-crafted test rows may omit the field. The mapper should not
+      // crash and should yield a usable default.
+      // Cast through unknown to satisfy strict types when intentionally
+      // dropping a required field.
+      const row = createTestRow();
+      delete (row as unknown as Record<string, unknown>).default_login_methods;
+      expect(mapRowToOrganization(row).defaultLoginMethods).toEqual([
+        'password',
+        'magic_link',
+      ]);
+    });
+
 
     it('should preserve null values for branding fields', () => {
       const row = createTestRow({

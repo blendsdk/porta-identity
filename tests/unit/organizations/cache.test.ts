@@ -43,11 +43,14 @@ function createTestOrg(overrides: Partial<Organization> = {}): Organization {
     brandingCompanyName: 'Acme Corp',
     brandingCustomCss: null,
     defaultLocale: 'en',
+    twoFactorPolicy: 'optional',
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-15T12:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('organization cache', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -146,7 +149,26 @@ describe('organization cache', () => {
       expect(redis.set.mock.calls[1][3]).toBe(300);
     });
 
+    it('should round-trip defaultLoginMethods through JSON serialization', async () => {
+      // Cache lifecycle: cacheOrganization() serializes via JSON.stringify,
+      // then getCachedOrganization*() reads it back via JSON.parse. Arrays
+      // are preserved natively so this is a sanity test that the new field
+      // survives the round trip even though the cache layer doesn't know
+      // about it explicitly.
+      const redis = createMockRedis();
+      const org = createTestOrg({ defaultLoginMethods: ['magic_link'] });
+
+      await cacheOrganization(org);
+
+      const serialized = redis.set.mock.calls[0][1] as string;
+      redis.get.mockResolvedValue(serialized);
+
+      const result = await getCachedOrganizationBySlug(org.slug);
+      expect(result!.defaultLoginMethods).toEqual(['magic_link']);
+    });
+
     it('should serialize dates as ISO strings and deserialize back correctly', async () => {
+
       const redis = createMockRedis();
       const org = createTestOrg({
         createdAt: new Date('2026-03-15T10:30:00Z'),

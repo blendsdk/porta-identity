@@ -66,11 +66,14 @@ function createTestOrg(overrides: Partial<Organization> = {}): Organization {
     brandingCompanyName: null,
     brandingCustomCss: null,
     defaultLocale: 'en',
+    twoFactorPolicy: 'optional',
+    defaultLoginMethods: ['password', 'magic_link'],
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('organization service', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -138,6 +141,83 @@ describe('organization service', () => {
           eventType: 'org.created',
           actorId: 'actor-1',
           organizationId: org.id,
+        }),
+      );
+    });
+
+    // ---- defaultLoginMethods ----
+
+    it('should omit defaultLoginMethods from insert when not provided (DB DEFAULT)', async () => {
+      const org = createTestOrg();
+      (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (insertOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+      await createOrganization({ name: 'Acme Corporation' });
+
+      const insertCall = (insertOrganization as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(insertCall.defaultLoginMethods).toBeUndefined();
+    });
+
+    it('should pass normalized defaultLoginMethods to insert when provided', async () => {
+      const org = createTestOrg();
+      (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (insertOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+      // Duplicate values exercise the normalize path (dedup, order-preserving).
+      await createOrganization({
+        name: 'Acme Corporation',
+        defaultLoginMethods: ['magic_link', 'password', 'magic_link'],
+      });
+
+      const insertCall = (insertOrganization as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(insertCall.defaultLoginMethods).toEqual(['magic_link', 'password']);
+    });
+
+    it('should reject empty defaultLoginMethods array', async () => {
+      (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      await expect(
+        createOrganization({
+          name: 'Acme Corporation',
+          defaultLoginMethods: [],
+        }),
+      ).rejects.toThrow(OrganizationValidationError);
+
+      // Insert must not be reached when validation fails.
+      expect(insertOrganization).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid defaultLoginMethods value', async () => {
+      (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      await expect(
+        createOrganization({
+          name: 'Acme Corporation',
+          // Bogus value — bypass type-checking to simulate untrusted input
+          // arriving from a future API caller / SDK with a stale enum.
+          defaultLoginMethods: ['sms' as unknown as 'password'],
+        }),
+      ).rejects.toThrow('invalid method');
+
+      expect(insertOrganization).not.toHaveBeenCalled();
+    });
+
+    it('should include resolved defaultLoginMethods in audit metadata', async () => {
+      const org = createTestOrg({ defaultLoginMethods: ['password'] });
+      (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (insertOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+
+      await createOrganization(
+        { name: 'Acme Corporation', defaultLoginMethods: ['password'] },
+        'actor-1',
+      );
+
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'org.created',
+          metadata: expect.objectContaining({
+            defaultLoginMethods: ['password'],
+          }),
         }),
       );
     });
@@ -239,6 +319,57 @@ describe('organization service', () => {
       expect(writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'org.updated' }),
       );
+    });
+
+    // ---- defaultLoginMethods ----
+
+    it('should validate, normalize, and persist defaultLoginMethods', async () => {
+      const previousOrg = createTestOrg({ defaultLoginMethods: ['password', 'magic_link'] });
+      const updatedOrg = createTestOrg({ defaultLoginMethods: ['magic_link'] });
+      // Cache lookup for previous value (audit diff).
+      (getCachedOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(previousOrg);
+      (repoUpdate as ReturnType<typeof vi.fn>).mockResolvedValue(updatedOrg);
+
+      await updateOrganization(
+        'org-uuid-1',
+        // Duplicates exercise normalization.
+        { defaultLoginMethods: ['magic_link', 'magic_link'] },
+        'actor-1',
+      );
+
+      // Repo received the deduplicated array.
+      const repoCall = (repoUpdate as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(repoCall[1].defaultLoginMethods).toEqual(['magic_link']);
+
+      // Audit log captures both old and new values.
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'org.updated',
+          metadata: expect.objectContaining({
+            previousDefaultLoginMethods: ['password', 'magic_link'],
+            newDefaultLoginMethods: ['magic_link'],
+          }),
+        }),
+      );
+    });
+
+    it('should reject empty defaultLoginMethods on update', async () => {
+      await expect(
+        updateOrganization('org-uuid-1', { defaultLoginMethods: [] }),
+      ).rejects.toThrow(OrganizationValidationError);
+
+      // Validation must short-circuit before any DB write.
+      expect(repoUpdate).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid login method on update', async () => {
+      await expect(
+        updateOrganization('org-uuid-1', {
+          defaultLoginMethods: ['oauth' as unknown as 'password'],
+        }),
+      ).rejects.toThrow('invalid method');
+
+      expect(repoUpdate).not.toHaveBeenCalled();
     });
   });
 

@@ -37,11 +37,14 @@ function createTestRow(overrides: Partial<OrganizationRow> = {}): OrganizationRo
     branding_company_name: 'Acme Corp',
     branding_custom_css: null,
     default_locale: 'en',
+    two_factor_policy: 'optional',
+    default_login_methods: ['password', 'magic_link'],
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }
+
 
 describe('organization repository', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -90,7 +93,46 @@ describe('organization repository', () => {
       expect(org.brandingPrimaryColor).toBe('#3B82F6');
       expect(org.createdAt).toBeInstanceOf(Date);
     });
+
+    it('should omit default_login_methods column when not provided (DB DEFAULT applies)', async () => {
+      // Back-compat path: callers that don't know about the new column
+      // should produce SQL that doesn't mention it, so the DB DEFAULT fires.
+      const mockQuery = mockPool([createTestRow()]);
+
+      await insertOrganization({
+        name: 'Acme Corporation',
+        slug: 'acme-corporation',
+        defaultLocale: 'en',
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).not.toContain('default_login_methods');
+
+      const params = mockQuery.mock.calls[0][1] as unknown[];
+      // Without the column there should be exactly 8 placeholders.
+      expect(params).toHaveLength(8);
+    });
+
+    it('should include default_login_methods column + value when provided', async () => {
+      const mockQuery = mockPool([createTestRow({ default_login_methods: ['password'] })]);
+
+      await insertOrganization({
+        name: 'Acme Corporation',
+        slug: 'acme-corporation',
+        defaultLocale: 'en',
+        defaultLoginMethods: ['password'],
+      });
+
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).toContain('default_login_methods');
+
+      const params = mockQuery.mock.calls[0][1] as unknown[];
+      // 8 base columns + 1 login_methods column = 9 params, login methods last.
+      expect(params).toHaveLength(9);
+      expect(params[8]).toEqual(['password']);
+    });
   });
+
 
   // -------------------------------------------------------------------------
   // findOrganizationById

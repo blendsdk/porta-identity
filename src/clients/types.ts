@@ -26,6 +26,27 @@ export type ClientStatus = 'active' | 'inactive' | 'revoked';
 /** Secret status values */
 export type SecretStatus = 'active' | 'revoked';
 
+/**
+ * Supported login methods.
+ *
+ * This is an extensible union — future methods (e.g., `'sso'`, `'passkey'`)
+ * can be added here. The set of currently valid values is mirrored in
+ * {@link LOGIN_METHODS} for runtime validation.
+ */
+export type LoginMethod = 'password' | 'magic_link';
+
+/**
+ * Runtime list of all currently valid {@link LoginMethod} values.
+ *
+ * Used by validation helpers in the organizations / clients service layers
+ * and by the CLI flag parser to validate user-supplied input.
+ */
+export const LOGIN_METHODS: readonly LoginMethod[] = [
+  'password',
+  'magic_link',
+] as const;
+
+
 // ===========================================================================
 // Domain interfaces
 // ===========================================================================
