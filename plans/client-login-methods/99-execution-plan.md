@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-19 14:00
-> **Progress**: 43/58 tasks (74%)
+> **Last Updated**: 2026-04-19 14:35
+> **Progress**: 51/58 tasks (88%)
 
 
 ## Overview
@@ -324,21 +324,31 @@ Implements organization-default + per-client override login-method configuration
 
 | #     | Task                                                                                   | File                             |
 | ----- | -------------------------------------------------------------------------------------- | -------------------------------- |
-| 8.1.1 | Create `parseLoginMethodsFlag()` helper (new file `src/cli/parsers.ts` or in shared)   | `src/cli/parsers.ts`             |
-| 8.1.2 | Add `--login-methods` flag + handling to `porta org create` / `update`                 | `src/cli/commands/org.ts`        |
-| 8.1.3 | Add `--login-methods` flag + `inherit` sentinel to `porta client create` / `update`    | `src/cli/commands/client.ts`     |
-| 8.1.4 | Update `porta org show` output to display `Default login methods`                      | `src/cli/commands/org.ts`        |
-| 8.1.5 | Update `porta client show` output to display raw + effective                           | `src/cli/commands/client.ts`     |
-| 8.1.6 | Unit tests for `parseLoginMethodsFlag`                                                 | `tests/unit/cli/parsers.test.ts` (new) |
-| 8.1.7 | Update `tests/unit/cli/commands/org.test.ts` for new flag + output                     | `tests/unit/cli/commands/org.test.ts` |
-| 8.1.8 | Update `tests/unit/cli/commands/client.test.ts` for new flag + `inherit` + output      | `tests/unit/cli/commands/client.test.ts` |
+| 8.1.1 ✅ | Create `parseLoginMethodsFlag()` helper (new file `src/cli/parsers.ts` or in shared)   | `src/cli/parsers.ts`             |
+| 8.1.2 ✅ | Add `--login-methods` flag + handling to `porta org create` / `update`                 | `src/cli/commands/org.ts`        |
+| 8.1.3 ✅ | Add `--login-methods` flag + `inherit` sentinel to `porta client create` / `update`    | `src/cli/commands/client.ts`     |
+| 8.1.4 ✅ | Update `porta org show` output to display `Default login methods`                      | `src/cli/commands/org.ts`        |
+| 8.1.5 ✅ | Update `porta client show` output to display raw + effective                           | `src/cli/commands/client.ts`     |
+| 8.1.6 ✅ | Unit tests for `parseLoginMethodsFlag` (21 tests)                                      | `tests/unit/cli/parsers.test.ts` (new) |
+| 8.1.7 ✅ | Update `tests/unit/cli/commands/org.test.ts` for new flag + output (28 tests total)    | `tests/unit/cli/commands/org.test.ts` |
+| 8.1.8 ✅ | Update `tests/unit/cli/commands/client.test.ts` for new flag + `inherit` + output (31 tests total) | `tests/unit/cli/commands/client.test.ts` |
 
 **Deliverables**:
-- [ ] CLI accepts + rejects correctly
-- [ ] Show output includes new fields
-- [ ] All CLI tests pass
+- [x] CLI accepts + rejects correctly
+- [x] Show output includes new fields
+- [x] All CLI tests pass
+
+**Completion Notes (2026-04-19)**:
+- `parseLoginMethodsFlag(raw, allowInherit)` lives in `src/cli/parsers.ts` as a single shared helper used by both `porta org` and `porta client`. It returns `undefined` (flag not provided), `null` (inherit sentinel, only when `allowInherit=true`), or a validated `LoginMethod[]`. Whitespace is trimmed per-token; empty/blank tokens, unknown methods, and explicit empty strings throw `Error` with clear messages before bootstrap.
+- `porta org create` / `update` accept `--login-methods password,magic_link` (no inherit — org always has a concrete default). The `allowInherit: false` path returns `LoginMethod[] | undefined`, narrowed via cast at the call site.
+- `porta client create` / `update` accept `--login-methods password,magic_link` OR `--login-methods inherit` (inherit = clear the override, revert to org default). The handler uses `Object.prototype.hasOwnProperty` semantics internally but translates to `null`/array for the service API.
+- `porta org show` renders `Default Login Methods` row; `porta client show` renders two rows — `Login Methods (raw)` (showing `inherit` for null) and `Effective Login Methods` (resolved via `resolveLoginMethods()` after fetching the parent org).
+- Parsing happens **before** `withBootstrap()` so invalid `--login-methods` input fails fast without opening DB/Redis connections.
+- Tests: 21 new parser cases (`tests/unit/cli/parsers.test.ts`); org command tests grew from ~23 to 28 (5 new assertions); client command tests grew from ~25 to 31 (6 new assertions covering create/update/show with inherit + explicit array).
+- `yarn verify` → 2171 tests across 120 files pass, TypeScript build clean, lint 0 errors (40 pre-existing warnings).
 
 **Verify**: `clear && sleep 3 && yarn test:unit -- cli && yarn lint`
+
 
 ---
 
@@ -482,14 +492,14 @@ clear && sleep 3 && bash scripts/playground-bff-smoke.sh
 - [ ] 7.1.4 Update `routes/clients.test.ts`
 
 ### Phase 8: CLI
-- [ ] 8.1.1 Create `parseLoginMethodsFlag()` helper
-- [ ] 8.1.2 Update `porta org` commands
-- [ ] 8.1.3 Update `porta client` commands
-- [ ] 8.1.4 Update `porta org show` output
-- [ ] 8.1.5 Update `porta client show` output
-- [ ] 8.1.6 Unit tests for parser helper
-- [ ] 8.1.7 Update `cli/commands/org.test.ts`
-- [ ] 8.1.8 Update `cli/commands/client.test.ts`
+- [x] 8.1.1 Create `parseLoginMethodsFlag()` helper
+- [x] 8.1.2 Update `porta org` commands
+- [x] 8.1.3 Update `porta client` commands
+- [x] 8.1.4 Update `porta org show` output
+- [x] 8.1.5 Update `porta client show` output
+- [x] 8.1.6 Unit tests for parser helper
+- [x] 8.1.7 Update `cli/commands/org.test.ts`
+- [x] 8.1.8 Update `cli/commands/client.test.ts`
 
 ### Phase 9: E2E + UI + Pentest + RD-07 Addendum + Verify
 - [ ] 9.1.1 Create `tests/e2e/login-methods.spec.ts`

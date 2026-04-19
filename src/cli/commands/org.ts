@@ -20,6 +20,8 @@
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
 import type { Organization } from '../../organizations/types.js';
+import type { LoginMethod } from '../../clients/types.js';
+
 import { withBootstrap } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import {
@@ -32,6 +34,7 @@ import {
   printTotal,
 } from '../output.js';
 import { confirm } from '../prompt.js';
+import { parseLoginMethodsFlag } from '../parsers.js';
 
 /** UUID format regex — used to distinguish UUIDs from slugs */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,6 +68,7 @@ interface OrgCreateArgs extends GlobalOptions {
   name: string;
   slug?: string;
   locale?: string;
+  'login-methods'?: string;
 }
 
 interface OrgListArgs extends GlobalOptions {
@@ -80,6 +84,7 @@ interface OrgIdArgs extends GlobalOptions {
 interface OrgUpdateArgs extends OrgIdArgs {
   name?: string;
   'default-locale'?: string;
+  'login-methods'?: string;
 }
 
 interface OrgBrandingArgs extends OrgIdArgs {
@@ -117,16 +122,34 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('locale', {
               type: 'string',
               description: 'Default locale (default: en)',
+            })
+            .option('login-methods', {
+              type: 'string',
+              description:
+                'Comma-separated default login methods for the organization (password, magic_link)',
             }),
         async (argv) => {
           const args = argv as unknown as OrgCreateArgs;
           await withErrorHandling(async () => {
+            // Parse --login-methods before bootstrap so invalid input fails fast
+            // without opening DB + Redis connections.
+            // The cast is safe: `allowInherit: false` guarantees the parser
+            // never returns `null` (it throws on the "inherit" sentinel instead).
+            const defaultLoginMethods = parseLoginMethodsFlag(
+              args['login-methods'],
+              /* allowInherit */ false,
+            ) as LoginMethod[] | undefined;
+
+
             await withBootstrap(args, async () => {
               const { createOrganization } = await import('../../organizations/index.js');
               const org = await createOrganization({
                 name: args.name,
                 slug: args.slug,
                 defaultLocale: args.locale,
+                // Only include the field when the operator provided it — otherwise
+                // the DB DEFAULT clause fires and stamps ['password', 'magic_link'].
+                ...(defaultLoginMethods !== undefined && { defaultLoginMethods }),
               });
 
               outputResult(
@@ -141,6 +164,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       ['Slug', org.slug],
                       ['Status', org.status],
                       ['Locale', org.defaultLocale],
+                      ['Default Login Methods', org.defaultLoginMethods.join(', ')],
                       ['Created', formatDate(org.createdAt)],
                     ],
                   );
@@ -241,6 +265,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       ['Status', org.status],
                       ['Super Admin', String(org.isSuperAdmin)],
                       ['Default Locale', org.defaultLocale],
+                      ['Default Login Methods', org.defaultLoginMethods.join(', ')],
                       ['Logo URL', org.brandingLogoUrl ?? '—'],
                       ['Primary Color', org.brandingPrimaryColor ?? '—'],
                       ['Created', formatDate(org.createdAt)],
@@ -273,12 +298,25 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('default-locale', {
               type: 'string',
               description: 'New default locale',
+            })
+            .option('login-methods', {
+              type: 'string',
+              description:
+                'Comma-separated default login methods for the organization (password, magic_link)',
             }),
         async (argv) => {
           const args = argv as unknown as OrgUpdateArgs;
           await withErrorHandling(async () => {
+            // See create-handler comment — `allowInherit: false` means the parser
+            // cannot return `null`, so narrowing the return type here is sound.
+            const defaultLoginMethods = parseLoginMethodsFlag(
+              args['login-methods'],
+              /* allowInherit */ false,
+            ) as LoginMethod[] | undefined;
+
             await withBootstrap(args, async () => {
               const { updateOrganization, OrganizationNotFoundError } = await import(
+
                 '../../organizations/index.js'
               );
 
@@ -289,6 +327,8 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const updated = await updateOrganization(org.id, {
                 name: args.name,
                 defaultLocale: args['default-locale'],
+                // Only forward when the flag was provided — keeps the "unchanged" path pure
+                ...(defaultLoginMethods !== undefined && { defaultLoginMethods }),
               });
 
               outputResult(

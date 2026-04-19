@@ -28,6 +28,9 @@ vi.mock('../../../../src/cli/prompt.js', () => ({
 }));
 
 // Mock client service
+// `resolveLoginMethods` is imported by the `client show` handler — it pairs the
+// client override with the org default. We mirror the real helper's contract:
+// null override → org.defaultLoginMethods; explicit array → returned as-is.
 vi.mock('../../../../src/clients/index.js', () => ({
   createClient: vi.fn(),
   getClientById: vi.fn(),
@@ -37,6 +40,12 @@ vi.mock('../../../../src/clients/index.js', () => ({
   generateSecret: vi.fn(),
   listSecretsByClient: vi.fn(),
   revokeSecret: vi.fn(),
+  resolveLoginMethods: vi.fn(
+    (org: { defaultLoginMethods: string[] }, client: { loginMethods: string[] | null }) =>
+      client.loginMethods === null || client.loginMethods.length === 0
+        ? org.defaultLoginMethods
+        : client.loginMethods,
+  ),
   ClientNotFoundError: class ClientNotFoundError extends Error {
     constructor(id: string) { super(`Client not found: ${id}`); this.name = 'ClientNotFoundError'; }
   },
@@ -48,6 +57,11 @@ vi.mock('../../../../src/applications/index.js', () => ({
   ApplicationNotFoundError: class ApplicationNotFoundError extends Error {
     constructor(id: string) { super(`Application not found: ${id}`); this.name = 'ApplicationNotFoundError'; }
   },
+}));
+
+// Mock organization service (used by `client show` to load the org for resolveLoginMethods)
+vi.mock('../../../../src/organizations/index.js', () => ({
+  getOrganizationById: vi.fn(),
 }));
 
 import { clientCommand } from '../../../../src/cli/commands/client.js';
@@ -66,7 +80,9 @@ import {
 import {
   getApplicationBySlug,
 } from '../../../../src/applications/index.js';
+import { getOrganizationById } from '../../../../src/organizations/index.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
+
 
 /** Fake client for test data */
 const fakeClient = {
@@ -86,9 +102,29 @@ const fakeClient = {
   allowedOrigins: [],
   requirePkce: true,
   status: 'active' as const,
+  loginMethods: null as ('password' | 'magic_link')[] | null,
   createdAt: new Date('2026-04-08'),
   updatedAt: new Date('2026-04-09'),
 };
+
+/** Fake org used by `client show` to resolve effective login methods. */
+const fakeOrg = {
+  id: 'org-1',
+  name: 'Acme',
+  slug: 'acme',
+  status: 'active' as const,
+  isSuperAdmin: false,
+  defaultLocale: 'en',
+  defaultLoginMethods: ['password', 'magic_link'] as ('password' | 'magic_link')[],
+  brandingLogoUrl: null,
+  brandingFaviconUrl: null,
+  brandingPrimaryColor: null,
+  brandingCompanyName: null,
+  brandingCustomCss: null,
+  createdAt: new Date('2026-04-08'),
+  updatedAt: new Date('2026-04-09'),
+};
+
 
 /** Fake app for resolveAppId */
 const fakeApp = {
@@ -180,7 +216,9 @@ describe('CLI Client Command', () => {
     vi.mocked(confirm).mockResolvedValue(true);
     vi.mocked(getClientById).mockResolvedValue(fakeClient);
     vi.mocked(getApplicationBySlug).mockResolvedValue(fakeApp);
+    vi.mocked(getOrganizationById).mockResolvedValue(fakeOrg);
   });
+
 
   // ─── client create ────────────────────────────────────────────────
 
@@ -240,6 +278,73 @@ describe('CLI Client Command', () => {
 
       // resolveAppId calls getApplicationBySlug for non-UUID values
       expect(getApplicationBySlug).toHaveBeenCalledWith('test-app');
+    });
+
+    it('should forward an explicit --login-methods override on create', async () => {
+      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+
+      const { handlers } = getHandlers();
+      await handlers['create'](createArgv({
+        org: 'org-1',
+        app: 'app-1',
+        type: 'public',
+        'application-type': 'spa',
+        'redirect-uris': 'https://spa.example.com/callback',
+        'login-methods': 'password',
+      }));
+
+      expect(createClient).toHaveBeenCalledWith(
+        expect.objectContaining({ loginMethods: ['password'] }),
+      );
+    });
+
+    it('should forward --login-methods inherit as null on create', async () => {
+      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+
+      const { handlers } = getHandlers();
+      await handlers['create'](createArgv({
+        org: 'org-1',
+        app: 'app-1',
+        type: 'public',
+        'application-type': 'spa',
+        'redirect-uris': 'https://spa.example.com/callback',
+        'login-methods': 'inherit',
+      }));
+
+      expect(createClient).toHaveBeenCalledWith(
+        expect.objectContaining({ loginMethods: null }),
+      );
+    });
+
+    it('should omit loginMethods when --login-methods flag not provided on create', async () => {
+      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+
+      const { handlers } = getHandlers();
+      await handlers['create'](createArgv({
+        org: 'org-1',
+        app: 'app-1',
+        type: 'public',
+        'application-type': 'spa',
+        'redirect-uris': 'https://spa.example.com/callback',
+      }));
+
+      const callArg = vi.mocked(createClient).mock.calls[0][0];
+      expect(callArg).not.toHaveProperty('loginMethods');
+    });
+
+    it('should reject unknown method on create', async () => {
+      const { handlers } = getHandlers();
+      await expect(
+        handlers['create'](createArgv({
+          org: 'org-1',
+          app: 'app-1',
+          type: 'public',
+          'application-type': 'spa',
+          'redirect-uris': 'https://spa.example.com/callback',
+          'login-methods': 'foo',
+        })),
+      ).rejects.toThrow(/unknown method "foo"/);
+      expect(createClient).not.toHaveBeenCalled();
     });
   });
 
@@ -320,6 +425,37 @@ describe('CLI Client Command', () => {
         'Client not found',
       );
     });
+
+    it('should load the owning org and render effective login methods (inherit case)', async () => {
+      // Client with `loginMethods: null` → effective methods come from the org default.
+      vi.mocked(getClientById).mockResolvedValue({ ...fakeClient, loginMethods: null });
+
+      const { handlers } = getHandlers();
+      await handlers['show'](createArgv({ 'client-id': fakeClient.id, json: true }));
+
+      expect(getOrganizationById).toHaveBeenCalledWith(fakeClient.organizationId);
+
+      // Capture the JSON payload forwarded to outputResult and assert the merged field.
+      const call = vi.mocked(outputResult).mock.calls[0];
+      const payload = call[2] as { effectiveLoginMethods: string[]; loginMethods: string[] | null };
+      expect(payload.loginMethods).toBeNull();
+      expect(payload.effectiveLoginMethods).toEqual(['password', 'magic_link']);
+    });
+
+    it('should render explicit override for effective login methods', async () => {
+      vi.mocked(getClientById).mockResolvedValue({
+        ...fakeClient,
+        loginMethods: ['password'],
+      });
+
+      const { handlers } = getHandlers();
+      await handlers['show'](createArgv({ 'client-id': fakeClient.id, json: true }));
+
+      const call = vi.mocked(outputResult).mock.calls[0];
+      const payload = call[2] as { effectiveLoginMethods: string[]; loginMethods: string[] | null };
+      expect(payload.loginMethods).toEqual(['password']);
+      expect(payload.effectiveLoginMethods).toEqual(['password']);
+    });
   });
 
   // ─── client update ────────────────────────────────────────────────
@@ -351,6 +487,60 @@ describe('CLI Client Command', () => {
         clientName: undefined,
         redirectUris: ['https://new.example.com/callback', 'https://other.example.com/callback'],
       });
+    });
+
+    it('should forward an explicit --login-methods override on update', async () => {
+      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+
+      const { handlers } = getHandlers();
+      await handlers['update'](createArgv({
+        'client-id': fakeClient.id,
+        'login-methods': 'magic_link',
+      }));
+
+      expect(updateClient).toHaveBeenCalledWith(
+        fakeClient.id,
+        expect.objectContaining({ loginMethods: ['magic_link'] }),
+      );
+    });
+
+    it('should forward --login-methods inherit as null on update', async () => {
+      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+
+      const { handlers } = getHandlers();
+      await handlers['update'](createArgv({
+        'client-id': fakeClient.id,
+        'login-methods': 'inherit',
+      }));
+
+      expect(updateClient).toHaveBeenCalledWith(
+        fakeClient.id,
+        expect.objectContaining({ loginMethods: null }),
+      );
+    });
+
+    it('should omit loginMethods when --login-methods flag not provided on update', async () => {
+      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+
+      const { handlers } = getHandlers();
+      await handlers['update'](createArgv({
+        'client-id': fakeClient.id,
+        name: 'New',
+      }));
+
+      const callArg = vi.mocked(updateClient).mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('loginMethods');
+    });
+
+    it('should reject unknown method on update', async () => {
+      const { handlers } = getHandlers();
+      await expect(
+        handlers['update'](createArgv({
+          'client-id': fakeClient.id,
+          'login-methods': 'oauth',
+        })),
+      ).rejects.toThrow(/unknown method "oauth"/);
+      expect(updateClient).not.toHaveBeenCalled();
     });
   });
 

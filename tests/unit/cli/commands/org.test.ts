@@ -72,6 +72,7 @@ const fakeOrg = {
   brandingCompanyName: null,
   brandingCustomCss: null,
   defaultLocale: 'en',
+  defaultLoginMethods: ['password', 'magic_link'] as ('password' | 'magic_link')[],
   createdAt: new Date('2026-04-08'),
   updatedAt: new Date('2026-04-09'),
 };
@@ -128,6 +129,75 @@ describe('CLI Org Command', () => {
         defaultLocale: undefined,
       });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Acme Corp'));
+    });
+
+    it('should forward --login-methods as defaultLoginMethods on create', async () => {
+      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+
+      const handlers = getHandlers();
+      await handlers['create'](
+        createArgv({ name: 'Acme Corp', 'login-methods': 'password' }),
+      );
+
+      expect(createOrganization).toHaveBeenCalledWith({
+        name: 'Acme Corp',
+        slug: undefined,
+        defaultLocale: undefined,
+        defaultLoginMethods: ['password'],
+      });
+    });
+
+    it('should parse a comma-separated --login-methods list on create', async () => {
+      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+
+      const handlers = getHandlers();
+      await handlers['create'](
+        createArgv({ name: 'Acme Corp', 'login-methods': 'password,magic_link' }),
+      );
+
+      expect(createOrganization).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultLoginMethods: ['password', 'magic_link'],
+        }),
+      );
+    });
+
+    it('should omit defaultLoginMethods when --login-methods not provided', async () => {
+      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+
+      const handlers = getHandlers();
+      await handlers['create'](createArgv({ name: 'Acme Corp' }));
+
+      const callArg = vi.mocked(createOrganization).mock.calls[0][0];
+      expect(callArg).not.toHaveProperty('defaultLoginMethods');
+    });
+
+    it('should reject --login-methods inherit on org create', async () => {
+      const handlers = getHandlers();
+      await expect(
+        handlers['create'](
+          createArgv({ name: 'Acme Corp', 'login-methods': 'inherit' }),
+        ),
+      ).rejects.toThrow(/only valid on client commands/);
+      expect(createOrganization).not.toHaveBeenCalled();
+    });
+
+    it('should reject an unknown method on org create', async () => {
+      const handlers = getHandlers();
+      await expect(
+        handlers['create'](
+          createArgv({ name: 'Acme Corp', 'login-methods': 'sso' }),
+        ),
+      ).rejects.toThrow(/unknown method "sso"/);
+      expect(createOrganization).not.toHaveBeenCalled();
+    });
+
+    it('should reject an empty --login-methods on org create', async () => {
+      const handlers = getHandlers();
+      await expect(
+        handlers['create'](createArgv({ name: 'Acme Corp', 'login-methods': '' })),
+      ).rejects.toThrow(/must not be empty/);
+      expect(createOrganization).not.toHaveBeenCalled();
     });
 
     it('should pass slug and locale options when provided', async () => {
@@ -256,6 +326,41 @@ describe('CLI Org Command', () => {
         defaultLocale: undefined,
       });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('New Name'));
+    });
+
+    it('should forward --login-methods as defaultLoginMethods on update', async () => {
+      vi.mocked(updateOrganization).mockResolvedValue(fakeOrg);
+
+      const handlers = getHandlers();
+      await handlers['update'](
+        createArgv({ 'id-or-slug': 'acme-corp', 'login-methods': 'magic_link' }),
+      );
+
+      expect(updateOrganization).toHaveBeenCalledWith(fakeOrg.id, {
+        name: undefined,
+        defaultLocale: undefined,
+        defaultLoginMethods: ['magic_link'],
+      });
+    });
+
+    it('should omit defaultLoginMethods on update when flag not provided', async () => {
+      vi.mocked(updateOrganization).mockResolvedValue(fakeOrg);
+
+      const handlers = getHandlers();
+      await handlers['update'](createArgv({ 'id-or-slug': 'acme-corp', name: 'New' }));
+
+      const callArg = vi.mocked(updateOrganization).mock.calls[0][1];
+      expect(callArg).not.toHaveProperty('defaultLoginMethods');
+    });
+
+    it('should reject --login-methods inherit on org update', async () => {
+      const handlers = getHandlers();
+      await expect(
+        handlers['update'](
+          createArgv({ 'id-or-slug': 'acme-corp', 'login-methods': 'inherit' }),
+        ),
+      ).rejects.toThrow(/only valid on client commands/);
+      expect(updateOrganization).not.toHaveBeenCalled();
     });
   });
 

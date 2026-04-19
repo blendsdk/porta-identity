@@ -30,6 +30,7 @@ import {
   printTotal,
 } from '../output.js';
 import { confirm } from '../prompt.js';
+import { parseLoginMethodsFlag } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,7 @@ interface ClientCreateArgs extends GlobalOptions {
   type: 'confidential' | 'public';
   'application-type': 'web' | 'native' | 'spa';
   'redirect-uris': string;
+  'login-methods'?: string;
 }
 
 interface ClientListArgs extends GlobalOptions {
@@ -59,6 +61,7 @@ interface ClientIdArgs extends GlobalOptions {
 interface ClientUpdateArgs extends ClientIdArgs {
   name?: string;
   'redirect-uris'?: string;
+  'login-methods'?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,10 +147,24 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               type: 'string',
               demandOption: true,
               description: 'Comma-separated redirect URIs',
+            })
+            .option('login-methods', {
+              type: 'string',
+              description:
+                'Comma-separated login methods (password, magic_link) or "inherit" to use the org default',
             }),
         async (argv) => {
           const args = argv as unknown as ClientCreateArgs;
           await withErrorHandling(async () => {
+            // Parse the tri-state flag before bootstrap — invalid input fails fast.
+            // `allowInherit: true` permits the `inherit` sentinel which maps to `null`
+            // (meaning "inherit org default"); omitting the flag maps to `undefined`
+            // (leave the DB column at its NULL default → inherit).
+            const loginMethods = parseLoginMethodsFlag(
+              args['login-methods'],
+              /* allowInherit */ true,
+            );
+
             await withBootstrap(args, async () => {
               const { createClient } = await import('../../clients/index.js');
               const appId = await resolveAppId(args.app);
@@ -159,6 +176,10 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 clientType: args.type,
                 applicationType: args['application-type'],
                 redirectUris: parseUris(args['redirect-uris']),
+                // `undefined` → key omitted → DB DEFAULT NULL fires (inherit).
+                // `null` → explicit inherit sentinel passed through.
+                // `LoginMethod[]` → explicit override.
+                ...(loginMethods !== undefined && { loginMethods }),
               });
 
               outputResult(
@@ -277,9 +298,21 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           const args = argv as unknown as ClientIdArgs;
           await withErrorHandling(async () => {
             await withBootstrap(args, async () => {
-              const { getClientById, ClientNotFoundError } = await import('../../clients/index.js');
+              const { getClientById, ClientNotFoundError, resolveLoginMethods } = await import(
+                '../../clients/index.js'
+              );
+              const { getOrganizationById } = await import('../../organizations/index.js');
               const client: Client | null = await getClientById(args['client-id']);
               if (!client) throw new ClientNotFoundError(args['client-id']);
+
+              // Resolve effective methods by combining the client override (null or array)
+              // with the owning org's default. Falls back to the raw override or the
+              // hard-coded union when the org can't be loaded (defensive — shouldn't
+              // happen in practice since FK prevents orphan clients).
+              const org = await getOrganizationById(client.organizationId);
+              const effectiveLoginMethods = org
+                ? resolveLoginMethods(org, client)
+                : (client.loginMethods ?? ['password', 'magic_link']);
 
               outputResult(
                 args.json,
@@ -297,12 +330,19 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       ['Grant Types', client.grantTypes.join(', ')],
                       ['Scope', client.scope],
                       ['PKCE Required', String(client.requirePkce)],
+                      [
+                        'Login Methods (client)',
+                        client.loginMethods === null
+                          ? 'inherit'
+                          : client.loginMethods.join(', '),
+                      ],
+                      ['Login Methods (effective)', effectiveLoginMethods.join(', ')],
                       ['Created', formatDate(client.createdAt)],
                       ['Updated', formatDate(client.updatedAt)],
                     ],
                   );
                 },
-                client,
+                { ...client, effectiveLoginMethods },
               );
             });
           }, args.verbose);
@@ -327,15 +367,27 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('redirect-uris', {
               type: 'string',
               description: 'New comma-separated redirect URIs',
+            })
+            .option('login-methods', {
+              type: 'string',
+              description:
+                'Comma-separated login methods (password, magic_link) or "inherit" to reset to org default',
             }),
         async (argv) => {
           const args = argv as unknown as ClientUpdateArgs;
           await withErrorHandling(async () => {
+            const loginMethods = parseLoginMethodsFlag(
+              args['login-methods'],
+              /* allowInherit */ true,
+            );
+
             await withBootstrap(args, async () => {
               const { updateClient } = await import('../../clients/index.js');
               const updated = await updateClient(args['client-id'], {
                 clientName: args.name,
                 redirectUris: args['redirect-uris'] ? parseUris(args['redirect-uris']) : undefined,
+                // Three-state: omitted → leave alone; null → reset to inherit; array → override.
+                ...(loginMethods !== undefined && { loginMethods }),
               });
 
               outputResult(
