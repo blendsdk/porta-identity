@@ -55,6 +55,10 @@ vi.mock('../../../src/lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('../../../src/config/index.js', () => ({
+  config: { issuerBaseUrl: 'https://auth.example.com' },
+}));
+
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
