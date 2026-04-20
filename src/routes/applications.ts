@@ -2,7 +2,7 @@
  * Application management API routes.
  *
  * All routes are under `/api/admin/applications` and require
- * super-admin authorization. Provides CRUD for applications,
+ * admin authentication (Bearer JWT). Provides CRUD for applications,
  * status lifecycle (activate, deactivate, archive), and nested
  * module management (CRUD, deactivate).
  *
@@ -101,9 +101,9 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the application management router.
  *
- * All routes require super-admin authorization via the requireSuperAdmin
- * middleware. Provides full CRUD for applications and nested modules,
- * plus status lifecycle actions.
+ * All routes require admin authentication (Bearer JWT via requireAdminAuth).
+ * Provides full CRUD for applications and nested modules, plus status
+ * lifecycle actions.
  *
  * Prefix: /api/admin/applications
  *
@@ -112,7 +112,7 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createApplicationRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------

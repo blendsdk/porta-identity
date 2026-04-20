@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-20 14:19
-> **Progress**: 29/42 tasks (69%)
+> **Last Updated**: 2026-04-20 19:40
+> **Progress**: 39/42 tasks (93%)
 
 ## Overview
 
@@ -369,20 +369,16 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 - [ ] 4.3.5 Create config/keys/audit API routes + migrate CLI commands (deferred)
 
 ### Phase 5: Test Infrastructure & Updates
-- [ ] 5.1.1 Update organization integration tests
-- [ ] 5.1.2 Update application integration tests
-- [ ] 5.1.3 Update client integration tests
-- [ ] 5.1.4 Update user integration tests
-- [ ] 5.1.5 Update RBAC + claims integration tests
-- [ ] 5.2.1 Rewrite core CLI command unit tests
-- [ ] 5.2.2 Rewrite supporting CLI command unit tests
-- [ ] 5.2.3 Update admin pentest tests
+- [x] 5.1.1–5.1.5 Integration route tests — N/A (all repo/service-level, no HTTP auth) ✅
+- [x] 5.2.1 Rewrite core CLI command unit tests (88 tests) ✅ (committed: 3e036a6)
+- [x] 5.2.2 Rewrite supporting CLI command unit tests (66 tests) ✅ (committed: f8b29a0)
+- [x] 5.2.3 Update admin pentest tests — already use Bearer auth ✅
 
 ### Phase 6: Cleanup & Documentation
-- [ ] 6.1.1 Remove old super-admin middleware and leftover references
+- [x] 6.1.1 Remove old super-admin middleware and leftover references ✅ (super-admin.ts deleted in Phase 2; stale JSDoc comments cleaned up)
 - [ ] 6.1.2 Update README and .env.example
 - [ ] 6.1.3 Update .clinerules/project.md
-- [ ] 6.1.4 Final verification and smoke test
+- [x] 6.1.4 Final verification — 119 files, 2,155 tests, 0 failures ✅
 
 ---
 

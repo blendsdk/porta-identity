@@ -2,7 +2,7 @@
  * Organization management API routes.
  *
  * All routes are under `/api/admin/organizations` and require
- * super-admin authorization. Provides CRUD, status lifecycle,
+ * admin authentication (Bearer JWT). Provides CRUD, status lifecycle,
  * branding management, and slug validation endpoints.
  *
  * Route structure:
@@ -126,9 +126,9 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the organization management router.
  *
- * All routes require super-admin authorization via the requireSuperAdmin
- * middleware. For RD-04, this checks the organization's isSuperAdmin flag.
- * Full user-level auth is added in RD-07.
+ * All routes require admin authentication (Bearer JWT via requireAdminAuth).
+ * The middleware validates the token, checks the user belongs to the
+ * super-admin org, and verifies the porta-admin role.
  *
  * Prefix: /api/admin/organizations
  *
@@ -137,7 +137,7 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createOrganizationRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------

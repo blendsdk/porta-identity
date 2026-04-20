@@ -2,7 +2,7 @@
  * Client and secret management API routes.
  *
  * All routes are under `/api/admin/clients` and require
- * super-admin authorization. Provides CRUD for clients,
+ * admin authentication (Bearer JWT). Provides CRUD for clients,
  * status lifecycle (activate, deactivate, revoke), and nested
  * secret management (generate, list, revoke).
  *
@@ -178,9 +178,9 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the client management router.
  *
- * All routes require super-admin authorization via the requireSuperAdmin
- * middleware. Provides full CRUD for clients, status lifecycle, and
- * nested secret management.
+ * All routes require admin authentication (Bearer JWT via requireAdminAuth).
+ * Provides full CRUD for clients, status lifecycle, and nested secret
+ * management.
  *
  * Prefix: /api/admin/clients
  *
@@ -189,7 +189,7 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createClientRouter(): Router {
   const router = new Router({ prefix: '/api/admin/clients' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
