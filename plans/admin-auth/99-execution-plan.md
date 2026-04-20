@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-04-20 12:00
-> **Progress**: 5/42 tasks (12%)
+> **Progress**: 6/42 tasks (14%)
 
 ## Overview
 
@@ -319,7 +319,7 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 - [x] 1.1.3 Create init command core logic ✅ (completed: 2026-04-20 12:13)
 - [x] 1.1.4 Register init command in CLI index ✅ (completed: 2026-04-20 12:14)
 - [x] 1.1.5 Add interactive prompts + non-interactive flag support ✅ (completed: 2026-04-20 12:12)
-- [ ] 1.2.1 Unit tests for init command
+- [x] 1.2.1 Unit tests for init command ✅ (completed: 2026-04-20 12:20 — 8 tests)
 - [ ] 1.2.2 Unit tests for findSuperAdminOrganization
 - [ ] 1.2.3 Integration tests for init command
 
