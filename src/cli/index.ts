@@ -32,6 +32,7 @@ import { orgCommand } from './commands/org.js';
 import { appCommand } from './commands/app.js';
 import { clientCommand } from './commands/client.js';
 import { userCommand } from './commands/user.js';
+import { initCommand } from './commands/init.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -85,6 +86,8 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
       type: 'string',
       description: 'Redis connection URL override',
     })
+    // Bootstrap commands
+    .command(initCommand)
     // Infrastructure commands
     .command(healthCommand)
     .command(migrateCommand)

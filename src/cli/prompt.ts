@@ -1,17 +1,18 @@
 /**
- * CLI confirmation prompt utility.
+ * CLI prompt utilities.
  *
- * Uses Node.js built-in readline for simple y/N confirmation prompts.
- * Respects the --force flag to skip prompts for automation and scripting.
+ * Provides confirmation, text input, and password (hidden) prompts
+ * for interactive CLI commands. Uses Node.js built-in readline.
  *
- * The default answer is "No" (capital N in the prompt), so pressing Enter
- * without typing anything returns false. Only an explicit "y" or "Y"
- * confirms the action.
+ * - `confirm()` — y/N confirmation, respects --force flag
+ * - `promptInput()` — reads a line of text (echoed)
+ * - `promptPassword()` — reads a line with hidden input (no echo)
  *
  * @module cli/prompt
  */
 
 import * as readline from 'node:readline/promises';
+import { Writable } from 'node:stream';
 import { stdin as input, stdout as output } from 'node:process';
 
 /**
@@ -39,6 +40,62 @@ export async function confirm(
     return answer.trim().toLowerCase() === 'y';
   } finally {
     // Always close the readline interface to release stdin
+    rl.close();
+  }
+}
+
+/**
+ * Prompt the user for a line of text input.
+ *
+ * Displays the message and waits for the user to type a response.
+ * Returns the trimmed input string. Used for non-sensitive fields
+ * like email, name, etc.
+ *
+ * @param message - The prompt message to display (e.g., "Admin email: ")
+ * @returns The user's trimmed input
+ */
+export async function promptInput(message: string): Promise<string> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(message);
+    return answer.trim();
+  } finally {
+    rl.close();
+  }
+}
+
+/**
+ * Prompt the user for a password (hidden input).
+ *
+ * Displays the message but suppresses character echo so the password
+ * is not visible on screen. Uses a muted Writable stream as the
+ * readline output to prevent echo while still allowing the prompt
+ * message to be displayed via direct stdout write.
+ *
+ * @param message - The prompt message to display (e.g., "Password: ")
+ * @returns The user's password input (trimmed)
+ */
+export async function promptPassword(message: string): Promise<string> {
+  // Write the prompt message directly to stdout before creating the
+  // muted readline — this ensures the user sees the prompt label
+  output.write(message);
+
+  // Create a Writable that discards all output — this suppresses
+  // character echo while readline is active
+  const muted = new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+    },
+  });
+
+  const rl = readline.createInterface({ input, output: muted, terminal: true });
+  try {
+    // Empty string prompt since we already wrote the label above
+    const answer = await rl.question('');
+    // Move to the next line since echo was suppressed (no newline from Enter)
+    output.write('\n');
+    return answer.trim();
+  } finally {
     rl.close();
   }
 }
