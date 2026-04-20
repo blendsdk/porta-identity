@@ -1,0 +1,72 @@
+# ──────────────────────────────────────────────────────────
+# Porta Docker — Build & Push to Docker Hub
+#
+# Manual trigger only (workflow_dispatch) from the main branch.
+# Builds multi-platform images (amd64 + arm64) and pushes
+# to blendsdk/porta on Docker Hub.
+#
+# Prerequisites (one-time setup):
+#   1. Create Docker Hub org "blendsdk" with repo "porta"
+#   2. Add GitHub secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+# ──────────────────────────────────────────────────────────
+
+name: Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (e.g. "0.1.0"). Leave empty for "latest" only.'
+        required: false
+        default: ''
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    # Only allow manual runs from main branch
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Generate Docker image tags based on input
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: blendsdk/porta
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
+
+      # Set up multi-platform build support
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Authenticate with Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build and push multi-platform image
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

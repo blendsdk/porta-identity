@@ -1,0 +1,92 @@
+# ──────────────────────────────────────────────────────────
+# Porta — User-Facing Docker Compose
+#
+# Usage:
+#   1. Copy .env.docker to .env and adjust values
+#   2. docker compose -f docker/docker-compose.prod.yml up -d
+#   3. docker exec porta-app ./entrypoint-init.sh  (first run only)
+#
+# Profiles:
+#   default  — porta + postgres + redis (production-like)
+#   dev      — adds mailhog for email testing
+# ──────────────────────────────────────────────────────────
+
+services:
+  # ── Porta Application ────────────────────────
+  porta:
+    image: blendsdk/porta:latest
+    container_name: porta-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - ../.env.docker
+    environment:
+      # Override DATABASE_URL and REDIS_URL to use Docker service names
+      DATABASE_URL: postgresql://porta:${POSTGRES_PASSWORD:-porta_secret}@postgres:5432/porta
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      - porta-network
+
+  # ── PostgreSQL 16 ────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: porta-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: porta
+      POSTGRES_USER: porta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porta_secret}
+    volumes:
+      - porta_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U porta"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - porta-network
+
+  # ── Redis 7 ──────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: porta-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - porta-network
+
+  # ── MailHog (dev profile only) ───────────────
+  # For local email testing — not for production
+  mailhog:
+    image: mailhog/mailhog
+    container_name: porta-mailhog
+    profiles:
+      - dev
+    ports:
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    networks:
+      - porta-network
+
+volumes:
+  porta_pgdata:
+    driver: local
+
+networks:
+  porta-network:
+    driver: bridge

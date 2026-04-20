@@ -1,18 +1,15 @@
-/**
- * Custom VitePress theme entry point.
- *
- * Extends the default VitePress theme. Custom Vue components,
- * CSS overrides, and layout wrappers can be added here later.
- *
- * @see https://vitepress.dev/guide/custom-theme
- */
-import DefaultTheme from 'vitepress/theme'
-import type { Theme } from 'vitepress'
+// Custom VitePress theme — extends default with a beta announcement banner
+// displayed at the top of every page via the 'layout-top' slot.
+import { h } from 'vue';
+import DefaultTheme from 'vitepress/theme';
+import BetaBanner from './BetaBanner.vue';
+import type { Theme } from 'vitepress';
 
 export default {
   extends: DefaultTheme,
-  // Custom enhancements can be added here later:
-  // - Custom Vue components
-  // - Custom CSS overrides (import './custom.css')
-  // - Layout wrappers
-} satisfies Theme
+  Layout() {
+    return h(DefaultTheme.Layout, null, {
+      'layout-top': () => h(BetaBanner),
+    });
+  },
+} satisfies Theme;

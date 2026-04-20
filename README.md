@@ -1,207 +1,82 @@
+> ⚠️ **Beta Software** — Porta is under active development. APIs, configuration, and
+> database schemas may change between versions. Not recommended for production use yet.
+
+[![CI](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/docker/v/blendsdk/porta?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/blendsdk/porta)
+[![License](https://img.shields.io/github/license/blendsdk/porta-identity)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)](https://nodejs.org/)
+
 # Porta
 
-Multi-tenant OIDC provider built on [node-oidc-provider](https://github.com/panva/node-oidc-provider) + Koa + TypeScript + PostgreSQL + Redis.
+Multi-tenant OIDC provider built on [node-oidc-provider](https://github.com/panva/node-oidc-provider) + Koa + TypeScript + PostgreSQL + Redis. Provides organization-scoped authentication, user management, RBAC, custom claims, two-factor authentication, and a comprehensive admin CLI.
 
-Provides organization-scoped authentication, user management, RBAC, custom claims, two-factor authentication, and a comprehensive admin CLI.
+## 🔗 Quick Links
 
-## Prerequisites
+| | |
+|---|---|
+| 📖 [Documentation](https://blendsdk.github.io/porta-identity/) | Full guides, API reference, CLI docs |
+| 🐳 [Docker Hub](https://hub.docker.com/r/blendsdk/porta) | Pull the production Docker image |
+| 🚀 [Quick Start](https://blendsdk.github.io/porta-identity/guide/quickstart) | Get running in under 5 minutes |
+| 📋 [Admin API](https://blendsdk.github.io/porta-identity/api/overview) | REST API reference for admin operations |
+| 💻 [CLI Reference](https://blendsdk.github.io/porta-identity/cli/overview) | Command-line administration tool |
 
-- **Node.js** ≥ 22.0.0
-- **Yarn** Classic 1.22 (NOT npm, NOT Berry)
-- **Docker** + Docker Compose (for PostgreSQL, Redis, MailHog)
+## 🚀 Quick Start
 
-## Quick Start
+The fastest way to try Porta is with Docker Compose:
 
 ```bash
-# 1. Clone and install
-git clone <repo-url> porta && cd porta
+git clone https://github.com/blendsdk/porta-identity.git && cd porta-identity
+cp .env.docker .env.docker.local   # adjust settings if needed
+
+# Start Porta + PostgreSQL + Redis (auto-migrates on first run)
+docker compose -f docker/docker-compose.prod.yml up -d
+
+# Bootstrap the admin system (creates first admin user)
+docker exec porta-app node dist/cli/index.js init
+```
+
+Then open [http://localhost:3000/health](http://localhost:3000/health) to verify.
+
+For source development setup, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart).
+
+## ✨ Features
+
+- **Multi-Tenant OIDC** — Path-based tenancy with per-org OIDC endpoints
+- **User Management** — CRUD, status lifecycle, password policies (NIST SP 800-63B)
+- **RBAC** — Roles, permissions, and user-role mappings per application
+- **Custom Claims** — Type-validated custom claim definitions and user values
+- **Two-Factor Auth** — Email OTP, TOTP (authenticator apps), recovery codes
+- **Login Methods** — Per-org and per-client configurable (password, magic link)
+- **Admin CLI** — 14+ commands for managing orgs, apps, clients, users, roles, and more
+- **Admin API** — JWT-authenticated REST API for all admin operations
+- **ES256 Signing** — ECDSA P-256 keys, auto-bootstrapped, stored in database
+- **Hybrid OIDC Adapters** — Redis for sessions, PostgreSQL for tokens/grants
+- **Audit Logging** — Comprehensive event logging for security and compliance
+
+## 📖 Documentation
+
+Visit the **[Porta Documentation](https://blendsdk.github.io/porta-identity/)** for:
+
+- Architecture overview and design decisions
+- Environment variable reference
+- Database schema and migrations
+- Deployment and production guidance
+
+## 🤝 Contributing
+
+Porta is currently in early development. Contributions are welcome — please open an issue to discuss before submitting a pull request.
+
+```bash
+# Development setup
+git clone https://github.com/blendsdk/porta-identity.git && cd porta-identity
 yarn install
-
-# 2. Configure environment
 cp .env.example .env
-# Edit .env if needed — defaults work for local development
-
-# 3. Start infrastructure (PostgreSQL 16, Redis 7, MailHog)
-yarn docker:up
-
-# 4. Run database migrations
-yarn build
-node dist/cli/index.js migrate up
-
-# 5. Bootstrap admin system
-node dist/cli/index.js init
-# Interactive prompts will ask for admin email, name, and password.
-# Or non-interactive:
-#   node dist/cli/index.js init \
-#     --email admin@example.com \
-#     --given-name Admin \
-#     --family-name User \
-#     --password 'YourSecurePassword123!'
-
-# 6. Start the server
-yarn dev
+yarn docker:up        # Start PostgreSQL, Redis, MailHog
+yarn build && node dist/cli/index.js migrate up && node dist/cli/index.js init
+yarn dev              # Start dev server with hot-reload
+yarn verify           # Run lint + build + tests before committing
 ```
 
-## Admin CLI
+## 📄 License
 
-Porta includes a yargs-based CLI (`porta`) for server administration. After bootstrapping with `porta init`, all commands authenticate via OIDC (JWT Bearer tokens over HTTP).
-
-### Authentication
-
-```bash
-# Log in — opens browser for OIDC Authorization Code + PKCE flow
-porta login
-porta login --server https://porta.example.com  # Remote server
-
-# Check current identity
-porta whoami
-
-# Log out — clears stored credentials
-porta logout
-```
-
-Credentials are stored in `~/.porta/credentials.json` with `0600` permissions. Tokens refresh automatically when expired.
-
-### Bootstrap Commands (Direct-DB)
-
-These commands connect directly to PostgreSQL/Redis and do not require authentication. They are used for initial setup before the server is running.
-
-```bash
-porta init                  # Bootstrap admin infrastructure (one-time)
-porta migrate up            # Run database migrations
-porta migrate down          # Rollback last migration
-porta migrate status        # Show migration status
-porta seed run              # Load development seed data
-porta health                # Check DB + Redis connectivity
-porta health --direct       # Force direct-DB check (skip HTTP)
-```
-
-### Admin Commands (Authenticated HTTP)
-
-All other commands require `porta login` first and communicate with the running Porta server via the admin API.
-
-```bash
-# Organizations
-porta org create --name "Acme Corp"
-porta org list
-porta org show <id>
-porta org update <id> --name "New Name"
-porta org suspend <id>
-porta org activate <id>
-porta org archive <id>
-
-# Applications
-porta app create --name "My App" --org-id <id>
-porta app list
-porta app show <id>
-
-# Clients
-porta client create --app-id <id> --name "Web Client"
-porta client list --app-id <id>
-porta client secret generate <clientId>
-
-# Users
-porta user create --org-id <id> --email user@example.com
-porta user list --org-id <id>
-porta user show <userId>
-
-# RBAC
-porta app role create --app-id <id> --name "Editor"
-porta app permission create --app-id <id> --slug "docs:edit"
-porta user roles assign <userId> --role-id <roleId>
-
-# Custom Claims
-porta app claim create --app-id <id> --key "department" --type string
-porta user claims set <userId> --claim-id <id> --value "Engineering"
-
-# System
-porta config list
-porta keys list
-porta audit list
-```
-
-Use `--json` on any command for JSON output. Use `--help` on any command for detailed usage.
-
-## Admin API
-
-All admin endpoints are mounted at `/api/admin/*` and require JWT Bearer authentication. The JWT is validated against Porta's own ES256 signing keys — the server authenticates itself.
-
-### Authentication Flow
-
-1. `porta init` creates the admin org, app, RBAC permissions, a public PKCE client, and the first admin user
-2. `porta login` runs the OIDC Authorization Code + PKCE flow through the browser
-3. The resulting JWT access token is stored locally and sent as `Authorization: Bearer <token>` on every API call
-4. The `requireAdminAuth` middleware validates the token, checks the user belongs to the super-admin org, and verifies the `porta-admin` role
-
-### Endpoints
-
-| Prefix | Description |
-|--------|-------------|
-| `GET /api/admin/metadata` | Unauthenticated — OIDC discovery for CLI login |
-| `/api/admin/organizations/*` | Organization CRUD + lifecycle |
-| `/api/admin/applications/*` | Application CRUD + modules |
-| `/api/admin/clients/*` | Client CRUD + secret management |
-| `/api/admin/organizations/:orgId/users/*` | User CRUD + status transitions |
-| `/api/admin/applications/:appId/roles/*` | Role management |
-| `/api/admin/applications/:appId/permissions/*` | Permission management |
-| `/api/admin/organizations/:orgId/users/:userId/roles/*` | User-role assignments |
-| `/api/admin/applications/:appId/claims/*` | Custom claim definitions + values |
-| `/api/admin/config/*` | System configuration |
-| `/api/admin/keys/*` | Signing key management |
-| `/api/admin/audit/*` | Audit log viewer |
-
-## Development
-
-```bash
-# Start dev server (hot-reload via tsx)
-yarn dev
-
-# Run all tests (unit + integration)
-yarn test
-
-# Run unit tests only
-yarn test:unit
-
-# Run integration tests (requires docker:up)
-yarn test:integration
-
-# Lint
-yarn lint
-
-# Full verification (lint + build + test) — run before committing
-yarn verify
-```
-
-## Architecture
-
-- **Multi-tenant OIDC** — Path-based tenancy (`/:orgSlug/*`) with per-org OIDC endpoints
-- **Hybrid adapters** — Redis for short-lived OIDC artifacts (sessions, auth codes), PostgreSQL for long-lived (access/refresh tokens, grants)
-- **ES256 signing** — ECDSA P-256 keys stored as PEM in the database, auto-bootstrapped on first start
-- **Admin self-auth** — The admin API authenticates using Porta's own OIDC tokens (no external IdP)
-- **CLI dual-mode** — Bootstrap commands use direct-DB; all other commands use authenticated HTTP
-
-## Project Structure
-
-```
-src/
-  config/          # Zod-validated config schema + loader
-  lib/             # Core: logger, database, redis, migrator, signing-keys, audit-log
-  middleware/      # Koa middleware: error-handler, request-logger, health, admin-auth, tenant-resolver
-  oidc/            # OIDC provider: configuration, adapters, client/account finders
-  organizations/   # Organization module: CRUD, status lifecycle, caching
-  applications/    # Application module: CRUD, modules
-  clients/         # Client module: CRUD, secrets (Argon2id), OIDC mapping
-  users/           # User module: CRUD, status transitions, password (Argon2id)
-  auth/            # Auth workflows: magic link, password reset, invitation, CSRF, i18n
-  rbac/            # RBAC: roles, permissions, user-role mappings
-  custom-claims/   # Custom claims: definitions, user values, validation
-  two-factor/      # 2FA: email OTP, TOTP, recovery codes, per-org policy
-  routes/          # Admin API route handlers (16 files)
-  cli/             # CLI: yargs commands, HTTP client, token store, PKCE
-  server.ts        # Koa app factory
-  index.ts         # Entry point
-```
-
-## License
-
-Private — © TrueSoftware NL
+MIT — © TrueSoftware NL

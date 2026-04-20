@@ -1,0 +1,66 @@
+# ──────────────────────────────────────────────
+# Porta Docker Build Context Exclusions
+# Keeps the build context small and fast
+#
+# NOTE: This file must be at the project root
+# (the build context), not inside docker/.
+# ──────────────────────────────────────────────
+
+# Version control
+.git/
+.gitignore
+
+# Dependencies (rebuilt inside Docker)
+node_modules/
+
+# Build output (rebuilt inside Docker)
+dist/
+
+# Tests
+tests/
+
+# Documentation & playgrounds
+docs/
+playground/
+playground-bff/
+
+# Planning & requirements (internal)
+plans/
+requirements/
+
+# Scripts (dev tooling only)
+scripts/
+
+# CI/CD workflows
+.github/
+
+# IDE & editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files (secrets — never bake into image)
+.env
+.env.*
+!.env.docker
+
+# Docker files not needed in build context
+docker/docker-compose.yml
+docker/docker-compose.prod.yml
+docker/init-test-db.sql
+docker/.dockerignore
+
+# Config files not needed at runtime
+Makefile
+.editorconfig
+.prettierrc
+.npmrc
+eslint.config.js
+tsconfig.eslint.json
+vitest.config.ts
+
+# Misc
+LICENSE
+*.md
+!README.md
