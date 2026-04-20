@@ -423,9 +423,11 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         console.log(`  ✅ User created: ${adminUser.email}`);
 
         // -----------------------------------------------------------------
-        // Step 11: Activate user (users are created in 'inactive' status)
+        // Step 11: Activate user (if not already active)
         // -----------------------------------------------------------------
-        await reactivateUser(adminUser.id);
+        if (adminUser.status !== 'active') {
+          await reactivateUser(adminUser.id);
+        }
         console.log('  ✅ User activated');
 
         // -----------------------------------------------------------------
