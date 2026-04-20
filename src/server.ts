@@ -7,14 +7,14 @@
  *
  * Route structure:
  *   /health                        — Health check (DB + Redis status)
- *   /api/admin/organizations/*     — Organization management (super-admin)
- *   /api/admin/applications/*      — Application management (super-admin)
- *   /api/admin/clients/*           — Client & secret management (super-admin)
- *   /api/admin/organizations/:orgId/users/* — User management (super-admin)
- *   /api/admin/applications/:appId/roles/* — Role management (super-admin)
- *   /api/admin/applications/:appId/permissions/* — Permission management (super-admin)
- *   /api/admin/organizations/:orgId/users/:userId/roles/* — User-role assignments (super-admin)
- *   /api/admin/applications/:appId/claims/* — Custom claims management (super-admin)
+ *   /api/admin/organizations/*     — Organization management (admin auth)
+ *   /api/admin/applications/*      — Application management (admin auth)
+ *   /api/admin/clients/*           — Client & secret management (admin auth)
+ *   /api/admin/organizations/:orgId/users/* — User management (admin auth)
+ *   /api/admin/applications/:appId/roles/* — Role management (admin auth)
+ *   /api/admin/applications/:appId/permissions/* — Permission management (admin auth)
+ *   /api/admin/organizations/:orgId/users/:userId/roles/* — User-role assignments (admin auth)
+ *   /api/admin/applications/:appId/claims/* — Custom claims management (admin auth)
  *   /api/admin/config/*            — System configuration management (admin auth)
  *   /api/admin/keys/*              — Signing key management (admin auth)
  *   /api/admin/audit/*             — Audit log viewer (admin auth)
@@ -167,25 +167,25 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(orgRouter.routes());
   app.use(orgRouter.allowedMethods());
 
-  // Application management API — requires super-admin authorization
+  // Application management API — requires admin authentication
   // Mounted at /api/admin/applications (see routes/applications.ts)
   const appRouter = createApplicationRouter();
   app.use(appRouter.routes());
   app.use(appRouter.allowedMethods());
 
-  // Client & secret management API — requires super-admin authorization
+  // Client & secret management API — requires admin authentication
   // Mounted at /api/admin/clients (see routes/clients.ts)
   const clientRouter = createClientRouter();
   app.use(clientRouter.routes());
   app.use(clientRouter.allowedMethods());
 
-  // User management API — requires super-admin authorization
+  // User management API — requires admin authentication
   // Mounted at /api/admin/organizations/:orgId/users (see routes/users.ts)
   const userRouter = createUserRouter();
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
 
-  // RBAC & Custom Claims admin APIs (RD-08) — requires super-admin authorization
+  // RBAC & Custom Claims admin APIs (RD-08) — requires admin authentication
   // Role management at /api/admin/applications/:appId/roles
   const roleRouter = createRoleRouter();
   app.use(roleRouter.routes());
