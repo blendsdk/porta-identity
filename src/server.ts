@@ -44,6 +44,8 @@ import { createUserRoleRouter } from './routes/user-roles.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
 import { createTwoFactorRouter } from './routes/two-factor.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
+import { getApplicationBySlug } from './applications/index.js';
+import { listClientsByApplication } from './clients/index.js';
 import { config } from './config/index.js';
 
 /**
@@ -108,7 +110,9 @@ export function createApp(oidcProvider?: Provider): Koa {
 
   // Admin metadata endpoint — unauthenticated, provides OIDC discovery
   // info needed by the CLI to initiate the login flow. Returns the issuer
-  // URL and client_id for the admin CLI PKCE client.
+  // URL, client_id, and org slug for the admin CLI PKCE client.
+  // The client_id is looked up from the database (created by `porta init`)
+  // rather than hardcoded, since client IDs are randomly generated.
   const metadataRouter = new Router();
   metadataRouter.get('/api/admin/metadata', async (ctx) => {
     const superAdminOrg = await findSuperAdminOrganization();
@@ -121,9 +125,31 @@ export function createApp(oidcProvider?: Provider): Koa {
       return;
     }
 
+    // Look up the admin application and its CLI client
+    const adminApp = await getApplicationBySlug('porta-admin');
+    if (!adminApp) {
+      ctx.status = 503;
+      ctx.body = {
+        error: 'Not initialized',
+        message: 'Run porta init to set up the admin system',
+      };
+      return;
+    }
+
+    // Find the CLI client (native, public PKCE client) in the admin app.
+    // Only need the first page — porta init creates exactly one client.
+    const clients = await listClientsByApplication(adminApp.id, {
+      page: 1,
+      pageSize: 10,
+    });
+    const cliClient = clients.data.find(
+      (c) => c.applicationType === 'native',
+    );
+
     ctx.body = {
       issuer: `${config.issuerBaseUrl}/${superAdminOrg.slug}`,
-      clientId: 'porta-admin-cli',
+      orgSlug: superAdminOrg.slug,
+      clientId: cliClient?.clientId ?? null,
     };
   });
   app.use(metadataRouter.routes());
