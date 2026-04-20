@@ -56,7 +56,7 @@ volumes:
 
 ```bash
 docker compose up -d                                          # Start Porta + Postgres + Redis
-docker exec -it porta-app node dist/cli/index.js init         # Bootstrap admin system
+docker exec -it porta-app porta init                          # Bootstrap admin system
 ```
 
 Then open [http://localhost:3000/health](http://localhost:3000/health) to verify.
@@ -103,4 +103,4 @@ yarn verify           # Run lint + build + tests before committing
 
 ## 📄 License
 
-MIT — © TrueSoftware NL
+MIT — © TrueSoftware B.V.

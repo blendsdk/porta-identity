@@ -139,7 +139,7 @@ You should see:
 ### 5. Bootstrap the admin system
 
 ```bash
-docker exec -it porta-app node dist/cli/index.js init
+docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
@@ -151,12 +151,21 @@ This interactive command creates:
 Or run it non-interactively:
 
 ```bash
-docker exec porta-app node dist/cli/index.js init \
+docker exec porta-app porta init \
   --email admin@example.com \
   --given-name Admin \
   --family-name User \
   --password 'YourSecurePassword123!'
 ```
+
+::: tip CLI Wrapper Script
+For an even cleaner experience, download the [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh) wrapper script, save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
+```bash
+./porta init
+./porta org list
+./porta health --direct
+```
+:::
 
 ### 6. You're done! 🎉
 

@@ -74,6 +74,12 @@ COPY locales/ locales/
 COPY docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
+# Create a 'porta' CLI command available inside the container
+# so users can run: docker exec -it porta-app porta <command>
+# instead of: docker exec -it porta-app node dist/cli/index.js <command>
+RUN printf '#!/bin/sh\nexec node /app/dist/cli/index.js "$@"\n' > /usr/local/bin/porta \
+    && chmod +x /usr/local/bin/porta
+
 # Switch to non-root user
 USER porta
 

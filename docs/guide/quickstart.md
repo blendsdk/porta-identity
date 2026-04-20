@@ -145,7 +145,7 @@ wait a few seconds — the entrypoint waits for PostgreSQL and Redis before star
 **6. Bootstrap the admin system**
 
 ```bash
-docker exec -it porta-app node dist/cli/index.js init
+docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
@@ -157,12 +157,21 @@ This interactive command creates:
 You can also run it non-interactively:
 
 ```bash
-docker exec porta-app node dist/cli/index.js init \
+docker exec porta-app porta init \
   --email admin@example.com \
   --given-name Admin \
   --family-name User \
   --password 'YourSecurePassword123!'
 ```
+
+::: tip CLI Wrapper Script
+For an even cleaner experience, download [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh), save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
+```bash
+./porta init
+./porta org list
+./porta health --direct
+```
+:::
 
 **7. Verify**
 
@@ -249,7 +258,7 @@ wait a few seconds — the entrypoint waits for PostgreSQL and Redis before star
 **5. Bootstrap the admin system**
 
 ```bash
-docker exec -it porta-app node dist/cli/index.js init
+docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
@@ -261,7 +270,7 @@ This interactive command creates:
 You can also run it non-interactively:
 
 ```bash
-docker exec porta-app node dist/cli/index.js init \
+docker exec porta-app porta init \
   --email admin@example.com \
   --given-name Admin \
   --family-name User \
@@ -404,10 +413,10 @@ docker compose logs postgres
 If migrations fail during auto-migrate:
 ```bash
 # Check migration status
-docker exec porta-app node dist/cli/index.js migrate status
+docker exec porta-app porta migrate status
 
 # Run manually with verbose output
-docker exec porta-app node dist/cli/index.js migrate up
+docker exec porta-app porta migrate up
 ```
 
 ### Port conflicts

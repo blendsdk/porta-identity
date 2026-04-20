@@ -125,7 +125,7 @@ export default withMermaid(
       // ── Footer ──────────────────────────────────────────────
       footer: {
         message: 'Released under the MIT License.',
-        copyright: 'Copyright © 2024-present Porta Contributors',
+        copyright: 'Copyright © 2024-present TrueSoftware B.V.',
       },
 
       // ── Edit link ───────────────────────────────────────────
