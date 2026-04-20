@@ -1,7 +1,7 @@
 /**
  * CLI audit log viewer command.
  *
- * Queries audit log entries from the database with optional filters.
+ * Queries audit log entries via the Admin API with optional filters.
  *
  * Usage:
  *   porta audit list                      # List recent events (default: 50)
@@ -15,9 +15,38 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, warn, outputResult, truncateId, formatDate, printTotal } from '../output.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Audit log entry as returned by the Admin API */
+interface AuditEntry {
+  id: string;
+  eventType: string;
+  eventCategory: string;
+  actorId: string | null;
+  organizationId: string | null;
+  userId: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+/** List response: { data: AuditEntry[], total: number } */
+interface AuditListResponse {
+  data: AuditEntry[];
+  total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Argument types
+// ---------------------------------------------------------------------------
 
 /** Extended args for the audit list subcommand */
 interface AuditListArgs extends GlobalOptions {
@@ -27,6 +56,10 @@ interface AuditListArgs extends GlobalOptions {
   user?: string;
   since?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Command definition
+// ---------------------------------------------------------------------------
 
 /** The audit command module — registered at the top level of the CLI */
 export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
@@ -63,44 +96,21 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AuditListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getPool } = await import('../../lib/database.js');
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              // Build query parameters from CLI flags
+              const params: Record<string, string> = {};
+              params.limit = String(args.limit);
+              if (args.event) params.event = args.event;
+              if (args.org) params.org = args.org;
+              if (args.user) params.user = args.user;
+              if (args.since) params.since = args.since;
 
-              // Build dynamic WHERE clause based on filters
-              const conditions: string[] = [];
-              const params: unknown[] = [];
-              let paramIdx = 1;
+              const { data } = await client.get<AuditListResponse>(
+                '/api/admin/audit',
+                params,
+              );
 
-              if (args.event) {
-                conditions.push(`event_type = $${paramIdx++}`);
-                params.push(args.event);
-              }
-              if (args.org) {
-                conditions.push(`organization_id = $${paramIdx++}`);
-                params.push(args.org);
-              }
-              if (args.user) {
-                conditions.push(`user_id = $${paramIdx++}`);
-                params.push(args.user);
-              }
-              if (args.since) {
-                conditions.push(`created_at >= $${paramIdx++}`);
-                params.push(args.since);
-              }
-
-              const whereClause = conditions.length > 0
-                ? `WHERE ${conditions.join(' AND ')}`
-                : '';
-
-              params.push(args.limit);
-              const query = `SELECT id, event_type, event_category, actor_id, organization_id, description, created_at
-                             FROM audit_log ${whereClause}
-                             ORDER BY created_at DESC
-                             LIMIT $${paramIdx}`;
-
-              const result = await getPool().query(query, params);
-
-              if (result.rows.length === 0) {
+              if (data.data.length === 0) {
                 warn('No audit log entries found');
                 return;
               }
@@ -108,25 +118,17 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               outputResult(
                 args.json,
                 () => {
-                  const rows = result.rows.map((r: {
-                    id: string;
-                    event_type: string;
-                    event_category: string;
-                    actor_id: string | null;
-                    organization_id: string | null;
-                    description: string | null;
-                    created_at: string;
-                  }) => [
-                    formatDate(r.created_at),
-                    r.event_type,
-                    r.event_category,
-                    r.actor_id ? truncateId(r.actor_id) : '—',
+                  const rows = data.data.map((r) => [
+                    formatDate(r.createdAt),
+                    r.eventType,
+                    r.eventCategory,
+                    r.actorId ? truncateId(r.actorId) : '—',
                     r.description || '—',
                   ]);
                   printTable(['Date', 'Event', 'Category', 'Actor', 'Description'], rows);
-                  printTotal('events', result.rows.length);
+                  printTotal('events', data.data.length);
                 },
-                result.rows,
+                data.data,
               );
             });
           }, args.verbose);

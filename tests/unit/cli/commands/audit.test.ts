@@ -1,7 +1,24 @@
+/**
+ * Unit tests for the CLI audit command (HTTP mode).
+ *
+ * Tests list subcommand with various filters via mocked AdminHttpClient.
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  del: vi.fn(),
+  withHttpClient: vi.fn(),
+}));
+
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
-  withBootstrap: vi.fn().mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
+  withHttpClient: mocks.withHttpClient.mockImplementation(
+    async (_argv: unknown, fn: (client: unknown) => Promise<unknown>) =>
+      fn({ get: mocks.get, post: mocks.post, put: mocks.put, delete: mocks.del }),
+  ),
 }));
 
 vi.mock('../../../../src/cli/error-handler.js', () => ({
@@ -18,15 +35,8 @@ vi.mock('../../../../src/cli/output.js', () => ({
   printTotal: vi.fn(),
 }));
 
-vi.mock('../../../../src/lib/database.js', () => ({
-  getPool: vi.fn().mockReturnValue({
-    query: vi.fn().mockResolvedValue({ rows: [] }),
-  }),
-}));
-
 import { auditCommand } from '../../../../src/cli/commands/audit.js';
 import { warn, outputResult } from '../../../../src/cli/output.js';
-import { getPool } from '../../../../src/lib/database.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
 interface AuditArgvOverrides extends Partial<GlobalOptions> {
@@ -58,9 +68,6 @@ function getHandlers() {
 describe('CLI Audit Command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getPool).mockReturnValue({
-      query: vi.fn().mockResolvedValue({ rows: [] }),
-    } as never);
     vi.mocked(outputResult).mockImplementation(
       (_isJson: boolean, tableRenderer: () => void) => { tableRenderer(); },
     );
@@ -68,80 +75,70 @@ describe('CLI Audit Command', () => {
 
   describe('audit list', () => {
     it('should warn when no entries found', async () => {
+      mocks.get.mockResolvedValue({ data: { data: [], total: 0 } });
       const handlers = getHandlers();
       await handlers['list'](createArgv());
       expect(warn).toHaveBeenCalledWith('No audit log entries found');
     });
 
     it('should display audit entries in table', async () => {
-      vi.mocked(getPool).mockReturnValue({
-        query: vi.fn().mockResolvedValue({
-          rows: [{
+      mocks.get.mockResolvedValue({
+        data: {
+          data: [{
             id: 'log-1',
-            event_type: 'org.created',
-            event_category: 'organization',
-            actor_id: 'admin-1',
-            organization_id: 'org-1',
+            eventType: 'org.created',
+            eventCategory: 'organization',
+            actorId: 'admin-1',
+            organizationId: 'org-1',
             description: 'Created org',
-            created_at: '2026-04-09T10:00:00Z',
+            createdAt: '2026-04-09T10:00:00Z',
           }],
-        }),
-      } as never);
-
+          total: 1,
+        },
+      });
       const handlers = getHandlers();
       await handlers['list'](createArgv());
+      expect(mocks.get).toHaveBeenCalledWith('/api/admin/audit', { limit: '50' });
       expect(outputResult).toHaveBeenCalled();
     });
 
-    it('should pass event filter to query', async () => {
-      const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
-      vi.mocked(getPool).mockReturnValue({ query: mockQuery } as never);
-
+    it('should pass event filter as query param', async () => {
+      mocks.get.mockResolvedValue({ data: { data: [], total: 0 } });
       const handlers = getHandlers();
       await handlers['list'](createArgv({ event: 'org.created' }));
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('event_type = $1'),
-        expect.arrayContaining(['org.created']),
+      expect(mocks.get).toHaveBeenCalledWith(
+        '/api/admin/audit',
+        expect.objectContaining({ event: 'org.created' }),
       );
     });
 
-    it('should pass multiple filters to query', async () => {
-      const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
-      vi.mocked(getPool).mockReturnValue({ query: mockQuery } as never);
-
+    it('should pass multiple filters as query params', async () => {
+      mocks.get.mockResolvedValue({ data: { data: [], total: 0 } });
       const handlers = getHandlers();
       await handlers['list'](createArgv({ event: 'org.created', org: 'org-123', limit: 10 }));
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('event_type = $1'),
-        expect.arrayContaining(['org.created', 'org-123', 10]),
+      expect(mocks.get).toHaveBeenCalledWith(
+        '/api/admin/audit',
+        expect.objectContaining({ event: 'org.created', org: 'org-123', limit: '10' }),
       );
     });
 
     it('should use default limit of 50', async () => {
-      const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
-      vi.mocked(getPool).mockReturnValue({ query: mockQuery } as never);
-
+      mocks.get.mockResolvedValue({ data: { data: [], total: 0 } });
       const handlers = getHandlers();
       await handlers['list'](createArgv());
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('LIMIT'),
-        expect.arrayContaining([50]),
+      expect(mocks.get).toHaveBeenCalledWith(
+        '/api/admin/audit',
+        expect.objectContaining({ limit: '50' }),
       );
     });
 
-    it('should pass since filter to query', async () => {
-      const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
-      vi.mocked(getPool).mockReturnValue({ query: mockQuery } as never);
-
+    it('should pass since filter as query param', async () => {
+      mocks.get.mockResolvedValue({ data: { data: [], total: 0 } });
       const handlers = getHandlers();
       await handlers['list'](createArgv({ since: '2026-04-01' }));
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('created_at >= $1'),
-        expect.arrayContaining(['2026-04-01']),
+      expect(mocks.get).toHaveBeenCalledWith(
+        '/api/admin/audit',
+        expect.objectContaining({ since: '2026-04-01' }),
       );
     });
   });

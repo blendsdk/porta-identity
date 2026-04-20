@@ -15,6 +15,9 @@
  *   /api/admin/applications/:appId/permissions/* — Permission management (super-admin)
  *   /api/admin/organizations/:orgId/users/:userId/roles/* — User-role assignments (super-admin)
  *   /api/admin/applications/:appId/claims/* — Custom claims management (super-admin)
+ *   /api/admin/config/*            — System configuration management (admin auth)
+ *   /api/admin/keys/*              — Signing key management (admin auth)
+ *   /api/admin/audit/*             — Audit log viewer (admin auth)
  *   /interaction/:uid/*            — OIDC interaction routes (login, consent, abort)
  *   /:orgSlug/auth/*               — Auth routes (magic link, password reset, invitation)
  *   /:orgSlug/*                    — OIDC provider endpoints (auth, token, jwks, etc.)
@@ -43,6 +46,9 @@ import { createPermissionRouter } from './routes/permissions.js';
 import { createUserRoleRouter } from './routes/user-roles.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
 import { createTwoFactorRouter } from './routes/two-factor.js';
+import { createConfigRouter } from './routes/config.js';
+import { createKeysRouter } from './routes/keys.js';
+import { createAuditRouter } from './routes/audit.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
 import { getApplicationBySlug } from './applications/index.js';
 import { listClientsByApplication } from './clients/index.js';
@@ -199,6 +205,24 @@ export function createApp(oidcProvider?: Provider): Koa {
   const customClaimRouter = createCustomClaimRouter();
   app.use(customClaimRouter.routes());
   app.use(customClaimRouter.allowedMethods());
+
+  // System config management API — requires admin authentication
+  // Mounted at /api/admin/config (see routes/config.ts)
+  const configRouter = createConfigRouter();
+  app.use(configRouter.routes());
+  app.use(configRouter.allowedMethods());
+
+  // Signing key management API — requires admin authentication
+  // Mounted at /api/admin/keys (see routes/keys.ts)
+  const keysRouter = createKeysRouter();
+  app.use(keysRouter.routes());
+  app.use(keysRouter.allowedMethods());
+
+  // Audit log API — requires admin authentication
+  // Mounted at /api/admin/audit (see routes/audit.ts)
+  const auditRouter = createAuditRouter();
+  app.use(auditRouter.routes());
+  app.use(auditRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets

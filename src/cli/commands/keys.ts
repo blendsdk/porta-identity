@@ -1,8 +1,8 @@
 /**
  * CLI signing key management commands.
  *
- * Manages ES256 signing keys used by the OIDC provider for token signing.
- * Provides list, generate, rotate, and cleanup subcommands.
+ * Manages ES256 signing keys via the Admin API.
+ * Provides list, generate, and rotate subcommands.
  *
  * Usage:
  *   porta keys list              # List all signing keys and their status
@@ -15,10 +15,44 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, truncateId, formatDate, printTotal } from '../output.js';
 import { confirm } from '../prompt.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Signing key metadata as returned by the Admin API */
+interface KeyEntry {
+  id: string;
+  kid: string;
+  algorithm: string;
+  status: string;
+  createdAt: string;
+  retiredAt: string | null;
+}
+
+/** List response: { data: KeyEntry[] } */
+interface KeyListResponse {
+  data: KeyEntry[];
+}
+
+/** Generate/rotate response */
+interface KeyActionResponse {
+  data: {
+    id: string;
+    kid: string;
+    message: string;
+    retiredCount?: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Command definition
+// ---------------------------------------------------------------------------
 
 /** The keys command module — registered at the top level of the CLI */
 export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
@@ -33,13 +67,10 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as GlobalOptions;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getPool } = await import('../../lib/database.js');
-              const result = await getPool().query(
-                'SELECT id, kid, algorithm, status, created_at, retired_at FROM signing_keys ORDER BY created_at DESC',
-              );
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.get<KeyListResponse>('/api/admin/keys');
 
-              if (result.rows.length === 0) {
+              if (data.data.length === 0) {
                 warn('No signing keys found');
                 return;
               }
@@ -47,17 +78,17 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               outputResult(
                 args.json,
                 () => {
-                  const rows = result.rows.map((r: { id: string; kid: string; status: string; created_at: string; retired_at: string | null }) => [
+                  const rows = data.data.map((r) => [
                     truncateId(r.id),
                     r.kid,
                     r.status,
-                    formatDate(r.created_at),
-                    formatDate(r.retired_at),
+                    formatDate(r.createdAt),
+                    formatDate(r.retiredAt),
                   ]);
                   printTable(['ID', 'KID', 'Status', 'Created', 'Retired'], rows);
-                  printTotal('signing keys', result.rows.length);
+                  printTotal('signing keys', data.data.length);
                 },
-                result.rows,
+                data.data,
               );
             });
           }, args.verbose);
@@ -74,20 +105,9 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               warn('Dry run — would generate a new ES256 signing key');
               return;
             }
-            await withBootstrap(args, async () => {
-              const { generateES256KeyPair } = await import('../../lib/signing-keys.js');
-              const { getPool } = await import('../../lib/database.js');
-
-              const keyPair = generateES256KeyPair();
-              const result = await getPool().query(
-                `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status)
-                 VALUES ($1, 'ES256', $2, $3, 'active')
-                 RETURNING id, kid`,
-                [keyPair.kid, keyPair.publicKeyPem, keyPair.privateKeyPem],
-              );
-
-              const row = result.rows[0] as { id: string; kid: string };
-              success(`Generated new signing key: ${row.kid} (${truncateId(row.id)})`);
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.post<KeyActionResponse>('/api/admin/keys/generate');
+              success(`Generated new signing key: ${data.data.kid} (${truncateId(data.data.id)})`);
             });
           }, args.verbose);
         },
@@ -113,27 +133,9 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            await withBootstrap(args, async () => {
-              const { generateES256KeyPair } = await import('../../lib/signing-keys.js');
-              const { getPool } = await import('../../lib/database.js');
-              const pool = getPool();
-
-              // Retire all currently active keys
-              await pool.query(
-                `UPDATE signing_keys SET status = 'retired', retired_at = NOW() WHERE status = 'active'`,
-              );
-
-              // Generate and insert new active key
-              const keyPair = generateES256KeyPair();
-              const result = await pool.query(
-                `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status)
-                 VALUES ($1, 'ES256', $2, $3, 'active')
-                 RETURNING id, kid`,
-                [keyPair.kid, keyPair.publicKeyPem, keyPair.privateKeyPem],
-              );
-
-              const row = result.rows[0] as { id: string; kid: string };
-              success(`Rotated keys — new active key: ${row.kid} (${truncateId(row.id)})`);
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.post<KeyActionResponse>('/api/admin/keys/rotate');
+              success(`Rotated keys — new active key: ${data.data.kid} (${truncateId(data.data.id)})`);
             });
           }, args.verbose);
         },

@@ -1,7 +1,7 @@
 /**
  * CLI system config commands.
  *
- * Manages system configuration values stored in the `system_config` table.
+ * Manages system configuration values via the Admin API.
  * Provides list, get, and set subcommands.
  *
  * Usage:
@@ -14,9 +14,56 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, printTotal } from '../output.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Config entry as returned by the Admin API */
+interface ConfigEntry {
+  key: string;
+  value: string;
+  valueType: string;
+  description: string | null;
+  isSensitive: boolean;
+  updatedAt: string;
+}
+
+/** List response: { data: ConfigEntry[] } */
+interface ConfigListResponse {
+  data: ConfigEntry[];
+}
+
+/** Single entry response: { data: ConfigEntry } */
+interface ConfigGetResponse {
+  data: ConfigEntry;
+}
+
+/** Update response: { data: { key, value, valueType } } */
+interface ConfigSetResponse {
+  data: { key: string; value: string; valueType: string };
+}
+
+// ---------------------------------------------------------------------------
+// Argument types
+// ---------------------------------------------------------------------------
+
+interface ConfigGetArgs extends GlobalOptions {
+  key: string;
+}
+
+interface ConfigSetArgs extends GlobalOptions {
+  key: string;
+  value: string;
+}
+
+// ---------------------------------------------------------------------------
+// Command definition
+// ---------------------------------------------------------------------------
 
 /** The config command module — registered at the top level of the CLI */
 export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
@@ -31,14 +78,10 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as GlobalOptions;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getPool } = await import('../../lib/database.js');
-              const result = await getPool().query(
-                `SELECT key, value, value_type, description, is_sensitive, updated_at
-                 FROM system_config ORDER BY key`,
-              );
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.get<ConfigListResponse>('/api/admin/config');
 
-              if (result.rows.length === 0) {
+              if (data.data.length === 0) {
                 warn('No config entries found');
                 return;
               }
@@ -46,21 +89,21 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               outputResult(
                 args.json,
                 () => {
-                  const rows = result.rows.map((r: { key: string; value: string; value_type: string; is_sensitive: boolean }) => [
+                  const rows = data.data.map((r) => [
                     r.key,
-                    r.is_sensitive ? '***' : r.value,
-                    r.value_type,
+                    r.value,
+                    r.valueType,
                   ]);
                   printTable(['Key', 'Value', 'Type'], rows);
-                  printTotal('config entries', result.rows.length);
+                  printTotal('config entries', data.data.length);
                 },
-                result.rows,
+                data.data,
               );
             });
           }, args.verbose);
         },
       )
-      .command(
+      .command<ConfigGetArgs>(
         'get <key>',
         'Get a specific config value',
         (y) =>
@@ -70,36 +113,28 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             description: 'Config key to retrieve',
           }),
         async (argv) => {
-          const args = argv as unknown as GlobalOptions & { key: string };
+          const args = argv as unknown as ConfigGetArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getPool } = await import('../../lib/database.js');
-              const result = await getPool().query(
-                'SELECT key, value, value_type, description, is_sensitive FROM system_config WHERE key = $1',
-                [args.key],
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.get<ConfigGetResponse>(
+                `/api/admin/config/${encodeURIComponent(args.key)}`,
               );
 
-              if (result.rows.length === 0) {
-                warn(`Config key not found: ${args.key}`);
-                return;
-              }
-
-              const row = result.rows[0] as { key: string; value: string; value_type: string; description: string; is_sensitive: boolean };
               outputResult(
                 args.json,
                 () => {
                   printTable(
                     ['Key', 'Value', 'Type', 'Description'],
-                    [[row.key, row.is_sensitive ? '***' : row.value, row.value_type, row.description || '—']],
+                    [[data.data.key, data.data.value, data.data.valueType, data.data.description || '—']],
                   );
                 },
-                row,
+                data.data,
               );
             });
           }, args.verbose);
         },
       )
-      .command(
+      .command<ConfigSetArgs>(
         'set <key> <value>',
         'Set a system config value',
         (y) =>
@@ -115,25 +150,19 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               description: 'New value',
             }),
         async (argv) => {
-          const args = argv as unknown as GlobalOptions & { key: string; value: string };
+          const args = argv as unknown as ConfigSetArgs;
           await withErrorHandling(async () => {
             if (args['dry-run']) {
               warn(`Dry run — would set ${args.key} = ${args.value}`);
               return;
             }
-            await withBootstrap(args, async () => {
-              const { getPool } = await import('../../lib/database.js');
-              const result = await getPool().query(
-                'UPDATE system_config SET value = $1, updated_at = NOW() WHERE key = $2 RETURNING key',
-                [args.value, args.key],
+            await withHttpClient(args, async (client: AdminHttpClient) => {
+              const { data } = await client.put<ConfigSetResponse>(
+                `/api/admin/config/${encodeURIComponent(args.key)}`,
+                { value: args.value },
               );
 
-              if (result.rows.length === 0) {
-                warn(`Config key not found: ${args.key}`);
-                return;
-              }
-
-              success(`Set ${args.key} = ${args.value}`);
+              success(`Set ${data.data.key} = ${data.data.value}`);
             });
           }, args.verbose);
         },
