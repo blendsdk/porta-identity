@@ -22,22 +22,46 @@ Multi-tenant OIDC provider built on [node-oidc-provider](https://github.com/panv
 
 ## 🚀 Quick Start
 
-The fastest way to try Porta is with Docker Compose:
+The fastest way to try Porta — no git clone required. Just create two files and run:
+
+**1. Create a `docker-compose.yml`** ([full file in the Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart)):
+
+```yaml
+services:
+  porta:
+    image: blendsdk/porta:latest
+    ports: ["3000:3000"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://porta:porta_secret@postgres:5432/porta
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: porta, POSTGRES_USER: porta, POSTGRES_PASSWORD: porta_secret }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U porta"], interval: 5s, retries: 5 }
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 5 }
+volumes:
+  pgdata:
+```
+
+**2. Create a `.env`** file with `ISSUER_BASE_URL=http://localhost:3000`, `COOKIE_KEYS=...`, `PORTA_AUTO_MIGRATE=true` ([full template](https://blendsdk.github.io/porta-identity/guide/quickstart#docker-hub))
+
+**3. Run:**
 
 ```bash
-git clone https://github.com/blendsdk/porta-identity.git && cd porta-identity
-cp .env.docker .env.docker.local   # adjust settings if needed
-
-# Start Porta + PostgreSQL + Redis (auto-migrates on first run)
-docker compose -f docker/docker-compose.prod.yml up -d
-
-# Bootstrap the admin system (creates first admin user)
-docker exec porta-app node dist/cli/index.js init
+docker compose up -d                                          # Start Porta + Postgres + Redis
+docker exec -it porta-app node dist/cli/index.js init         # Bootstrap admin system
 ```
 
 Then open [http://localhost:3000/health](http://localhost:3000/health) to verify.
 
-For source development setup, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart).
+For source development setup, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart#source).
 
 ## ✨ Features
 

@@ -1,9 +1,12 @@
 # ──────────────────────────────────────────────────────────
 # Porta Docker — Build & Push to Docker Hub
 #
-# Manual trigger only (workflow_dispatch) from the main branch.
-# Builds multi-platform images (amd64 + arm64) and pushes
-# to blendsdk/porta on Docker Hub.
+# Automated triggers:
+#   - Push to main → "latest" tag
+#   - Git tag v* → semver tags (e.g. v1.2.3 → 1.2.3, 1.2, 1, latest)
+#   - Manual workflow_dispatch → "latest" + optional custom tag
+#
+# Also syncs docker/DOCKERHUB.md to the Docker Hub repo description.
 #
 # Prerequisites (one-time setup):
 #   1. Create Docker Hub org "blendsdk" with repo "porta"
@@ -13,6 +16,9 @@
 name: Docker
 
 on:
+  push:
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -28,20 +34,21 @@ jobs:
   build-and-push:
     name: Build & Push
     runs-on: ubuntu-latest
-    # Only allow manual runs from main branch
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
 
-      # Generate Docker image tags based on input
+      # Generate Docker image tags based on trigger type
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: blendsdk/porta
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
 
       # Set up multi-platform build support
@@ -70,3 +77,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Sync docker/DOCKERHUB.md to Docker Hub repo description
+      # Only runs on the default branch (not on tag pushes or PRs)
+      - name: Update Docker Hub description
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: blendsdk/porta
+          readme-filepath: docker/DOCKERHUB.md

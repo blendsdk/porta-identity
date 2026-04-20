@@ -2,14 +2,196 @@
 
 Get Porta running locally in under 5 minutes. Choose the path that fits your goal:
 
-- **🐳 Docker** (recommended) — Evaluate Porta with zero local toolchain setup
+- **🐳 Docker Hub** (recommended) — Run Porta from Docker Hub with zero setup
+- **📦 Clone & Docker** — Clone the repo and use the included Docker Compose
 - **💻 Source** — Set up a development environment for contributing
 
-## Path 1: Docker Quick Start {#docker}
+## Path 1: Docker Hub Quick Start {#docker-hub}
+
+The fastest way to try Porta. No git clone required — just create two files and run.
 
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2+
+
+### Steps
+
+**1. Create a project directory**
+
+```bash
+mkdir porta && cd porta
+```
+
+**2. Create `docker-compose.yml`**
+
+Create a file called `docker-compose.yml`:
+
+```yaml
+services:
+  # ── Porta OIDC Provider ─────────────────────
+  porta:
+    image: blendsdk/porta:latest
+    container_name: porta-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://porta:${POSTGRES_PASSWORD:-porta_secret}@postgres:5432/porta
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ── PostgreSQL 16 ───────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: porta-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: porta
+      POSTGRES_USER: porta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porta_secret}
+    volumes:
+      - porta_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U porta"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis 7 ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: porta-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  porta_pgdata:
+    driver: local
+```
+
+**3. Create `.env`**
+
+Create a `.env` file in the same directory:
+
+```env
+# Server
+NODE_ENV=production
+PORT=3000
+HOST=0.0.0.0
+
+# Database password (used by both Porta and PostgreSQL)
+POSTGRES_PASSWORD=porta_secret
+
+# OIDC issuer — change to your public-facing URL
+ISSUER_BASE_URL=http://localhost:3000
+
+# Cookie signing key — CHANGE THIS in production!
+COOKIE_KEYS=CHANGE-ME-to-a-random-string-at-least-32-chars
+
+# Email (configure SMTP for magic links, invitations, password reset)
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=noreply@porta.local
+
+# Logging
+LOG_LEVEL=info
+
+# Two-Factor Authentication — CHANGE THIS in production!
+TWO_FACTOR_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string
+
+# Auto-run database migrations on startup (set to "false" after initial setup)
+PORTA_AUTO_MIGRATE=true
+```
+
+**4. Start all services**
+
+```bash
+docker compose up -d
+```
+
+This starts:
+- **porta** — The Porta OIDC provider (port 3000)
+- **postgres** — PostgreSQL 16 database
+- **redis** — Redis 7 cache
+
+**5. Wait for health checks**
+
+```bash
+# Check that Porta is healthy
+curl http://localhost:3000/health
+```
+
+You should see a JSON response with `"status": "ok"`. If the container is still starting,
+wait a few seconds — the entrypoint waits for PostgreSQL and Redis before starting Porta.
+
+**6. Bootstrap the admin system**
+
+```bash
+docker exec -it porta-app node dist/cli/index.js init
+```
+
+This interactive command creates:
+- The super-admin organization
+- The admin application with RBAC permissions
+- A PKCE client for CLI authentication
+- Your first admin user (you'll be prompted for email, name, and password)
+
+You can also run it non-interactively:
+
+```bash
+docker exec porta-app node dist/cli/index.js init \
+  --email admin@example.com \
+  --given-name Admin \
+  --family-name User \
+  --password 'YourSecurePassword123!'
+```
+
+**7. Verify**
+
+Open [http://localhost:3000/health](http://localhost:3000/health) in your browser.
+The health endpoint confirms the server, database, and Redis are all connected.
+
+### Stopping
+
+```bash
+docker compose down
+```
+
+Add `-v` to also remove the PostgreSQL data volume (fresh start):
+
+```bash
+docker compose down -v
+```
+
+---
+
+## Path 2: Clone & Docker Compose {#docker}
+
+Use the included Docker Compose file from the repository. Useful if you want to
+explore the full project or customize the Docker setup.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2+
+- [Git](https://git-scm.com/)
 
 ### Steps
 
@@ -105,7 +287,7 @@ docker compose -f docker/docker-compose.prod.yml down -v
 
 ---
 
-## Path 2: Source Development Setup {#source}
+## Path 3: Source Development Setup {#source}
 
 ### Prerequisites
 
@@ -197,24 +379,24 @@ Key variables for getting started:
 
 **Check logs:**
 ```bash
-docker compose -f docker/docker-compose.prod.yml logs porta
+docker compose logs porta
 ```
 
 **Common causes:**
 - PostgreSQL not ready yet — the entrypoint waits up to 60 seconds
-- Missing or invalid environment variables — check `.env.docker.local`
+- Missing or invalid environment variables — check your `.env` file
 - Port 3000 already in use — change `PORT` in your env file
 
 ### Health check failing
 
 ```bash
 # Check individual services
-docker compose -f docker/docker-compose.prod.yml ps
+docker compose ps
 ```
 
 All services should show "healthy". If PostgreSQL is unhealthy, check:
 ```bash
-docker compose -f docker/docker-compose.prod.yml logs postgres
+docker compose logs postgres
 ```
 
 ### Migration errors
@@ -231,7 +413,7 @@ docker exec porta-app node dist/cli/index.js migrate up
 ### Port conflicts
 
 If port 3000, 5432, or 6379 are already in use, update the port mappings in
-`docker/docker-compose.prod.yml` or stop conflicting services.
+your `docker-compose.yml` or stop conflicting services.
 
 ---
 
@@ -242,3 +424,4 @@ If port 3000, 5432, or 6379 are already in use, update the port mappings in
 - 📋 [Admin API](../api/overview.md) — REST API reference
 - 🔑 [OIDC & Authentication](../concepts/oidc.md) — How OIDC works in Porta
 - 🏢 [Multi-Tenancy](../concepts/multi-tenancy.md) — Organization-scoped tenancy model
+- 🚢 [Deployment Guide](./deployment.md) — Production deployment guidance

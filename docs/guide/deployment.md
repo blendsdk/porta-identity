@@ -2,10 +2,19 @@
 
 Guidance for deploying Porta to production environments using Docker.
 
+::: tip Docker Hub
+The Porta Docker image is available on [Docker Hub](https://hub.docker.com/r/blendsdk/porta):
+```bash
+docker pull blendsdk/porta:latest
+```
+No git clone required — see the [Quick Start](./quickstart.md#docker-hub) for a
+standalone setup using just `docker-compose.yml` + `.env`.
+:::
+
 ## Production Docker Compose
 
 For production, remove MailHog and use a real SMTP relay. Here's a minimal production-ready
-compose file:
+compose file that can be used standalone (no repository clone needed):
 
 ```yaml
 services:
