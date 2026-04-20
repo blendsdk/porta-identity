@@ -7,7 +7,8 @@ export default withMermaid(
     title: 'Porta',
     description:
       'Multi-tenant OIDC Provider — Authentication, User Management, RBAC & Custom Claims',
-    head: [['link', { rel: 'icon', href: '/logo.svg' }]],
+    base: '/porta-identity/',
+    head: [['link', { rel: 'icon', href: '/porta-identity/logo.svg' }]],
 
     // Ignore dead-link warnings for anchor-only links used in sidebars
     ignoreDeadLinks: 'localhostLinks',
