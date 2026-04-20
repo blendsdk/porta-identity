@@ -16,9 +16,12 @@ requirements/
 # VitePress
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+docs/.vitepress/.temp/
 
 # Playground generated artifacts
 playground/config.generated.js
 playground/node_modules/
 playground-bff/config.generated.json
 playground-bff/node_modules/
+plans
+
