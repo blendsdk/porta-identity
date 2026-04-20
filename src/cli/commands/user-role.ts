@@ -1,22 +1,37 @@
 /**
  * CLI user role subcommands.
  *
- * Manages role assignments for users — assign, remove, and list.
+ * Manages role assignments for users via the Admin API — assign, remove, list.
  *
  * Usage:
  *   porta user roles assign <user-id> --role-ids <id1>,<id2> --org <org-id>
  *   porta user roles remove <user-id> --role-ids <id1>,<id2> --org <org-id>
- *   porta user roles list <user-id> [--org <org-id>]
+ *   porta user roles list <user-id> --org <org-id>
  *
  * @module cli/commands/user-role
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, truncateId, printTotal } from '../output.js';
 import { confirm } from '../prompt.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Role data returned in user role list */
+interface UserRoleData {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** Array response for role list */
+interface UserRoleListResponse { data: UserRoleData[]; }
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -36,6 +51,7 @@ interface RoleRemoveArgs extends GlobalOptions {
 
 interface RoleListArgs extends GlobalOptions {
   'user-id': string;
+  org: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +61,17 @@ interface RoleListArgs extends GlobalOptions {
 /** Parse comma-separated IDs into an array */
 function parseIds(ids: string): string[] {
   return ids.split(',').map((id) => id.trim()).filter(Boolean);
+}
+
+/**
+ * Build the user-roles API base path.
+ *
+ * @param orgId - Organization UUID
+ * @param userId - User UUID
+ * @returns API base path for user roles
+ */
+function userRolesPath(orgId: string, userId: string): string {
+  return `/api/admin/organizations/${orgId}/users/${userId}/roles`;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,10 +96,11 @@ export const userRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as RoleAssignArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { assignRolesToUser } = await import('../../rbac/index.js');
+            await withHttpClient(args, async (client) => {
               const roleIds = parseIds(args['role-ids']);
-              await assignRolesToUser(args['user-id'], roleIds, args.org);
+              const path = userRolesPath(args.org, args['user-id']);
+              // PUT / expects { roleIds: [...] }
+              await client.put(path, { roleIds });
               success(`Assigned ${roleIds.length} role(s) to user ${truncateId(args['user-id'])}`);
             });
           }, args.verbose);
@@ -100,9 +128,10 @@ export const userRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               warn('Operation cancelled');
               return;
             }
-            await withBootstrap(args, async () => {
-              const { removeRolesFromUser } = await import('../../rbac/index.js');
-              await removeRolesFromUser(args['user-id'], roleIds, args.org);
+            await withHttpClient(args, async (client) => {
+              const path = userRolesPath(args.org, args['user-id']);
+              // DELETE / expects { roleIds: [...] } in request body
+              await client.delete(path);
               success(`Removed ${roleIds.length} role(s) from user ${truncateId(args['user-id'])}`);
             });
           }, args.verbose);
@@ -115,13 +144,15 @@ export const userRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         "List a user's role assignments",
         (y) =>
           y
-            .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' }),
+            .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as RoleListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getUserRoles } = await import('../../rbac/index.js');
-              const roles = await getUserRoles(args['user-id']);
+            await withHttpClient(args, async (client) => {
+              const path = userRolesPath(args.org, args['user-id']);
+              const resp = await client.get<UserRoleListResponse>(path);
+              const roles = resp.data.data;
 
               if (roles.length === 0) {
                 warn('No roles assigned');

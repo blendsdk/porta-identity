@@ -1,23 +1,53 @@
 /**
  * CLI client secret subcommands.
  *
- * Manages client secrets — generate, list, and revoke.
+ * Manages client secrets via the Admin API — generate, list, and revoke.
  * Secret generate displays the plaintext ONCE in a prominent warning box.
  *
  * Usage:
  *   porta client secret generate <client-id> [--label "production"]
  *   porta client secret list <client-id>
- *   porta client secret revoke <secret-id>
+ *   porta client secret revoke <client-id> <secret-id>
  *
  * @module cli/commands/client-secret
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, truncateId, formatDate, printTotal } from '../output.js';
 import { confirm } from '../prompt.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Secret data returned after generation (includes plaintext) */
+interface SecretGenerateData {
+  id: string;
+  plaintext: string;
+  label: string | null;
+  status: string;
+  createdAt: string;
+}
+
+/** Secret metadata (no plaintext — used in list) */
+interface SecretListItem {
+  id: string;
+  label: string | null;
+  status: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+/** Wrapped single-entity response for generate */
+interface SecretGenerateResponse { data: SecretGenerateData; }
+
+/** Array response for secret list */
+interface SecretListResponse { data: SecretListItem[]; }
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -33,6 +63,7 @@ interface SecretListArgs extends GlobalOptions {
 }
 
 interface SecretRevokeArgs extends GlobalOptions {
+  'client-id': string;
   'secret-id': string;
 }
 
@@ -64,11 +95,12 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
         async (argv) => {
           const args = argv as unknown as SecretGenerateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { generateSecret } = await import('../../clients/index.js');
-              const secret = await generateSecret(args['client-id'], {
-                label: args.label,
-              });
+            await withHttpClient(args, async (client) => {
+              const resp = await client.post<SecretGenerateResponse>(
+                `/api/admin/clients/${args['client-id']}/secrets`,
+                { label: args.label },
+              );
+              const secret = resp.data.data;
 
               outputResult(
                 args.json,
@@ -104,9 +136,11 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
         async (argv) => {
           const args = argv as unknown as SecretListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listSecretsByClient } = await import('../../clients/index.js');
-              const secrets = await listSecretsByClient(args['client-id']);
+            await withHttpClient(args, async (client) => {
+              const resp = await client.get<SecretListResponse>(
+                `/api/admin/clients/${args['client-id']}/secrets`,
+              );
+              const secrets = resp.data.data;
 
               if (secrets.length === 0) {
                 warn('No secrets found');
@@ -138,14 +172,20 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
 
       // ── revoke ─────────────────────────────────────────────────────
       .command<SecretRevokeArgs>(
-        'revoke <secret-id>',
+        'revoke <client-id> <secret-id>',
         'Revoke a client secret (permanent)',
         (y) =>
-          y.positional('secret-id', {
-            type: 'string',
-            demandOption: true,
-            description: 'Secret UUID',
-          }),
+          y
+            .positional('client-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Client UUID',
+            })
+            .positional('secret-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Secret UUID',
+            }),
         async (argv) => {
           const args = argv as unknown as SecretRevokeArgs;
           await withErrorHandling(async () => {
@@ -163,9 +203,10 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
               return;
             }
 
-            await withBootstrap(args, async () => {
-              const { revokeSecret } = await import('../../clients/index.js');
-              await revokeSecret(args['secret-id']);
+            await withHttpClient(args, async (client) => {
+              await client.post(
+                `/api/admin/clients/${args['client-id']}/secrets/${args['secret-id']}/revoke`,
+              );
               success(`Secret revoked: ${args['secret-id']}`);
             });
           }, args.verbose);

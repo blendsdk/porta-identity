@@ -1,25 +1,54 @@
 /**
  * CLI application module subcommands.
  *
- * Manages modules within an application. Modules are organizational
- * units used for permission namespacing (e.g., "CRM", "Invoicing").
+ * Manages modules within an application via the Admin API.
+ * Modules are organizational units used for permission namespacing
+ * (e.g., "CRM", "Invoicing").
  *
  * Usage:
  *   porta app module create <app-id-or-slug> --name "Users Module" [--slug users]
  *   porta app module list <app-id-or-slug>
- *   porta app module update <module-id> --name "New Name"
- *   porta app module deactivate <module-id>
+ *   porta app module update <app-id-or-slug> <module-id> --name "New Name"
+ *   porta app module deactivate <app-id-or-slug> <module-id>
  *
  * @module cli/commands/app-module
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, truncateId, formatDate, printTotal } from '../output.js';
 import { confirm } from '../prompt.js';
-import { isUuid } from './app.js';
+import { resolveApp } from './app.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Module data as returned by the Admin API */
+interface ModuleData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  status: string;
+  applicationId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Wrapped single-entity response */
+interface ModuleResponse {
+  data: ModuleData;
+}
+
+/** Array response for module list (route returns { data: [...] }) */
+interface ModuleListResponse {
+  data: ModuleData[];
+}
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -37,13 +66,31 @@ interface ModuleListArgs extends GlobalOptions {
 }
 
 interface ModuleUpdateArgs extends GlobalOptions {
+  app: string;
   'module-id': string;
   name?: string;
   description?: string;
 }
 
 interface ModuleDeactivateArgs extends GlobalOptions {
+  app: string;
   'module-id': string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve app by slug-or-UUID and build the modules API base path.
+ *
+ * @param client - Authenticated HTTP client
+ * @param appIdOrSlug - Application UUID or slug
+ * @returns API base path for modules under this application
+ */
+async function modulesPath(client: AdminHttpClient, appIdOrSlug: string): Promise<string> {
+  const app = await resolveApp(client, appIdOrSlug);
+  return `/api/admin/applications/${app.id}/modules`;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +103,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
   describe: 'Manage application modules',
   builder: (yargs) => {
     return yargs
+      // ── create ──────────────────────────────────────────────────────
       .command<ModuleCreateArgs>(
         'create <app>',
         'Create a module within an application',
@@ -82,14 +130,14 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ModuleCreateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { createModule } = await import('../../applications/index.js');
-              const appId = await resolveAppId(args.app);
-              const mod = await createModule(appId, {
+            await withHttpClient(args, async (client) => {
+              const base = await modulesPath(client, args.app);
+              const resp = await client.post<ModuleResponse>(base, {
                 name: args.name,
                 slug: args.slug,
                 description: args.description,
               });
+              const mod = resp.data.data;
 
               outputResult(
                 args.json,
@@ -100,6 +148,8 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }, args.verbose);
         },
       )
+
+      // ── list ────────────────────────────────────────────────────────
       .command<ModuleListArgs>(
         'list <app>',
         'List modules for an application',
@@ -112,10 +162,10 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ModuleListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listModules } = await import('../../applications/index.js');
-              const appId = await resolveAppId(args.app);
-              const modules = await listModules(appId);
+            await withHttpClient(args, async (client) => {
+              const base = await modulesPath(client, args.app);
+              const resp = await client.get<ModuleListResponse>(base);
+              const modules = resp.data.data;
 
               if (modules.length === 0) {
                 warn('No modules found');
@@ -143,11 +193,18 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }, args.verbose);
         },
       )
+
+      // ── update ──────────────────────────────────────────────────────
       .command<ModuleUpdateArgs>(
-        'update <module-id>',
+        'update <app> <module-id>',
         'Update a module',
         (y) =>
           y
+            .positional('app', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application UUID or slug',
+            })
             .positional('module-id', {
               type: 'string',
               demandOption: true,
@@ -164,12 +221,13 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ModuleUpdateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { updateModule } = await import('../../applications/index.js');
-              const mod = await updateModule(args['module-id'], {
-                name: args.name,
-                description: args.description,
-              });
+            await withHttpClient(args, async (client) => {
+              const base = await modulesPath(client, args.app);
+              const resp = await client.put<ModuleResponse>(
+                `${base}/${args['module-id']}`,
+                { name: args.name, description: args.description },
+              );
+              const mod = resp.data.data;
 
               outputResult(
                 args.json,
@@ -180,15 +238,23 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }, args.verbose);
         },
       )
+
+      // ── deactivate ──────────────────────────────────────────────────
       .command<ModuleDeactivateArgs>(
-        'deactivate <module-id>',
+        'deactivate <app> <module-id>',
         'Deactivate a module',
         (y) =>
-          y.positional('module-id', {
-            type: 'string',
-            demandOption: true,
-            description: 'Module UUID',
-          }),
+          y
+            .positional('app', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application UUID or slug',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module UUID',
+            }),
         async (argv) => {
           const args = argv as unknown as ModuleDeactivateArgs;
           await withErrorHandling(async () => {
@@ -206,9 +272,9 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            await withBootstrap(args, async () => {
-              const { deactivateModule } = await import('../../applications/index.js');
-              await deactivateModule(args['module-id']);
+            await withHttpClient(args, async (client) => {
+              const base = await modulesPath(client, args.app);
+              await client.post(`${base}/${args['module-id']}/deactivate`);
               success(`Module deactivated: ${args['module-id']}`);
             });
           }, args.verbose);
@@ -220,27 +286,3 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     // No-op — subcommands handle execution
   },
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve an application identifier to a UUID.
- * If the input looks like a UUID, returns it directly.
- * Otherwise, looks up the application by slug and returns its ID.
- *
- * @param idOrSlug - Application UUID or slug
- * @returns Application UUID
- * @throws ApplicationNotFoundError if not found by slug
- */
-async function resolveAppId(idOrSlug: string): Promise<string> {
-  if (isUuid(idOrSlug)) return idOrSlug;
-
-  const { getApplicationBySlug, ApplicationNotFoundError } = await import(
-    '../../applications/index.js'
-  );
-  const app = await getApplicationBySlug(idOrSlug);
-  if (!app) throw new ApplicationNotFoundError(idOrSlug);
-  return app.id;
-}

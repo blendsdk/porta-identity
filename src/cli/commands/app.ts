@@ -47,7 +47,7 @@ import { appClaimCommand } from './app-claim.js';
 // ---------------------------------------------------------------------------
 
 /** Application data as returned by the Admin API (dates are ISO strings) */
-interface AppData {
+export interface AppData {
   id: string;
   name: string;
   slug: string;
@@ -58,7 +58,7 @@ interface AppData {
 }
 
 /** Wrapped single-entity response: { data: AppData } */
-interface AppResponse {
+export interface AppResponse {
   data: AppData;
 }
 
@@ -94,7 +94,7 @@ export function isUuid(value: string): boolean {
  * @returns Application data from the API
  * @throws HttpNotFoundError if the application doesn't exist
  */
-async function resolveApp(client: AdminHttpClient, idOrSlug: string): Promise<AppData> {
+export async function resolveApp(client: AdminHttpClient, idOrSlug: string): Promise<AppData> {
   const resp = await client.get<AppResponse>(
     `/api/admin/applications/${encodeURIComponent(idOrSlug)}`,
   );

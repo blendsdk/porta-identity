@@ -1,22 +1,39 @@
 /**
  * CLI user claim subcommands.
  *
- * Manages custom claim values for users — set, get, and delete.
+ * Manages custom claim values for users via the Admin API — set, get, delete.
+ * All operations require an `--app` flag to scope claims to an application.
  *
  * Usage:
- *   porta user claims set <user-id> --claim-id <claim-def-id> --value "Engineering"
- *   porta user claims get <user-id> [--app <app-id>]
- *   porta user claims delete <user-id> --claim-id <claim-def-id>
+ *   porta user claims set <user-id> --app <app-id-or-slug> --claim-id <def-id> --value "Engineering"
+ *   porta user claims get <user-id> --app <app-id-or-slug>
+ *   porta user claims delete <user-id> --app <app-id-or-slug> --claim-id <def-id>
  *
  * @module cli/commands/user-claim
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, success, warn, outputResult, truncateId, printTotal } from '../output.js';
 import { confirm } from '../prompt.js';
+import { resolveApp } from './app.js';
+
+// ---------------------------------------------------------------------------
+// API response types
+// ---------------------------------------------------------------------------
+
+/** Claim value data for a user */
+interface UserClaimValue {
+  claimId: string;
+  claimName: string;
+  value: unknown;
+}
+
+/** Array response for claim values */
+interface UserClaimListResponse { data: UserClaimValue[]; }
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -24,16 +41,19 @@ import { confirm } from '../prompt.js';
 
 interface ClaimSetArgs extends GlobalOptions {
   'user-id': string;
+  app: string;
   'claim-id': string;
   value: string;
 }
 
 interface ClaimGetArgs extends GlobalOptions {
   'user-id': string;
+  app: string;
 }
 
 interface ClaimDeleteArgs extends GlobalOptions {
   'user-id': string;
+  app: string;
   'claim-id': string;
 }
 
@@ -54,14 +74,19 @@ export const userClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('app', { type: 'string', demandOption: true, description: 'Application UUID or slug' })
             .option('claim-id', { type: 'string', demandOption: true, description: 'Claim definition UUID' })
             .option('value', { type: 'string', demandOption: true, description: 'Claim value' }),
         async (argv) => {
           const args = argv as unknown as ClaimSetArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { setValue } = await import('../../custom-claims/index.js');
-              await setValue(args['user-id'], args['claim-id'], args.value);
+            await withHttpClient(args, async (client) => {
+              const app = await resolveApp(client, args.app);
+              // PUT /api/admin/applications/:appId/claims/:claimId/users/:userId
+              await client.put(
+                `/api/admin/applications/${app.id}/claims/${args['claim-id']}/users/${args['user-id']}`,
+                { value: args.value },
+              );
               success(`Claim value set for user ${truncateId(args['user-id'])}`);
             });
           }, args.verbose);
@@ -74,13 +99,18 @@ export const userClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Get custom claim values for a user',
         (y) =>
           y
-            .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' }),
+            .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('app', { type: 'string', demandOption: true, description: 'Application UUID or slug' }),
         async (argv) => {
           const args = argv as unknown as ClaimGetArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getValuesForUser } = await import('../../custom-claims/index.js');
-              const values = await getValuesForUser(args['user-id']);
+            await withHttpClient(args, async (client) => {
+              const app = await resolveApp(client, args.app);
+              // GET /api/admin/applications/:appId/claims/users/:userId
+              const resp = await client.get<UserClaimListResponse>(
+                `/api/admin/applications/${app.id}/claims/users/${args['user-id']}`,
+              );
+              const values = resp.data.data;
 
               if (values.length === 0) {
                 warn('No claim values found');
@@ -93,9 +123,9 @@ export const userClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   printTable(
                     ['Claim ID', 'Name', 'Value'],
                     values.map((v) => [
-                      truncateId(v.definition.id),
-                      v.definition.claimName,
-                      String(v.value.value ?? '—'),
+                      truncateId(v.claimId),
+                      v.claimName,
+                      String(v.value ?? '—'),
                     ]),
                   );
                   printTotal('claims', values.length);
@@ -114,6 +144,7 @@ export const userClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('user-id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('app', { type: 'string', demandOption: true, description: 'Application UUID or slug' })
             .option('claim-id', { type: 'string', demandOption: true, description: 'Claim definition UUID' }),
         async (argv) => {
           const args = argv as unknown as ClaimDeleteArgs;
@@ -126,9 +157,12 @@ export const userClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               warn('Operation cancelled');
               return;
             }
-            await withBootstrap(args, async () => {
-              const { deleteValue } = await import('../../custom-claims/index.js');
-              await deleteValue(args['user-id'], args['claim-id']);
+            await withHttpClient(args, async (client) => {
+              const app = await resolveApp(client, args.app);
+              // DELETE /api/admin/applications/:appId/claims/:claimId/users/:userId
+              await client.delete(
+                `/api/admin/applications/${app.id}/claims/${args['claim-id']}/users/${args['user-id']}`,
+              );
               success(`Claim value deleted for user ${truncateId(args['user-id'])}`);
             });
           }, args.verbose);

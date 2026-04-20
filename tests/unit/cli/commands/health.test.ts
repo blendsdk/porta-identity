@@ -42,6 +42,11 @@ vi.mock('../../../../src/lib/redis.js', () => ({
   }),
 }));
 
+// Mock token store — health command reads server URL from stored credentials
+vi.mock('../../../../src/cli/token-store.js', () => ({
+  readCredentials: vi.fn().mockReturnValue(null),
+}));
+
 import { healthCommand } from '../../../../src/cli/commands/health.js';
 import { printTable, success, error as errorFn, outputResult } from '../../../../src/cli/output.js';
 import { getPool } from '../../../../src/lib/database.js';
@@ -55,13 +60,14 @@ declare module '../../../../src/cli/output.js' {
   }
 }
 
-/** Create test argv with defaults */
-function createArgv(overrides: Partial<GlobalOptions> = {}): GlobalOptions {
+/** Create test argv with defaults — uses direct mode to test DB/Redis checks */
+function createArgv(overrides: Partial<GlobalOptions & { direct?: boolean }> = {}): GlobalOptions & { direct: boolean } {
   return {
     json: false,
     verbose: false,
     force: false,
     'dry-run': false,
+    direct: true, // Tests use direct mode to check DB/Redis via withBootstrap
     ...overrides,
   };
 }
