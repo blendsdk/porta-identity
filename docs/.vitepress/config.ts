@@ -1,154 +1,143 @@
-/**
- * VitePress configuration for the Porta documentation website.
- *
- * Uses the withMermaid wrapper from vitepress-plugin-mermaid to enable
- * Mermaid diagram rendering in Markdown content. The site is designed
- * to deploy to GitHub Pages at https://blendsdk.github.io/porta-identity/.
- *
- * @see https://vitepress.dev/reference/site-config
- */
-import { defineConfig } from 'vitepress'
-import { withMermaid } from 'vitepress-plugin-mermaid'
+import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 
+// https://vitepress.dev/reference/site-config
 export default withMermaid(
   defineConfig({
-    // Site metadata
     title: 'Porta',
     description:
       'Multi-tenant OIDC Provider — Authentication, User Management, RBAC & Custom Claims',
+    head: [['link', { rel: 'icon', href: '/logo.svg' }]],
 
-    // Base path for GitHub Pages: https://blendsdk.github.io/porta-identity/
-    // Change to '/' if using a custom domain
-    base: '/porta-identity/',
-
-    // Enable last updated timestamps (git-based)
-    lastUpdated: true,
-
-    // Clean URLs — no .html extension
-    cleanUrls: true,
-
-    // Head tags (favicon, social cards)
-    head: [
-      ['link', { rel: 'icon', type: 'image/svg+xml', href: '/porta-identity/logo.svg' }],
-      ['meta', { property: 'og:type', content: 'website' }],
-      ['meta', { property: 'og:title', content: 'Porta — Multi-tenant OIDC Provider' }],
-      [
-        'meta',
-        {
-          property: 'og:description',
-          content: 'Authentication, User Management, RBAC & Custom Claims',
-        },
-      ],
-    ],
+    // Ignore dead-link warnings for anchor-only links used in sidebars
+    ignoreDeadLinks: 'localhostLinks',
 
     themeConfig: {
-      // Logo in the navigation bar
       logo: '/logo.svg',
 
-      // Top navigation bar
+      // ── Top navigation bar ──────────────────────────────────
       nav: [
         { text: 'Guide', link: '/guide/quickstart' },
-        { text: 'CLI', link: '/cli/' },
-        { text: 'API', link: '/api/' },
-        { text: 'Integration', link: '/integration/' },
         { text: 'Concepts', link: '/concepts/multi-tenancy' },
+        { text: 'Admin API', link: '/api/overview' },
+        { text: 'CLI', link: '/cli/overview' },
+        { text: 'Database', link: '/database/schema' },
       ],
 
-      // Sidebar navigation (per section)
+      // ── Sidebar (multi-sidebar keyed by path prefix) ────────
       sidebar: {
         '/guide/': [
           {
             text: 'Getting Started',
             items: [
-              { text: 'Quickstart', link: '/guide/quickstart' },
+              { text: 'Quick Start', link: '/guide/quickstart' },
+              { text: 'Environment Variables', link: '/guide/environment' },
               { text: 'Architecture', link: '/guide/architecture' },
             ],
           },
           {
-            text: 'Configuration',
+            text: 'Operations',
             items: [
-              { text: 'Environment Variables', link: '/guide/environment' },
-              { text: 'Production Deployment', link: '/guide/deployment' },
-            ],
-          },
-          {
-            text: 'Help',
-            items: [{ text: 'FAQ', link: '/guide/faq' }],
-          },
-        ],
-        '/cli/': [
-          {
-            text: 'CLI Reference',
-            items: [
-              { text: 'Overview', link: '/cli/' },
-              { text: 'Bootstrap Commands', link: '/cli/bootstrap' },
-              { text: 'Admin Commands', link: '/cli/admin' },
+              { text: 'Deployment', link: '/guide/deployment' },
+              { text: 'FAQ', link: '/guide/faq' },
             ],
           },
         ],
+
+        '/concepts/': [
+          {
+            text: 'Core Concepts',
+            items: [
+              { text: 'Multi-Tenancy', link: '/concepts/multi-tenancy' },
+              { text: 'OIDC & Authentication', link: '/concepts/oidc' },
+              { text: 'RBAC & Permissions', link: '/concepts/rbac' },
+              { text: 'Custom Claims', link: '/concepts/custom-claims' },
+              { text: 'Two-Factor Auth', link: '/concepts/two-factor' },
+              { text: 'Login Methods', link: '/concepts/login-methods' },
+            ],
+          },
+        ],
+
         '/api/': [
           {
-            text: 'Admin API',
+            text: 'Admin API Reference',
             items: [
-              { text: 'Overview', link: '/api/' },
+              { text: 'Overview', link: '/api/overview' },
+              { text: 'Authentication', link: '/api/authentication' },
+            ],
+          },
+          {
+            text: 'Endpoints',
+            items: [
               { text: 'Organizations', link: '/api/organizations' },
               { text: 'Applications', link: '/api/applications' },
               { text: 'Clients', link: '/api/clients' },
               { text: 'Users', link: '/api/users' },
-              { text: 'System', link: '/api/system' },
+              { text: 'Roles & Permissions', link: '/api/rbac' },
+              { text: 'Custom Claims', link: '/api/custom-claims' },
+              { text: 'Configuration', link: '/api/config' },
+              { text: 'Signing Keys', link: '/api/keys' },
+              { text: 'Audit Log', link: '/api/audit' },
             ],
           },
         ],
-        '/integration/': [
+
+        '/cli/': [
           {
-            text: 'Integration Guides',
+            text: 'CLI Reference',
             items: [
-              { text: 'Overview', link: '/integration/' },
-              { text: 'SPA Applications', link: '/integration/spa' },
-              { text: 'Server-Side Apps', link: '/integration/server-side' },
-              { text: 'Mobile Apps', link: '/integration/mobile' },
-              { text: 'Claims & RBAC', link: '/integration/claims-rbac' },
+              { text: 'Overview', link: '/cli/overview' },
+              { text: 'Bootstrap & Auth', link: '/cli/bootstrap' },
+              { text: 'Organizations', link: '/cli/organizations' },
+              { text: 'Applications', link: '/cli/applications' },
+              { text: 'Clients', link: '/cli/clients' },
+              { text: 'Users', link: '/cli/users' },
+              { text: 'Infrastructure', link: '/cli/infrastructure' },
             ],
           },
         ],
-        '/concepts/': [
+
+        '/database/': [
           {
-            text: 'Concepts',
+            text: 'Database',
             items: [
-              { text: 'Multi-Tenancy', link: '/concepts/multi-tenancy' },
-              { text: 'OIDC Primer', link: '/concepts/oidc' },
-              { text: 'RBAC Model', link: '/concepts/rbac' },
-              { text: 'Two-Factor Auth', link: '/concepts/two-factor' },
-              { text: 'Security Model', link: '/concepts/security' },
+              { text: 'Schema Overview', link: '/database/schema' },
+              { text: 'Migrations', link: '/database/migrations' },
             ],
           },
         ],
       },
 
-      // Social links
-      socialLinks: [{ icon: 'github', link: 'https://github.com/blendsdk/porta-identity' }],
+      // ── Social links ────────────────────────────────────────
+      socialLinks: [
+        {
+          icon: 'github',
+          link: 'https://github.com/blendsdk/porta-identity',
+        },
+      ],
 
-      // Built-in local search (MiniSearch)
+      // ── Search ──────────────────────────────────────────────
       search: {
         provider: 'local',
       },
 
-      // "Edit this page" links
+      // ── Footer ──────────────────────────────────────────────
+      footer: {
+        message: 'Released under the MIT License.',
+        copyright: 'Copyright © 2024-present Porta Contributors',
+      },
+
+      // ── Edit link ───────────────────────────────────────────
       editLink: {
-        pattern: 'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
+        pattern:
+          'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
         text: 'Edit this page on GitHub',
       },
-
-      // Footer
-      footer: {
-        message: 'Built with VitePress',
-        copyright: '© BlendSDK',
-      },
-
-      // Last updated display
-      lastUpdated: {
-        text: 'Last updated',
-      },
     },
-  })
-)
+
+    // ── Mermaid plugin options ─────────────────────────────────
+    mermaid: {
+      theme: 'neutral',
+    },
+  }),
+);
