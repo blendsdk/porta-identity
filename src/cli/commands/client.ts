@@ -2,10 +2,11 @@
  * CLI client management commands.
  *
  * Provides CRUD and lifecycle management for OIDC clients, plus
- * nested secret subcommands. Delegates to the client service module.
+ * nested secret subcommands. All operations use authenticated HTTP
+ * requests against the Admin API.
  *
  * Usage:
- *   porta client create --app <app-id> --type confidential --redirect-uris "https://..." [--name "My Client"]
+ *   porta client create --org <org-id> --app <app-id> --type confidential --redirect-uris "https://..." [--name "My Client"]
  *   porta client list --app <app-id> [--status active|inactive|revoked] [--page 1] [--page-size 20]
  *   porta client show <client-id>
  *   porta client update <client-id> --name "New Name" [--redirect-uris "..."]
@@ -17,8 +18,9 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import type { Client } from '../../clients/types.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import {
   printTable,
@@ -32,6 +34,104 @@ import {
 import { confirm } from '../prompt.js';
 import { parseLoginMethodsFlag } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
+
+// ---------------------------------------------------------------------------
+// API response types (JSON-serialized shapes from the Admin API)
+// ---------------------------------------------------------------------------
+
+/** Client data as returned by the Admin API (dates are ISO strings) */
+interface ClientData {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientType: string;
+  applicationType: string;
+  organizationId: string;
+  applicationId: string;
+  status: string;
+  redirectUris: string[];
+  grantTypes: string[];
+  scope: string;
+  requirePkce: boolean;
+  loginMethods: string[] | null;
+  effectiveLoginMethods?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Secret data included in create response */
+interface SecretData {
+  id: string;
+  clientId: string;
+  label: string | null;
+  plaintext: string;
+  sha256Prefix: string;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+/** Wrapped single-entity response: { data: ClientData } */
+interface ClientResponse {
+  data: ClientData;
+}
+
+/** Create response with client + optional secret: { data: { client, secret } } */
+interface ClientCreateResponse {
+  data: {
+    client: ClientData;
+    secret: SecretData | null;
+  };
+  warning?: string;
+}
+
+/** Paginated list response: { data: ClientData[], total, page, pageSize } */
+interface ClientListResponse {
+  data: ClientData[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** UUID format regex — used to distinguish UUIDs from slugs */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Check whether a value looks like a UUID */
+function isUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
+/**
+ * Resolve an application identifier to its UUID via the Admin API.
+ * If already a UUID, returns it directly; otherwise looks up by slug.
+ *
+ * @param client - Authenticated HTTP client
+ * @param idOrSlug - Application UUID or slug
+ * @returns The application UUID
+ * @throws HttpNotFoundError if the application doesn't exist
+ */
+async function resolveAppId(client: AdminHttpClient, idOrSlug: string): Promise<string> {
+  if (isUuid(idOrSlug)) return idOrSlug;
+  // The GET /api/admin/applications/:idOrSlug endpoint accepts both UUID and slug
+  const resp = await client.get<{ data: { id: string } }>(
+    `/api/admin/applications/${encodeURIComponent(idOrSlug)}`,
+  );
+  return resp.data.data.id;
+}
+
+/**
+ * Parse comma-separated redirect URIs into an array.
+ * Supports both comma-separated and space-separated values.
+ */
+function parseUris(uris: string): string[] {
+  return uris
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean);
+}
 
 // ---------------------------------------------------------------------------
 // Argument type extensions
@@ -62,43 +162,6 @@ interface ClientUpdateArgs extends ClientIdArgs {
   name?: string;
   'redirect-uris'?: string;
   'login-methods'?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** UUID format regex — used to distinguish UUIDs from slugs */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Check whether a value looks like a UUID */
-function isUuid(value: string): boolean {
-  return UUID_REGEX.test(value);
-}
-
-/**
- * Resolve an application identifier to its UUID.
- * If already a UUID, returns it directly; otherwise looks up by slug.
- */
-async function resolveAppId(idOrSlug: string): Promise<string> {
-  if (isUuid(idOrSlug)) return idOrSlug;
-  const { getApplicationBySlug, ApplicationNotFoundError } = await import(
-    '../../applications/index.js'
-  );
-  const app = await getApplicationBySlug(idOrSlug);
-  if (!app) throw new ApplicationNotFoundError(idOrSlug);
-  return app.id;
-}
-
-/**
- * Parse comma-separated redirect URIs into an array.
- * Supports both comma-separated and space-separated values.
- */
-function parseUris(uris: string): string[] {
-  return uris
-    .split(',')
-    .map((u) => u.trim())
-    .filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +219,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ClientCreateArgs;
           await withErrorHandling(async () => {
-            // Parse the tri-state flag before bootstrap — invalid input fails fast.
+            // Parse the tri-state flag before HTTP call — invalid input fails fast.
             // `allowInherit: true` permits the `inherit` sentinel which maps to `null`
             // (meaning "inherit org default"); omitting the flag maps to `undefined`
             // (leave the DB column at its NULL default → inherit).
@@ -165,11 +228,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               /* allowInherit */ true,
             );
 
-            await withBootstrap(args, async () => {
-              const { createClient } = await import('../../clients/index.js');
-              const appId = await resolveAppId(args.app);
+            await withHttpClient(args, async (client) => {
+              // Resolve app slug → UUID for the API payload
+              const appId = await resolveAppId(client, args.app);
 
-              const result = await createClient({
+              const resp = await client.post<ClientCreateResponse>('/api/admin/clients', {
                 organizationId: args.org,
                 applicationId: appId,
                 clientName: args.name ?? 'Unnamed Client',
@@ -181,6 +244,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 // `LoginMethod[]` → explicit override.
                 ...(loginMethods !== undefined && { loginMethods }),
               });
+              const result = resp.data.data;
 
               outputResult(
                 args.json,
@@ -210,7 +274,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     console.log('');
                   }
                 },
-                result,
+                resp.data,
               );
             });
           }, args.verbose);
@@ -246,15 +310,22 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ClientListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listClientsByApplication } = await import('../../clients/index.js');
-              const appId = await resolveAppId(args.app);
+            await withHttpClient(args, async (client) => {
+              // Resolve app slug → UUID for the query param
+              const appId = await resolveAppId(client, args.app);
 
-              const result = await listClientsByApplication(appId, {
-                page: args.page,
-                pageSize: args['page-size'],
-                status: args.status as 'active' | 'inactive' | 'revoked' | undefined,
-              });
+              const params: Record<string, string> = {
+                applicationId: appId,
+                page: String(args.page),
+                pageSize: String(args['page-size']),
+              };
+              if (args.status) params.status = args.status;
+
+              const resp = await client.get<ClientListResponse>(
+                '/api/admin/clients',
+                params,
+              );
+              const result = resp.data;
 
               if (result.data.length === 0) {
                 warn('No clients found');
@@ -297,22 +368,13 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ClientIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { getClientById, ClientNotFoundError, resolveLoginMethods } = await import(
-                '../../clients/index.js'
+            await withHttpClient(args, async (client) => {
+              // The GET /api/admin/clients/:id endpoint returns the client with
+              // effectiveLoginMethods already computed server-side
+              const resp = await client.get<ClientResponse>(
+                `/api/admin/clients/${args['client-id']}`,
               );
-              const { getOrganizationById } = await import('../../organizations/index.js');
-              const client: Client | null = await getClientById(args['client-id']);
-              if (!client) throw new ClientNotFoundError(args['client-id']);
-
-              // Resolve effective methods by combining the client override (null or array)
-              // with the owning org's default. Falls back to the raw override or the
-              // hard-coded union when the org can't be loaded (defensive — shouldn't
-              // happen in practice since FK prevents orphan clients).
-              const org = await getOrganizationById(client.organizationId);
-              const effectiveLoginMethods = org
-                ? resolveLoginMethods(org, client)
-                : (client.loginMethods ?? ['password', 'magic_link']);
+              const c = resp.data.data;
 
               outputResult(
                 args.json,
@@ -320,29 +382,29 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   printTable(
                     ['Field', 'Value'],
                     [
-                      ['ID', client.id],
-                      ['Client ID', client.clientId],
-                      ['Name', client.clientName],
-                      ['Type', client.clientType],
-                      ['App Type', client.applicationType],
-                      ['Status', client.status],
-                      ['Redirect URIs', client.redirectUris.join(', ') || '—'],
-                      ['Grant Types', client.grantTypes.join(', ')],
-                      ['Scope', client.scope],
-                      ['PKCE Required', String(client.requirePkce)],
+                      ['ID', c.id],
+                      ['Client ID', c.clientId],
+                      ['Name', c.clientName],
+                      ['Type', c.clientType],
+                      ['App Type', c.applicationType],
+                      ['Status', c.status],
+                      ['Redirect URIs', c.redirectUris.join(', ') || '—'],
+                      ['Grant Types', c.grantTypes.join(', ')],
+                      ['Scope', c.scope],
+                      ['PKCE Required', String(c.requirePkce)],
                       [
                         'Login Methods (client)',
-                        client.loginMethods === null
+                        c.loginMethods === null
                           ? 'inherit'
-                          : client.loginMethods.join(', '),
+                          : c.loginMethods.join(', '),
                       ],
-                      ['Login Methods (effective)', effectiveLoginMethods.join(', ')],
-                      ['Created', formatDate(client.createdAt)],
-                      ['Updated', formatDate(client.updatedAt)],
+                      ['Login Methods (effective)', (c.effectiveLoginMethods ?? []).join(', ')],
+                      ['Created', formatDate(c.createdAt)],
+                      ['Updated', formatDate(c.updatedAt)],
                     ],
                   );
                 },
-                { ...client, effectiveLoginMethods },
+                c,
               );
             });
           }, args.verbose);
@@ -381,14 +443,17 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               /* allowInherit */ true,
             );
 
-            await withBootstrap(args, async () => {
-              const { updateClient } = await import('../../clients/index.js');
-              const updated = await updateClient(args['client-id'], {
-                clientName: args.name,
-                redirectUris: args['redirect-uris'] ? parseUris(args['redirect-uris']) : undefined,
-                // Three-state: omitted → leave alone; null → reset to inherit; array → override.
-                ...(loginMethods !== undefined && { loginMethods }),
-              });
+            await withHttpClient(args, async (client) => {
+              const resp = await client.put<ClientResponse>(
+                `/api/admin/clients/${args['client-id']}`,
+                {
+                  clientName: args.name,
+                  redirectUris: args['redirect-uris'] ? parseUris(args['redirect-uris']) : undefined,
+                  // Three-state: omitted → leave alone; null → reset to inherit; array → override.
+                  ...(loginMethods !== undefined && { loginMethods }),
+                },
+              );
+              const updated = resp.data.data;
 
               outputResult(
                 args.json,
@@ -415,34 +480,29 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as ClientIdArgs;
           await withErrorHandling(async () => {
-            // Resolve client name for confirmation message
-            let clientName = args['client-id'];
-            let clientDbId = args['client-id'];
-            await withBootstrap(args, async () => {
-              const { getClientById, ClientNotFoundError } = await import('../../clients/index.js');
-              const client: Client | null = await getClientById(args['client-id']);
-              if (!client) throw new ClientNotFoundError(args['client-id']);
-              clientName = `${client.clientName} (${client.clientId})`;
-              clientDbId = client.id;
-            });
+            await withHttpClient(args, async (client) => {
+              // Fetch client details for confirmation message
+              const resp = await client.get<ClientResponse>(
+                `/api/admin/clients/${args['client-id']}`,
+              );
+              const c = resp.data.data;
+              const clientName = `${c.clientName} (${c.clientId})`;
 
-            if (args['dry-run']) {
-              warn(`[DRY RUN] Would revoke client "${clientName}"`);
-              return;
-            }
+              if (args['dry-run']) {
+                warn(`[DRY RUN] Would revoke client "${clientName}"`);
+                return;
+              }
 
-            const confirmed = await confirm(
-              `Revoke client "${clientName}"? This is permanent and cannot be undone.`,
-              args.force,
-            );
-            if (!confirmed) {
-              warn('Operation cancelled');
-              return;
-            }
+              const confirmed = await confirm(
+                `Revoke client "${clientName}"? This is permanent and cannot be undone.`,
+                args.force,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
 
-            await withBootstrap(args, async () => {
-              const { revokeClient } = await import('../../clients/index.js');
-              await revokeClient(clientDbId);
+              await client.post(`/api/admin/clients/${c.id}/revoke`);
               success(`Client revoked: ${clientName}`);
             });
           }, args.verbose);
@@ -450,6 +510,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       )
 
       // ── nested subcommand groups ────────────────────────────────────
+      // client-secret is migrated to HTTP in Phase 4.3
       .command(clientSecretCommand)
       .demandCommand(1, 'Specify a client subcommand: create, list, show, update, revoke, secret');
   },

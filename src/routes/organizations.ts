@@ -185,7 +185,12 @@ export function createOrganizationRouter(): Router {
   // GET /:id — Get organization by ID
   // -------------------------------------------------------------------------
   router.get('/:id', async (ctx) => {
-    const org = await organizationService.getOrganizationById(ctx.params.id);
+    const param = ctx.params.id;
+    // Support both UUID and slug lookups — CLI and API consumers may use either
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
+    const org = isUuid
+      ? await organizationService.getOrganizationById(param)
+      : await organizationService.getOrganizationBySlug(param);
     if (!org) {
       ctx.throw(404, 'Organization not found');
     }

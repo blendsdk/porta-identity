@@ -2,7 +2,7 @@
  * CLI organization management commands.
  *
  * Provides CRUD and lifecycle management for organizations (tenants).
- * Delegates to the organization service module for all business logic.
+ * All operations use authenticated HTTP requests against the Admin API.
  *
  * Usage:
  *   porta org create --name "Acme Corp" [--slug acme-corp] [--locale en]
@@ -19,10 +19,10 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import type { Organization } from '../../organizations/types.js';
+import type { AdminHttpClient } from '../http-client.js';
 import type { LoginMethod } from '../../clients/types.js';
 
-import { withBootstrap } from '../bootstrap.js';
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import {
   printTable,
@@ -36,28 +36,61 @@ import {
 import { confirm } from '../prompt.js';
 import { parseLoginMethodsFlag } from '../parsers.js';
 
-/** UUID format regex — used to distinguish UUIDs from slugs */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// ---------------------------------------------------------------------------
+// API response types (JSON-serialized shapes from the Admin API)
+// ---------------------------------------------------------------------------
 
-/** Check whether a value looks like a UUID */
-function isUuid(value: string): boolean {
-  return UUID_REGEX.test(value);
+/** Organization data as returned by the Admin API (dates are ISO strings) */
+interface OrgData {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  isSuperAdmin: boolean;
+  defaultLocale: string;
+  defaultLoginMethods: string[];
+  brandingLogoUrl: string | null;
+  brandingFaviconUrl: string | null;
+  brandingPrimaryColor: string | null;
+  brandingCompanyName: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
+/** Wrapped single-entity response: { data: OrgData } */
+interface OrgResponse {
+  data: OrgData;
+}
+
+/** Paginated list response: { data: OrgData[], total, page, pageSize } */
+interface OrgListResponse {
+  data: OrgData[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Resolve an organization by ID or slug.
- * If the value matches UUID format, fetches by ID; otherwise by slug.
+ * Resolve an organization by ID or slug via the Admin API.
  *
+ * The GET /api/admin/organizations/:idOrSlug endpoint supports both
+ * UUID and slug lookups. If the org doesn't exist, the API returns
+ * 404 which propagates as HttpNotFoundError.
+ *
+ * @param client - Authenticated HTTP client
  * @param idOrSlug - UUID or slug string
- * @returns Organization or null if not found
+ * @returns Organization data from the API
+ * @throws HttpNotFoundError if the organization doesn't exist
  */
-async function resolveOrg(idOrSlug: string): Promise<Organization | null> {
-  const { getOrganizationById, getOrganizationBySlug } = await import(
-    '../../organizations/index.js'
+async function resolveOrg(client: AdminHttpClient, idOrSlug: string): Promise<OrgData> {
+  const resp = await client.get<OrgResponse>(
+    `/api/admin/organizations/${encodeURIComponent(idOrSlug)}`,
   );
-  return isUuid(idOrSlug)
-    ? getOrganizationById(idOrSlug)
-    : getOrganizationBySlug(idOrSlug);
+  return resp.data.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,8 +164,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgCreateArgs;
           await withErrorHandling(async () => {
-            // Parse --login-methods before bootstrap so invalid input fails fast
-            // without opening DB + Redis connections.
+            // Parse --login-methods before HTTP call so invalid input fails fast.
             // The cast is safe: `allowInherit: false` guarantees the parser
             // never returns `null` (it throws on the "inherit" sentinel instead).
             const defaultLoginMethods = parseLoginMethodsFlag(
@@ -140,10 +172,8 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               /* allowInherit */ false,
             ) as LoginMethod[] | undefined;
 
-
-            await withBootstrap(args, async () => {
-              const { createOrganization } = await import('../../organizations/index.js');
-              const org = await createOrganization({
+            await withHttpClient(args, async (client) => {
+              const resp = await client.post<OrgResponse>('/api/admin/organizations', {
                 name: args.name,
                 slug: args.slug,
                 defaultLocale: args.locale,
@@ -151,6 +181,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 // the DB DEFAULT clause fires and stamps ['password', 'magic_link'].
                 ...(defaultLoginMethods !== undefined && { defaultLoginMethods }),
               });
+              const org = resp.data.data;
 
               outputResult(
                 args.json,
@@ -200,13 +231,19 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listOrganizations } = await import('../../organizations/index.js');
-              const result = await listOrganizations({
-                page: args.page,
-                pageSize: args['page-size'],
-                status: args.status as 'active' | 'suspended' | 'archived' | undefined,
-              });
+            await withHttpClient(args, async (client) => {
+              // Build query params — all values must be strings for URLSearchParams
+              const params: Record<string, string> = {
+                page: String(args.page),
+                pageSize: String(args['page-size']),
+              };
+              if (args.status) params.status = args.status;
+
+              const resp = await client.get<OrgListResponse>(
+                '/api/admin/organizations',
+                params,
+              );
+              const result = resp.data;
 
               if (result.data.length === 0) {
                 warn('No organizations found');
@@ -248,10 +285,8 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { OrganizationNotFoundError } = await import('../../organizations/index.js');
-              const org = await resolveOrg(args['id-or-slug']);
-              if (!org) throw new OrganizationNotFoundError(args['id-or-slug']);
+            await withHttpClient(args, async (client) => {
+              const org = await resolveOrg(client, args['id-or-slug']);
 
               outputResult(
                 args.json,
@@ -314,22 +349,20 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               /* allowInherit */ false,
             ) as LoginMethod[] | undefined;
 
-            await withBootstrap(args, async () => {
-              const { updateOrganization, OrganizationNotFoundError } = await import(
+            await withHttpClient(args, async (client) => {
+              // Resolve ID — update needs UUID for the PUT endpoint
+              const org = await resolveOrg(client, args['id-or-slug']);
 
-                '../../organizations/index.js'
+              const resp = await client.put<OrgResponse>(
+                `/api/admin/organizations/${org.id}`,
+                {
+                  name: args.name,
+                  defaultLocale: args['default-locale'],
+                  // Only forward when the flag was provided — keeps the "unchanged" path pure
+                  ...(defaultLoginMethods !== undefined && { defaultLoginMethods }),
+                },
               );
-
-              // Resolve ID — update needs UUID
-              const org = await resolveOrg(args['id-or-slug']);
-              if (!org) throw new OrganizationNotFoundError(args['id-or-slug']);
-
-              const updated = await updateOrganization(org.id, {
-                name: args.name,
-                defaultLocale: args['default-locale'],
-                // Only forward when the flag was provided — keeps the "unchanged" path pure
-                ...(defaultLoginMethods !== undefined && { defaultLoginMethods }),
-              });
+              const updated = resp.data.data;
 
               outputResult(
                 args.json,
@@ -356,26 +389,25 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgIdArgs;
           await withErrorHandling(async () => {
-            const org = await resolveOrgForLifecycle(args);
-            if (!org) return;
+            await withHttpClient(args, async (client) => {
+              // Resolve org first to get name for confirmation prompt
+              const org = await resolveOrg(client, args['id-or-slug']);
 
-            if (args['dry-run']) {
-              warn(`[DRY RUN] Would suspend organization "${org.name}" (${org.slug})`);
-              return;
-            }
+              if (args['dry-run']) {
+                warn(`[DRY RUN] Would suspend organization "${org.name}" (${org.slug})`);
+                return;
+              }
 
-            const confirmed = await confirm(
-              `Suspend organization "${org.name}" (${org.slug})?`,
-              args.force,
-            );
-            if (!confirmed) {
-              warn('Operation cancelled');
-              return;
-            }
+              const confirmed = await confirm(
+                `Suspend organization "${org.name}" (${org.slug})?`,
+                args.force,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
 
-            await withBootstrap(args, async () => {
-              const { suspendOrganization } = await import('../../organizations/index.js');
-              await suspendOrganization(org.id);
+              await client.post(`/api/admin/organizations/${org.id}/suspend`);
               success(`Organization suspended: ${org.name} (${org.slug})`);
             });
           }, args.verbose);
@@ -395,15 +427,10 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { activateOrganization, OrganizationNotFoundError } = await import(
-                '../../organizations/index.js'
-              );
+            await withHttpClient(args, async (client) => {
+              const org = await resolveOrg(client, args['id-or-slug']);
 
-              const org = await resolveOrg(args['id-or-slug']);
-              if (!org) throw new OrganizationNotFoundError(args['id-or-slug']);
-
-              await activateOrganization(org.id);
+              await client.post(`/api/admin/organizations/${org.id}/activate`);
               success(`Organization activated: ${org.name} (${org.slug})`);
             });
           }, args.verbose);
@@ -423,26 +450,24 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgIdArgs;
           await withErrorHandling(async () => {
-            const org = await resolveOrgForLifecycle(args);
-            if (!org) return;
+            await withHttpClient(args, async (client) => {
+              const org = await resolveOrg(client, args['id-or-slug']);
 
-            if (args['dry-run']) {
-              warn(`[DRY RUN] Would archive organization "${org.name}" (${org.slug})`);
-              return;
-            }
+              if (args['dry-run']) {
+                warn(`[DRY RUN] Would archive organization "${org.name}" (${org.slug})`);
+                return;
+              }
 
-            const confirmed = await confirm(
-              `Archive organization "${org.name}" (${org.slug})? This cannot be easily undone.`,
-              args.force,
-            );
-            if (!confirmed) {
-              warn('Operation cancelled');
-              return;
-            }
+              const confirmed = await confirm(
+                `Archive organization "${org.name}" (${org.slug})? This cannot be easily undone.`,
+                args.force,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
 
-            await withBootstrap(args, async () => {
-              const { archiveOrganization } = await import('../../organizations/index.js');
-              await archiveOrganization(org.id);
+              await client.post(`/api/admin/organizations/${org.id}/archive`);
               success(`Organization archived: ${org.name} (${org.slug})`);
             });
           }, args.verbose);
@@ -479,20 +504,19 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as OrgBrandingArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { updateOrganizationBranding, OrganizationNotFoundError } = await import(
-                '../../organizations/index.js'
+            await withHttpClient(args, async (client) => {
+              const org = await resolveOrg(client, args['id-or-slug']);
+
+              const resp = await client.put<OrgResponse>(
+                `/api/admin/organizations/${org.id}/branding`,
+                {
+                  logoUrl: args['logo-url'],
+                  faviconUrl: args['favicon-url'],
+                  primaryColor: args['primary-color'],
+                  companyName: args['company-name'],
+                },
               );
-
-              const org = await resolveOrg(args['id-or-slug']);
-              if (!org) throw new OrganizationNotFoundError(args['id-or-slug']);
-
-              const updated = await updateOrganizationBranding(org.id, {
-                logoUrl: args['logo-url'],
-                faviconUrl: args['favicon-url'],
-                primaryColor: args['primary-color'],
-                companyName: args['company-name'],
-              });
+              const updated = resp.data.data;
 
               outputResult(
                 args.json,
@@ -511,25 +535,3 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     // No-op — subcommands handle execution
   },
 };
-
-// ---------------------------------------------------------------------------
-// Helper: resolve org for lifecycle operations that need pre-bootstrap resolve
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve an org and bootstrap for destructive lifecycle commands.
- * Uses withBootstrap to connect, resolve the org, then returns it.
- * The caller handles confirmation and the actual operation in a second bootstrap call.
- *
- * This two-phase approach allows dry-run and confirmation checks between
- * resolving the entity and performing the operation.
- */
-async function resolveOrgForLifecycle(args: OrgIdArgs): Promise<Organization | null> {
-  let org: Organization | null = null;
-  await withBootstrap(args, async () => {
-    const { OrganizationNotFoundError } = await import('../../organizations/index.js');
-    org = await resolveOrg(args['id-or-slug']);
-    if (!org) throw new OrganizationNotFoundError(args['id-or-slug']);
-  });
-  return org;
-}

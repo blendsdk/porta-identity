@@ -178,7 +178,7 @@ describe('application routes', () => {
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'GET', '/api/admin/applications/:id');
-      const ctx = createMockCtx({ params: { id: 'app-uuid-1' } });
+      const ctx = createMockCtx({ params: { id: '00000000-0000-0000-0000-000000000001' } });
 
       await handler(ctx as never, vi.fn());
 

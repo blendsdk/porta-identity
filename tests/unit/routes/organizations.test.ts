@@ -254,7 +254,7 @@ describe('organization routes', () => {
         (l) => l.methods.includes('GET') && l.path === '/api/admin/organizations/:id',
       );
 
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
+      const ctx = createMockCtx({ params: { id: '00000000-0000-0000-0000-000000000001' } });
       const next = vi.fn();
 
       await layer!.stack[layer!.stack.length - 1](ctx as never, next);

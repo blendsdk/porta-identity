@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-20 13:10
-> **Progress**: 9/42 tasks (21%)
+> **Last Updated**: 2026-04-20 14:19
+> **Progress**: 29/42 tasks (69%)
 
 ## Overview
 
@@ -147,13 +147,14 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 | 3.1.5 | Register login, logout, whoami in CLI index | `src/cli/index.ts` |
 
 **Deliverables**:
-- [ ] `porta login` opens browser and completes OIDC flow
-- [ ] Tokens stored in `~/.porta/credentials.json` with 0600 perms
-- [ ] `porta logout` clears stored tokens
-- [ ] `porta whoami` displays identity
-- [ ] All verification passing
+- [x] `porta login` opens browser and completes OIDC flow
+- [x] Tokens stored in `~/.porta/credentials.json` with 0600 perms
+- [x] `porta logout` clears stored tokens
+- [x] `porta whoami` displays identity
+- [x] All verification passing
 
 **Verify**: `clear && sleep 3 && yarn verify`
+**Status**: ✅ COMPLETE — committed as `74b0fc2`
 
 ### Session 3.2: CLI Auth Tests
 
@@ -164,16 +165,18 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 
 | # | Task | File |
 |---|------|------|
-| 3.2.1 | Unit tests for token store (10 test cases) | `tests/unit/cli/token-store.test.ts` |
-| 3.2.2 | Unit tests for login/logout/whoami commands | `tests/unit/cli/commands/auth.test.ts` |
-| 3.2.3 | Unit tests for PKCE generation | `tests/unit/cli/pkce.test.ts` |
+| 3.2.1 | Unit tests for token store (20 test cases) | `tests/unit/cli/token-store.test.ts` |
+| 3.2.2 | Unit tests for login/logout/whoami commands (9 test cases) | `tests/unit/cli/commands/auth.test.ts` |
+| 3.2.3 | Unit tests for PKCE generation (9 test cases) | `tests/unit/cli/pkce.test.ts` |
 
 **Deliverables**:
-- [ ] All token store unit tests pass
-- [ ] All auth command unit tests pass
-- [ ] All verification passing
+- [x] All token store unit tests pass (20 tests)
+- [x] All auth command unit tests pass (9 tests)
+- [x] All PKCE unit tests pass (9 tests)
+- [x] All verification passing (127 files, 2252 tests, 0 failures)
 
 **Verify**: `clear && sleep 3 && yarn verify`
+**Status**: ✅ COMPLETE — committed as `74b0fc2`
 
 ---
 
@@ -188,16 +191,17 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 
 | # | Task | File |
 |---|------|------|
-| 4.1.1 | Create HTTP client with auth, refresh, error mapping | `src/cli/http-client.ts` |
-| 4.1.2 | Split bootstrap into `withBootstrap()` (direct-DB) and `withHttpClient()` (HTTP) | `src/cli/bootstrap.ts` |
-| 4.1.3 | Update error handler for HTTP errors | `src/cli/error-handler.ts` |
-| 4.1.4 | Unit tests for HTTP client (11 test cases) | `tests/unit/cli/http-client.test.ts` |
+| 4.1.1 | ✅ Create HTTP client with auth, refresh, error mapping | `src/cli/http-client.ts` |
+| 4.1.2 | ✅ Split bootstrap into `withBootstrap()` (direct-DB) and `withHttpClient()` (HTTP) | `src/cli/bootstrap.ts` |
+| 4.1.3 | ✅ Update error handler for HTTP errors | `src/cli/error-handler.ts` |
+| 4.1.4 | ✅ Unit tests for HTTP client (36 test cases) | `tests/unit/cli/http-client.test.ts` |
 
 **Deliverables**:
-- [ ] HTTP client sends authenticated requests
-- [ ] Auto-refresh works transparently
-- [ ] Error mapping produces CLI-friendly messages
-- [ ] All verification passing
+- [x] HTTP client sends authenticated requests
+- [x] Auto-refresh works transparently
+- [x] Error mapping produces CLI-friendly messages
+- [x] All verification passing (2,288 tests, 128 files)
+- **Commit**: `5802503`
 
 **Verify**: `clear && sleep 3 && yarn verify`
 
@@ -340,20 +344,20 @@ Secure the Admin API with OIDC self-authentication (JWT validation using Porta's
 - [ ] 2.2.4 Integration tests for admin auth middleware (deferred)
 
 ### Phase 3: CLI Authentication
-- [ ] 3.1.1 Create token store module
-- [ ] 3.1.2 Create login command (PKCE + browser + callback)
-- [ ] 3.1.3 Create logout command
-- [ ] 3.1.4 Create whoami command
-- [ ] 3.1.5 Register auth commands in CLI index
-- [ ] 3.2.1 Unit tests for token store
-- [ ] 3.2.2 Unit tests for login/logout/whoami
-- [ ] 3.2.3 Unit tests for PKCE generation
+- [x] 3.1.1 Create token store module ✅ (committed: 74b0fc2)
+- [x] 3.1.2 Create login command (PKCE + browser + callback) ✅ (committed: 74b0fc2)
+- [x] 3.1.3 Create logout command ✅ (committed: 74b0fc2)
+- [x] 3.1.4 Create whoami command ✅ (committed: 74b0fc2)
+- [x] 3.1.5 Register auth commands in CLI index ✅ (committed: 74b0fc2)
+- [x] 3.2.1 Unit tests for token store (20 tests) ✅ (committed: 74b0fc2)
+- [x] 3.2.2 Unit tests for login/logout/whoami (9 tests) ✅ (committed: 74b0fc2)
+- [x] 3.2.3 Unit tests for PKCE generation (9 tests) ✅ (committed: 74b0fc2)
 
 ### Phase 4: CLI HTTP Migration
-- [ ] 4.1.1 Create HTTP client
-- [ ] 4.1.2 Split bootstrap module (direct-DB + HTTP)
-- [ ] 4.1.3 Update error handler for HTTP errors
-- [ ] 4.1.4 Unit tests for HTTP client
+- [x] 4.1.1 Create HTTP client ✅ (committed: 5802503)
+- [x] 4.1.2 Split bootstrap module (direct-DB + HTTP) ✅ (committed: 5802503)
+- [x] 4.1.3 Update error handler for HTTP errors ✅ (committed: 5802503)
+- [x] 4.1.4 Unit tests for HTTP client (36 tests) ✅ (committed: 5802503)
 - [ ] 4.2.1 Migrate org command to HTTP
 - [ ] 4.2.2 Migrate app command to HTTP
 - [ ] 4.2.3 Migrate client command to HTTP

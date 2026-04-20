@@ -2,22 +2,28 @@
  * CLI user management commands.
  *
  * Provides CRUD, status lifecycle, password management, and email
- * verification for users. Nested subcommand groups handle role
- * assignments, custom claims, and 2FA (stub).
+ * verification for users. All operations use authenticated HTTP
+ * requests against the Admin API.
+ *
+ * The user API is org-scoped (`/api/admin/organizations/:orgId/users`),
+ * so --org is required for all subcommands.
+ *
+ * Nested subcommand groups handle role assignments, custom claims,
+ * and 2FA (migrated separately in Phase 4.3).
  *
  * Usage:
  *   porta user create --org <org-id> --email "john@example.com" [--given-name "John"]
  *   porta user invite <id-or-email> --org <org-id>
  *   porta user list --org <org-id> [--status active|...] [--search <query>]
- *   porta user show <id-or-email> [--org <org-id>]
- *   porta user update <id> --given-name "John"
- *   porta user deactivate <id>
- *   porta user reactivate <id>
- *   porta user suspend <id>
- *   porta user lock <id> --reason "Suspicious activity"
- *   porta user unlock <id>
- *   porta user set-password <id>
- *   porta user verify-email <id>
+ *   porta user show <id-or-email> --org <org-id>
+ *   porta user update <id> --org <org-id> --given-name "John"
+ *   porta user deactivate <id> --org <org-id>
+ *   porta user reactivate <id> --org <org-id>
+ *   porta user suspend <id> --org <org-id>
+ *   porta user lock <id> --org <org-id> --reason "Suspicious activity"
+ *   porta user unlock <id> --org <org-id>
+ *   porta user set-password <id> --org <org-id>
+ *   porta user verify-email <id> --org <org-id>
  *   porta user roles <subcommand> ...
  *   porta user claims <subcommand> ...
  *   porta user 2fa <subcommand> ...
@@ -27,8 +33,9 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import type { User } from '../../users/types.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import {
   printTable,
@@ -46,44 +53,36 @@ import { userTwoFaCommand } from './user-2fa.js';
 import * as readline from 'readline';
 
 // ---------------------------------------------------------------------------
-// Argument type extensions
+// API response types (JSON-serialized shapes from the Admin API)
 // ---------------------------------------------------------------------------
 
-interface UserCreateArgs extends GlobalOptions {
-  org: string;
-  email: string;
-  'given-name'?: string;
-  'family-name'?: string;
-  password?: string;
-  'no-notify': boolean;
-  passwordless: boolean;
-}
-
-interface UserListArgs extends GlobalOptions {
-  org: string;
-  status?: string;
-  search?: string;
-  page: number;
-  'page-size': number;
-}
-
-interface UserIdOrEmailArgs extends GlobalOptions {
-  'id-or-email': string;
-  org?: string;
-}
-
-interface UserIdArgs extends GlobalOptions {
+/** User data as returned by the Admin API (dates are ISO strings) */
+interface UserData {
   id: string;
+  organizationId: string;
+  email: string;
+  emailVerified: boolean;
+  givenName: string | null;
+  familyName: string | null;
+  status: string;
+  hasPassword: boolean;
+  loginCount: number;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface UserUpdateArgs extends UserIdArgs {
-  'given-name'?: string;
-  'family-name'?: string;
-  email?: string;
+/** Wrapped single-entity response: { data: UserData } */
+interface UserResponse {
+  data: UserData;
 }
 
-interface UserLockArgs extends UserIdArgs {
-  reason: string;
+/** Paginated list response: { data: UserData[], total, page, pageSize } */
+interface UserListResponse {
+  data: UserData[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,30 +102,58 @@ function isEmail(value: string): boolean {
   return value.includes('@');
 }
 
-/**
- * Resolve a user by ID or email.
- * UUIDs → getUserById, emails → getUserByEmail (requires orgId).
- */
-async function resolveUser(idOrEmail: string, orgId?: string): Promise<User | null> {
-  const { getUserById, getUserByEmail, UserNotFoundError } = await import(
-    '../../users/index.js'
-  );
+/** Base URL path for user endpoints under an organization */
+function userBasePath(orgId: string): string {
+  return `/api/admin/organizations/${orgId}/users`;
+}
 
+/**
+ * Resolve a user by ID or email via the Admin API.
+ *
+ * UUID → GET /api/admin/organizations/:orgId/users/:userId
+ * Email → GET /api/admin/organizations/:orgId/users?search=<email>&pageSize=10
+ *         then find exact email match in results
+ *
+ * @param client - Authenticated HTTP client
+ * @param orgId - Organization UUID (required for all user lookups)
+ * @param idOrEmail - User UUID or email address
+ * @returns User data from the API
+ * @throws HttpNotFoundError if the user doesn't exist
+ */
+async function resolveUser(
+  client: AdminHttpClient,
+  orgId: string,
+  idOrEmail: string,
+): Promise<UserData> {
   if (isUuid(idOrEmail)) {
-    return getUserById(idOrEmail);
+    // Direct lookup by UUID
+    const resp = await client.get<UserResponse>(
+      `${userBasePath(orgId)}/${idOrEmail}`,
+    );
+    return resp.data.data;
   }
 
   if (isEmail(idOrEmail)) {
-    if (!orgId) {
-      throw new UserNotFoundError(
-        'Organization (--org) is required when looking up by email',
-      );
+    // Search by email — list endpoint with search filter
+    const resp = await client.get<UserListResponse>(
+      userBasePath(orgId),
+      { search: idOrEmail, pageSize: '10' },
+    );
+    // Find exact email match (search may do partial matching)
+    const user = resp.data.data.find(
+      (u) => u.email.toLowerCase() === idOrEmail.toLowerCase(),
+    );
+    if (!user) {
+      // Import the HTTP error to throw a consistent 404
+      const { HttpNotFoundError } = await import('../http-client.js');
+      throw new HttpNotFoundError(`User not found: ${idOrEmail}`);
     }
-    return getUserByEmail(orgId, idOrEmail);
+    return user;
   }
 
   // Neither UUID nor email — treat as invalid identifier
-  throw new UserNotFoundError(idOrEmail);
+  const { HttpNotFoundError } = await import('../http-client.js');
+  throw new HttpNotFoundError(`Invalid user identifier: ${idOrEmail}`);
 }
 
 /**
@@ -166,6 +193,48 @@ export async function promptPassword(message: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Argument type extensions
+// ---------------------------------------------------------------------------
+
+interface UserCreateArgs extends GlobalOptions {
+  org: string;
+  email: string;
+  'given-name'?: string;
+  'family-name'?: string;
+  password?: string;
+  'no-notify': boolean;
+  passwordless: boolean;
+}
+
+interface UserListArgs extends GlobalOptions {
+  org: string;
+  status?: string;
+  search?: string;
+  page: number;
+  'page-size': number;
+}
+
+interface UserIdOrEmailArgs extends GlobalOptions {
+  'id-or-email': string;
+  org: string;
+}
+
+interface UserIdArgs extends GlobalOptions {
+  id: string;
+  org: string;
+}
+
+interface UserUpdateArgs extends UserIdArgs {
+  'given-name'?: string;
+  'family-name'?: string;
+  email?: string;
+}
+
+interface UserLockArgs extends UserIdArgs {
+  reason: string;
+}
+
+// ---------------------------------------------------------------------------
 // Command definition
 // ---------------------------------------------------------------------------
 
@@ -191,15 +260,14 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as UserCreateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { createUser } = await import('../../users/index.js');
-              const user = await createUser({
-                organizationId: args.org,
+            await withHttpClient(args, async (client) => {
+              const resp = await client.post<UserResponse>(userBasePath(args.org), {
                 email: args.email,
                 givenName: args['given-name'],
                 familyName: args['family-name'],
                 password: args.passwordless ? undefined : args.password,
               });
+              const user = resp.data.data;
 
               outputResult(
                 args.json,
@@ -234,14 +302,12 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('id-or-email', { type: 'string', demandOption: true, description: 'User UUID or email' })
-            .option('org', { type: 'string', description: 'Organization UUID (required for email lookup)' }),
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdOrEmailArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { UserNotFoundError } = await import('../../users/index.js');
-              const user = await resolveUser(args['id-or-email'], args.org);
-              if (!user) throw new UserNotFoundError(args['id-or-email']);
+            await withHttpClient(args, async (client) => {
+              const user = await resolveUser(client, args.org, args['id-or-email']);
 
               // Invitation email sending stub — auth module integration
               warn('Invitation email sending is not yet wired in CLI mode');
@@ -269,15 +335,19 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as UserListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listUsersByOrganization } = await import('../../users/index.js');
-              const result = await listUsersByOrganization({
-                organizationId: args.org,
-                page: args.page,
-                pageSize: args['page-size'],
-                status: args.status as 'active' | 'inactive' | 'suspended' | 'locked' | undefined,
-                search: args.search,
-              });
+            await withHttpClient(args, async (client) => {
+              const params: Record<string, string> = {
+                page: String(args.page),
+                pageSize: String(args['page-size']),
+              };
+              if (args.status) params.status = args.status;
+              if (args.search) params.search = args.search;
+
+              const resp = await client.get<UserListResponse>(
+                userBasePath(args.org),
+                params,
+              );
+              const result = resp.data;
 
               if (result.data.length === 0) {
                 warn('No users found');
@@ -313,14 +383,12 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('id-or-email', { type: 'string', demandOption: true, description: 'User UUID or email' })
-            .option('org', { type: 'string', description: 'Organization UUID (required for email lookup)' }),
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdOrEmailArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { UserNotFoundError } = await import('../../users/index.js');
-              const user = await resolveUser(args['id-or-email'], args.org);
-              if (!user) throw new UserNotFoundError(args['id-or-email']);
+            await withHttpClient(args, async (client) => {
+              const user = await resolveUser(client, args.org, args['id-or-email']);
 
               outputResult(
                 args.json,
@@ -356,19 +424,23 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' })
             .option('given-name', { type: 'string', description: 'New first name' })
             .option('family-name', { type: 'string', description: 'New last name' })
             .option('email', { type: 'string', description: 'New email address' }),
         async (argv) => {
           const args = argv as unknown as UserUpdateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { updateUser } = await import('../../users/index.js');
-              const updated = await updateUser(args.id, {
-                givenName: args['given-name'],
-                familyName: args['family-name'],
-                email: args.email,
-              });
+            await withHttpClient(args, async (client) => {
+              const resp = await client.put<UserResponse>(
+                `${userBasePath(args.org)}/${args.id}`,
+                {
+                  givenName: args['given-name'],
+                  familyName: args['family-name'],
+                  email: args.email,
+                },
+              );
+              const updated = resp.data.data;
 
               outputResult(
                 args.json,
@@ -384,16 +456,18 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'deactivate <id>',
         'Deactivate a user',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
             if (args['dry-run']) { warn(`[DRY RUN] Would deactivate user ${args.id}`); return; }
             const confirmed = await confirm(`Deactivate user ${args.id}?`, args.force);
             if (!confirmed) { warn('Operation cancelled'); return; }
-            await withBootstrap(args, async () => {
-              const { deactivateUser } = await import('../../users/index.js');
-              await deactivateUser(args.id);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/deactivate`);
               success(`User deactivated: ${args.id}`);
             });
           }, args.verbose);
@@ -404,13 +478,15 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'reactivate <id>',
         'Reactivate an inactive user',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { reactivateUser } = await import('../../users/index.js');
-              await reactivateUser(args.id);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/reactivate`);
               success(`User reactivated: ${args.id}`);
             });
           }, args.verbose);
@@ -421,16 +497,18 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'suspend <id>',
         'Suspend a user',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
             if (args['dry-run']) { warn(`[DRY RUN] Would suspend user ${args.id}`); return; }
             const confirmed = await confirm(`Suspend user ${args.id}?`, args.force);
             if (!confirmed) { warn('Operation cancelled'); return; }
-            await withBootstrap(args, async () => {
-              const { suspendUser } = await import('../../users/index.js');
-              await suspendUser(args.id);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/suspend`);
               success(`User suspended: ${args.id}`);
             });
           }, args.verbose);
@@ -444,6 +522,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         (y) =>
           y
             .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' })
             .option('reason', { type: 'string', demandOption: true, description: 'Lock reason' }),
         async (argv) => {
           const args = argv as unknown as UserLockArgs;
@@ -451,9 +530,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             if (args['dry-run']) { warn(`[DRY RUN] Would lock user ${args.id}`); return; }
             const confirmed = await confirm(`Lock user ${args.id}?`, args.force);
             if (!confirmed) { warn('Operation cancelled'); return; }
-            await withBootstrap(args, async () => {
-              const { lockUser } = await import('../../users/index.js');
-              await lockUser(args.id, args.reason);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/lock`, {
+                reason: args.reason,
+              });
               success(`User locked: ${args.id}`);
             });
           }, args.verbose);
@@ -464,13 +544,15 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'unlock <id>',
         'Unlock a locked user account',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { unlockUser } = await import('../../users/index.js');
-              await unlockUser(args.id);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/unlock`);
               success(`User unlocked: ${args.id}`);
             });
           }, args.verbose);
@@ -481,7 +563,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'set-password <id>',
         'Set user password (interactive hidden prompt)',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
@@ -495,9 +580,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            await withBootstrap(args, async () => {
-              const { setUserPassword } = await import('../../users/index.js');
-              await setUserPassword(args.id, password);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/password`, {
+                password,
+              });
               success(`Password set for user ${args.id}`);
             });
           }, args.verbose);
@@ -508,13 +594,15 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       .command<UserIdArgs>(
         'verify-email <id>',
         'Mark user email as verified',
-        (y) => y.positional('id', { type: 'string', demandOption: true, description: 'User UUID' }),
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
         async (argv) => {
           const args = argv as unknown as UserIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { markEmailVerified } = await import('../../users/index.js');
-              await markEmailVerified(args.id);
+            await withHttpClient(args, async (client) => {
+              await client.post(`${userBasePath(args.org)}/${args.id}/verify-email`);
               success(`Email verified for user ${args.id}`);
             });
           }, args.verbose);
@@ -522,9 +610,11 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       )
 
       // ── 2FA management (RD-12) ──────────────────────────────────────
+      // Migrated to HTTP in Phase 4.3
       .command(userTwoFaCommand)
 
       // ── nested subcommand groups ────────────────────────────────────
+      // Migrated to HTTP in Phase 4.3
       .command(userRoleCommand)
       .command(userClaimCommand)
       .demandCommand(1, 'Specify a user subcommand: create, invite, list, show, update, deactivate, reactivate, suspend, lock, unlock, set-password, verify-email, roles, claims, 2fa');
@@ -533,5 +623,3 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     // No-op — subcommands handle execution
   },
 };
-
-// ---------------------------------------------------------------------------

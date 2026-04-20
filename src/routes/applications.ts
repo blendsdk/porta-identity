@@ -146,7 +146,12 @@ export function createApplicationRouter(): Router {
   // GET /:id — Get application by ID
   // -------------------------------------------------------------------------
   router.get('/:id', async (ctx) => {
-    const app = await applicationService.getApplicationById(ctx.params.id);
+    const param = ctx.params.id;
+    // Support both UUID and slug lookups — CLI and API consumers may use either
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
+    const app = isUuid
+      ? await applicationService.getApplicationById(param)
+      : await applicationService.getApplicationBySlug(param);
     if (!app) {
       ctx.throw(404, 'Application not found');
     }

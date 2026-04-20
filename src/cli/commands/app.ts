@@ -3,25 +3,29 @@
  *
  * Provides CRUD and lifecycle management for applications, plus nested
  * subcommand groups for modules, roles, permissions, and custom claims.
- * Delegates to the application service module for all business logic.
+ * Core CRUD uses authenticated HTTP requests against the Admin API.
+ * Nested subcommands (module, role, permission, claim) are migrated
+ * separately in Phase 4.3.
  *
  * Usage:
- *   porta app create --name "My App" --org <org-id-or-slug>
+ *   porta app create --name "My App"
  *   porta app list [--status active|inactive|archived] [--page 1] [--page-size 20]
  *   porta app show <id-or-slug>
  *   porta app update <id-or-slug> --name "New Name"
  *   porta app archive <id-or-slug>
  *   porta app module <subcommand> ...
- *   porta app role <subcommand> ...        (Phase 4.2)
- *   porta app permission <subcommand> ...  (Phase 4.2)
- *   porta app claim <subcommand> ...       (Phase 4.2)
+ *   porta app role <subcommand> ...
+ *   porta app permission <subcommand> ...
+ *   porta app claim <subcommand> ...
  *
  * @module cli/commands/app
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import { withBootstrap } from '../bootstrap.js';
+import type { AdminHttpClient } from '../http-client.js';
+
+import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import {
   printTable,
@@ -38,6 +42,38 @@ import { appRoleCommand } from './app-role.js';
 import { appPermissionCommand } from './app-permission.js';
 import { appClaimCommand } from './app-claim.js';
 
+// ---------------------------------------------------------------------------
+// API response types (JSON-serialized shapes from the Admin API)
+// ---------------------------------------------------------------------------
+
+/** Application data as returned by the Admin API (dates are ISO strings) */
+interface AppData {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Wrapped single-entity response: { data: AppData } */
+interface AppResponse {
+  data: AppData;
+}
+
+/** Paginated list response: { data: AppData[], total, page, pageSize } */
+interface AppListResponse {
+  data: AppData[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /** UUID format regex — shared with app-module and other sub-files */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -47,16 +83,22 @@ export function isUuid(value: string): boolean {
 }
 
 /**
- * Resolve an application by ID or slug.
- * If the value matches UUID format, fetches by ID; otherwise by slug.
+ * Resolve an application by ID or slug via the Admin API.
+ *
+ * The GET /api/admin/applications/:idOrSlug endpoint supports both
+ * UUID and slug lookups. If the app doesn't exist, the API returns
+ * 404 which propagates as HttpNotFoundError.
+ *
+ * @param client - Authenticated HTTP client
+ * @param idOrSlug - UUID or slug string
+ * @returns Application data from the API
+ * @throws HttpNotFoundError if the application doesn't exist
  */
-async function resolveApp(idOrSlug: string) {
-  const { getApplicationById, getApplicationBySlug } = await import(
-    '../../applications/index.js'
+async function resolveApp(client: AdminHttpClient, idOrSlug: string): Promise<AppData> {
+  const resp = await client.get<AppResponse>(
+    `/api/admin/applications/${encodeURIComponent(idOrSlug)}`,
   );
-  return isUuid(idOrSlug)
-    ? getApplicationById(idOrSlug)
-    : getApplicationBySlug(idOrSlug);
+  return resp.data.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,13 +158,13 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AppCreateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { createApplication } = await import('../../applications/index.js');
-              const app = await createApplication({
+            await withHttpClient(args, async (client) => {
+              const resp = await client.post<AppResponse>('/api/admin/applications', {
                 name: args.name,
                 slug: args.slug,
                 description: args.description,
               });
+              const app = resp.data.data;
 
               outputResult(
                 args.json,
@@ -171,13 +213,18 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AppListArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { listApplications } = await import('../../applications/index.js');
-              const result = await listApplications({
-                page: args.page,
-                pageSize: args['page-size'],
-                status: args.status as 'active' | 'inactive' | 'archived' | undefined,
-              });
+            await withHttpClient(args, async (client) => {
+              const params: Record<string, string> = {
+                page: String(args.page),
+                pageSize: String(args['page-size']),
+              };
+              if (args.status) params.status = args.status;
+
+              const resp = await client.get<AppListResponse>(
+                '/api/admin/applications',
+                params,
+              );
+              const result = resp.data;
 
               if (result.data.length === 0) {
                 warn('No applications found');
@@ -219,10 +266,8 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AppIdArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { ApplicationNotFoundError } = await import('../../applications/index.js');
-              const app = await resolveApp(args['id-or-slug']);
-              if (!app) throw new ApplicationNotFoundError(args['id-or-slug']);
+            await withHttpClient(args, async (client) => {
+              const app = await resolveApp(client, args['id-or-slug']);
 
               outputResult(
                 args.json,
@@ -269,18 +314,18 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AppUpdateArgs;
           await withErrorHandling(async () => {
-            await withBootstrap(args, async () => {
-              const { updateApplication, ApplicationNotFoundError } = await import(
-                '../../applications/index.js'
+            await withHttpClient(args, async (client) => {
+              // Resolve to get UUID for the PUT endpoint
+              const app = await resolveApp(client, args['id-or-slug']);
+
+              const resp = await client.put<AppResponse>(
+                `/api/admin/applications/${app.id}`,
+                {
+                  name: args.name,
+                  description: args.description,
+                },
               );
-
-              const app = await resolveApp(args['id-or-slug']);
-              if (!app) throw new ApplicationNotFoundError(args['id-or-slug']);
-
-              const updated = await updateApplication(app.id, {
-                name: args.name,
-                description: args.description,
-              });
+              const updated = resp.data.data;
 
               outputResult(
                 args.json,
@@ -305,34 +350,25 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           const args = argv as unknown as AppIdArgs;
           await withErrorHandling(async () => {
-            // Resolve app first to show name in confirmation
-            let appName = args['id-or-slug'];
-            let appId = args['id-or-slug'];
-            await withBootstrap(args, async () => {
-              const { ApplicationNotFoundError } = await import('../../applications/index.js');
-              const app = await resolveApp(args['id-or-slug']);
-              if (!app) throw new ApplicationNotFoundError(args['id-or-slug']);
-              appName = `${app.name} (${app.slug})`;
-              appId = app.id;
-            });
+            await withHttpClient(args, async (client) => {
+              const app = await resolveApp(client, args['id-or-slug']);
+              const appName = `${app.name} (${app.slug})`;
 
-            if (args['dry-run']) {
-              warn(`[DRY RUN] Would archive application "${appName}"`);
-              return;
-            }
+              if (args['dry-run']) {
+                warn(`[DRY RUN] Would archive application "${appName}"`);
+                return;
+              }
 
-            const confirmed = await confirm(
-              `Archive application "${appName}"? This is permanent and cannot be undone.`,
-              args.force,
-            );
-            if (!confirmed) {
-              warn('Operation cancelled');
-              return;
-            }
+              const confirmed = await confirm(
+                `Archive application "${appName}"? This is permanent and cannot be undone.`,
+                args.force,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
 
-            await withBootstrap(args, async () => {
-              const { archiveApplication } = await import('../../applications/index.js');
-              await archiveApplication(appId);
+              await client.post(`/api/admin/applications/${app.id}/archive`);
               success(`Application archived: ${appName}`);
             });
           }, args.verbose);
@@ -340,6 +376,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       )
 
       // ── nested subcommand groups ────────────────────────────────────
+      // These are migrated to HTTP in Phase 4.3
       .command(appModuleCommand)
       .command(appRoleCommand)
       .command(appPermissionCommand)
