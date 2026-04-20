@@ -8,6 +8,15 @@ scripts/tmp-*
 test-results/
 playwright-report/
 
+# Internal planning & requirements (not for public repo)
+plans/
+requirements/
+.clinerules/
+
+# VitePress
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # Playground generated artifacts
 playground/config.generated.js
 playground/node_modules/
