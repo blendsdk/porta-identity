@@ -24,7 +24,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
@@ -103,7 +103,7 @@ export function createRoleRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications/:appId/roles' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create role

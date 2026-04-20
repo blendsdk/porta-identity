@@ -31,7 +31,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
@@ -190,7 +190,7 @@ export function createClientRouter(): Router {
   const router = new Router({ prefix: '/api/admin/clients' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create client

@@ -43,6 +43,8 @@ import { createPermissionRouter } from './routes/permissions.js';
 import { createUserRoleRouter } from './routes/user-roles.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
 import { createTwoFactorRouter } from './routes/two-factor.js';
+import { findSuperAdminOrganization } from './organizations/repository.js';
+import { config } from './config/index.js';
 
 /**
  * Create the Koa application with all middleware and routes.
@@ -104,7 +106,30 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(rootPageRouter.routes());
   app.use(rootPageRouter.allowedMethods());
 
-  // Organization management API — requires super-admin authorization
+  // Admin metadata endpoint — unauthenticated, provides OIDC discovery
+  // info needed by the CLI to initiate the login flow. Returns the issuer
+  // URL and client_id for the admin CLI PKCE client.
+  const metadataRouter = new Router();
+  metadataRouter.get('/api/admin/metadata', async (ctx) => {
+    const superAdminOrg = await findSuperAdminOrganization();
+    if (!superAdminOrg) {
+      ctx.status = 503;
+      ctx.body = {
+        error: 'Not initialized',
+        message: 'Run porta init to set up the admin system',
+      };
+      return;
+    }
+
+    ctx.body = {
+      issuer: `${config.issuerBaseUrl}/${superAdminOrg.slug}`,
+      clientId: 'porta-admin-cli',
+    };
+  });
+  app.use(metadataRouter.routes());
+  app.use(metadataRouter.allowedMethods());
+
+  // Organization management API — requires admin authentication
   // Mounted at /api/admin/organizations (see routes/organizations.ts)
   const orgRouter = createOrganizationRouter();
   app.use(orgRouter.routes());

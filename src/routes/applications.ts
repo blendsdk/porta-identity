@@ -27,7 +27,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as applicationService from '../applications/service.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
 
@@ -113,7 +113,7 @@ export function createApplicationRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create application

@@ -21,7 +21,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as permissionService from '../rbac/permission-service.js';
 import { PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
@@ -89,7 +89,7 @@ export function createPermissionRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications/:appId/permissions' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create permission

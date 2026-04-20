@@ -25,7 +25,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as organizationService from '../organizations/service.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
@@ -138,7 +138,7 @@ export function createOrganizationRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create organization

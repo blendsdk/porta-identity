@@ -20,6 +20,46 @@ import { createPrivateKey, generateKeyPairSync, createHash } from 'node:crypto';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
 
+// ---------------------------------------------------------------------------
+// Cached JWKS for JWT verification (admin auth middleware, etc.)
+// ---------------------------------------------------------------------------
+
+/** In-memory cache for the active JWK set — avoids a DB round-trip per request */
+let cachedJwks: { keys: JwkKeyPair[] } | null = null;
+let jwksCacheTimestamp = 0;
+
+/** Cache TTL for the active JWK set — 60 seconds matches system-config cache */
+const JWKS_CACHE_TTL_MS = 60_000;
+
+/**
+ * Get the active JWK set (public + private keys) for JWT verification.
+ *
+ * Loads signing keys from the database on first call, then serves from
+ * an in-memory cache for 60 seconds. Used by the admin auth middleware
+ * to verify Bearer tokens without a DB query on every request.
+ *
+ * @returns JWK key set containing all active and retired keys
+ */
+export async function getActiveJwks(): Promise<{ keys: JwkKeyPair[] }> {
+  const now = Date.now();
+  if (cachedJwks && now - jwksCacheTimestamp < JWKS_CACHE_TTL_MS) {
+    return cachedJwks;
+  }
+
+  const records = await loadSigningKeysFromDb();
+  cachedJwks = signingKeysToJwks(records);
+  jwksCacheTimestamp = now;
+  return cachedJwks;
+}
+
+/**
+ * Clear the cached JWK set — useful for testing and after key rotation.
+ */
+export function clearJwksCache(): void {
+  cachedJwks = null;
+  jwksCacheTimestamp = 0;
+}
+
 /** Represents a signing key record loaded from the database */
 export interface SigningKeyRecord {
   /** UUID primary key */

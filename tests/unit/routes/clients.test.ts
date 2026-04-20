@@ -32,8 +32,8 @@ vi.mock('../../../src/organizations/service.js', () => ({
 }));
 
 // Mock super-admin middleware to always pass through
-vi.mock('../../../src/middleware/super-admin.js', () => ({
-  requireSuperAdmin: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
+vi.mock('../../../src/middleware/admin-auth.js', () => ({
+  requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
 import * as clientService from '../../../src/clients/service.js';

@@ -28,7 +28,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as userService from '../users/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 
@@ -154,7 +154,7 @@ export function createUserRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations/:orgId/users' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create user

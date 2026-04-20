@@ -24,7 +24,7 @@
 
 import Router from '@koa/router';
 import { z } from 'zod';
-import { requireSuperAdmin } from '../middleware/super-admin.js';
+import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as claimService from '../custom-claims/service.js';
 import { ClaimNotFoundError, ClaimValidationError } from '../custom-claims/errors.js';
 
@@ -97,7 +97,7 @@ export function createCustomClaimRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications/:appId/claims' });
 
   // All routes require super-admin access
-  router.use(requireSuperAdmin());
+  router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create claim definition

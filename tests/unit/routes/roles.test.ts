@@ -21,8 +21,8 @@ vi.mock('../../../src/rbac/user-role-service.js', () => ({
 }));
 
 // Mock super-admin middleware to always pass through
-vi.mock('../../../src/middleware/super-admin.js', () => ({
-  requireSuperAdmin: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
+vi.mock('../../../src/middleware/admin-auth.js', () => ({
+  requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
 import * as roleService from '../../../src/rbac/role-service.js';
