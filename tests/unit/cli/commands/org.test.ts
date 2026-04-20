@@ -1,14 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock bootstrap
+// ---------------------------------------------------------------------------
+// Hoisted mock client — accessible inside vi.mock factories
+// ---------------------------------------------------------------------------
+
+const { mockClient } = vi.hoisted(() => ({
+  mockClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
+// Mock bootstrap — withHttpClient passes mockClient to the callback
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
-  withBootstrap: vi.fn().mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
-  withHttpClient: vi.fn().mockImplementation(async (_argv: unknown, fn: (client: unknown) => Promise<unknown>) => fn({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() })),
+  withHttpClient: vi.fn().mockImplementation(
+    async (_argv: unknown, fn: (c: typeof mockClient) => Promise<unknown>) => fn(mockClient),
+  ),
 }));
 
 // Mock error handler — run fn directly
 vi.mock('../../../../src/cli/error-handler.js', () => ({
-  withErrorHandling: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
+  withErrorHandling: vi.fn().mockImplementation(
+    async (fn: () => Promise<void>) => fn(),
+  ),
 }));
 
 // Mock output helpers
@@ -28,70 +48,54 @@ vi.mock('../../../../src/cli/prompt.js', () => ({
   confirm: vi.fn().mockResolvedValue(true),
 }));
 
-// Mock organization service
-vi.mock('../../../../src/organizations/index.js', () => ({
-  createOrganization: vi.fn(),
-  listOrganizations: vi.fn(),
-  getOrganizationById: vi.fn(),
-  getOrganizationBySlug: vi.fn(),
-  updateOrganization: vi.fn(),
-  updateOrganizationBranding: vi.fn(),
-  suspendOrganization: vi.fn(),
-  activateOrganization: vi.fn(),
-  archiveOrganization: vi.fn(),
-  OrganizationNotFoundError: class OrganizationNotFoundError extends Error {
-    constructor(id: string) { super(`Organization not found: ${id}`); this.name = 'OrganizationNotFoundError'; }
-  },
-}));
+// ---------------------------------------------------------------------------
+// Imports (after mocks)
+// ---------------------------------------------------------------------------
 
 import { orgCommand } from '../../../../src/cli/commands/org.js';
 import { success, warn, outputResult, printTable } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
-import {
-  createOrganization,
-  listOrganizations,
-  getOrganizationById,
-  getOrganizationBySlug,
-  updateOrganization,
-  updateOrganizationBranding,
-  suspendOrganization,
-  activateOrganization,
-  archiveOrganization,
-} from '../../../../src/organizations/index.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
-/** Fake org for test data */
+// ---------------------------------------------------------------------------
+// Test data
+// ---------------------------------------------------------------------------
+
+/** Fake org data as returned by the Admin API (JSON-serialized — dates are strings) */
 const fakeOrg = {
   id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   name: 'Acme Corp',
   slug: 'acme-corp',
-  status: 'active' as const,
+  status: 'active',
   isSuperAdmin: false,
+  defaultLocale: 'en',
+  defaultLoginMethods: ['password', 'magic_link'],
   brandingLogoUrl: null,
   brandingFaviconUrl: null,
   brandingPrimaryColor: null,
   brandingCompanyName: null,
-  brandingCustomCss: null,
-  defaultLocale: 'en',
-  defaultLoginMethods: ['password', 'magic_link'] as ('password' | 'magic_link')[],
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
+  createdAt: '2026-04-08T00:00:00.000Z',
+  updatedAt: '2026-04-09T00:00:00.000Z',
 };
 
-function createArgv(overrides: Partial<GlobalOptions & Record<string, unknown>> = {}): GlobalOptions & Record<string, unknown> {
+/** Helper to build minimal argv with sensible defaults */
+function createArgv(
+  overrides: Partial<GlobalOptions & Record<string, unknown>> = {},
+): GlobalOptions & Record<string, unknown> {
   return { json: false, verbose: false, force: false, 'dry-run': false, ...overrides };
 }
 
 /**
  * Extract subcommand handlers from the org command builder.
+ *
  * Simulates yargs command registration to collect handler functions.
+ * Strips positional arg syntax from command names (e.g., "show <id-or-slug>" → "show").
  */
 function getHandlers() {
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<void>> = {};
   const fakeYargs = {
     command: (cmd: string | object, _desc?: string, _builder?: unknown, handler?: unknown) => {
       if (typeof cmd === 'string') {
-        // Strip positional arg syntax to get clean command name (e.g., "show <id-or-slug>" → "show")
         const name = cmd.split(' ')[0];
         handlers[name] = handler as (args: Record<string, unknown>) => Promise<void>;
       }
@@ -105,27 +109,32 @@ function getHandlers() {
   return handlers;
 }
 
-// TODO: Phase 5 — rewrite tests to mock HTTP client instead of domain services
-describe.skip('CLI Org Command', () => {
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('CLI Org Command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset default mock return values after clearAllMocks
+    // Reset default mock behaviors after clearAllMocks
     vi.mocked(outputResult).mockImplementation(
       (_isJson: boolean, tableRenderer: () => void) => { tableRenderer(); },
     );
     vi.mocked(confirm).mockResolvedValue(true);
-    vi.mocked(getOrganizationById).mockResolvedValue(fakeOrg);
-    vi.mocked(getOrganizationBySlug).mockResolvedValue(fakeOrg);
+    // Default: resolveOrg calls return fakeOrg (used by show/update/suspend/…)
+    mockClient.get.mockResolvedValue({ status: 200, data: { data: fakeOrg } });
   });
 
+  // ── org create ──────────────────────────────────────────────────────
+
   describe('org create', () => {
-    it('should create an organization and display success', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+    it('should POST to /api/admin/organizations and display success', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['create'](createArgv({ name: 'Acme Corp' }));
 
-      expect(createOrganization).toHaveBeenCalledWith({
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/organizations', {
         name: 'Acme Corp',
         slug: undefined,
         defaultLocale: undefined,
@@ -134,14 +143,12 @@ describe.skip('CLI Org Command', () => {
     });
 
     it('should forward --login-methods as defaultLoginMethods on create', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
-      await handlers['create'](
-        createArgv({ name: 'Acme Corp', 'login-methods': 'password' }),
-      );
+      await handlers['create'](createArgv({ name: 'Acme Corp', 'login-methods': 'password' }));
 
-      expect(createOrganization).toHaveBeenCalledWith({
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/organizations', {
         name: 'Acme Corp',
         slug: undefined,
         defaultLocale: undefined,
@@ -150,48 +157,45 @@ describe.skip('CLI Org Command', () => {
     });
 
     it('should parse a comma-separated --login-methods list on create', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['create'](
         createArgv({ name: 'Acme Corp', 'login-methods': 'password,magic_link' }),
       );
 
-      expect(createOrganization).toHaveBeenCalledWith(
-        expect.objectContaining({
-          defaultLoginMethods: ['password', 'magic_link'],
-        }),
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/admin/organizations',
+        expect.objectContaining({ defaultLoginMethods: ['password', 'magic_link'] }),
       );
     });
 
     it('should omit defaultLoginMethods when --login-methods not provided', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['create'](createArgv({ name: 'Acme Corp' }));
 
-      const callArg = vi.mocked(createOrganization).mock.calls[0][0];
-      expect(callArg).not.toHaveProperty('defaultLoginMethods');
+      // Verify the POST body does NOT include the field at all
+      const callBody = mockClient.post.mock.calls[0][1] as Record<string, unknown>;
+      expect(callBody).not.toHaveProperty('defaultLoginMethods');
     });
 
     it('should reject --login-methods inherit on org create', async () => {
       const handlers = getHandlers();
       await expect(
-        handlers['create'](
-          createArgv({ name: 'Acme Corp', 'login-methods': 'inherit' }),
-        ),
+        handlers['create'](createArgv({ name: 'Acme Corp', 'login-methods': 'inherit' })),
       ).rejects.toThrow(/only valid on client commands/);
-      expect(createOrganization).not.toHaveBeenCalled();
+      // No HTTP call should have been made
+      expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('should reject an unknown method on org create', async () => {
       const handlers = getHandlers();
       await expect(
-        handlers['create'](
-          createArgv({ name: 'Acme Corp', 'login-methods': 'sso' }),
-        ),
+        handlers['create'](createArgv({ name: 'Acme Corp', 'login-methods': 'sso' })),
       ).rejects.toThrow(/unknown method "sso"/);
-      expect(createOrganization).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('should reject an empty --login-methods on org create', async () => {
@@ -199,16 +203,16 @@ describe.skip('CLI Org Command', () => {
       await expect(
         handlers['create'](createArgv({ name: 'Acme Corp', 'login-methods': '' })),
       ).rejects.toThrow(/must not be empty/);
-      expect(createOrganization).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('should pass slug and locale options when provided', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['create'](createArgv({ name: 'Acme Corp', slug: 'acme', locale: 'fr' }));
 
-      expect(createOrganization).toHaveBeenCalledWith({
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/organizations', {
         name: 'Acme Corp',
         slug: 'acme',
         defaultLocale: 'fr',
@@ -216,7 +220,7 @@ describe.skip('CLI Org Command', () => {
     });
 
     it('should output JSON when --json flag is set', async () => {
-      vi.mocked(createOrganization).mockResolvedValue(fakeOrg);
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeOrg } });
       vi.mocked(outputResult).mockImplementation(
         (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
           if (isJson) expect(jsonData).toEqual(fakeOrg);
@@ -230,34 +234,29 @@ describe.skip('CLI Org Command', () => {
     });
   });
 
+  // ── org list ────────────────────────────────────────────────────────
+
   describe('org list', () => {
-    it('should list organizations in table format', async () => {
-      vi.mocked(listOrganizations).mockResolvedValue({
-        data: [fakeOrg],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-        totalPages: 1,
+    it('should GET /api/admin/organizations with query params', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeOrg], total: 1, page: 1, pageSize: 20 },
       });
 
       const handlers = getHandlers();
       await handlers['list'](createArgv({ page: 1, 'page-size': 20 }));
 
-      expect(listOrganizations).toHaveBeenCalledWith({
-        page: 1,
-        pageSize: 20,
-        status: undefined,
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/organizations', {
+        page: '1',
+        pageSize: '20',
       });
       expect(outputResult).toHaveBeenCalled();
     });
 
     it('should warn when no organizations found', async () => {
-      vi.mocked(listOrganizations).mockResolvedValue({
-        data: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        totalPages: 0,
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [], total: 0, page: 1, pageSize: 20 },
       });
 
       const handlers = getHandlers();
@@ -267,92 +266,99 @@ describe.skip('CLI Org Command', () => {
     });
 
     it('should pass status filter when provided', async () => {
-      vi.mocked(listOrganizations).mockResolvedValue({
-        data: [fakeOrg],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-        totalPages: 1,
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeOrg], total: 1, page: 1, pageSize: 20 },
       });
 
       const handlers = getHandlers();
       await handlers['list'](createArgv({ status: 'active', page: 2, 'page-size': 10 }));
 
-      expect(listOrganizations).toHaveBeenCalledWith({
-        page: 2,
-        pageSize: 10,
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/organizations', {
+        page: '2',
+        pageSize: '10',
         status: 'active',
       });
     });
   });
 
+  // ── org show ────────────────────────────────────────────────────────
+
   describe('org show', () => {
-    it('should show org details by UUID', async () => {
-      vi.mocked(getOrganizationById).mockResolvedValue(fakeOrg);
-
-      const handlers = getHandlers();
-      await handlers['show'](createArgv({ 'id-or-slug': fakeOrg.id }));
-
-      expect(getOrganizationById).toHaveBeenCalledWith(fakeOrg.id);
-      expect(printTable).toHaveBeenCalled();
-    });
-
-    it('should show org details by slug', async () => {
-      vi.mocked(getOrganizationBySlug).mockResolvedValue(fakeOrg);
-
+    it('should GET org details by id-or-slug', async () => {
       const handlers = getHandlers();
       await handlers['show'](createArgv({ 'id-or-slug': 'acme-corp' }));
 
-      expect(getOrganizationBySlug).toHaveBeenCalledWith('acme-corp');
+      // resolveOrg calls GET with encoded id-or-slug
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/organizations/acme-corp');
+      expect(printTable).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundError when org not found', async () => {
-      vi.mocked(getOrganizationBySlug).mockResolvedValue(null);
+    it('should encode the id-or-slug in the URL', async () => {
+      const handlers = getHandlers();
+      await handlers['show'](createArgv({ 'id-or-slug': fakeOrg.id }));
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}`,
+      );
+    });
+
+    it('should output JSON when --json flag is set', async () => {
+      vi.mocked(outputResult).mockImplementation(
+        (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
+          if (isJson) expect(jsonData).toEqual(fakeOrg);
+        },
+      );
 
       const handlers = getHandlers();
-      await expect(handlers['show'](createArgv({ 'id-or-slug': 'nonexistent' }))).rejects.toThrow(
-        'Organization not found',
-      );
+      await handlers['show'](createArgv({ 'id-or-slug': 'acme-corp', json: true }));
+
+      expect(outputResult).toHaveBeenCalled();
     });
   });
 
+  // ── org update ──────────────────────────────────────────────────────
+
   describe('org update', () => {
-    it('should update org name', async () => {
-      vi.mocked(updateOrganization).mockResolvedValue({ ...fakeOrg, name: 'New Name' });
+    it('should resolve org then PUT update', async () => {
+      const updated = { ...fakeOrg, name: 'New Name' };
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: updated } });
 
       const handlers = getHandlers();
       await handlers['update'](createArgv({ 'id-or-slug': 'acme-corp', name: 'New Name' }));
 
-      expect(updateOrganization).toHaveBeenCalledWith(fakeOrg.id, {
-        name: 'New Name',
-        defaultLocale: undefined,
-      });
+      // 1st HTTP call: resolveOrg (GET)
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/organizations/acme-corp');
+      // 2nd HTTP call: update (PUT) using the resolved UUID
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}`,
+        { name: 'New Name', defaultLocale: undefined },
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('New Name'));
     });
 
     it('should forward --login-methods as defaultLoginMethods on update', async () => {
-      vi.mocked(updateOrganization).mockResolvedValue(fakeOrg);
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['update'](
         createArgv({ 'id-or-slug': 'acme-corp', 'login-methods': 'magic_link' }),
       );
 
-      expect(updateOrganization).toHaveBeenCalledWith(fakeOrg.id, {
-        name: undefined,
-        defaultLocale: undefined,
-        defaultLoginMethods: ['magic_link'],
-      });
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}`,
+        { name: undefined, defaultLocale: undefined, defaultLoginMethods: ['magic_link'] },
+      );
     });
 
     it('should omit defaultLoginMethods on update when flag not provided', async () => {
-      vi.mocked(updateOrganization).mockResolvedValue(fakeOrg);
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeOrg } });
 
       const handlers = getHandlers();
       await handlers['update'](createArgv({ 'id-or-slug': 'acme-corp', name: 'New' }));
 
-      const callArg = vi.mocked(updateOrganization).mock.calls[0][1];
-      expect(callArg).not.toHaveProperty('defaultLoginMethods');
+      const callBody = mockClient.put.mock.calls[0][1] as Record<string, unknown>;
+      expect(callBody).not.toHaveProperty('defaultLoginMethods');
     });
 
     it('should reject --login-methods inherit on org update', async () => {
@@ -362,16 +368,22 @@ describe.skip('CLI Org Command', () => {
           createArgv({ 'id-or-slug': 'acme-corp', 'login-methods': 'inherit' }),
         ),
       ).rejects.toThrow(/only valid on client commands/);
-      expect(updateOrganization).not.toHaveBeenCalled();
+      expect(mockClient.put).not.toHaveBeenCalled();
     });
   });
 
+  // ── org suspend ─────────────────────────────────────────────────────
+
   describe('org suspend', () => {
-    it('should suspend org with confirmation', async () => {
+    it('should resolve org, confirm, then POST suspend', async () => {
+      mockClient.post.mockResolvedValue({ status: 200, data: {} });
+
       const handlers = getHandlers();
       await handlers['suspend'](createArgv({ 'id-or-slug': 'acme-corp', force: true }));
 
-      expect(suspendOrganization).toHaveBeenCalledWith(fakeOrg.id);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}/suspend`,
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('suspended'));
     });
 
@@ -381,7 +393,7 @@ describe.skip('CLI Org Command', () => {
       const handlers = getHandlers();
       await handlers['suspend'](createArgv({ 'id-or-slug': 'acme-corp' }));
 
-      expect(suspendOrganization).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith('Operation cancelled');
     });
 
@@ -389,27 +401,39 @@ describe.skip('CLI Org Command', () => {
       const handlers = getHandlers();
       await handlers['suspend'](createArgv({ 'id-or-slug': 'acme-corp', 'dry-run': true }));
 
-      expect(suspendOrganization).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
     });
   });
 
+  // ── org activate ────────────────────────────────────────────────────
+
   describe('org activate', () => {
-    it('should activate a suspended org', async () => {
+    it('should resolve org then POST activate', async () => {
+      mockClient.post.mockResolvedValue({ status: 200, data: {} });
+
       const handlers = getHandlers();
       await handlers['activate'](createArgv({ 'id-or-slug': 'acme-corp' }));
 
-      expect(activateOrganization).toHaveBeenCalledWith(fakeOrg.id);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}/activate`,
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('activated'));
     });
   });
 
+  // ── org archive ─────────────────────────────────────────────────────
+
   describe('org archive', () => {
-    it('should archive org with confirmation', async () => {
+    it('should resolve org, confirm, then POST archive', async () => {
+      mockClient.post.mockResolvedValue({ status: 200, data: {} });
+
       const handlers = getHandlers();
       await handlers['archive'](createArgv({ 'id-or-slug': 'acme-corp', force: true }));
 
-      expect(archiveOrganization).toHaveBeenCalledWith(fakeOrg.id);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}/archive`,
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('archived'));
     });
 
@@ -417,14 +441,17 @@ describe.skip('CLI Org Command', () => {
       const handlers = getHandlers();
       await handlers['archive'](createArgv({ 'id-or-slug': 'acme-corp', 'dry-run': true }));
 
-      expect(archiveOrganization).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
     });
   });
 
+  // ── org branding ────────────────────────────────────────────────────
+
   describe('org branding', () => {
-    it('should update branding options', async () => {
-      vi.mocked(updateOrganizationBranding).mockResolvedValue({ ...fakeOrg, brandingPrimaryColor: '#ff0000' });
+    it('should resolve org then PUT branding', async () => {
+      const branded = { ...fakeOrg, brandingPrimaryColor: '#ff0000' };
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: branded } });
 
       const handlers = getHandlers();
       await handlers['branding'](createArgv({
@@ -433,15 +460,20 @@ describe.skip('CLI Org Command', () => {
         'primary-color': '#ff0000',
       }));
 
-      expect(updateOrganizationBranding).toHaveBeenCalledWith(fakeOrg.id, {
-        logoUrl: 'https://example.com/logo.png',
-        faviconUrl: undefined,
-        primaryColor: '#ff0000',
-        companyName: undefined,
-      });
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/organizations/${fakeOrg.id}/branding`,
+        {
+          logoUrl: 'https://example.com/logo.png',
+          faviconUrl: undefined,
+          primaryColor: '#ff0000',
+          companyName: undefined,
+        },
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Branding updated'));
     });
   });
+
+  // ── command metadata ────────────────────────────────────────────────
 
   describe('command metadata', () => {
     it('should have correct command name', () => {

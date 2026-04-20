@@ -1,14 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock bootstrap
+// ---------------------------------------------------------------------------
+// Hoisted mock client — accessible inside vi.mock factories
+// ---------------------------------------------------------------------------
+
+const { mockClient } = vi.hoisted(() => ({
+  mockClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
+// Mock bootstrap — withHttpClient passes mockClient to the callback
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
-  withBootstrap: vi.fn().mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
-  withHttpClient: vi.fn().mockImplementation(async (_argv: unknown, fn: (client: unknown) => Promise<unknown>) => fn({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() })),
+  withHttpClient: vi.fn().mockImplementation(
+    async (_argv: unknown, fn: (c: typeof mockClient) => Promise<unknown>) => fn(mockClient),
+  ),
 }));
 
 // Mock error handler — run fn directly
 vi.mock('../../../../src/cli/error-handler.js', () => ({
-  withErrorHandling: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
+  withErrorHandling: vi.fn().mockImplementation(
+    async (fn: () => Promise<void>) => fn(),
+  ),
 }));
 
 // Mock output helpers
@@ -28,142 +48,68 @@ vi.mock('../../../../src/cli/prompt.js', () => ({
   confirm: vi.fn().mockResolvedValue(true),
 }));
 
-// Mock application service
-vi.mock('../../../../src/applications/index.js', () => ({
-  createApplication: vi.fn(),
-  listApplications: vi.fn(),
-  getApplicationById: vi.fn(),
-  getApplicationBySlug: vi.fn(),
-  updateApplication: vi.fn(),
-  archiveApplication: vi.fn(),
-  createModule: vi.fn(),
-  listModules: vi.fn(),
-  updateModule: vi.fn(),
-  deactivateModule: vi.fn(),
-  ApplicationNotFoundError: class ApplicationNotFoundError extends Error {
-    constructor(id: string) { super(`Application not found: ${id}`); this.name = 'ApplicationNotFoundError'; }
-  },
+// Mock nested subcommand modules — they register their own commands but
+// we only test them in their dedicated test files (app-module, app-role, etc.)
+vi.mock('../../../../src/cli/commands/app-module.js', () => ({
+  appModuleCommand: { command: 'module', describe: 'mock', builder: () => {}, handler: () => {} },
+}));
+vi.mock('../../../../src/cli/commands/app-role.js', () => ({
+  appRoleCommand: { command: 'role', describe: 'mock', builder: () => {}, handler: () => {} },
+}));
+vi.mock('../../../../src/cli/commands/app-permission.js', () => ({
+  appPermissionCommand: { command: 'permission', describe: 'mock', builder: () => {}, handler: () => {} },
+}));
+vi.mock('../../../../src/cli/commands/app-claim.js', () => ({
+  appClaimCommand: { command: 'claim', describe: 'mock', builder: () => {}, handler: () => {} },
 }));
 
-// Mock RBAC service
-vi.mock('../../../../src/rbac/index.js', () => ({
-  createRole: vi.fn(),
-  listRolesByApplication: vi.fn(),
-  findRoleById: vi.fn(),
-  updateRole: vi.fn(),
-  deleteRole: vi.fn(),
-  getPermissionsForRole: vi.fn(),
-  assignPermissionsToRole: vi.fn(),
-  removePermissionsFromRole: vi.fn(),
-  createPermission: vi.fn(),
-  listPermissionsByApplication: vi.fn(),
-  updatePermission: vi.fn(),
-  deletePermission: vi.fn(),
-  RoleNotFoundError: class RoleNotFoundError extends Error {
-    constructor(id: string) { super(`Role not found: ${id}`); this.name = 'RoleNotFoundError'; }
-  },
-}));
-
-// Mock custom claims service
-vi.mock('../../../../src/custom-claims/index.js', () => ({
-  createDefinition: vi.fn(),
-  listDefinitions: vi.fn(),
-  updateDefinition: vi.fn(),
-  deleteDefinition: vi.fn(),
-}));
+// ---------------------------------------------------------------------------
+// Imports (after mocks)
+// ---------------------------------------------------------------------------
 
 import { appCommand } from '../../../../src/cli/commands/app.js';
 import { success, warn, outputResult, printTable } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
-import {
-  createApplication,
-  listApplications,
-  getApplicationById,
-  getApplicationBySlug,
-  updateApplication,
-  archiveApplication,
-  createModule,
-  listModules,
-  deactivateModule,
-} from '../../../../src/applications/index.js';
-import {
-  createRole,
-  listRolesByApplication,
-  findRoleById,
-  deleteRole,
-  getPermissionsForRole,
-  assignPermissionsToRole,
-  createPermission,
-  listPermissionsByApplication,
-  deletePermission,
-} from '../../../../src/rbac/index.js';
-import {
-  createDefinition,
-  listDefinitions,
-  deleteDefinition,
-} from '../../../../src/custom-claims/index.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
-/** Fake app for test data */
+// ---------------------------------------------------------------------------
+// Test data
+// ---------------------------------------------------------------------------
+
+/** Fake app data as returned by the Admin API (JSON-serialized — dates are strings) */
 const fakeApp = {
   id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
   name: 'BusinessSuite',
   slug: 'business-suite',
   description: 'Main business app',
-  status: 'active' as const,
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
+  status: 'active',
+  createdAt: '2026-04-08T00:00:00.000Z',
+  updatedAt: '2026-04-09T00:00:00.000Z',
 };
 
-/** Fake module for test data */
-const fakeModule = {
-  id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-  applicationId: fakeApp.id,
-  name: 'CRM',
-  slug: 'crm',
-  description: 'Customer relationship management',
-  status: 'active' as const,
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
-};
-
-function createArgv(overrides: Partial<GlobalOptions & Record<string, unknown>> = {}): GlobalOptions & Record<string, unknown> {
+/** Helper to build minimal argv with sensible defaults */
+function createArgv(
+  overrides: Partial<GlobalOptions & Record<string, unknown>> = {},
+): GlobalOptions & Record<string, unknown> {
   return { json: false, verbose: false, force: false, 'dry-run': false, ...overrides };
 }
 
 /**
  * Extract subcommand handlers from the app command builder.
- * Handles both simple commands and nested command groups (module, role, etc.).
+ *
+ * Simulates yargs command registration to collect handler functions.
+ * Nested command groups (module, role, permission, claim) are registered
+ * as CommandModule objects and handled by their own test files.
  */
 function getHandlers() {
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<void>> = {};
-  const nestedGroups: Record<string, Record<string, (args: Record<string, unknown>) => Promise<void>>> = {};
-
   const fakeYargs = {
     command: (cmd: string | object, _desc?: string, _builder?: unknown, handler?: unknown) => {
       if (typeof cmd === 'string') {
         const name = cmd.split(' ')[0];
         handlers[name] = handler as (args: Record<string, unknown>) => Promise<void>;
-      } else if (typeof cmd === 'object' && 'command' in cmd) {
-        // Nested command group (e.g., appModuleCommand)
-        const group = cmd as { command: string; builder: (y: typeof fakeYargs) => typeof fakeYargs };
-        const groupName = group.command;
-        const groupHandlers: Record<string, (args: Record<string, unknown>) => Promise<void>> = {};
-        const groupYargs = {
-          command: (subcmd: string, _d?: string, _b?: unknown, h?: unknown) => {
-            if (typeof subcmd === 'string') {
-              const subName = subcmd.split(' ')[0];
-              groupHandlers[subName] = h as (args: Record<string, unknown>) => Promise<void>;
-            }
-            return groupYargs;
-          },
-          option: () => groupYargs,
-          positional: () => groupYargs,
-          demandCommand: () => groupYargs,
-        };
-        group.builder(groupYargs as unknown as typeof fakeYargs);
-        nestedGroups[groupName] = groupHandlers;
       }
+      // Skip objects (nested command modules) — tested separately
       return fakeYargs;
     },
     option: () => fakeYargs,
@@ -171,315 +117,218 @@ function getHandlers() {
     demandCommand: () => fakeYargs,
   };
   (appCommand.builder as (y: typeof fakeYargs) => typeof fakeYargs)(fakeYargs);
-  return { handlers, nestedGroups };
+  return handlers;
 }
 
-// TODO: Phase 5 — rewrite tests to mock HTTP client instead of domain services
-describe.skip('CLI App Command', () => {
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('CLI App Command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset default mock behaviors after clearAllMocks
     vi.mocked(outputResult).mockImplementation(
       (_isJson: boolean, tableRenderer: () => void) => { tableRenderer(); },
     );
     vi.mocked(confirm).mockResolvedValue(true);
-    vi.mocked(getApplicationById).mockResolvedValue(fakeApp);
-    vi.mocked(getApplicationBySlug).mockResolvedValue(fakeApp);
+    // Default: resolveApp calls return fakeApp (used by show/update/archive)
+    mockClient.get.mockResolvedValue({ status: 200, data: { data: fakeApp } });
   });
 
-  describe('app create', () => {
-    it('should create an application and display success', async () => {
-      vi.mocked(createApplication).mockResolvedValue(fakeApp);
+  // ── app create ──────────────────────────────────────────────────────
 
-      const { handlers } = getHandlers();
+  describe('app create', () => {
+    it('should POST to /api/admin/applications and display success', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeApp } });
+
+      const handlers = getHandlers();
       await handlers['create'](createArgv({ name: 'BusinessSuite' }));
 
-      expect(createApplication).toHaveBeenCalledWith({
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/applications', {
         name: 'BusinessSuite',
         slug: undefined,
         description: undefined,
       });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('BusinessSuite'));
     });
+
+    it('should pass slug and description options when provided', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeApp } });
+
+      const handlers = getHandlers();
+      await handlers['create'](createArgv({
+        name: 'BusinessSuite',
+        slug: 'biz',
+        description: 'My business app',
+      }));
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/applications', {
+        name: 'BusinessSuite',
+        slug: 'biz',
+        description: 'My business app',
+      });
+    });
+
+    it('should output JSON when --json flag is set', async () => {
+      mockClient.post.mockResolvedValue({ status: 201, data: { data: fakeApp } });
+      vi.mocked(outputResult).mockImplementation(
+        (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
+          if (isJson) expect(jsonData).toEqual(fakeApp);
+        },
+      );
+
+      const handlers = getHandlers();
+      await handlers['create'](createArgv({ name: 'BusinessSuite', json: true }));
+
+      expect(outputResult).toHaveBeenCalled();
+    });
   });
 
+  // ── app list ────────────────────────────────────────────────────────
+
   describe('app list', () => {
-    it('should list applications in table format', async () => {
-      vi.mocked(listApplications).mockResolvedValue({
-        data: [fakeApp],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-        totalPages: 1,
+    it('should GET /api/admin/applications with query params', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeApp], total: 1, page: 1, pageSize: 20 },
       });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['list'](createArgv({ page: 1, 'page-size': 20 }));
 
-      expect(listApplications).toHaveBeenCalled();
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications', {
+        page: '1',
+        pageSize: '20',
+      });
       expect(outputResult).toHaveBeenCalled();
     });
 
     it('should warn when no applications found', async () => {
-      vi.mocked(listApplications).mockResolvedValue({
-        data: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        totalPages: 0,
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [], total: 0, page: 1, pageSize: 20 },
       });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['list'](createArgv({ page: 1, 'page-size': 20 }));
 
       expect(warn).toHaveBeenCalledWith('No applications found');
     });
+
+    it('should pass status filter when provided', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeApp], total: 1, page: 1, pageSize: 20 },
+      });
+
+      const handlers = getHandlers();
+      await handlers['list'](createArgv({ status: 'active', page: 2, 'page-size': 10 }));
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications', {
+        page: '2',
+        pageSize: '10',
+        status: 'active',
+      });
+    });
   });
 
+  // ── app show ────────────────────────────────────────────────────────
+
   describe('app show', () => {
-    it('should show app details by slug', async () => {
-      const { handlers } = getHandlers();
+    it('should GET app details by id-or-slug', async () => {
+      const handlers = getHandlers();
       await handlers['show'](createArgv({ 'id-or-slug': 'business-suite' }));
 
-      expect(getApplicationBySlug).toHaveBeenCalledWith('business-suite');
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications/business-suite');
       expect(printTable).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundError when app not found', async () => {
-      vi.mocked(getApplicationBySlug).mockResolvedValue(null);
+    it('should output JSON when --json flag is set', async () => {
+      vi.mocked(outputResult).mockImplementation(
+        (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
+          if (isJson) expect(jsonData).toEqual(fakeApp);
+        },
+      );
 
-      const { handlers } = getHandlers();
-      await expect(handlers['show'](createArgv({ 'id-or-slug': 'nonexistent' }))).rejects.toThrow(
-        'Application not found',
+      const handlers = getHandlers();
+      await handlers['show'](createArgv({ 'id-or-slug': 'business-suite', json: true }));
+
+      expect(outputResult).toHaveBeenCalled();
+    });
+  });
+
+  // ── app update ──────────────────────────────────────────────────────
+
+  describe('app update', () => {
+    it('should resolve app then PUT update', async () => {
+      const updated = { ...fakeApp, name: 'New Name' };
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: updated } });
+
+      const handlers = getHandlers();
+      await handlers['update'](createArgv({ 'id-or-slug': 'business-suite', name: 'New Name' }));
+
+      // 1st: resolveApp
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications/business-suite');
+      // 2nd: PUT update with resolved UUID
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/applications/${fakeApp.id}`,
+        { name: 'New Name', description: undefined },
+      );
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('New Name'));
+    });
+
+    it('should pass description option when provided', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeApp } });
+
+      const handlers = getHandlers();
+      await handlers['update'](createArgv({
+        'id-or-slug': 'business-suite',
+        description: 'Updated desc',
+      }));
+
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/applications/${fakeApp.id}`,
+        { name: undefined, description: 'Updated desc' },
       );
     });
   });
 
-  describe('app update', () => {
-    it('should update app name', async () => {
-      vi.mocked(updateApplication).mockResolvedValue({ ...fakeApp, name: 'New Name' });
-
-      const { handlers } = getHandlers();
-      await handlers['update'](createArgv({ 'id-or-slug': 'business-suite', name: 'New Name' }));
-
-      expect(updateApplication).toHaveBeenCalledWith(fakeApp.id, {
-        name: 'New Name',
-        description: undefined,
-      });
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('New Name'));
-    });
-  });
+  // ── app archive ─────────────────────────────────────────────────────
 
   describe('app archive', () => {
-    it('should archive app with confirmation', async () => {
-      const { handlers } = getHandlers();
+    it('should resolve app, confirm, then POST archive', async () => {
+      mockClient.post.mockResolvedValue({ status: 200, data: {} });
+
+      const handlers = getHandlers();
       await handlers['archive'](createArgv({ 'id-or-slug': 'business-suite', force: true }));
 
-      expect(archiveApplication).toHaveBeenCalledWith(fakeApp.id);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/admin/applications/${fakeApp.id}/archive`,
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('archived'));
     });
 
+    it('should cancel archive when confirmation declined', async () => {
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      const handlers = getHandlers();
+      await handlers['archive'](createArgv({ 'id-or-slug': 'business-suite' }));
+
+      expect(mockClient.post).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith('Operation cancelled');
+    });
+
     it('should show dry-run message for archive', async () => {
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['archive'](createArgv({ 'id-or-slug': 'business-suite', 'dry-run': true }));
 
-      expect(archiveApplication).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
     });
   });
 
-  describe('app module create', () => {
-    it('should create a module within an app', async () => {
-      vi.mocked(createModule).mockResolvedValue(fakeModule);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['module']['create'](createArgv({ app: fakeApp.id, name: 'CRM' }));
-
-      expect(createModule).toHaveBeenCalledWith(fakeApp.id, {
-        name: 'CRM',
-        slug: undefined,
-        description: undefined,
-      });
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('CRM'));
-    });
-  });
-
-  describe('app module list', () => {
-    it('should list modules for an app', async () => {
-      vi.mocked(listModules).mockResolvedValue([fakeModule]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['module']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(listModules).toHaveBeenCalledWith(fakeApp.id);
-      expect(outputResult).toHaveBeenCalled();
-    });
-
-    it('should warn when no modules found', async () => {
-      vi.mocked(listModules).mockResolvedValue([]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['module']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(warn).toHaveBeenCalledWith('No modules found');
-    });
-  });
-
-  describe('app module deactivate', () => {
-    it('should deactivate a module with confirmation', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['module']['deactivate'](createArgv({ 'module-id': fakeModule.id, force: true }));
-
-      expect(deactivateModule).toHaveBeenCalledWith(fakeModule.id);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('deactivated'));
-    });
-  });
-
-  describe('app role create', () => {
-    it('should create a role for an app', async () => {
-      const fakeRole = { id: 'r1', applicationId: fakeApp.id, name: 'Admin', slug: 'admin', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(createRole).mockResolvedValue(fakeRole);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['create'](createArgv({ app: fakeApp.id, name: 'Admin' }));
-
-      expect(createRole).toHaveBeenCalledWith({ applicationId: fakeApp.id, name: 'Admin', description: undefined });
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('Admin'));
-    });
-  });
-
-  describe('app role list', () => {
-    it('should list roles for an app', async () => {
-      const fakeRole = { id: 'r1', applicationId: fakeApp.id, name: 'Admin', slug: 'admin', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(listRolesByApplication).mockResolvedValue([fakeRole]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(listRolesByApplication).toHaveBeenCalledWith(fakeApp.id);
-      expect(outputResult).toHaveBeenCalled();
-    });
-
-    it('should warn when no roles found', async () => {
-      vi.mocked(listRolesByApplication).mockResolvedValue([]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(warn).toHaveBeenCalledWith('No roles found');
-    });
-  });
-
-  describe('app role show', () => {
-    it('should show role details with permissions', async () => {
-      const fakeRole = { id: 'r1', applicationId: fakeApp.id, name: 'Admin', slug: 'admin', description: 'Admin role', createdAt: new Date(), updatedAt: new Date() };
-      const fakePerm = { id: 'p1', applicationId: fakeApp.id, name: 'Read', slug: 'read', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(findRoleById).mockResolvedValue(fakeRole);
-      vi.mocked(getPermissionsForRole).mockResolvedValue([fakePerm]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['show'](createArgv({ 'role-id': 'r1' }));
-
-      expect(findRoleById).toHaveBeenCalledWith('r1');
-      expect(getPermissionsForRole).toHaveBeenCalledWith('r1');
-      expect(printTable).toHaveBeenCalled();
-    });
-  });
-
-  describe('app role delete', () => {
-    it('should delete a role with confirmation', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['delete'](createArgv({ 'role-id': 'r1', force: true }));
-
-      expect(deleteRole).toHaveBeenCalledWith('r1');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('deleted'));
-    });
-  });
-
-  describe('app role assign-permissions', () => {
-    it('should assign permissions to a role', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['role']['assign-permissions'](createArgv({ 'role-id': 'r1', 'permission-ids': 'p1,p2' }));
-
-      expect(assignPermissionsToRole).toHaveBeenCalledWith('r1', ['p1', 'p2']);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('2 permission'));
-    });
-  });
-
-  describe('app permission create', () => {
-    it('should create a permission for an app', async () => {
-      const fakePerm = { id: 'p1', applicationId: fakeApp.id, name: 'Read Users', slug: 'users:read', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(createPermission).mockResolvedValue(fakePerm);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['permission']['create'](createArgv({ app: fakeApp.id, name: 'Read Users', slug: 'users:read' }));
-
-      expect(createPermission).toHaveBeenCalledWith({
-        applicationId: fakeApp.id, name: 'Read Users', slug: 'users:read', description: undefined,
-      });
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('Read Users'));
-    });
-  });
-
-  describe('app permission list', () => {
-    it('should list permissions for an app', async () => {
-      const fakePerm = { id: 'p1', applicationId: fakeApp.id, name: 'Read', slug: 'read', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(listPermissionsByApplication).mockResolvedValue([fakePerm]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['permission']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(listPermissionsByApplication).toHaveBeenCalledWith(fakeApp.id);
-      expect(outputResult).toHaveBeenCalled();
-    });
-  });
-
-  describe('app permission delete', () => {
-    it('should delete a permission with confirmation', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['permission']['delete'](createArgv({ 'permission-id': 'p1', force: true }));
-
-      expect(deletePermission).toHaveBeenCalledWith('p1');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('deleted'));
-    });
-  });
-
-  describe('app claim create', () => {
-    it('should create a claim definition', async () => {
-      const fakeClaim = { id: 'cl1', applicationId: fakeApp.id, claimName: 'department', claimType: 'string', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(createDefinition).mockResolvedValue(fakeClaim);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['claim']['create'](createArgv({ app: fakeApp.id, name: 'department', type: 'string' }));
-
-      expect(createDefinition).toHaveBeenCalledWith({
-        applicationId: fakeApp.id, claimName: 'department', claimType: 'string', description: undefined,
-      });
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('department'));
-    });
-  });
-
-  describe('app claim list', () => {
-    it('should list claim definitions for an app', async () => {
-      const fakeClaim = { id: 'cl1', applicationId: fakeApp.id, claimName: 'department', claimType: 'string', description: null, createdAt: new Date(), updatedAt: new Date() };
-      vi.mocked(listDefinitions).mockResolvedValue([fakeClaim]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['claim']['list'](createArgv({ app: fakeApp.id }));
-
-      expect(listDefinitions).toHaveBeenCalledWith(fakeApp.id);
-      expect(outputResult).toHaveBeenCalled();
-    });
-  });
-
-  describe('app claim delete', () => {
-    it('should delete a claim definition with confirmation', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['claim']['delete'](createArgv({ 'claim-id': 'cl1', force: true }));
-
-      expect(deleteDefinition).toHaveBeenCalledWith('cl1');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('deleted'));
-    });
-  });
+  // ── command metadata ────────────────────────────────────────────────
 
   describe('command metadata', () => {
     it('should have correct command name', () => {

@@ -1,14 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock bootstrap
+// ---------------------------------------------------------------------------
+// Hoisted mock client — accessible inside vi.mock factories
+// ---------------------------------------------------------------------------
+
+const { mockClient } = vi.hoisted(() => ({
+  mockClient: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
+// Mock bootstrap — withHttpClient passes mockClient to the callback
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
-  withBootstrap: vi.fn().mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
-  withHttpClient: vi.fn().mockImplementation(async (_argv: unknown, fn: (client: unknown) => Promise<unknown>) => fn({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() })),
+  withHttpClient: vi.fn().mockImplementation(
+    async (_argv: unknown, fn: (c: typeof mockClient) => Promise<unknown>) => fn(mockClient),
+  ),
 }));
 
 // Mock error handler — run fn directly
 vi.mock('../../../../src/cli/error-handler.js', () => ({
-  withErrorHandling: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
+  withErrorHandling: vi.fn().mockImplementation(
+    async (fn: () => Promise<void>) => fn(),
+  ),
 }));
 
 // Mock output helpers
@@ -28,174 +48,76 @@ vi.mock('../../../../src/cli/prompt.js', () => ({
   confirm: vi.fn().mockResolvedValue(true),
 }));
 
-// Mock client service
-// `resolveLoginMethods` is imported by the `client show` handler — it pairs the
-// client override with the org default. We mirror the real helper's contract:
-// null override → org.defaultLoginMethods; explicit array → returned as-is.
-vi.mock('../../../../src/clients/index.js', () => ({
-  createClient: vi.fn(),
-  getClientById: vi.fn(),
-  updateClient: vi.fn(),
-  listClientsByApplication: vi.fn(),
-  revokeClient: vi.fn(),
-  generateSecret: vi.fn(),
-  listSecretsByClient: vi.fn(),
-  revokeSecret: vi.fn(),
-  resolveLoginMethods: vi.fn(
-    (org: { defaultLoginMethods: string[] }, client: { loginMethods: string[] | null }) =>
-      client.loginMethods === null || client.loginMethods.length === 0
-        ? org.defaultLoginMethods
-        : client.loginMethods,
-  ),
-  ClientNotFoundError: class ClientNotFoundError extends Error {
-    constructor(id: string) { super(`Client not found: ${id}`); this.name = 'ClientNotFoundError'; }
-  },
+// Mock nested client-secret subcommand — tested in its own file
+vi.mock('../../../../src/cli/commands/client-secret.js', () => ({
+  clientSecretCommand: { command: 'secret', describe: 'mock', builder: () => {}, handler: () => {} },
 }));
 
-// Mock application service (for resolveAppId)
-vi.mock('../../../../src/applications/index.js', () => ({
-  getApplicationBySlug: vi.fn(),
-  ApplicationNotFoundError: class ApplicationNotFoundError extends Error {
-    constructor(id: string) { super(`Application not found: ${id}`); this.name = 'ApplicationNotFoundError'; }
-  },
-}));
-
-// Mock organization service (used by `client show` to load the org for resolveLoginMethods)
-vi.mock('../../../../src/organizations/index.js', () => ({
-  getOrganizationById: vi.fn(),
-}));
+// ---------------------------------------------------------------------------
+// Imports (after mocks)
+// ---------------------------------------------------------------------------
 
 import { clientCommand } from '../../../../src/cli/commands/client.js';
 import { success, warn, outputResult, printTable } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
-import {
-  createClient,
-  getClientById,
-  updateClient,
-  listClientsByApplication,
-  revokeClient,
-  generateSecret,
-  listSecretsByClient,
-  revokeSecret,
-} from '../../../../src/clients/index.js';
-import {
-  getApplicationBySlug,
-} from '../../../../src/applications/index.js';
-import { getOrganizationById } from '../../../../src/organizations/index.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
+// ---------------------------------------------------------------------------
+// Test data
+// ---------------------------------------------------------------------------
 
-/** Fake client for test data */
-const fakeClient = {
+/** Fake client data as returned by the Admin API (JSON-serialized) */
+const fakeClientData = {
   id: 'd4e5f6a7-b8c9-0123-def0-123456789abc',
-  organizationId: 'org-1',
-  applicationId: 'app-1',
   clientId: 'porta_ci_abc123def456',
   clientName: 'My Web App',
-  clientType: 'confidential' as const,
-  applicationType: 'web' as const,
+  clientType: 'confidential',
+  applicationType: 'web',
+  organizationId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  applicationId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+  status: 'active',
   redirectUris: ['https://example.com/callback'],
-  postLogoutRedirectUris: [],
   grantTypes: ['authorization_code'],
-  responseTypes: ['code'],
   scope: 'openid profile email',
-  tokenEndpointAuthMethod: 'client_secret_basic',
-  allowedOrigins: [],
   requirePkce: true,
-  status: 'active' as const,
-  loginMethods: null as ('password' | 'magic_link')[] | null,
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
+  loginMethods: null as string[] | null,
+  effectiveLoginMethods: ['password', 'magic_link'],
+  createdAt: '2026-04-08T00:00:00.000Z',
+  updatedAt: '2026-04-09T00:00:00.000Z',
 };
 
-/** Fake org used by `client show` to resolve effective login methods. */
-const fakeOrg = {
-  id: 'org-1',
-  name: 'Acme',
-  slug: 'acme',
-  status: 'active' as const,
-  isSuperAdmin: false,
-  defaultLocale: 'en',
-  defaultLoginMethods: ['password', 'magic_link'] as ('password' | 'magic_link')[],
-  brandingLogoUrl: null,
-  brandingFaviconUrl: null,
-  brandingPrimaryColor: null,
-  brandingCompanyName: null,
-  brandingCustomCss: null,
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
-};
-
-
-/** Fake app for resolveAppId */
-const fakeApp = {
-  id: 'app-1',
-  organizationId: 'org-1',
-  name: 'Test App',
-  slug: 'test-app',
-  description: null,
-  status: 'active' as const,
-  createdAt: new Date('2026-04-08'),
-  updatedAt: new Date('2026-04-09'),
-};
-
-/** Fake secret for test data */
-const fakeSecretPlaintext = {
+/** Fake secret included in create response */
+const fakeSecretData = {
   id: 'sec-1',
-  clientId: fakeClient.id,
+  clientId: fakeClientData.id,
   label: 'production',
   plaintext: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo',
+  sha256Prefix: 'abc123',
   expiresAt: null,
-  createdAt: new Date('2026-04-09'),
+  createdAt: '2026-04-09T00:00:00.000Z',
 };
 
-/** Fake secret metadata (no plaintext) */
-const fakeSecretMeta = {
-  id: 'sec-1',
-  clientId: fakeClient.id,
-  label: 'production',
-  status: 'active' as const,
-  lastUsedAt: null,
-  expiresAt: null,
-  createdAt: new Date('2026-04-09'),
-};
+/** App UUID used in most tests (avoids slug resolution calls) */
+const APP_UUID = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
 
-function createArgv(overrides: Partial<GlobalOptions & Record<string, unknown>> = {}): GlobalOptions & Record<string, unknown> {
+/** Helper to build minimal argv with sensible defaults */
+function createArgv(
+  overrides: Partial<GlobalOptions & Record<string, unknown>> = {},
+): GlobalOptions & Record<string, unknown> {
   return { json: false, verbose: false, force: false, 'dry-run': false, ...overrides };
 }
 
 /**
  * Extract subcommand handlers from the client command builder.
- * Handles both simple commands and nested command groups (secret).
+ * Nested command groups (secret) are handled by their own test file.
  */
 function getHandlers() {
   const handlers: Record<string, (args: Record<string, unknown>) => Promise<void>> = {};
-  const nestedGroups: Record<string, Record<string, (args: Record<string, unknown>) => Promise<void>>> = {};
-
   const fakeYargs = {
     command: (cmd: string | object, _desc?: string, _builder?: unknown, handler?: unknown) => {
       if (typeof cmd === 'string') {
         const name = cmd.split(' ')[0];
         handlers[name] = handler as (args: Record<string, unknown>) => Promise<void>;
-      } else if (typeof cmd === 'object' && 'command' in cmd) {
-        // Nested command group (e.g., clientSecretCommand)
-        const group = cmd as { command: string; builder: (y: typeof fakeYargs) => typeof fakeYargs };
-        const groupName = group.command;
-        const groupHandlers: Record<string, (args: Record<string, unknown>) => Promise<void>> = {};
-        const groupYargs = {
-          command: (subcmd: string, _d?: string, _b?: unknown, h?: unknown) => {
-            if (typeof subcmd === 'string') {
-              const subName = subcmd.split(' ')[0];
-              groupHandlers[subName] = h as (args: Record<string, unknown>) => Promise<void>;
-            }
-            return groupYargs;
-          },
-          option: () => groupYargs,
-          positional: () => groupYargs,
-          demandCommand: () => groupYargs,
-        };
-        group.builder(groupYargs as unknown as typeof fakeYargs);
-        nestedGroups[groupName] = groupHandlers;
       }
       return fakeYargs;
     },
@@ -204,454 +126,460 @@ function getHandlers() {
     demandCommand: () => fakeYargs,
   };
   (clientCommand.builder as (y: typeof fakeYargs) => typeof fakeYargs)(fakeYargs);
-  return { handlers, nestedGroups };
+  return handlers;
 }
 
-// TODO: Phase 5 — rewrite tests to mock HTTP client instead of domain services
-describe.skip('CLI Client Command', () => {
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('CLI Client Command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset default mock return values after clearAllMocks
     vi.mocked(outputResult).mockImplementation(
       (_isJson: boolean, tableRenderer: () => void) => { tableRenderer(); },
     );
     vi.mocked(confirm).mockResolvedValue(true);
-    vi.mocked(getClientById).mockResolvedValue(fakeClient);
-    vi.mocked(getApplicationBySlug).mockResolvedValue(fakeApp);
-    vi.mocked(getOrganizationById).mockResolvedValue(fakeOrg);
+    // Default: GET client returns fakeClientData (used by show/revoke)
+    mockClient.get.mockResolvedValue({ status: 200, data: { data: fakeClientData } });
   });
 
-
-  // ─── client create ────────────────────────────────────────────────
+  // ── client create ───────────────────────────────────────────────────
 
   describe('client create', () => {
-    it('should create a client and display success', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+    it('should POST to /api/admin/clients and display success', async () => {
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: null } },
+      });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
-        app: 'test-app',
+        org: fakeClientData.organizationId,
+        app: APP_UUID,
         type: 'confidential',
         'application-type': 'web',
         'redirect-uris': 'https://example.com/callback',
       }));
 
-      expect(createClient).toHaveBeenCalledWith(expect.objectContaining({
-        organizationId: 'org-1',
-        applicationId: 'app-1',
+      expect(mockClient.post).toHaveBeenCalledWith('/api/admin/clients', {
+        organizationId: fakeClientData.organizationId,
+        applicationId: APP_UUID,
+        clientName: 'Unnamed Client',
         clientType: 'confidential',
+        applicationType: 'web',
         redirectUris: ['https://example.com/callback'],
-      }));
+      });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('My Web App'));
     });
 
-    it('should display one-time secret box for confidential clients', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: fakeSecretPlaintext });
+    it('should display one-time secret for confidential clients', async () => {
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: fakeSecretData } },
+      });
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
-        app: 'app-1',
+        org: fakeClientData.organizationId,
+        app: APP_UUID,
         type: 'confidential',
         'application-type': 'web',
         'redirect-uris': 'https://example.com/callback',
       }));
 
-      // Verify the one-time secret warning is shown
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('IMPORTANT'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Secret:'));
-
       consoleSpy.mockRestore();
     });
 
-    it('should resolve app slug to ID', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+    it('should resolve app slug via GET /api/admin/applications/:slug', async () => {
+      // First GET: resolveAppId for slug → UUID
+      mockClient.get.mockResolvedValueOnce({
+        status: 200,
+        data: { data: { id: APP_UUID } },
+      });
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: null } },
+      });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
+        org: fakeClientData.organizationId,
         app: 'test-app',
         type: 'public',
         'application-type': 'spa',
         'redirect-uris': 'https://spa.example.com/callback',
       }));
 
-      // resolveAppId calls getApplicationBySlug for non-UUID values
-      expect(getApplicationBySlug).toHaveBeenCalledWith('test-app');
+      // Verify slug was resolved via the API
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications/test-app');
+      // And the resolved UUID was used in the POST body
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/admin/clients',
+        expect.objectContaining({ applicationId: APP_UUID }),
+      );
     });
 
-    it('should forward an explicit --login-methods override on create', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+    it('should forward --login-methods override on create', async () => {
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: null } },
+      });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
-        app: 'app-1',
+        org: fakeClientData.organizationId,
+        app: APP_UUID,
         type: 'public',
         'application-type': 'spa',
         'redirect-uris': 'https://spa.example.com/callback',
         'login-methods': 'password',
       }));
 
-      expect(createClient).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/admin/clients',
         expect.objectContaining({ loginMethods: ['password'] }),
       );
     });
 
     it('should forward --login-methods inherit as null on create', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: null } },
+      });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
-        app: 'app-1',
+        org: fakeClientData.organizationId,
+        app: APP_UUID,
         type: 'public',
         'application-type': 'spa',
         'redirect-uris': 'https://spa.example.com/callback',
         'login-methods': 'inherit',
       }));
 
-      expect(createClient).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/api/admin/clients',
         expect.objectContaining({ loginMethods: null }),
       );
     });
 
-    it('should omit loginMethods when --login-methods flag not provided on create', async () => {
-      vi.mocked(createClient).mockResolvedValue({ client: fakeClient, secret: null });
+    it('should omit loginMethods when --login-methods not provided', async () => {
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        data: { data: { client: fakeClientData, secret: null } },
+      });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['create'](createArgv({
-        org: 'org-1',
-        app: 'app-1',
+        org: fakeClientData.organizationId,
+        app: APP_UUID,
         type: 'public',
         'application-type': 'spa',
         'redirect-uris': 'https://spa.example.com/callback',
       }));
 
-      const callArg = vi.mocked(createClient).mock.calls[0][0];
-      expect(callArg).not.toHaveProperty('loginMethods');
+      const callBody = mockClient.post.mock.calls[0][1] as Record<string, unknown>;
+      expect(callBody).not.toHaveProperty('loginMethods');
     });
 
     it('should reject unknown method on create', async () => {
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await expect(
         handlers['create'](createArgv({
-          org: 'org-1',
-          app: 'app-1',
+          org: fakeClientData.organizationId,
+          app: APP_UUID,
           type: 'public',
           'application-type': 'spa',
           'redirect-uris': 'https://spa.example.com/callback',
           'login-methods': 'foo',
         })),
       ).rejects.toThrow(/unknown method "foo"/);
-      expect(createClient).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
 
-  // ─── client list ──────────────────────────────────────────────────
+  // ── client list ─────────────────────────────────────────────────────
 
   describe('client list', () => {
-    it('should list clients in table format', async () => {
-      vi.mocked(listClientsByApplication).mockResolvedValue({
-        data: [fakeClient],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-        totalPages: 1,
+    it('should GET /api/admin/clients with query params', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeClientData], total: 1, page: 1, pageSize: 20 },
       });
 
-      const { handlers } = getHandlers();
-      await handlers['list'](createArgv({ app: 'app-1', page: 1, 'page-size': 20 }));
+      const handlers = getHandlers();
+      await handlers['list'](createArgv({ app: APP_UUID, page: 1, 'page-size': 20 }));
 
-      expect(listClientsByApplication).toHaveBeenCalledWith('app-1', {
-        page: 1,
-        pageSize: 20,
-        status: undefined,
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/clients', {
+        applicationId: APP_UUID,
+        page: '1',
+        pageSize: '20',
       });
       expect(outputResult).toHaveBeenCalled();
     });
 
     it('should warn when no clients found', async () => {
-      vi.mocked(listClientsByApplication).mockResolvedValue({
-        data: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        totalPages: 0,
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [], total: 0, page: 1, pageSize: 20 },
       });
 
-      const { handlers } = getHandlers();
-      await handlers['list'](createArgv({ app: 'app-1', page: 1, 'page-size': 20 }));
+      const handlers = getHandlers();
+      await handlers['list'](createArgv({ app: APP_UUID, page: 1, 'page-size': 20 }));
 
       expect(warn).toHaveBeenCalledWith('No clients found');
     });
 
     it('should pass status filter when provided', async () => {
-      vi.mocked(listClientsByApplication).mockResolvedValue({
-        data: [fakeClient],
-        total: 1,
-        page: 1,
-        pageSize: 10,
-        totalPages: 1,
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: { data: [fakeClientData], total: 1, page: 1, pageSize: 10 },
       });
 
-      const { handlers } = getHandlers();
-      await handlers['list'](createArgv({ app: 'app-1', status: 'active', page: 1, 'page-size': 10 }));
-
-      expect(listClientsByApplication).toHaveBeenCalledWith('app-1', {
+      const handlers = getHandlers();
+      await handlers['list'](createArgv({
+        app: APP_UUID,
+        status: 'active',
         page: 1,
-        pageSize: 10,
+        'page-size': 10,
+      }));
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/clients', {
+        applicationId: APP_UUID,
+        page: '1',
+        pageSize: '10',
         status: 'active',
       });
     });
+
+    it('should resolve app slug for list', async () => {
+      // 1st GET: resolve app slug → UUID
+      mockClient.get.mockResolvedValueOnce({
+        status: 200,
+        data: { data: { id: APP_UUID } },
+      });
+      // 2nd GET: client list
+      mockClient.get.mockResolvedValueOnce({
+        status: 200,
+        data: { data: [fakeClientData], total: 1, page: 1, pageSize: 20 },
+      });
+
+      const handlers = getHandlers();
+      await handlers['list'](createArgv({ app: 'test-app', page: 1, 'page-size': 20 }));
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/applications/test-app');
+      expect(mockClient.get).toHaveBeenCalledWith('/api/admin/clients', {
+        applicationId: APP_UUID,
+        page: '1',
+        pageSize: '20',
+      });
+    });
   });
 
-  // ─── client show ──────────────────────────────────────────────────
+  // ── client show ─────────────────────────────────────────────────────
 
   describe('client show', () => {
-    it('should show client details', async () => {
-      const { handlers } = getHandlers();
-      await handlers['show'](createArgv({ 'client-id': fakeClient.id }));
+    it('should GET client details by client-id', async () => {
+      const handlers = getHandlers();
+      await handlers['show'](createArgv({ 'client-id': fakeClientData.id }));
 
-      expect(getClientById).toHaveBeenCalledWith(fakeClient.id);
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
+      );
       expect(printTable).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundError when client not found', async () => {
-      vi.mocked(getClientById).mockResolvedValue(null);
-
-      const { handlers } = getHandlers();
-      await expect(handlers['show'](createArgv({ 'client-id': 'nonexistent' }))).rejects.toThrow(
-        'Client not found',
-      );
-    });
-
-    it('should load the owning org and render effective login methods (inherit case)', async () => {
-      // Client with `loginMethods: null` → effective methods come from the org default.
-      vi.mocked(getClientById).mockResolvedValue({ ...fakeClient, loginMethods: null });
-
-      const { handlers } = getHandlers();
-      await handlers['show'](createArgv({ 'client-id': fakeClient.id, json: true }));
-
-      expect(getOrganizationById).toHaveBeenCalledWith(fakeClient.organizationId);
-
-      // Capture the JSON payload forwarded to outputResult and assert the merged field.
-      const call = vi.mocked(outputResult).mock.calls[0];
-      const payload = call[2] as { effectiveLoginMethods: string[]; loginMethods: string[] | null };
-      expect(payload.loginMethods).toBeNull();
-      expect(payload.effectiveLoginMethods).toEqual(['password', 'magic_link']);
-    });
-
-    it('should render explicit override for effective login methods', async () => {
-      vi.mocked(getClientById).mockResolvedValue({
-        ...fakeClient,
-        loginMethods: ['password'],
+    it('should render effectiveLoginMethods from API response', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: {
+          data: {
+            ...fakeClientData,
+            loginMethods: null,
+            effectiveLoginMethods: ['password', 'magic_link'],
+          },
+        },
       });
 
-      const { handlers } = getHandlers();
-      await handlers['show'](createArgv({ 'client-id': fakeClient.id, json: true }));
+      vi.mocked(outputResult).mockImplementation(
+        (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
+          if (isJson) {
+            const payload = jsonData as { loginMethods: null; effectiveLoginMethods: string[] };
+            expect(payload.loginMethods).toBeNull();
+            expect(payload.effectiveLoginMethods).toEqual(['password', 'magic_link']);
+          }
+        },
+      );
 
-      const call = vi.mocked(outputResult).mock.calls[0];
-      const payload = call[2] as { effectiveLoginMethods: string[]; loginMethods: string[] | null };
-      expect(payload.loginMethods).toEqual(['password']);
-      expect(payload.effectiveLoginMethods).toEqual(['password']);
+      const handlers = getHandlers();
+      await handlers['show'](createArgv({ 'client-id': fakeClientData.id, json: true }));
+
+      expect(outputResult).toHaveBeenCalled();
+    });
+
+    it('should render explicit login methods override', async () => {
+      mockClient.get.mockResolvedValue({
+        status: 200,
+        data: {
+          data: {
+            ...fakeClientData,
+            loginMethods: ['password'],
+            effectiveLoginMethods: ['password'],
+          },
+        },
+      });
+
+      vi.mocked(outputResult).mockImplementation(
+        (isJson: boolean, _tableRenderer: () => void, jsonData: unknown) => {
+          if (isJson) {
+            const payload = jsonData as { loginMethods: string[]; effectiveLoginMethods: string[] };
+            expect(payload.loginMethods).toEqual(['password']);
+            expect(payload.effectiveLoginMethods).toEqual(['password']);
+          }
+        },
+      );
+
+      const handlers = getHandlers();
+      await handlers['show'](createArgv({ 'client-id': fakeClientData.id, json: true }));
+
+      expect(outputResult).toHaveBeenCalled();
     });
   });
 
-  // ─── client update ────────────────────────────────────────────────
+  // ── client update ───────────────────────────────────────────────────
 
   describe('client update', () => {
-    it('should update client name', async () => {
-      vi.mocked(updateClient).mockResolvedValue({ ...fakeClient, clientName: 'New Name' });
+    it('should PUT update client name', async () => {
+      const updated = { ...fakeClientData, clientName: 'New Name' };
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: updated } });
 
-      const { handlers } = getHandlers();
-      await handlers['update'](createArgv({ 'client-id': fakeClient.id, name: 'New Name' }));
+      const handlers = getHandlers();
+      await handlers['update'](createArgv({ 'client-id': fakeClientData.id, name: 'New Name' }));
 
-      expect(updateClient).toHaveBeenCalledWith(fakeClient.id, {
-        clientName: 'New Name',
-        redirectUris: undefined,
-      });
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
+        { clientName: 'New Name', redirectUris: undefined },
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('New Name'));
     });
 
     it('should update redirect URIs', async () => {
-      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeClientData } });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['update'](createArgv({
-        'client-id': fakeClient.id,
+        'client-id': fakeClientData.id,
         'redirect-uris': 'https://new.example.com/callback,https://other.example.com/callback',
       }));
 
-      expect(updateClient).toHaveBeenCalledWith(fakeClient.id, {
-        clientName: undefined,
-        redirectUris: ['https://new.example.com/callback', 'https://other.example.com/callback'],
-      });
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
+        {
+          clientName: undefined,
+          redirectUris: ['https://new.example.com/callback', 'https://other.example.com/callback'],
+        },
+      );
     });
 
-    it('should forward an explicit --login-methods override on update', async () => {
-      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+    it('should forward --login-methods override on update', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeClientData } });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['update'](createArgv({
-        'client-id': fakeClient.id,
+        'client-id': fakeClientData.id,
         'login-methods': 'magic_link',
       }));
 
-      expect(updateClient).toHaveBeenCalledWith(
-        fakeClient.id,
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
         expect.objectContaining({ loginMethods: ['magic_link'] }),
       );
     });
 
     it('should forward --login-methods inherit as null on update', async () => {
-      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeClientData } });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['update'](createArgv({
-        'client-id': fakeClient.id,
+        'client-id': fakeClientData.id,
         'login-methods': 'inherit',
       }));
 
-      expect(updateClient).toHaveBeenCalledWith(
-        fakeClient.id,
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
         expect.objectContaining({ loginMethods: null }),
       );
     });
 
-    it('should omit loginMethods when --login-methods flag not provided on update', async () => {
-      vi.mocked(updateClient).mockResolvedValue(fakeClient);
+    it('should omit loginMethods when --login-methods not provided', async () => {
+      mockClient.put.mockResolvedValue({ status: 200, data: { data: fakeClientData } });
 
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await handlers['update'](createArgv({
-        'client-id': fakeClient.id,
+        'client-id': fakeClientData.id,
         name: 'New',
       }));
 
-      const callArg = vi.mocked(updateClient).mock.calls[0][1];
-      expect(callArg).not.toHaveProperty('loginMethods');
+      const callBody = mockClient.put.mock.calls[0][1] as Record<string, unknown>;
+      expect(callBody).not.toHaveProperty('loginMethods');
     });
 
     it('should reject unknown method on update', async () => {
-      const { handlers } = getHandlers();
+      const handlers = getHandlers();
       await expect(
         handlers['update'](createArgv({
-          'client-id': fakeClient.id,
+          'client-id': fakeClientData.id,
           'login-methods': 'oauth',
         })),
       ).rejects.toThrow(/unknown method "oauth"/);
-      expect(updateClient).not.toHaveBeenCalled();
+      expect(mockClient.put).not.toHaveBeenCalled();
     });
   });
 
-  // ─── client revoke ────────────────────────────────────────────────
+  // ── client revoke ───────────────────────────────────────────────────
 
   describe('client revoke', () => {
-    it('should revoke client with confirmation', async () => {
-      const { handlers } = getHandlers();
-      await handlers['revoke'](createArgv({ 'client-id': fakeClient.id, force: true }));
+    it('should fetch client, confirm, then POST revoke', async () => {
+      mockClient.post.mockResolvedValue({ status: 200, data: {} });
 
-      expect(revokeClient).toHaveBeenCalledWith(fakeClient.id);
+      const handlers = getHandlers();
+      await handlers['revoke'](createArgv({ 'client-id': fakeClientData.id, force: true }));
+
+      // 1st: fetch client details
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}`,
+      );
+      // 2nd: POST revoke
+      expect(mockClient.post).toHaveBeenCalledWith(
+        `/api/admin/clients/${fakeClientData.id}/revoke`,
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('revoked'));
     });
 
     it('should cancel revoke when confirmation declined', async () => {
       vi.mocked(confirm).mockResolvedValue(false);
 
-      const { handlers } = getHandlers();
-      await handlers['revoke'](createArgv({ 'client-id': fakeClient.id }));
+      const handlers = getHandlers();
+      await handlers['revoke'](createArgv({ 'client-id': fakeClientData.id }));
 
-      expect(revokeClient).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith('Operation cancelled');
     });
 
     it('should show dry-run message for revoke', async () => {
-      const { handlers } = getHandlers();
-      await handlers['revoke'](createArgv({ 'client-id': fakeClient.id, 'dry-run': true }));
+      const handlers = getHandlers();
+      await handlers['revoke'](createArgv({ 'client-id': fakeClientData.id, 'dry-run': true }));
 
-      expect(revokeClient).not.toHaveBeenCalled();
+      expect(mockClient.post).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
     });
   });
 
-  // ─── client secret generate ───────────────────────────────────────
-
-  describe('client secret generate', () => {
-    it('should generate a secret and show one-time display', async () => {
-      vi.mocked(generateSecret).mockResolvedValue(fakeSecretPlaintext);
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['generate'](createArgv({
-        'client-id': fakeClient.id,
-        label: 'production',
-      }));
-
-      expect(generateSecret).toHaveBeenCalledWith(fakeClient.id, { label: 'production' });
-      // One-time secret warning should be displayed
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('IMPORTANT'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Secret:'));
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  // ─── client secret list ───────────────────────────────────────────
-
-  describe('client secret list', () => {
-    it('should list secrets for a client', async () => {
-      vi.mocked(listSecretsByClient).mockResolvedValue([fakeSecretMeta]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['list'](createArgv({ 'client-id': fakeClient.id }));
-
-      expect(listSecretsByClient).toHaveBeenCalledWith(fakeClient.id);
-      expect(outputResult).toHaveBeenCalled();
-    });
-
-    it('should warn when no secrets found', async () => {
-      vi.mocked(listSecretsByClient).mockResolvedValue([]);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['list'](createArgv({ 'client-id': fakeClient.id }));
-
-      expect(warn).toHaveBeenCalledWith('No secrets found');
-    });
-  });
-
-  // ─── client secret revoke ─────────────────────────────────────────
-
-  describe('client secret revoke', () => {
-    it('should revoke a secret with confirmation', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['revoke'](createArgv({ 'secret-id': 'sec-1', force: true }));
-
-      expect(revokeSecret).toHaveBeenCalledWith('sec-1');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('revoked'));
-    });
-
-    it('should cancel secret revoke when declined', async () => {
-      vi.mocked(confirm).mockResolvedValue(false);
-
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['revoke'](createArgv({ 'secret-id': 'sec-1' }));
-
-      expect(revokeSecret).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith('Operation cancelled');
-    });
-
-    it('should show dry-run message for secret revoke', async () => {
-      const { nestedGroups } = getHandlers();
-      await nestedGroups['secret']['revoke'](createArgv({ 'secret-id': 'sec-1', 'dry-run': true }));
-
-      expect(revokeSecret).not.toHaveBeenCalled();
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
-    });
-  });
-
-  // ─── command metadata ─────────────────────────────────────────────
+  // ── command metadata ────────────────────────────────────────────────
 
   describe('command metadata', () => {
     it('should have correct command name', () => {
