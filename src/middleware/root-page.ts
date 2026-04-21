@@ -66,16 +66,25 @@ const ROOT_HTML = [
 ].join('\n');
 
 /**
- * Standard security response headers applied to every root-page response.
+ * Root-page-specific response headers applied to `/`, `/robots.txt`, and
+ * `/favicon.ico` only.
+ *
+ * General security headers (X-Content-Type-Options, X-Frame-Options,
+ * Referrer-Policy, Content-Security-Policy, etc.) are handled globally
+ * by the `securityHeaders()` middleware in `src/middleware/security-headers.ts`.
+ * This object only contains headers that are unique to the root-page surface:
+ *
+ *   - `Cache-Control: no-store` — prevents proxies from caching the
+ *     neutral root-page response.
+ *   - `X-Robots-Tag: noindex, nofollow` — prevents accidental search
+ *     engine indexing of the root endpoint.
+ *
  * Exported for test assertions; kept as a plain object (not a Map) so
  * tests can snapshot it directly.
  */
 export const ROOT_PAGE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
   'Cache-Control': 'no-store',
   'X-Robots-Tag': 'noindex, nofollow',
-  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
-  'Referrer-Policy': 'no-referrer',
-  'X-Content-Type-Options': 'nosniff',
 });
 
 /**

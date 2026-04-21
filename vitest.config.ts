@@ -82,6 +82,9 @@ export default defineConfig({
           include: ['tests/unit/**/*.test.ts'],
           environment: 'node',
           testTimeout: 10_000,
+          env: {
+            SIGNING_KEY_ENCRYPTION_KEY: 'a'.repeat(64),
+          },
         },
       },
       {
@@ -107,6 +110,7 @@ export default defineConfig({
             SMTP_FROM: 'test@porta.local',
             NODE_ENV: 'test',
             LOG_LEVEL: 'fatal',
+            SIGNING_KEY_ENCRYPTION_KEY: 'a'.repeat(64),
           },
         },
       },
@@ -130,6 +134,7 @@ export default defineConfig({
             SMTP_FROM: 'test@porta.local',
             NODE_ENV: 'test',
             LOG_LEVEL: 'fatal',
+            SIGNING_KEY_ENCRYPTION_KEY: 'a'.repeat(64),
           },
         },
       },
@@ -153,6 +158,7 @@ export default defineConfig({
             SMTP_FROM: 'test@porta.local',
             NODE_ENV: 'test',
             LOG_LEVEL: 'fatal',
+            SIGNING_KEY_ENCRYPTION_KEY: 'a'.repeat(64),
           },
         },
       },

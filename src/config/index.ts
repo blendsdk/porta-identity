@@ -24,6 +24,7 @@ function loadConfig(): AppConfig {
     logLevel: process.env.LOG_LEVEL,
     trustProxy: process.env.TRUST_PROXY,
     twoFactorEncryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
+    signingKeyEncryptionKey: process.env.SIGNING_KEY_ENCRYPTION_KEY,
   });
 
   if (!result.success) {

@@ -32,6 +32,13 @@ export const configSchema = z.object({
     .length(64, 'TWO_FACTOR_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
     .regex(/^[0-9a-f]+$/i, 'TWO_FACTOR_ENCRYPTION_KEY must be hex-encoded')
     .optional(),
+  // AES-256-GCM encryption key for signing key private keys at rest.
+  // Must be exactly 32 hex bytes (64 characters). Always required —
+  // Porta will not start without it.
+  signingKeyEncryptionKey: z
+    .string()
+    .length(64, 'SIGNING_KEY_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
+    .regex(/^[0-9a-f]+$/i, 'SIGNING_KEY_ENCRYPTION_KEY must be hex-encoded'),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

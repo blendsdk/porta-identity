@@ -17,6 +17,7 @@ const validEnv = {
     from: 'noreply@porta.local',
   },
   logLevel: 'debug',
+  signingKeyEncryptionKey: 'a'.repeat(64),
 };
 
 describe('config schema', () => {
@@ -40,6 +41,7 @@ describe('config schema', () => {
         host: 'localhost',
         from: 'test@test.com',
       },
+      signingKeyEncryptionKey: 'b'.repeat(64),
     };
     const result = configSchema.safeParse(minimal);
     expect(result.success).toBe(true);

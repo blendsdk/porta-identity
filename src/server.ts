@@ -29,6 +29,7 @@ import Router from '@koa/router';
 import type Provider from 'oidc-provider';
 import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { securityHeaders } from './middleware/security-headers.js';
 import { healthCheck } from './middleware/health.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
@@ -77,9 +78,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Global middleware stack (order matters):
   // 1. Error handler catches all downstream errors
   // 2. Request logger adds X-Request-Id and logs request/response
-  // 3. Selective body parser — only routes that need it (NOT OIDC routes)
+  // 3. Security headers (CSP, HSTS, X-Frame-Options, etc.)
+  // 4. Selective body parser — only routes that need it (NOT OIDC routes)
   app.use(errorHandler());
   app.use(requestLogger());
+  app.use(securityHeaders());
 
   // Selective body parser: apply only to admin API, interaction, and auth routes.
   // OIDC provider routes (/:orgSlug/*) must NOT have pre-parsed bodies because

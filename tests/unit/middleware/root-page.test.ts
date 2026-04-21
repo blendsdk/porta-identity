@@ -162,13 +162,17 @@ describe('root-page router', () => {
       expect(headers['Cache-Control']).toBe('no-store');
     });
 
-    it('CSP disallows external resources', async () => {
+    it('does not duplicate globally-managed security headers', async () => {
+      // CSP, X-Content-Type-Options, Referrer-Policy, X-Frame-Options are now
+      // handled by the global securityHeaders() middleware. The root-page
+      // handler must NOT set them — only root-page-specific headers
+      // (Cache-Control, X-Robots-Tag) should be present.
       const ctx = await invoke(createRootPageRouter(), 'GET', '/');
       const headers = ctx._headers as Record<string, string>;
-      const csp = headers['Content-Security-Policy'];
-      expect(csp).toContain("default-src 'none'");
-      // Inline style is the one exception (the <style> block in the page).
-      expect(csp).toContain("style-src 'unsafe-inline'");
+      expect(headers['Content-Security-Policy']).toBeUndefined();
+      expect(headers['X-Content-Type-Options']).toBeUndefined();
+      expect(headers['Referrer-Policy']).toBeUndefined();
+      expect(headers['X-Frame-Options']).toBeUndefined();
     });
   });
 

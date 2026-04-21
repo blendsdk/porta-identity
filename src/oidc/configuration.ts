@@ -18,6 +18,7 @@
 
 import type { OidcTtlConfig } from '../lib/system-config.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
+import { config } from '../config/index.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -173,11 +174,15 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
     // Signing keys in JWK format
     jwks,
 
-    // Cookie configuration with signing key rotation support
+    // Cookie configuration with signing key rotation support.
+    // The `secure` flag is derived from the configured issuer URL:
+    //   - HTTPS issuer → secure: true  (cookies only sent over TLS)
+    //   - HTTP  issuer → secure: false  (allows local dev on localhost)
+    // This is the same check used by the HSTS header in security-headers.ts.
     cookies: {
       keys: cookieKeys,
-      long: { signed: true, httpOnly: true, sameSite: 'lax' as const },
-      short: { signed: true, httpOnly: true, sameSite: 'lax' as const },
+      long: { signed: true, httpOnly: true, sameSite: 'lax' as const, secure: config.issuerBaseUrl.startsWith('https://') },
+      short: { signed: true, httpOnly: true, sameSite: 'lax' as const, secure: config.issuerBaseUrl.startsWith('https://') },
     },
 
     // CORS handler — checks client's allowed_origins

@@ -17,8 +17,10 @@
  */
 
 import { createPrivateKey, generateKeyPairSync, createHash } from 'node:crypto';
+import { config } from '../config/index.js';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
+import { encryptPrivateKey, decryptPrivateKey } from './signing-key-crypto.js';
 
 // ---------------------------------------------------------------------------
 // Cached JWKS for JWT verification (admin auth middleware, etc.)
@@ -209,30 +211,52 @@ export async function loadSigningKeysFromDb(): Promise<SigningKeyRecord[]> {
     algorithm: string;
     public_key: string;
     private_key: string;
+    private_key_iv: string | null;
+    private_key_tag: string | null;
+    encrypted: boolean;
     status: 'active' | 'retired' | 'revoked';
     activated_at: Date;
     retired_at: Date | null;
     expires_at: Date | null;
   }>(
-    `SELECT id, kid, algorithm, public_key, private_key, status, activated_at, retired_at, expires_at
+    `SELECT id, kid, algorithm, public_key, private_key,
+            private_key_iv, private_key_tag, encrypted,
+            status, activated_at, retired_at, expires_at
      FROM signing_keys
      WHERE status IN ('active', 'retired')
        AND (expires_at IS NULL OR expires_at > NOW())
      ORDER BY activated_at DESC`,
   );
 
-  // Map snake_case DB columns to camelCase TypeScript interface
-  return result.rows.map((row) => ({
-    id: row.id,
-    kid: row.kid,
-    algorithm: row.algorithm,
-    publicKey: row.public_key,
-    privateKey: row.private_key,
-    status: row.status,
-    activatedAt: row.activated_at,
-    retiredAt: row.retired_at,
-    expiresAt: row.expires_at,
-  }));
+  // Map snake_case DB columns to camelCase TypeScript interface.
+  // Decrypt private keys that are stored encrypted; pass through plaintext legacy keys.
+  return result.rows.map((row) => {
+    let privateKey: string;
+    if (row.encrypted && row.private_key_iv && row.private_key_tag) {
+      // Encrypted key — decrypt with AES-256-GCM
+      privateKey = decryptPrivateKey(
+        row.private_key,
+        row.private_key_iv,
+        row.private_key_tag,
+        config.signingKeyEncryptionKey,
+      );
+    } else {
+      // Legacy plaintext key — use as-is
+      privateKey = row.private_key;
+    }
+
+    return {
+      id: row.id,
+      kid: row.kid,
+      algorithm: row.algorithm,
+      publicKey: row.public_key,
+      privateKey,
+      status: row.status,
+      activatedAt: row.activated_at,
+      retiredAt: row.retired_at,
+      expiresAt: row.expires_at,
+    };
+  });
 }
 
 /**
@@ -260,11 +284,17 @@ export async function ensureSigningKeys(): Promise<{ keys: JwkKeyPair[] }> {
     const keyPair = generateES256KeyPair();
     const pool = getPool();
 
-    // Insert the new key into the database
+    // Encrypt the private key before storage (AES-256-GCM)
+    const { encrypted, iv, tag } = encryptPrivateKey(
+      keyPair.privateKeyPem,
+      config.signingKeyEncryptionKey,
+    );
+
+    // Insert the new key with encrypted private key
     await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status, activated_at)
-       VALUES ($1, $2, $3, $4, 'active', NOW())`,
-      [keyPair.kid, keyPair.algorithm, keyPair.publicKeyPem, keyPair.privateKeyPem],
+      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, private_key_iv, private_key_tag, encrypted, status, activated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, true, 'active', NOW())`,
+      [keyPair.kid, keyPair.algorithm, keyPair.publicKeyPem, encrypted, iv, tag],
     );
 
     logger.info({ kid: keyPair.kid }, 'Auto-generated signing key inserted into database');
