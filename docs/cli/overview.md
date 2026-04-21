@@ -38,7 +38,7 @@ Every command supports these global flags:
 | Command | Mode | Description |
 |---------|------|-------------|
 | [`porta init`](/cli/bootstrap#porta-init) | Direct DB | Bootstrap admin infrastructure |
-| [`porta login`](/cli/bootstrap#porta-login) | HTTP | Authenticate via OIDC |
+| [`porta login`](/cli/bootstrap#porta-login) | HTTP | Authenticate via OIDC (auto-detects Docker) |
 | [`porta logout`](/cli/bootstrap#porta-logout) | HTTP | Clear stored credentials |
 | [`porta whoami`](/cli/bootstrap#porta-whoami) | HTTP | Display current identity |
 | [`porta health`](/cli/infrastructure#porta-health) | Both | Check DB + Redis connectivity |
@@ -69,7 +69,7 @@ porta seed run
 
 ### HTTP Mode
 
-All other commands communicate with the Porta server via the Admin API. They require authentication (via `porta login`) and use Bearer token authorization.
+All other commands communicate with the Porta server via the Admin API. They require authentication (via `porta login`) and use Bearer token authorization. When running inside Docker or headless environments, `porta login` automatically uses a manual paste-URL mode — see [porta login](/cli/bootstrap#porta-login) for details.
 
 ```bash
 # These use the Admin API

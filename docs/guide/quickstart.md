@@ -168,12 +168,38 @@ docker exec porta-app porta init \
 For an even cleaner experience, download [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh), save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
 ```bash
 ./porta init
+./porta login
 ./porta org list
-./porta health --direct
 ```
 :::
 
-**7. Verify**
+**7. Authenticate the CLI**
+
+```bash
+docker exec -it porta-app porta login
+```
+
+Since you're running inside Docker, the CLI **automatically detects** the container and uses manual mode. It will print an authorization URL — open it in your host browser, log in with the admin credentials you just created, then paste the callback URL back into the terminal.
+
+```
+Container environment detected — using manual login mode.
+
+Open this URL in your browser to log in:
+  http://localhost:3000/porta-admin/auth?...
+
+Paste the callback URL: <paste URL from browser address bar>
+
+✅ Logged in as admin@example.com
+```
+
+After logging in, you can use all admin commands:
+
+```bash
+docker exec -it porta-app porta whoami
+docker exec -it porta-app porta org list
+```
+
+**8. Verify**
 
 Open [http://localhost:3000/health](http://localhost:3000/health) in your browser.
 The health endpoint confirms the server, database, and Redis are all connected.
@@ -277,7 +303,15 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-**6. Verify**
+**6. Authenticate the CLI**
+
+```bash
+docker exec -it porta-app porta login
+```
+
+The CLI auto-detects the Docker container and uses manual mode — it prints an auth URL for you to open in your host browser, then you paste the callback URL back. See [porta login](../cli/bootstrap.md#porta-login) for details.
+
+**7. Verify**
 
 Open [http://localhost:3000/health](http://localhost:3000/health) in your browser.
 The health endpoint confirms the server, database, and Redis are all connected.

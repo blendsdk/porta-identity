@@ -62,6 +62,10 @@ The easiest way to authenticate is through the Porta CLI:
 # Login — opens browser for OIDC authentication
 porta login
 
+# Login from Docker or headless environments (auto-detected or manual)
+docker exec -it porta-app porta login   # auto-detects container
+porta login --no-browser                # manual paste-URL mode
+
 # Verify identity
 porta whoami
 
@@ -69,7 +73,7 @@ porta whoami
 porta logout
 ```
 
-The CLI stores credentials at `~/.porta/credentials.json` with `0600` file permissions. It automatically refreshes expired access tokens using the stored refresh token.
+The CLI stores credentials at `~/.porta/credentials.json` with `0600` file permissions. It automatically refreshes expired access tokens using the stored refresh token. In Docker containers, the CLI auto-detects the environment and uses a manual mode where you open the auth URL in your host browser and paste the callback URL back — see [porta login](/cli/bootstrap#porta-login) for details.
 
 ### Via OIDC Flow (Programmatic)
 

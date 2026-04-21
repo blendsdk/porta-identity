@@ -24,8 +24,18 @@
  * Usage:
  *   porta login                              # Login to localhost:3000
  *   porta login --server https://example.com # Login to remote server
- *   porta login --no-browser                 # Print URL instead of opening browser
+ *   porta login --no-browser                 # Manual mode: print URL, paste callback
  *   porta login --client-id <id>             # Override auto-discovered client ID
+ *
+ * Docker / headless environments:
+ *   When running inside a Docker container (auto-detected via /.dockerenv),
+ *   the command automatically uses manual mode (--no-browser). This avoids
+ *   two issues: (1) no browser available inside the container, and (2) the
+ *   localhost callback server is unreachable from the host.
+ *
+ *   In manual mode the CLI prints an authorization URL, the user opens it
+ *   in their host browser, authenticates, and then pastes the callback URL
+ *   from the browser's address bar back into the terminal.
  *
  * @module cli/commands/login
  */
@@ -34,10 +44,12 @@ import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
 import { createServer, type Server } from 'node:http';
 import { randomBytes, createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { URL } from 'node:url';
 import { decodeJwt } from 'jose';
 import { writeCredentials } from '../token-store.js';
 import { success, error } from '../output.js';
+import { promptInput } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -201,6 +213,97 @@ async function exchangeCode(params: {
 }
 
 // ---------------------------------------------------------------------------
+// Environment detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect whether the process is running inside a Docker container.
+ *
+ * Checks for the `/.dockerenv` sentinel file that Docker creates in every
+ * container. Also honours the `PORTA_CONTAINER` environment variable so
+ * users can force manual mode in other containerized runtimes (Podman,
+ * Kubernetes, etc.) by setting `PORTA_CONTAINER=1`.
+ *
+ * @returns true if running inside a container
+ */
+export function isContainerized(): boolean {
+  // Explicit override via environment variable
+  if (process.env.PORTA_CONTAINER === '1') return true;
+
+  // Docker sentinel file — present in every Docker container
+  try {
+    return existsSync('/.dockerenv');
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manual callback (Docker / headless mode)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fixed redirect URI used in manual (no-browser) mode.
+ *
+ * The port number is arbitrary — nothing actually listens on it. The user's
+ * browser will fail to load this page after authentication, but the full URL
+ * (including the authorization code in the query string) will be visible in
+ * the browser's address bar for the user to copy and paste back.
+ *
+ * Per RFC 8252 §7.3, node-oidc-provider allows flexible port matching for
+ * native clients using loopback redirect URIs, so any port works as long as
+ * the base pattern (`http://127.0.0.1/callback`) is registered.
+ */
+const MANUAL_REDIRECT_URI = 'http://127.0.0.1:11111/callback';
+
+/**
+ * Parse the authorization code and state from a pasted callback URL.
+ *
+ * In manual mode the user pastes the full URL from their browser's address
+ * bar after authentication. This function extracts the `code` and `state`
+ * query parameters and validates the state against the expected value.
+ *
+ * @param pastedUrl - The full callback URL pasted by the user
+ * @param expectedState - The state value to validate against (CSRF protection)
+ * @returns The authorization code extracted from the URL
+ * @throws Error if the URL is malformed, state mismatches, or code is missing
+ */
+export function parseCallbackUrl(
+  pastedUrl: string,
+  expectedState: string,
+): string {
+  let url: URL;
+  try {
+    url = new URL(pastedUrl.trim());
+  } catch {
+    throw new Error(
+      'Invalid URL. Please copy the full URL from your browser\'s address bar.',
+    );
+  }
+
+  // Check for OIDC error response in the callback URL
+  const errorParam = url.searchParams.get('error');
+  if (errorParam) {
+    const desc = url.searchParams.get('error_description') || errorParam;
+    throw new Error(`Authentication failed: ${desc}`);
+  }
+
+  // Validate state parameter (CSRF protection)
+  const returnedState = url.searchParams.get('state');
+  if (returnedState !== expectedState) {
+    throw new Error('Security error: state mismatch. Login aborted.');
+  }
+
+  // Extract the authorization code
+  const code = url.searchParams.get('code');
+  if (!code) {
+    throw new Error('No authorization code found in the URL.');
+  }
+
+  return code;
+}
+
+// ---------------------------------------------------------------------------
 // Callback server
 // ---------------------------------------------------------------------------
 
@@ -348,7 +451,20 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
   handler: async (argv) => {
     try {
       // ---------------------------------------------------------------
-      // Step 1: Discover admin metadata (client ID + org slug)
+      // Step 1: Determine login mode (browser vs. manual)
+      // ---------------------------------------------------------------
+      // Auto-detect container environments and force manual mode.
+      // Inside Docker the callback server on 127.0.0.1 is unreachable
+      // from the host, and no browser is available to open.
+      const manualMode = argv['no-browser'] || isContainerized();
+
+      if (manualMode && !argv['no-browser']) {
+        // Inform the user that container was auto-detected
+        console.log('Container environment detected — using manual login mode.\n');
+      }
+
+      // ---------------------------------------------------------------
+      // Step 2: Discover admin metadata (client ID + org slug)
       // ---------------------------------------------------------------
       let clientId: string;
       let orgSlug: string;
@@ -365,20 +481,33 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       }
 
       // ---------------------------------------------------------------
-      // Step 2: Generate PKCE parameters
+      // Step 3: Generate PKCE parameters
       // ---------------------------------------------------------------
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = generateCodeChallenge(codeVerifier);
       const state = generateState();
 
       // ---------------------------------------------------------------
-      // Step 3: Start localhost callback server
+      // Step 4: Set up redirect URI — mode-dependent
       // ---------------------------------------------------------------
-      const { port, authCode } = await startCallbackServer(state);
-      const redirectUri = `http://127.0.0.1:${port}/callback`;
+      let redirectUri: string;
+      let authCode: Promise<string>;
+
+      if (manualMode) {
+        // Manual mode: use a fixed redirect URI (nothing listens).
+        // The user will paste the callback URL from their browser.
+        redirectUri = MANUAL_REDIRECT_URI;
+        // authCode will be set after the user pastes the URL (step 6)
+        authCode = undefined as unknown as Promise<string>;
+      } else {
+        // Browser mode: start a localhost callback server
+        const server = await startCallbackServer(state);
+        redirectUri = `http://127.0.0.1:${server.port}/callback`;
+        authCode = server.authCode;
+      }
 
       // ---------------------------------------------------------------
-      // Step 4: Build the authorization URL
+      // Step 5: Build the authorization URL
       // ---------------------------------------------------------------
       const authUrl = new URL(`${argv.server}/${orgSlug}/auth`);
       authUrl.searchParams.set('response_type', 'code');
@@ -390,12 +519,25 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       authUrl.searchParams.set('state', state);
 
       // ---------------------------------------------------------------
-      // Step 5: Open browser or print URL
+      // Step 6: Open browser or print URL + collect auth code
       // ---------------------------------------------------------------
-      if (argv['no-browser']) {
-        console.log('\nOpen this URL in your browser to log in:\n');
+      let code: string;
+
+      if (manualMode) {
+        // Manual mode: print URL and ask user to paste the callback URL
+        console.log('Open this URL in your browser to log in:\n');
         console.log(`  ${authUrl.toString()}\n`);
+        console.log(
+          'After logging in, your browser will redirect to a page that won\'t load.',
+        );
+        console.log(
+          'Copy the full URL from your browser\'s address bar and paste it below.\n',
+        );
+
+        const pastedUrl = await promptInput('Paste the callback URL: ');
+        code = parseCallbackUrl(pastedUrl, state);
       } else {
+        // Browser mode: open browser and wait for callback server
         console.log('Opening browser for authentication...');
         try {
           // Dynamic import — `open` is an ESM-only package
@@ -406,14 +548,10 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
           console.log('\nCould not open browser. Open this URL manually:\n');
           console.log(`  ${authUrl.toString()}\n`);
         }
+
+        console.log('Waiting for authentication...');
+        code = await authCode;
       }
-
-      console.log('Waiting for authentication...');
-
-      // ---------------------------------------------------------------
-      // Step 6: Wait for the callback with the authorization code
-      // ---------------------------------------------------------------
-      const code = await authCode;
 
       // ---------------------------------------------------------------
       // Step 7: Exchange the authorization code for tokens

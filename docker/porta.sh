@@ -8,11 +8,16 @@
 #   ./porta init                    # Bootstrap admin system
 #   ./porta health --direct         # Check health
 #   ./porta migrate up              # Run migrations
+#   ./porta login                   # Authenticate (auto manual mode)
 #   ./porta org list                # List organizations
 #   ./porta --help                  # See all commands
 #
 # The script automatically detects whether the command needs
 # interactive mode (-it) based on the command arguments.
+#
+# For the `login` command, Docker is auto-detected inside the
+# container (via /.dockerenv) so manual mode is used — no need
+# to pass --no-browser explicitly.
 # ──────────────────────────────────────────────────────────
 
 CONTAINER_NAME="porta-app"

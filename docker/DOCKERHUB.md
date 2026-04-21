@@ -158,16 +158,23 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-::: tip CLI Wrapper Script
-For an even cleaner experience, download the [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh) wrapper script, save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
-```bash
-./porta init
-./porta org list
-./porta health --direct
-```
-:::
+> **💡 CLI Wrapper Script**
+> For an even cleaner experience, download the [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh) wrapper script, save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
+> ```bash
+> ./porta init
+> ./porta login
+> ./porta org list
+> ```
 
-### 6. You're done! 🎉
+### 6. Authenticate the CLI
+
+```bash
+docker exec -it porta-app porta login
+```
+
+The CLI automatically detects the Docker container and uses **manual mode** — it prints an authorization URL for you to open in your host browser. After logging in, paste the callback URL from your browser's address bar back into the terminal.
+
+### 7. You're done! 🎉
 
 Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC discovery endpoint is available at `http://localhost:3000/{org-slug}/.well-known/openid-configuration`.
 

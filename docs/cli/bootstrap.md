@@ -48,15 +48,15 @@ porta init --database-url postgresql://user:pass@localhost:5432/porta
 Authenticate with the Porta server using OIDC Authorization Code + PKCE flow.
 
 ```bash
-porta login [--url <server-url>]
+porta login [--server <url>] [--no-browser] [--client-id <id>]
 ```
 
 **What it does:**
 
 1. Fetches OIDC discovery metadata from `/api/admin/metadata`
 2. Generates a PKCE `code_verifier` and `code_challenge`
-3. Opens your browser to the Porta login page
-4. After you authenticate, captures the authorization code via a local callback server
+3. **Browser mode** (default on host): opens your browser, captures the authorization code via a temporary localhost callback server
+4. **Manual mode** (`--no-browser` or auto-detected in Docker): prints the auth URL for you to open manually, then prompts you to paste the callback URL from your browser's address bar
 5. Exchanges the code for access and refresh tokens
 6. Stores credentials at `~/.porta/credentials.json`
 
@@ -66,16 +66,48 @@ porta login [--url <server-url>]
 
 | Flag | Description |
 |------|-------------|
-| `--url` | Porta server URL (default: `http://localhost:3000`) |
+| `--server` | Porta server URL (default: `http://localhost:3000`) |
+| `--no-browser` | Use manual mode — print URL instead of opening browser |
+| `--client-id` | Override the auto-discovered admin client ID |
 
-**Example:**
+::: tip Docker / Headless Environments
+When running inside a Docker container, `porta login` **automatically detects** the container environment (via `/.dockerenv`) and switches to manual mode. No need to pass `--no-browser` explicitly.
+
+You can also force manual mode in other containerized runtimes (Podman, Kubernetes) by setting the `PORTA_CONTAINER=1` environment variable.
+:::
+
+**Examples:**
 
 ```bash
-# Login to local development server
+# Login on your local machine (opens browser automatically)
 porta login
 
-# Login to production
-porta login --url https://auth.example.com
+# Login to a remote server
+porta login --server https://auth.example.com
+
+# Login from inside Docker (auto-detected manual mode)
+docker exec -it porta-app porta login
+# → Prints URL, you open it in your host browser, paste callback URL back
+
+# Force manual mode (SSH, CI, headless servers)
+porta login --no-browser
+```
+
+**Manual mode flow:**
+
+```
+$ porta login --no-browser
+
+Open this URL in your browser to log in:
+
+  http://localhost:3000/porta-admin/auth?response_type=code&client_id=...
+
+After logging in, your browser will redirect to a page that won't load.
+Copy the full URL from your browser's address bar and paste it below.
+
+Paste the callback URL: http://127.0.0.1:11111/callback?code=abc123&state=xyz
+
+✅ Logged in as admin@example.com
 ```
 
 ---
