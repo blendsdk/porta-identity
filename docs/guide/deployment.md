@@ -125,6 +125,108 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+## Secret Management
+
+Production deployments must protect sensitive configuration values — database credentials,
+encryption keys, SMTP passwords, and cookie signing keys. Never commit secrets to version
+control or pass them as plain-text command-line arguments.
+
+### Environment File Security
+
+The simplest approach: store secrets in an `.env` file with restrictive permissions.
+
+```bash
+# Create .env from the example template
+cp .env.example .env
+
+# Restrict read access to the file owner only
+chmod 600 .env
+
+# Edit with your production values
+nano .env
+```
+
+::: warning
+Ensure `.env` is listed in `.gitignore` (it is by default in Porta). Never commit
+environment files containing real credentials.
+:::
+
+### Docker Secrets
+
+For Docker Swarm deployments, use [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/)
+to inject sensitive values as files rather than environment variables:
+
+```yaml
+services:
+  porta:
+    image: blendsdk/porta:latest
+    environment:
+      # Non-secret configuration
+      NODE_ENV: production
+      ISSUER_BASE_URL: https://auth.example.com
+      # Read secrets from files mounted by Docker
+      DATABASE_URL_FILE: /run/secrets/database_url
+      COOKIE_KEYS_FILE: /run/secrets/cookie_keys
+      TWO_FACTOR_ENCRYPTION_KEY_FILE: /run/secrets/2fa_key
+    secrets:
+      - database_url
+      - cookie_keys
+      - 2fa_key
+
+secrets:
+  database_url:
+    external: true
+  cookie_keys:
+    external: true
+  2fa_key:
+    external: true
+```
+
+Create the secrets before deploying:
+
+```bash
+# Create secrets in Docker Swarm
+echo "postgresql://porta:secret@postgres:5432/porta" | docker secret create database_url -
+echo "your-cookie-signing-key-here" | docker secret create cookie_keys -
+echo "0123456789abcdef..." | docker secret create 2fa_key -
+```
+
+::: tip
+Porta's Docker entrypoint supports the `_FILE` suffix convention — if `DATABASE_URL_FILE`
+is set, Porta reads the secret from that file path instead of the `DATABASE_URL` environment
+variable.
+:::
+
+### Cloud Secret Managers
+
+For cloud deployments, use your provider's secret management service:
+
+| Provider | Service | Inject Via |
+|----------|---------|------------|
+| **AWS** | [Secrets Manager](https://aws.amazon.com/secrets-manager/) | ECS task definition `secrets` block, or Lambda env from SSM |
+| **GCP** | [Secret Manager](https://cloud.google.com/secret-manager) | Cloud Run `--set-secrets`, or GKE volume mount |
+| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault references, or AKS CSI driver |
+
+Each service supports automatic rotation and audit logging. Refer to your provider's
+documentation for integration details.
+
+### HashiCorp Vault
+
+For self-hosted or multi-cloud setups, [HashiCorp Vault](https://www.vaultproject.io/)
+provides centralised secret management:
+
+**Agent sidecar pattern** (recommended for containers):
+
+1. Run a Vault Agent sidecar alongside Porta
+2. The agent authenticates to Vault, fetches secrets, and writes them to a shared volume
+3. Porta reads secrets from the file paths via the `_FILE` env var convention
+
+**Environment injection pattern** (simpler for VMs):
+
+1. Use `vault kv get` or [envconsul](https://github.com/hashicorp/envconsul) to inject
+   secrets as environment variables before starting Porta
+2. Example: `envconsul -prefix porta/config ./start.sh`
+
 ## Database
 
 ### Migrations
@@ -146,20 +248,198 @@ docker exec porta-app node dist/cli/index.js migrate status
 automatically on startup. This is convenient for initial setup but should be disabled
 in production once the schema is stable — run migrations explicitly during deployments.
 
-### Backups
+### Backup & Recovery
 
-Set up regular PostgreSQL backups:
+PostgreSQL is Porta's only durable data store — all organizations, users, clients, roles,
+signing keys, and audit logs live in PG. Regular, tested backups are essential.
+
+#### Logical Backups (pg_dump)
+
+Use `pg_dump` in custom format (`-Fc`) for the best balance of compression and flexibility:
 
 ```bash
-# Manual backup
-docker exec porta-postgres pg_dump -U porta porta > backup_$(date +%Y%m%d).sql
+# Full database backup (custom format, compressed)
+docker exec porta-postgres pg_dump \
+  -U porta \
+  -Fc \
+  --no-owner \
+  --no-privileges \
+  porta > porta_$(date +%Y%m%d_%H%M%S).dump
 
-# Restore from backup
-docker exec -i porta-postgres psql -U porta porta < backup_20260420.sql
+# Plain SQL backup (human-readable, larger)
+docker exec porta-postgres pg_dump \
+  -U porta \
+  --no-owner \
+  --no-privileges \
+  porta > porta_$(date +%Y%m%d_%H%M%S).sql
 ```
 
-For production, use a scheduled backup solution (pg_dump cron job, WAL archiving,
-or a managed database service with automated backups).
+**Automate with cron** — schedule daily backups and upload to secure storage:
+
+```bash
+# Example crontab entry — daily at 02:00 UTC
+0 2 * * * docker exec porta-postgres pg_dump -U porta -Fc --no-owner porta > /backups/porta_$(date +\%Y\%m\%d).dump
+```
+
+#### Point-in-Time Recovery (PITR)
+
+For continuous backup with the ability to restore to any point in time, configure
+[WAL archiving](https://www.postgresql.org/docs/16/continuous-archiving.html):
+
+1. Enable WAL archiving in `postgresql.conf`:
+   ```
+   wal_level = replica
+   archive_mode = on
+   archive_command = 'cp %p /archive/%f'
+   ```
+2. Take periodic base backups with `pg_basebackup`
+3. Restore by replaying WAL files up to the desired timestamp
+
+::: tip Managed Databases
+Cloud-managed PostgreSQL services (AWS RDS, GCP Cloud SQL, Azure Database for PostgreSQL)
+provide automated PITR out of the box — typically with configurable retention up to 35 days.
+This is the simplest approach for production deployments.
+:::
+
+#### Restore Procedures
+
+```bash
+# Restore from custom format dump
+docker exec -i porta-postgres pg_restore \
+  -U porta \
+  --no-owner \
+  --no-privileges \
+  -d porta < porta_20260420_020000.dump
+
+# Restore from plain SQL dump
+docker exec -i porta-postgres psql -U porta porta < porta_20260420_020000.sql
+```
+
+::: danger Test Your Backups
+A backup that has never been tested is not a backup. Periodically restore to a staging
+environment to verify data integrity and measure restore time.
+:::
+
+#### Backup Encryption & Retention
+
+- **Encrypt at rest** — Store backups in encrypted storage (S3 with SSE-KMS, GCS with CMEK,
+  or gpg-encrypted files on disk)
+- **Encrypt in transit** — Use TLS connections for any remote backup transfer
+
+**Suggested retention policy:**
+
+| Period | Frequency | Keep |
+|--------|-----------|------|
+| Daily | Every day | 7 days |
+| Weekly | Every Sunday | 4 weeks |
+| Monthly | 1st of month | 12 months |
+
+Adjust based on your compliance requirements and storage budget.
+
+### Access Controls
+
+Porta stores signing keys as PEM-encoded private keys in the `signing_keys` database
+table. Until at-rest encryption (KEK) is implemented, restrict database-level access
+as an interim security measure.
+
+#### Principle of Least Privilege
+
+Create separate database roles for the application and for migrations:
+
+```sql
+-- Application role: can read/write data but NOT alter schema
+CREATE ROLE porta_app LOGIN PASSWORD 'app-password-here';
+GRANT CONNECT ON DATABASE porta TO porta_app;
+GRANT USAGE ON SCHEMA public TO porta_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO porta_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO porta_app;
+
+-- Migration role: can alter schema (used only during deployments)
+CREATE ROLE porta_migrate LOGIN PASSWORD 'migrate-password-here';
+GRANT CONNECT ON DATABASE porta TO porta_migrate;
+GRANT ALL PRIVILEGES ON SCHEMA public TO porta_migrate;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO porta_migrate;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO porta_migrate;
+```
+
+Update your connection strings:
+- **Application** (`DATABASE_URL`): use `porta_app`
+- **Migrations** (`porta migrate up`): use `porta_migrate`
+
+#### Restrict Signing Key Access
+
+If you cannot use separate roles, at minimum restrict direct `SELECT` on the
+`signing_keys` table to prevent exposure through SQL injection or application bugs:
+
+```sql
+-- Revoke default access, then grant only to the app role
+REVOKE ALL ON TABLE signing_keys FROM PUBLIC;
+GRANT SELECT, INSERT, UPDATE ON TABLE signing_keys TO porta_app;
+```
+
+::: tip
+This is an interim mitigation. A future release will add envelope encryption (KEK)
+so that signing keys are encrypted at rest in the database.
+:::
+
+## Redis
+
+### What Porta Stores in Redis
+
+Porta uses Redis for **short-lived, ephemeral data** only:
+
+| Data Type | Purpose | TTL |
+|-----------|---------|-----|
+| OIDC Sessions | Login interaction state | Minutes |
+| Authorization Codes | PKCE auth code exchange | Minutes |
+| OIDC Interactions | Consent/login flow state | Minutes |
+| Rate Limit Counters | Brute-force protection | 60 seconds |
+| Tenant Cache | Organization lookup cache | 5 minutes |
+| Client Cache | Client metadata cache | 5 minutes |
+| RBAC Cache | Role/permission lookup cache | 5 minutes |
+
+### Data Loss Tolerance
+
+All Redis data is **ephemeral and reconstructable**. If Redis is flushed or restarted:
+
+- Active login sessions are invalidated — users must re-authenticate
+- Rate limit counters reset — temporarily allows more attempts (self-correcting)
+- Cache entries are evicted — rebuilt on next access from PostgreSQL
+
+**No permanent data is lost.** PostgreSQL is the sole source of truth for all durable state.
+
+### Recommended Settings
+
+For production Redis, configure these settings in `redis.conf` or via container command:
+
+```bash
+# AOF persistence — provides durability across Redis restarts
+# (belt-and-suspenders with the default RDB snapshots)
+appendonly yes
+appendfsync everysec
+
+# Memory limit with LRU eviction — prevents Redis from consuming
+# all available memory; safe because all data is cache/ephemeral
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+```
+
+**Docker Compose example:**
+
+```yaml
+redis:
+  image: redis:7-alpine
+  command: >
+    redis-server
+    --appendonly yes
+    --maxmemory 256mb
+    --maxmemory-policy allkeys-lru
+```
+
+::: tip No Redis Backup Required
+Since Redis contains only ephemeral data, **backup is not required**. PostgreSQL
+backup covers all durable state. Focus your backup strategy on PostgreSQL.
+:::
 
 ## Security
 
@@ -211,33 +491,100 @@ Make sure `ISSUER_BASE_URL` matches your public domain (e.g., `https://auth.exam
 OIDC tokens include the issuer URL, and clients validate it.
 :::
 
-### Cookie Key Rotation
+### Key Rotation
 
-Cookie keys support rotation without invalidating existing sessions:
+Regular key rotation limits the impact of key compromise. Porta supports zero-downtime
+rotation for all three secret types: signing keys, cookie keys, and client secrets.
 
-1. Generate a new cookie key
-2. Set `COOKIE_KEYS` to `new-key,old-key` (comma-separated, newest first)
-3. Restart Porta — new cookies use the new key, old cookies still validate
-4. After session TTL expires, remove the old key
+#### Signing Key Rotation
 
-### Signing Key Management
+Porta uses ES256 (ECDSA P-256) keys for JWT signing. Multiple keys can be active
+simultaneously — the newest key signs new tokens while older keys verify existing ones.
 
-Porta uses ES256 (ECDSA P-256) keys for JWT signing. Keys are stored in the database
-and auto-generated on first startup.
+**Zero-downtime rotation procedure:**
 
 ```bash
-# List current signing keys
+# 1. List current signing keys
 docker exec porta-app node dist/cli/index.js keys list
 
-# Generate a new key (for rotation)
+# 2. Generate a new signing key (becomes the active signing key)
 docker exec porta-app node dist/cli/index.js keys generate
 
-# Rotate: mark old key inactive, activate new key
+# 3. Verify the new key is active
+docker exec porta-app node dist/cli/index.js keys list
+```
+
+After generating a new key, the old key remains in the database for token verification.
+Wait for all existing tokens to expire before deactivating the old key:
+
+| Token Type | Default TTL | Wait Before Deactivation |
+|------------|-------------|--------------------------|
+| Access Token | 1 hour | 1 hour |
+| Refresh Token | 14 days | 14 days |
+| ID Token | 1 hour | 1 hour |
+
+```bash
+# 4. After the longest TTL has elapsed, deactivate the old key
 docker exec porta-app node dist/cli/index.js keys rotate
 ```
 
-Keep at least one previous key active during rotation so existing tokens can still
-be verified until they expire.
+::: warning
+Never deactivate the old key before its tokens expire — clients will receive
+`invalid_token` errors when presenting tokens signed with a deactivated key.
+:::
+
+**Recommended rotation schedule:** Every 90 days, or immediately if a key is suspected
+to be compromised.
+
+#### Cookie Key Rotation
+
+`COOKIE_KEYS` is an ordered, comma-separated list. The **first** key signs new cookies;
+**all** keys are used for verification. This enables seamless rotation:
+
+```bash
+# 1. Generate a new cookie key
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+# Output: dG9wLXNlY3JldC1rZXktZXhhbXBsZQ...
+
+# 2. Prepend the new key to COOKIE_KEYS (newest first)
+# Before: COOKIE_KEYS=old-key-here
+# After:  COOKIE_KEYS=new-key-here,old-key-here
+
+# 3. Restart Porta with the updated COOKIE_KEYS
+docker compose -f docker/docker-compose.prod.yml restart porta
+
+# 4. After session TTL expires (~24h), remove the old key
+# Final:  COOKIE_KEYS=new-key-here
+```
+
+::: tip
+When running multiple Porta replicas, update `COOKIE_KEYS` on **all instances
+simultaneously** — mismatched keys cause cookie verification failures.
+:::
+
+#### Client Secret Rotation
+
+OIDC clients can have multiple active secrets, enabling zero-downtime rotation
+for consuming services:
+
+```bash
+# 1. Generate a new secret for the client
+docker exec porta-app node dist/cli/index.js client secret generate <client-id>
+# Output: new secret value (save this — it cannot be retrieved later)
+
+# 2. Update the consuming service/application with the new secret
+
+# 3. Verify the consuming service works with the new secret
+
+# 4. Revoke the old secret
+docker exec porta-app node dist/cli/index.js client secret list <client-id>
+docker exec porta-app node dist/cli/index.js client secret revoke <client-id> <old-secret-id>
+```
+
+::: danger
+Client secrets are displayed only once at generation time. Store the new secret
+securely in your consuming service before revoking the old one.
+:::
 
 ## Health Checks
 
