@@ -36,6 +36,9 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+    # Uncomment to mount custom login/email templates (see docs/guide/custom-ui.md)
+    # volumes:
+    #   - ../my-templates:/app/templates/default:ro
     networks:
       - porta-network
 

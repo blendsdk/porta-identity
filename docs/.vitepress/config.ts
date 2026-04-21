@@ -19,7 +19,7 @@ export default withMermaid(
       // ── Top navigation bar ──────────────────────────────────
       nav: [
         { text: 'Guide', link: '/guide/quickstart' },
-        { text: 'Concepts', link: '/concepts/multi-tenancy' },
+        { text: 'Concepts', link: '/concepts/capabilities' },
         { text: 'Admin API', link: '/api/overview' },
         { text: 'CLI', link: '/cli/overview' },
         { text: 'Database', link: '/database/schema' },
@@ -37,6 +37,12 @@ export default withMermaid(
             ],
           },
           {
+            text: 'Customization',
+            items: [
+              { text: 'Custom UI Tutorial', link: '/guide/custom-ui' },
+            ],
+          },
+          {
             text: 'Operations',
             items: [
               { text: 'Deployment', link: '/guide/deployment' },
@@ -47,14 +53,28 @@ export default withMermaid(
 
         '/concepts/': [
           {
+            text: 'Overview',
+            items: [
+              { text: 'Capabilities', link: '/concepts/capabilities' },
+              {
+                text: 'Architecture & node-oidc-provider',
+                link: '/concepts/architecture',
+              },
+            ],
+          },
+          {
             text: 'Core Concepts',
             items: [
               { text: 'Multi-Tenancy', link: '/concepts/multi-tenancy' },
               { text: 'OIDC & Authentication', link: '/concepts/oidc' },
-              { text: 'RBAC & Permissions', link: '/concepts/rbac' },
-              { text: 'Custom Claims', link: '/concepts/custom-claims' },
+              {
+                text: 'Authentication Modes',
+                link: '/concepts/authentication-modes',
+              },
               { text: 'Two-Factor Auth', link: '/concepts/two-factor' },
               { text: 'Login Methods', link: '/concepts/login-methods' },
+              { text: 'RBAC & Permissions', link: '/concepts/rbac' },
+              { text: 'Custom Claims', link: '/concepts/custom-claims' },
             ],
           },
         ],

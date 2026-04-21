@@ -221,6 +221,44 @@ docker compose down -v
 
 ---
 
+## Customizing the Login UI
+
+Porta's login pages, consent screens, password reset forms, and all emails are fully customizable.
+
+### Quick: Per-Org Branding via API
+
+Set logo, colors, and company name without touching any files:
+
+```bash
+docker exec porta-app porta org branding <org-id> \
+  --logo-url "https://cdn.example.com/logo.png" \
+  --primary-color "#E11D48" \
+  --company-name "Acme Corp"
+```
+
+### Full: Custom Templates via Volume Mount
+
+For complete UI control, mount your own Handlebars templates:
+
+```yaml
+services:
+  porta:
+    image: blendsdk/porta:latest
+    volumes:
+      - ./my-templates:/app/templates/default:ro
+```
+
+Copy the default templates as a starting point:
+```bash
+docker cp porta-app:/app/templates/default/. my-templates/
+```
+
+Then edit any file in `my-templates/` — layouts, pages, partials, or emails.
+
+See the [full Custom UI Tutorial](https://blendsdk.github.io/porta-identity/guide/custom-ui) for details.
+
+---
+
 ## Features
 
 - **Multi-Tenant OIDC** — Path-based tenancy with per-org OIDC endpoints

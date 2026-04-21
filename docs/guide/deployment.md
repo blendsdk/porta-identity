@@ -306,6 +306,51 @@ are identical across all instances. These are encryption keys — different valu
 cause decryption failures.
 :::
 
+## Custom UI & Templates
+
+Porta supports full customization of login pages and email templates. See the
+[Custom UI Tutorial](./custom-ui.md) for a complete guide.
+
+### Per-Org Branding (Zero Code)
+
+The fastest approach — set branding via the Admin API or CLI without touching any files:
+
+```bash
+porta org branding <org-id> \
+  --logo-url "https://cdn.example.com/logo.png" \
+  --primary-color "#E11D48" \
+  --company-name "Acme Corp"
+```
+
+### Custom Templates (Volume Mount)
+
+For full control, mount a custom templates directory:
+
+```yaml
+services:
+  porta:
+    image: blendsdk/porta:latest
+    volumes:
+      - ./my-templates:/app/templates/default:ro
+```
+
+::: warning
+When mounting custom templates, include **all** template files (layouts, pages, partials,
+emails). Porta reads from the mounted directory exclusively — it does not merge with
+built-in defaults.
+:::
+
+### Custom Templates (Docker Image)
+
+For immutable deployments, build a custom image:
+
+```dockerfile
+FROM blendsdk/porta:latest
+COPY my-templates/ /app/templates/default/
+```
+
+---
+
 ## Monitoring
 
 Beyond the health endpoint, monitor:
