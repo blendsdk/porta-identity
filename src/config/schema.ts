@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const configSchema = z.object({
+// ---------------------------------------------------------------------------
+// Base schema — structural validation (types, formats, defaults).
+// The superRefine below adds production-specific safety checks.
+// ---------------------------------------------------------------------------
+const baseSchema = z.object({
   nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
   port: z.coerce.number().int().positive().default(3000),
   host: z.string().default('0.0.0.0'),
@@ -43,6 +47,134 @@ export const configSchema = z.object({
   // Empty array (default) = deny all cross-origin requests.
   // Only needed when a web admin dashboard runs on a different origin.
   adminCorsOrigins: z.array(z.string().url()).default([]),
+  // Prometheus metrics endpoint — default OFF.
+  // When true, GET /metrics exposes process and HTTP request counters
+  // in Prometheus text format. Operators must restrict access via network
+  // policy or reverse proxy since the endpoint is unauthenticated.
+  metricsEnabled: z
+    .union([z.boolean(), z.string()])
+    .default(false)
+    .transform((val) => (typeof val === 'string' ? val === 'true' || val === '1' : val)),
+});
+
+// ---------------------------------------------------------------------------
+// Production safety rules — superRefine that only fires in production.
+// Rejects well-known dev placeholders and insecure defaults so that
+// deploying with .env.example values is impossible.
+//
+// Escape hatch: PORTA_SKIP_PROD_SAFETY=true skips these checks (incident
+// response only — the config loader logs an ERROR when the hatch is used).
+// ---------------------------------------------------------------------------
+
+/** Placeholder pattern matching "change-me", "change_me", "changeme" etc. */
+const PLACEHOLDER_RE = /change[-_]?me/i;
+
+/** The .env.example 2FA placeholder — 0123456789abcdef repeated 4×. */
+const TWO_FACTOR_DEV_PLACEHOLDER =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+/** The .env.example signing-key placeholder — fedcba…3210 repeated 4×. */
+const SIGNING_KEY_DEV_PLACEHOLDER =
+  'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+
+export const configSchema = baseSchema.superRefine((data, ctx) => {
+  // Only enforce in production
+  if (data.nodeEnv !== 'production') return;
+
+  // Escape hatch for incident response — caller logs a loud error
+  if (process.env.PORTA_SKIP_PROD_SAFETY === 'true') return;
+
+  // ── R1 + R2: Cookie key strength ──────────────────────────────────
+  data.cookieKeys.forEach((key, i) => {
+    if (PLACEHOLDER_RE.test(key)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['cookieKeys', i],
+        message:
+          'COOKIE_KEYS contains a dev placeholder ("change-me" pattern); ' +
+          'generate with `openssl rand -base64 32`',
+      });
+    }
+    if (key.length < 32) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['cookieKeys', i],
+        message: `COOKIE_KEYS[${i}] is shorter than 32 chars; production requires >= 32 chars of entropy`,
+      });
+    }
+  });
+
+  // ── R3 + R4: 2FA encryption key ──────────────────────────────────
+  // Any org that ever enables 2FA needs this key to decrypt existing
+  // TOTP secrets, so it is unconditionally required in production.
+  const tfe = data.twoFactorEncryptionKey;
+  if (!tfe) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['twoFactorEncryptionKey'],
+      message: 'TWO_FACTOR_ENCRYPTION_KEY is required in production',
+    });
+  } else if (tfe === TWO_FACTOR_DEV_PLACEHOLDER) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['twoFactorEncryptionKey'],
+      message: 'TWO_FACTOR_ENCRYPTION_KEY still set to the dev placeholder',
+    });
+  }
+
+  // ── R5: Signing key encryption key placeholder ────────────────────
+  if (data.signingKeyEncryptionKey === SIGNING_KEY_DEV_PLACEHOLDER) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['signingKeyEncryptionKey'],
+      message: 'SIGNING_KEY_ENCRYPTION_KEY still set to the dev placeholder',
+    });
+  }
+
+  // ── R6: Database dev password ─────────────────────────────────────
+  if (/:porta_dev@/.test(data.databaseUrl)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['databaseUrl'],
+      message: 'DATABASE_URL still contains the dev password "porta_dev"',
+    });
+  }
+
+  // ── R7: Issuer must use HTTPS in production (unless localhost) ────
+  if (/^http:\/\//.test(data.issuerBaseUrl)) {
+    try {
+      const url = new URL(data.issuerBaseUrl);
+      const localHosts = ['localhost', '127.0.0.1', '::1'];
+      if (!localHosts.includes(url.hostname)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['issuerBaseUrl'],
+          message: 'ISSUER_BASE_URL must use HTTPS in production',
+        });
+      }
+    } catch {
+      // URL parse failure — already caught by the .url() validator above
+    }
+  }
+
+  // ── R8: Log level too verbose ─────────────────────────────────────
+  if (data.logLevel === 'debug') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['logLevel'],
+      message: `LOG_LEVEL=${data.logLevel} is too verbose for production; use info, warn, or error`,
+    });
+  }
+
+  // ── R9: SMTP pointing at dev inbox ────────────────────────────────
+  const smtpHost = data.smtp.host;
+  if (smtpHost === 'localhost' || /^127\./.test(smtpHost)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['smtp', 'host'],
+      message: 'SMTP_HOST points at a dev inbox (MailHog); configure a real SMTP relay for production',
+    });
+  }
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

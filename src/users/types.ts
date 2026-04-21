@@ -97,6 +97,12 @@ export interface User {
   lastLoginAt: Date | null;
   loginCount: number;
 
+  // Failed login tracking (account lockout — migration 016)
+  /** Consecutive failed password attempts since last successful login */
+  failedLoginCount: number;
+  /** Timestamp of the most recent failed login attempt */
+  lastFailedLoginAt: Date | null;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -245,6 +251,8 @@ export interface UserRow {
   locked_reason: string | null;
   last_login_at: Date | null;
   login_count: number;
+  failed_login_count: number;
+  last_failed_login_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -305,6 +313,10 @@ export function mapRowToUser(row: UserRow): User {
     lockedReason: row.locked_reason,
     lastLoginAt: row.last_login_at,
     loginCount: row.login_count,
+
+    // Failed login tracking (account lockout)
+    failedLoginCount: row.failed_login_count ?? 0,
+    lastFailedLoginAt: row.last_failed_login_at ?? null,
 
     // Timestamps
     createdAt: row.created_at,

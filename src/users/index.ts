@@ -38,6 +38,8 @@ export {
   markEmailVerified,
   markEmailUnverified,
   recordLogin,
+  recordFailedLogin,
+  checkAutoUnlock,
   findUserForOidc,
 } from './service.js';
 

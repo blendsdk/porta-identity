@@ -118,4 +118,37 @@ describe('errorHandler middleware', () => {
 
     expect(logger.error).not.toHaveBeenCalled();
   });
+
+  // ── Production safety: no stack trace leak ────────────────────────
+  // The response body must NEVER include the stack property, regardless
+  // of environment. A leaked stack trace reveals file paths, dependency
+  // versions, and internal architecture to attackers.
+
+  it('should never include stack trace in response body for 500 errors', async () => {
+    const middleware = errorHandler();
+    const ctx = createMockContext();
+    const error = new Error('DB connection failed');
+    // Ensure the error has a stack (it always does, but be explicit)
+    expect(error.stack).toBeDefined();
+    const next = vi.fn().mockRejectedValue(error);
+
+    await middleware(ctx as never, next);
+
+    const body = ctx.body as Record<string, unknown>;
+    expect(body).not.toHaveProperty('stack');
+    expect(JSON.stringify(body)).not.toContain('at '); // no stack frames
+  });
+
+  it('should never include stack trace in response body for exposed errors', async () => {
+    const middleware = errorHandler();
+    const ctx = createMockContext();
+    const error = Object.assign(new Error('Bad input'), { status: 400, expose: true });
+    const next = vi.fn().mockRejectedValue(error);
+
+    await middleware(ctx as never, next);
+
+    const body = ctx.body as Record<string, unknown>;
+    expect(body).not.toHaveProperty('stack');
+    expect(JSON.stringify(body)).not.toContain('at ');
+  });
 });

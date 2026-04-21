@@ -31,6 +31,7 @@ import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { securityHeaders } from './middleware/security-headers.js';
 import { healthCheck } from './middleware/health.js';
+import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
@@ -51,6 +52,7 @@ import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
 import { adminCors } from './middleware/admin-cors.js';
+import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter } from './middleware/token-rate-limiter.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
@@ -86,6 +88,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(requestLogger());
   app.use(securityHeaders());
 
+  // Prometheus metrics counter — increments porta_http_requests_total per response.
+  // Only active when METRICS_ENABLED=true; otherwise no overhead.
+  if (config.metricsEnabled) {
+    app.use(metricsCounter());
+  }
+
   // Selective body parser: apply only to admin API, interaction, and auth routes.
   // OIDC provider routes (/:orgSlug/*) must NOT have pre-parsed bodies because
   // oidc-provider uses its own internal body parser (selective_body.js).
@@ -114,9 +122,18 @@ export function createApp(oidcProvider?: Provider): Koa {
     return next();
   });
 
-  // Health check route — root level, no tenant context required
+  // Health check (liveness) and readiness probe — root level, no tenant context.
+  // Kubernetes / container orchestrators map:
+  //   livenessProbe  → GET /health
+  //   readinessProbe → GET /ready
   const router = new Router();
   router.get('/health', healthCheck());
+  router.get('/ready', readyHandler());
+  // Prometheus metrics endpoint — only registered when METRICS_ENABLED=true.
+  // When disabled, GET /metrics falls through to 404 (no route match).
+  if (config.metricsEnabled) {
+    router.get('/metrics', metricsHandler());
+  }
   app.use(router.routes());
   app.use(router.allowedMethods());
 

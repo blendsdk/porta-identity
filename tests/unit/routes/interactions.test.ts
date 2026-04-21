@@ -64,6 +64,8 @@ vi.mock('../../../src/users/service.js', () => ({
   getUserByEmail: vi.fn(),
   verifyUserPassword: vi.fn(),
   recordLogin: vi.fn().mockResolvedValue(undefined),
+  recordFailedLogin: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
+  checkAutoUnlock: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock('../../../src/lib/system-config.js', () => ({

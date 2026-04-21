@@ -37,11 +37,14 @@ import {
   listUsers as repoList,
   emailExists,
   updateLoginStats,
+  incrementFailedLoginCount,
+  resetFailedLoginCount,
 } from './repository.js';
 import type { UpdateUserData } from './repository.js';
 import { getCachedUserById, cacheUser, invalidateUserCache } from './cache.js';
 import { validatePassword, hashPassword, verifyPassword } from './password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
+import { getSystemConfigNumber } from '../lib/system-config.js';
 import { UserNotFoundError, UserValidationError } from './errors.js';
 
 // ---------------------------------------------------------------------------
@@ -586,7 +589,8 @@ export async function markEmailUnverified(id: string): Promise<void> {
 /**
  * Record a successful login for a user.
  *
- * Increments login_count and sets last_login_at. Invalidates cache
+ * Increments login_count and sets last_login_at. Also resets
+ * failed_login_count and last_failed_login_at. Invalidates cache
  * because the login stats have changed.
  *
  * @param id - User UUID
@@ -594,6 +598,84 @@ export async function markEmailUnverified(id: string): Promise<void> {
 export async function recordLogin(id: string): Promise<void> {
   await updateLoginStats(id);
   await invalidateUserCache(id);
+}
+
+/**
+ * Record a failed login attempt and auto-lock if threshold exceeded.
+ *
+ * Uses an atomic SQL UPDATE to increment the counter and conditionally
+ * flip status to 'locked' with reason 'auto_lockout' in a single query.
+ * Returns whether the account was just locked so the caller can show
+ * an appropriate message and write an audit event.
+ *
+ * The threshold comes from system_config `max_failed_logins` (default 5).
+ *
+ * @param user - The user whose login failed
+ * @returns Object with `locked: true` if the account was just auto-locked
+ */
+export async function recordFailedLogin(
+  user: User,
+): Promise<{ locked: boolean; failedCount: number }> {
+  const maxAttempts = await getSystemConfigNumber('max_failed_logins', 5);
+
+  const result = await incrementFailedLoginCount(user.id, maxAttempts);
+  await invalidateUserCache(user.id);
+
+  const justLocked = result.status === 'locked' && user.status === 'active';
+
+  if (justLocked) {
+    writeAuditLog({
+      organizationId: user.organizationId,
+      userId: user.id,
+      eventType: 'user.auto_locked',
+      eventCategory: 'security',
+      description: `Account auto-locked after ${result.failedLoginCount} failed login attempts`,
+      metadata: { failedCount: result.failedLoginCount, threshold: maxAttempts },
+    });
+  }
+
+  return { locked: justLocked, failedCount: result.failedLoginCount };
+}
+
+/**
+ * Check whether an auto-locked account should be unlocked (cooldown elapsed).
+ *
+ * Only applies to users with `status = 'locked'` and
+ * `lockedReason = 'auto_lockout'`. Manual locks are never auto-unlocked.
+ *
+ * The cooldown duration comes from system_config `lockout_duration_seconds`
+ * (default 900 = 15 minutes).
+ *
+ * @param user - User to check
+ * @returns `true` if the account was auto-unlocked
+ */
+export async function checkAutoUnlock(user: User): Promise<boolean> {
+  if (user.status !== 'locked' || user.lockedReason !== 'auto_lockout') {
+    return false;
+  }
+
+  if (!user.lockedAt) return false;
+
+  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds', 900);
+  const elapsed = (Date.now() - user.lockedAt.getTime()) / 1000;
+
+  if (elapsed < cooldownSeconds) {
+    return false;
+  }
+
+  // Cooldown elapsed — unlock and reset counter
+  await resetFailedLoginCount(user.id);
+  await invalidateUserCache(user.id);
+
+  writeAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    eventType: 'user.auto_unlocked',
+    eventCategory: 'security',
+    description: `Account auto-unlocked after ${cooldownSeconds}s cooldown`,
+  });
+
+  return true;
 }
 
 // ---------------------------------------------------------------------------

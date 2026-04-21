@@ -449,8 +449,89 @@ export async function emailExists(
 export async function updateLoginStats(id: string): Promise<void> {
   const pool = getPool();
 
+  // Also reset failed login counter on successful login
   await pool.query(
-    'UPDATE users SET last_login_at = NOW(), login_count = login_count + 1 WHERE id = $1',
+    `UPDATE users
+     SET last_login_at = NOW(),
+         login_count = login_count + 1,
+         failed_login_count = 0,
+         last_failed_login_at = NULL
+     WHERE id = $1`,
+    [id],
+  );
+}
+
+/**
+ * Atomic failed login counter increment with conditional auto-lock.
+ *
+ * Increments `failed_login_count` and sets `last_failed_login_at` in a
+ * single UPDATE. If the new count reaches or exceeds `maxAttempts` and
+ * the user is currently `active`, the status is changed to `locked`
+ * with `locked_reason = 'auto_lockout'`.
+ *
+ * Returns the row's new status and count so the caller knows whether
+ * a lock was triggered (for audit logging and cache invalidation).
+ *
+ * @param id - User UUID
+ * @param maxAttempts - Threshold from system_config `max_failed_logins`
+ * @returns New status and failed_login_count after the update
+ */
+export async function incrementFailedLoginCount(
+  id: string,
+  maxAttempts: number,
+): Promise<{ status: string; failedLoginCount: number }> {
+  const pool = getPool();
+
+  const result = await pool.query<{ status: string; failed_login_count: number }>(
+    `UPDATE users
+     SET failed_login_count = failed_login_count + 1,
+         last_failed_login_at = NOW(),
+         status = CASE
+           WHEN failed_login_count + 1 >= $2 AND status = 'active' THEN 'locked'
+           ELSE status
+         END,
+         locked_at = CASE
+           WHEN failed_login_count + 1 >= $2 AND status = 'active' THEN NOW()
+           ELSE locked_at
+         END,
+         locked_reason = CASE
+           WHEN failed_login_count + 1 >= $2 AND status = 'active' THEN 'auto_lockout'
+           ELSE locked_reason
+         END
+     WHERE id = $1
+     RETURNING status, failed_login_count`,
+    [id, maxAttempts],
+  );
+
+  const row = result.rows[0];
+  return {
+    status: row?.status ?? 'active',
+    failedLoginCount: row?.failed_login_count ?? 0,
+  };
+}
+
+/**
+ * Reset the failed login counter and unlock an auto-locked account.
+ *
+ * Used by `checkAutoUnlock` when the lockout cooldown has elapsed.
+ * Only affects rows that are actually auto-locked — the WHERE clause
+ * ensures we don't accidentally unlock manually-locked accounts.
+ *
+ * @param id - User UUID
+ */
+export async function resetFailedLoginCount(id: string): Promise<void> {
+  const pool = getPool();
+
+  await pool.query(
+    `UPDATE users
+     SET status = 'active',
+         locked_at = NULL,
+         locked_reason = NULL,
+         failed_login_count = 0,
+         last_failed_login_at = NULL
+     WHERE id = $1
+       AND status = 'locked'
+       AND locked_reason = 'auto_lockout'`,
     [id],
   );
 }

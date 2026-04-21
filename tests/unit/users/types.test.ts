@@ -40,6 +40,8 @@ function createTestRow(overrides: Partial<UserRow> = {}): UserRow {
     locked_reason: null,
     last_login_at: new Date('2026-01-15T08:00:00Z'),
     login_count: 5,
+    failed_login_count: 0,
+    last_failed_login_at: null,
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-15T12:00:00Z'),
     ...overrides,
@@ -85,6 +87,8 @@ describe('types', () => {
         lockedReason: null,
         lastLoginAt: new Date('2026-01-15T08:00:00Z'),
         loginCount: 5,
+        failedLoginCount: 0,
+        lastFailedLoginAt: null,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-15T12:00:00Z'),
       });
