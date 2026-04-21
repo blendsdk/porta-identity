@@ -382,6 +382,16 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
   // Normal login flow
   // -----------------------------------------------------------------------
   try {
+    // Diagnostic: log cookie presence to debug interaction session issues.
+    // The _interaction cookie is set by the provider during the auth redirect
+    // and must be sent back by the browser for interactionDetails() to work.
+    const cookieHeader = ctx.get('cookie') || '';
+    const hasInteractionCookie = cookieHeader.includes('_interaction');
+    logger.debug(
+      { uid: ctx.params.uid, hasInteractionCookie, hasCookies: cookieHeader.length > 0 },
+      'Interaction request received — checking cookies',
+    );
+
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
     const { prompt, params } = interaction;
 
@@ -462,8 +472,8 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
 
     // Render the login page with CSRF token in both cookie and hidden field
     await renderAndRespond(ctx, 'login', context);
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to show login page');
+  } catch (err) {
+    logger.error({ err, uid: ctx.params.uid }, 'Failed to show login page');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -737,8 +747,8 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (error) {
-    logger.error({ error, email }, 'Failed to process login');
+  } catch (err) {
+    logger.error({ err, email }, 'Failed to process login');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -887,8 +897,8 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     };
 
     await renderAndRespond(ctx, 'magic-link-sent', context);
-  } catch (error) {
-    logger.error({ error, email }, 'Failed to send magic link');
+  } catch (err) {
+    logger.error({ err, email }, 'Failed to send magic link');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -997,8 +1007,8 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     };
 
     await renderAndRespond(ctx, 'consent', context);
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to show consent page');
+  } catch (err) {
+    logger.error({ err, uid: ctx.params.uid }, 'Failed to show consent page');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1108,8 +1118,8 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
         mergeWithLastSubmission: false,
       });
     }
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to process consent');
+  } catch (err) {
+    logger.error({ err, uid: ctx.params.uid }, 'Failed to process consent');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1147,8 +1157,8 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to abort interaction');
+  } catch (err) {
+    logger.error({ err, uid: ctx.params.uid }, 'Failed to abort interaction');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
