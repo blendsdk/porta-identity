@@ -1,0 +1,70 @@
+# ──────────────────────────────────────────────────────────
+# Dependabot — Automated Dependency Updates
+#
+# Keeps npm packages and GitHub Actions versions up to date.
+# Opens PRs against main with grouped updates to reduce noise.
+# ──────────────────────────────────────────────────────────
+
+version: 2
+
+updates:
+  # npm dependencies (package.json / yarn.lock)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 10
+    reviewers:
+      - blendsdk/porta-maintainers
+    labels:
+      - dependencies
+      - automated
+    # Group minor/patch updates to reduce PR noise
+    groups:
+      production-deps:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "vitest*"
+          - "@vitest/*"
+          - "typescript"
+        update-types:
+          - minor
+          - patch
+      dev-deps:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "vitest*"
+          - "@vitest/*"
+          - "typescript"
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
