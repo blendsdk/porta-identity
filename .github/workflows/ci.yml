@@ -141,6 +141,7 @@ jobs:
       TEST_SMTP_HOST: localhost
       TEST_SMTP_PORT: "1025"
       TEST_MAILHOG_URL: http://localhost:8025
+      SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
     steps:
       - uses: actions/checkout@v4
@@ -207,6 +208,7 @@ jobs:
       TEST_SMTP_HOST: localhost
       TEST_SMTP_PORT: "1025"
       TEST_MAILHOG_URL: http://localhost:8025
+      SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
     steps:
       - uses: actions/checkout@v4
@@ -273,6 +275,7 @@ jobs:
       TEST_SMTP_HOST: localhost
       TEST_SMTP_PORT: "1025"
       TEST_MAILHOG_URL: http://localhost:8025
+      SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
     steps:
       - uses: actions/checkout@v4
@@ -339,6 +342,7 @@ jobs:
       TEST_SMTP_HOST: localhost
       TEST_SMTP_PORT: "1025"
       TEST_MAILHOG_URL: http://localhost:8025
+      SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
     steps:
       - uses: actions/checkout@v4
