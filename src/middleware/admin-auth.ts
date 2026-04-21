@@ -1,10 +1,11 @@
 /**
  * Admin API authentication and authorization middleware.
  *
- * Validates Bearer JWT tokens against Porta's own ES256 signing keys,
- * verifies the user belongs to the super-admin organization and has
- * the porta-admin role. Sets ctx.state.adminUser for downstream
- * handlers and audit logging.
+ * Validates Bearer access tokens against Porta's own OIDC provider
+ * using opaque token lookup (provider.AccessToken.find()). Verifies
+ * the user belongs to the super-admin organization and has the
+ * porta-admin role. Sets ctx.state.adminUser for downstream handlers
+ * and audit logging.
  *
  * This middleware replaces the old requireSuperAdmin() that checked
  * ctx.state.organization.isSuperAdmin (which required tenant-resolver
@@ -12,28 +13,43 @@
  *
  * Authentication flow:
  *   1. Extract Bearer token from Authorization header
- *   2. Validate JWT signature + expiry using Porta's own signing keys
- *   3. Verify issuer matches the super-admin organization
+ *   2. Validate opaque access token via OIDC provider lookup
+ *   3. Resolve super-admin organization
  *   4. Look up user — must be active
  *   5. Verify user belongs to the super-admin organization
  *   6. Verify user has the porta-admin role
  *   7. Set ctx.state.adminUser and proceed
  *
  * Response codes:
- *   401 — Missing or invalid Bearer token, expired, bad signature, unknown user
+ *   401 — Missing/invalid Bearer token, expired, revoked, unknown user
  *   403 — Valid token but user not in admin org or lacks admin role
- *   500 — System not initialized (no super-admin org or no signing keys)
+ *   500 — System not initialized (provider not set, no super-admin org)
  */
 
 import type { Middleware } from 'koa';
+import type Provider from 'oidc-provider';
 import type { Organization } from '../organizations/types.js';
-import * as jose from 'jose';
-import { config } from '../config/index.js';
-import { getActiveJwks } from '../lib/signing-keys.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRoles } from '../rbac/user-role-service.js';
 import { logger } from '../lib/logger.js';
+
+// ---------------------------------------------------------------------------
+// OIDC provider reference — set at startup via setAdminAuthProvider()
+// ---------------------------------------------------------------------------
+
+let _provider: Provider | null = null;
+
+/**
+ * Set the OIDC provider instance used for opaque access token validation.
+ * Must be called once at startup before any admin API requests are handled.
+ *
+ * The provider's AccessToken.find() method is used to look up opaque tokens
+ * from the token store (Redis for short-lived tokens).
+ */
+export function setAdminAuthProvider(provider: Provider): void {
+  _provider = provider;
+}
 
 // ---------------------------------------------------------------------------
 // Admin user identity — set on ctx.state.adminUser after authentication
@@ -47,7 +63,7 @@ import { logger } from '../lib/logger.js';
  * user's ID, email, organization, and assigned role slugs.
  */
 export interface AdminUser {
-  /** User UUID from JWT sub claim */
+  /** User UUID from access token accountId */
   id: string;
   /** User email address */
   email: string;
@@ -84,9 +100,9 @@ const ADMIN_ROLE_SLUG = 'porta-admin';
 /**
  * Create middleware that requires admin authentication and authorization.
  *
- * Validates the Bearer JWT token in the Authorization header against
- * Porta's own ES256 signing keys, then verifies the user is an active
- * member of the super-admin organization with the porta-admin role.
+ * Validates the Bearer access token in the Authorization header by looking
+ * it up via the OIDC provider's opaque token store, then verifies the user
+ * is an active member of the super-admin organization with the porta-admin role.
  *
  * On success, sets ctx.state.adminUser with the authenticated identity.
  * On failure, responds with 401 (unauthenticated) or 403 (unauthorized).
@@ -110,14 +126,44 @@ export function requireAdminAuth(): Middleware {
     const token = authHeader.slice(7); // Remove 'Bearer ' prefix
 
     // -----------------------------------------------------------------
-    // Step 2: Load signing keys and resolve super-admin org for issuer
+    // Step 2: Validate opaque access token via OIDC provider
     // -----------------------------------------------------------------
-    // Both are cached in-memory (60s TTL) so this is fast after first call.
-    const [jwks, superAdminOrg] = await Promise.all([
-      getActiveJwks(),
-      findSuperAdminOrganization(),
-    ]);
+    // The OIDC provider issues opaque access tokens (not JWTs). We look
+    // them up directly in the token store using provider.AccessToken.find().
+    // This handles expiry (Redis TTL), revocation, and format validation
+    // in a single call — no need for JWT signature verification or issuer
+    // checks since the provider is the authoritative token store.
+    if (!_provider) {
+      logger.error('Admin auth: OIDC provider not initialized');
+      ctx.status = 500;
+      ctx.body = { error: 'Server configuration error' };
+      return;
+    }
 
+    let userId: string;
+    try {
+      const accessToken = await _provider.AccessToken.find(token);
+      if (!accessToken || !accessToken.accountId) {
+        logger.debug('Admin auth: access token not found or missing accountId');
+        ctx.status = 401;
+        ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+        return;
+      }
+      userId = accessToken.accountId;
+    } catch (err) {
+      // Intentionally vague error message — don't reveal internal details.
+      // Log the real error server-side for debugging.
+      logger.debug({ err }, 'Admin auth: access token lookup failed');
+      ctx.status = 401;
+      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+      return;
+    }
+
+    // -----------------------------------------------------------------
+    // Step 3: Resolve super-admin organization
+    // -----------------------------------------------------------------
+    // Cached in-memory (60s TTL) so this is fast after first call.
+    const superAdminOrg = await findSuperAdminOrganization();
     if (!superAdminOrg) {
       // System not initialized — porta init has not been run
       logger.error('Admin auth: super-admin organization not found — run porta init');
@@ -126,49 +172,9 @@ export function requireAdminAuth(): Middleware {
       return;
     }
 
-    if (!jwks.keys.length) {
-      // No signing keys available — should not happen after startup
-      logger.error('Admin auth: no signing keys available');
-      ctx.status = 500;
-      ctx.body = { error: 'Server configuration error' };
-      return;
-    }
-
     // -----------------------------------------------------------------
-    // Step 3: Validate JWT signature, expiry, and issuer
+    // Step 4: Look up user — must be active
     // -----------------------------------------------------------------
-    // Use jose.createLocalJWKSet for in-process verification — no HTTP
-    // call to a JWKS endpoint, guaranteed in sync with Porta's own keys.
-    const keySet = jose.createLocalJWKSet(jwks as jose.JSONWebKeySet);
-    const expectedIssuer = `${config.issuerBaseUrl}/${superAdminOrg.slug}`;
-
-    let payload: jose.JWTPayload;
-    try {
-      const result = await jose.jwtVerify(token, keySet, {
-        issuer: expectedIssuer,
-        clockTolerance: 30, // 30 seconds tolerance for clock drift
-      });
-      payload = result.payload;
-    } catch (err) {
-      // Intentionally vague error message — don't reveal whether the token
-      // was expired, had a bad signature, or wrong issuer. Log details
-      // server-side for debugging.
-      logger.debug({ err }, 'Admin auth: JWT verification failed');
-      ctx.status = 401;
-      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
-      return;
-    }
-
-    // -----------------------------------------------------------------
-    // Step 4: Extract subject claim and look up user
-    // -----------------------------------------------------------------
-    const userId = payload.sub;
-    if (!userId) {
-      ctx.status = 401;
-      ctx.body = { error: 'Invalid token', message: 'Token missing subject claim' };
-      return;
-    }
-
     // findUserForOidc returns null for non-existent or non-active users
     const user = await findUserForOidc(userId);
     if (!user) {

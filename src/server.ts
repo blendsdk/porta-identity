@@ -49,6 +49,7 @@ import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
+import { setAdminAuthProvider } from './middleware/admin-auth.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
 import { getApplicationBySlug } from './applications/index.js';
 import { listClientsByApplication } from './clients/index.js';
@@ -168,6 +169,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   });
   app.use(metadataRouter.routes());
   app.use(metadataRouter.allowedMethods());
+
+  // Set the OIDC provider for admin auth middleware — enables opaque access
+  // token validation via provider.AccessToken.find() for all /api/admin/* routes.
+  if (oidcProvider) {
+    setAdminAuthProvider(oidcProvider);
+  }
 
   // Organization management API — requires admin authentication
   // Mounted at /api/admin/organizations (see routes/organizations.ts)
