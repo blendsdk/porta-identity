@@ -126,9 +126,9 @@ templates/default/
 
 ### How Templates Are Rendered
 
-1. The **layout** (`layouts/main.hbs`) provides the HTML shell — `<head>`, `<body>`, styles, branding CSS variable, and the `{{{body}}}` placeholder
+1. The **layout** (`layouts/main.hbs`) provides the HTML shell — `<head>`, `<body>`, styles, branding CSS variable, and the <code v-pre>{{{body}}}</code> placeholder
 2. The **page** (e.g., `pages/login.hbs`) provides the content rendered inside the layout
-3. **Partials** (`{{> header}}`, `{{> footer}}`, `{{> flash-messages}}`) are reusable snippets included by pages
+3. **Partials** (<code v-pre>{{> header}}</code>, <code v-pre>{{> footer}}</code>, <code v-pre>{{> flash-messages}}</code>) are reusable snippets included by pages
 4. **Branding** values from the organization are automatically injected as template variables
 5. **Custom CSS** from the branding is injected into the layout's `<head>` section
 
@@ -150,7 +150,7 @@ All templates have access to these variables:
 | `pageTitle` | `string` | Page title (e.g., "Sign In", "Reset Password") |
 | `locale` | `string` | Current locale (e.g., `en`) |
 | `year` | `number` | Current year (for copyright footers) |
-| `t` | `function` | Translation helper — `{{t "key"}}` |
+| `t` | `function` | Translation helper — <code v-pre>{{t "key"}}</code> |
 
 ### Login Page (`pages/login.hbs`)
 
@@ -222,6 +222,7 @@ cp -r templates/default my-templates
 
 Edit `my-templates/pages/login.hbs`:
 
+::: v-pre
 ```handlebars
 {{!-- Custom login page --}}
 <div class="card" style="max-width: 400px; margin: 40px auto;">
@@ -291,11 +292,13 @@ Edit `my-templates/pages/login.hbs`:
   {{> footer}}
 </div>
 ```
+:::
 
 ### Step 3: Customize the Layout
 
 Edit `my-templates/layouts/main.hbs` to change the overall page structure, add external fonts, or modify the base styles:
 
+::: v-pre
 ```handlebars
 <!DOCTYPE html>
 <html lang="{{locale}}">
@@ -354,6 +357,7 @@ Edit `my-templates/layouts/main.hbs` to change the overall page structure, add e
 </body>
 </html>
 ```
+:::
 
 ### Step 4: Mount in Docker Compose
 
@@ -397,6 +401,7 @@ Email templates come in pairs — an HTML version (`.hbs`) and a plain-text vers
 
 Edit `my-templates/emails/magic-link.hbs`:
 
+::: v-pre
 ```handlebars
 <!DOCTYPE html>
 <html>
@@ -430,8 +435,11 @@ Edit `my-templates/emails/magic-link.hbs`:
 </html>
 ```
 
+:::
+
 And the plain-text version `my-templates/emails/magic-link.txt.hbs`:
 
+::: v-pre
 ```handlebars
 Hi {{userName}},
 
@@ -445,6 +453,7 @@ If you didn't request this, you can safely ignore this email.
 
 © {{year}} {{branding.companyName}}
 ```
+:::
 
 ---
 
@@ -551,13 +560,15 @@ locales/default/
     └── ...
 ```
 
-Use the `{{t "key"}}` helper in templates to reference translated strings:
+Use the <code v-pre>{{t "key"}}</code> helper in templates to reference translated strings:
 
+::: v-pre
 ```handlebars
 <h1>{{t "login.title"}}</h1>
 <button type="submit">{{t "common.submit"}}</button>
 <p>{{t "login.forgot_password"}}</p>
 ```
+:::
 
 To add a new language, create a new locale directory (e.g., `locales/default/nl/`) with the same JSON files and mount it alongside your custom templates.
 
