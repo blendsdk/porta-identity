@@ -413,6 +413,7 @@ Key variables for getting started:
 | `REDIS_URL` | `redis://localhost:6379` | `redis://redis:6379` | Redis connection |
 | `ISSUER_BASE_URL` | `http://localhost:3000` | `http://localhost:3000` | OIDC issuer URL |
 | `COOKIE_KEYS` | `dev-cookie-key-...` | Change this! | Cookie signing key |
+| `TRUST_PROXY` | `false` | `false` | Set `true` behind a TLS proxy ([details](./environment.md#reverse-proxy)) |
 
 ---
 
@@ -452,6 +453,17 @@ docker exec porta-app porta migrate status
 # Run manually with verbose output
 docker exec porta-app porta migrate up
 ```
+
+### Login page loads but authentication fails silently
+
+If the login page renders but submitting the form redirects back without logging in,
+the most likely cause is **missing `TRUST_PROXY` configuration**. When Porta runs behind
+a TLS-terminating reverse proxy (nginx, Traefik, cloud load balancer), it must be told
+to trust `X-Forwarded-Proto` headers so it can set `Secure` cookies correctly.
+
+**Fix:** Add `TRUST_PROXY=true` to your `.env` file and restart Porta.
+
+See [Environment Variables → Reverse Proxy](./environment.md#reverse-proxy) for details.
 
 ### Port conflicts
 
