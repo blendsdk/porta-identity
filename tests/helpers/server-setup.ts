@@ -17,7 +17,7 @@
  * BEFORE calling connectDatabase()/connectRedis().
  */
 
-import type { Server } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import {
   TEST_DATABASE_URL,
   TEST_REDIS_URL,
@@ -25,6 +25,7 @@ import {
   TEST_SMTP_PORT,
   TEST_SMTP_FROM,
   TEST_COOKIE_KEYS,
+  TEST_SIGNING_KEY_ENCRYPTION_KEY,
 } from './constants.js';
 
 // Module-level server reference for teardown
@@ -41,7 +42,22 @@ let server: Server | null = null;
  * base URL (e.g., `http://localhost:49123`) for test HTTP requests.
  */
 export async function setup(): Promise<void> {
-  // Override environment — modules read process.env internally
+  // ── Step 1: Pre-allocate a port ────────────────────────────────
+  // We need the port BEFORE creating the OIDC provider because
+  // node-oidc-provider captures the issuer URL at construction time.
+  // Bind a temporary server to port 0, grab the OS-assigned port,
+  // then close it. The real server will bind to this same port.
+  const tmpServer = createServer();
+  await new Promise<void>((resolve) => tmpServer.listen(0, resolve));
+  const tmpAddr = tmpServer.address();
+  const port = typeof tmpAddr === 'object' && tmpAddr ? tmpAddr.port : 0;
+  await new Promise<void>((resolve, reject) => {
+    tmpServer.close((err) => (err ? reject(err) : resolve()));
+  });
+
+  // ── Step 2: Set environment variables ──────────────────────────
+  // All env vars must be set BEFORE dynamic imports so that modules
+  // (config, database, redis) read the correct values on first load.
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   process.env.REDIS_URL = TEST_REDIS_URL;
   process.env.LOG_LEVEL = 'fatal';
@@ -50,11 +66,12 @@ export async function setup(): Promise<void> {
   process.env.SMTP_PORT = TEST_SMTP_PORT;
   process.env.SMTP_FROM = TEST_SMTP_FROM;
   process.env.COOKIE_KEYS = TEST_COOKIE_KEYS;
-  // Temporary ISSUER_BASE_URL — updated once we know the port
-  process.env.ISSUER_BASE_URL = 'http://localhost:0';
+  process.env.SIGNING_KEY_ENCRYPTION_KEY = TEST_SIGNING_KEY_ENCRYPTION_KEY;
+  process.env.ISSUER_BASE_URL = `http://localhost:${port}`;
+  process.env.TEST_SERVER_URL = `http://localhost:${port}`;
 
-  // Dynamic imports — must happen AFTER env vars are set so modules
-  // pick up the correct DATABASE_URL and REDIS_URL on initialization
+  // ── Step 3: Dynamic imports ────────────────────────────────────
+  // Must happen AFTER env vars so modules pick up correct values.
   const { connectDatabase } = await import('../../src/lib/database.js');
   const { connectRedis } = await import('../../src/lib/redis.js');
   const { runMigrations } = await import('../../src/lib/migrator.js');
@@ -65,34 +82,27 @@ export async function setup(): Promise<void> {
   const { initI18n } = await import('../../src/auth/i18n.js');
   const { initTemplateEngine } = await import('../../src/auth/template-engine.js');
 
-  // Connect infrastructure
+  // ── Step 4: Connect infrastructure ─────────────────────────────
   await connectDatabase();
   await connectRedis();
 
-  // Run all migrations against the test database
+  // ── Step 5: Run migrations ─────────────────────────────────────
   await runMigrations();
 
-  // Initialize i18n and template engine
+  // ── Step 6: Initialize subsystems ──────────────────────────────
   await initI18n();
   await initTemplateEngine();
 
-  // Generate signing keys (creates if none exist) and load TTL config
+  // ── Step 7: Create OIDC provider and Koa app ───────────────────
+  // Now the config module has the correct ISSUER_BASE_URL with the
+  // pre-allocated port, so the provider's issuer will be correct.
   const jwks = await ensureSigningKeys();
   const ttl = await loadOidcTtlConfig();
-
-  // Create the OIDC provider and Koa app
   const provider = await createOidcProvider({ jwks, ttl });
   const app = createApp(provider);
 
-  // Start server on port 0 — OS assigns a random available port
-  server = app.listen(0, () => {
-    const addr = server!.address();
-    const actualPort = typeof addr === 'object' && addr ? addr.port : 0;
-    process.env.TEST_SERVER_URL = `http://localhost:${actualPort}`;
-    process.env.ISSUER_BASE_URL = `http://localhost:${actualPort}`;
-  });
-
-  // Wait for server to be fully ready before returning
+  // ── Step 8: Start server on the pre-allocated port ─────────────
+  server = app.listen(port);
   await new Promise<void>((resolve) => {
     if (server!.listening) resolve();
     else server!.on('listening', resolve);

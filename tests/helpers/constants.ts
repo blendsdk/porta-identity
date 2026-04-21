@@ -46,6 +46,13 @@ export const TEST_SMTP_FROM = 'test@porta.local';
 export const TEST_COOKIE_KEYS = 'test-cookie-key-1,test-cookie-key-2';
 
 // ---------------------------------------------------------------------------
+// Encryption keys
+// ---------------------------------------------------------------------------
+
+/** AES-256-GCM encryption key for signing key private keys at rest (64-char hex = 32 bytes) */
+export const TEST_SIGNING_KEY_ENCRYPTION_KEY = 'deadbeef'.repeat(8);
+
+// ---------------------------------------------------------------------------
 // Test credentials
 // ---------------------------------------------------------------------------
 
