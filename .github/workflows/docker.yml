@@ -101,7 +101,7 @@ jobs:
       # Only runs on main branch builds (not on tag pushes or manual dispatch)
       - name: Update Docker Hub description
         if: github.event_name == 'workflow_run' || github.ref == 'refs/heads/main'
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
