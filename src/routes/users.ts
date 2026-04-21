@@ -19,6 +19,8 @@
  *   POST   /:userId/password     — Set/change password
  *   DELETE /:userId/password     — Clear password (passwordless)
  *   POST   /:userId/verify-email — Mark email as verified
+ *   GET    /:userId/export       — GDPR data export (Article 20)
+ *   POST   /:userId/purge        — GDPR data purge (Article 17)
  *
  * Error mapping:
  *   UserNotFoundError → 404
@@ -31,6 +33,7 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import * as userService from '../users/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
+import { exportUserData, purgeUserData } from '../users/gdpr.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -324,6 +327,57 @@ export function createUserRouter(): Router {
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /:userId/export — GDPR data export (Article 20)
+  // -------------------------------------------------------------------------
+  router.get('/:userId/export', async (ctx) => {
+    const user = await userService.getUserById(ctx.params.userId);
+    if (!user) {
+      return ctx.throw(404, 'User not found');
+    }
+    const exportData = await exportUserData(user);
+    ctx.body = { data: exportData };
+  });
+
+  // -------------------------------------------------------------------------
+  // POST /:userId/purge — GDPR data purge (Article 17)
+  //
+  // Requires X-Confirm-Purge: true header for safety.
+  // Irreversibly anonymizes user data and deletes related records.
+  // -------------------------------------------------------------------------
+  router.post('/:userId/purge', async (ctx) => {
+    // Require explicit confirmation via header OR request body
+    const confirmHeader = ctx.get('X-Confirm-Purge');
+    const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
+    if (confirmHeader !== 'true' && confirmBody !== true) {
+      ctx.status = 400;
+      ctx.body = {
+        error: 'Purge requires confirmation',
+        message: 'Set X-Confirm-Purge: true header or send { "confirmPurge": true } in body',
+      };
+      return;
+    }
+
+    const user = await userService.getUserById(ctx.params.userId);
+    if (!user) {
+      return ctx.throw(404, 'User not found');
+    }
+
+    try {
+      // Use the admin user's ID as the actor for the audit trail
+      const actorId = ctx.state.adminUser?.id ?? 'system';
+      const result = await purgeUserData(user, actorId);
+      ctx.body = { data: result };
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('super-admin')) {
+        ctx.status = 403;
+        ctx.body = { error: err.message };
+        return;
+      }
+      throw err;
     }
   });
 

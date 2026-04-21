@@ -57,3 +57,7 @@ export {
   MAX_PASSWORD_LENGTH,
 } from './password.js';
 export type { PasswordValidationResult } from './password.js';
+
+// GDPR export/purge (Article 17 + Article 20)
+export { exportUserData, purgeUserData } from './gdpr.js';
+export type { UserDataExport, PurgeResult } from './gdpr.js';

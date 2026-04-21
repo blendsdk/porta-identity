@@ -609,6 +609,81 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
+      // ── GDPR export (Article 20) ───────────────────────────────────
+      .command<UserIdArgs>(
+        'export <id>',
+        'Export all user data (GDPR Article 20)',
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' }),
+        async (argv) => {
+          const args = argv as unknown as UserIdArgs;
+          await withErrorHandling(async () => {
+            await withHttpClient(args, async (client) => {
+              const { data } = await client.get<{ data: Record<string, unknown> }>(
+                `${userBasePath(args.org)}/${args.id}/export`,
+              );
+              // Export always outputs JSON (structured data document)
+              outputResult(true, () => {}, data.data);
+            });
+          }, args.verbose);
+        },
+      )
+
+      // ── GDPR purge (Article 17) ────────────────────────────────────
+      .command<UserIdArgs & { confirm: boolean }>(
+        'purge <id>',
+        'Irreversibly purge all user data (GDPR Article 17)',
+        (y) =>
+          y
+            .positional('id', { type: 'string', demandOption: true, description: 'User UUID' })
+            .option('org', { type: 'string', demandOption: true, description: 'Organization UUID' })
+            .option('confirm', { type: 'boolean', default: false, description: 'Skip confirmation prompt' }),
+        async (argv) => {
+          const args = argv as unknown as UserIdArgs & { confirm: boolean };
+          await withErrorHandling(async () => {
+            await withHttpClient(args, async (client) => {
+              // Require explicit confirmation — this is irreversible
+              if (!args.confirm) {
+                const yes = await confirm(
+                  'This will PERMANENTLY delete all data for this user. This action is IRREVERSIBLE. Continue?',
+                );
+                if (!yes) {
+                  warn('Purge cancelled');
+                  return;
+                }
+              }
+
+              const { data } = await client.post<{ data: Record<string, unknown> }>(
+                `${userBasePath(args.org)}/${args.id}/purge`,
+                { confirmPurge: true },
+              );
+              success(`User ${args.id} purged successfully`);
+              outputResult(args.json, () => {
+                const result = data.data as {
+                  anonymizedEmail: string;
+                  deletedRoles: number;
+                  deletedClaims: number;
+                  deletedOidcPayloads: number;
+                  anonymizedAuditEntries: number;
+                };
+                printTable(
+                  ['Field', 'Value'],
+                  [
+                    ['Anonymized email', result.anonymizedEmail],
+                    ['Roles deleted', String(result.deletedRoles)],
+                    ['Claims deleted', String(result.deletedClaims)],
+                    ['OIDC sessions deleted', String(result.deletedOidcPayloads)],
+                    ['Audit entries anonymized', String(result.anonymizedAuditEntries)],
+                  ],
+                );
+              }, data.data);
+            });
+          }, args.verbose);
+        },
+      )
+
       // ── 2FA management (RD-12) ──────────────────────────────────────
       // Migrated to HTTP in Phase 4.3
       .command(userTwoFaCommand)
@@ -617,7 +692,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       // Migrated to HTTP in Phase 4.3
       .command(userRoleCommand)
       .command(userClaimCommand)
-      .demandCommand(1, 'Specify a user subcommand: create, invite, list, show, update, deactivate, reactivate, suspend, lock, unlock, set-password, verify-email, roles, claims, 2fa');
+      .demandCommand(1, 'Specify a user subcommand: create, invite, list, show, update, deactivate, reactivate, suspend, lock, unlock, set-password, verify-email, export, purge, roles, claims, 2fa');
   },
   handler: () => {
     // No-op — subcommands handle execution
