@@ -70,7 +70,7 @@
     "pino": "10.3.1",
     "prom-client": "^15",
     "qrcode": "1.5.4",
-    "yargs": "17.7.2",
+    "yargs": "18.0.0",
     "zod": "4.3.6"
   },
   "devDependencies": {
