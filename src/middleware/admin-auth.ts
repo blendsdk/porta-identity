@@ -128,6 +128,15 @@ export function requireAdminAuth(): Middleware {
     // -----------------------------------------------------------------
     // Step 2: Validate opaque access token via OIDC provider
     // -----------------------------------------------------------------
+    // Timing analysis (Phase K audit):
+    // Token validation uses DB/Redis lookups via provider.AccessToken.find(),
+    // which have inherent timing variability from network I/O. All auth
+    // failure paths return the same 401 status and generic error message
+    // ("Token validation failed"), preventing error-message enumeration.
+    // Constant-time string comparison is not needed here because we never
+    // compare secret material directly — the opaque token is used as a
+    // lookup key, not compared against a stored value.
+    // -----------------------------------------------------------------
     // The OIDC provider issues opaque access tokens (not JWTs). We look
     // them up directly in the token store using provider.AccessToken.find().
     // This handles expiry (Redis TTL), revocation, and format validation

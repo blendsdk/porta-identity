@@ -110,7 +110,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   //
   // Routes that must NOT be body-parsed:
   //   /:orgSlug/*      — OIDC provider endpoints (token, revocation, introspection, etc.)
-  const bp = bodyParser();
+  const bp = bodyParser({
+    jsonLimit: '100kb',    // Defence-in-depth: limit JSON body size (default was 1mb)
+    formLimit: '100kb',    // Limit form body size
+    textLimit: '100kb',    // Limit text body size
+  });
   app.use(async (ctx, next) => {
     if (
       ctx.path.startsWith('/api/') ||

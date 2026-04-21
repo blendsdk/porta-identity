@@ -110,8 +110,11 @@ describe('signing-key-crypto', () => {
       const { privateKeyPem } = generateES256KeyPair();
       const { encrypted, iv, tag } = encryptPrivateKey(privateKeyPem, TEST_KEY);
 
-      // Flip a character in the ciphertext
-      const tampered = encrypted.slice(0, -2) + 'ff';
+      // Corrupt a hex digit in the middle of the ciphertext (guaranteed different value)
+      const mid = Math.floor(encrypted.length / 2);
+      const original = parseInt(encrypted[mid], 16);
+      const replacement = ((original + 1) % 16).toString(16);
+      const tampered = encrypted.slice(0, mid) + replacement + encrypted.slice(mid + 1);
       expect(() => decryptPrivateKey(tampered, iv, tag, TEST_KEY)).toThrow(
         SigningKeyCryptoError,
       );

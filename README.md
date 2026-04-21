@@ -1,5 +1,6 @@
-> ⚠️ **Beta Software** — Porta is under active development. APIs, configuration, and
-> database schemas may change between versions. Not recommended for production use yet.
+> ⚠️ **Pre-release** — Porta has undergone production hardening (rate limiting, account
+> lockout, GDPR compliance, audit retention, defence-in-depth review) but has not yet
+> been battle-tested in production. APIs and database schemas may still change. Use with caution.
 
 [![CI](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/docker/v/blendsdk/porta?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/blendsdk/porta)
