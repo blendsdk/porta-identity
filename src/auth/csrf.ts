@@ -98,7 +98,7 @@ export function verifyCsrfToken(expected: string | undefined, actual: string | u
  * The cookie uses:
  *  - `httpOnly: true` — prevents JavaScript access (XSS safe)
  *  - `sameSite: 'lax'` — blocks cross-site POST but allows navigational GET
- *  - `secure` — HTTPS-only in production
+ *  - `secure` — HTTPS-only when the connection is secure (direct TLS or behind proxy)
  *  - `path: '/'` — available to all routes
  *
  * @param ctx - Koa context
@@ -109,7 +109,7 @@ export function setCsrfCookie(ctx: Context, token: string): void {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: process.env.NODE_ENV === 'production',
+    secure: ctx.secure,
     overwrite: true,
   });
 }

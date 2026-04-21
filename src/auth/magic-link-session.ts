@@ -90,7 +90,7 @@ export async function createMagicLinkSession(
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: process.env.NODE_ENV === 'production',
+    secure: ctx.secure,
     maxAge: ML_SESSION_TTL * 1000, // milliseconds
     overwrite: true,
   });

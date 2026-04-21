@@ -65,6 +65,14 @@ import { config } from './config/index.js';
 export function createApp(oidcProvider?: Provider): Koa {
   const app = new Koa();
 
+  // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For, etc.) when
+  // running behind a TLS-terminating reverse proxy. This makes ctx.secure,
+  // ctx.ip, and ctx.protocol reflect the client's real connection, which is
+  // required for secure cookie flags and correct IP-based rate limiting.
+  if (config.trustProxy) {
+    app.proxy = true;
+  }
+
   // Global middleware stack (order matters):
   // 1. Error handler catches all downstream errors
   // 2. Request logger adds X-Request-Id and logs request/response

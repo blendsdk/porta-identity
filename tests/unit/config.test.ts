@@ -155,4 +155,38 @@ describe('config schema', () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe('trustProxy validation', () => {
+    it('defaults to false when not provided', () => {
+      const result = configSchema.safeParse(validEnv);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxy).toBe(false);
+      }
+    });
+
+    it('accepts "true" string and coerces to boolean', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxy: 'true' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxy).toBe(true);
+      }
+    });
+
+    it('accepts "false" string and coerces to boolean', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxy: 'false' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxy).toBe(false);
+      }
+    });
+
+    it('accepts boolean true directly', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxy: true });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxy).toBe(true);
+      }
+    });
+  });
 });

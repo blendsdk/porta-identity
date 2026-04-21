@@ -91,14 +91,10 @@ describe('verifyCsrfToken', () => {
 // ---------------------------------------------------------------------------
 
 describe('setCsrfCookie', () => {
-  function createMockCtx(): Context {
+  function createMockCtx(secure = false): Context {
     const setCookie = vi.fn();
-    return { cookies: { set: setCookie, get: vi.fn() } } as unknown as Context;
+    return { secure, cookies: { set: setCookie, get: vi.fn() } } as unknown as Context;
   }
-
-  beforeEach(() => {
-    delete process.env.NODE_ENV;
-  });
 
   it('should set an HttpOnly SameSite=Lax cookie named _csrf', () => {
     const ctx = createMockCtx();
@@ -114,12 +110,11 @@ describe('setCsrfCookie', () => {
     });
   });
 
-  it('should set secure=true when NODE_ENV is production', () => {
-    process.env.NODE_ENV = 'production';
-    const ctx = createMockCtx();
-    setCsrfCookie(ctx, 'prod-token');
+  it('should set secure=true when ctx.secure is true (HTTPS connection)', () => {
+    const ctx = createMockCtx(true);
+    setCsrfCookie(ctx, 'secure-token');
 
-    expect(ctx.cookies.set).toHaveBeenCalledWith('_csrf', 'prod-token', {
+    expect(ctx.cookies.set).toHaveBeenCalledWith('_csrf', 'secure-token', {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
@@ -128,14 +123,13 @@ describe('setCsrfCookie', () => {
     });
   });
 
-  it('should set secure=false when NODE_ENV is not production', () => {
-    process.env.NODE_ENV = 'test';
-    const ctx = createMockCtx();
-    setCsrfCookie(ctx, 'dev-token');
+  it('should set secure=false when ctx.secure is false (HTTP connection)', () => {
+    const ctx = createMockCtx(false);
+    setCsrfCookie(ctx, 'http-token');
 
     expect(ctx.cookies.set).toHaveBeenCalledWith(
       '_csrf',
-      'dev-token',
+      'http-token',
       expect.objectContaining({ secure: false }),
     );
   });

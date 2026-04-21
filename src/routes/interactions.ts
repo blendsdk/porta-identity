@@ -382,16 +382,6 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
   // Normal login flow
   // -----------------------------------------------------------------------
   try {
-    // Diagnostic: log cookie presence to debug interaction session issues.
-    // The _interaction cookie is set by the provider during the auth redirect
-    // and must be sent back by the browser for interactionDetails() to work.
-    const cookieHeader = ctx.get('cookie') || '';
-    const hasInteractionCookie = cookieHeader.includes('_interaction');
-    logger.debug(
-      { uid: ctx.params.uid, hasInteractionCookie, hasCookies: cookieHeader.length > 0 },
-      'Interaction request received — checking cookies',
-    );
-
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
     const { prompt, params } = interaction;
 

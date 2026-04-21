@@ -20,6 +20,13 @@ export const configSchema = z.object({
   logLevel: z.enum(['debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   // AES-256-GCM encryption key for TOTP secrets — must be exactly 32 hex bytes (64 chars).
   // Optional in dev/test (a default is used); required in production for security.
+  // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For, etc.).
+  // Enable when running behind a TLS-terminating reverse proxy (nginx, Traefik, etc.)
+  // so that ctx.secure correctly reflects the client's HTTPS connection.
+  trustProxy: z
+    .union([z.boolean(), z.string()])
+    .default(false)
+    .transform((val) => (typeof val === 'string' ? val === 'true' || val === '1' : val)),
   twoFactorEncryptionKey: z
     .string()
     .length(64, 'TWO_FACTOR_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
