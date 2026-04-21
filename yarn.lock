@@ -3650,10 +3650,10 @@ non-layered-tidy-tree-layout@^2.0.2:
   resolved "https://registry.yarnpkg.com/non-layered-tidy-tree-layout/-/non-layered-tidy-tree-layout-2.0.2.tgz#57d35d13c356643fc296a55fb11ac15e74da7804"
   integrity sha512-gkXMxRzUH+PB0ax9dUN0yYF0S25BqeAYqhgMaLUFmpXLEk7Fcu8f4emJuOAY0V8kjDICxROIKsTAKsV/v355xw==
 
-npm-check-updates@20.0.0:
-  version "20.0.0"
-  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-20.0.0.tgz#86eb6b288745657edf285288f2659014b81fabdb"
-  integrity sha512-qCs02x51irGf0okCttwv8lHEO2NxT903IJ2bKpG82kIzkm6pfT3CoWB5YIvqY/wi/DdnYRfI7eVfCYYymQgvCg==
+npm-check-updates@21.0.3:
+  version "21.0.3"
+  resolved "https://registry.yarnpkg.com/npm-check-updates/-/npm-check-updates-21.0.3.tgz#e71d6a3a2ece1b4fb7389b6c3999b345f0af24d1"
+  integrity sha512-8y0fqtxdo5JhwzxcS9rZd969tvPbSZ3MzQoG5Fj8eqL42t1Jsg5tjZCz8CYuXLE8LNbbyV+1xxR/f/T4AdPmdg==
 
 object-inspect@^1.13.3:
   version "1.13.4"
