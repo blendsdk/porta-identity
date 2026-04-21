@@ -53,7 +53,8 @@ import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
-import { tokenRateLimiter } from './middleware/token-rate-limiter.js';
+import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
+import { adminRateLimiter } from './middleware/admin-rate-limiter.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
 import { getApplicationBySlug } from './applications/index.js';
@@ -198,6 +199,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Default (empty config) = deny all cross-origin requests.
   app.use(adminCors(config));
 
+  // Admin API rate limiter — protects state-changing admin endpoints
+  // (POST/PUT/PATCH/DELETE /api/admin/*) against brute-force and abuse.
+  // Per-IP key, 60 req / 60s.  GET requests pass through unmetered.
+  // Mounted before admin routes so it fires before route handlers.
+  app.use(adminRateLimiter());
+
   // Set the OIDC provider for admin auth middleware — enables opaque access
   // token validation via provider.AccessToken.find() for all /api/admin/* routes.
   if (oidcProvider) {
@@ -307,6 +314,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   // 30 req / 5 min.  Returns 429 with Retry-After when exceeded.
   // Mounted before the OIDC provider so it fires before token processing.
   app.use(tokenRateLimiter());
+
+  // Introspection endpoint rate limiter — protects POST
+  // /:orgSlug/oidc/token/introspection against token enumeration.
+  // Per-IP + per-client_id key, 100 req / 60s (higher than token endpoint
+  // since resource servers introspect on every API call).
+  app.use(introspectionRateLimiter());
 
   // OIDC provider routes — mounted under /:orgSlug prefix
   // This is the catch-all for OIDC protocol endpoints (auth, token, jwks, etc.)

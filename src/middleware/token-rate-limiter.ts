@@ -1,9 +1,10 @@
 /**
- * Token endpoint rate limiter middleware.
+ * Token and introspection endpoint rate limiter middleware.
  *
- * Protects the OAuth token endpoint (`POST /:orgSlug/oidc/token`) against
- * abuse: client-credentials flooding, authorization-code brute-forcing,
- * and general token endpoint spam.
+ * Protects the OAuth token endpoint (`POST /:orgSlug/oidc/token`) and
+ * token introspection endpoint (`POST /:orgSlug/oidc/token/introspection`)
+ * against abuse: client-credentials flooding, authorization-code
+ * brute-forcing, token enumeration, and general endpoint spam.
  *
  * Rate limiting is per-IP + per-client_id composite key.  If `client_id`
  * is not present in the request body (e.g. `client_secret_basic` auth
@@ -15,7 +16,7 @@
  * window and graceful degradation on Redis failure.
  *
  * Placement: mount as global middleware **before** the OIDC provider
- * router in `src/server.ts`.  The path regex ensures only token-endpoint
+ * router in `src/server.ts`.  The path regex ensures only matching
  * requests are rate-limited — all other paths pass through untouched.
  *
  * @module middleware/token-rate-limiter
@@ -125,3 +126,100 @@ export function tokenRateLimiter(): Middleware {
     return next();
   };
 }
+
+// ---------------------------------------------------------------------------
+// Introspection endpoint rate limiter
+// ---------------------------------------------------------------------------
+
+/**
+ * Regex matching the OIDC token introspection endpoint path.
+ *
+ * Pattern: `/<orgSlug>/oidc/token/introspection` where orgSlug uses
+ * the same slug format as TOKEN_PATH_REGEX.
+ *
+ * Matches:  `/acme/oidc/token/introspection`, `/my-org/oidc/token/introspection`
+ * Rejects:  `/acme/oidc/token`, `/api/admin/introspection`
+ */
+export const INTROSPECTION_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/oidc\/token\/introspection$/;
+
+/**
+ * Rate limit configuration for the introspection endpoint.
+ *
+ * 100 requests per 60-second window — higher than the token endpoint
+ * because introspection is used by resource servers to validate tokens
+ * on every API call.  The higher limit accommodates legitimate traffic
+ * while still preventing token enumeration attacks.
+ */
+export const INTROSPECTION_RATE_LIMIT: RateLimitConfig = {
+  max: 100,
+  windowSeconds: 60,
+};
+
+/**
+ * Create the introspection endpoint rate limiter middleware.
+ *
+ * Only intercepts `POST` requests to paths matching
+ * `INTROSPECTION_PATH_REGEX`.  Sets informational `X-RateLimit-*`
+ * headers and returns a `429` with an OAuth-format error body when
+ * the limit is exceeded.
+ *
+ * Key format: `ratelimit:introspect:{ip}:{clientId}` — composite key
+ * per-IP + per-client_id for granular rate limiting.
+ *
+ * @returns Koa middleware that rate-limits the OIDC introspection endpoint
+ */
+export function introspectionRateLimiter(): Middleware {
+  return async function introspectionRateLimiterMiddleware(ctx, next) {
+    // Only rate-limit POST to the introspection endpoint.
+    if (ctx.method !== 'POST' || !INTROSPECTION_PATH_REGEX.test(ctx.path)) {
+      return next();
+    }
+
+    // Extract client_id from the parsed request body if available.
+    // Introspection requests carry client credentials — client_id may
+    // be in the body (client_secret_post) or absent (client_secret_basic).
+    const body = ctx.request.body as Record<string, unknown> | undefined;
+    const clientId = body?.client_id;
+    const clientKey =
+      typeof clientId === 'string' && clientId.length > 0
+        ? clientId
+        : 'unknown';
+
+    // Composite key: per-IP + per-client_id — separate namespace from
+    // the token endpoint to keep counters independent.
+    const key = `ratelimit:introspect:${ctx.ip}:${clientKey}`;
+
+    const result = await checkRateLimit(key, INTROSPECTION_RATE_LIMIT);
+
+    // Informational headers on all matched responses.
+    ctx.set('X-RateLimit-Limit', String(INTROSPECTION_RATE_LIMIT.max));
+    ctx.set('X-RateLimit-Remaining', String(result.remaining));
+
+    if (!result.allowed) {
+      logger.warn(
+        {
+          action: 'introspection_rate_limit_exceeded',
+          ip: ctx.ip,
+          clientId: clientKey,
+          path: ctx.path,
+        },
+        'Introspection endpoint rate limit exceeded',
+      );
+
+      ctx.status = 429;
+      ctx.set('Retry-After', String(result.retryAfter));
+      // OAuth 2.0 error format — resource servers parsing introspection
+      // errors can handle this structured response.
+      ctx.body = {
+        error: 'rate_limit_exceeded',
+        error_description:
+          'Too many introspection requests. Please try again later.',
+        retry_after: result.retryAfter,
+      };
+      return;
+    }
+
+    return next();
+  };
+}
+
