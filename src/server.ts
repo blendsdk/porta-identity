@@ -50,6 +50,8 @@ import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
+import { adminCors } from './middleware/admin-cors.js';
+import { tokenRateLimiter } from './middleware/token-rate-limiter.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
 import { getApplicationBySlug } from './applications/index.js';
@@ -173,6 +175,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(metadataRouter.routes());
   app.use(metadataRouter.allowedMethods());
 
+  // Admin CORS allow-list — emits CORS headers for /api/admin/* only when
+  // ADMIN_CORS_ORIGINS is configured.  Mounted before admin-auth because
+  // preflight OPTIONS requests don't carry Authorization headers.
+  // Default (empty config) = deny all cross-origin requests.
+  app.use(adminCors(config));
+
   // Set the OIDC provider for admin auth middleware — enables opaque access
   // token validation via provider.AccessToken.find() for all /api/admin/* routes.
   if (oidcProvider) {
@@ -276,6 +284,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const invitationRouter = createInvitationRouter();
   app.use(invitationRouter.routes());
   app.use(invitationRouter.allowedMethods());
+
+  // Token endpoint rate limiter — protects POST /:orgSlug/oidc/token against
+  // flooding and brute-force.  Uses per-IP + per-client_id composite key,
+  // 30 req / 5 min.  Returns 429 with Retry-After when exceeded.
+  // Mounted before the OIDC provider so it fires before token processing.
+  app.use(tokenRateLimiter());
 
   // OIDC provider routes — mounted under /:orgSlug prefix
   // This is the catch-all for OIDC protocol endpoints (auth, token, jwks, etc.)

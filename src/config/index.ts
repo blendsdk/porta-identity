@@ -25,6 +25,11 @@ function loadConfig(): AppConfig {
     trustProxy: process.env.TRUST_PROXY,
     twoFactorEncryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
     signingKeyEncryptionKey: process.env.SIGNING_KEY_ENCRYPTION_KEY,
+    // ADMIN_CORS_ORIGINS is a comma-separated list of allowed origins for the admin API.
+    // Empty or unset = deny all cross-origin requests (secure default).
+    adminCorsOrigins: process.env.ADMIN_CORS_ORIGINS
+      ? process.env.ADMIN_CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+      : [],
   });
 
   if (!result.success) {

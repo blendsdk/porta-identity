@@ -39,6 +39,10 @@ export const configSchema = z.object({
     .string()
     .length(64, 'SIGNING_KEY_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
     .regex(/^[0-9a-f]+$/i, 'SIGNING_KEY_ENCRYPTION_KEY must be hex-encoded'),
+  // Allowed origins for the admin API CORS policy.
+  // Empty array (default) = deny all cross-origin requests.
+  // Only needed when a web admin dashboard runs on a different origin.
+  adminCorsOrigins: z.array(z.string().url()).default([]),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
