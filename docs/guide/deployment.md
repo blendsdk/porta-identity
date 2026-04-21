@@ -586,14 +586,15 @@ Client secrets are displayed only once at generation time. Store the new secret
 securely in your consuming service before revoking the old one.
 :::
 
-## Health Checks
+## Health Checks & Readiness
 
-The `GET /health` endpoint checks:
-- ✅ Server is running
-- ✅ PostgreSQL connection is alive
-- ✅ Redis connection is alive
+Porta exposes two diagnostic endpoints:
 
-**Response (healthy):**
+### `GET /health` — Liveness
+
+Confirms the server process is running and can reach PostgreSQL and Redis.
+
+**Response (healthy — 200):**
 ```json
 {
   "status": "ok",
@@ -604,7 +605,7 @@ The `GET /health` endpoint checks:
 }
 ```
 
-**Response (unhealthy):**
+**Response (unhealthy — 503):**
 ```json
 {
   "status": "error",
@@ -615,10 +616,46 @@ The `GET /health` endpoint checks:
 }
 ```
 
-Use this endpoint for:
+### `GET /ready` — Readiness
+
+Verifies the server is ready to accept traffic by running a real DB query (`SELECT 1`) and a Redis `PING`, both with a **2-second timeout**. Returns `200` when ready, `503` when not.
+
+Use `/ready` for:
+- **Kubernetes readiness probes** — prevents traffic routing before the server is fully ready
+- **Load balancer health checks** — remove unhealthy instances from rotation
+- **Orchestrator startup checks** — wait for full connectivity before considering the container healthy
+
+Use `/health` for:
 - Docker `HEALTHCHECK` (already configured in the image)
-- Load balancer health checks
-- Monitoring / uptime tools (Uptime Robot, Pingdom, etc.)
+- Basic uptime monitoring (Uptime Robot, Pingdom, etc.)
+
+**Docker Compose example with readiness:**
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:3000/ready"]
+  interval: 30s
+  timeout: 5s
+  start_period: 30s
+  retries: 3
+```
+
+**Kubernetes example:**
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 30
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
 
 ## Logging
 
@@ -630,6 +667,21 @@ Porta uses [pino](https://github.com/pinojs/pino) for structured logging:
 | `production` | JSON (one line per entry) | Machine-parseable, suitable for log aggregators |
 | `test` | Silent | No log output |
 
+### PII Redaction
+
+Porta automatically redacts sensitive fields from log output to prevent personally identifiable information (PII) from leaking into log aggregators. The following fields are replaced with `[Redacted]` in all log entries:
+
+| Redacted Field | Reason |
+|----------------|--------|
+| `password` | User credentials |
+| `token` | Access/refresh tokens |
+| `authorization` | Bearer tokens in headers |
+| `cookie` | Session cookies |
+| `refresh_token` | OIDC refresh tokens |
+| `client_secret` | OIDC client secrets |
+
+This redaction is always active regardless of `NODE_ENV` or `LOG_LEVEL`.
+
 In production, pipe JSON logs to your log aggregator (ELK, Datadog, CloudWatch, etc.):
 
 ```bash
@@ -639,6 +691,22 @@ docker compose -f docker/docker-compose.prod.yml logs -f porta
 # With jq for readable JSON
 docker logs porta-app | jq .
 ```
+
+## Graceful Shutdown
+
+Porta handles `SIGTERM` and `SIGINT` signals for graceful shutdown:
+
+1. The HTTP server stops accepting new connections
+2. In-flight requests are allowed to complete
+3. The server closes via a promisified `server.close()`
+4. Database and Redis connections are disconnected
+5. A **10-second kill switch** forces exit if cleanup stalls
+
+This ensures zero dropped requests during rolling deployments and container orchestration restarts.
+
+::: tip
+Kubernetes sends `SIGTERM` before killing a pod. Set `terminationGracePeriodSeconds: 15` (or higher) in your pod spec to give Porta enough time to drain.
+:::
 
 ## Scaling
 
@@ -713,13 +781,173 @@ COPY my-templates/ /app/templates/default/
 
 ## Monitoring
 
-Beyond the health endpoint, monitor:
+### Prometheus Metrics
+
+When `METRICS_ENABLED=true`, Porta exposes a Prometheus-compatible `GET /metrics` endpoint using [prom-client](https://github.com/slotscheck/prom-client) v15.
+
+**Available metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `porta_http_requests_total` | Counter | Total HTTP requests (labels: `method`, `status_code`, `path`) |
+| Default Node.js metrics | Various | CPU, memory, event loop lag, GC (via `collectDefaultMetrics()`) |
+
+**Enable in Docker Compose:**
+
+```yaml
+environment:
+  METRICS_ENABLED: "true"
+```
+
+**Prometheus scrape config:**
+
+```yaml
+scrape_configs:
+  - job_name: porta
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['porta:3000']
+    metrics_path: /metrics
+```
+
+When `METRICS_ENABLED` is `false` (default), the `/metrics` endpoint returns `404`.
+
+::: info
+The metrics endpoint is **unauthenticated**. If exposing Porta directly to the internet, restrict access to `/metrics` via your reverse proxy or firewall.
+:::
+
+### General Monitoring
+
+Beyond Prometheus metrics, monitor:
 
 | Metric | Source | What to Watch |
 |--------|--------|---------------|
 | Health status | `GET /health` | Any non-200 response |
+| Readiness | `GET /ready` | 503 responses indicate DB/Redis connectivity issues |
 | Response times | Reverse proxy logs | P95 > 500ms |
 | Error rate | Application logs (`level: 50+`) | Spike in errors |
 | PostgreSQL connections | `pg_stat_activity` | Connection pool exhaustion |
 | Redis memory | `redis-cli info memory` | Memory approaching limits |
 | Disk usage | PostgreSQL data volume | Running out of space |
+| Rate limit hits | Audit log `security.rate_limited` | Brute-force attempts |
+| Account lockouts | Audit log `user.locked` | Credential-stuffing attacks |
+
+---
+
+## Rate Limiting
+
+Porta applies Redis-backed, per-IP rate limiting to sensitive endpoints:
+
+| Scope | Limit | Window | Endpoints |
+|-------|-------|--------|-----------|
+| **Token endpoint** | 30 requests | 5 minutes | `POST /:orgSlug/auth/token` |
+| **Admin API** (write ops) | 60 requests | 60 seconds | `POST/PUT/PATCH/DELETE /api/admin/*` |
+| **Introspection** | 100 requests | 60 seconds | `POST /:orgSlug/auth/token/introspection` |
+| **Login interactions** | Per existing auth rate limiter | — | `POST /:orgSlug/interaction/*` |
+
+When a rate limit is exceeded, the server returns `429 Too Many Requests` with a `Retry-After` header. Rate limit events are logged to the audit trail as `security.rate_limited`.
+
+::: info
+Rate limit counters are stored in Redis and automatically expire. If Redis is restarted, counters reset — this temporarily allows more attempts but is self-correcting.
+:::
+
+---
+
+## Account Lockout
+
+Porta automatically locks user accounts after repeated failed login attempts to protect against brute-force and credential-stuffing attacks.
+
+### How It Works
+
+1. Each failed login increments a per-user `failed_login_count` counter in PostgreSQL
+2. When the count reaches the threshold (default: **5 attempts**), the account is auto-locked
+3. After the cooldown period (default: **15 minutes**), the account auto-unlocks on the next login attempt
+4. A successful login resets the failed count to zero
+
+### Configuration
+
+Account lockout thresholds are managed via `system_config`:
+
+```bash
+# View current settings
+porta config get --key account_lockout_threshold
+porta config get --key account_lockout_cooldown_minutes
+
+# Change lockout threshold (default: 5)
+porta config set --key account_lockout_threshold --value 10
+
+# Change cooldown period in minutes (default: 15)
+porta config set --key account_lockout_cooldown_minutes --value 30
+```
+
+### Security Design
+
+- **No information leakage** — Locked accounts return the same error as invalid credentials, preventing account enumeration
+- **Audit logging** — Every auto-lock event is logged as `user.locked` with metadata indicating the trigger
+- **Admin override** — Administrators can manually unlock a user at any time via `porta user unlock` or the Admin API
+
+---
+
+## Request Size Limits
+
+Porta enforces body parser size limits to prevent denial-of-service via oversized payloads:
+
+| Content Type | Limit |
+|-------------|-------|
+| `application/json` | 100 KB |
+| `application/x-www-form-urlencoded` | 100 KB |
+| `text/plain` | 100 KB |
+
+Requests exceeding these limits receive a `413 Payload Too Large` response.
+
+---
+
+## GDPR Compliance
+
+Porta provides built-in support for GDPR data portability (Article 20) and right to erasure (Article 17).
+
+### Data Export (Article 20)
+
+Export all personal data for a user in JSON format:
+
+```bash
+# Via CLI
+porta user export --org-id <id> --user-id <id>
+
+# Via API
+GET /api/admin/organizations/:orgId/users/:userId/export
+```
+
+The export includes: profile data, organization membership, role assignments, custom claim values, audit log entries, 2FA enrollment status, and active OIDC sessions.
+
+### Data Purge (Article 17)
+
+Permanently anonymize and delete a user's personal data:
+
+```bash
+# Via CLI (requires confirmation)
+porta user purge --org-id <id> --user-id <id>
+
+# Via API
+POST /api/admin/organizations/:orgId/users/:userId/purge
+```
+
+The purge anonymizes the user record (replaces email, name, etc. with anonymized values) and deletes all associated data (roles, claims, tokens, 2FA enrollment, audit metadata) in a single database transaction.
+
+::: danger
+**Data purge is irreversible.** The CLI prompts for confirmation; use `--force` to skip. Super-admin users cannot be purged as a safety measure.
+:::
+
+### Audit Retention
+
+Configure automatic cleanup of old audit log entries:
+
+```bash
+# Set retention period (in days)
+porta config set --key audit_retention_days --value 365
+
+# Run cleanup (deletes entries older than retention period)
+porta audit cleanup
+```
+
+See [Audit Log API](/api/audit) and [CLI Infrastructure](/cli/infrastructure) for details.

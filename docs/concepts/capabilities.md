@@ -218,8 +218,10 @@ Every CLI operation is backed by a JWT-authenticated REST API at `/api/admin/*`:
 | **Client Secrets** | Argon2id hashed with SHA-256 pre-hash for length normalization |
 | **PKCE** | Required for public clients, supported for all |
 | **CSRF Protection** | Token-based CSRF on all form submissions |
-| **Rate Limiting** | Redis-backed per-endpoint rate limiting on auth flows |
+| **Rate Limiting** | Redis-backed per-IP limiting: token (30/5min), admin API (60/60s), introspection (100/60s), login interactions |
+| **Account Lockout** | Auto-lock after N failed logins (default: 5), auto-unlock after cooldown (default: 15 min) |
 | **Audit Logging** | Every admin operation and security event logged with actor, target, metadata |
+| **Audit Retention** | Configurable `audit_retention_days` with CLI/API cleanup command |
 | **CORS** | Configurable per OIDC endpoint |
 | **Session Security** | Short-lived sessions in Redis with signed cookies |
 | **Key Rotation** | Active/retired/revoked key lifecycle with JWKS endpoint |
@@ -227,6 +229,13 @@ Every CLI operation is backed by a JWT-authenticated REST API at `/api/admin/*`:
 | **Recovery Code Hashing** | Argon2id for recovery codes |
 | **Secure Headers** | CSP, X-Frame-Options, X-Content-Type-Options on all responses |
 | **No Information Leakage** | Root page returns neutral content; no product/vendor identification |
+| **PII Redaction** | Sensitive fields (password, token, cookie, client_secret) redacted from all log output |
+| **Config Safety** | Production startup validation — rejects dev placeholders, weak keys, insecure URLs (9 rules) |
+| **Body Size Limits** | 100 KB limit on JSON, form, and text request bodies |
+| **Graceful Shutdown** | SIGTERM/SIGINT → drain connections → close DB/Redis → 10s kill switch |
+| **GDPR Compliance** | Data export (Article 20) and data purge (Article 17) via API and CLI |
+| **Prometheus Metrics** | Optional `GET /metrics` endpoint with `prom-client` (counter, default Node.js metrics) |
+| **Readiness Probe** | `GET /ready` with DB + Redis connectivity check (2s timeout) |
 
 ---
 
@@ -267,6 +276,7 @@ Porta uses a hybrid adapter strategy for optimal performance:
 | 2FA — TOTP | ✅ Authenticator app with QR setup |
 | 2FA — Recovery codes | ✅ Argon2id hashed backup codes |
 | Per-org login methods | ✅ Default + override per client |
+| Account lockout | ✅ Auto-lock/unlock with configurable thresholds |
 | Custom login UI | ✅ Handlebars templates + Docker volume mount |
 | Per-org branding (API) | ✅ Logo, colors, CSS, company name |
 | Custom email templates | ✅ HTML + plain text |
@@ -274,7 +284,14 @@ Porta uses a hybrid adapter strategy for optimal performance:
 | Custom claims | ✅ Type-validated, injected into tokens |
 | Admin CLI | ✅ 14+ commands |
 | Admin REST API | ✅ JWT-authenticated, 70+ endpoints |
-| Audit logging | ✅ All operations logged |
+| Audit logging | ✅ All operations logged with configurable retention |
+| Rate limiting | ✅ Per-IP on token, admin API, introspection, login |
 | Key rotation | ✅ ES256 with lifecycle management |
+| GDPR compliance | ✅ Data export (Article 20) + purge (Article 17) |
+| Prometheus metrics | ✅ Optional `/metrics` endpoint |
+| Readiness probe | ✅ `GET /ready` with DB + Redis check |
+| Config safety | ✅ Production startup validation (9 rules) |
+| PII redaction | ✅ Sensitive fields redacted from logs |
+| Graceful shutdown | ✅ SIGTERM drain with 10s kill switch |
 | i18n | ✅ Locale-based translations |
 | Docker support | ✅ Production-ready image |

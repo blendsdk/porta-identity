@@ -118,4 +118,26 @@ GET /api/admin/metadata
 
 ## Rate Limiting
 
-The Admin API does not impose its own rate limits, but the underlying OIDC token and authentication endpoints are rate-limited to prevent abuse.
+The Admin API enforces Redis-backed, per-IP rate limiting on write operations:
+
+| Scope | Limit | Window | Methods |
+|-------|-------|--------|---------|
+| **Admin API writes** | 60 requests | 60 seconds | `POST`, `PUT`, `PATCH`, `DELETE` |
+| **Admin API reads** | Unlimited | — | `GET` |
+
+When a rate limit is exceeded, the server returns:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: <seconds>
+```
+
+```json
+{
+  "error": "TooManyRequests",
+  "message": "Rate limit exceeded. Try again later.",
+  "statusCode": 429
+}
+```
+
+Additionally, the underlying OIDC token, introspection, and authentication endpoints have their own rate limits. See the [Deployment Guide](/guide/deployment#rate-limiting) for the full rate limiting table.

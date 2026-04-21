@@ -144,3 +144,51 @@ POST /api/admin/organizations/:orgId/users/:userId/2fa/reset
 ```
 
 These endpoints allow administrators to view 2FA status, force-disable 2FA, or reset 2FA for a user (forcing re-enrollment).
+
+## Account Lockout
+
+Porta automatically locks accounts after repeated failed login attempts (default: 5 attempts). Locked accounts auto-unlock after a cooldown period (default: 15 minutes).
+
+The `POST .../lock` and `POST .../unlock` endpoints (see [Status Transitions](#status-transition-endpoints) above) allow administrators to manually lock or unlock a user at any time. The auto-lockout system uses the same underlying status transitions.
+
+Lockout thresholds are configurable via the [System Configuration API](/api/config):
+- `account_lockout_threshold` — Number of failed attempts before auto-lock (default: `5`)
+- `account_lockout_cooldown_minutes` — Minutes before auto-unlock (default: `15`)
+
+See the [Deployment Guide](/guide/deployment#account-lockout) for full details.
+
+## GDPR Data Export
+
+```http
+GET /api/admin/organizations/:orgId/users/:userId/export
+```
+
+Exports all personal data for a user as a JSON document (GDPR Article 20 — data portability). The export includes:
+
+- User profile (email, name, phone, locale, etc.)
+- Organization membership
+- Role assignments (with role names and application context)
+- Custom claim values (with claim definitions)
+- Audit log entries related to the user
+- Two-factor authentication enrollment status
+- Active OIDC sessions and grants
+
+**Response:** `200 OK` — JSON document containing all user data.
+
+## GDPR Data Purge
+
+```http
+POST /api/admin/organizations/:orgId/users/:userId/purge
+```
+
+Permanently anonymizes and deletes a user's personal data (GDPR Article 17 — right to erasure). This operation:
+
+1. Anonymizes the user record (replaces email, names, etc. with anonymized placeholders)
+2. Deletes all associated data: role assignments, custom claim values, tokens, 2FA enrollment, and audit metadata
+3. Executes everything in a single database transaction
+
+**Response:** `200 OK` — Confirmation of purge completion.
+
+::: danger Irreversible
+Data purge cannot be undone. Super-admin users cannot be purged as a safety measure.
+:::

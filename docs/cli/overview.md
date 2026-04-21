@@ -46,11 +46,11 @@ Every command supports these global flags:
 | [`porta seed`](/cli/infrastructure#porta-seed) | Direct DB | Load development seed data |
 | [`porta keys`](/cli/infrastructure#porta-keys) | HTTP | Manage signing keys |
 | [`porta config`](/cli/infrastructure#porta-config) | HTTP | Manage system configuration |
-| [`porta audit`](/cli/infrastructure#porta-audit) | HTTP | View audit logs |
+| [`porta audit`](/cli/infrastructure#porta-audit) | HTTP | View and manage audit logs (list, cleanup) |
 | [`porta org`](/cli/organizations) | HTTP | Manage organizations |
 | [`porta app`](/cli/applications) | HTTP | Manage applications, modules, roles, permissions, claims |
 | [`porta client`](/cli/clients) | HTTP | Manage OIDC clients and secrets |
-| [`porta user`](/cli/users) | HTTP | Manage users, roles, claims, 2FA |
+| [`porta user`](/cli/users) | HTTP | Manage users, roles, claims, 2FA, GDPR export/purge |
 
 ## Dual-Mode Architecture
 

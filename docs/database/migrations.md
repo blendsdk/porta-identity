@@ -53,6 +53,9 @@ Migrations are numbered sequentially and applied in order:
 | 012 | `012_two_factor.sql` | Two-factor authentication tables (TOTP, email OTP, recovery codes) |
 | 013 | `013_client_secret_sha256.sql` | SHA-256 pre-hash column for client secrets |
 | 014 | `014_login_methods.sql` | Login methods columns on organizations and clients |
+| 015 | `015_signing_key_encryption.sql` | Adds KEK encryption columns to signing_keys table (preparation for future at-rest encryption) |
+| 016 | `016_failed_login_count.sql` | Adds `failed_login_count` and `last_failed_login_at` columns to users table for account lockout |
+| 017 | `017_audit_retention.sql` | Adds `audit_retention_days` entry to system_config for configurable audit log cleanup |
 
 ## Writing Migrations
 

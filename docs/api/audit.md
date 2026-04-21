@@ -113,6 +113,55 @@ GET /api/admin/audit
 | `security.2fa_disabled` | 2FA disabled for user |
 | `security.rate_limited` | Rate limit triggered |
 
+### GDPR Events
+
+| Action | Description |
+|--------|-------------|
+| `user.data_exported` | User data exported (GDPR Article 20) |
+| `user.data_purged` | User data purged (GDPR Article 17) |
+
+### Account Lockout Events
+
+| Action | Description |
+|--------|-------------|
+| `user.auto_locked` | Account auto-locked after failed login threshold |
+| `user.auto_unlocked` | Account auto-unlocked after cooldown expired |
+
 ::: info
-Audit events are **fire-and-forget** — they are written asynchronously to avoid impacting request latency. All events include the actor (who), the entity (what), and metadata (details).
+Audit events are **fire-and-forget** — they are written asynchronously to avoid impacting request latency. All events include the actor (who), the entity (what), and metadata (details). If an audit write fails, a WARN-level log entry is emitted.
+:::
+
+## Audit Retention & Cleanup
+
+Porta supports configurable audit log retention with automatic cleanup of old entries.
+
+### Configure Retention
+
+The retention period is managed via the `audit_retention_days` system configuration key:
+
+```bash
+# Set retention to 365 days
+porta config set --key audit_retention_days --value 365
+```
+
+### Cleanup Old Entries
+
+```http
+DELETE /api/admin/audit/cleanup
+```
+
+Deletes audit log entries older than the configured `audit_retention_days` value.
+
+**Response:** `200 OK`
+
+```json
+{
+  "deleted": 1542,
+  "retentionDays": 365,
+  "cutoffDate": "2025-04-21T00:00:00.000Z"
+}
+```
+
+::: warning
+Audit cleanup is irreversible. Ensure your retention period meets your compliance requirements before running cleanup. Consider exporting old audit data to cold storage before purging.
 :::

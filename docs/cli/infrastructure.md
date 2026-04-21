@@ -170,3 +170,27 @@ porta audit list \
 | `--to` | End date (ISO 8601) |
 | `--page` | Page number |
 | `--page-size` | Items per page |
+
+### `porta audit cleanup`
+
+```bash
+porta audit cleanup
+```
+
+Deletes audit log entries older than the configured retention period. The retention period is controlled by the `audit_retention_days` system configuration key (set via `porta config set`).
+
+```bash
+# Set retention to 365 days, then clean up
+porta config set --key audit_retention_days --value 365
+porta audit cleanup
+```
+
+**Output:**
+
+```
+✅ Deleted 1,542 audit entries older than 365 days (cutoff: 2025-04-21)
+```
+
+::: warning
+Audit cleanup is irreversible. Ensure your retention period meets compliance requirements before running this command. Consider scheduling regular cleanup via cron or a Kubernetes CronJob.
+:::

@@ -124,6 +124,8 @@ End-user accounts scoped to an organization.
 | `locale` | `text` | User locale |
 | `login_count` | `integer` | Total login count |
 | `last_login_at` | `timestamptz` | Last successful login |
+| `failed_login_count` | `integer` | Failed login attempts (resets on success). Used by account lockout. |
+| `last_failed_login_at` | `timestamptz` | Timestamp of last failed login. Used for auto-unlock cooldown. |
 | `created_at` | `timestamptz` | Creation timestamp |
 | `updated_at` | `timestamptz` | Last update |
 
@@ -276,6 +278,16 @@ System configuration key-value store with 60s in-memory cache.
 | `value` | `text` | Configuration value |
 | `description` | `text` | Description |
 | `updated_at` | `timestamptz` | Last update |
+
+**Notable configuration keys:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `access_token_ttl` | `3600` | Access token TTL in seconds |
+| `refresh_token_ttl` | `1209600` | Refresh token TTL in seconds (14 days) |
+| `account_lockout_threshold` | `5` | Failed login attempts before auto-lock |
+| `account_lockout_cooldown_minutes` | `15` | Minutes before auto-unlock |
+| `audit_retention_days` | `365` | Days to retain audit log entries before cleanup |
 
 ### `audit_log`
 

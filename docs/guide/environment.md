@@ -36,6 +36,12 @@ See also: [Quick Start](./quickstart.md) for minimal setup, [Deployment Guide](.
 | `SMTP_PASS` | — | No | SMTP authentication password. Leave empty for MailHog. |
 | `SMTP_FROM` | `noreply@porta.local` | No | Sender email address for magic links, password resets, and invitations. |
 
+## Monitoring
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `METRICS_ENABLED` | `false` | No | Set to `true` to enable the Prometheus-compatible `GET /metrics` endpoint. When disabled (default), the endpoint returns 404. |
+
 ## Logging
 
 | Variable | Default | Required | Description |
@@ -99,6 +105,29 @@ Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `TWO_FACTOR_ENCRYPTION_KEY` | — | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hex characters (32 bytes). Optional in development/test. |
+| `PORTA_SKIP_PROD_SAFETY` | `false` | No | Emergency escape hatch to bypass production config safety checks. When `true`, Porta logs an **ERROR** instead of exiting on startup. **Do not use in normal production** — this is intended only for disaster recovery or migration scenarios. See [Production Safety Checks](#production-safety-checks). |
+
+### Production Safety Checks
+
+When `NODE_ENV=production`, Porta validates your configuration at startup and **exits with a clear error** if any safety rule fails. This prevents accidental deployment with development-only placeholder values.
+
+| Rule | What It Checks |
+|------|----------------|
+| R1 | `COOKIE_KEYS` is not the development placeholder |
+| R2 | `COOKIE_KEYS` is at least 32 characters |
+| R3 | `TWO_FACTOR_ENCRYPTION_KEY` is not the development placeholder |
+| R4 | `DATABASE_URL` is not `localhost` / `127.0.0.1` (catches dev connection strings) |
+| R5 | `ISSUER_BASE_URL` uses `https://` (not `http://`) |
+| R6 | `ISSUER_BASE_URL` is not `localhost` |
+| R7 | `LOG_LEVEL` is not `debug` (prevents PII in production logs) |
+| R8 | `SMTP_HOST` is not `localhost` / `127.0.0.1` (catches MailHog) |
+| R9 | `SMTP_HOST` is set (email is required for password resets, invitations) |
+
+If you need to temporarily bypass these checks (e.g., during disaster recovery), set `PORTA_SKIP_PROD_SAFETY=true`. Porta will still log each violation as an **ERROR** but will not exit.
+
+::: danger
+`PORTA_SKIP_PROD_SAFETY=true` should never be used in normal production. It exists only for emergency situations where you need to start Porta with an incomplete configuration.
+:::
 
 ### Generating Secrets
 
