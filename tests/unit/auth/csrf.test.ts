@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../../../src/auth/csrf.js';
 import type { Context } from 'koa';
 
