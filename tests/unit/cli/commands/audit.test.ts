@@ -29,6 +29,7 @@ vi.mock('../../../../src/cli/output.js', () => ({
   printTable: vi.fn(),
   printJson: vi.fn(),
   warn: vi.fn(),
+  success: vi.fn(),
   outputResult: vi.fn(),
   truncateId: vi.fn().mockImplementation((s: string) => s.length > 8 ? s.substring(0, 8) + '...' : s),
   formatDate: vi.fn().mockImplementation((d: string | null) => d ? d.split('T')[0] : '—'),
@@ -36,7 +37,7 @@ vi.mock('../../../../src/cli/output.js', () => ({
 }));
 
 import { auditCommand } from '../../../../src/cli/commands/audit.js';
-import { warn, outputResult } from '../../../../src/cli/output.js';
+import { warn, success, outputResult } from '../../../../src/cli/output.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
 interface AuditArgvOverrides extends Partial<GlobalOptions> {
@@ -139,6 +140,97 @@ describe('CLI Audit Command', () => {
       expect(mocks.get).toHaveBeenCalledWith(
         '/api/admin/audit',
         expect.objectContaining({ since: '2026-04-01' }),
+      );
+    });
+  });
+
+  describe('audit cleanup', () => {
+    it('should call POST /api/admin/audit/cleanup with default body (H2)', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: false, retentionDays: 90, entriesFound: 42, deleted: 42 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv());
+      expect(mocks.post).toHaveBeenCalledWith('/api/admin/audit/cleanup', {});
+    });
+
+    it('should display success message when entries are deleted (H2)', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: false, retentionDays: 90, entriesFound: 42, deleted: 42 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv());
+      expect(success).toHaveBeenCalledWith(
+        'Deleted 42 audit log entries older than 90 days',
+      );
+    });
+
+    it('should display success message when no old entries found', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: false, retentionDays: 90, entriesFound: 0, deleted: 0 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv());
+      expect(success).toHaveBeenCalledWith('No entries older than 90 days found');
+    });
+
+    it('should send dryRun=true when --dry-run flag is set (H3)', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: true, retentionDays: 90, entriesFound: 15, deleted: 0 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv({ 'dry-run': true }));
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/api/admin/audit/cleanup',
+        { dryRun: true },
+      );
+    });
+
+    it('should display dry-run warning with entry count (H3)', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: true, retentionDays: 90, entriesFound: 15, deleted: 0 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv({ 'dry-run': true }));
+      expect(warn).toHaveBeenCalledWith(
+        'Dry run: 15 entries older than 90 days would be deleted',
+      );
+    });
+
+    it('should send retentionDays when --retention-days flag is set (H4)', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: false, retentionDays: 30, entriesFound: 100, deleted: 100 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv({ 'retention-days': 30 } as Record<string, unknown>));
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/api/admin/audit/cleanup',
+        { retentionDays: 30 },
+      );
+    });
+
+    it('should send both dryRun and retentionDays when both flags set', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: true, retentionDays: 7, entriesFound: 500, deleted: 0 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv({ 'dry-run': true, 'retention-days': 7 } as Record<string, unknown>));
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/api/admin/audit/cleanup',
+        { dryRun: true, retentionDays: 7 },
+      );
+    });
+
+    it('should pass outputResult for JSON mode support', async () => {
+      mocks.post.mockResolvedValue({
+        data: { dryRun: false, retentionDays: 90, entriesFound: 5, deleted: 5 },
+      });
+      const handlers = getHandlers();
+      await handlers['cleanup'](createArgv());
+      expect(outputResult).toHaveBeenCalledWith(
+        false,
+        expect.any(Function),
+        { dryRun: false, retentionDays: 90, entriesFound: 5, deleted: 5 },
       );
     });
   });

@@ -6,6 +6,7 @@
  *
  * Route structure:
  *   GET    /                  — List audit log events (filtered, paginated)
+ *   POST   /cleanup           — Delete audit entries older than retention period
  *
  * Query parameters:
  *   limit  — Maximum number of events (default: 50, max: 500)
@@ -18,8 +19,10 @@
  */
 
 import Router from '@koa/router';
+import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { getPool } from '../lib/database.js';
+import { getSystemConfigNumber } from '../lib/system-config.js';
 
 // ---------------------------------------------------------------------------
 // Router factory
@@ -113,6 +116,63 @@ export function createAuditRouter(): Router {
     );
 
     ctx.body = { data, total: data.length };
+  });
+
+  // ── POST /cleanup — Delete old audit log entries ──────────────────
+  //
+  // Accepts optional JSON body:
+  //   { retentionDays?: number, dryRun?: boolean }
+  //
+  // If retentionDays is not provided, reads `audit_retention_days` from
+  // system_config (default: 90 days). In dry-run mode, returns the count
+  // of entries that would be deleted without actually removing them.
+  //
+  // Designed to be called from `porta audit cleanup` or via cron/CronJob.
+
+  /** Zod schema for the cleanup request body */
+  const cleanupSchema = z.object({
+    retentionDays: z.number().int().min(1).optional(),
+    dryRun: z.boolean().optional().default(false),
+  });
+
+  router.post('/cleanup', async (ctx) => {
+    // Parse and validate request body (all fields optional)
+    const body = cleanupSchema.parse(ctx.request.body ?? {});
+
+    // Resolve retention days: explicit param → system_config → default 90
+    const retentionDays = body.retentionDays
+      ?? await getSystemConfigNumber('audit_retention_days', 90);
+
+    if (body.dryRun) {
+      // Dry-run: count entries that would be deleted
+      const countResult = await getPool().query(
+        `SELECT COUNT(*) AS count FROM audit_log
+         WHERE created_at < NOW() - INTERVAL '1 day' * $1`,
+        [retentionDays],
+      );
+      const count = parseInt(countResult.rows[0].count, 10);
+
+      ctx.body = {
+        dryRun: true,
+        retentionDays,
+        entriesFound: count,
+        deleted: 0,
+      };
+    } else {
+      // Delete entries older than retention period
+      const deleteResult = await getPool().query(
+        `DELETE FROM audit_log
+         WHERE created_at < NOW() - INTERVAL '1 day' * $1`,
+        [retentionDays],
+      );
+
+      ctx.body = {
+        dryRun: false,
+        retentionDays,
+        entriesFound: deleteResult.rowCount ?? 0,
+        deleted: deleteResult.rowCount ?? 0,
+      };
+    }
   });
 
   return router;
