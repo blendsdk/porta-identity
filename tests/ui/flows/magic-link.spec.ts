@@ -88,12 +88,7 @@ test.describe('Magic Link Flow', () => {
     expect(link).toContain(`localhost`);
   });
 
-  // FIXME: The OIDC authorization request expires during the async magic link
-  // flow (email polling via MailHog, link extraction, navigation). The provider
-  // returns "authorization request has expired" when the magic link handler tries
-  // to resume the interaction. Needs a longer interaction TTL for UI tests or
-  // a synchronous token injection approach.
-  test.fixme('should complete authentication via magic link', async ({
+  test('should complete authentication via magic link', async ({
     page,
     testData,
     startAuthFlow,
@@ -101,10 +96,6 @@ test.describe('Magic Link Flow', () => {
     // 1. Start auth flow and request a magic link
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
-
-    // Capture the interaction UID for the magic link URL query param
-    const _interactionUrl = page.url();
-
     await page.fill('#email', testData.userEmail);
     await page.click('#magic-link-btn');
 

@@ -119,6 +119,35 @@ export interface MailCapture {
 }
 
 // ---------------------------------------------------------------------------
+// Quoted-Printable Decoder
+// ---------------------------------------------------------------------------
+
+/**
+ * Decode a quoted-printable encoded string.
+ *
+ * Quoted-printable encoding (RFC 2045 §6.7) wraps long lines using
+ * soft line breaks (`=\r\n` or `=\n`) and encodes non-printable
+ * characters as `=XX` hex pairs. Email bodies commonly use this
+ * encoding for text/plain and text/html MIME parts.
+ *
+ * This is critical for extracting URLs from email bodies — long URLs
+ * are split across lines with `=` continuations, which breaks naive
+ * regex extraction.
+ *
+ * @param str - Raw quoted-printable encoded string
+ * @returns Decoded string with soft breaks removed and hex sequences resolved
+ */
+function decodeQuotedPrintable(str: string): string {
+  return str
+    // Remove soft line breaks (=\r\n or =\n) — line continuations
+    .replace(/=\r?\n/g, '')
+    // Decode =XX hex sequences (e.g., =3D → '=', =20 → ' ')
+    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex: string) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
 
@@ -153,18 +182,23 @@ function parseMessage(item: MailHogApiItem): MailMessage {
   let htmlBody = '';
 
   if (item.Content.MIME?.Parts && item.Content.MIME.Parts.length > 0) {
-    // Multi-part MIME — extract text/plain and text/html parts
+    // Multi-part MIME — extract text/plain and text/html parts.
+    // Always decode quoted-printable — Nodemailer uses it by default
+    // and long URLs are split across lines with `=` continuations
+    // which breaks regex-based link extraction. Decoding is harmless
+    // for non-QP content in this test context.
     for (const part of item.Content.MIME.Parts) {
       const contentType = part.Headers['Content-Type']?.[0] ?? '';
+      const decoded = decodeQuotedPrintable(part.Body);
       if (contentType.includes('text/plain')) {
-        body = part.Body;
+        body = decoded;
       } else if (contentType.includes('text/html')) {
-        htmlBody = part.Body;
+        htmlBody = decoded;
       }
     }
   } else {
-    // Single-part message — body is in Content.Body
-    body = item.Content.Body;
+    // Single-part message — body is in Content.Body.
+    body = decodeQuotedPrintable(item.Content.Body);
   }
 
   return {
