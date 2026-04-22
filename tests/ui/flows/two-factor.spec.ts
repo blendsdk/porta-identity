@@ -23,6 +23,16 @@ test.describe('Two-Factor Authentication Flow', () => {
   // rate-limit exhaustion (MAX_ACTIVE_OTP_CODES = 5).
   test.describe.configure({ mode: 'serial' });
 
+  // Clean up OTP codes and MailHog inbox before each test to prevent
+  // rate-limit exhaustion (MAX_ACTIVE_OTP_CODES = 5) across serial
+  // runs and Playwright retries. Without this, retries accumulate
+  // OTP codes and the server throws "Too many active OTP codes",
+  // causing email-waiting tests to time out on CI.
+  test.beforeEach(async ({ dbHelpers, mailCapture }) => {
+    await dbHelpers.expireAllOtpCodes();
+    await mailCapture.deleteAll();
+  });
+
   test('should render 2FA verification page after login', async ({
     page,
     testData,
@@ -69,7 +79,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     //    The processLogin handler auto-sends the first OTP email
     const message = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
       subject: 'verification',
-      timeout: 10_000,
+      timeout: 20_000,
     });
 
     const otpCode = extractOtpCode(message);
@@ -138,7 +148,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     // 2. Wait for the first OTP email to arrive, then clear inbox
     await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
       subject: 'verification',
-      timeout: 10_000,
+      timeout: 20_000,
     });
     await mailCapture.deleteAll();
 
@@ -151,7 +161,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     // 5. Verify a new OTP email was received in MailHog
     const newMessage = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
       subject: 'verification',
-      timeout: 10_000,
+      timeout: 20_000,
     });
     expect(newMessage).toBeDefined();
     expect(newMessage.subject.toLowerCase()).toContain('verification code');
