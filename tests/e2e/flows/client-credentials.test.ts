@@ -107,7 +107,8 @@ describe('Client Credentials Flow (E2E)', () => {
       body: body.toString(),
     });
 
-    expect(response.status).toBe(401);
+    // oidc-provider 9.8.2+ may return 400 or 401 for missing client auth
+    expect([400, 401]).toContain(response.status);
   });
 
   // ── Revoked Client ─────────────────────────────────────────────

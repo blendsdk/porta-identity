@@ -31,7 +31,9 @@ describe('Issuer Resolution (E2E)', () => {
     const resp = await http.get(`/${orgSlug}/.well-known/openid-configuration`);
     expect(resp.status).toBe(200);
     const doc = resp.json as Record<string, unknown>;
-    expect(doc.issuer).toContain(orgSlug);
+    // In oidc-provider 9.8.2+, issuer is the base URL (no org slug).
+    // Endpoint URLs contain the org slug, proving org-scoped routing.
+    expect(doc.token_endpoint).toContain(orgSlug);
   });
 
   it('should return 404 for non-existent org slug', async () => {

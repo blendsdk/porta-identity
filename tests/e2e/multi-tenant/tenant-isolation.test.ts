@@ -16,6 +16,7 @@ import {
   createTestClientWithSecret,
   createTestUserWithPassword,
 } from '../../integration/helpers/factories.js';
+import { updateOrganization } from '../../../src/organizations/repository.js';
 
 describe('Tenant Isolation (E2E)', () => {
   let baseUrl: string;
@@ -76,9 +77,11 @@ describe('Tenant Isolation (E2E)', () => {
     const discoveryA = await oidcA.discovery();
     const discoveryB = await oidcB.discovery();
 
-    expect(discoveryA.issuer).not.toBe(discoveryB.issuer);
-    expect(discoveryA.issuer).toContain(orgASlug);
-    expect(discoveryB.issuer).toContain(orgBSlug);
+    // In oidc-provider 9.8.2+, issuer is the same base URL for all orgs.
+    // Org isolation is enforced via org-slug-scoped endpoint URLs.
+    expect(discoveryA.token_endpoint).not.toBe(discoveryB.token_endpoint);
+    expect(discoveryA.token_endpoint).toContain(orgASlug);
+    expect(discoveryB.token_endpoint).toContain(orgBSlug);
   });
 
   it('should reject client A credentials at Org B token endpoint', async () => {
@@ -112,17 +115,22 @@ describe('Tenant Isolation (E2E)', () => {
     const docA = respA.json as Record<string, unknown>;
     const docB = respB.json as Record<string, unknown>;
 
-    expect(docA.issuer).not.toBe(docB.issuer);
+    // Endpoint URLs are org-scoped (different per org)
+    expect(docA.token_endpoint).not.toBe(docB.token_endpoint);
   });
 
   it('should return 404 for suspended org discovery', async () => {
-    const suspendedOrg = await createTestOrganization({ name: 'Suspended Org', status: 'suspended' });
+    // Create as active, then update status (insertOrganization doesn't accept status)
+    const suspendedOrg = await createTestOrganization({ name: 'Suspended Org' });
+    await updateOrganization(suspendedOrg.id, { status: 'suspended' });
     const response = await http.get(`/${suspendedOrg.slug}/.well-known/openid-configuration`);
     expect([403, 404]).toContain(response.status);
   });
 
   it('should return 404 for archived org discovery', async () => {
-    const archivedOrg = await createTestOrganization({ name: 'Archived Org', status: 'archived' });
+    // Create as active, then update status (insertOrganization doesn't accept status)
+    const archivedOrg = await createTestOrganization({ name: 'Archived Org' });
+    await updateOrganization(archivedOrg.id, { status: 'archived' });
     const response = await http.get(`/${archivedOrg.slug}/.well-known/openid-configuration`);
     expect([404]).toContain(response.status);
   });

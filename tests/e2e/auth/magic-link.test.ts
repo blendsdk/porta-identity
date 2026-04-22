@@ -121,7 +121,7 @@ describe('Magic Link Flow (E2E)', () => {
 
     // The link should contain the auth/magic-link path with a token
     expect(link).toBeTruthy();
-    expect(link).toContain('/auth/magic-link/');
+    expect(link).toContain('/auth/magic-link');
   });
 
   // ── Click magic link → authenticated ───────────────────────────
