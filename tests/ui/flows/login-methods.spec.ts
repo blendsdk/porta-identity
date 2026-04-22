@@ -15,7 +15,7 @@
  *     rendered email input (sanitized, length-capped).
  *   • POST enforcement: when a method is not in the effective set, a direct
  *     POST to the interaction route is rejected with HTTP 403 by the server
- *     (enforcement runs BEFORE CSRF, rate-limit, and user lookup).
+ *     (enforcement runs AFTER CSRF but BEFORE rate-limit and user lookup).
  *
  * Tenants used:
  *   • Primary tenant — default (`['password', 'magic_link']`) — from global setup.
@@ -227,11 +227,12 @@ test.describe('Configurable Login Methods — UI', () => {
 
   // ── Scenario 5: POST enforcement against a disabled method ──────────
   //
-  // The backend enforces effective-method membership BEFORE CSRF/rate-limit/
-  // user-lookup and responds with 403 + audit. From the browser we drive this
-  // via `page.request` (a raw HTTP client that shares the browser context)
-  // rather than submitting the form — the template won't let us submit a
-  // form that's not rendered, but a malicious/buggy client could still try.
+  // The backend enforces effective-method membership AFTER CSRF validation.
+  // A valid CSRF token is required so the request passes CSRF → hits the
+  // login-method check → returns 403 + audit. From the browser we drive
+  // this via `page.request` (a raw HTTP client that shares the browser
+  // context) rather than submitting the form — the template won't render
+  // a form for a disabled method, but a malicious/buggy client could POST.
 
   test('direct POST to /login on a magic-link-only client returns 403', async ({
     page,
@@ -248,19 +249,21 @@ test.describe('Configurable Login Methods — UI', () => {
     expect(match, 'expected /interaction/:uid url').toBeTruthy();
     const uid = match![1];
 
-    // 2. Direct POST to the PASSWORD endpoint (not allowed for this client).
-    //    No CSRF token, no valid credentials — doesn't matter: enforcement
-    //    fires first and returns 403.
+    // 2. Extract the CSRF token from the rendered login page.
+    const csrf = await page.locator('input[name="_csrf"]').first().getAttribute('value');
+    expect(csrf, 'CSRF token must be present on the login page').toBeTruthy();
+
+    // 3. Direct POST to the PASSWORD endpoint (not allowed for this client).
+    //    CSRF passes → login-method check fires → returns 403.
     const res = await page.request.post(
       `${testData.baseUrl}/interaction/${uid}/login`,
       {
         form: {
+          _csrf: csrf!,
           email: testData.lmMagicLinkOnlyUserEmail,
           password: 'does-not-matter',
         },
         maxRedirects: 0,
-        // Follow cookies set during launchAuthFlow so the interaction session
-        // is recognized by the server.
       },
     );
 
@@ -281,11 +284,16 @@ test.describe('Configurable Login Methods — UI', () => {
     expect(match, 'expected /interaction/:uid url').toBeTruthy();
     const uid = match![1];
 
+    // Extract CSRF token from the rendered login page.
+    const csrf = await page.locator('input[name="_csrf"]').first().getAttribute('value');
+    expect(csrf, 'CSRF token must be present on the login page').toBeTruthy();
+
     // Direct POST to the MAGIC-LINK endpoint (disabled for this client).
     const res = await page.request.post(
       `${testData.baseUrl}/interaction/${uid}/magic-link`,
       {
         form: {
+          _csrf: csrf!,
           email: testData.lmPasswordOnlyUserEmail,
         },
         maxRedirects: 0,

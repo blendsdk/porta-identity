@@ -14,6 +14,11 @@
 import { test, expect } from '../fixtures/test-fixtures.js';
 
 test.describe('Reset Password Abuse', () => {
+  // Force serial execution: test 10.4 (rate limiting) submits forgot-password
+  // for the same resettable user, which calls invalidateUserTokens() and
+  // expires test 10.2's token. Running in parallel causes a race condition.
+  test.describe.configure({ mode: 'serial' });
+
   /**
    * Build the reset-password URL with a token.
    */

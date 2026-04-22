@@ -77,9 +77,10 @@ test.describe('Page Quality', () => {
       }
     });
 
-    // Use a dummy token — page may show error for invalid token
+    // Use a dummy token in the URL path — the route expects /:orgSlug/auth/reset-password/:token.
+    // With an invalid token the page renders an "expired link" error (HTML response).
     await page.goto(
-      `${testData.baseUrl}/${testData.orgSlug}/auth/reset-password?token=dummy`,
+      `${testData.baseUrl}/${testData.orgSlug}/auth/reset-password/dummy-invalid-token`,
       { waitUntil: 'networkidle' },
     );
 

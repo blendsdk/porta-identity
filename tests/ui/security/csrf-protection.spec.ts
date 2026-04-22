@@ -88,8 +88,9 @@ test.describe('CSRF Protection', () => {
     await page.waitForLoadState('networkidle');
     const bodyText = await page.textContent('body');
 
-    // Check for CSRF-related error message in the response
-    expect(bodyText?.toLowerCase()).toMatch(/csrf|forbidden|invalid.*token/);
+    // Check for CSRF-related error message in the response.
+    // The actual message is intentionally vague for security: "security verification failed..."
+    expect(bodyText?.toLowerCase()).toMatch(/security verification failed|csrf|forbidden|invalid.*token/);
   });
 
   test('should reject POST with tampered CSRF token', async ({
@@ -118,8 +119,9 @@ test.describe('CSRF Protection', () => {
     await page.waitForLoadState('networkidle');
     const bodyText = await page.textContent('body');
 
-    // Should show CSRF error
-    expect(bodyText?.toLowerCase()).toMatch(/csrf|forbidden|invalid.*token/);
+    // Should show CSRF error.
+    // The actual message is intentionally vague for security: "security verification failed..."
+    expect(bodyText?.toLowerCase()).toMatch(/security verification failed|csrf|forbidden|invalid.*token/);
   });
 
   test('should set CSRF cookie with correct security flags', async ({
