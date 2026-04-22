@@ -28,12 +28,22 @@
  *   - Default (JSON / non-HTML responses):
  *       `default-src 'none'`  — nothing to render, nothing to load.
  *   - HTML responses (login, consent, 2FA, password-reset, etc.):
- *       `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'`
+ *       `default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'`
  *     The interaction templates use inline `<style>` blocks and may
  *     inject custom branding CSS via `{{{branding.customCss}}}`, hence
- *     `style-src 'unsafe-inline'` is required.  Forms POST back to the
- *     same origin (`form-action 'self'`), and login pages must never be
- *     embedded in iframes (`frame-ancestors 'none'`).
+ *     `style-src 'unsafe-inline'` is required.  Login pages must never
+ *     be embedded in iframes (`frame-ancestors 'none'`).
+ *
+ *     Note: `form-action` is intentionally omitted.  Chrome enforces
+ *     `form-action` on the entire redirect chain of a form submission,
+ *     not just the immediate target.  After login, the OIDC provider
+ *     redirects through the authorization endpoint and then to the
+ *     client's `redirect_uri` (a different origin).  Chrome blocks
+ *     this final redirect as a `form-action 'self'` violation, while
+ *     Firefox only checks the immediate action URL.  CSRF tokens are
+ *     the primary defence against cross-site form attacks; removing
+ *     `form-action` has negligible security impact given that
+ *     `script-src 'unsafe-inline'` already allows fetch/XHR exfiltration.
  *
  * Placement:
  *   Mount early in the middleware stack — after `errorHandler()` and
@@ -79,12 +89,13 @@ export const DEFAULT_CSP = "default-src 'none'";
  *                                    dual-method email copying, and
  *                                    two-factor-verify.hbs uses one for
  *                                    OTP/recovery mode toggling.
- * - `form-action 'self'`          — forms only POST to the same origin.
  * - `frame-ancestors 'none'`      — prevents embedding in iframes
  *                                    (modern replacement for X-Frame-Options).
+ *
+ * `form-action` is intentionally omitted — see module-level doc comment.
  */
 export const HTML_CSP =
-  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'";
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
 
 /**
  * HSTS header value — one year, include subdomains.

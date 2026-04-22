@@ -6,7 +6,7 @@
  *
  *   - All static security headers are present and correct on every response
  *   - Content-Security-Policy defaults to strict `default-src 'none'`
- *   - CSP is relaxed for text/html responses (inline styles + form-action)
+ *   - CSP is relaxed for text/html responses (inline styles, inline scripts)
  *   - HSTS is conditionally emitted based on issuer URL scheme
  *   - Headers survive downstream errors (set before `await next()`)
  *   - Exported constants match the values actually set
@@ -216,11 +216,11 @@ describe('security-headers middleware', () => {
       expect(ctx._headers['Content-Security-Policy']).toContain("style-src 'unsafe-inline'");
     });
 
-    it('HTML CSP restricts form submissions to same origin', async () => {
+    it('HTML CSP omits form-action (Chrome redirect-chain enforcement)', async () => {
       const ctx = await invokeMiddleware((c) => {
         c._headers['Content-Type'] = 'text/html';
       });
-      expect(ctx._headers['Content-Security-Policy']).toContain("form-action 'self'");
+      expect(ctx._headers['Content-Security-Policy']).not.toContain('form-action');
     });
 
     it('HTML CSP prevents iframe embedding', async () => {
