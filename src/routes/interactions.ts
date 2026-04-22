@@ -210,27 +210,6 @@ export async function resolveOrganizationForInteraction(
 }
 
 /**
- * Resolve a human-readable client name from the OIDC provider metadata.
- *
- * Looks up the client by client_id and returns the `client_name` from
- * its metadata. Falls back to the raw client_id if the client is not
- * found or has no `client_name` set.
- *
- * @param provider - OIDC provider instance
- * @param clientId - The client_id to look up
- * @returns Human-readable client name, or the raw client_id as fallback
- */
-async function resolveClientName(provider: Provider, clientId: string): Promise<string> {
-  try {
-    const client = await provider.Client.find(clientId);
-    return (client?.metadata()?.client_name as string) ?? clientId;
-  } catch {
-    // If lookup fails (e.g., client deleted), fall back to client_id
-    return clientId;
-  }
-}
-
-/**
  * Get an error message for a user status that prevents login.
  * Returns undefined if the status allows login (i.e., 'active').
  *
@@ -1212,7 +1191,19 @@ async function renderLoginWithError(
   // Resolve human-readable client name from provider metadata.
   // Falls back to raw client_id if the client is not found.
   const clientId = (interaction.params.client_id as string) ?? '';
-  const clientName = await resolveClientName(provider, clientId);
+  const oidcClient = await provider.Client.find(clientId);
+  const clientName = (oidcClient?.metadata()?.client_name as string) ?? clientId;
+
+  // Resolve effective login methods so the re-rendered login page shows
+  // the correct forms (password, magic-link, or both). Without these flags,
+  // the template's no-methods fallback would incorrectly appear alongside
+  // the flash error message.
+  const effectiveMethods = oidcClient
+    ? resolveLoginMethodsFromOidcClient(oidcClient, org)
+    : org.defaultLoginMethods;
+
+  const showPassword = effectiveMethods.includes('password');
+  const showMagicLink = effectiveMethods.includes('magic_link');
 
   const context: TemplateContext = {
     ...buildBaseContext(ctx, locale, csrfToken, org.slug),
@@ -1225,6 +1216,12 @@ async function renderLoginWithError(
     },
     email,
     flash: { error: errorMessage },
+    // Login method rendering flags — must match showLogin() to avoid
+    // the "no methods configured" fallback appearing on error re-renders.
+    showPassword,
+    showMagicLink,
+    showDivider: showPassword && showMagicLink,
+    loginMethods: effectiveMethods,
   };
 
   await renderAndRespond(ctx, 'login', context, statusCode);

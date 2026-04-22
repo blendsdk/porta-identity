@@ -72,14 +72,19 @@ export const DEFAULT_CSP = "default-src 'none'";
  * Relaxed Content-Security-Policy for HTML pages (login, consent, 2FA,
  * password reset, invitation, magic-link confirmation, etc.).
  *
- * - `style-src 'unsafe-inline'`   — templates use inline `<style>` blocks
- *                                    and custom branding CSS injection.
+ * - `style-src 'unsafe-inline'`   — templates use inline `<style>` blocks,
+ *                                    inline style attributes, and custom
+ *                                    branding CSS injection.
+ * - `script-src 'unsafe-inline'`  — login.hbs uses an inline `<script>` for
+ *                                    dual-method email copying, and
+ *                                    two-factor-verify.hbs uses one for
+ *                                    OTP/recovery mode toggling.
  * - `form-action 'self'`          — forms only POST to the same origin.
  * - `frame-ancestors 'none'`      — prevents embedding in iframes
  *                                    (modern replacement for X-Frame-Options).
  */
 export const HTML_CSP =
-  "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'";
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'";
 
 /**
  * HSTS header value — one year, include subdomains.
