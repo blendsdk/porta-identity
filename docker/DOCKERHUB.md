@@ -110,6 +110,14 @@ LOG_LEVEL=info
 # Two-Factor Authentication — CHANGE THIS in production!
 TWO_FACTOR_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string
 
+# Signing Key Encryption — CHANGE THIS in production!
+# AES-256-GCM key for encrypting ES256 signing key private keys at rest.
+# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+SIGNING_KEY_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string-for-signing-keys
+
+# Reverse proxy — set to "true" when behind a TLS-terminating proxy
+# TRUST_PROXY=false
+
 # Auto-run database migrations on startup (set to "false" after initial setup)
 PORTA_AUTO_MIGRATE=true
 ```
@@ -191,7 +199,9 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 | `REDIS_URL` | — | Redis connection string (set in compose) |
 | `ISSUER_BASE_URL` | — | **Required.** Public URL of your Porta instance |
 | `COOKIE_KEYS` | — | **Required.** Cookie signing key (≥32 random chars) |
-| `TWO_FACTOR_ENCRYPTION_KEY` | — | **Required.** AES-256-GCM key (64 hex chars) |
+| `TWO_FACTOR_ENCRYPTION_KEY` | — | **Required.** AES-256-GCM key for TOTP secrets (64 hex chars) |
+| `SIGNING_KEY_ENCRYPTION_KEY` | — | **Required.** AES-256-GCM key for signing key encryption at rest (64 hex chars) |
+| `TRUST_PROXY` | `false` | Set `true` behind a TLS-terminating reverse proxy |
 | `SMTP_HOST` | — | SMTP relay hostname |
 | `SMTP_PORT` | `587` | SMTP port |
 | `SMTP_USER` | — | SMTP username |
@@ -208,6 +218,9 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 # Two-factor encryption key (64 hex chars)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Signing key encryption key (64 hex chars)
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database password

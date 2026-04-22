@@ -117,6 +117,14 @@ LOG_LEVEL=info
 # Two-Factor Authentication — CHANGE THIS in production!
 TWO_FACTOR_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string
 
+# Signing Key Encryption — CHANGE THIS in production!
+# AES-256-GCM key for encrypting ES256 signing key private keys at rest.
+# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+SIGNING_KEY_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string-for-signing-keys
+
+# Reverse proxy — set to "true" when behind a TLS-terminating proxy
+# TRUST_PROXY=false
+
 # Auto-run database migrations on startup (set to "false" after initial setup)
 PORTA_AUTO_MIGRATE=true
 ```

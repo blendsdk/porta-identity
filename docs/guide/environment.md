@@ -105,6 +105,7 @@ Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `TWO_FACTOR_ENCRYPTION_KEY` | — | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hex characters (32 bytes). Optional in development/test. |
+| `SIGNING_KEY_ENCRYPTION_KEY` | — | **Yes** | AES-256-GCM key for encrypting ES256 signing key private keys at rest. Must be exactly 64 hex characters (32 bytes). **Always required** — Porta will not start without it. |
 | `PORTA_SKIP_PROD_SAFETY` | `false` | No | Emergency escape hatch to bypass production config safety checks. When `true`, Porta logs an **ERROR** instead of exiting on startup. **Do not use in normal production** — this is intended only for disaster recovery or migration scenarios. See [Production Safety Checks](#production-safety-checks). |
 
 ### Production Safety Checks
@@ -113,15 +114,15 @@ When `NODE_ENV=production`, Porta validates your configuration at startup and **
 
 | Rule | What It Checks |
 |------|----------------|
-| R1 | `COOKIE_KEYS` is not the development placeholder |
+| R1 | `COOKIE_KEYS` does not contain a dev placeholder ("change-me" pattern) |
 | R2 | `COOKIE_KEYS` is at least 32 characters |
-| R3 | `TWO_FACTOR_ENCRYPTION_KEY` is not the development placeholder |
-| R4 | `DATABASE_URL` is not `localhost` / `127.0.0.1` (catches dev connection strings) |
-| R5 | `ISSUER_BASE_URL` uses `https://` (not `http://`) |
-| R6 | `ISSUER_BASE_URL` is not `localhost` |
-| R7 | `LOG_LEVEL` is not `debug` (prevents PII in production logs) |
-| R8 | `SMTP_HOST` is not `localhost` / `127.0.0.1` (catches MailHog) |
-| R9 | `SMTP_HOST` is set (email is required for password resets, invitations) |
+| R3 | `TWO_FACTOR_ENCRYPTION_KEY` is set (required in production) |
+| R4 | `TWO_FACTOR_ENCRYPTION_KEY` is not the development placeholder (`0123456789abcdef…`) |
+| R5 | `SIGNING_KEY_ENCRYPTION_KEY` is not the development placeholder (`fedcba9876543210…`) |
+| R6 | `DATABASE_URL` does not contain the dev password (`porta_dev`) |
+| R7 | `ISSUER_BASE_URL` uses `https://` for non-localhost hosts |
+| R8 | `LOG_LEVEL` is not `debug` (prevents verbose logging in production) |
+| R9 | `SMTP_HOST` is not `localhost` / `127.x.x.x` (catches MailHog dev inbox) |
 
 If you need to temporarily bypass these checks (e.g., during disaster recovery), set `PORTA_SKIP_PROD_SAFETY=true`. Porta will still log each violation as an **ERROR** but will not exit.
 
@@ -136,6 +137,9 @@ If you need to temporarily bypass these checks (e.g., during disaster recovery),
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 # Two-factor encryption key (64 hex chars)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Signing key encryption key (64 hex chars)
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database password
