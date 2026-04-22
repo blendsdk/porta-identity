@@ -103,18 +103,9 @@ async function loginToConsentPage(
 // ---------------------------------------------------------------------------
 
 test.describe('Consent Edge Cases', () => {
-  // FIXME: Cross-org consent tests require deeper test infrastructure work.
-  // The server-side org resolution (via Redis interaction:org: key) is working
-  // correctly — the login page shows the primary org branding. However, the
-  // OIDC redirect chain after login breaks with "session expired" because:
-  //   1. The confClient's redirect_uri registration may not match testData.redirectUri
-  //   2. Interaction cookies are scoped to /interaction/{uid} and may not survive
-  //      the cross-org redirect chain (login → auth resume → new consent interaction)
-  // Fixing this requires a dedicated cross-org test fixture setup.
-
   // ── 7.1: Consent page appears after login ───────────────────────────
 
-  test.fixme('consent page renders after successful login', async ({
+  test('consent page renders after successful login', async ({
     page,
     testData,
   }) => {
@@ -129,7 +120,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.2: Consent page shows requested scopes ───────────────────────
 
-  test.fixme('consent page displays requested scopes', async ({
+  test('consent page displays requested scopes', async ({
     page,
     testData,
   }) => {
@@ -158,7 +149,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.3: Deny consent redirects with access_denied ─────────────────
 
-  test.fixme('deny consent redirects with access_denied error', async ({
+  test('deny consent redirects with access_denied error', async ({
     page,
     testData,
   }) => {
@@ -180,7 +171,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.4: CSRF protection on consent form ────────────────────────────
 
-  test.fixme('consent form has CSRF token protection', async ({
+  test('consent form has CSRF token protection', async ({
     page,
     testData,
   }) => {
@@ -222,7 +213,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.5: Consent page content ───────────────────────────────────────
 
-  test.fixme('consent page shows client name and action buttons', async ({
+  test('consent page shows client name and action buttons', async ({
     page,
     testData,
   }) => {

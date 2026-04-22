@@ -309,8 +309,16 @@ export async function renderPage(
     year: new Date().getFullYear(),
   };
 
+  // Register `t` as a runtime helper so templates can use subexpressions
+  // like {{t (concat "prefix_" value)}}. Context functions only work for
+  // simple {{t "key"}} calls; subexpressions require a registered helper.
+  // Runtime helpers are per-render (no global mutation, concurrent-safe).
+  const runtimeOptions: Handlebars.RuntimeOptions = {
+    helpers: { t: context.t },
+  };
+
   // Render the page body first
-  const pageBody = pageTemplate(fullContext);
+  const pageBody = pageTemplate(fullContext, runtimeOptions);
 
   // Inject the page body into the layout
   const layoutContext = {
@@ -318,7 +326,7 @@ export async function renderPage(
     body: pageBody,
   };
 
-  return layoutTemplate(layoutContext);
+  return layoutTemplate(layoutContext, runtimeOptions);
 }
 
 // ---------------------------------------------------------------------------
