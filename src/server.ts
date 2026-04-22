@@ -380,6 +380,13 @@ export function createApp(oidcProvider?: Provider): Koa {
       // e.g., /acme-corp/token → /token
       ctx.req.url = originalUrl.replace(`/${ctx.params.orgSlug}`, '');
 
+      // Pass the tenant-resolved org to the provider's internal context.
+      // The interactionUrl callback (provider.ts) reads this to store the
+      // auth-flow org in Redis, preserving the correct tenant for interaction
+      // handlers (important for third-party / cross-org clients).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ctx.req as any)._portaOrganization = ctx.state.organization;
+
       // Delegate to node-oidc-provider's Koa callback handler
       await oidcProvider.callback()(ctx.req, ctx.res);
     });

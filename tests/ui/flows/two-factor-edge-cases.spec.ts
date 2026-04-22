@@ -88,10 +88,10 @@ async function loginWithSetupTenant(
 // ---------------------------------------------------------------------------
 
 test.describe('Two-Factor Edge Cases', () => {
-  // Clear MailHog inbox before each test
-  test.beforeEach(async ({ mailCapture }) => {
-    await mailCapture.deleteAll();
-  });
+  // Run serially — these tests share a single MailHog inbox and the same
+  // 2FA users, so parallel execution causes deleteAll() races and OTP
+  // rate-limit exhaustion (MAX_ACTIVE_OTP_CODES = 5).
+  test.describe.configure({ mode: 'serial' });
 
   // ── 9.1: Invalid OTP code shows error and allows retry ───────────────
 

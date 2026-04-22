@@ -223,7 +223,7 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware,
     // so we resolve the org from the client → organization chain.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
 
     const pending = getPendingTwoFactor(interaction);
 
@@ -284,7 +284,7 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);
@@ -396,7 +396,7 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);
@@ -466,7 +466,7 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
 
     const pending = getPendingTwoFactor(interaction);
 
@@ -550,7 +550,7 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);

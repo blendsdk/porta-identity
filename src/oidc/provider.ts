@@ -13,6 +13,8 @@
 import Provider from 'oidc-provider';
 import { config } from '../config/index.js';
 import type { OidcTtlConfig } from '../lib/system-config.js';
+import { getRedis } from '../lib/redis.js';
+import { logger } from '../lib/logger.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { buildProviderConfiguration } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
@@ -49,8 +51,20 @@ export async function createOidcProvider(params: {
     findAccount,
     adapterFactory: createAdapterFactory(),
     clientBasedCORS: oidcCors,
-    // Interaction URL — placeholder for RD-03, real login UI in RD-07
-    interactionUrl: (_ctx, interaction) => {
+    // Interaction URL builder.
+    // Also stores the auth-flow org ID in Redis so interaction handlers
+    // can resolve the correct tenant (the URL slug is stripped before
+    // the provider sees it, so returnTo doesn't contain the org slug).
+    interactionUrl: (ctx, interaction) => {
+      // ctx here is the provider's internal Koa context, NOT the outer app's.
+      // The org is passed via req._portaOrganization (set in server.ts).
+      const req = (ctx as any).req ?? (ctx as any).request?.req;
+      const org = req?._portaOrganization;
+      if (org?.id && interaction?.uid) {
+        getRedis()
+          .set(`interaction:org:${interaction.uid}`, org.id, 'EX', 3600)
+          .catch((err: unknown) => logger.warn({ err }, 'Failed to store interaction org'));
+      }
       return `/interaction/${interaction.uid}`;
     },
   });

@@ -18,10 +18,10 @@ import { test, expect } from '../fixtures/test-fixtures.js';
 import { extractOtpCode } from '../fixtures/otp-helper.js';
 
 test.describe('Two-Factor Authentication Flow', () => {
-  // Clear MailHog inbox before each test to isolate OTP emails
-  test.beforeEach(async ({ mailCapture }) => {
-    await mailCapture.deleteAll();
-  });
+  // Run serially — these tests share a single MailHog inbox and a single
+  // 2FA user, so parallel execution causes deleteAll() races and OTP
+  // rate-limit exhaustion (MAX_ACTIVE_OTP_CODES = 5).
+  test.describe.configure({ mode: 'serial' });
 
   test('should render 2FA verification page after login', async ({
     page,

@@ -50,6 +50,7 @@ import { logger } from '../lib/logger.js';
 import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
+import { getRedis } from '../lib/redis.js';
 import type { Organization } from '../organizations/types.js';
 import {
   hasMagicLinkSession,
@@ -192,10 +193,31 @@ async function renderAndRespond(
 export async function resolveOrganizationForInteraction(
   ctx: InteractionContext,
   clientId: string,
+  interactionUid?: string,
 ): Promise<void> {
   // If already resolved (e.g., by tenant resolver), skip
   if (ctx.state.organization) return;
 
+  // Prefer the auth-flow org stored in Redis during interaction creation.
+  // The interactionUrl callback (provider.ts) stores the tenant-resolver
+  // org ID keyed by interaction UID. This preserves the correct tenant
+  // when the client belongs to a different org (third-party app scenario).
+  if (interactionUid) {
+    try {
+      const storedOrgId = await getRedis().get(`interaction:org:${interactionUid}`);
+      if (storedOrgId) {
+        const org = await getOrganizationById(storedOrgId);
+        if (org) {
+          ctx.state.organization = org;
+          return;
+        }
+      }
+    } catch {
+      // Redis error — fall through to client-based resolution
+    }
+  }
+
+  // Fallback: resolve from the client's organizationId
   const client = await getClientByClientId(clientId);
   if (!client) {
     throw new Error(`Client not found for interaction: ${clientId}`);
@@ -367,7 +389,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // Resolve organization from the interaction's client_id.
     // Interaction routes don't go through the tenant resolver middleware,
     // so we resolve the org from the client → organization chain.
-    await resolveOrganizationForInteraction(ctx, params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, params.client_id as string, interaction.uid);
 
     // If the prompt is consent, handle it directly (no redirect).
     // Redirecting to /consent as a separate request can lose the interaction
@@ -509,7 +531,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     // Resolve locale for error messages
@@ -767,7 +789,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     // Resolve locale for page rendering
@@ -913,7 +935,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     const { prompt, params } = interaction;
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     // Resolve locale for the consent page
@@ -1027,7 +1049,7 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     // Verify CSRF token
@@ -1132,7 +1154,7 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string);
+    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
     writeAuditLog({
