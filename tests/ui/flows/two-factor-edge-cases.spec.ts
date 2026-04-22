@@ -280,12 +280,7 @@ test.describe('Two-Factor Edge Cases', () => {
 
   // ── 9.7: 2FA method-appropriate UI ───────────────────────────────────
 
-  // FIXME: The i18n interpolation for {{maskedEmail}} in the translation string
-  // "We sent a verification code to {{maskedEmail}}" is not rendering the actual
-  // masked email (e.g., "u***r@test.local"). Instead, the literal {{maskedEmail}}
-  // appears in the page. The route handler correctly passes maskedEmail to the
-  // template context. Needs investigation of i18next interpolation at runtime.
-  test.fixme('2FA verify page shows method-appropriate UI for email OTP', async ({
+  test('2FA verify page shows method-appropriate UI for email OTP', async ({
     page,
     testData,
     startAuthFlow,
@@ -316,7 +311,7 @@ test.describe('Two-Factor Edge Cases', () => {
     await expect(page.locator('#use-recovery-btn')).toBeVisible();
 
     // - Submit button should be visible
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('button.btn-primary')).toBeVisible();
   });
 
   // ── 9.8: Resend OTP code button works ────────────────────────────────

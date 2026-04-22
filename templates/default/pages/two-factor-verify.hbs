@@ -2,7 +2,7 @@
 <h1>{{t "two-factor.verify_title"}}</h1>
 
 {{#if (eq method "email")}}
-  <p class="text-muted mb-4">{{t "two-factor.verify_email_subtitle" maskedEmail=maskedEmail}}</p>
+  <p class="text-muted mb-4">{{t "two-factor.verify_email_subtitle_prefix"}} <strong>{{maskedEmail}}</strong></p>
 {{else}}
   <p class="text-muted mb-4">{{t "two-factor.verify_totp_subtitle"}}</p>
 {{/if}}

@@ -1,6 +1,7 @@
 {
   "verify_title": "Two-factor authentication",
   "verify_email_subtitle": "We sent a verification code to {{maskedEmail}}",
+  "verify_email_subtitle_prefix": "We sent a verification code to",
   "verify_totp_subtitle": "Enter the code from your authenticator app",
   "code_label": "Verification code",
   "code_placeholder": "000000",

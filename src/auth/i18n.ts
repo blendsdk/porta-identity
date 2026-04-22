@@ -371,7 +371,20 @@ export function getTranslationFunction(
       ...(options ?? {}),
     });
 
-    return typeof translated === 'string' ? translated : key;
+    let result = typeof translated === 'string' ? translated : key;
+
+    // Fallback interpolation: if i18next did not replace {{variable}} placeholders
+    // (e.g., due to version-specific behavior or caching), perform manual replacement.
+    // This mirrors the org-override interpolation logic above.
+    if (options && result.includes('{{')) {
+      for (const [varKey, varValue] of Object.entries(options)) {
+        if (varValue !== undefined) {
+          result = result.replace(new RegExp(`\\{\\{${varKey}\\}\\}`, 'g'), String(varValue));
+        }
+      }
+    }
+
+    return result;
   };
 }
 
@@ -407,6 +420,18 @@ export function registerHandlebarsI18nHelper(): void {
     // Pass Handlebars hash arguments as interpolation options
     // e.g., {{t "common.welcome" name="Alice"}} → t("common.welcome", { name: "Alice" })
     const hashOptions = options?.hash ?? {};
+
+    // Resolve undefined hash values from the root context.
+    // Handlebars may pass `undefined` for hash values like `maskedEmail=maskedEmail`
+    // if the identifier resolution fails in certain scope contexts. Fall back to
+    // the root data context to ensure interpolation variables are available.
+    const root = (options?.data?.root ?? this) as Record<string, unknown>;
+    for (const [hashKey, hashValue] of Object.entries(hashOptions)) {
+      if (hashValue === undefined && root[hashKey] !== undefined) {
+        hashOptions[hashKey] = root[hashKey];
+      }
+    }
+
     return t(key, hashOptions);
   });
 

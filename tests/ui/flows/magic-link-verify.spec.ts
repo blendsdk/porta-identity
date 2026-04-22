@@ -15,7 +15,7 @@
  */
 
 import crypto from 'node:crypto';
-import { test, expect } from '../fixtures/test-fixtures.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 test.describe('Magic Link Verification', () => {
   /**
@@ -26,14 +26,12 @@ test.describe('Magic Link Verification', () => {
    * UID as a query parameter. The handler should resume the OIDC flow
    * and redirect to the callback URL with an authorization code.
    *
-   * NOTE: This test is marked .fixme because the OIDC interaction cookies
-   * are path-scoped to /interaction/<uid> and are not sent when the browser
-   * navigates to /:orgSlug/auth/magic-link/:token. The provider cannot
-   * find the interaction session, so it falls back to the redirect.
-   * A working implementation would require cookie path changes in the
-   * OIDC provider configuration.
+   * Flow: the magic link handler verifies the token, creates a _ml_session
+   * cookie, and redirects to /interaction/{uid}. The showLogin() handler
+   * detects the session, calls interactionFinished(), and the OIDC flow
+   * completes — redirecting to the callback URL with an authorization code.
    */
-  test.fixme('valid token during active interaction auto-logins and redirects', async ({
+  test('valid token during active interaction auto-logins and redirects', async ({
     page,
     testData,
     dbHelpers,
@@ -71,13 +69,10 @@ test.describe('Magic Link Verification', () => {
    *
    * Creates a magic link token and navigates directly to the verification
    * URL without starting an OIDC auth flow first. The handler cannot
-   * resume any interaction, so it redirects to the forgot-password page
-   * with a success flash message.
+   * resume any interaction, so it renders a "magic-link-success" page
+   * confirming the email was verified.
    */
-  // FIXME: Magic-link verification without an active interaction no longer
-  // redirects to /auth/forgot-password. The route stays on the magic-link URL.
-  // Needs investigation of the magic-link verify route behavior change.
-  test.fixme('valid token without interaction redirects to forgot-password with flash', async ({
+  test('valid token without interaction shows success page', async ({
     page,
     testData,
     dbHelpers,
@@ -94,9 +89,11 @@ test.describe('Magic Link Verification', () => {
     const magicLinkUrl = `${testData.baseUrl}/${testData.orgSlug}/auth/magic-link/${token}`;
     await page.goto(magicLinkUrl, { waitUntil: 'networkidle' });
 
-    // 4. Should redirect to forgot-password with flash=magic_link_success
-    expect(page.url()).toContain('/auth/forgot-password');
-    expect(page.url()).toContain('flash=magic_link_success');
+    // 4. Should render magic-link-success page (status 200)
+    const heading = page.locator('h1');
+    await expect(heading).toBeVisible();
+    // Success page title from locale: "Email verified"
+    await expect(heading).toContainText(/verified|success/i);
   });
 
   /**
@@ -106,11 +103,7 @@ test.describe('Magic Link Verification', () => {
    * verification URL. The handler should detect the expired token
    * and render the error page.
    */
-  test('expired token shows error page', async ({
-    page,
-    testData,
-    dbHelpers,
-  }) => {
+  test('expired token shows error page', async ({ page, testData, dbHelpers }) => {
     // 1. Get user ID and org ID
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
     const user = await dbHelpers.getUserByEmail(testData.userEmail, orgId);
@@ -141,10 +134,7 @@ test.describe('Magic Link Verification', () => {
    * token. The handler should fail to find any matching token in the
    * DB and render the error page.
    */
-  test('invalid token shows error page', async ({
-    page,
-    testData,
-  }) => {
+  test('invalid token shows error page', async ({ page, testData }) => {
     // Navigate to magic link URL with garbage token
     const magicLinkUrl = `${testData.baseUrl}/${testData.orgSlug}/auth/magic-link/invalidgarbage123abc`;
     await page.goto(magicLinkUrl, { waitUntil: 'networkidle' });
@@ -166,11 +156,7 @@ test.describe('Magic Link Verification', () => {
    * successful verification), then navigates to the verification URL.
    * The handler should detect the used token and render the error page.
    */
-  test('already-used token shows error page', async ({
-    page,
-    testData,
-    dbHelpers,
-  }) => {
+  test('already-used token shows error page', async ({ page, testData, dbHelpers }) => {
     // 1. Get user ID and org ID
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
     const user = await dbHelpers.getUserByEmail(testData.userEmail, orgId);
@@ -197,13 +183,10 @@ test.describe('Magic Link Verification', () => {
    *
    * Verifies that the magic link handler correctly sets the user's
    * email_verified flag in the database after successful verification.
-   * Uses a valid token without an interaction (redirects to forgot-password),
+   * Uses a valid token without an interaction (renders success page),
    * then queries the DB to confirm the flag was updated.
    */
-  // FIXME: Same as above — magic-link verify without interaction doesn't redirect
-  // to /auth/forgot-password, so the URL assertion fails. The email_verified
-  // logic itself may work; only the redirect behavior changed.
-  test.fixme('email_verified flag set after successful magic link', async ({
+  test('email_verified flag set after successful magic link', async ({
     page,
     testData,
     dbHelpers,
@@ -216,12 +199,14 @@ test.describe('Magic Link Verification', () => {
     // 2. Create a valid magic link token
     const token = await dbHelpers.createMagicLinkToken(user!.id, orgId);
 
-    // 3. Navigate to magic link URL (no interaction — will redirect)
+    // 3. Navigate to magic link URL (no interaction — renders success page)
     const magicLinkUrl = `${testData.baseUrl}/${testData.orgSlug}/auth/magic-link/${token}`;
     await page.goto(magicLinkUrl, { waitUntil: 'networkidle' });
 
-    // 4. Should redirect to forgot-password (confirms token was valid)
-    expect(page.url()).toContain('/auth/forgot-password');
+    // 4. Should render success page (confirms token was valid and consumed)
+    const heading = page.locator('h1');
+    await expect(heading).toBeVisible();
+    await expect(heading).toContainText(/verified|success/i);
 
     // 5. Verify email_verified flag is now true in the database
     const isVerified = await dbHelpers.isEmailVerified(user!.id);
