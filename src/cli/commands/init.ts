@@ -39,7 +39,6 @@ import {
   ADMIN_ROLE_DEFINITIONS,
   ALL_ADMIN_ROLES,
 } from '../../lib/admin-permissions.js';
-import type { AdminRoleDefinition } from '../../lib/admin-permissions.js';
 import { SUPER_ADMIN_USER_ID_KEY } from '../../lib/super-admin-protection.js';
 
 // ---------------------------------------------------------------------------

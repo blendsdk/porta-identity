@@ -2,7 +2,7 @@
  * System configuration admin API routes.
  *
  * All routes are under `/api/admin/config` and require admin
- * authentication (Bearer JWT via requireAdminAuth).
+ * authorization with granular permissions.
  *
  * Route structure:
  *   GET    /                  — List all config entries
@@ -18,6 +18,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { getPool } from '../lib/database.js';
 
 // ---------------------------------------------------------------------------
@@ -36,8 +38,9 @@ const updateConfigSchema = z.object({
 /**
  * Create the system config admin API router.
  *
- * All routes require admin authentication. Provides read and write
- * access to the `system_config` table via a RESTful interface.
+ * All routes require admin authorization with granular permissions.
+ * Provides read and write access to the `system_config` table via
+ * a RESTful interface.
  *
  * @returns Koa router mounted at /api/admin/config
  */
@@ -48,7 +51,7 @@ export function createConfigRouter(): Router {
   router.use(requireAdminAuth());
 
   // ── GET / — List all config entries ───────────────────────────────
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.CONFIG_READ), async (ctx) => {
     const result = await getPool().query(
       `SELECT key, value, value_type, description, is_sensitive, updated_at
        FROM system_config ORDER BY key`,
@@ -75,7 +78,7 @@ export function createConfigRouter(): Router {
   });
 
   // ── GET /:key — Get a specific config value ───────────────────────
-  router.get('/:key', async (ctx) => {
+  router.get('/:key', requirePermission(ADMIN_PERMISSIONS.CONFIG_READ), async (ctx) => {
     const { key } = ctx.params;
 
     const result = await getPool().query(
@@ -111,7 +114,7 @@ export function createConfigRouter(): Router {
   });
 
   // ── PUT /:key — Update a config value ─────────────────────────────
-  router.put('/:key', async (ctx) => {
+  router.put('/:key', requirePermission(ADMIN_PERMISSIONS.CONFIG_UPDATE), async (ctx) => {
     const { key } = ctx.params;
     const body = ctx.request.body as Record<string, unknown>;
 

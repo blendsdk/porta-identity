@@ -2,8 +2,9 @@
  * Custom claims management API routes.
  *
  * All routes are under `/api/admin/applications/:appId/claims` and
- * require super-admin authorization. Provides CRUD for claim definitions
- * (per-application) and claim values (per-user).
+ * require admin authorization with granular permissions. Provides
+ * CRUD for claim definitions (per-application) and claim values
+ * (per-user).
  *
  * Route structure:
  *   POST   /                         — Create a claim definition
@@ -25,6 +26,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as claimService from '../custom-claims/service.js';
 import { ClaimNotFoundError, ClaimValidationError } from '../custom-claims/errors.js';
 
@@ -85,9 +88,9 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the custom claims management router.
  *
- * All routes require super-admin authorization. Claim definitions are
- * scoped to an application via the :appId URL parameter. Claim values
- * are per-user, referenced via :userId sub-routes.
+ * All routes require admin authorization with granular permissions.
+ * Claim definitions are scoped to an application via the :appId URL
+ * parameter. Claim values are per-user, referenced via :userId sub-routes.
  *
  * Prefix: /api/admin/applications/:appId/claims
  *
@@ -96,13 +99,13 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createCustomClaimRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications/:appId/claims' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create claim definition
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.CLAIM_CREATE), async (ctx) => {
     try {
       const body = createDefinitionSchema.parse(ctx.request.body);
       const definition = await claimService.createDefinition({
@@ -119,7 +122,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List claim definitions for application
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.CLAIM_READ), async (ctx) => {
     try {
       const definitions = await claimService.listDefinitions(ctx.params.appId);
       ctx.body = { data: definitions };
@@ -132,7 +135,7 @@ export function createCustomClaimRouter(): Router {
   // GET /users/:userId — Get all claim values for a user
   // Must be before /:claimId to avoid matching "users" as a claimId
   // -------------------------------------------------------------------------
-  router.get('/users/:userId', async (ctx) => {
+  router.get('/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_READ), async (ctx) => {
     try {
       const values = await claimService.getValuesForUser(ctx.params.userId);
       ctx.body = { data: values };
@@ -144,7 +147,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:claimId — Get claim definition by ID
   // -------------------------------------------------------------------------
-  router.get('/:claimId', async (ctx) => {
+  router.get('/:claimId', requirePermission(ADMIN_PERMISSIONS.CLAIM_READ), async (ctx) => {
     const definition = await claimService.findDefinitionById(ctx.params.claimId);
     if (!definition) {
       ctx.throw(404, 'Claim definition not found');
@@ -155,7 +158,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:claimId — Update claim definition
   // -------------------------------------------------------------------------
-  router.put('/:claimId', async (ctx) => {
+  router.put('/:claimId', requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE), async (ctx) => {
     try {
       const body = updateDefinitionSchema.parse(ctx.request.body);
       const definition = await claimService.updateDefinition(ctx.params.claimId, body);
@@ -168,7 +171,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /:claimId — Delete claim definition
   // -------------------------------------------------------------------------
-  router.delete('/:claimId', async (ctx) => {
+  router.delete('/:claimId', requirePermission(ADMIN_PERMISSIONS.CLAIM_ARCHIVE), async (ctx) => {
     try {
       await claimService.deleteDefinition(ctx.params.claimId);
       ctx.status = 204;
@@ -180,7 +183,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:claimId/users/:userId — Set a claim value for a user
   // -------------------------------------------------------------------------
-  router.put('/:claimId/users/:userId', async (ctx) => {
+  router.put('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE), async (ctx) => {
     try {
       const body = setValueSchema.parse(ctx.request.body);
       const value = await claimService.setValue(
@@ -197,7 +200,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:claimId/users/:userId — Get a claim value for a user
   // -------------------------------------------------------------------------
-  router.get('/:claimId/users/:userId', async (ctx) => {
+  router.get('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_READ), async (ctx) => {
     const value = await claimService.getValue(ctx.params.userId, ctx.params.claimId);
     if (!value) {
       ctx.throw(404, 'Claim value not found');
@@ -208,7 +211,7 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /:claimId/users/:userId — Delete a claim value
   // -------------------------------------------------------------------------
-  router.delete('/:claimId/users/:userId', async (ctx) => {
+  router.delete('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE), async (ctx) => {
     try {
       await claimService.deleteValue(ctx.params.userId, ctx.params.claimId);
       ctx.status = 204;

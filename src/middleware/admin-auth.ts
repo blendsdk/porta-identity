@@ -34,10 +34,8 @@ import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRoles } from '../rbac/user-role-service.js';
 import { logger } from '../lib/logger.js';
 import {
-  isSuperAdminRole,
   resolvePermissionsFromRoles,
 } from '../lib/admin-permissions.js';
-import type { AdminPermission } from '../lib/admin-permissions.js';
 
 // ---------------------------------------------------------------------------
 // OIDC provider reference — set at startup via setAdminAuthProvider()

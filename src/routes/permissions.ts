@@ -2,8 +2,8 @@
  * Permission management API routes.
  *
  * All routes are under `/api/admin/applications/:appId/permissions` and
- * require super-admin authorization. Provides CRUD for permissions and
- * a query for roles that include a given permission.
+ * require admin authorization with granular permissions. Provides CRUD
+ * for permissions and a query for roles that include a given permission.
  *
  * Route structure:
  *   POST   /                — Create a new permission
@@ -22,6 +22,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as permissionService from '../rbac/permission-service.js';
 import { PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
@@ -78,8 +80,8 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the permission management router.
  *
- * All routes require super-admin authorization. Permissions are scoped
- * to an application via the :appId URL parameter.
+ * All routes require admin authorization with granular permissions.
+ * Permissions are scoped to an application via the :appId URL parameter.
  *
  * Prefix: /api/admin/applications/:appId/permissions
  *
@@ -88,13 +90,13 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createPermissionRouter(): Router {
   const router = new Router({ prefix: '/api/admin/applications/:appId/permissions' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create permission
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.PERMISSION_CREATE), async (ctx) => {
     try {
       const body = createPermissionSchema.parse(ctx.request.body);
       const permission = await permissionService.createPermission({
@@ -111,7 +113,7 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List permissions for application (optional moduleId filter)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
     try {
       const query = listPermissionsSchema.parse(ctx.query);
       const permissions = await permissionService.listPermissionsByApplication(
@@ -127,7 +129,7 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:permId — Get permission by ID
   // -------------------------------------------------------------------------
-  router.get('/:permId', async (ctx) => {
+  router.get('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
     const permission = await permissionService.findPermissionById(ctx.params.permId);
     if (!permission) {
       ctx.throw(404, 'Permission not found');
@@ -138,7 +140,7 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:permId — Update permission (name and description only)
   // -------------------------------------------------------------------------
-  router.put('/:permId', async (ctx) => {
+  router.put('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_CREATE), async (ctx) => {
     try {
       const body = updatePermissionSchema.parse(ctx.request.body);
       const permission = await permissionService.updatePermission(ctx.params.permId, body);
@@ -152,7 +154,7 @@ export function createPermissionRouter(): Router {
   // DELETE /:permId — Delete permission
   // Supports ?force=true to delete even when roles reference it
   // -------------------------------------------------------------------------
-  router.delete('/:permId', async (ctx) => {
+  router.delete('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_ARCHIVE), async (ctx) => {
     try {
       const force = ctx.query.force === 'true';
       await permissionService.deletePermission(ctx.params.permId, force);
@@ -165,7 +167,7 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:permId/roles — List roles that include this permission
   // -------------------------------------------------------------------------
-  router.get('/:permId/roles', async (ctx) => {
+  router.get('/:permId/roles', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
     try {
       const roles = await permissionService.getRolesWithPermission(ctx.params.permId);
       ctx.body = { data: roles };

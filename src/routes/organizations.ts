@@ -26,6 +26,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as organizationService from '../organizations/service.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
@@ -143,7 +145,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create organization
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.ORG_CREATE), async (ctx) => {
     try {
       const body = createOrganizationSchema.parse(ctx.request.body);
       const org = await organizationService.createOrganization(body);
@@ -157,7 +159,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List organizations (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
     try {
       const query = listOrganizationsSchema.parse(ctx.query);
       const result = await organizationService.listOrganizations(query);
@@ -171,7 +173,7 @@ export function createOrganizationRouter(): Router {
   // GET /validate-slug — Validate slug availability
   // Must be BEFORE /:id to avoid matching "validate-slug" as an :id param
   // -------------------------------------------------------------------------
-  router.get('/validate-slug', async (ctx) => {
+  router.get('/validate-slug', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
     try {
       const { slug } = validateSlugSchema.parse(ctx.query);
       const result = await organizationService.validateSlugAvailability(slug);
@@ -184,7 +186,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id — Get organization by ID
   // -------------------------------------------------------------------------
-  router.get('/:id', async (ctx) => {
+  router.get('/:id', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
     const param = ctx.params.id;
     // Support both UUID and slug lookups — CLI and API consumers may use either
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
@@ -200,7 +202,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id — Update organization
   // -------------------------------------------------------------------------
-  router.put('/:id', async (ctx) => {
+  router.put('/:id', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
       const body = updateOrganizationSchema.parse(ctx.request.body);
       const org = await organizationService.updateOrganization(ctx.params.id, body);
@@ -213,7 +215,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id/branding — Update branding
   // -------------------------------------------------------------------------
-  router.put('/:id/branding', async (ctx) => {
+  router.put('/:id/branding', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
       const body = updateBrandingSchema.parse(ctx.request.body);
       const org = await organizationService.updateOrganizationBranding(ctx.params.id, body);
@@ -226,7 +228,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/suspend — Suspend organization
   // -------------------------------------------------------------------------
-  router.post('/:id/suspend', async (ctx) => {
+  router.post('/:id/suspend', requirePermission(ADMIN_PERMISSIONS.ORG_SUSPEND), async (ctx) => {
     try {
       const body = ctx.request.body as { reason?: string } | undefined;
       await organizationService.suspendOrganization(ctx.params.id, body?.reason);
@@ -239,7 +241,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/activate — Activate organization
   // -------------------------------------------------------------------------
-  router.post('/:id/activate', async (ctx) => {
+  router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.ORG_SUSPEND), async (ctx) => {
     try {
       await organizationService.activateOrganization(ctx.params.id);
       ctx.status = 204;
@@ -251,7 +253,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/archive — Archive organization
   // -------------------------------------------------------------------------
-  router.post('/:id/archive', async (ctx) => {
+  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
     try {
       await organizationService.archiveOrganization(ctx.params.id);
       ctx.status = 204;
@@ -263,7 +265,7 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/restore — Restore organization
   // -------------------------------------------------------------------------
-  router.post('/:id/restore', async (ctx) => {
+  router.post('/:id/restore', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
     try {
       await organizationService.restoreOrganization(ctx.params.id);
       ctx.status = 204;

@@ -2,8 +2,9 @@
  * User management API routes.
  *
  * All routes are under `/api/admin/organizations/:orgId/users` and
- * require super-admin authorization. User routes are nested under an
- * organization context because users are always scoped to an org.
+ * require admin authorization with granular permissions. User routes
+ * are nested under an organization context because users are always
+ * scoped to an org.
  *
  * Route structure:
  *   POST   /                     — Create a user in the organization
@@ -25,12 +26,16 @@
  * Error mapping:
  *   UserNotFoundError → 404
  *   UserValidationError → 400
+ *   SuperAdminProtectionError → 403
  *   ZodError → 400 with validation details
  */
 
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
 import * as userService from '../users/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData, purgeUserData } from '../users/gdpr.js';
@@ -125,6 +130,11 @@ const suspendUserSchema = z.object({
  * Unknown errors are re-thrown for the global error handler.
  */
 function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+  if (err instanceof SuperAdminProtectionError) {
+    ctx.status = 403;
+    ctx.body = { error: 'Forbidden', message: err.message };
+    return undefined as never;
+  }
   if (err instanceof UserNotFoundError) {
     ctx.throw(404, err.message);
   }
@@ -146,8 +156,10 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the user management router.
  *
- * All routes require super-admin authorization. Users are always
- * scoped to an organization via the :orgId URL parameter.
+ * All routes require admin authorization with granular permissions.
+ * Users are always scoped to an organization via the :orgId URL parameter.
+ * Destructive operations on the super-admin user are blocked by
+ * guardSuperAdmin() checks.
  *
  * Prefix: /api/admin/organizations/:orgId/users
  *
@@ -156,13 +168,13 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createUserRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations/:orgId/users' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Create user
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.USER_CREATE), async (ctx) => {
     try {
       const body = createUserSchema.parse(ctx.request.body);
       const user = await userService.createUser({
@@ -179,7 +191,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List users (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
     try {
       const query = listUsersSchema.parse(ctx.query);
       const result = await userService.listUsersByOrganization({
@@ -195,7 +207,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:userId — Get user by ID
   // -------------------------------------------------------------------------
-  router.get('/:userId', async (ctx) => {
+  router.get('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
     const user = await userService.getUserById(ctx.params.userId);
     if (!user) {
       ctx.throw(404, 'User not found');
@@ -206,7 +218,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:userId — Update user profile
   // -------------------------------------------------------------------------
-  router.put('/:userId', async (ctx) => {
+  router.put('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
     try {
       const body = updateUserSchema.parse(ctx.request.body);
       // Convert null address to undefined — Zod allows null for clearing,
@@ -221,9 +233,11 @@ export function createUserRouter(): Router {
 
   // -------------------------------------------------------------------------
   // POST /:userId/deactivate — Deactivate user
+  // Protected: super-admin user cannot be deactivated
   // -------------------------------------------------------------------------
-  router.post('/:userId/deactivate', async (ctx) => {
+  router.post('/:userId/deactivate', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
+      await guardSuperAdmin(ctx.params.userId, 'deactivate');
       await userService.deactivateUser(ctx.params.userId);
       ctx.status = 204;
     } catch (err) {
@@ -234,7 +248,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:userId/reactivate — Reactivate user
   // -------------------------------------------------------------------------
-  router.post('/:userId/reactivate', async (ctx) => {
+  router.post('/:userId/reactivate', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
       await userService.reactivateUser(ctx.params.userId);
       ctx.status = 204;
@@ -245,9 +259,11 @@ export function createUserRouter(): Router {
 
   // -------------------------------------------------------------------------
   // POST /:userId/suspend — Suspend user
+  // Protected: super-admin user cannot be suspended
   // -------------------------------------------------------------------------
-  router.post('/:userId/suspend', async (ctx) => {
+  router.post('/:userId/suspend', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
+      await guardSuperAdmin(ctx.params.userId, 'suspend');
       const body = suspendUserSchema.parse(ctx.request.body ?? {});
       await userService.suspendUser(ctx.params.userId, body.reason);
       ctx.status = 204;
@@ -259,7 +275,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:userId/unsuspend — Unsuspend user
   // -------------------------------------------------------------------------
-  router.post('/:userId/unsuspend', async (ctx) => {
+  router.post('/:userId/unsuspend', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
       await userService.unsuspendUser(ctx.params.userId);
       ctx.status = 204;
@@ -270,9 +286,11 @@ export function createUserRouter(): Router {
 
   // -------------------------------------------------------------------------
   // POST /:userId/lock — Lock user
+  // Protected: super-admin user cannot be locked
   // -------------------------------------------------------------------------
-  router.post('/:userId/lock', async (ctx) => {
+  router.post('/:userId/lock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
+      await guardSuperAdmin(ctx.params.userId, 'lock');
       const body = lockUserSchema.parse(ctx.request.body);
       await userService.lockUser(ctx.params.userId, body.reason);
       ctx.status = 204;
@@ -284,7 +302,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:userId/unlock — Unlock user
   // -------------------------------------------------------------------------
-  router.post('/:userId/unlock', async (ctx) => {
+  router.post('/:userId/unlock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
     try {
       await userService.unlockUser(ctx.params.userId);
       ctx.status = 204;
@@ -296,7 +314,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:userId/password — Set password
   // -------------------------------------------------------------------------
-  router.post('/:userId/password', async (ctx) => {
+  router.post('/:userId/password', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
     try {
       const body = setPasswordSchema.parse(ctx.request.body);
       await userService.setUserPassword(ctx.params.userId, body.password);
@@ -309,7 +327,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /:userId/password — Clear password (convert to passwordless)
   // -------------------------------------------------------------------------
-  router.delete('/:userId/password', async (ctx) => {
+  router.delete('/:userId/password', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
     try {
       await userService.clearUserPassword(ctx.params.userId);
       ctx.status = 204;
@@ -321,7 +339,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:userId/verify-email — Mark email as verified
   // -------------------------------------------------------------------------
-  router.post('/:userId/verify-email', async (ctx) => {
+  router.post('/:userId/verify-email', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
     try {
       await userService.markEmailVerified(ctx.params.userId);
       ctx.status = 204;
@@ -333,7 +351,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:userId/export — GDPR data export (Article 20)
   // -------------------------------------------------------------------------
-  router.get('/:userId/export', async (ctx) => {
+  router.get('/:userId/export', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
     const user = await userService.getUserById(ctx.params.userId);
     if (!user) {
       return ctx.throw(404, 'User not found');
@@ -347,8 +365,9 @@ export function createUserRouter(): Router {
   //
   // Requires X-Confirm-Purge: true header for safety.
   // Irreversibly anonymizes user data and deletes related records.
+  // Protected: super-admin user cannot be purged
   // -------------------------------------------------------------------------
-  router.post('/:userId/purge', async (ctx) => {
+  router.post('/:userId/purge', requirePermission(ADMIN_PERMISSIONS.USER_ARCHIVE), async (ctx) => {
     // Require explicit confirmation via header OR request body
     const confirmHeader = ctx.get('X-Confirm-Purge');
     const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
@@ -367,11 +386,19 @@ export function createUserRouter(): Router {
     }
 
     try {
+      // Guard: super-admin user cannot be purged
+      await guardSuperAdmin(ctx.params.userId, 'delete');
+
       // Use the admin user's ID as the actor for the audit trail
       const actorId = ctx.state.adminUser?.id ?? 'system';
       const result = await purgeUserData(user, actorId);
       ctx.body = { data: result };
     } catch (err) {
+      if (err instanceof SuperAdminProtectionError) {
+        ctx.status = 403;
+        ctx.body = { error: err.message };
+        return;
+      }
       if (err instanceof Error && err.message.includes('super-admin')) {
         ctx.status = 403;
         ctx.body = { error: err.message };

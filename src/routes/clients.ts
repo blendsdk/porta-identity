@@ -32,6 +32,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
@@ -195,7 +197,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create client
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE), async (ctx) => {
     try {
       const body = createClientSchema.parse(ctx.request.body);
 
@@ -227,7 +229,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List clients (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     try {
       const query = listClientsSchema.parse(ctx.query);
       // Use the listClientsByOrganization or generic listing
@@ -245,7 +247,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id — Get client by ID
   // -------------------------------------------------------------------------
-  router.get('/:id', async (ctx) => {
+  router.get('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     const client = await clientService.getClientById(ctx.params.id);
     if (!client) {
       ctx.throw(404, 'Client not found');
@@ -257,7 +259,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id — Update client
   // -------------------------------------------------------------------------
-  router.put('/:id', async (ctx) => {
+  router.put('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       const body = updateClientSchema.parse(ctx.request.body);
       const client = await clientService.updateClient(ctx.params.id, body);
@@ -270,7 +272,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/revoke — Revoke client (permanent)
   // -------------------------------------------------------------------------
-  router.post('/:id/revoke', async (ctx) => {
+  router.post('/:id/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
     try {
       await clientService.revokeClient(ctx.params.id);
       ctx.status = 204;
@@ -282,7 +284,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/activate — Activate client
   // -------------------------------------------------------------------------
-  router.post('/:id/activate', async (ctx) => {
+  router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       await clientService.activateClient(ctx.params.id);
       ctx.status = 204;
@@ -294,7 +296,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/deactivate — Deactivate client
   // -------------------------------------------------------------------------
-  router.post('/:id/deactivate', async (ctx) => {
+  router.post('/:id/deactivate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       await clientService.deactivateClient(ctx.params.id);
       ctx.status = 204;
@@ -306,7 +308,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/secrets — Generate new secret
   // -------------------------------------------------------------------------
-  router.post('/:id/secrets', async (ctx) => {
+  router.post('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       const body = createSecretSchema.parse(ctx.request.body);
       const secret = await secretService.generateAndStore(ctx.params.id, body);
@@ -323,7 +325,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id/secrets — List secrets (no hashes)
   // -------------------------------------------------------------------------
-  router.get('/:id/secrets', async (ctx) => {
+  router.get('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     const secrets = await secretService.listByClient(ctx.params.id);
     ctx.body = { data: secrets };
   });
@@ -331,7 +333,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/secrets/:secretId/revoke — Revoke a secret
   // -------------------------------------------------------------------------
-  router.post('/:id/secrets/:secretId/revoke', async (ctx) => {
+  router.post('/:id/secrets/:secretId/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
     try {
       await secretService.revoke(ctx.params.secretId);
       ctx.status = 204;

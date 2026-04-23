@@ -28,6 +28,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as applicationService from '../applications/service.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
 
@@ -118,7 +120,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create application
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.APP_CREATE), async (ctx) => {
     try {
       const body = createApplicationSchema.parse(ctx.request.body);
       const app = await applicationService.createApplication(body);
@@ -132,7 +134,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List applications (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     try {
       const query = listApplicationsSchema.parse(ctx.query);
       const result = await applicationService.listApplications(query);
@@ -145,7 +147,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id — Get application by ID
   // -------------------------------------------------------------------------
-  router.get('/:id', async (ctx) => {
+  router.get('/:id', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     const param = ctx.params.id;
     // Support both UUID and slug lookups — CLI and API consumers may use either
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
@@ -161,7 +163,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id — Update application
   // -------------------------------------------------------------------------
-  router.put('/:id', async (ctx) => {
+  router.put('/:id', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = updateApplicationSchema.parse(ctx.request.body);
       const app = await applicationService.updateApplication(ctx.params.id, body);
@@ -174,7 +176,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/archive — Archive application
   // -------------------------------------------------------------------------
-  router.post('/:id/archive', async (ctx) => {
+  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.APP_ARCHIVE), async (ctx) => {
     try {
       await applicationService.archiveApplication(ctx.params.id);
       ctx.status = 204;
@@ -186,7 +188,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/activate — Activate application
   // -------------------------------------------------------------------------
-  router.post('/:id/activate', async (ctx) => {
+  router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.activateApplication(ctx.params.id);
       ctx.status = 204;
@@ -198,7 +200,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/deactivate — Deactivate application
   // -------------------------------------------------------------------------
-  router.post('/:id/deactivate', async (ctx) => {
+  router.post('/:id/deactivate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.deactivateApplication(ctx.params.id);
       ctx.status = 204;
@@ -210,7 +212,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/modules — Create module
   // -------------------------------------------------------------------------
-  router.post('/:id/modules', async (ctx) => {
+  router.post('/:id/modules', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = createModuleSchema.parse(ctx.request.body);
       const mod = await applicationService.createModule(ctx.params.id, body);
@@ -224,7 +226,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id/modules — List modules for an application
   // -------------------------------------------------------------------------
-  router.get('/:id/modules', async (ctx) => {
+  router.get('/:id/modules', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     const modules = await applicationService.listModules(ctx.params.id);
     ctx.body = { data: modules };
   });
@@ -232,7 +234,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id/modules/:moduleId — Update module
   // -------------------------------------------------------------------------
-  router.put('/:id/modules/:moduleId', async (ctx) => {
+  router.put('/:id/modules/:moduleId', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = updateModuleSchema.parse(ctx.request.body);
       const mod = await applicationService.updateModule(ctx.params.moduleId, body);
@@ -245,7 +247,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/modules/:moduleId/deactivate — Deactivate module
   // -------------------------------------------------------------------------
-  router.post('/:id/modules/:moduleId/deactivate', async (ctx) => {
+  router.post('/:id/modules/:moduleId/deactivate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.deactivateModule(ctx.params.moduleId);
       ctx.status = 204;
