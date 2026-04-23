@@ -212,32 +212,80 @@ export async function sendPasswordResetEmail(
 }
 
 /**
+ * Optional parameters for enhanced invitation emails.
+ *
+ * Supports personal messages from the inviting admin and pre-assignment
+ * metadata display in the invitation email.
+ */
+export interface InvitationEmailOptions {
+  /** Optional personal message from the admin (HTML-escaped before rendering) */
+  personalMessage?: string;
+  /** Display name of the admin who sent the invitation */
+  inviterName?: string;
+}
+
+/**
+ * Build the template context for an invitation email.
+ *
+ * Shared between sendInvitationEmail() and renderInvitationEmail()
+ * to ensure consistency between sent emails and preview renders.
+ *
+ * @param user - Recipient user
+ * @param org - Organization for branding
+ * @param inviteUrl - Full URL the user clicks to accept
+ * @param locale - Locale for i18n
+ * @param options - Optional personal message and inviter name
+ * @returns Template context and computed subject line
+ */
+function buildInvitationContext(
+  user: EmailUser,
+  org: EmailOrganization,
+  inviteUrl: string,
+  locale: string,
+  options?: InvitationEmailOptions,
+): { context: Record<string, unknown>; subject: string } {
+  const orgName = org.brandingCompanyName ?? org.slug;
+  return {
+    context: {
+      userName: getUserDisplayName(user),
+      inviteUrl,
+      orgName,
+      expiresDays: 7,
+      branding: buildBrandingContext(org),
+      locale,
+      // Enhanced invitation fields — only included when provided
+      personalMessage: options?.personalMessage ?? null,
+      inviterName: options?.inviterName ?? null,
+    },
+    subject: options?.inviterName
+      ? `${options.inviterName} has invited you to ${orgName}`
+      : `You've been invited to ${orgName}`,
+  };
+}
+
+/**
  * Send an invitation email to a newly created user.
  *
  * @param user - Recipient user (newly created)
  * @param org - Organization (for branding and template override)
  * @param inviteUrl - Full URL the user clicks to accept the invitation
  * @param locale - Locale for i18n
+ * @param options - Optional personal message and inviter name
  */
 export async function sendInvitationEmail(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
   locale: string,
+  options?: InvitationEmailOptions,
 ): Promise<void> {
   try {
-    const { html, text } = await renderEmail('invitation', org.slug, {
-      userName: getUserDisplayName(user),
-      inviteUrl,
-      orgName: org.brandingCompanyName ?? org.slug,
-      expiresDays: 7,
-      branding: buildBrandingContext(org),
-      locale,
-    });
+    const { context, subject } = buildInvitationContext(user, org, inviteUrl, locale, options);
+    const { html, text } = await renderEmail('invitation', org.slug, context);
 
     await getTransport().send({
       to: user.email,
-      subject: `You've been invited to ${org.brandingCompanyName ?? org.slug}`,
+      subject,
       html,
       text,
     });
@@ -262,6 +310,31 @@ export async function sendInvitationEmail(
       metadata: { error: String(error), template: 'invitation' },
     });
   }
+}
+
+/**
+ * Render an invitation email without sending it (for preview).
+ *
+ * Returns the HTML, plain text, and subject line that would be sent,
+ * allowing admins to preview the invitation before sending.
+ *
+ * @param user - Recipient user
+ * @param org - Organization for branding
+ * @param inviteUrl - Full URL (can be a placeholder for preview)
+ * @param locale - Locale for i18n
+ * @param options - Optional personal message and inviter name
+ * @returns Rendered HTML, plain text, and subject line
+ */
+export async function renderInvitationEmail(
+  user: EmailUser,
+  org: EmailOrganization,
+  inviteUrl: string,
+  locale: string,
+  options?: InvitationEmailOptions,
+): Promise<{ html: string; text: string; subject: string }> {
+  const { context, subject } = buildInvitationContext(user, org, inviteUrl, locale, options);
+  const { html, text } = await renderEmail('invitation', org.slug, context);
+  return { html, text, subject };
 }
 
 /**

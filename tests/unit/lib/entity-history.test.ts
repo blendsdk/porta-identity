@@ -25,8 +25,8 @@ describe('entity-history', () => {
       const now = new Date();
       mockPool.query.mockResolvedValue({
         rows: [
-          { id: '10', event_type: 'org.updated', actor_id: 'u1', actor_email: 'a@b.com', metadata: { field: 'name' }, created_at: now },
-          { id: '5', event_type: 'org.created', actor_id: 'u1', actor_email: 'a@b.com', metadata: null, created_at: new Date(now.getTime() - 1000) },
+          { id: '10', event_type: 'org.updated', actor_id: 'u1', metadata: { field: 'name' }, created_at: now },
+          { id: '5', event_type: 'org.created', actor_id: 'u1', metadata: null, created_at: new Date(now.getTime() - 1000) },
         ],
       });
 
@@ -34,21 +34,19 @@ describe('entity-history', () => {
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].eventType).toBe('org.updated');
-      expect(result.data[0].actorEmail).toBe('a@b.com');
+      expect(result.data[0].actorId).toBe('u1');
       expect(result.hasMore).toBe(false);
       expect(result.nextCursor).toBeNull();
     });
 
-    it('should use parameterized queries with entity_type and entity_id', async () => {
+    it('should use parameterized queries with FK column for the entity type', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await getEntityHistory('user', 'user-456');
 
       const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('entity_type = $1');
-      expect(sql).toContain('entity_id = $2');
-      expect(params[0]).toBe('user');
-      expect(params[1]).toBe('user-456');
+      expect(sql).toContain('user_id = $1');
+      expect(params[0]).toBe('user-456');
     });
 
     it('should apply cursor-based pagination (after parameter)', async () => {
@@ -57,8 +55,8 @@ describe('entity-history', () => {
       await getEntityHistory('organization', 'org-123', { after: '50' });
 
       const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('id < $3');
-      expect(params[2]).toBe('50');
+      expect(sql).toContain('id < $2');
+      expect(params[1]).toBe('50');
     });
 
     it('should apply event type prefix filter', async () => {
@@ -77,7 +75,6 @@ describe('entity-history', () => {
         id: String(100 - i),
         event_type: 'org.updated',
         actor_id: null,
-        actor_email: null,
         metadata: null,
         created_at: new Date(),
       }));
@@ -128,10 +125,16 @@ describe('entity-history', () => {
       });
 
       const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('id < $3');
-      expect(sql).toContain('event_type LIKE $4');
-      expect(params[2]).toBe('42');
-      expect(params[3]).toBe('org.%');
+      expect(sql).toContain('id < $2');
+      expect(sql).toContain('event_type LIKE $3');
+      expect(params[1]).toBe('42');
+      expect(params[2]).toBe('org.%');
+    });
+
+    it('should throw for unsupported entity types', async () => {
+      await expect(getEntityHistory('unknown', 'id-1')).rejects.toThrow(
+        'Unsupported entity type for history: unknown',
+      );
     });
   });
 });

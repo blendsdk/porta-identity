@@ -2,8 +2,17 @@ You've been invited!
 
 Hi {{userName}},
 
+{{#if inviterName}}
+{{inviterName}} has invited you to join {{orgName}}. Click the link below to set up your account. This invitation expires in {{expiresDays}} days.
+{{else}}
 You've been invited to join {{orgName}}. Click the link below to set up your account. This invitation expires in {{expiresDays}} days.
+{{/if}}
+{{#if personalMessage}}
 
+Message from {{#if inviterName}}{{inviterName}}{{else}}your admin{{/if}}:
+"{{personalMessage}}"
+
+{{/if}}
 {{{inviteUrl}}}
 
 © {{year}} {{branding.companyName}}

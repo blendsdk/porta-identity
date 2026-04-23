@@ -16,12 +16,14 @@ export type { GeneratedToken } from './tokens.js';
 // Token repository (PostgreSQL CRUD for all 3 token tables)
 export {
   insertToken,
+  insertInvitationToken,
   findValidToken,
+  findValidInvitationToken,
   markTokenUsed,
   deleteExpiredTokens,
   invalidateUserTokens,
 } from './token-repository.js';
-export type { TokenTable, TokenRecord } from './token-repository.js';
+export type { TokenTable, TokenRecord, InvitationTokenRecord } from './token-repository.js';
 
 // CSRF protection
 export { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from './csrf.js';
@@ -51,11 +53,12 @@ export {
   sendMagicLinkEmail,
   sendPasswordResetEmail,
   sendInvitationEmail,
+  renderInvitationEmail,
   sendWelcomeEmail,
   sendPasswordChangedEmail,
   setEmailTransport,
 } from './email-service.js';
-export type { EmailUser, EmailOrganization } from './email-service.js';
+export type { EmailUser, EmailOrganization, InvitationEmailOptions } from './email-service.js';
 
 // i18n
 export { initI18n, resolveLocale, getTranslationFunction, registerHandlebarsI18nHelper } from './i18n.js';

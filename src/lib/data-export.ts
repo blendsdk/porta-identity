@@ -57,35 +57,34 @@ const EXPORT_QUERIES: Record<ExportEntityType, {
     needsOrgId: true,
   },
   organizations: {
-    sql: `SELECT id, name, slug, status, plan, display_name,
-                 contact_email, created_at, updated_at
+    sql: `SELECT id, name, slug, status, is_super_admin, default_locale,
+                 created_at, updated_at
           FROM organizations ORDER BY created_at`,
-    columns: ['id', 'name', 'slug', 'status', 'plan', 'display_name', 'contact_email', 'created_at', 'updated_at'],
+    columns: ['id', 'name', 'slug', 'status', 'is_super_admin', 'default_locale', 'created_at', 'updated_at'],
   },
   clients: {
     sql: `SELECT c.id, c.client_id, c.client_name, c.status, c.application_type,
                  c.grant_types, c.redirect_uris, c.created_at, c.updated_at
-          FROM clients c WHERE c.application_id IN
-            (SELECT a.id FROM applications a WHERE a.organization_id = $1)
+          FROM clients c WHERE c.organization_id = $1
           ORDER BY c.created_at`,
     columns: ['id', 'client_id', 'client_name', 'status', 'application_type', 'grant_types', 'redirect_uris', 'created_at', 'updated_at'],
     needsOrgId: true,
   },
   roles: {
-    sql: `SELECT r.id, r.name, r.slug, r.description, r.is_system, r.created_at
+    sql: `SELECT r.id, r.name, r.slug, r.description, r.created_at
           FROM roles r WHERE r.application_id = $1
           ORDER BY r.created_at`,
-    columns: ['id', 'name', 'slug', 'description', 'is_system', 'created_at'],
+    columns: ['id', 'name', 'slug', 'description', 'created_at'],
     needsAppId: true,
   },
   audit: {
-    sql: `SELECT id, event_type, actor_id, entity_type, entity_id,
+    sql: `SELECT id, event_type, event_category, actor_id,
                  metadata, ip_address, created_at
           FROM audit_log WHERE organization_id = $1
           AND created_at >= $2 AND created_at <= $3
           ORDER BY created_at DESC
           LIMIT 10000`,
-    columns: ['id', 'event_type', 'actor_id', 'entity_type', 'entity_id', 'metadata', 'ip_address', 'created_at'],
+    columns: ['id', 'event_type', 'event_category', 'actor_id', 'metadata', 'ip_address', 'created_at'],
     needsOrgId: true,
   },
 };

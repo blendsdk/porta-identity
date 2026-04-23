@@ -66,9 +66,6 @@ const MANIFEST_VERSION = '1.0';
 const organizationSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(63),
-  display_name: z.string().max(255).optional().nullable(),
-  contact_email: z.string().email().optional().nullable(),
-  plan: z.string().max(50).optional().nullable(),
   default_login_methods: z.array(z.string()).optional(),
   default_locale: z.string().max(10).optional().nullable(),
 });
@@ -179,32 +176,32 @@ export async function importData(
     const appMap = new Map<string, string>();   // "orgSlug:appSlug" → app ID
 
     // Phase 1: Organizations — no dependencies
-    for (const org of manifest.organizations) {
+    for (const org of manifest.organizations ?? []) {
       await processOrganization(client, org, mode, result, orgMap);
     }
 
     // Phase 2: Applications — depend on organizations
-    for (const app of manifest.applications) {
+    for (const app of manifest.applications ?? []) {
       await processApplication(client, app, mode, result, orgMap, appMap);
     }
 
     // Phase 3: Clients — depend on applications
-    for (const clientDef of manifest.clients) {
+    for (const clientDef of manifest.clients ?? []) {
       await processClient(client, clientDef, mode, result, orgMap, appMap);
     }
 
     // Phase 4: Roles — depend on applications
-    for (const role of manifest.roles) {
+    for (const role of manifest.roles ?? []) {
       await processRole(client, role, mode, result, orgMap, appMap);
     }
 
     // Phase 5: Permissions — depend on applications
-    for (const perm of manifest.permissions) {
+    for (const perm of manifest.permissions ?? []) {
       await processPermission(client, perm, mode, result, orgMap, appMap);
     }
 
     // Phase 6: Claim definitions — depend on applications
-    for (const claim of manifest.claim_definitions) {
+    for (const claim of manifest.claim_definitions ?? []) {
       await processClaimDefinition(client, claim, mode, result, orgMap, appMap);
     }
 
@@ -215,13 +212,12 @@ export async function importData(
       // Write audit log entry for the import
       if (actorId) {
         await client.query(
-          `INSERT INTO audit_log (event_type, actor_id, entity_type, entity_id, metadata)
-           VALUES ($1, $2, $3, $4, $5)`,
+          `INSERT INTO audit_log (event_type, event_category, actor_id, metadata)
+           VALUES ($1, $2, $3, $4)`,
           [
             'admin.import',
+            'admin',
             actorId,
-            'system',
-            null,
             JSON.stringify({
               mode,
               created: result.created.length,
@@ -278,13 +274,13 @@ async function processOrganization(
 
       // Overwrite mode — update
       await client.query(
-        `UPDATE organizations SET name = $1, display_name = $2, contact_email = $3,
-         plan = $4, updated_at = NOW() WHERE slug = $5`,
-        [org.name, org.display_name ?? null, org.contact_email ?? null, org.plan ?? null, org.slug],
+        `UPDATE organizations SET name = $1, default_locale = $2,
+         updated_at = NOW() WHERE slug = $3`,
+        [org.name, org.default_locale ?? null, org.slug],
       );
       result.updated.push({
         type: 'organization', slug: org.slug, name: org.name,
-        changes: ['name', 'display_name', 'contact_email', 'plan'].filter(Boolean),
+        changes: ['name', 'default_locale'].filter(Boolean),
       });
     } else {
       // Create new organization
@@ -294,9 +290,9 @@ async function processOrganization(
       }
 
       const { rows } = await client.query(
-        `INSERT INTO organizations (name, slug, display_name, contact_email, plan, status)
-         VALUES ($1, $2, $3, $4, $5, 'active') RETURNING id`,
-        [org.name, org.slug, org.display_name ?? null, org.contact_email ?? null, org.plan ?? null],
+        `INSERT INTO organizations (name, slug, default_locale, status)
+         VALUES ($1, $2, $3, 'active') RETURNING id`,
+        [org.name, org.slug, org.default_locale ?? null],
       );
       orgMap.set(org.slug, rows[0].id);
       result.created.push({ type: 'organization', slug: org.slug, name: org.name });
@@ -322,18 +318,9 @@ async function processApplication(
   appMap: Map<string, string>,
 ): Promise<void> {
   try {
-    const orgId = await resolveOrgId(client, app.organization_slug, orgMap);
-    if (!orgId) {
-      result.errors.push({
-        type: 'application', slug: app.slug,
-        error: `Parent organization '${app.organization_slug}' not found`,
-      });
-      return;
-    }
-
     const { rows: existing } = await client.query(
-      'SELECT id FROM applications WHERE slug = $1 AND organization_id = $2',
-      [app.slug, orgId],
+      'SELECT id FROM applications WHERE slug = $1',
+      [app.slug],
     );
 
     const mapKey = `${app.organization_slug}:${app.slug}`;
@@ -362,9 +349,9 @@ async function processApplication(
       }
 
       const { rows } = await client.query(
-        `INSERT INTO applications (name, slug, organization_id, description, status)
-         VALUES ($1, $2, $3, $4, 'active') RETURNING id`,
-        [app.name, app.slug, orgId, app.description ?? null],
+        `INSERT INTO applications (name, slug, description, status)
+         VALUES ($1, $2, $3, 'active') RETURNING id`,
+        [app.name, app.slug, app.description ?? null],
       );
       appMap.set(mapKey, rows[0].id);
       result.created.push({ type: 'application', slug: app.slug, name: app.name });
@@ -390,6 +377,15 @@ async function processClient(
   appMap: Map<string, string>,
 ): Promise<void> {
   try {
+    const orgId = await resolveOrgId(client, clientDef.organization_slug, orgMap);
+    if (!orgId) {
+      result.errors.push({
+        type: 'client', slug: clientDef.client_name,
+        error: `Parent organization '${clientDef.organization_slug}' not found`,
+      });
+      return;
+    }
+
     const appId = await resolveAppId(
       client, clientDef.organization_slug, clientDef.application_slug, orgMap, appMap,
     );
@@ -439,11 +435,11 @@ async function processClient(
       const clientId = randomBytes(16).toString('hex');
 
       await client.query(
-        `INSERT INTO clients (client_id, client_name, application_id, application_type,
+        `INSERT INTO clients (client_id, client_name, organization_id, application_id, application_type,
          grant_types, redirect_uris, response_types, scope, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')`,
         [
-          clientId, clientDef.client_name, appId,
+          clientId, clientDef.client_name, orgId, appId,
           clientDef.application_type ?? 'web',
           clientDef.grant_types ?? ['authorization_code'],
           clientDef.redirect_uris ?? [],
@@ -689,8 +685,8 @@ async function resolveAppId(
   if (!orgId) return null;
 
   const { rows } = await client.query(
-    'SELECT id FROM applications WHERE slug = $1 AND organization_id = $2',
-    [appSlug, orgId],
+    'SELECT id FROM applications WHERE slug = $1',
+    [appSlug],
   );
   if (rows.length > 0) {
     appMap.set(mapKey, rows[0].id);

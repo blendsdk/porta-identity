@@ -57,6 +57,7 @@ Migrations are numbered sequentially and applied in order:
 | 016 | `016_failed_login_count.sql` | Adds `failed_login_count` and `last_failed_login_at` columns to users table for account lockout |
 | 017 | `017_audit_retention.sql` | Adds `audit_retention_days` entry to system_config for configurable audit log cleanup |
 | 018 | `018_admin_api_enhancements.sql` | Adds `branding_assets` table (org logo/favicon storage) and `admin_sessions` table (session tracking for admin viewer/revocation) |
+| 019 | `019_invitation_details.sql` | Adds `details` JSONB column and `invited_by` UUID column to `invitation_tokens` for enhanced invitations with role/claim pre-assignment |
 
 ## Writing Migrations
 

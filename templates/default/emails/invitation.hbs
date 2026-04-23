@@ -9,6 +9,7 @@
     .card { background: white; border-radius: 8px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .btn { display: inline-block; background: {{branding.primaryColor}}; color: white; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 16px; font-weight: 500; }
     .footer { text-align: center; padding: 16px; color: #6b7280; font-size: 12px; }
+    .personal-message { background: #f9fafb; border-left: 3px solid {{branding.primaryColor}}; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0; color: #374151; font-style: italic; }
   </style>
 </head>
 <body>
@@ -17,7 +18,16 @@
       {{#if branding.logoUrl}}<img src="{{branding.logoUrl}}" alt="{{branding.companyName}}" style="max-height: 40px; margin-bottom: 16px;">{{/if}}
       <h1 style="font-size: 20px; margin: 0 0 12px 0;">You've been invited!</h1>
       <p>Hi {{userName}},</p>
+      {{#if inviterName}}
+      <p><strong>{{inviterName}}</strong> has invited you to join <strong>{{orgName}}</strong>. Click the button below to set up your account. This invitation expires in {{expiresDays}} days.</p>
+      {{else}}
       <p>You've been invited to join <strong>{{orgName}}</strong>. Click the button below to set up your account. This invitation expires in {{expiresDays}} days.</p>
+      {{/if}}
+      {{#if personalMessage}}
+      <div class="personal-message">
+        {{personalMessage}}
+      </div>
+      {{/if}}
       <p style="text-align: center; margin: 24px 0;">
         <a href="{{{inviteUrl}}}" class="btn">Accept Invitation</a>
       </p>

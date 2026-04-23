@@ -41,6 +41,13 @@ import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData, purgeUserData } from '../users/gdpr.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
+import { generateToken } from '../auth/tokens.js';
+import { insertInvitationToken, invalidateUserTokens } from '../auth/token-repository.js';
+import { sendInvitationEmail, renderInvitationEmail } from '../auth/email-service.js';
+import type { InvitationEmailOptions } from '../auth/email-service.js';
+import { getOrganizationById } from '../organizations/service.js';
+import { writeAuditLog } from '../lib/audit-log.js';
+import { getPool } from '../lib/database.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -450,5 +457,272 @@ export function createUserRouter(): Router {
     ctx.body = result;
   });
 
+  // -------------------------------------------------------------------------
+  // POST /invite — Send invitation to a new or existing user
+  //
+  // Enhanced invitation with optional personal message, role/claim
+  // pre-assignment, and inviter tracking. Creates the user if they
+  // don't exist, generates an invitation token with pre-assignment
+  // details, and sends the invitation email.
+  // -------------------------------------------------------------------------
+  router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
+    try {
+      const body = inviteUserSchema.parse(ctx.request.body);
+      const orgId = ctx.params.orgId;
+      const adminUser = ctx.state.adminUser as { id: string; givenName?: string; familyName?: string; email?: string };
+
+      // Resolve the organization for branding and slug
+      const org = await getOrganizationById(orgId);
+      if (!org) {
+        ctx.throw(404, 'Organization not found');
+        return;
+      }
+
+      // Validate referenced applicationIds, roleIds, claimDefinitionIds exist
+      if (body.roles?.length || body.claims?.length) {
+        await validatePreAssignments(orgId, body.roles, body.claims);
+      }
+
+      // Find or create the user
+      let user = await userService.getUserByEmail(orgId, body.email);
+      let created = false;
+      if (!user) {
+        user = await userService.createUser({
+          organizationId: orgId,
+          email: body.email,
+          givenName: body.displayName,
+        });
+        created = true;
+      }
+
+      // Invalidate any previous pending invitation tokens for this user
+      await invalidateUserTokens('invitation_tokens', user.id);
+
+      // Generate a new invitation token
+      const { plaintext, hash } = generateToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      // Build inviter display name
+      const inviterName = adminUser.givenName
+        ? (adminUser.familyName ? `${adminUser.givenName} ${adminUser.familyName}` : adminUser.givenName)
+        : (adminUser.email ?? 'Admin');
+
+      // Store pre-assignment details in the token
+      const details: Record<string, unknown> = {};
+      if (body.personalMessage) details.personalMessage = body.personalMessage;
+      if (body.roles?.length) details.roles = body.roles;
+      if (body.claims?.length) details.claims = body.claims;
+      details.inviterName = inviterName;
+
+      await insertInvitationToken(
+        user.id,
+        hash,
+        expiresAt,
+        Object.keys(details).length > 0 ? details : null,
+        adminUser.id,
+      );
+
+      // Build the invitation URL
+      const inviteUrl = `/${org.slug}/auth/accept-invite/${plaintext}`;
+
+      // Send the invitation email
+      const emailOptions: InvitationEmailOptions = {};
+      if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
+      emailOptions.inviterName = inviterName;
+
+      await sendInvitationEmail(
+        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
+        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+        inviteUrl,
+        body.locale ?? org.defaultLocale ?? 'en',
+        emailOptions,
+      );
+
+      // Audit log the invitation
+      writeAuditLog({
+        organizationId: orgId,
+        userId: user.id,
+        actorId: adminUser.id,
+        eventType: 'user.invited',
+        eventCategory: 'admin',
+        description: `User ${user.email} invited by ${inviterName}`,
+        metadata: {
+          hasPersonalMessage: !!body.personalMessage,
+          preAssignedRoles: body.roles?.length ?? 0,
+          preAssignedClaims: body.claims?.length ?? 0,
+        },
+      });
+
+      ctx.status = created ? 201 : 200;
+      ctx.body = {
+        data: {
+          userId: user.id,
+          email: user.email,
+          created,
+          invitationSent: true,
+          expiresAt: expiresAt.toISOString(),
+        },
+      };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // POST /invite/preview — Preview invitation email without sending
+  //
+  // Renders the invitation email with the provided parameters and returns
+  // the HTML, plain text, and subject line for admin review.
+  // -------------------------------------------------------------------------
+  router.post('/invite/preview', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
+    try {
+      const body = invitePreviewSchema.parse(ctx.request.body);
+      const orgId = ctx.params.orgId;
+      const adminUser = ctx.state.adminUser as { id: string; givenName?: string; familyName?: string; email?: string };
+
+      // Resolve the organization for branding
+      const org = await getOrganizationById(orgId);
+      if (!org) {
+        ctx.throw(404, 'Organization not found');
+        return;
+      }
+
+      // Build inviter display name
+      const inviterName = adminUser.givenName
+        ? (adminUser.familyName ? `${adminUser.givenName} ${adminUser.familyName}` : adminUser.givenName)
+        : (adminUser.email ?? 'Admin');
+
+      // Build a mock user for the preview
+      const previewUser = {
+        id: '00000000-0000-0000-0000-000000000000',
+        email: body.email,
+        givenName: body.displayName ?? null,
+      };
+
+      // Render the invitation email (without sending)
+      const emailOptions: InvitationEmailOptions = {};
+      if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
+      emailOptions.inviterName = inviterName;
+
+      const result = await renderInvitationEmail(
+        previewUser,
+        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+        `/${org.slug}/auth/accept-invite/PREVIEW_TOKEN`,
+        body.locale ?? org.defaultLocale ?? 'en',
+        emailOptions,
+      );
+
+      ctx.body = { data: result };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
   return router;
+}
+
+// ---------------------------------------------------------------------------
+// Invitation schemas
+// ---------------------------------------------------------------------------
+
+/** Schema for the enhanced invitation request */
+const inviteUserSchema = z.object({
+  email: z.string().email(),
+  displayName: z.string().min(1).max(255).optional(),
+  personalMessage: z.string().max(500).optional(),
+  roles: z.array(z.object({
+    applicationId: z.string().uuid(),
+    roleId: z.string().uuid(),
+  })).optional(),
+  claims: z.array(z.object({
+    applicationId: z.string().uuid(),
+    claimDefinitionId: z.string().uuid(),
+    value: z.unknown(),
+  })).optional(),
+  locale: z.string().max(10).optional(),
+});
+
+/** Schema for the invitation preview request */
+const invitePreviewSchema = z.object({
+  email: z.string().email(),
+  displayName: z.string().min(1).max(255).optional(),
+  personalMessage: z.string().max(500).optional(),
+  locale: z.string().max(10).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Pre-assignment validation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate that referenced roles and claims exist in the database.
+ *
+ * Checks that all applicationIds are valid within the org, all roleIds
+ * belong to their specified application, and all claimDefinitionIds
+ * belong to their specified application. Throws a ZodError-like 400
+ * on validation failure.
+ *
+ * @param orgId - Organization ID for scoping
+ * @param roles - Array of role pre-assignments to validate
+ * @param claims - Array of claim pre-assignments to validate
+ * @throws Error with 400 status if any reference is invalid
+ */
+async function validatePreAssignments(
+  orgId: string,
+  roles?: Array<{ applicationId: string; roleId: string }>,
+  claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>,
+): Promise<void> {
+  const pool = getPool();
+  const errors: string[] = [];
+
+  // Collect unique applicationIds from both roles and claims
+  const appIds = new Set<string>();
+  roles?.forEach(r => appIds.add(r.applicationId));
+  claims?.forEach(c => appIds.add(c.applicationId));
+
+  // Verify all applications exist within the org
+  if (appIds.size > 0) {
+    const appResult = await pool.query(
+      `SELECT id FROM applications WHERE id = ANY($1) AND organization_id = $2`,
+      [Array.from(appIds), orgId],
+    );
+    const foundIds = new Set(appResult.rows.map((r: { id: string }) => r.id));
+    for (const appId of appIds) {
+      if (!foundIds.has(appId)) {
+        errors.push(`Application ${appId} not found in this organization`);
+      }
+    }
+  }
+
+  // Verify all roles exist within their application
+  if (roles?.length) {
+    for (const role of roles) {
+      const result = await pool.query(
+        `SELECT id FROM roles WHERE id = $1 AND application_id = $2`,
+        [role.roleId, role.applicationId],
+      );
+      if (result.rows.length === 0) {
+        errors.push(`Role ${role.roleId} not found in application ${role.applicationId}`);
+      }
+    }
+  }
+
+  // Verify all claim definitions exist within their application
+  if (claims?.length) {
+    for (const claim of claims) {
+      const result = await pool.query(
+        `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+        [claim.claimDefinitionId, claim.applicationId],
+      );
+      if (result.rows.length === 0) {
+        errors.push(`Claim definition ${claim.claimDefinitionId} not found in application ${claim.applicationId}`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    const err = new Error(`Pre-assignment validation failed: ${errors.join('; ')}`);
+    (err as Error & { status: number }).status = 400;
+    throw err;
+  }
 }
