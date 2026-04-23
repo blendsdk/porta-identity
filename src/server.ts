@@ -52,6 +52,7 @@ import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
 import { createStatsRouter } from './routes/stats.js';
+import { createSessionRouter, createUserSessionRouter } from './routes/sessions.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
@@ -284,6 +285,18 @@ export function createApp(oidcProvider?: Provider): Koa {
   const statsRouter = createStatsRouter();
   app.use(statsRouter.routes());
   app.use(statsRouter.allowedMethods());
+
+  // Session management API — requires admin authentication
+  // Mounted at /api/admin/sessions (see routes/sessions.ts)
+  const sessionRouter = createSessionRouter();
+  app.use(sessionRouter.routes());
+  app.use(sessionRouter.allowedMethods());
+
+  // User session revocation — requires admin authentication
+  // Mounted at /api/admin/users/:userId/sessions (see routes/sessions.ts)
+  const userSessionRouter = createUserSessionRouter();
+  app.use(userSessionRouter.routes());
+  app.use(userSessionRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets
