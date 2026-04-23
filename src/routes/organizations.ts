@@ -30,6 +30,7 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as organizationService from '../organizations/service.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
 
@@ -267,6 +268,19 @@ export function createOrganizationRouter(): Router {
     } catch (err) {
       handleError(ctx, err);
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /:id/history — Organization change history
+  // -------------------------------------------------------------------------
+  router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('organization', ctx.params.id, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
   });
 
   // -------------------------------------------------------------------------

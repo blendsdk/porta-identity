@@ -28,6 +28,10 @@ vi.mock('../../../src/lib/etag.js', () => ({
   checkIfMatch: vi.fn().mockReturnValue(true),
 }));
 
+vi.mock('../../../src/lib/entity-history.js', () => ({
+  getEntityHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
+}));
+
 import * as organizationService from '../../../src/organizations/service.js';
 import { createOrganizationRouter } from '../../../src/routes/organizations.js';
 

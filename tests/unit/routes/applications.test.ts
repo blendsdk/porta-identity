@@ -29,6 +29,10 @@ vi.mock('../../../src/lib/etag.js', () => ({
   checkIfMatch: vi.fn().mockReturnValue(true),
 }));
 
+vi.mock('../../../src/lib/entity-history.js', () => ({
+  getEntityHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
+}));
+
 import * as applicationService from '../../../src/applications/service.js';
 import { createApplicationRouter } from '../../../src/routes/applications.js';
 

@@ -32,6 +32,7 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as applicationService from '../applications/service.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
 
 // ---------------------------------------------------------------------------
@@ -249,6 +250,19 @@ export function createApplicationRouter(): Router {
     } catch (err) {
       handleError(ctx, err);
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /:id/history — Application change history
+  // -------------------------------------------------------------------------
+  router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('application', ctx.params.id, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
   });
 
   // -------------------------------------------------------------------------

@@ -42,6 +42,10 @@ vi.mock('../../../src/lib/etag.js', () => ({
   checkIfMatch: vi.fn().mockReturnValue(true),
 }));
 
+vi.mock('../../../src/lib/entity-history.js', () => ({
+  getEntityHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
+}));
+
 import * as clientService from '../../../src/clients/service.js';
 import * as secretService from '../../../src/clients/secret-service.js';
 import * as organizationService from '../../../src/organizations/service.js';

@@ -40,6 +40,7 @@ import * as userService from '../users/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData, purgeUserData } from '../users/gdpr.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -413,6 +414,19 @@ export function createUserRouter(): Router {
       }
       throw err;
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /:userId/history — User change history
+  // -------------------------------------------------------------------------
+  router.get('/:userId/history', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('user', ctx.params.userId, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
   });
 
   return router;

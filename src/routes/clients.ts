@@ -42,6 +42,7 @@ import type { Client } from '../clients/types.js';
 import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -333,6 +334,19 @@ export function createClientRouter(): Router {
   router.get('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     const secrets = await secretService.listByClient(ctx.params.id);
     ctx.body = { data: secrets };
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /:id/history — Client change history
+  // -------------------------------------------------------------------------
+  router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('client', ctx.params.id, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
   });
 
   // -------------------------------------------------------------------------
