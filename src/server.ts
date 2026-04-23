@@ -51,6 +51,7 @@ import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
+import { createStatsRouter } from './routes/stats.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
@@ -277,6 +278,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const auditRouter = createAuditRouter();
   app.use(auditRouter.routes());
   app.use(auditRouter.allowedMethods());
+
+  // Dashboard statistics API — requires admin authentication
+  // Mounted at /api/admin/stats (see routes/stats.ts)
+  const statsRouter = createStatsRouter();
+  app.use(statsRouter.routes());
+  app.use(statsRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets
