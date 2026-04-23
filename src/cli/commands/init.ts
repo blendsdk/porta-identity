@@ -8,11 +8,12 @@
  *
  * Created entities:
  *   1. "Porta Admin" application (slug: porta-admin)
- *   2. Eight admin permissions (admin:*:manage)
- *   3. "porta-admin" role with all permissions assigned
+ *   2. Granular admin permissions (42 resource:action permissions)
+ *   3. Five admin roles with permission sets (super-admin, org-admin, etc.)
  *   4. "Porta Admin CLI" public client (Auth Code + PKCE)
  *   5. First admin user (interactive prompts or flags)
- *   6. Admin role assigned to the user
+ *   6. Super-admin role assigned to the user
+ *   7. Super-admin user ID stored in system_config
  *
  * Prerequisites:
  *   - Database migrations have been run (`porta migrate up`)
@@ -33,59 +34,13 @@ import { withBootstrap } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { success, warn } from '../output.js';
 import { confirm, promptInput, promptPassword } from '../prompt.js';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/**
- * Admin permissions covering all admin API domains.
- * Each follows the module:resource:action slug format required by the RBAC
- * permission validator. These are created in the "Porta Admin" application
- * and assigned to the "porta-admin" role.
- */
-const ADMIN_PERMISSIONS = [
-  {
-    slug: 'admin:organizations:manage',
-    name: 'Manage Organizations',
-    description: 'Create, update, suspend, archive organizations',
-  },
-  {
-    slug: 'admin:applications:manage',
-    name: 'Manage Applications',
-    description: 'Create, update, archive applications and modules',
-  },
-  {
-    slug: 'admin:clients:manage',
-    name: 'Manage Clients',
-    description: 'Create, update, revoke clients and secrets',
-  },
-  {
-    slug: 'admin:users:manage',
-    name: 'Manage Users',
-    description: 'Create, update, suspend, lock, deactivate users',
-  },
-  {
-    slug: 'admin:roles:manage',
-    name: 'Manage Roles',
-    description: 'Create, update, archive roles and assign permissions',
-  },
-  {
-    slug: 'admin:permissions:manage',
-    name: 'Manage Permissions',
-    description: 'Create, update, archive permissions',
-  },
-  {
-    slug: 'admin:claims:manage',
-    name: 'Manage Claims',
-    description: 'Create, update claim definitions and user values',
-  },
-  {
-    slug: 'admin:system:manage',
-    name: 'Manage System',
-    description: 'System config, audit log, signing keys, migrations',
-  },
-] as const;
+import {
+  ALL_ADMIN_PERMISSIONS,
+  ADMIN_ROLE_DEFINITIONS,
+  ALL_ADMIN_ROLES,
+} from '../../lib/admin-permissions.js';
+import type { AdminRoleDefinition } from '../../lib/admin-permissions.js';
+import { SUPER_ADMIN_USER_ID_KEY } from '../../lib/super-admin-protection.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,6 +57,34 @@ interface InitOptions extends GlobalOptions {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Build a human-readable permission name from a resource:action slug.
+ * Capitalizes the resource and action parts for display.
+ *
+ * @example
+ * buildPermissionName('org:create') → 'Organization Create'
+ * buildPermissionName('session:revoke') → 'Session Revoke'
+ *
+ * @param slug - Permission slug in resource:action format
+ * @returns Human-readable permission name
+ */
+function buildPermissionName(slug: string): string {
+  const [resource, action] = slug.split(':');
+  const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+  return `${capitalize(resource)} ${capitalize(action)}`;
+}
+
+/**
+ * Build a description for a permission from its slug.
+ *
+ * @param slug - Permission slug in resource:action format
+ * @returns Permission description
+ */
+function buildPermissionDescription(slug: string): string {
+  const [resource, action] = slug.split(':');
+  return `Permission to ${action} ${resource} resources`;
+}
 
 /**
  * Pad a string to a fixed width for aligned box output.
@@ -177,6 +160,7 @@ function printSuccessBox(
   clientId: string,
   adminEmail: string,
   roleSlug: string,
+  roleCount: number,
   permissionCount: number,
 ): void {
   const w = 43; // Content width inside the box
@@ -198,6 +182,9 @@ function printSuccessBox(
   console.log(`║  Admin User:    ${padRight(adminEmail, w)}║`);
   console.log(
     `║  Admin Role:    ${padRight(`${roleSlug} (${permissionCount} permissions)`, w)}║`,
+  );
+  console.log(
+    `║  Admin Roles:   ${padRight(`${roleCount} roles seeded`, w)}║`,
   );
   console.log(
     '╠══════════════════════════════════════════════════════════════╣',
@@ -279,6 +266,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { ensureSigningKeys } = await import(
           '../../lib/signing-keys.js'
         );
+        const { getPool } = await import('../../lib/database.js');
 
         console.log('Initializing Porta...\n');
 
@@ -337,49 +325,55 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         );
 
         // -----------------------------------------------------------------
-        // Step 5: Create admin permissions (8 covering all API domains)
+        // Step 5: Create granular admin permissions (resource:action format)
         // -----------------------------------------------------------------
-        const createdPermissions = [];
-        for (const permDef of ADMIN_PERMISSIONS) {
+        // Each permission maps to a specific admin API operation.
+        // Permission slugs come from the centralized admin-permissions module.
+        const permissionIdMap = new Map<string, string>(); // slug → permission ID
+        for (const permSlug of ALL_ADMIN_PERMISSIONS) {
           const permission = await createPermission({
             applicationId: adminApp.id,
-            slug: permDef.slug,
-            name: permDef.name,
-            description: permDef.description,
+            slug: permSlug,
+            name: buildPermissionName(permSlug),
+            description: buildPermissionDescription(permSlug),
           });
-          createdPermissions.push(permission);
+          permissionIdMap.set(permSlug, permission.id);
         }
         console.log(
-          `  ✅ ${createdPermissions.length} permissions created`,
+          `  ✅ ${permissionIdMap.size} granular permissions created`,
         );
 
         // -----------------------------------------------------------------
-        // Step 6: Create the admin role
+        // Step 6: Create all 5 admin roles and assign permissions
         // -----------------------------------------------------------------
-        const adminRole = await createRole({
-          applicationId: adminApp.id,
-          name: 'Porta Administrator',
-          slug: 'porta-admin',
-          description:
-            'Full administrative access to all Porta admin API endpoints',
-        });
-        console.log(
-          `  ✅ Role created: ${adminRole.name} (${adminRole.slug})`,
-        );
+        // Each role gets a specific set of permissions as defined in
+        // ADMIN_ROLE_DEFINITIONS. The super-admin role gets all permissions.
+        const createdRoles = new Map<string, string>(); // slug → role ID
+        for (const roleDef of ALL_ADMIN_ROLES) {
+          const role = await createRole({
+            applicationId: adminApp.id,
+            name: roleDef.name,
+            slug: roleDef.slug,
+            description: roleDef.description,
+          });
+          createdRoles.set(roleDef.slug, role.id);
+
+          // Resolve permission IDs for this role's permission set
+          const rolePermissionIds = roleDef.permissions
+            .map((permSlug) => permissionIdMap.get(permSlug))
+            .filter((id): id is string => id !== undefined);
+
+          if (rolePermissionIds.length > 0) {
+            await assignPermissionsToRole(role.id, rolePermissionIds);
+          }
+
+          console.log(
+            `  ✅ Role: ${role.name} (${role.slug}) — ${rolePermissionIds.length} permissions`,
+          );
+        }
 
         // -----------------------------------------------------------------
-        // Step 7: Assign all permissions to the admin role
-        // -----------------------------------------------------------------
-        await assignPermissionsToRole(
-          adminRole.id,
-          createdPermissions.map((p) => p.id),
-        );
-        console.log(
-          `  ✅ ${createdPermissions.length} permissions assigned to role`,
-        );
-
-        // -----------------------------------------------------------------
-        // Step 8: Create the admin CLI client (public, Auth Code + PKCE)
+        // Step 7: Create the admin CLI client (public, Auth Code + PKCE)
         // -----------------------------------------------------------------
         // The client is public (no secret) because CLI tools cannot safely
         // store secrets. PKCE provides security for the authorization code
@@ -406,12 +400,12 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         );
 
         // -----------------------------------------------------------------
-        // Step 9: Collect admin user details (interactive or from flags)
+        // Step 8: Collect admin user details (interactive or from flags)
         // -----------------------------------------------------------------
         const userDetails = await collectAdminUserDetails(argv);
 
         // -----------------------------------------------------------------
-        // Step 10: Create the admin user in the super-admin organization
+        // Step 9: Create the admin user in the super-admin organization
         // -----------------------------------------------------------------
         const adminUser = await createUser({
           organizationId: superAdminOrg.id,
@@ -423,7 +417,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         console.log(`  ✅ User created: ${adminUser.email}`);
 
         // -----------------------------------------------------------------
-        // Step 11: Activate user (if not already active)
+        // Step 10: Activate user (if not already active)
         // -----------------------------------------------------------------
         if (adminUser.status !== 'active') {
           await reactivateUser(adminUser.id);
@@ -431,16 +425,42 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         console.log('  ✅ User activated');
 
         // -----------------------------------------------------------------
-        // Step 12: Mark email as verified (admin doesn't need email flow)
+        // Step 11: Mark email as verified (admin doesn't need email flow)
         // -----------------------------------------------------------------
         await markEmailVerified(adminUser.id);
         console.log('  ✅ Email marked as verified');
 
         // -----------------------------------------------------------------
-        // Step 13: Assign admin role to the new user
+        // Step 12: Assign super-admin role to the new user
         // -----------------------------------------------------------------
-        await assignRolesToUser(adminUser.id, [adminRole.id]);
-        console.log(`  ✅ Role "${adminRole.slug}" assigned to user`);
+        const superAdminRoleId = createdRoles.get(
+          ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
+        );
+        if (!superAdminRoleId) {
+          throw new Error('Super-admin role was not created — init is broken');
+        }
+        await assignRolesToUser(adminUser.id, [superAdminRoleId]);
+        console.log(
+          `  ✅ Role "${ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug}" assigned to user`,
+        );
+
+        // -----------------------------------------------------------------
+        // Step 13: Store super-admin user ID in system_config
+        // -----------------------------------------------------------------
+        // This enables the super-admin protection module to identify
+        // the bootstrap user and prevent destructive operations on them.
+        const pool = getPool();
+        await pool.query(
+          `INSERT INTO system_config (key, value, value_type, description, is_sensitive)
+           VALUES ($1, to_jsonb($2::text), 'string', $3, FALSE)
+           ON CONFLICT (key) DO UPDATE SET value = to_jsonb($2::text), updated_at = NOW()`,
+          [
+            SUPER_ADMIN_USER_ID_KEY,
+            adminUser.id,
+            'User ID of the super-admin user created during porta init',
+          ],
+        );
+        console.log('  ✅ Super-admin user ID stored in system config');
 
         // -----------------------------------------------------------------
         // Step 14: Print the success summary
@@ -451,8 +471,9 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
           adminApp.slug,
           adminClient.clientId,
           userDetails.email,
-          adminRole.slug,
-          createdPermissions.length,
+          ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
+          createdRoles.size,
+          permissionIdMap.size,
         );
 
         success('Porta initialization complete!');

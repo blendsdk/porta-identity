@@ -78,6 +78,13 @@ vi.mock('../../../../src/lib/signing-keys.js', () => ({
   ensureSigningKeys: vi.fn(),
 }));
 
+// Mock database — needed for system_config INSERT in Step 13
+vi.mock('../../../../src/lib/database.js', () => ({
+  getPool: vi.fn().mockReturnValue({
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports — AFTER mock definitions
 // ---------------------------------------------------------------------------
@@ -103,6 +110,8 @@ import {
   assignRolesToUser,
 } from '../../../../src/rbac/index.js';
 import { ensureSigningKeys } from '../../../../src/lib/signing-keys.js';
+import { getPool } from '../../../../src/lib/database.js';
+import { ALL_ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../../../../src/lib/admin-permissions.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
 // ---------------------------------------------------------------------------
@@ -248,32 +257,30 @@ describe('CLI Init Command', () => {
         }),
       );
 
-      expect(createPermission).toHaveBeenCalledTimes(8);
+      // Should create all 42 granular permissions
+      expect(createPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
       expect(createPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
-          slug: 'admin:organizations:manage',
+          slug: 'org:create',
         }),
       );
       expect(createPermission).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: 'admin:system:manage' }),
+        expect.objectContaining({ slug: 'audit:read' }),
       );
 
+      // Should create all 5 admin roles
+      expect(createRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
       expect(createRole).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
-          slug: 'porta-admin',
-          name: 'Porta Administrator',
+          slug: 'porta-super-admin',
+          name: 'Super Admin',
         }),
       );
 
-      expect(assignPermissionsToRole).toHaveBeenCalledWith(
-        'role-admin-id',
-        expect.arrayContaining([
-          'perm-1', 'perm-2', 'perm-3', 'perm-4',
-          'perm-5', 'perm-6', 'perm-7', 'perm-8',
-        ]),
-      );
+      // Should assign permissions to each role
+      expect(assignPermissionsToRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
 
       expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
