@@ -33,6 +33,11 @@ import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRoles } from '../rbac/user-role-service.js';
 import { logger } from '../lib/logger.js';
+import {
+  isSuperAdminRole,
+  resolvePermissionsFromRoles,
+} from '../lib/admin-permissions.js';
+import type { AdminPermission } from '../lib/admin-permissions.js';
 
 // ---------------------------------------------------------------------------
 // OIDC provider reference — set at startup via setAdminAuthProvider()
@@ -69,8 +74,10 @@ export interface AdminUser {
   email: string;
   /** Super-admin organization UUID */
   organizationId: string;
-  /** Assigned role slugs (e.g., ['porta-admin']) */
+  /** Assigned role slugs (e.g., ['porta-super-admin', 'porta-org-admin']) */
   roles: string[];
+  /** Resolved admin permissions from all assigned roles */
+  permissions: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -94,8 +101,11 @@ declare module 'koa' {
 // Admin auth middleware factory
 // ---------------------------------------------------------------------------
 
-/** The slug of the admin role created by `porta init` */
-const ADMIN_ROLE_SLUG = 'porta-admin';
+/**
+ * Admin role slug prefix — all admin roles start with 'porta-'.
+ * Legacy 'porta-admin' role is treated as super-admin for backward compatibility.
+ */
+const ADMIN_ROLE_PREFIX = 'porta-';
 
 /**
  * Create middleware that requires admin authentication and authorization.
@@ -205,25 +215,35 @@ export function requireAdminAuth(): Middleware {
     }
 
     // -----------------------------------------------------------------
-    // Step 6: Verify user has the porta-admin role
+    // Step 6: Verify user has an admin role (any porta-* role)
     // -----------------------------------------------------------------
+    // Supports both legacy porta-admin and new granular roles:
+    // porta-super-admin, porta-org-admin, porta-user-admin, etc.
     const userRoles = await getUserRoles(userId);
-    const hasAdminRole = userRoles.some((role) => role.slug === ADMIN_ROLE_SLUG);
+    const adminRoleSlugs = userRoles
+      .map((role) => role.slug)
+      .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));
 
-    if (!hasAdminRole) {
+    if (adminRoleSlugs.length === 0) {
       ctx.status = 403;
       ctx.body = { error: 'Forbidden', message: 'Admin role required' };
       return;
     }
 
     // -----------------------------------------------------------------
-    // Step 7: Set admin user context and proceed to route handler
+    // Step 7: Resolve permissions from all admin roles
+    // -----------------------------------------------------------------
+    const permissions = resolvePermissionsFromRoles(adminRoleSlugs);
+
+    // -----------------------------------------------------------------
+    // Step 8: Set admin user context and proceed to route handler
     // -----------------------------------------------------------------
     ctx.state.adminUser = {
       id: userId,
       email: user.email,
       organizationId: user.organizationId,
-      roles: userRoles.map((r) => r.slug),
+      roles: adminRoleSlugs,
+      permissions,
     } satisfies AdminUser;
 
     await next();
