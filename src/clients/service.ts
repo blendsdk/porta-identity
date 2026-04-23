@@ -35,7 +35,10 @@ import {
   findClientByClientId,
   updateClient as repoUpdateClient,
   listClients as repoListClients,
+  listClientsCursor as repoListClientsCursor,
 } from './repository.js';
+import type { ListClientsCursorOptions } from './repository.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getLatestActiveSha256 } from './secret-repository.js';
 import {
   getCachedClientByClientId,
@@ -403,6 +406,19 @@ export async function listClientsByApplication(
   options: Omit<ListClientsOptions, 'applicationId'>,
 ): Promise<PaginatedResult<Client>> {
   return repoListClients({ ...options, applicationId });
+}
+
+/**
+ * List clients with cursor-based keyset pagination.
+ * Supports all existing filters (org, app, status, search).
+ *
+ * @param options - Cursor, limit, filter, and sort options
+ * @returns Cursor-paginated result with nextCursor/hasMore
+ */
+export async function listClientsCursor(
+  options: ListClientsCursorOptions,
+): Promise<CursorPaginatedResult<Client>> {
+  return repoListClientsCursor(options);
 }
 
 // ===========================================================================

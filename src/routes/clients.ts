@@ -116,6 +116,18 @@ const listClientsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
+/** Schema for cursor-based listing (keyset pagination) */
+const listClientsCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  organizationId: z.string().uuid().optional(),
+  applicationId: z.string().uuid().optional(),
+  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
 /** Schema for generating a new secret */
 const createSecretSchema = z.object({
   label: z.string().max(255).optional(),
@@ -233,9 +245,15 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listClientsCursorSchema.parse(ctx.query);
+        const result = await clientService.listClientsCursor(query);
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listClientsSchema.parse(ctx.query);
-      // Use the listClientsByOrganization or generic listing
-      // The service accepts full ListClientsOptions
       const result = await clientService.listClientsByOrganization(
         query.organizationId ?? '',
         query,

@@ -32,8 +32,11 @@ import {
   findOrganizationBySlug,
   updateOrganization as repoUpdate,
   listOrganizations as repoList,
+  listOrganizationsCursor as repoListCursor,
   slugExists,
 } from './repository.js';
+import type { ListOrganizationsCursorOptions } from './repository.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
   getCachedOrganizationById,
   getCachedOrganizationBySlug,
@@ -493,6 +496,20 @@ export async function listOrganizations(
   options: ListOrganizationsOptions,
 ): Promise<PaginatedResult<Organization>> {
   return repoList(options);
+}
+
+/**
+ * List organizations with cursor-based keyset pagination.
+ * Provides stable, efficient pagination without COUNT queries.
+ * Delegates directly to the repository cursor implementation.
+ *
+ * @param options - Cursor, limit, filter, and sort options
+ * @returns Cursor-paginated result with nextCursor/hasMore
+ */
+export async function listOrganizationsCursor(
+  options: ListOrganizationsCursorOptions,
+): Promise<CursorPaginatedResult<Organization>> {
+  return repoListCursor(options);
 }
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,6 @@ import {
   guardSuperAdmin,
   SuperAdminProtectionError,
 } from '../../../src/lib/super-admin-protection.js';
-import type { ProtectedOperation } from '../../../src/lib/super-admin-protection.js';
 
 const mockGetConfig = getSystemConfigString as ReturnType<typeof vi.fn>;
 

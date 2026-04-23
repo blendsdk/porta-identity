@@ -30,7 +30,12 @@ export {
   getApplicationBySlug,
   updateApplication,
   listApplications,
+  listApplicationsCursor,
 } from './service.js';
+
+// Cursor pagination types (re-exported for route consumers)
+export type { ListApplicationsCursorOptions } from './repository.js';
+export type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // Service functions — Status lifecycle
 export {

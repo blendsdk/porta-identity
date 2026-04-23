@@ -12,7 +12,6 @@ import {
   resolvePermissionsFromRoles,
   hasPermissions,
 } from '../../../src/lib/admin-permissions.js';
-import type { AdminPermission } from '../../../src/lib/admin-permissions.js';
 
 // ============================================================================
 // Permission Constants

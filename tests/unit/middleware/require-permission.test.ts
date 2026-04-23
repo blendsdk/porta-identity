@@ -147,8 +147,6 @@ describe('requirePermission middleware', () => {
     });
 
     it('should restrict auditor to read-only permissions', async () => {
-      const ctx = createMockContext(auditorUser);
-
       // Auditor can read
       const readCtx = createMockContext(auditorUser);
       await requirePermission('audit:read')(readCtx, mockNext);

@@ -108,6 +108,16 @@ const listUsersSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
+/** Schema for cursor-based listing (keyset pagination) */
+const listUsersCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  status: z.enum(['active', 'inactive', 'suspended', 'locked']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
 /** Schema for setting a password */
 const setPasswordSchema = z.object({
   password: z.string().min(8).max(128),
@@ -195,6 +205,17 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listUsersCursorSchema.parse(ctx.query);
+        const result = await userService.listUsersCursor({
+          organizationId: ctx.params.orgId,
+          ...query,
+        });
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listUsersSchema.parse(ctx.query);
       const result = await userService.listUsersByOrganization({
         organizationId: ctx.params.orgId,

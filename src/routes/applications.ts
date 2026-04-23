@@ -62,6 +62,16 @@ const listApplicationsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
+/** Schema for cursor-based listing (keyset pagination) */
+const listApplicationsCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  status: z.enum(['active', 'inactive', 'archived']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['name', 'created_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
 /** Schema for creating a module within an application */
 const createModuleSchema = z.object({
   name: z.string().min(1).max(255),
@@ -138,6 +148,14 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listApplicationsCursorSchema.parse(ctx.query);
+        const result = await applicationService.listApplicationsCursor(query);
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listApplicationsSchema.parse(ctx.query);
       const result = await applicationService.listApplications(query);
       ctx.body = result;

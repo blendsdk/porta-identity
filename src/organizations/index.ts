@@ -31,8 +31,13 @@ export {
   archiveOrganization,
   restoreOrganization,
   listOrganizations,
+  listOrganizationsCursor,
   validateSlugAvailability,
 } from './service.js';
+
+// Cursor pagination types (re-exported for route consumers)
+export type { ListOrganizationsCursorOptions } from './repository.js';
+export type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // Error types
 export {

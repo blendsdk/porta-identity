@@ -96,6 +96,16 @@ const listOrganizationsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
+/** Schema for cursor-based listing (keyset pagination) */
+const listOrganizationsCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  status: z.enum(['active', 'suspended', 'archived']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['name', 'created_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
 const validateSlugSchema = z.object({
   slug: z.string().min(1),
 });
@@ -163,6 +173,14 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listOrganizationsCursorSchema.parse(ctx.query);
+        const result = await organizationService.listOrganizationsCursor(query);
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listOrganizationsSchema.parse(ctx.query);
       const result = await organizationService.listOrganizations(query);
       ctx.body = result;

@@ -44,7 +44,12 @@ export {
   updateClient,
   listClientsByOrganization,
   listClientsByApplication,
+  listClientsCursor,
 } from './service.js';
+
+// Cursor pagination types (re-exported for route consumers)
+export type { ListClientsCursorOptions } from './repository.js';
+export type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // Service functions — Status lifecycle
 export {

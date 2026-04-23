@@ -110,7 +110,6 @@ import {
   assignRolesToUser,
 } from '../../../../src/rbac/index.js';
 import { ensureSigningKeys } from '../../../../src/lib/signing-keys.js';
-import { getPool } from '../../../../src/lib/database.js';
 import { ALL_ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../../../../src/lib/admin-permissions.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
