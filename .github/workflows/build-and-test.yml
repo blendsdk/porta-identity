@@ -5,13 +5,15 @@
 # Badge: https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml/badge.svg
 # ──────────────────────────────────────────────────────────
 
-name: CI
+name: Build and Test
 
 on:
   push:
-    branches: [main]
+    branches:
+      - '**' # Run on all branches (including main)
   pull_request:
-    branches: [main]
+    branches:
+      - '**' # Run on all PRs targeting any branch
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -137,9 +139,9 @@ jobs:
       REDIS_URL: redis://localhost:6379/1
       TEST_REDIS_URL: redis://localhost:6379/1
       SMTP_HOST: localhost
-      SMTP_PORT: "1025"
+      SMTP_PORT: '1025'
       TEST_SMTP_HOST: localhost
-      TEST_SMTP_PORT: "1025"
+      TEST_SMTP_PORT: '1025'
       TEST_MAILHOG_URL: http://localhost:8025
       SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
@@ -204,9 +206,9 @@ jobs:
       REDIS_URL: redis://localhost:6379/1
       TEST_REDIS_URL: redis://localhost:6379/1
       SMTP_HOST: localhost
-      SMTP_PORT: "1025"
+      SMTP_PORT: '1025'
       TEST_SMTP_HOST: localhost
-      TEST_SMTP_PORT: "1025"
+      TEST_SMTP_PORT: '1025'
       TEST_MAILHOG_URL: http://localhost:8025
       SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
@@ -271,9 +273,9 @@ jobs:
       REDIS_URL: redis://localhost:6379/1
       TEST_REDIS_URL: redis://localhost:6379/1
       SMTP_HOST: localhost
-      SMTP_PORT: "1025"
+      SMTP_PORT: '1025'
       TEST_SMTP_HOST: localhost
-      TEST_SMTP_PORT: "1025"
+      TEST_SMTP_PORT: '1025'
       TEST_MAILHOG_URL: http://localhost:8025
       SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
@@ -338,9 +340,9 @@ jobs:
       REDIS_URL: redis://localhost:6379/1
       TEST_REDIS_URL: redis://localhost:6379/1
       SMTP_HOST: localhost
-      SMTP_PORT: "1025"
+      SMTP_PORT: '1025'
       TEST_SMTP_HOST: localhost
-      TEST_SMTP_PORT: "1025"
+      TEST_SMTP_PORT: '1025'
       TEST_MAILHOG_URL: http://localhost:8025
       SIGNING_KEY_ENCRYPTION_KEY: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
 
