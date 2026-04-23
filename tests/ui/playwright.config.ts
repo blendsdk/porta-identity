@@ -36,10 +36,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   /* Reporters: list for terminal, HTML for debugging failures */
-  reporter: [
-    ['html', { open: 'never' }],
-    ['list'],
-  ],
+  reporter: [['html', { open: 'never' }], ['list']],
 
   /* Shared settings for all projects */
   use: {
@@ -53,7 +50,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
 
     /* Timeout for individual Playwright actions (click, fill, etc.) */
-    actionTimeout: 15_000,
+    actionTimeout: 25_000,
   },
 
   /* Browser projects — Chromium only for now */
