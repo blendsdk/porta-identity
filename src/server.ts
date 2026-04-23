@@ -54,6 +54,7 @@ import { createAuditRouter } from './routes/audit.js';
 import { createStatsRouter } from './routes/stats.js';
 import { createSessionRouter, createUserSessionRouter } from './routes/sessions.js';
 import { createBulkRouter } from './routes/bulk.js';
+import { createExportRouter } from './routes/exports.js';
 import { createBrandingRouter } from './routes/branding.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
@@ -311,6 +312,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const brandingRouter = createBrandingRouter();
   app.use(brandingRouter.routes());
   app.use(brandingRouter.allowedMethods());
+
+  // Data export API — requires admin authentication
+  // Mounted at /api/admin/export (see routes/exports.ts)
+  const exportRouter = createExportRouter();
+  app.use(exportRouter.routes());
+  app.use(exportRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets
