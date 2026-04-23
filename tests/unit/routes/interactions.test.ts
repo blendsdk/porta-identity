@@ -102,6 +102,10 @@ vi.mock('../../../src/auth/magic-link-session.js', () => ({
   consumeMagicLinkSession: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../../../src/oidc/postgres-adapter.js', () => ({
+  purgeExpired: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------

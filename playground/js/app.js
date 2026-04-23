@@ -20,6 +20,7 @@ import {
   loadExistingUser,
   getUser,
   loginWithProfile,
+  clearOidcStorage,
 } from '/js/auth.js';
 
 import { logEvent, checkServiceStatus, updateAuthStatus, showLoggedInView, showLoggedOutView, initThemeToggle } from '/js/ui.js';
@@ -64,10 +65,24 @@ async function init() {
   // Wire button handlers
   wireButtons();
 
+  // Restore the org that was active during login (or default to 'no2fa').
+  // This ensures the UserManager is initialized with the same authority/client_id
+  // that was used during login, so loadExistingUser() looks up the correct
+  // localStorage key. Without this, org mismatches cause phantom sessions.
+  const savedOrg = localStorage.getItem('playground_selected_org') || 'no2fa';
+  selectOrg(savedOrg);
 
-  // Check for existing session (after callback redirect)
-  const defaultOrg = 'no2fa';
-  selectOrg(defaultOrg);
+  // Detect post-logout redirect: if all oidc.user:* entries are gone
+  // (cleared by our defensive logout cleanup), ensure the UI is logged-out.
+  // Also clean up any stale oidc state entries left by signoutRedirect().
+  const hasOidcUser = Object.keys(localStorage).some((k) => k.startsWith('oidc.user:'));
+  if (!hasOidcUser) {
+    // No user entries — clear any leftover oidc state/nonce entries
+    const staleKeys = Object.keys(localStorage).filter((k) => k.startsWith('oidc.'));
+    for (const key of staleKeys) {
+      localStorage.removeItem(key);
+    }
+  }
 
   const user = await loadExistingUser();
   if (user) {
@@ -148,6 +163,13 @@ function populateOrgSelector(config) {
 
 function selectOrg(orgKey) {
   currentOrgKey = orgKey;
+
+  // Persist the selected org so page reloads (after login callback or
+  // post-logout redirect) re-initialize the UserManager with the same
+  // authority/client_id. This prevents localStorage key mismatches where
+  // signoutRedirect() clears the wrong key or loadExistingUser() looks
+  // under a different key than the one used during login.
+  localStorage.setItem('playground_selected_org', orgKey);
 
   // Update org selector dropdown
   const select = document.getElementById('config-org');

@@ -58,6 +58,7 @@ import {
 } from '../auth/magic-link-session.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
+import { purgeExpired } from '../oidc/postgres-adapter.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -339,6 +340,13 @@ export function createInteractionRouter(provider: Provider): Router {
  * @param provider - OIDC provider instance
  */
 async function showLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
+  // -----------------------------------------------------------------------
+  // Opportunistic cleanup: purge expired oidc_payloads records.
+  // Fire-and-forget — no await, no error propagation. Keeps the database
+  // clean without a cron job. Proven pattern from Porta v4.
+  // -----------------------------------------------------------------------
+  purgeExpired();
+
   // -----------------------------------------------------------------------
   // Magic link session detection
   // -----------------------------------------------------------------------

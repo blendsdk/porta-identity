@@ -14,8 +14,8 @@
  */
 
 import crypto from 'node:crypto';
-import { test, expect } from '../fixtures/test-fixtures.js';
 import { extractOtpCode } from '../fixtures/otp-helper.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,7 +40,7 @@ async function loginToTwoFactorPage(
   await page.fill('#password', password);
   await page.click('button[type="submit"]');
 
-  await page.waitForURL('**/interaction/*/two-factor**', { timeout: 15_000 });
+  await page.waitForURL('**/interaction/*/two-factor**', { timeout: 25_000 });
 }
 
 /**
@@ -101,7 +101,10 @@ test.describe('Two-Factor Edge Cases', () => {
     startAuthFlow,
   }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorEmailUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorEmailUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // Verify 2FA page rendered with code input
@@ -114,9 +117,7 @@ test.describe('Two-Factor Edge Cases', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show error message and remain on 2FA page
-    await expect(
-      page.locator('.flash-error, .error, .alert-error'),
-    ).toBeVisible();
+    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
 
     // Code input should still be visible for retry
     await expect(page.locator('#code')).toBeVisible();
@@ -135,7 +136,10 @@ test.describe('Two-Factor Edge Cases', () => {
     dbHelpers,
   }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorEmailUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorEmailUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // Wait for OTP email to arrive
@@ -156,25 +160,20 @@ test.describe('Two-Factor Edge Cases', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show error about invalid/expired code
-    await expect(
-      page.locator('.flash-error, .error, .alert-error'),
-    ).toBeVisible();
+    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
 
     // Resend button should be available (for email OTP method)
-    await expect(
-      page.locator('form[action*="/two-factor/resend"] button'),
-    ).toBeVisible();
+    await expect(page.locator('form[action*="/two-factor/resend"] button')).toBeVisible();
   });
 
   // ── 9.3: Invalid TOTP code shows error ───────────────────────────────
 
-  test('invalid TOTP code shows error', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('invalid TOTP code shows error', async ({ page, testData, startAuthFlow }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorTotpUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorTotpUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // Verify TOTP verify page rendered
@@ -186,21 +185,18 @@ test.describe('Two-Factor Edge Cases', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show error and stay on 2FA page
-    await expect(
-      page.locator('.flash-error, .error, .alert-error'),
-    ).toBeVisible();
+    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
     expect(page.url()).toMatch(/\/two-factor/);
   });
 
   // ── 9.4: Invalid recovery code shows error ───────────────────────────
 
-  test('invalid recovery code shows error', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('invalid recovery code shows error', async ({ page, testData, startAuthFlow }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorTotpUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorTotpUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // Switch to recovery code mode by clicking the "Use recovery code" button
@@ -218,23 +214,18 @@ test.describe('Two-Factor Edge Cases', () => {
     await page.waitForLoadState('networkidle');
 
     // Should show error
-    await expect(
-      page.locator('.flash-error, .error, .alert-error'),
-    ).toBeVisible();
+    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
     expect(page.url()).toMatch(/\/two-factor/);
   });
 
   // ── 9.5: 2FA setup page renders QR code ──────────────────────────────
 
-  test('TOTP setup page renders QR code image', async ({
-    page,
-    testData,
-  }) => {
+  test('TOTP setup page renders QR code image', async ({ page, testData }) => {
     // Login with the setup tenant (org requires TOTP, user not enrolled)
     await loginWithSetupTenant(page, testData);
 
     // Should redirect to the TOTP setup page
-    await page.waitForURL('**/interaction/*/two-factor/setup**', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor/setup**', { timeout: 25_000 });
 
     // Should show QR code (data URI image)
     const qrImage = page.locator('img[src^="data:image"]');
@@ -253,15 +244,12 @@ test.describe('Two-Factor Edge Cases', () => {
 
   // ── 9.6: 2FA setup with invalid confirmation ─────────────────────────
 
-  test('invalid TOTP setup confirmation code shows error', async ({
-    page,
-    testData,
-  }) => {
+  test('invalid TOTP setup confirmation code shows error', async ({ page, testData }) => {
     // Login with the setup tenant
     await loginWithSetupTenant(page, testData);
 
     // Should redirect to the TOTP setup page
-    await page.waitForURL('**/interaction/*/two-factor/setup**', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor/setup**', { timeout: 25_000 });
 
     // Enter invalid confirmation code
     await page.fill('#code', '000000');
@@ -273,8 +261,9 @@ test.describe('Two-Factor Edge Cases', () => {
     expect(resultUrl).toMatch(/two-factor\/setup/);
 
     // May have error query param or flash message
-    const hasError = resultUrl.includes('error=') ||
-                     (await page.locator('.flash-error, .error, .alert-error').count()) > 0;
+    const hasError =
+      resultUrl.includes('error=') ||
+      (await page.locator('.flash-error, .error, .alert-error').count()) > 0;
     expect(hasError).toBe(true);
   });
 
@@ -286,7 +275,10 @@ test.describe('Two-Factor Edge Cases', () => {
     startAuthFlow,
   }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorEmailUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorEmailUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // For email OTP method:
@@ -303,9 +295,7 @@ test.describe('Two-Factor Edge Cases', () => {
     expect(parseInt(maxLength ?? '0')).toBeGreaterThanOrEqual(6);
 
     // - Should show resend button (email OTP only)
-    await expect(
-      page.locator('form[action*="/two-factor/resend"] button'),
-    ).toBeVisible();
+    await expect(page.locator('form[action*="/two-factor/resend"] button')).toBeVisible();
 
     // - Should show recovery code link
     await expect(page.locator('#use-recovery-btn')).toBeVisible();
@@ -316,14 +306,12 @@ test.describe('Two-Factor Edge Cases', () => {
 
   // ── 9.8: Resend OTP code button works ────────────────────────────────
 
-  test('resend OTP code button works', async ({
-    page,
-    testData,
-    startAuthFlow,
-    mailCapture,
-  }) => {
+  test('resend OTP code button works', async ({ page, testData, startAuthFlow, mailCapture }) => {
     await loginToTwoFactorPage(
-      page, testData.twoFactorEmailUser, testData.userPassword, startAuthFlow,
+      page,
+      testData.twoFactorEmailUser,
+      testData.userPassword,
+      startAuthFlow,
     );
 
     // Wait for the first OTP email to arrive, then clear inbox

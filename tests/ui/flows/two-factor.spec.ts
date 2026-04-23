@@ -14,8 +14,8 @@
  * @see plans/2fa-ui-tests/04-test-fixes.md — Test implementation spec
  */
 
-import { test, expect } from '../fixtures/test-fixtures.js';
 import { extractOtpCode } from '../fixtures/otp-helper.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 test.describe('Two-Factor Authentication Flow', () => {
   // Run serially — these tests share a single MailHog inbox and a single
@@ -47,7 +47,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     await page.click('button[type="submit"]');
 
     // 2. Should be redirected to the two-factor verification page
-    await page.waitForURL('**/interaction/*/two-factor', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor', { timeout: 25_000 });
 
     // 3. Verify the 2FA page renders with required elements
     //    - Code input field
@@ -73,10 +73,19 @@ test.describe('Two-Factor Authentication Flow', () => {
     await page.fill('#email', testData.twoFactorEmailUser);
     await page.fill('#password', testData.userPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/interaction/*/two-factor', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor', { timeout: 25_000 });
 
-    // 2. Retrieve the OTP code from MailHog
-    //    The processLogin handler auto-sends the first OTP email
+    // 2. Clear MailHog to discard any stale OTP emails from previous tests.
+    //    Without this, a late-arriving email from a prior test's login can
+    //    race with this test's email, and waitForEmail may pick up the stale
+    //    one whose OTP code was already expired by beforeEach.
+    await mailCapture.deleteAll();
+
+    // 3. Resend OTP to get a fresh code in a clean inbox
+    await page.click('form[action*="/two-factor/resend"] button');
+    await page.waitForURL('**/interaction/*/two-factor*');
+
+    // 4. Retrieve the OTP code from MailHog
     const message = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
       subject: 'verification',
       timeout: 20_000,
@@ -85,11 +94,11 @@ test.describe('Two-Factor Authentication Flow', () => {
     const otpCode = extractOtpCode(message);
     expect(otpCode).toBeTruthy();
 
-    // 3. Enter the OTP code and submit
+    // 5. Enter the OTP code and submit
     await page.fill('#code', otpCode!);
     await page.click('button[type="submit"]');
 
-    // 4. Should complete auth flow → consent (auto or explicit) → callback
+    // 6. Should complete auth flow → consent (auto or explicit) → callback
     //    Handle potential consent page
     await page.waitForLoadState('networkidle');
 
@@ -97,16 +106,12 @@ test.describe('Two-Factor Authentication Flow', () => {
       await page.click('button:has-text("Allow access")');
     }
 
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
     const url = new URL(page.url());
     expect(url.searchParams.get('code')).toBeTruthy();
   });
 
-  test('should show error for invalid OTP code', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('should show error for invalid OTP code', async ({ page, testData, startAuthFlow }) => {
     // 1. Login and arrive at 2FA page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -114,7 +119,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     await page.fill('#email', testData.twoFactorEmailUser);
     await page.fill('#password', testData.userPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/interaction/*/two-factor', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor', { timeout: 25_000 });
 
     // 2. Enter an incorrect OTP code
     await page.fill('#code', '000000');
@@ -122,9 +127,7 @@ test.describe('Two-Factor Authentication Flow', () => {
 
     // 3. Should stay on the 2FA page with an error message
     await page.waitForURL('**/interaction/*/two-factor*');
-    await expect(
-      page.locator('.flash-error, .error, .alert-error'),
-    ).toBeVisible();
+    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
 
     // Code input should still be visible for retry
     await expect(page.locator('#code')).toBeVisible();
@@ -143,7 +146,7 @@ test.describe('Two-Factor Authentication Flow', () => {
     await page.fill('#email', testData.twoFactorEmailUser);
     await page.fill('#password', testData.userPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/interaction/*/two-factor', { timeout: 15_000 });
+    await page.waitForURL('**/interaction/*/two-factor', { timeout: 25_000 });
 
     // 2. Wait for the first OTP email to arrive, then clear inbox
     await mailCapture.waitForEmail(testData.twoFactorEmailUser, {

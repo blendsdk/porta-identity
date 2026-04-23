@@ -1,10 +1,24 @@
 {{!-- Logout confirmation page --}}
+{{!-- Shows a "Sign Out" button (submits the provider's form) and a
+      "Return to Application" link (if a post_logout_redirect_uri is available).
+      The logoutForm variable contains the provider's pre-built form with
+      action URL, xsrf token, and a styled submit button. --}}
 <div class="text-center">
   <h1>{{t "logout.title"}}</h1>
-  <p class="text-muted mb-4">{{t "logout.message"}}</p>
 
-  <form method="POST" action="/interaction/{{interaction.uid}}/logout">
-    <input type="hidden" name="_csrf" value="{{csrfToken}}">
-    <button type="submit" class="btn-primary">{{t "logout.confirm"}}</button>
-  </form>
+  {{#if clientName}}
+  <p class="text-muted mb-4">{{t "logout.message_client"}}</p>
+  {{else}}
+  <p class="text-muted mb-4">{{t "logout.message"}}</p>
+  {{/if}}
+
+  {{!-- Sign Out button — submits the provider's end_session confirmation form --}}
+  {{{logoutForm}}}
+
+  {{!-- Return to Application link — only shown when a redirect URI is available --}}
+  {{#if returnUrl}}
+  <div class="mt-3">
+    <a href="{{returnUrl}}" class="text-muted">{{t "logout.cancel"}}</a>
+  </div>
+  {{/if}}
 </div>

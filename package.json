@@ -30,7 +30,7 @@
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "docker:logs": "docker compose -f docker/docker-compose.yml logs -f",
-    "verify": "yarn lint && yarn build && yarn test",
+    "verify": "yarn lint && yarn build && yarn test:all",
     "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
     "migrate:rollback": "node-pg-migrate down --migrations-dir migrations --migration-file-language sql --count 1",
     "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language sql",

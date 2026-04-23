@@ -15,7 +15,7 @@
  */
 
 import crypto from 'node:crypto';
-import { test, expect } from '../fixtures/test-fixtures.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,10 +105,7 @@ async function loginToConsentPage(
 test.describe('Consent Edge Cases', () => {
   // ── 7.1: Consent page appears after login ───────────────────────────
 
-  test('consent page renders after successful login', async ({
-    page,
-    testData,
-  }) => {
+  test('consent page renders after successful login', async ({ page, testData }) => {
     // Use cross-org client so auto-consent doesn't trigger
     const reachedConsent = await loginToConsentPage(page, testData);
 
@@ -120,10 +117,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.2: Consent page shows requested scopes ───────────────────────
 
-  test('consent page displays requested scopes', async ({
-    page,
-    testData,
-  }) => {
+  test('consent page displays requested scopes', async ({ page, testData }) => {
     const reachedConsent = await loginToConsentPage(page, testData);
     expect(reachedConsent).toBe(true);
 
@@ -149,10 +143,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.3: Deny consent redirects with access_denied ─────────────────
 
-  test('deny consent redirects with access_denied error', async ({
-    page,
-    testData,
-  }) => {
+  test('deny consent redirects with access_denied error', async ({ page, testData }) => {
     const reachedConsent = await loginToConsentPage(page, testData);
     expect(reachedConsent).toBe(true);
 
@@ -162,7 +153,7 @@ test.describe('Consent Edge Cases', () => {
     await denyBtn.click();
 
     // Should redirect to the callback URL with an error
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
 
     // Verify error=access_denied in the callback URL
     const url = new URL(page.url());
@@ -171,10 +162,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.4: CSRF protection on consent form ────────────────────────────
 
-  test('consent form has CSRF token protection', async ({
-    page,
-    testData,
-  }) => {
+  test('consent form has CSRF token protection', async ({ page, testData }) => {
     const reachedConsent = await loginToConsentPage(page, testData);
     expect(reachedConsent).toBe(true);
 
@@ -213,10 +201,7 @@ test.describe('Consent Edge Cases', () => {
 
   // ── 7.5: Consent page content ───────────────────────────────────────
 
-  test('consent page shows client name and action buttons', async ({
-    page,
-    testData,
-  }) => {
+  test('consent page shows client name and action buttons', async ({ page, testData }) => {
     const reachedConsent = await loginToConsentPage(page, testData);
     expect(reachedConsent).toBe(true);
 

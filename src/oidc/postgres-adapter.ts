@@ -18,6 +18,7 @@
  */
 
 import { getPool } from '../lib/database.js';
+import { logger } from '../lib/logger.js';
 
 /** OIDC adapter payload — the data node-oidc-provider stores and retrieves */
 export interface AdapterPayload {
@@ -228,4 +229,55 @@ export class PostgresAdapter {
 
     return payload;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Standalone helpers for session lifecycle management
+// ---------------------------------------------------------------------------
+
+/**
+ * Delete all oidc_payloads records matching any of the given grant_ids.
+ *
+ * Used for cascade cleanup when a session is destroyed during explicit logout.
+ * Deletes across ALL types (AccessToken, RefreshToken, Grant, etc.) in a single
+ * query — the grant_id column links tokens back to their originating grant.
+ *
+ * This is the critical step that ensures "logout = total cleanup": when a user
+ * clicks "Sign Out", all grants and tokens issued during that session are removed
+ * from PostgreSQL so they can no longer be used.
+ *
+ * @param grantIds - Array of grant IDs whose artifacts should be deleted
+ */
+export async function revokeGrantsByIds(grantIds: string[]): Promise<void> {
+  if (grantIds.length === 0) return;
+
+  const pool = getPool();
+  await pool.query(
+    'DELETE FROM oidc_payloads WHERE grant_id = ANY($1)',
+    [grantIds],
+  );
+}
+
+/**
+ * Delete all expired oidc_payloads records (fire-and-forget).
+ *
+ * Called opportunistically on auth flow start to keep the oidc_payloads table
+ * clean without requiring a cron job or external scheduler. This pattern is
+ * proven from Porta v4 — self-regulating cleanup tied to actual usage.
+ *
+ * The function is intentionally fire-and-forget: it does NOT return a promise
+ * that callers should await. Errors are silently caught and logged — a failed
+ * cleanup is harmless (expired rows are already inert) and will be retried on
+ * the next auth flow start.
+ *
+ * Uses the expires_at index for efficient deletion.
+ */
+export function purgeExpired(): void {
+  const pool = getPool();
+  pool
+    .query('DELETE FROM oidc_payloads WHERE expires_at IS NOT NULL AND expires_at < NOW()')
+    .catch((err) => {
+      // Fire-and-forget — log but don't interrupt the auth flow
+      logger.warn({ err }, 'Failed to purge expired oidc_payloads (will retry on next auth flow)');
+    });
 }

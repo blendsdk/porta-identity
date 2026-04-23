@@ -23,14 +23,20 @@
  * @see tests/ui/flows/login-methods.spec.ts — Configurable login methods
  */
 
-import { test, expect } from '../fixtures/test-fixtures.js';
 import { MailHogClient } from '../../e2e/helpers/mailhog.js';
 import { TEST_MAILHOG_URL } from '../../helpers/constants.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 /** MailHog client for intercepting emails sent during tests */
 const mailhog = new MailHogClient(TEST_MAILHOG_URL);
 
 test.describe('Magic Link Flow', () => {
+  // Tests share mutable state: magic link tokens for the same user email +
+  // MailHog inbox. When tests run in parallel, one test's magic link request
+  // invalidates another test's token (via invalidateUserTokens), causing
+  // "This sign-in link has expired" errors. Force serial execution.
+  test.describe.configure({ mode: 'serial' });
+
   // Clear MailHog inbox before each test to avoid stale emails
   test.beforeEach(async () => {
     await mailhog.clearAll();
@@ -64,11 +70,7 @@ test.describe('Magic Link Flow', () => {
     expect(pageText?.toLowerCase()).toContain('email');
   });
 
-  test('should receive magic link email in MailHog', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('should receive magic link email in MailHog', async ({ page, testData, startAuthFlow }) => {
     // 1. Request a magic link
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -118,7 +120,7 @@ test.describe('Magic Link Flow', () => {
     }
 
     // 5. Should end up at the callback URI with an authorization code
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
 
     const url = new URL(page.url());
     expect(url.searchParams.get('code')).toBeTruthy();

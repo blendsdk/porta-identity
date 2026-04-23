@@ -104,6 +104,7 @@ templates/default/
 │   ├── two-factor-setup.hbs  # 2FA setup (QR code for TOTP)
 │   ├── two-factor-verify.hbs # 2FA code entry page
 │   ├── logout.hbs            # Logout confirmation
+│   ├── logout-success.hbs    # Post-logout success page
 │   └── error.hbs             # Error page
 ├── partials/
 │   ├── header.hbs            # Organization logo/name header

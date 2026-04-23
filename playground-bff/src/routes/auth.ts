@@ -12,7 +12,7 @@
 
 import type Router from '@koa/router';
 import type { BffConfig } from '../config.js';
-import { getOidcConfig, buildAuthUrl, exchangeCode, buildEndSessionUrl } from '../oidc.js';
+import { getOidcConfig, buildAuthUrl, exchangeCode, buildEndSessionUrl, revokeToken } from '../oidc.js';
 
 /**
  * Register authentication routes on the router.
@@ -134,18 +134,48 @@ export function createAuthRoutes(router: Router, config: BffConfig): void {
   /**
    * POST /auth/logout
    *
-   * Destroys the session (removes tokens from Redis) and redirects
-   * to Porta's end_session endpoint for RP-Initiated Logout.
-   * If no id_token is available, just redirects to the dashboard.
+   * Performs a proper OIDC logout with three steps:
+   *   1. Revoke access + refresh tokens at Porta's revocation endpoint (best-effort)
+   *   2. Destroy the BFF session (removes tokens from Redis)
+   *   3. Redirect to Porta's end_session endpoint with id_token_hint
+   *
+   * Token revocation is best-effort — even if it fails, the server-side
+   * session cascade (HybridAdapter.destroy) will clean up grants and tokens
+   * when the OIDC session is destroyed. The BFF revokes proactively to be
+   * a good OIDC citizen and minimize the window where tokens are usable.
    */
   router.post('/auth/logout', async (ctx) => {
     const orgKey = ctx.session?.orgKey ?? 'no2fa';
     const idToken = ctx.session?.tokens?.id_token as string | undefined;
+    const accessToken = ctx.session?.tokens?.access_token as string | undefined;
+    const refreshToken = ctx.session?.tokens?.refresh_token as string | undefined;
     const org = config.organizations[orgKey];
 
-    // Destroy session first — tokens are gone from Redis
+    // Step 1: Revoke tokens at Porta's revocation endpoint (best-effort).
+    // Refresh token first (more dangerous if leaked), then access token.
+    // Both calls are best-effort — failures don't block logout.
+    if (org) {
+      try {
+        const oidcConfig = await getOidcConfig(config.portaUrl, org);
+        if (refreshToken) {
+          await revokeToken(oidcConfig, refreshToken).catch(() => {
+            // Best-effort — server-side cascade handles cleanup
+          });
+        }
+        if (accessToken) {
+          await revokeToken(oidcConfig, accessToken).catch(() => {
+            // Best-effort — server-side cascade handles cleanup
+          });
+        }
+      } catch {
+        // Discovery/config failure — proceed with logout anyway
+      }
+    }
+
+    // Step 2: Destroy BFF session — tokens are gone from server-side Redis
     ctx.session = null;
 
+    // Step 3: Redirect to Porta's end_session endpoint with id_token_hint
     if (idToken && org) {
       try {
         const oidcConfig = await getOidcConfig(config.portaUrl, org);

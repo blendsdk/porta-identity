@@ -144,4 +144,67 @@ describe('PostgresAdapter', () => {
       expect(mockQuery.mock.calls[0][1]).toEqual(['grant-123', 'AccessToken']);
     });
   });
+
+  describe('revokeGrantsByIds', () => {
+    it('deletes all payloads matching the provided grant IDs', async () => {
+      const mockQuery = mockPool();
+      const { revokeGrantsByIds } = await import('../../../src/oidc/postgres-adapter.js');
+
+      await revokeGrantsByIds(['grant-1', 'grant-2', 'grant-3']);
+
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      expect(mockQuery.mock.calls[0][0]).toContain('DELETE FROM oidc_payloads');
+      expect(mockQuery.mock.calls[0][0]).toContain('grant_id = ANY($1)');
+      expect(mockQuery.mock.calls[0][1]).toEqual([['grant-1', 'grant-2', 'grant-3']]);
+    });
+
+    it('does not execute a query when the array is empty', async () => {
+      const mockQuery = mockPool();
+      const { revokeGrantsByIds } = await import('../../../src/oidc/postgres-adapter.js');
+
+      await revokeGrantsByIds([]);
+
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+
+    it('propagates database errors to the caller', async () => {
+      const mockQuery = vi.fn().mockRejectedValue(new Error('DB connection lost'));
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
+      const { revokeGrantsByIds } = await import('../../../src/oidc/postgres-adapter.js');
+
+      // revokeGrantsByIds does not swallow errors — the caller (HybridAdapter.destroy)
+      // handles them in its try/catch so the user can always log out
+      await expect(revokeGrantsByIds(['grant-1'])).rejects.toThrow('DB connection lost');
+    });
+  });
+
+  describe('purgeExpired', () => {
+    it('deletes expired oidc_payloads records', async () => {
+      const mockQuery = mockPool();
+      const { purgeExpired } = await import('../../../src/oidc/postgres-adapter.js');
+
+      // purgeExpired is fire-and-forget, but we can still wait for the internal promise
+      purgeExpired();
+
+      // Allow the microtask to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      expect(mockQuery.mock.calls[0][0]).toContain('DELETE FROM oidc_payloads');
+      expect(mockQuery.mock.calls[0][0]).toContain('expires_at');
+      expect(mockQuery.mock.calls[0][0]).toContain('NOW()');
+    });
+
+    it('does not throw on database errors (fire-and-forget)', async () => {
+      const mockQuery = vi.fn().mockRejectedValue(new Error('DB error'));
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
+      const { purgeExpired } = await import('../../../src/oidc/postgres-adapter.js');
+
+      // Should not throw — errors are caught and logged
+      expect(() => purgeExpired()).not.toThrow();
+
+      // Allow the microtask to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  });
 });

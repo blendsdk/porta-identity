@@ -28,6 +28,10 @@ export function initAuth(settings) {
     stateStore: new WebStorageStateStore({ store: window.localStorage }),
     // Disable automatic silent renew to keep playground simple
     automaticSilentRenew: false,
+    // Revoke access/refresh tokens server-side during signout.
+    // Porta uses opaque tokens stored in Redis/PostgreSQL — without this,
+    // tokens remain valid on the server even after the OIDC session is destroyed.
+    revokeTokensOnSignout: true,
   };
 
   userManager = new UserManager(config);
@@ -141,6 +145,14 @@ export async function refreshToken() {
 
 /**
  * Logout the current user (redirect to Porta end_session).
+ *
+ * Saves the id_token BEFORE clearing storage so it can be passed as
+ * id_token_hint to Porta's end_session endpoint. Without the hint,
+ * the logout falls back to a generic session without client context.
+ *
+ * After saving the token, defensively clears ALL oidc-client-ts entries
+ * from localStorage to prevent stale data when the authority/client_id
+ * has changed (e.g., user switched org selector after login).
  */
 export async function logout() {
   if (!userManager) {
@@ -149,10 +161,49 @@ export async function logout() {
   }
   try {
     logEvent('info', 'Logging out...');
-    await userManager.signoutRedirect();
+
+    // Step 1: Save id_token BEFORE clearing storage.
+    // The id_token_hint tells Porta which session to destroy and enables
+    // the post_logout_redirect_uri without requiring user confirmation.
+    const user = await userManager.getUser();
+    const idTokenHint = user?.id_token;
+
+    // Step 2: Clear stale OIDC state and all localStorage entries.
+    // Must happen AFTER extracting the id_token but BEFORE signoutRedirect,
+    // so the redirect doesn't pick up stale state from a different authority.
+    await userManager.clearStaleState();
+    clearOidcStorage();
+
+    // Step 3: Redirect to Porta's end_session with the saved id_token_hint.
+    await userManager.signoutRedirect({
+      id_token_hint: idTokenHint,
+    });
   } catch (err) {
     logEvent('error', `Logout failed: ${err.message}`);
   }
+}
+
+/**
+ * Remove all oidc-client-ts user and state entries from localStorage.
+ * Called during logout to ensure no stale tokens survive across
+ * authority/client_id mismatches.
+ */
+export function clearOidcStorage() {
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('oidc.')) {
+      keysToRemove.push(key);
+    }
+  }
+  for (const key of keysToRemove) {
+    localStorage.removeItem(key);
+  }
+  // Also clear the playground's own auth settings
+  localStorage.removeItem('playground_authority');
+  localStorage.removeItem('playground_client_id');
+  localStorage.removeItem('playground_selected_org');
+  currentUser = null;
 }
 
 /**

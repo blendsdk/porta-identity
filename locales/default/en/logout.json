@@ -1,7 +1,9 @@
 {
   "title": "Sign out",
   "message": "Are you sure you want to sign out?",
+  "message_client": "You are about to sign out of this application.",
   "confirm": "Sign out",
+  "cancel": "Return to application",
   "success_title": "Signed out",
   "success_message": "You have been signed out successfully."
 }

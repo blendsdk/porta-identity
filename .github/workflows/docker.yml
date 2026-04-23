@@ -16,12 +16,12 @@
 #   2. Add GitHub secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
 # ──────────────────────────────────────────────────────────
 
-name: Docker
+name: Docker Release
 
 on:
   # Run after CI completes successfully on main
   workflow_run:
-    workflows: ["CI"]
+    workflows: ['CI']
     types: [completed]
     branches: [main]
   # Run directly on version tags (CI already passed on main before tagging)

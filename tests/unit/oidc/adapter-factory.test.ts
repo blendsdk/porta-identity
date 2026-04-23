@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn().mockReturnValue({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
@@ -184,6 +184,99 @@ describe('adapter-factory', () => {
 
       await adapter.upsert('id', { client_id: 'test' }, 0);
       expect(spy).toHaveBeenCalledWith('id', { client_id: 'test' }, 0);
+    });
+  });
+
+  // =========================================================================
+  // Session destroy cascade
+  // =========================================================================
+
+  describe('Session destroy() cascade', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('reads session authorizations before destroying', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('Session');
+      const findSpy = vi.spyOn(adapter.delegate, 'find').mockResolvedValue({
+        authorizations: {
+          'client-1': { grantId: 'grant-abc', sid: 'sid-1' },
+        },
+      });
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('session-123');
+
+      expect(findSpy).toHaveBeenCalledWith('session-123');
+      expect(destroySpy).toHaveBeenCalledWith('session-123');
+    });
+
+    it('destroys session even when cascade fails', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('Session');
+      // find throws — cascade fails
+      vi.spyOn(adapter.delegate, 'find').mockRejectedValue(new Error('Redis down'));
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('session-123');
+
+      // Session must still be destroyed — user must always be able to log out
+      expect(destroySpy).toHaveBeenCalledWith('session-123');
+    });
+
+    it('skips cascade when session has no authorizations', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('Session');
+      vi.spyOn(adapter.delegate, 'find').mockResolvedValue({ accountId: 'user-1' });
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('session-123');
+
+      // Only the session destroy should be called, no cascade
+      expect(destroySpy).toHaveBeenCalledWith('session-123');
+    });
+
+    it('skips cascade when session is not found', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('Session');
+      vi.spyOn(adapter.delegate, 'find').mockResolvedValue(undefined);
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('session-123');
+
+      expect(destroySpy).toHaveBeenCalledWith('session-123');
+    });
+
+    it('does not cascade for non-Session models', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('AccessToken');
+      const findSpy = vi.spyOn(adapter.delegate, 'find');
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('token-123');
+
+      // For non-Session models, find() should NOT be called (no cascade)
+      expect(findSpy).not.toHaveBeenCalled();
+      expect(destroySpy).toHaveBeenCalledWith('token-123');
+    });
+
+    it('extracts grant IDs from multiple authorizations', async () => {
+      const Factory = createAdapterFactory();
+      const adapter = new Factory('Session');
+      vi.spyOn(adapter.delegate, 'find').mockResolvedValue({
+        authorizations: {
+          'client-1': { grantId: 'grant-1', sid: 'sid-1' },
+          'client-2': { grantId: 'grant-2', sid: 'sid-2' },
+          'client-3': { sid: 'sid-3' }, // no grantId — should be skipped
+        },
+      });
+      const destroySpy = vi.spyOn(adapter.delegate, 'destroy').mockResolvedValue(undefined);
+
+      await adapter.destroy('session-multi');
+
+      // Session should still be destroyed
+      expect(destroySpy).toHaveBeenCalledWith('session-multi');
     });
   });
 });

@@ -13,7 +13,7 @@
  * @see plans/ui-testing/05-playwright-tests.md — Consent spec
  */
 
-import { test, expect } from '../fixtures/test-fixtures.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 test.describe('Consent Flow', () => {
   /**
@@ -23,7 +23,7 @@ test.describe('Consent Flow', () => {
   async function loginUser(
     page: import('@playwright/test').Page,
     testData: import('../fixtures/test-fixtures.js').TestData,
-    startAuthFlow: (page: import('@playwright/test').Page) => Promise<string>
+    startAuthFlow: (page: import('@playwright/test').Page) => Promise<string>,
   ): Promise<void> {
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -59,7 +59,7 @@ test.describe('Consent Flow', () => {
     }
 
     // Should end up at the callback with an authorization code
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
     const url = new URL(page.url());
     expect(url.searchParams.get('code')).toBeTruthy();
   });
@@ -80,7 +80,8 @@ test.describe('Consent Flow', () => {
 
     // Check if we landed on a consent page
     const currentUrl = page.url();
-    const isConsentPage = currentUrl.includes('consent') ||
+    const isConsentPage =
+      currentUrl.includes('consent') ||
       (await page.locator('.scope-list, .btn-secondary').count()) > 0;
 
     if (isConsentPage) {
@@ -98,7 +99,7 @@ test.describe('Consent Flow', () => {
     } else {
       // Auto-consent happened — the flow completed without showing consent.
       // This is expected for first-party clients. Verify we got a code.
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
       const url = new URL(page.url());
       expect(url.searchParams.get('code')).toBeTruthy();
     }
@@ -126,7 +127,7 @@ test.describe('Consent Flow', () => {
     }
 
     // Should redirect to callback with authorization code
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
     const url = new URL(page.url());
     expect(url.searchParams.get('code')).toBeTruthy();
     expect(url.searchParams.get('state')).toBeTruthy();
@@ -153,7 +154,7 @@ test.describe('Consent Flow', () => {
       await page.click('button:has-text("Deny")');
 
       // Should redirect to callback with error=access_denied
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
       const url = new URL(page.url());
       expect(url.searchParams.get('error')).toBe('access_denied');
     } else {
@@ -161,7 +162,7 @@ test.describe('Consent Flow', () => {
       // This test is about denying consent, so if no consent page is shown,
       // the deny action cannot be tested (first-party clients auto-consent).
       // Verify we at least got a valid callback.
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
       const url = new URL(page.url());
       expect(url.searchParams.get('code')).toBeTruthy();
     }

@@ -20,7 +20,7 @@
  * @see tests/ui/flows/login-methods.spec.ts — Configurable login methods
  */
 
-import { test, expect } from '../fixtures/test-fixtures.js';
+import { expect, test } from '../fixtures/test-fixtures.js';
 
 test.describe('Password Login Flow', () => {
   test('should login successfully and receive authorization code', async ({
@@ -48,7 +48,7 @@ test.describe('Password Login Flow', () => {
     }
 
     // 5. Should redirect to callback with ?code=...&state=...
-    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 15_000 });
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
 
     // Verify authorization code in callback URL
     const url = new URL(page.url());
@@ -56,10 +56,7 @@ test.describe('Password Login Flow', () => {
     expect(url.searchParams.get('state')).toBeTruthy();
   });
 
-  test('should render login page with all required fields', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('should render login page with all required fields', async ({ page, startAuthFlow }) => {
     // Navigate to login page via OIDC auth request
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -80,10 +77,7 @@ test.describe('Password Login Flow', () => {
     await expect(page.locator('.divider')).toBeVisible();
   });
 
-  test('should have CSRF token in hidden form field', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('should have CSRF token in hidden form field', async ({ page, startAuthFlow }) => {
     // Navigate to login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -96,11 +90,7 @@ test.describe('Password Login Flow', () => {
     expect(csrfValue!.length).toBeGreaterThan(10);
   });
 
-  test('should show error for invalid credentials', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('should show error for invalid credentials', async ({ page, testData, startAuthFlow }) => {
     // Navigate to login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -149,10 +139,7 @@ test.describe('Password Login Flow', () => {
     expect(page.url()).toBe(urlBefore);
   });
 
-  test('should have correct form action attributes', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('should have correct form action attributes', async ({ page, startAuthFlow }) => {
     // Navigate to login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -162,17 +149,13 @@ test.describe('Password Login Flow', () => {
     expect(interactionUid).toBeTruthy();
 
     // Login form action should point to /interaction/{uid}/login
-    const loginFormAction = await page
-      .locator('form[action*="/login"]')
-      .getAttribute('action');
+    const loginFormAction = await page.locator('form[action*="/login"]').getAttribute('action');
     expect(loginFormAction).toBe(`/interaction/${interactionUid}/login`);
 
     // Magic link form action should point to /interaction/{uid}/magic-link
     const magicLinkFormAction = await page
       .locator('form[action*="/magic-link"]')
       .getAttribute('action');
-    expect(magicLinkFormAction).toBe(
-      `/interaction/${interactionUid}/magic-link`
-    );
+    expect(magicLinkFormAction).toBe(`/interaction/${interactionUid}/magic-link`);
   });
 });

@@ -233,4 +233,39 @@ describe('RedisAdapter', () => {
       expect(redis.del).toHaveBeenCalledWith('oidc:Session:grant:empty-grant');
     });
   });
+
+  describe('cleanupRedisGrants', () => {
+    it('deletes grant set keys for all provided grant IDs', async () => {
+      const { redis } = createMockRedis();
+      const { cleanupRedisGrants } = await import('../../../src/oidc/redis-adapter.js');
+
+      await cleanupRedisGrants(['grant-a', 'grant-b']);
+
+      // Should call redis.del with collected grant set keys (one per model × grantId)
+      // smembers returns [] by default, so only grant set keys are collected
+      expect(redis.del).toHaveBeenCalled();
+      // Verify smembers was called for each model × grantId combination
+      expect(redis.smembers).toHaveBeenCalled();
+    });
+
+    it('does nothing when the array is empty', async () => {
+      const { redis } = createMockRedis();
+      const { cleanupRedisGrants } = await import('../../../src/oidc/redis-adapter.js');
+
+      await cleanupRedisGrants([]);
+
+      // No del should be called for empty input
+      expect(redis.del).not.toHaveBeenCalled();
+      expect(redis.smembers).not.toHaveBeenCalled();
+    });
+
+    it('does not throw on Redis errors (best-effort)', async () => {
+      const { redis } = createMockRedis();
+      redis.smembers.mockRejectedValue(new Error('Redis down'));
+      const { cleanupRedisGrants } = await import('../../../src/oidc/redis-adapter.js');
+
+      // Should not throw — errors are caught and logged
+      await expect(cleanupRedisGrants(['grant-1'])).resolves.toBeUndefined();
+    });
+  });
 });

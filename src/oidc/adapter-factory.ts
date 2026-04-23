@@ -16,9 +16,10 @@
  * instantiates it with `new AdapterClass(modelName)`.
  */
 
-import { PostgresAdapter } from './postgres-adapter.js';
-import { RedisAdapter } from './redis-adapter.js';
+import { PostgresAdapter, revokeGrantsByIds } from './postgres-adapter.js';
+import { RedisAdapter, cleanupRedisGrants } from './redis-adapter.js';
 import { findForOidc } from '../clients/service.js';
+import { logger } from '../lib/logger.js';
 import type { AdapterPayload } from './postgres-adapter.js';
 
 /**
@@ -119,8 +120,64 @@ export function createAdapterFactory() {
       return this.delegate.consume(id);
     }
 
-    /** Delete an artifact by ID */
+    /**
+     * Delete an artifact by ID.
+     *
+     * For Session models, this performs a cascade delete: before destroying the
+     * session itself, it reads the session's authorizations to extract grant IDs,
+     * then deletes all associated grants and tokens from PostgreSQL and cleans up
+     * Redis grant sets. This ensures "explicit logout = total cleanup."
+     *
+     * For all other models, delegates directly to the underlying adapter.
+     *
+     * Error handling: cascade failures are logged but do NOT prevent the session
+     * from being destroyed — the user must always be able to log out.
+     */
     async destroy(id: string): Promise<void> {
+      if (this.name === 'Session') {
+        try {
+          // Step 1: Read session to extract grant IDs before destroying it.
+          // The session payload has an `authorizations` map:
+          //   { [clientId]: { grantId, sid } }
+          const session = await this.delegate.find(id);
+          if (session?.authorizations) {
+            const grantIds: string[] = [];
+            const authorizations = session.authorizations as Record<
+              string,
+              { grantId?: string }
+            >;
+            for (const auth of Object.values(authorizations)) {
+              if (auth.grantId) grantIds.push(auth.grantId);
+            }
+
+            if (grantIds.length > 0) {
+              // Step 2a: Cascade delete all grant-related records from PostgreSQL.
+              // This is the critical cleanup — removes AccessTokens, RefreshTokens,
+              // Grants, and any other artifacts sharing these grant IDs.
+              await revokeGrantsByIds(grantIds);
+
+              // Step 2b: Best-effort cleanup of Redis grant sets and member keys.
+              // Not critical — Redis keys have TTLs — but removes stale keys immediately.
+              await cleanupRedisGrants(grantIds);
+
+              logger.info(
+                { sessionId: id, grantIds },
+                'Session destroy: cascade-deleted grants and tokens',
+              );
+            }
+          }
+        } catch (err) {
+          // Cascade failed — log but proceed with session destruction.
+          // The user must always be able to log out; orphaned tokens will
+          // expire naturally via their TTLs.
+          logger.error(
+            { err, sessionId: id },
+            'Session destroy: cascade cleanup failed (proceeding with session deletion)',
+          );
+        }
+      }
+
+      // Step 3: Delete the session/artifact itself via the delegate
       return this.delegate.destroy(id);
     }
 

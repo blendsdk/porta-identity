@@ -19,6 +19,13 @@
 import type { OidcTtlConfig } from '../lib/system-config.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { config } from '../config/index.js';
+import { HTML_CSP } from '../middleware/security-headers.js';
+import { renderPage } from '../auth/template-engine.js';
+import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
+import { logger } from '../lib/logger.js';
+import { getUserById } from '../users/service.js';
+import { getOrganizationById } from '../organizations/service.js';
+import type { Organization } from '../organizations/types.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -37,6 +44,260 @@ export interface BuildProviderConfigParams {
   /** CORS handler — determines if an origin is allowed for a client */
   clientBasedCORS?: (ctx: unknown, origin: string, client: unknown) => boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Rendering hook helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build default branding when org resolution is not possible.
+ * Used by rendering hooks when the session is destroyed or org lookup fails.
+ *
+ * @returns Default branding with Porta's standard blue primary color
+ */
+export function buildDefaultBranding() {
+  return {
+    logoUrl: null as string | null,
+    faviconUrl: null as string | null,
+    primaryColor: '#3B82F6',
+    companyName: '',
+    customCss: null as string | null,
+  };
+}
+
+/**
+ * Build branding context from a resolved organization.
+ * Maps Organization entity fields to the TemplateContext branding shape.
+ *
+ * @param org - The resolved organization
+ * @returns Branding object for TemplateContext
+ */
+function buildBrandingFromOrg(org: Organization) {
+  return {
+    logoUrl: org.brandingLogoUrl,
+    faviconUrl: org.brandingFaviconUrl,
+    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
+    companyName: org.brandingCompanyName ?? org.name,
+    customCss: org.brandingCustomCss,
+  };
+}
+
+/**
+ * Best-effort organization resolution for oidc-provider rendering hooks.
+ *
+ * Tries multiple strategies in order:
+ *   1. Session accountId → user lookup → org lookup
+ *   2. Client metadata → organizationId → org lookup
+ *   3. Returns undefined (caller uses default branding)
+ *
+ * All errors are caught and logged — never throws.
+ *
+ * @param ctx - oidc-provider's enhanced Koa context (KoaContextWithOIDC)
+ * @returns The resolved Organization, or undefined if resolution fails
+ */
+export async function resolveOrgForProviderHook(ctx: unknown): Promise<Organization | undefined> {
+  try {
+    // Access oidc-provider's internal context extensions.
+    // Using `any` because KoaContextWithOIDC is an internal provider type
+    // that we don't want to import directly.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oidcCtx = ctx as any;
+
+    // Strategy 1: Session accountId → user lookup → org lookup
+    const accountId = oidcCtx?.oidc?.session?.accountId as string | undefined;
+    if (accountId) {
+      const user = await getUserById(accountId);
+      if (user) {
+        const org = await getOrganizationById(user.organizationId);
+        if (org) return org;
+      }
+    }
+
+    // Strategy 2: Client metadata → organizationId → org lookup
+    const orgId = oidcCtx?.oidc?.client?.organizationId as string | undefined;
+    if (orgId) {
+      const org = await getOrganizationById(orgId);
+      if (org) return org;
+    }
+
+    return undefined;
+  } catch (err) {
+    logger.warn({ err }, 'Failed to resolve org for provider rendering hook');
+    return undefined;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rendering hook functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Custom logoutSource hook for node-oidc-provider.
+ *
+ * Replaces the provider's default bare HTML logout confirmation page with
+ * Porta's styled Handlebars template. Injects a styled submit button into
+ * the provider's pre-built form (which contains the correct action URL and
+ * xsrf hidden field).
+ *
+ * Falls back to minimal inline HTML if the template engine fails, ensuring
+ * the user can still sign out even if templating breaks.
+ *
+ * @param ctx - oidc-provider's enhanced Koa context
+ * @param form - Pre-built HTML form from the provider (contains action + xsrf)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function logoutSourceHook(ctx: any, form: string): Promise<void> {
+  try {
+    // Resolve org for branding (best-effort, defaults on failure)
+    const org = await resolveOrgForProviderHook(ctx);
+    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+
+    // Resolve locale and translation function
+    const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
+    const t = getTranslationFunction(locale, org?.slug);
+
+    // Inject the "logout=yes" hidden field and a styled submit button into
+    // the provider's form. The provider's form contains the action URL and
+    // xsrf token but lacks both the logout flag and a submit button.
+    //
+    // The "logout" field is CRITICAL: without it, oidc-provider takes the
+    // single-client RP-initiated path (Path 2 in end_session.js) which does
+    // NOT call session.destroy() — the session survives and the user stays
+    // logged in. With logout=yes, it takes Path 1: full session destruction.
+    const styledForm = form.replace(
+      '</form>',
+      `<input type="hidden" name="logout" value="yes"/><button type="submit" class="btn-primary">${t('logout.confirm')}</button></form>`,
+    );
+
+    // Extract client name and post_logout_redirect_uri from the OIDC context.
+    // These are available on the oidc-provider's ctx.oidc during the end_session flow.
+    // Used by the template to show which app triggered logout and offer a "cancel" link.
+    const clientName = ctx.oidc?.client?.metadata()?.client_name as string | undefined;
+    const returnUrl = ctx.oidc?.params?.post_logout_redirect_uri as string | undefined;
+
+    // Render through the template engine (Handlebars + layout)
+    const html = await renderPage('logout', {
+      branding,
+      locale,
+      t,
+      csrfToken: '', // Provider handles CSRF via xsrf field in the form
+      orgSlug: org?.slug ?? '',
+      logoutForm: styledForm,
+      clientName: clientName ?? null,
+      returnUrl: returnUrl ?? null,
+    });
+
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = html;
+  } catch (err) {
+    // Fallback: render minimal HTML if template engine fails.
+    // Ensures the user can still sign out even if templating breaks.
+    logger.error({ err }, 'Failed to render custom logout page');
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = `<!DOCTYPE html><html><body>${form}<script>document.querySelector('form').insertAdjacentHTML('beforeend','<input type="hidden" name="logout" value="yes"/><button type="submit">Sign out</button>')</script></body></html>`;
+  }
+}
+
+/**
+ * Custom postLogoutSuccessSource hook for node-oidc-provider.
+ *
+ * Replaces the provider's default bare HTML post-logout page with
+ * Porta's styled Handlebars template. At this point the session is
+ * already destroyed, so org resolution is not possible — default
+ * branding is always used.
+ *
+ * Falls back to minimal inline HTML if the template engine fails.
+ *
+ * @param ctx - oidc-provider's enhanced Koa context
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function postLogoutSuccessSourceHook(ctx: any): Promise<void> {
+  try {
+    // Session is destroyed at this point — can't resolve org.
+    // Always use default branding for the post-logout page.
+    const branding = buildDefaultBranding();
+    const locale = await resolveLocale(undefined, undefined, '');
+    const t = getTranslationFunction(locale);
+
+    const html = await renderPage('logout-success', {
+      branding,
+      locale,
+      t,
+      csrfToken: '',
+      orgSlug: '',
+    });
+
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = html;
+  } catch (err) {
+    logger.error({ err }, 'Failed to render custom post-logout page');
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = '<!DOCTYPE html><html><body><h1>Signed out</h1><p>You have been signed out successfully.</p></body></html>';
+  }
+}
+
+/**
+ * Custom renderError hook for node-oidc-provider.
+ *
+ * Replaces the provider's default bare HTML error page with Porta's styled
+ * Handlebars template. The OIDC error code (e.g., 'invalid_client') is shown
+ * to the user, but the raw error_description is intentionally suppressed to
+ * prevent information leakage — a generic i18n error message is shown instead.
+ *
+ * SECURITY: error_description may contain internal details like "client not
+ * found", "grant not found", etc. Only the standardized OIDC error code is
+ * safe to display.
+ *
+ * @param ctx - oidc-provider's enhanced Koa context
+ * @param out - OIDC error details (error code + optional description)
+ * @param _error - Original Error object (unused — we use generic message)
+ */
+export async function renderErrorHook(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  out: { error: string; error_description?: string },
+  _error: Error,
+): Promise<void> {
+  try {
+    // Resolve org from client context for branding (best-effort)
+    const org = await resolveOrgForProviderHook(ctx);
+    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+
+    // Resolve locale and translation function
+    const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
+    const t = getTranslationFunction(locale, org?.slug);
+
+    // SECURITY: Never expose raw error_description to the user — it may
+    // contain internal details. Use generic i18n message instead.
+    // OIDC error codes (e.g., 'invalid_client') are safe standard strings.
+    const html = await renderPage('error', {
+      branding,
+      locale,
+      t,
+      csrfToken: '',
+      orgSlug: org?.slug ?? '',
+      errorMessage: t('errors.generic'),
+      errorCode: out.error,
+    });
+
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = html;
+  } catch (err) {
+    logger.error({ err }, 'Failed to render custom error page');
+    ctx.type = 'text/html';
+    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.body = '<!DOCTYPE html><html><body><h1>Error</h1><p>An error occurred.</p></body></html>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Provider configuration builder
+// ---------------------------------------------------------------------------
 
 /**
  * Build the complete node-oidc-provider configuration object.
@@ -87,7 +348,11 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       // Enable client credentials grant (RFC 6749 §4.4)
       clientCredentials: { enabled: true },
       // Enable RP-initiated logout (OpenID Connect RP-Initiated Logout 1.0)
-      rpInitiatedLogout: { enabled: true },
+      rpInitiatedLogout: {
+        enabled: true,
+        logoutSource: logoutSourceHook,
+        postLogoutSuccessSource: postLogoutSuccessSourceHook,
+      },
     },
 
     // Token formats — opaque access tokens, JWT ID tokens (default)
@@ -187,6 +452,10 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // CORS handler — checks client's allowed_origins
     clientBasedCORS,
+
+    // Rendering hooks — render styled pages instead of provider defaults.
+    // See logoutSourceHook, postLogoutSuccessSourceHook, renderErrorHook above.
+    renderError: renderErrorHook,
 
     // Extra client metadata properties — tell the provider to preserve
     // these custom fields from the adapter's findClient response.

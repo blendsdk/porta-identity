@@ -276,3 +276,71 @@ export class RedisAdapter {
     await redis.del(grantSetKey);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Standalone helpers for session lifecycle management
+// ---------------------------------------------------------------------------
+
+/**
+ * Models stored in Redis — used by cleanupRedisGrants to iterate grant sets.
+ * Must match the REDIS_MODELS set in adapter-factory.ts. Defined here as an
+ * array (not imported) to avoid circular dependencies between adapter files.
+ */
+const REDIS_MODEL_NAMES = [
+  'Session',
+  'Interaction',
+  'AuthorizationCode',
+  'ReplayDetection',
+  'ClientCredentials',
+  'PushedAuthorizationRequest',
+];
+
+/**
+ * Clean up Redis grant sets and their member keys for the given grant_ids.
+ *
+ * When a session is destroyed during explicit logout, the PostgreSQL cascade
+ * (revokeGrantsByIds) handles the critical data cleanup. This function provides
+ * best-effort cleanup of the corresponding Redis keys — grant set keys and
+ * the individual artifact keys they reference.
+ *
+ * This is NOT critical for correctness: Redis keys have TTLs and will expire
+ * on their own. However, cleaning them up immediately prevents stale keys from
+ * being used during the window between logout and TTL expiry.
+ *
+ * Errors are logged but never propagated — the logout flow must not fail
+ * because of a Redis cleanup issue.
+ *
+ * @param grantIds - Array of grant IDs whose Redis keys should be cleaned up
+ */
+export async function cleanupRedisGrants(grantIds: string[]): Promise<void> {
+  if (grantIds.length === 0) return;
+
+  try {
+    const redis = getRedis();
+    const keysToDelete: string[] = [];
+
+    // For each model type × grant ID, look up the grant set and collect
+    // both the set key and all member keys for deletion.
+    for (const model of REDIS_MODEL_NAMES) {
+      for (const grantId of grantIds) {
+        const grantKey = `oidc:${model}:grant:${grantId}`;
+        // Get all artifact IDs in this grant set
+        const members = await redis.smembers(grantKey);
+        // Queue the grant set key itself for deletion
+        keysToDelete.push(grantKey);
+        // Queue each member's primary key for deletion
+        for (const memberId of members) {
+          keysToDelete.push(`oidc:${model}:${memberId}`);
+        }
+      }
+    }
+
+    // Batch delete all collected keys in one DEL command
+    if (keysToDelete.length > 0) {
+      await redis.del(...keysToDelete);
+    }
+  } catch (err) {
+    // Best-effort — Redis keys have TTLs and will expire naturally
+    logger.warn({ err, grantIds }, 'Failed to clean up Redis grant keys (keys will expire via TTL)');
+  }
+}
