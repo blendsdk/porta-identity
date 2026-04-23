@@ -1,13 +1,14 @@
 # ──────────────────────────────────────────────────────────
 # Porta Docker — Build & Push to Docker Hub
 #
-# Automated triggers:
-#   - CI passes on main → "latest" tag (via workflow_run)
+# Triggers:
 #   - Git tag v* → semver tags (e.g. v1.2.3 → 1.2.3, 1.2, 1, latest)
 #   - Manual workflow_dispatch → "latest" + optional custom tag
 #
-# The workflow_run trigger ensures Docker images are only built
-# after the CI workflow (lint, build, all tests) completes successfully.
+# NOTE: Auto-publish on main branch CI pass is intentionally disabled.
+# While dev happens directly on main, Docker images should only be
+# published via manual dispatch or version tags. Re-enable the
+# workflow_run trigger when a release branch strategy is adopted.
 #
 # Also syncs docker/DOCKERHUB.md to the Docker Hub repo description.
 #
@@ -19,11 +20,6 @@
 name: Docker Release
 
 on:
-  # Run after CI completes successfully on main
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
   # Run directly on version tags (CI already passed on main before tagging)
   push:
     tags: ['v*']
@@ -43,19 +39,9 @@ jobs:
   build-and-push:
     name: Build & Push
     runs-on: ubuntu-latest
-    # Only proceed if:
-    # - workflow_run: CI completed successfully (skip if CI failed/cancelled)
-    # - push tag: always (tags are created after CI passes on main)
-    # - workflow_dispatch: always (manual trigger, operator responsibility)
-    if: >-
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # For workflow_run, checkout the exact commit that CI tested
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       # Generate Docker image tags based on trigger type
       - name: Docker meta
@@ -64,7 +50,7 @@ jobs:
         with:
           images: blendsdk/porta
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -98,9 +84,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       # Sync docker/DOCKERHUB.md to Docker Hub repo description
-      # Only runs on main branch builds (not on tag pushes or manual dispatch)
+      # Only runs on tag pushes (not manual dispatch)
       - name: Update Docker Hub description
-        if: github.event_name == 'workflow_run' || github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
