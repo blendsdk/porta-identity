@@ -29,6 +29,7 @@ import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as organizationService from '../organizations/service.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
 
@@ -195,7 +196,9 @@ export function createOrganizationRouter(): Router {
       : await organizationService.getOrganizationBySlug(param);
     if (!org) {
       ctx.throw(404, 'Organization not found');
+      return; // unreachable — keeps TS narrowing happy
     }
+    setETagHeader(ctx, 'organization', org.id, org.updatedAt);
     ctx.body = { data: org };
   });
 
@@ -205,7 +208,11 @@ export function createOrganizationRouter(): Router {
   router.put('/:id', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
       const body = updateOrganizationSchema.parse(ctx.request.body);
+      // Check If-Match for optimistic concurrency (optional — backward compatible)
+      const current = await organizationService.getOrganizationById(ctx.params.id);
+      if (current && !checkIfMatch(ctx, 'organization', current.id, current.updatedAt, current)) return;
       const org = await organizationService.updateOrganization(ctx.params.id, body);
+      setETagHeader(ctx, 'organization', org.id, org.updatedAt);
       ctx.body = { data: org };
     } catch (err) {
       handleError(ctx, err);

@@ -22,6 +22,12 @@ vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
+// Mock ETag helpers (route tests don't exercise HTTP headers)
+vi.mock('../../../src/lib/etag.js', () => ({
+  setETagHeader: vi.fn(),
+  checkIfMatch: vi.fn().mockReturnValue(true),
+}));
+
 import * as organizationService from '../../../src/organizations/service.js';
 import { createOrganizationRouter } from '../../../src/routes/organizations.js';
 

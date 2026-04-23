@@ -41,6 +41,7 @@ import * as organizationService from '../organizations/service.js';
 import type { Client } from '../clients/types.js';
 import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -253,6 +254,7 @@ export function createClientRouter(): Router {
       ctx.throw(404, 'Client not found');
       return; // unreachable — keeps TS narrowing happy across the call boundary
     }
+    setETagHeader(ctx, 'client', client.id, client.updatedAt);
     ctx.body = { data: await withEffectiveLoginMethods(client) };
   });
 
@@ -262,7 +264,10 @@ export function createClientRouter(): Router {
   router.put('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       const body = updateClientSchema.parse(ctx.request.body);
+      const current = await clientService.getClientById(ctx.params.id);
+      if (current && !checkIfMatch(ctx, 'client', current.id, current.updatedAt, current)) return;
       const client = await clientService.updateClient(ctx.params.id, body);
+      setETagHeader(ctx, 'client', client.id, client.updatedAt);
       ctx.body = { data: await withEffectiveLoginMethods(client) };
     } catch (err) {
       handleError(ctx, err);

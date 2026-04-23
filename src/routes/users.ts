@@ -39,6 +39,7 @@ import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-p
 import * as userService from '../users/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData, purgeUserData } from '../users/gdpr.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -211,7 +212,9 @@ export function createUserRouter(): Router {
     const user = await userService.getUserById(ctx.params.userId);
     if (!user) {
       ctx.throw(404, 'User not found');
+      return; // unreachable — keeps TS narrowing happy
     }
+    setETagHeader(ctx, 'user', user.id, user.updatedAt);
     ctx.body = { data: user };
   });
 
@@ -221,10 +224,14 @@ export function createUserRouter(): Router {
   router.put('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
     try {
       const body = updateUserSchema.parse(ctx.request.body);
+      // Check If-Match for optimistic concurrency (optional — backward compatible)
+      const current = await userService.getUserById(ctx.params.userId);
+      if (current && !checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
       // Convert null address to undefined — Zod allows null for clearing,
       // but UpdateUserInput uses undefined to mean "no change"
       const input = { ...body, address: body.address ?? undefined };
       const user = await userService.updateUser(ctx.params.userId, input);
+      setETagHeader(ctx, 'user', user.id, user.updatedAt);
       ctx.body = { data: user };
     } catch (err) {
       handleError(ctx, err);

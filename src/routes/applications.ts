@@ -31,6 +31,7 @@ import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as applicationService from '../applications/service.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
 
 // ---------------------------------------------------------------------------
@@ -156,7 +157,9 @@ export function createApplicationRouter(): Router {
       : await applicationService.getApplicationBySlug(param);
     if (!app) {
       ctx.throw(404, 'Application not found');
+      return; // unreachable — keeps TS narrowing happy
     }
+    setETagHeader(ctx, 'application', app.id, app.updatedAt);
     ctx.body = { data: app };
   });
 
@@ -166,7 +169,11 @@ export function createApplicationRouter(): Router {
   router.put('/:id', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = updateApplicationSchema.parse(ctx.request.body);
+      // Check If-Match for optimistic concurrency (optional — backward compatible)
+      const current = await applicationService.getApplicationById(ctx.params.id);
+      if (current && !checkIfMatch(ctx, 'application', current.id, current.updatedAt, current)) return;
       const app = await applicationService.updateApplication(ctx.params.id, body);
+      setETagHeader(ctx, 'application', app.id, app.updatedAt);
       ctx.body = { data: app };
     } catch (err) {
       handleError(ctx, err);
