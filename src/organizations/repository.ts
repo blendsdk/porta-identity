@@ -24,6 +24,8 @@ import type {
 } from './types.js';
 import { mapRowToOrganization } from './types.js';
 import type { LoginMethod } from '../clients/types.js';
+import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -320,6 +322,90 @@ export async function listOrganizations(
     pageSize,
     totalPages: Math.ceil(total / pageSize),
   };
+}
+
+// ---------------------------------------------------------------------------
+// List (cursor-based)
+// ---------------------------------------------------------------------------
+
+/** Options for cursor-based organization listing */
+export interface ListOrganizationsCursorOptions {
+  cursor?: string;
+  limit?: number;
+  status?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * List organizations with cursor-based keyset pagination.
+ *
+ * Uses `(sort_column, id) > (cursor_sort, cursor_id)` for efficient
+ * paging without COUNT queries. Queries limit+1 rows to detect hasMore.
+ *
+ * Backward compatible: when no cursor is provided, returns the first page.
+ *
+ * @param options - Cursor pagination, filter, and sort options
+ * @returns Cursor-paginated result with organizations
+ */
+export async function listOrganizationsCursor(
+  options: ListOrganizationsCursorOptions,
+): Promise<CursorPaginatedResult<Organization>> {
+  const pool = getPool();
+  const limit = Math.min(Math.max(1, options.limit ?? 25), 100);
+  const sortColumn = ALLOWED_SORT_COLUMNS[options.sortBy ?? 'created_at'] ?? 'created_at';
+  const direction = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
+  const comparator = direction === 'ASC' ? '>' : '<';
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  // Cursor-based WHERE clause
+  if (options.cursor) {
+    const decoded = decodeCursor(options.cursor);
+    if (decoded) {
+      if (decoded.s === null) {
+        // NULL sort values: skip rows with NULL, then compare by ID
+        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        params.push(decoded.i);
+        paramIndex++;
+      } else {
+        conditions.push(`(${sortColumn}, id) ${comparator} ($${paramIndex}, $${paramIndex + 1})`);
+        params.push(decoded.s, decoded.i);
+        paramIndex += 2;
+      }
+    }
+  }
+
+  if (options.status) {
+    conditions.push(`status = $${paramIndex}`);
+    params.push(options.status);
+    paramIndex++;
+  }
+
+  if (options.search) {
+    conditions.push(`(name ILIKE $${paramIndex} OR slug ILIKE $${paramIndex})`);
+    params.push(`%${options.search}%`);
+    paramIndex++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Fetch limit + 1 to detect hasMore
+  const sql = `SELECT * FROM organizations ${whereClause} ORDER BY ${sortColumn} ${direction}, id ${direction} LIMIT $${paramIndex}`;
+  params.push(limit + 1);
+
+  const result = await pool.query<OrganizationRow>(sql, params);
+  const rows = result.rows.map(mapRowToOrganization);
+
+  return buildCursorResult(
+    rows,
+    limit,
+    (org) => sortColumn === 'name' ? org.name : org.createdAt.toISOString(),
+    (org) => org.id,
+  );
 }
 
 // ---------------------------------------------------------------------------

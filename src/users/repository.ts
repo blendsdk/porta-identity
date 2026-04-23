@@ -19,6 +19,8 @@
 import { getPool } from '../lib/database.js';
 import type { UserRow, UserListOptions, PaginatedResult, User } from './types.js';
 import { mapRowToUser } from './types.js';
+import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -396,6 +398,91 @@ export async function listUsers(options: UserListOptions): Promise<PaginatedResu
     pageSize,
     totalPages: Math.ceil(total / pageSize),
   };
+}
+
+// ---------------------------------------------------------------------------
+// List (cursor-based)
+// ---------------------------------------------------------------------------
+
+/** Options for cursor-based user listing */
+export interface ListUsersCursorOptions {
+  organizationId: string;
+  cursor?: string;
+  limit?: number;
+  status?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * List users with cursor-based keyset pagination (org-scoped).
+ *
+ * @param options - Cursor pagination, filter, and sort options
+ * @returns Cursor-paginated result with users
+ */
+export async function listUsersCursor(
+  options: ListUsersCursorOptions,
+): Promise<CursorPaginatedResult<User>> {
+  const pool = getPool();
+  const limit = Math.min(Math.max(1, options.limit ?? 25), 100);
+  const sortColumn = ALLOWED_SORT_COLUMNS[options.sortBy ?? 'created_at'] ?? 'created_at';
+  const direction = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
+  const comparator = direction === 'ASC' ? '>' : '<';
+
+  // Organization scope is always required
+  const conditions: string[] = ['organization_id = $1'];
+  const params: unknown[] = [options.organizationId];
+  let paramIndex = 2;
+
+  if (options.cursor) {
+    const decoded = decodeCursor(options.cursor);
+    if (decoded) {
+      if (decoded.s === null) {
+        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        params.push(decoded.i);
+        paramIndex++;
+      } else {
+        conditions.push(`(${sortColumn}, id) ${comparator} ($${paramIndex}, $${paramIndex + 1})`);
+        params.push(decoded.s, decoded.i);
+        paramIndex += 2;
+      }
+    }
+  }
+
+  if (options.status) {
+    conditions.push(`status = $${paramIndex}`);
+    params.push(options.status);
+    paramIndex++;
+  }
+
+  if (options.search) {
+    conditions.push(
+      `(email ILIKE $${paramIndex} OR given_name ILIKE $${paramIndex} OR family_name ILIKE $${paramIndex})`,
+    );
+    params.push(`%${options.search}%`);
+    paramIndex++;
+  }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  const sql = `SELECT * FROM users ${whereClause} ORDER BY ${sortColumn} ${direction}, id ${direction} LIMIT $${paramIndex}`;
+  params.push(limit + 1);
+
+  const result = await pool.query<UserRow>(sql, params);
+  const rows = result.rows.map(mapRowToUser);
+
+  // Resolve sort value getter based on sort column
+  const getSortValue = (u: User): string | number | null => {
+    switch (sortColumn) {
+      case 'email': return u.email;
+      case 'given_name': return u.givenName ?? null;
+      case 'family_name': return u.familyName ?? null;
+      case 'last_login_at': return u.lastLoginAt?.toISOString() ?? null;
+      default: return u.createdAt.toISOString();
+    }
+  };
+
+  return buildCursorResult(rows, limit, getSortValue, (u) => u.id);
 }
 
 // ---------------------------------------------------------------------------
