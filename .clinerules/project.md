@@ -250,6 +250,11 @@ src/
     audit.ts         # /api/admin/audit — audit log viewer with filters
     two-factor.ts    # /interaction/:uid/two-factor/* — 2FA interaction routes
     interactions.ts  # OIDC interaction routes (login, consent)
+    stats.ts         # /api/admin/stats — dashboard statistics (6 aggregate queries)
+    sessions.ts      # /api/admin/sessions — session management + user session revocation
+    bulk.ts          # /api/admin/bulk — bulk status operations for orgs/users
+    branding.ts      # /api/admin/organizations/:orgId/branding — logo/favicon management
+    exports.ts       # /api/admin/export/:entityType — CSV/JSON data export
     magic-link.ts    # Magic link request and verification routes
     password-reset.ts # Password reset request and verification routes
     invitation.ts    # User invitation routes
@@ -371,7 +376,8 @@ dist/                # TypeScript build output (gitignored)
 - **CLI module** — yargs-based admin CLI (`porta`), 14 top-level commands, dual-mode bootstrap: `withBootstrap()` (direct-DB for init/migrate/seed) and `withHttpClient()` (authenticated HTTP for all other commands). `porta init` bootstraps admin app + RBAC + PKCE client + first user. `porta login` runs OIDC Auth Code + PKCE via browser, stores credentials at `~/.porta/credentials.json`. `AdminHttpClient` handles Bearer token injection, auto-refresh, and HTTP error mapping. Table + JSON output, confirmation prompts, 220+ CLI tests
 - **Two-factor module** — Email OTP, TOTP (authenticator), recovery codes, per-org policy, login flow integration, templates, i18n, CLI admin (status/disable/reset), AES-256-GCM secret encryption, Argon2id recovery hashing
 - **Login methods module** — Per-client `login_methods` override (NULL = inherit from org) + per-org `default_login_methods` (NOT NULL, DB DEFAULT `{password,magic_link}`). Resolution via `resolveLoginMethods(org, client)`. Enforced on 5 endpoints (interaction `/login`, `/magic-link`, forgot-password GET/POST, reset-password POST) **before** CSRF/rate-limit/user-lookup with 403 + audit event `security.login_method_disabled`. Login template renders 4 modes (both / password-only / magic-link-only / empty fallback) and honours OIDC `login_hint`. Admin API + CLI support per-client override get/set/clear.
-- **Test suite** — 2,629 unit+integration tests across 149 files passing, zero failures (`yarn verify` ~90s). Plus 20+ E2E test files, 32+ pentest files, 20+ UI Playwright specs.
+- **Admin API enhancements** — Granular RBAC permissions (17 permissions across 6 domains), cursor-based keyset pagination on all entity repos, ETag/If-Match optimistic concurrency, dashboard statistics, entity change history, session management/revocation, bulk status operations, branding asset management (logo/favicon bytea storage), and CSV/JSON data export. Migration 018 adds `branding_assets` and `admin_sessions` tables.
+- **Test suite** — 2,863 unit+integration tests across 161 files passing, zero failures (`yarn verify` ~85s). Plus 20+ E2E test files, 32+ pentest files, 20+ UI Playwright specs.
 - **Root-page handler** — `GET /`, `/robots.txt`, `/favicon.ico` served by `src/middleware/root-page.ts` with a neutral no-leakage response (no product/vendor strings, noindex headers, CSP `default-src 'none'`). Mounted after `/health` and before any `/:orgSlug/*` catch-all.
 - **Pentest coverage** — Auth bypass (SQL injection, brute force, timing, session), magic link attacks (prediction, replay, host injection, enumeration), injection (SQL, XSS, CRLF, SSTI), crypto (JWT algo confusion, manipulation, key confusion), admin security (unauthorized access, privilege escalation, IDOR, mass assignment), multi-tenant (cross-tenant auth, enumeration, slug injection), infrastructure (HTTP headers, CORS, method tampering, info disclosure)
 

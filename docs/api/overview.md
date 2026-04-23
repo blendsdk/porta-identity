@@ -99,6 +99,11 @@ Many list endpoints support filtering:
 | [Configuration](/api/config) | `/api/admin/config` | System configuration |
 | [Signing Keys](/api/keys) | `/api/admin/keys` | ES256 key management |
 | [Audit Log](/api/audit) | `/api/admin/audit` | Audit trail viewer |
+| [Dashboard & Stats](/api/stats) | `/api/admin/stats` | Dashboard statistics & entity history |
+| [Sessions](/api/sessions) | `/api/admin/sessions` | Session management & revocation |
+| [Bulk Operations](/api/bulk-operations) | `/api/admin/bulk` | Batch status changes |
+| [Branding Assets](/api/branding) | `/api/admin/organizations/:orgId/branding` | Logo & favicon management |
+| [Data Export](/api/exports) | `/api/admin/export` | CSV & JSON data download |
 
 ## Discovery Endpoint
 

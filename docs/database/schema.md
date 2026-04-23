@@ -21,6 +21,9 @@ erDiagram
     CLAIM_DEFINITIONS ||--o{ USER_CLAIM_VALUES : "defines"
     CLIENTS ||--o{ CLIENT_SECRETS : "has"
     USERS ||--o{ TWO_FACTOR : "has"
+    USERS ||--o{ ADMIN_SESSIONS : "has"
+    ORGANIZATIONS ||--o{ ADMIN_SESSIONS : "has"
+    ORGANIZATIONS ||--o{ BRANDING_ASSETS : "has"
 
     ORGANIZATIONS {
         uuid id PK
@@ -319,6 +322,46 @@ PostgreSQL storage for long-lived OIDC artifacts (access tokens, refresh tokens,
 | `uid` | `text` | Unique identifier |
 | `expires_at` | `timestamptz` | Expiration |
 | `consumed_at` | `timestamptz` | Consumption timestamp |
+
+### `admin_sessions`
+
+PostgreSQL mirror of Redis OIDC sessions for admin listing, filtering, and revocation management.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `session_id` | `varchar(128)` | Primary key (OIDC session ID) |
+| `user_id` | `uuid` | FK → users |
+| `client_id` | `uuid` | FK → clients |
+| `organization_id` | `uuid` | FK → organizations |
+| `grant_id` | `varchar(128)` | Associated grant ID |
+| `ip_address` | `inet` | Client IP address |
+| `user_agent` | `text` | Client user agent string |
+| `created_at` | `timestamptz` | Session creation time |
+| `expires_at` | `timestamptz` | Session expiry time |
+| `last_activity_at` | `timestamptz` | Last activity timestamp |
+| `revoked_at` | `timestamptz` | Revocation timestamp (NULL = active) |
+
+**Indexes:** Partial indexes on `user_id`, `organization_id`, `client_id`, and `expires_at` where `revoked_at IS NULL` for efficient active session queries.
+
+### `branding_assets`
+
+Organization logo and favicon image storage.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `uuid` | Primary key |
+| `organization_id` | `uuid` | FK → organizations (CASCADE) |
+| `asset_type` | `varchar(20)` | `logo` or `favicon` |
+| `content_type` | `varchar(50)` | MIME type (e.g., `image/png`) |
+| `data` | `bytea` | Binary image data |
+| `file_size` | `integer` | File size in bytes |
+| `created_at` | `timestamptz` | Creation timestamp |
+| `updated_at` | `timestamptz` | Last update |
+
+**Constraints:**
+- Unique: `(organization_id, asset_type)` — one logo and one favicon per org
+- Check: `asset_type IN ('logo', 'favicon')`
+- Check: `file_size > 0 AND file_size <= 524288` (max 512 KB)
 
 ### `two_factor_*`
 
