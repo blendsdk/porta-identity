@@ -53,6 +53,8 @@ import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
 import { createStatsRouter } from './routes/stats.js';
 import { createSessionRouter, createUserSessionRouter } from './routes/sessions.js';
+import { createBulkRouter } from './routes/bulk.js';
+import { createBrandingRouter } from './routes/branding.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
@@ -297,6 +299,18 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userSessionRouter = createUserSessionRouter();
   app.use(userSessionRouter.routes());
   app.use(userSessionRouter.allowedMethods());
+
+  // Bulk operations API — requires admin authentication
+  // Mounted at /api/admin/bulk (see routes/bulk.ts)
+  const bulkRouter = createBulkRouter();
+  app.use(bulkRouter.routes());
+  app.use(bulkRouter.allowedMethods());
+
+  // Branding assets API — requires admin authentication
+  // Mounted at /api/admin/organizations/:orgId/branding (see routes/branding.ts)
+  const brandingRouter = createBrandingRouter();
+  app.use(brandingRouter.routes());
+  app.use(brandingRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets
