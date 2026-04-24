@@ -182,7 +182,7 @@ export async function importData(
 
     // Phase 2: Applications — depend on organizations
     for (const app of manifest.applications ?? []) {
-      await processApplication(client, app, mode, result, orgMap, appMap);
+      await processApplication(client, app, mode, result, appMap);
     }
 
     // Phase 3: Clients — depend on applications
@@ -307,14 +307,13 @@ async function processOrganization(
 
 /**
  * Process a single application from the manifest.
- * Resolves the parent organization from orgMap.
+ * Applications are global (no org FK); matched by slug.
  */
 async function processApplication(
   client: any,
   app: z.infer<typeof applicationSchema>,
   mode: ImportMode,
   result: ImportResult,
-  orgMap: Map<string, string>,
   appMap: Map<string, string>,
 ): Promise<void> {
   try {
