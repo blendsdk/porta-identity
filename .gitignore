@@ -12,7 +12,6 @@ playwright-report/
 # Internal planning & requirements (not for public repo)
 plans/
 requirements/
-.clinerules/
 
 # VitePress
 docs/.vitepress/cache/
