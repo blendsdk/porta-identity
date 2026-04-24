@@ -45,3 +45,55 @@ export interface HealthStatus {
   };
   uptime: number;
 }
+
+// ---------------------------------------------------------------------------
+// Pagination types (shared between BFF proxy responses and client hooks)
+// ---------------------------------------------------------------------------
+
+/** Cursor-based pagination info returned by Porta admin API */
+export interface PaginationInfo {
+  /** Total number of items matching the query */
+  total: number;
+  /** Maximum items per page */
+  limit: number;
+  /** Current offset */
+  offset: number;
+  /** Whether more items exist beyond this page */
+  hasMore: boolean;
+}
+
+/** Paginated API response wrapper */
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationInfo;
+}
+
+/** Parameters for list/search requests */
+export interface ListParams {
+  /** Number of items per page (default 20) */
+  limit?: number;
+  /** Offset for pagination */
+  offset?: number;
+  /** Sort field */
+  sortBy?: string;
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc';
+  /** Search/filter query string */
+  search?: string;
+  /** Status filter */
+  status?: string;
+}
+
+/** Client-side pagination state for UI components */
+export interface PaginationState {
+  /** Current page number (0-indexed) */
+  page: number;
+  /** Items per page */
+  pageSize: number;
+  /** Total items available */
+  total: number;
+  /** Sort field */
+  sortBy: string;
+  /** Sort direction */
+  sortOrder: 'asc' | 'desc';
+}

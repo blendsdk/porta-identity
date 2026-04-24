@@ -1,7 +1,8 @@
 /**
  * Application shell layout.
- * Provides the persistent sidebar, top bar, and environment banner.
- * Page content is rendered via React Router's <Outlet />.
+ * Provides the persistent sidebar, top bar, environment banner,
+ * and breadcrumb navigation. Page content is rendered via
+ * React Router's <Outlet />.
  */
 
 import { Outlet } from 'react-router';
@@ -9,6 +10,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { EnvironmentBanner } from './EnvironmentBanner';
+import { Breadcrumbs } from './Breadcrumbs';
 
 const useStyles = makeStyles({
   root: {
@@ -29,6 +31,11 @@ const useStyles = makeStyles({
   },
 });
 
+/**
+ * Main application shell.
+ * Layout: EnvironmentBanner → TopBar → [Sidebar | Content].
+ * Content area includes breadcrumbs above the page outlet.
+ */
 export function AppShell() {
   const styles = useStyles();
 
@@ -39,6 +46,7 @@ export function AppShell() {
       <div className={styles.body}>
         <Sidebar />
         <main className={styles.content}>
+          <Breadcrumbs />
           <Outlet />
         </main>
       </div>

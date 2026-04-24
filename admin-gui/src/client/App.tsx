@@ -1,18 +1,15 @@
 /**
  * Root application component.
  * Sets up FluentUI theming, React Query, auth context, and routing.
+ * Uses createBrowserRouter for data-aware routing with breadcrumb support.
  */
 
 import { FluentProvider } from '@fluentui/react-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { RouterProvider } from 'react-router';
 import { AuthProvider } from './hooks/useAuth';
 import { useThemePreference } from './hooks/useTheme';
-import { RequireAuth } from './components/RequireAuth';
-import { AppShell } from './components/AppShell';
-import { Dashboard } from './pages/Dashboard';
-import { Login } from './pages/Login';
-import { NotFound } from './pages/NotFound';
+import { router } from './router';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +21,11 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Root app component.
+ * Provider order: FluentProvider (theming) → QueryClientProvider (data) →
+ * AuthProvider (session) → RouterProvider (routing with data router).
+ */
 export function App() {
   const { theme } = useThemePreference();
 
@@ -31,18 +33,7 @@ export function App() {
     <FluentProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route element={<RequireAuth />}>
-                <Route element={<AppShell />}>
-                  <Route path="/" element={<Dashboard />} />
-                  {/* Stub routes — full pages added in RD-23 */}
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Route>
-            </Routes>
-          </BrowserRouter>
+          <RouterProvider router={router} />
         </AuthProvider>
       </QueryClientProvider>
     </FluentProvider>
