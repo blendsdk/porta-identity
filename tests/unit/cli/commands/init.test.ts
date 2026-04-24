@@ -261,11 +261,11 @@ describe('CLI Init Command', () => {
       expect(createPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
-          slug: 'org:create',
+          slug: 'admin:org:create',
         }),
       );
       expect(createPermission).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: 'audit:read' }),
+        expect.objectContaining({ slug: 'admin:audit:read' }),
       );
 
       // Should create all 5 admin roles

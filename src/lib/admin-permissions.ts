@@ -14,81 +14,84 @@
 // ============================================================================
 
 /**
- * Admin permission slugs following the `resource:action` pattern.
+ * Admin permission slugs following the `module:resource:action` pattern.
  * Used by admin-auth middleware's `requirePermission()` factory
  * and route handlers for endpoint-level authorization.
+ *
+ * The `admin` module prefix satisfies the RBAC permission slug validation
+ * requirement of at least 3 colon-separated segments.
  *
  * Permissions are seeded into the admin application during `porta init`
  * and resolved at runtime from the user's assigned admin roles.
  */
 export const ADMIN_PERMISSIONS = {
   // Organization management
-  ORG_CREATE: 'org:create',
-  ORG_READ: 'org:read',
-  ORG_UPDATE: 'org:update',
-  ORG_SUSPEND: 'org:suspend',
-  ORG_ARCHIVE: 'org:archive',
+  ORG_CREATE: 'admin:org:create',
+  ORG_READ: 'admin:org:read',
+  ORG_UPDATE: 'admin:org:update',
+  ORG_SUSPEND: 'admin:org:suspend',
+  ORG_ARCHIVE: 'admin:org:archive',
 
   // Application management
-  APP_CREATE: 'app:create',
-  APP_READ: 'app:read',
-  APP_UPDATE: 'app:update',
-  APP_ARCHIVE: 'app:archive',
+  APP_CREATE: 'admin:app:create',
+  APP_READ: 'admin:app:read',
+  APP_UPDATE: 'admin:app:update',
+  APP_ARCHIVE: 'admin:app:archive',
 
   // Client management
-  CLIENT_CREATE: 'client:create',
-  CLIENT_READ: 'client:read',
-  CLIENT_UPDATE: 'client:update',
-  CLIENT_REVOKE: 'client:revoke',
+  CLIENT_CREATE: 'admin:client:create',
+  CLIENT_READ: 'admin:client:read',
+  CLIENT_UPDATE: 'admin:client:update',
+  CLIENT_REVOKE: 'admin:client:revoke',
 
   // User management
-  USER_CREATE: 'user:create',
-  USER_READ: 'user:read',
-  USER_UPDATE: 'user:update',
-  USER_SUSPEND: 'user:suspend',
-  USER_ARCHIVE: 'user:archive',
-  USER_INVITE: 'user:invite',
+  USER_CREATE: 'admin:user:create',
+  USER_READ: 'admin:user:read',
+  USER_UPDATE: 'admin:user:update',
+  USER_SUSPEND: 'admin:user:suspend',
+  USER_ARCHIVE: 'admin:user:archive',
+  USER_INVITE: 'admin:user:invite',
 
   // Role management
-  ROLE_CREATE: 'role:create',
-  ROLE_READ: 'role:read',
-  ROLE_UPDATE: 'role:update',
-  ROLE_ARCHIVE: 'role:archive',
-  ROLE_ASSIGN: 'role:assign',
+  ROLE_CREATE: 'admin:role:create',
+  ROLE_READ: 'admin:role:read',
+  ROLE_UPDATE: 'admin:role:update',
+  ROLE_ARCHIVE: 'admin:role:archive',
+  ROLE_ASSIGN: 'admin:role:assign',
 
   // Permission management
-  PERMISSION_CREATE: 'permission:create',
-  PERMISSION_READ: 'permission:read',
-  PERMISSION_ARCHIVE: 'permission:archive',
+  PERMISSION_CREATE: 'admin:permission:create',
+  PERMISSION_READ: 'admin:permission:read',
+  PERMISSION_ARCHIVE: 'admin:permission:archive',
 
   // Custom claims management
-  CLAIM_CREATE: 'claim:create',
-  CLAIM_READ: 'claim:read',
-  CLAIM_UPDATE: 'claim:update',
-  CLAIM_ARCHIVE: 'claim:archive',
+  CLAIM_CREATE: 'admin:claim:create',
+  CLAIM_READ: 'admin:claim:read',
+  CLAIM_UPDATE: 'admin:claim:update',
+  CLAIM_ARCHIVE: 'admin:claim:archive',
 
   // System configuration
-  CONFIG_READ: 'config:read',
-  CONFIG_UPDATE: 'config:update',
+  CONFIG_READ: 'admin:config:read',
+  CONFIG_UPDATE: 'admin:config:update',
 
   // Signing keys
-  KEY_READ: 'key:read',
-  KEY_GENERATE: 'key:generate',
-  KEY_ROTATE: 'key:rotate',
+  KEY_READ: 'admin:key:read',
+  KEY_GENERATE: 'admin:key:generate',
+  KEY_ROTATE: 'admin:key:rotate',
 
   // Audit
-  AUDIT_READ: 'audit:read',
+  AUDIT_READ: 'admin:audit:read',
 
   // Session management
-  SESSION_READ: 'session:read',
-  SESSION_REVOKE: 'session:revoke',
+  SESSION_READ: 'admin:session:read',
+  SESSION_REVOKE: 'admin:session:revoke',
 
   // Dashboard statistics
-  STATS_READ: 'stats:read',
+  STATS_READ: 'admin:stats:read',
 
   // Import/export
-  EXPORT_READ: 'export:read',
-  IMPORT_WRITE: 'import:write',
+  EXPORT_READ: 'admin:export:read',
+  IMPORT_WRITE: 'admin:import:write',
 } as const;
 
 /** Union type of all valid admin permission slug values */

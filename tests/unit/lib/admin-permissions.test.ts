@@ -23,10 +23,10 @@ describe('ADMIN_PERMISSIONS', () => {
     expect(typeof ADMIN_PERMISSIONS).toBe('object');
   });
 
-  it('should have all permission slugs in resource:action format', () => {
-    const pattern = /^[a-z]+:[a-z_]+$/;
+  it('should have all permission slugs in module:resource:action format', () => {
+    const pattern = /^[a-z]+:[a-z]+:[a-z_]+$/;
     for (const [key, slug] of Object.entries(ADMIN_PERMISSIONS)) {
-      expect(slug, `${key} should match resource:action format`).toMatch(pattern);
+      expect(slug, `${key} should match module:resource:action format`).toMatch(pattern);
     }
   });
 
@@ -44,7 +44,7 @@ describe('ADMIN_PERMISSIONS', () => {
 
   it('should include all expected resource categories', () => {
     const slugs = Object.values(ADMIN_PERMISSIONS);
-    const resources = new Set(slugs.map((s) => s.split(':')[0]));
+    const resources = new Set(slugs.map((s) => s.split(':')[1]));
 
     // All expected resource categories must be present
     const expectedResources = [
@@ -76,38 +76,38 @@ describe('ADMIN_PERMISSIONS', () => {
 
   describe('organization permissions', () => {
     it('should include create, read, update, suspend, and archive', () => {
-      expect(ADMIN_PERMISSIONS.ORG_CREATE).toBe('org:create');
-      expect(ADMIN_PERMISSIONS.ORG_READ).toBe('org:read');
-      expect(ADMIN_PERMISSIONS.ORG_UPDATE).toBe('org:update');
-      expect(ADMIN_PERMISSIONS.ORG_SUSPEND).toBe('org:suspend');
-      expect(ADMIN_PERMISSIONS.ORG_ARCHIVE).toBe('org:archive');
+      expect(ADMIN_PERMISSIONS.ORG_CREATE).toBe('admin:org:create');
+      expect(ADMIN_PERMISSIONS.ORG_READ).toBe('admin:org:read');
+      expect(ADMIN_PERMISSIONS.ORG_UPDATE).toBe('admin:org:update');
+      expect(ADMIN_PERMISSIONS.ORG_SUSPEND).toBe('admin:org:suspend');
+      expect(ADMIN_PERMISSIONS.ORG_ARCHIVE).toBe('admin:org:archive');
     });
   });
 
   describe('user permissions', () => {
     it('should include CRUD, suspend, archive, and invite', () => {
-      expect(ADMIN_PERMISSIONS.USER_CREATE).toBe('user:create');
-      expect(ADMIN_PERMISSIONS.USER_READ).toBe('user:read');
-      expect(ADMIN_PERMISSIONS.USER_UPDATE).toBe('user:update');
-      expect(ADMIN_PERMISSIONS.USER_SUSPEND).toBe('user:suspend');
-      expect(ADMIN_PERMISSIONS.USER_ARCHIVE).toBe('user:archive');
-      expect(ADMIN_PERMISSIONS.USER_INVITE).toBe('user:invite');
+      expect(ADMIN_PERMISSIONS.USER_CREATE).toBe('admin:user:create');
+      expect(ADMIN_PERMISSIONS.USER_READ).toBe('admin:user:read');
+      expect(ADMIN_PERMISSIONS.USER_UPDATE).toBe('admin:user:update');
+      expect(ADMIN_PERMISSIONS.USER_SUSPEND).toBe('admin:user:suspend');
+      expect(ADMIN_PERMISSIONS.USER_ARCHIVE).toBe('admin:user:archive');
+      expect(ADMIN_PERMISSIONS.USER_INVITE).toBe('admin:user:invite');
     });
   });
 
   describe('system permissions', () => {
     it('should include config, key, audit, session, stats, and import/export', () => {
-      expect(ADMIN_PERMISSIONS.CONFIG_READ).toBe('config:read');
-      expect(ADMIN_PERMISSIONS.CONFIG_UPDATE).toBe('config:update');
-      expect(ADMIN_PERMISSIONS.KEY_READ).toBe('key:read');
-      expect(ADMIN_PERMISSIONS.KEY_GENERATE).toBe('key:generate');
-      expect(ADMIN_PERMISSIONS.KEY_ROTATE).toBe('key:rotate');
-      expect(ADMIN_PERMISSIONS.AUDIT_READ).toBe('audit:read');
-      expect(ADMIN_PERMISSIONS.SESSION_READ).toBe('session:read');
-      expect(ADMIN_PERMISSIONS.SESSION_REVOKE).toBe('session:revoke');
-      expect(ADMIN_PERMISSIONS.STATS_READ).toBe('stats:read');
-      expect(ADMIN_PERMISSIONS.EXPORT_READ).toBe('export:read');
-      expect(ADMIN_PERMISSIONS.IMPORT_WRITE).toBe('import:write');
+      expect(ADMIN_PERMISSIONS.CONFIG_READ).toBe('admin:config:read');
+      expect(ADMIN_PERMISSIONS.CONFIG_UPDATE).toBe('admin:config:update');
+      expect(ADMIN_PERMISSIONS.KEY_READ).toBe('admin:key:read');
+      expect(ADMIN_PERMISSIONS.KEY_GENERATE).toBe('admin:key:generate');
+      expect(ADMIN_PERMISSIONS.KEY_ROTATE).toBe('admin:key:rotate');
+      expect(ADMIN_PERMISSIONS.AUDIT_READ).toBe('admin:audit:read');
+      expect(ADMIN_PERMISSIONS.SESSION_READ).toBe('admin:session:read');
+      expect(ADMIN_PERMISSIONS.SESSION_REVOKE).toBe('admin:session:revoke');
+      expect(ADMIN_PERMISSIONS.STATS_READ).toBe('admin:stats:read');
+      expect(ADMIN_PERMISSIONS.EXPORT_READ).toBe('admin:export:read');
+      expect(ADMIN_PERMISSIONS.IMPORT_WRITE).toBe('admin:import:write');
     });
   });
 });
@@ -228,22 +228,22 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
 
     it('should include all org:* permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.ORG_ADMIN.permissions;
-      expect(perms).toContain('org:create');
-      expect(perms).toContain('org:read');
-      expect(perms).toContain('org:update');
-      expect(perms).toContain('org:suspend');
-      expect(perms).toContain('org:archive');
+      expect(perms).toContain('admin:org:create');
+      expect(perms).toContain('admin:org:read');
+      expect(perms).toContain('admin:org:update');
+      expect(perms).toContain('admin:org:suspend');
+      expect(perms).toContain('admin:org:archive');
     });
 
     it('should include stats:read', () => {
-      expect(ADMIN_ROLE_DEFINITIONS.ORG_ADMIN.permissions).toContain('stats:read');
+      expect(ADMIN_ROLE_DEFINITIONS.ORG_ADMIN.permissions).toContain('admin:stats:read');
     });
 
     it('should NOT include user or app management permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.ORG_ADMIN.permissions;
-      expect(perms).not.toContain('user:create');
-      expect(perms).not.toContain('app:create');
-      expect(perms).not.toContain('client:create');
+      expect(perms).not.toContain('admin:user:create');
+      expect(perms).not.toContain('admin:app:create');
+      expect(perms).not.toContain('admin:client:create');
     });
   });
 
@@ -254,31 +254,31 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
 
     it('should include all user:* permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions;
-      expect(perms).toContain('user:create');
-      expect(perms).toContain('user:read');
-      expect(perms).toContain('user:update');
-      expect(perms).toContain('user:suspend');
-      expect(perms).toContain('user:archive');
-      expect(perms).toContain('user:invite');
+      expect(perms).toContain('admin:user:create');
+      expect(perms).toContain('admin:user:read');
+      expect(perms).toContain('admin:user:update');
+      expect(perms).toContain('admin:user:suspend');
+      expect(perms).toContain('admin:user:archive');
+      expect(perms).toContain('admin:user:invite');
     });
 
     it('should include role:assign and role:read for managing user roles', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions;
-      expect(perms).toContain('role:assign');
-      expect(perms).toContain('role:read');
+      expect(perms).toContain('admin:role:assign');
+      expect(perms).toContain('admin:role:read');
     });
 
     it('should include session management permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions;
-      expect(perms).toContain('session:read');
-      expect(perms).toContain('session:revoke');
+      expect(perms).toContain('admin:session:read');
+      expect(perms).toContain('admin:session:revoke');
     });
 
     it('should NOT include org, app, or config management permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions;
-      expect(perms).not.toContain('org:create');
-      expect(perms).not.toContain('app:create');
-      expect(perms).not.toContain('config:update');
+      expect(perms).not.toContain('admin:org:create');
+      expect(perms).not.toContain('admin:app:create');
+      expect(perms).not.toContain('admin:config:update');
     });
   });
 
@@ -289,19 +289,19 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
 
     it('should include app, client, role, permission, and claim management', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.APP_ADMIN.permissions;
-      expect(perms).toContain('app:create');
-      expect(perms).toContain('client:create');
-      expect(perms).toContain('role:create');
-      expect(perms).toContain('permission:create');
-      expect(perms).toContain('claim:create');
+      expect(perms).toContain('admin:app:create');
+      expect(perms).toContain('admin:client:create');
+      expect(perms).toContain('admin:role:create');
+      expect(perms).toContain('admin:permission:create');
+      expect(perms).toContain('admin:claim:create');
     });
 
     it('should NOT include user, org, or system permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.APP_ADMIN.permissions;
-      expect(perms).not.toContain('user:create');
-      expect(perms).not.toContain('org:create');
-      expect(perms).not.toContain('config:read');
-      expect(perms).not.toContain('audit:read');
+      expect(perms).not.toContain('admin:user:create');
+      expect(perms).not.toContain('admin:org:create');
+      expect(perms).not.toContain('admin:config:read');
+      expect(perms).not.toContain('admin:audit:read');
     });
   });
 
@@ -313,28 +313,28 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
     it('should include only read permissions (no create/update/delete)', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions;
       for (const perm of perms) {
-        const action = perm.split(':')[1];
+        const action = perm.split(':')[2];
         expect(
-          ['read', 'read'].includes(action),
+          action === 'read',
           `Auditor should only have read permissions, but has: ${perm}`,
         ).toBe(true);
       }
     });
 
     it('should include audit:read', () => {
-      expect(ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions).toContain('audit:read');
+      expect(ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions).toContain('admin:audit:read');
     });
 
     it('should include export:read', () => {
-      expect(ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions).toContain('export:read');
+      expect(ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions).toContain('admin:export:read');
     });
 
     it('should NOT include any write permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions;
-      expect(perms).not.toContain('org:create');
-      expect(perms).not.toContain('user:update');
-      expect(perms).not.toContain('config:update');
-      expect(perms).not.toContain('import:write');
+      expect(perms).not.toContain('admin:org:create');
+      expect(perms).not.toContain('admin:user:update');
+      expect(perms).not.toContain('admin:config:update');
+      expect(perms).not.toContain('admin:import:write');
     });
   });
 });
@@ -435,34 +435,34 @@ describe('getPermissionsForAdminRole', () => {
 
   it('should return correct permissions for porta-org-admin', () => {
     const perms = getPermissionsForAdminRole('porta-org-admin');
-    expect(perms).toContain('org:create');
-    expect(perms).toContain('org:read');
-    expect(perms).toContain('stats:read');
-    expect(perms).not.toContain('user:create');
+    expect(perms).toContain('admin:org:create');
+    expect(perms).toContain('admin:org:read');
+    expect(perms).toContain('admin:stats:read');
+    expect(perms).not.toContain('admin:user:create');
   });
 
   it('should return correct permissions for porta-user-admin', () => {
     const perms = getPermissionsForAdminRole('porta-user-admin');
-    expect(perms).toContain('user:create');
-    expect(perms).toContain('role:assign');
-    expect(perms).toContain('session:revoke');
-    expect(perms).not.toContain('org:create');
+    expect(perms).toContain('admin:user:create');
+    expect(perms).toContain('admin:role:assign');
+    expect(perms).toContain('admin:session:revoke');
+    expect(perms).not.toContain('admin:org:create');
   });
 
   it('should return correct permissions for porta-app-admin', () => {
     const perms = getPermissionsForAdminRole('porta-app-admin');
-    expect(perms).toContain('app:create');
-    expect(perms).toContain('client:create');
-    expect(perms).toContain('claim:create');
-    expect(perms).not.toContain('user:create');
+    expect(perms).toContain('admin:app:create');
+    expect(perms).toContain('admin:client:create');
+    expect(perms).toContain('admin:claim:create');
+    expect(perms).not.toContain('admin:user:create');
   });
 
   it('should return correct permissions for porta-auditor', () => {
     const perms = getPermissionsForAdminRole('porta-auditor');
-    expect(perms).toContain('audit:read');
-    expect(perms).toContain('export:read');
-    expect(perms).not.toContain('org:create');
-    expect(perms).not.toContain('import:write');
+    expect(perms).toContain('admin:audit:read');
+    expect(perms).toContain('admin:export:read');
+    expect(perms).not.toContain('admin:org:create');
+    expect(perms).not.toContain('admin:import:write');
   });
 
   it('should return empty array for unknown role slugs', () => {
@@ -486,16 +486,16 @@ describe('resolvePermissionsFromRoles', () => {
   it('should merge permissions from multiple roles', () => {
     const perms = resolvePermissionsFromRoles(['porta-org-admin', 'porta-user-admin']);
     // Should have org permissions + user permissions + stats + session
-    expect(perms).toContain('org:create');
-    expect(perms).toContain('user:create');
-    expect(perms).toContain('stats:read');
-    expect(perms).toContain('session:revoke');
+    expect(perms).toContain('admin:org:create');
+    expect(perms).toContain('admin:user:create');
+    expect(perms).toContain('admin:stats:read');
+    expect(perms).toContain('admin:session:revoke');
   });
 
   it('should deduplicate overlapping permissions', () => {
     // Org Admin has stats:read, Auditor also has stats:read
     const perms = resolvePermissionsFromRoles(['porta-org-admin', 'porta-auditor']);
-    const statsReadCount = perms.filter((p) => p === 'stats:read').length;
+    const statsReadCount = perms.filter((p) => p === 'admin:stats:read').length;
     expect(statsReadCount).toBe(1);
   });
 
@@ -510,7 +510,7 @@ describe('resolvePermissionsFromRoles', () => {
   it('should handle mix of known and unknown roles', () => {
     const perms = resolvePermissionsFromRoles(['porta-auditor', 'unknown-role']);
     // Should have auditor permissions, unknown role contributes nothing
-    expect(perms).toContain('audit:read');
+    expect(perms).toContain('admin:audit:read');
     expect(perms.length).toBe(ADMIN_ROLE_DEFINITIONS.AUDITOR.permissions.length);
   });
 
@@ -529,30 +529,30 @@ describe('resolvePermissionsFromRoles', () => {
 
 describe('hasPermissions', () => {
   it('should return true when user has all required permissions', () => {
-    const userPerms = ['org:read', 'org:create', 'org:update'];
-    expect(hasPermissions(userPerms, ['org:read'])).toBe(true);
-    expect(hasPermissions(userPerms, ['org:read', 'org:create'])).toBe(true);
-    expect(hasPermissions(userPerms, ['org:read', 'org:create', 'org:update'])).toBe(true);
+    const userPerms = ['admin:org:read', 'admin:org:create', 'admin:org:update'];
+    expect(hasPermissions(userPerms, ['admin:org:read'])).toBe(true);
+    expect(hasPermissions(userPerms, ['admin:org:read', 'admin:org:create'])).toBe(true);
+    expect(hasPermissions(userPerms, ['admin:org:read', 'admin:org:create', 'admin:org:update'])).toBe(true);
   });
 
   it('should return false when user is missing a required permission', () => {
-    const userPerms = ['org:read', 'org:create'];
-    expect(hasPermissions(userPerms, ['org:update'])).toBe(false);
-    expect(hasPermissions(userPerms, ['org:read', 'org:update'])).toBe(false);
+    const userPerms = ['admin:org:read', 'admin:org:create'];
+    expect(hasPermissions(userPerms, ['admin:org:update'])).toBe(false);
+    expect(hasPermissions(userPerms, ['admin:org:read', 'admin:org:update'])).toBe(false);
   });
 
   it('should return true when required permissions list is empty', () => {
-    expect(hasPermissions(['org:read'], [])).toBe(true);
+    expect(hasPermissions(['admin:org:read'], [])).toBe(true);
     expect(hasPermissions([], [])).toBe(true);
   });
 
   it('should return false when user has no permissions but some are required', () => {
-    expect(hasPermissions([], ['org:read'])).toBe(false);
+    expect(hasPermissions([], ['admin:org:read'])).toBe(false);
   });
 
   it('should work with all admin permissions', () => {
     const allPerms = [...ALL_ADMIN_PERMISSIONS] as string[];
-    expect(hasPermissions(allPerms, ['org:read', 'user:create', 'audit:read'])).toBe(true);
+    expect(hasPermissions(allPerms, ['admin:org:read', 'admin:user:create', 'admin:audit:read'])).toBe(true);
     expect(hasPermissions(allPerms, [...ALL_ADMIN_PERMISSIONS])).toBe(true);
   });
 });

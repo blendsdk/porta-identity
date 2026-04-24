@@ -34,9 +34,9 @@ const superAdminUser = {
   organizationId: 'org-1',
   roles: ['porta-super-admin'],
   permissions: [
-    'org:create', 'org:read', 'org:update', 'org:suspend', 'org:archive',
-    'user:create', 'user:read', 'user:update',
-    'audit:read', 'config:read', 'config:update',
+    'admin:org:create', 'admin:org:read', 'admin:org:update', 'admin:org:suspend', 'admin:org:archive',
+    'admin:user:create', 'admin:user:read', 'admin:user:update',
+    'admin:audit:read', 'admin:config:read', 'admin:config:update',
   ] as const,
 };
 
@@ -45,7 +45,7 @@ const auditorUser = {
   email: 'auditor@test.com',
   organizationId: 'org-1',
   roles: ['porta-auditor'],
-  permissions: ['audit:read', 'org:read', 'user:read', 'export:read'] as const,
+  permissions: ['admin:audit:read', 'admin:org:read', 'admin:user:read', 'admin:export:read'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ describe('requirePermission middleware', () => {
   describe('when adminUser is not set (auth middleware not run)', () => {
     it('should return 401', async () => {
       const ctx = createMockContext();
-      const middleware = requirePermission('org:read');
+      const middleware = requirePermission('admin:org:read');
 
       await middleware(ctx, mockNext);
 
@@ -73,7 +73,7 @@ describe('requirePermission middleware', () => {
   describe('when user has the required permission', () => {
     it('should call next for a single permission', async () => {
       const ctx = createMockContext(superAdminUser);
-      const middleware = requirePermission('org:create');
+      const middleware = requirePermission('admin:org:create');
 
       await middleware(ctx, mockNext);
 
@@ -83,7 +83,7 @@ describe('requirePermission middleware', () => {
 
     it('should call next when user has all required permissions', async () => {
       const ctx = createMockContext(superAdminUser);
-      const middleware = requirePermission('org:create', 'org:read');
+      const middleware = requirePermission('admin:org:create', 'admin:org:read');
 
       await middleware(ctx, mockNext);
 
@@ -103,20 +103,20 @@ describe('requirePermission middleware', () => {
   describe('when user lacks the required permission', () => {
     it('should return 403 for a single missing permission', async () => {
       const ctx = createMockContext(auditorUser);
-      const middleware = requirePermission('org:create');
+      const middleware = requirePermission('admin:org:create');
 
       await middleware(ctx, mockNext);
 
       expect(ctx.status).toBe(403);
       expect((ctx.body as { error: string }).error).toBe('Forbidden');
-      expect((ctx.body as { message: string }).message).toContain('org:create');
+      expect((ctx.body as { message: string }).message).toContain('admin:org:create');
       expect(mockNext).not.toHaveBeenCalled();
     });
 
     it('should return 403 when user has some but not all required permissions', async () => {
       const ctx = createMockContext(auditorUser);
       // auditor has audit:read but not config:update
-      const middleware = requirePermission('audit:read', 'config:update');
+      const middleware = requirePermission('admin:audit:read', 'admin:config:update');
 
       await middleware(ctx, mockNext);
 
@@ -126,20 +126,20 @@ describe('requirePermission middleware', () => {
 
     it('should include required permissions in error message', async () => {
       const ctx = createMockContext(auditorUser);
-      const middleware = requirePermission('org:create', 'org:update');
+      const middleware = requirePermission('admin:org:create', 'admin:org:update');
 
       await middleware(ctx, mockNext);
 
       const body = ctx.body as { message: string };
-      expect(body.message).toContain('org:create');
-      expect(body.message).toContain('org:update');
+      expect(body.message).toContain('admin:org:create');
+      expect(body.message).toContain('admin:org:update');
     });
   });
 
   describe('permission checks for different roles', () => {
     it('should allow super-admin to access any permission', async () => {
       const ctx = createMockContext(superAdminUser);
-      const middleware = requirePermission('org:create', 'audit:read', 'config:update');
+      const middleware = requirePermission('admin:org:create', 'admin:audit:read', 'admin:config:update');
 
       await middleware(ctx, mockNext);
 
@@ -149,13 +149,13 @@ describe('requirePermission middleware', () => {
     it('should restrict auditor to read-only permissions', async () => {
       // Auditor can read
       const readCtx = createMockContext(auditorUser);
-      await requirePermission('audit:read')(readCtx, mockNext);
+      await requirePermission('admin:audit:read')(readCtx, mockNext);
       expect(mockNext).toHaveBeenCalled();
 
       // Auditor cannot create
       vi.clearAllMocks();
       const createCtx = createMockContext(auditorUser);
-      await requirePermission('org:create')(createCtx, mockNext);
+      await requirePermission('admin:org:create')(createCtx, mockNext);
       expect(createCtx.status).toBe(403);
       expect(mockNext).not.toHaveBeenCalled();
     });

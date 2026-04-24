@@ -38,7 +38,7 @@ export function createApiProxyRouter(
 ): Router {
   const router = new Router();
 
-  router.all('/api/(.*)', async (ctx) => {
+  router.all('/api/*path', async (ctx) => {
     const session = ctx.session as unknown as SessionData;
 
     // Map /api/... to /api/admin/... on the Porta server

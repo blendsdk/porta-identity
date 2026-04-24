@@ -62,8 +62,13 @@ export function createAuthRouter(
     }
 
     try {
-      // Exchange authorization code for tokens
-      const callbackUrl = new URL(ctx.request.href);
+      // Exchange authorization code for tokens.
+      // IMPORTANT: Use the public URL (e.g. localhost:4002) to construct the callback URL,
+      // not ctx.request.href (which is the BFF's internal URL, e.g. localhost:4003).
+      // In dev, Vite proxies /auth/* to the BFF with changeOrigin: true, so
+      // ctx.request.href would have the BFF's port, causing a redirect_uri mismatch
+      // with the value Porta stored during the authorization request.
+      const callbackUrl = new URL(ctx.request.url, config.publicUrl);
       const tokens = await exchangeCode(oidcConfig, config, callbackUrl, codeVerifier, expectedState);
 
       // Extract user claims from ID token (TokenEndpointResponseHelpers.claims())

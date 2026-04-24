@@ -22,8 +22,11 @@ export interface OidcConfig {
 /**
  * Discover Porta's OIDC configuration and set up the client.
  *
- * Uses openid-client v6's discovery mechanism to find endpoints.
- * The org slug determines the issuer path (/:orgSlug/.well-known/...).
+ * Porta uses path-based multi-tenancy where each org has its own OIDC
+ * endpoints at /:orgSlug/*, but the issuer is the base URL (no org prefix).
+ * This means we must fetch discovery from the org-scoped path and then
+ * construct the Configuration manually (openid-client's discovery() would
+ * reject the issuer mismatch).
  *
  * If orgSlug is not configured, fetches it from GET /api/admin/metadata.
  *
@@ -35,23 +38,39 @@ export async function setupOidc(config: BffConfig, logger: Logger): Promise<Oidc
   // Step 1: Resolve the org slug (auto-detect if not configured)
   const orgSlug = config.orgSlug || (await detectOrgSlug(config, logger));
 
-  // Step 2: Discover OIDC endpoints from Porta
-  const issuerUrl = new URL(`${config.portaUrl}/${orgSlug}`);
-  logger.info({ issuerUrl: issuerUrl.toString() }, 'Discovering OIDC configuration');
+  // Step 2: Fetch discovery document from the org-scoped path
+  const discoveryUrl = `${config.portaUrl}/${orgSlug}/.well-known/openid-configuration`;
+  logger.info({ discoveryUrl }, 'Fetching OIDC discovery document');
 
-  // Allow insecure HTTP requests in non-production (e.g., dev Docker network)
-  const allowInsecure =
-    config.nodeEnv !== 'production' ? [client.allowInsecureRequests] : undefined;
+  const response = await fetch(discoveryUrl);
+  if (!response.ok) {
+    throw new Error(
+      `OIDC discovery failed: ${response.status} ${response.statusText} from ${discoveryUrl}`,
+    );
+  }
 
-  const serverConfig = await client.discovery(
-    issuerUrl,
+  const metadata = (await response.json()) as Record<string, unknown>;
+  logger.info({ issuer: metadata.issuer }, 'OIDC discovery document fetched');
+
+  // Step 3: Construct Configuration directly from the fetched metadata.
+  // Porta's issuer is the base URL (e.g., http://localhost:3000), not the
+  // org-scoped URL. We construct the Configuration manually to avoid the
+  // issuer mismatch that client.discovery() would reject.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serverConfig = new (client.Configuration as any)(
+    metadata,
     config.clientId,
     config.clientSecret,
-    undefined,
-    { execute: allowInsecure },
-  );
+  ) as client.Configuration;
 
-  logger.info('OIDC configuration discovered successfully');
+  // Allow HTTP in non-production (dev, test). Porta runs on http://localhost
+  // during development. This must be called AFTER construction so the flag
+  // is stored on the Configuration for all subsequent operations.
+  if (config.nodeEnv !== 'production') {
+    client.allowInsecureRequests(serverConfig);
+  }
+
+  logger.info('OIDC configuration constructed successfully');
 
   return {
     serverConfig,
