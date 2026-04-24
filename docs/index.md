@@ -49,6 +49,10 @@ features:
     title: Admin CLI & REST API
     details: Full-featured CLI and JWT-authenticated API for managing organizations, apps, clients, users, and RBAC.
     link: /cli/overview
+  - icon: 🖥️
+    title: Admin GUI
+    details: Web-based administration console with React SPA and secure BFF — OIDC authentication, session management, and API proxying.
+    link: /guide/admin-gui
   - icon: 🔄
     title: Session Lifecycle & Cleanup
     details: Three-point lifecycle — explicit logout cascades tokens, natural expiry preserves refresh flows, opportunistic cleanup purges stale records.

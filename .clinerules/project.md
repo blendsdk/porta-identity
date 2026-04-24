@@ -296,6 +296,13 @@ templates/           # Handlebars templates for auth UI pages
 locales/             # i18n locale files
   default/           # Default locale set
     en/              # English translations
+admin-gui/           # Admin GUI — React SPA + Koa BFF (RD-22)
+  src/
+    client/          # React SPA (FluentUI v9, React Router)
+    server/          # Koa BFF (OIDC auth, session, API proxy)
+    shared/          # Shared types between client and server
+  public/            # Static assets (favicon)
+  tests/             # Vitest unit tests (42+ tests)
 playground/          # Static OIDC SPA playground (RD-14)
 playground-bff/      # BFF playground (RD-15)
 scripts/             # Helper shell/TS scripts (seed, reset, smoke)
@@ -379,6 +386,7 @@ dist/                # TypeScript build output (gitignored)
 - **Admin API enhancements** — Granular RBAC permissions (17 permissions across 6 domains), cursor-based keyset pagination on all entity repos, ETag/If-Match optimistic concurrency, dashboard statistics, entity change history, session management/revocation, bulk status operations, branding asset management (logo/favicon bytea storage), and CSV/JSON data export. Migration 018 adds `branding_assets` and `admin_sessions` tables.
 - **Test suite** — 2,736+ unit tests across 146 files plus 9 integration test suites (cursor pagination, ETag concurrency, stats, entity history, session tracking, bulk operations, branding assets, data export/import, enhanced invitation). Zero unit test failures (`yarn verify` ~85s). Plus 20+ E2E test files, 32+ pentest files, 20+ UI Playwright specs.
 - **Root-page handler** — `GET /`, `/robots.txt`, `/favicon.ico` served by `src/middleware/root-page.ts` with a neutral no-leakage response (no product/vendor strings, noindex headers, CSP `default-src 'none'`). Mounted after `/health` and before any `/:orgSlug/*` catch-all.
+- **Admin GUI module** — React SPA (FluentUI v9) + Koa BFF architecture (RD-22). BFF handles OIDC Auth Code flow (confidential client, magic_link login), Redis session store, CSRF double-submit cookies, security headers, API proxy with Bearer token injection, and health checks. Docker `PORTA_SERVICE=admin` mode via shared image. `porta init` auto-creates GUI confidential client with secret. Self-contained `admin-gui/` directory with own package.json, Vite build, Vitest tests (42+). Port 4002 default.
 - **Pentest coverage** — Auth bypass (SQL injection, brute force, timing, session), magic link attacks (prediction, replay, host injection, enumeration), injection (SQL, XSS, CRLF, SSTI), crypto (JWT algo confusion, manipulation, key confusion), admin security (unauthorized access, privilege escalation, IDOR, mass assignment), multi-tenant (cross-tenant auth, enumeration, slug injection), infrastructure (HTTP headers, CORS, method tampering, info disclosure)
 
 ## Cross-References

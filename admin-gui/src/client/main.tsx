@@ -1,12 +1,12 @@
 /**
  * React SPA entry point.
- * Full implementation in Phase 5.
+ * Mounts the App component into the DOM root element.
  */
 
 import { createRoot } from 'react-dom/client';
+import { App } from './App';
 
-/** Minimal placeholder — renders root element */
 const root = document.getElementById('root');
-if (root) {
-  createRoot(root).render(<div>Porta Admin — Loading...</div>);
-}
+if (!root) throw new Error('Root element not found');
+
+createRoot(root).render(<App />);

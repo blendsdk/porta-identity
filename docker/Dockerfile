@@ -24,7 +24,25 @@ COPY src/ src/
 RUN yarn build
 
 # ──────────────────────────────────────────────
-# Stage 2: Production dependencies only
+# Stage 2: Build Admin GUI (React SPA + BFF)
+# ──────────────────────────────────────────────
+FROM node:22-alpine AS admin-builder
+
+WORKDIR /app/admin-gui
+
+# Copy dependency manifests first for Docker layer caching
+COPY admin-gui/package.json admin-gui/yarn.lock ./
+RUN yarn install --frozen-lockfile
+
+# Copy source and build (Vite client + TypeScript server)
+COPY admin-gui/tsconfig*.json admin-gui/vite.config.ts ./
+COPY admin-gui/index.html ./
+COPY admin-gui/src/ ./src/
+COPY admin-gui/public/ ./public/
+RUN yarn build
+
+# ──────────────────────────────────────────────
+# Stage 3: Production dependencies only
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS deps
 
@@ -37,7 +55,7 @@ COPY package.json yarn.lock ./
 RUN yarn install --production --frozen-lockfile
 
 # ──────────────────────────────────────────────
-# Stage 3: Runtime
+# Stage 4: Runtime
 # ──────────────────────────────────────────────
 FROM node:22-alpine
 
@@ -69,6 +87,11 @@ COPY package.json ./
 COPY migrations/ migrations/
 COPY templates/ templates/
 COPY locales/ locales/
+
+# Copy admin GUI build artifacts (SPA + BFF server)
+COPY --from=admin-builder /app/admin-gui/dist/ admin-gui/dist/
+COPY --from=admin-builder /app/admin-gui/node_modules/ admin-gui/node_modules/
+COPY --from=admin-builder /app/admin-gui/package.json admin-gui/package.json
 
 # Copy and prepare entrypoint script
 COPY docker/entrypoint.sh ./entrypoint.sh

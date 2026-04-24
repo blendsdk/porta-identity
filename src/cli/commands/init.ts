@@ -11,9 +11,10 @@
  *   2. Granular admin permissions (42 resource:action permissions)
  *   3. Five admin roles with permission sets (super-admin, org-admin, etc.)
  *   4. "Porta Admin CLI" public client (Auth Code + PKCE)
- *   5. First admin user (interactive prompts or flags)
- *   6. Super-admin role assigned to the user
- *   7. Super-admin user ID stored in system_config
+ *   5. "Porta Admin GUI" confidential client (Auth Code + secret)
+ *   6. First admin user (interactive prompts or flags)
+ *   7. Super-admin role assigned to the user
+ *   8. Super-admin user ID stored in system_config
  *
  * Prerequisites:
  *   - Database migrations have been run (`porta migrate up`)
@@ -156,7 +157,9 @@ function printSuccessBox(
   orgName: string,
   orgSlug: string,
   appSlug: string,
-  clientId: string,
+  cliClientId: string,
+  guiClientId: string,
+  guiClientSecret: string,
   adminEmail: string,
   roleSlug: string,
   roleCount: number,
@@ -177,7 +180,9 @@ function printSuccessBox(
   console.log(
     `║  Application:   ${padRight(`Porta Admin (${appSlug})`, w)}║`,
   );
-  console.log(`║  Client ID:     ${padRight(clientId, w)}║`);
+  console.log(`║  CLI Client ID: ${padRight(cliClientId, w)}║`);
+  console.log(`║  GUI Client ID: ${padRight(guiClientId, w)}║`);
+  console.log(`║  GUI Secret:    ${padRight(guiClientSecret, w)}║`);
   console.log(`║  Admin User:    ${padRight(adminEmail, w)}║`);
   console.log(
     `║  Admin Role:    ${padRight(`${roleSlug} (${permissionCount} permissions)`, w)}║`,
@@ -198,7 +203,10 @@ function printSuccessBox(
     '║  2. Authenticate:      porta login                          ║',
   );
   console.log(
-    '║  3. Verify:            porta whoami                         ║',
+    '║  3. Configure admin GUI with the GUI client creds           ║',
+  );
+  console.log(
+    '║  4. Start admin GUI:   PORTA_SERVICE=admin                  ║',
   );
   console.log(
     '╚══════════════════════════════════════════════════════════════╝',
@@ -250,7 +258,9 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { getApplicationBySlug, createApplication } = await import(
           '../../applications/index.js'
         );
-        const { createClient } = await import('../../clients/index.js');
+        const { createClient, generateSecret } = await import(
+          '../../clients/index.js'
+        );
         const {
           createUser,
           reactivateUser,
@@ -399,6 +409,40 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         );
 
         // -----------------------------------------------------------------
+        // Step 7b: Create the admin GUI client (confidential, Auth Code)
+        // -----------------------------------------------------------------
+        // The admin GUI is a server-rendered BFF (Backend-for-Frontend) that
+        // can safely store a client secret. It uses magic_link as the login
+        // method for passwordless admin authentication.
+        const { client: adminGuiClient } = await createClient({
+          organizationId: superAdminOrg.id,
+          applicationId: adminApp.id,
+          clientName: 'Porta Admin GUI',
+          clientType: 'confidential',
+          applicationType: 'web',
+          redirectUris: ['http://localhost:4002/auth/callback'],
+          postLogoutRedirectUris: ['http://localhost:4002'],
+          grantTypes: ['authorization_code', 'refresh_token'],
+          scope: 'openid profile email offline_access',
+          requirePkce: false,
+          tokenEndpointAuthMethod: 'client_secret_post',
+          loginMethods: ['magic_link'],
+        });
+
+        // Generate and store a secret for the GUI client
+        const guiSecretResult = await generateSecret(
+          adminGuiClient.id,
+          { label: 'Initial secret (porta init)' },
+        );
+        console.log(
+          `  ✅ Client created: ${adminGuiClient.clientName} (${adminGuiClient.clientId})`,
+        );
+        console.log(
+          `     ⚠️  GUI Client Secret: ${guiSecretResult.plaintext}`,
+        );
+        warn('     Save this secret — it cannot be retrieved later!');
+
+        // -----------------------------------------------------------------
         // Step 8: Collect admin user details (interactive or from flags)
         // -----------------------------------------------------------------
         const userDetails = await collectAdminUserDetails(argv);
@@ -469,6 +513,8 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
           superAdminOrg.slug,
           adminApp.slug,
           adminClient.clientId,
+          adminGuiClient.clientId,
+          guiSecretResult.plaintext,
           userDetails.email,
           ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
           createdRoles.size,
