@@ -153,7 +153,8 @@ docker exec -it porta-app porta init
 This interactive command creates:
 - The super-admin organization
 - The admin application with RBAC permissions
-- A PKCE client for CLI authentication
+- A PKCE public client for CLI authentication
+- A confidential client for the Admin GUI (with client secret)
 - Your first admin user (you'll be prompted for email, name, and password)
 
 Or run it non-interactively:
