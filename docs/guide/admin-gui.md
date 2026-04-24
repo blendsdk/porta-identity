@@ -154,3 +154,64 @@ The Porta Docker image supports two service modes via `PORTA_SERVICE`:
 **"CSRF validation failed"**
 - Clear browser cookies and try again
 - Ensure `PORTA_ADMIN_PUBLIC_URL` matches the URL in the browser address bar
+
+## SPA Architecture
+
+The React SPA uses FluentUI v9 and follows a structured component architecture:
+
+### Layout Components
+
+| Component | Description |
+|-----------|-------------|
+| `AppShell` | Root layout with sidebar + top bar + main content area |
+| `Sidebar` | Collapsible navigation with grouped menu items and org switcher |
+| `TopBar` | Header with search (Cmd+K), notifications, theme toggle, user menu |
+| `Breadcrumbs` | Auto-generated from React Router matches |
+
+### Reusable Components
+
+| Component | Description |
+|-----------|-------------|
+| `EntityDataGrid` | Generic data table with search, sort, pagination, bulk selection |
+| `StatusBadge` | Colored badge for entity status (active, suspended, archived, etc.) |
+| `ConfirmDialog` | Modal confirmation with optional type-to-confirm for destructive actions |
+| `WizardStepper` | Multi-step form wizard with progress indicators |
+| `StatsCard` | Dashboard metric card with trend indicators |
+| `AuditTimeline` | Vertical timeline for entity change history |
+| `EmptyState` | Placeholder for pages/lists with no data |
+| `LoadingSkeleton` | Animated loading placeholders (table, card, detail variants) |
+| `CopyButton` | One-click clipboard copy with visual feedback |
+| `ErrorBoundary` | Catches rendering errors with retry UI |
+| `SearchOverlay` | Global search overlay (Cmd+K) |
+| `NotificationPanel` | Side drawer for system notifications |
+| `ToastProvider` | Toast notification system |
+
+### Hooks
+
+| Hook | Description |
+|------|-------------|
+| `useAuth` | Authentication state and user info from BFF |
+| `useOrgContext` | Current organization selection (persisted to localStorage) |
+| `useTheme` | FluentUI theme preference (light/dark/system) |
+| `useKeyboardShortcut` | Global keyboard shortcut handler |
+| `useCopyToClipboard` | Clipboard copy with feedback state |
+| `useToast` | Toast notification dispatch |
+
+### API Client Layer
+
+The SPA communicates with the Porta server through the BFF proxy. The API client (`src/client/api/client.ts`) provides:
+
+- **CSRF protection** — Automatically includes `X-CSRF-Token` header on state-changing requests
+- **Auth handling** — Redirects to `/auth/login` on 401 responses
+- **ETag support** — `apiRequestWithEtag()` for optimistic concurrency
+- **Typed convenience methods** — `api.get()`, `api.post()`, `api.patch()`, `api.del()`
+
+Domain-specific React Query hooks are provided for all entity types: organizations, applications, clients, users, roles, permissions, custom claims, sessions, audit, config, signing keys, stats, and import/export.
+
+### Testing
+
+```bash
+cd admin-gui && yarn test
+```
+
+Tests include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client).
