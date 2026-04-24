@@ -1,6 +1,7 @@
 /**
  * Root application component.
- * Sets up FluentUI theming, React Query, auth context, and routing.
+ * Sets up FluentUI theming, React Query, auth context, org context,
+ * toast notifications, error boundary, and routing.
  * Uses createBrowserRouter for data-aware routing with breadcrumb support.
  */
 
@@ -9,6 +10,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router';
 import { AuthProvider } from './hooks/useAuth';
 import { useThemePreference } from './hooks/useTheme';
+import { OrgContextProvider } from './hooks/useOrgContext';
+import { useToast } from './hooks/useToast';
+import { ToastProvider } from './components/ToastProvider';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { router } from './router';
 
 const queryClient = new QueryClient({
@@ -22,9 +27,28 @@ const queryClient = new QueryClient({
 });
 
 /**
+ * Inner app component that uses hooks requiring FluentProvider context.
+ * Separated to ensure FluentProvider wraps all hook usage.
+ */
+function AppInner() {
+  const { toasterId } = useToast();
+
+  return (
+    <ToastProvider toasterId={toasterId}>
+      <AuthProvider>
+        <OrgContextProvider>
+          <ErrorBoundary>
+            <RouterProvider router={router} />
+          </ErrorBoundary>
+        </OrgContextProvider>
+      </AuthProvider>
+    </ToastProvider>
+  );
+}
+
+/**
  * Root app component.
- * Provider order: FluentProvider (theming) → QueryClientProvider (data) →
- * AuthProvider (session) → RouterProvider (routing with data router).
+ * Provider order: FluentProvider (theming) → QueryClientProvider (data) → AppInner.
  */
 export function App() {
   const { theme } = useThemePreference();
@@ -32,9 +56,7 @@ export function App() {
   return (
     <FluentProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-        </AuthProvider>
+        <AppInner />
       </QueryClientProvider>
     </FluentProvider>
   );
