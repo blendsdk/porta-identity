@@ -313,8 +313,19 @@ export async function renderPage(
   // like {{t (concat "prefix_" value)}}. Context functions only work for
   // simple {{t "key"}} calls; subexpressions require a registered helper.
   // Runtime helpers are per-render (no global mutation, concurrent-safe).
+  //
+  // IMPORTANT: Handlebars helpers receive (key, HelperOptions) where hash
+  // arguments (e.g., clientName=interaction.client.clientName) are in
+  // options.hash — NOT as top-level properties. The raw context.t function
+  // expects a flat options object, so we extract .hash here.
+  const tFn = context.t;
   const runtimeOptions: Handlebars.RuntimeOptions = {
-    helpers: { t: context.t },
+    helpers: {
+      t(key: string, options: Handlebars.HelperOptions) {
+        const hash = options?.hash ?? {};
+        return tFn(key, hash);
+      },
+    },
   };
 
   // Render the page body first
