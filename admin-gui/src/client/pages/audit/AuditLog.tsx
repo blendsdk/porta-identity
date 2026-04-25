@@ -193,7 +193,8 @@ function formatTimestamp(iso: string): string {
  * Format an audit action string for display.
  * Converts "org.created" → "Organization Created".
  */
-function formatAction(action: string): string {
+function formatAction(action: string | undefined | null): string {
+  if (!action) return 'Unknown Action';
   return action
     .replace(/[._]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());

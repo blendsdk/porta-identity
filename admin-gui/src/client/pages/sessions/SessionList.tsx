@@ -296,7 +296,7 @@ export function SessionList() {
                   </td>
                   <td className={styles.td}>
                     <Badge appearance="tint" size="small">
-                      {session.organizationId.slice(0, 8)}…
+                      {session.organizationId?.slice(0, 8) ?? '—'}…
                     </Badge>
                   </td>
                   <td className={styles.td}>

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-04-25 20:56
-> **Progress**: 17/30 tasks (57%)
+> **Last Updated**: 2026-04-25 21:02
+> **Progress**: 20/30 tasks (67%)
 > **CodeOps Version**: 1.8.2
 
 **🚨 Update this document after EACH completed task!**
@@ -275,9 +275,9 @@
 ### Phase 3: Dashboard, Organizations, Sessions Tests
 - [x] 3.1.1 Write dashboard tests (8 tests) ✅ (completed: 2026-04-25 20:52)
 - [x] 3.1.2 Fix dashboard issues (StatsCard trend type mismatch) ✅ (completed: 2026-04-25 20:54)
-- [ ] 3.2.1 Write organization tests (9 tests)
-- [ ] 3.2.2 Write session tests (5 tests)
-- [ ] 3.2.3 Fix org/session issues
+- [x] 3.2.1 Organization tests — already covered by entity-pages plan (23 tests) ✅ (completed: 2026-04-25 20:57)
+- [x] 3.2.2 Write session tests (5 tests) ✅ (completed: 2026-04-25 20:58)
+- [x] 3.2.3 Fix broken pages: sessions (null .slice), audit (null formatAction), config (.map on non-array) ✅ (completed: 2026-04-25 21:01)
 
 ### Phase 4: Audit, Config, Keys Tests
 - [ ] 4.1.1 Write audit log tests (6 tests)

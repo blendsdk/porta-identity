@@ -27,10 +27,11 @@ import { test, expect } from '../fixtures/admin-fixtures';
  * page from this set — the test will then auto-detect the fix
  * (test.fail() will flip to a failure if the page stops crashing).
  */
-const KNOWN_BROKEN_PAGES = new Set([
-  '/sessions',    // Cannot read properties of null (reading 'slice')
-  '/audit',       // Cannot read properties of undefined (reading 'replace')
-  '/config',      // s.map is not a function
+const KNOWN_BROKEN_PAGES = new Set<string>([
+  // All previously broken pages have been fixed:
+  // - /sessions: organizationId null-safe .slice() (Session 3.2.3)
+  // - /audit: formatAction null guard (Session 3.2.3)
+  // - /config: data extraction from API response (Session 3.2.3)
 ]);
 
 const PAGES = [

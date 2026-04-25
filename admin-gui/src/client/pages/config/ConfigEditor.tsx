@@ -119,7 +119,9 @@ export function ConfigEditor() {
   const { data, isLoading } = useSystemConfig();
   const updateMutation = useUpdateConfig();
 
-  const configs: SystemConfig[] = (data as any) ?? [];
+  const configs: SystemConfig[] = Array.isArray(data)
+    ? data
+    : (data as any)?.data ?? [];
 
   // Inline edit state
   const [editingKey, setEditingKey] = useState<string | null>(null);
