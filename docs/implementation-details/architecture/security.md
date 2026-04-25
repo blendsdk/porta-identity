@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
@@ -222,9 +222,62 @@ Authentication endpoints are protected by sliding-window rate limiting:
 
 The `failed_login_count` column on users tracks consecutive failed attempts. After a configurable threshold, the account is automatically locked (`status → locked`).
 
+## Admin GUI (BFF) Security
+
+The Admin GUI uses a **Backend-for-Frontend** (BFF) pattern that keeps all security-sensitive operations server-side:
+
+### BFF Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant BFF as Admin GUI BFF
+    participant Porta as Porta Server
+
+    Browser->>BFF: GET /admin (unauthenticated)
+    BFF->>Browser: Redirect to BFF /auth/login
+    BFF->>Porta: OIDC Auth Code flow (confidential client)
+    Porta->>Browser: Login page (magic_link method)
+    Browser->>Porta: Complete login
+    Porta->>BFF: Authorization code callback
+    BFF->>Porta: Exchange code for tokens (client_secret_post)
+    BFF->>BFF: Store tokens in server-side session (Redis)
+    BFF->>Browser: Set session cookie (HttpOnly, Secure, SameSite)
+```
+
+**Key security properties:**
+
+| Property | Implementation |
+|----------|---------------|
+| **Token storage** | Access/refresh tokens stored server-side in Redis session — never exposed to browser |
+| **Session cookies** | `HttpOnly`, `Secure`, `SameSite=Lax` — immune to XSS token theft |
+| **CSRF protection** | Double-submit cookie pattern: `X-CSRF-Token` header validated on state-changing requests |
+| **Confidential client** | BFF authenticates with `client_secret_post` — secret never leaves server |
+| **API proxy** | BFF injects Bearer token into API requests — SPA never sees admin tokens |
+| **Token refresh** | BFF handles automatic token refresh transparently |
+| **Login method** | Uses `magic_link` login method (no password stored in browser) |
+
+### CSRF Double-Submit Cookie
+
+The BFF implements CSRF protection using the double-submit cookie pattern:
+
+1. Server sets a CSRF token in a cookie (readable by JavaScript)
+2. SPA reads the cookie value and sends it as `X-CSRF-Token` header on mutations
+3. BFF validates that header value matches cookie value on POST/PUT/PATCH/DELETE
+4. Prevents cross-site request forgery even if session cookie is automatically sent
+
+### BFF Security Headers
+
+The BFF applies its own security headers appropriate for serving a React SPA:
+
+- `Content-Security-Policy` — Allows `self` for scripts/styles (Vite-built assets)
+- `X-Frame-Options: DENY` — Prevents clickjacking
+- `X-Content-Type-Options: nosniff` — Prevents MIME sniffing
+- `Referrer-Policy: strict-origin-when-cross-origin` — Limits referrer leakage
+
 ## Security Headers
 
-Applied to all responses via middleware in `src/server.ts`:
+Applied to all responses via middleware in `src/middleware/security-headers.ts`:
 
 | Header | Value | Purpose |
 |--------|-------|---------|
@@ -320,7 +373,7 @@ Audit writes are **fire-and-forget** — they do not block the main request flow
 
 ## Penetration Test Coverage
 
-The `tests/pentest/` directory contains 32+ test files covering:
+The `tests/pentest/` directory contains 32+ test files across 11 categories covering:
 
 | Category | What's Tested |
 |----------|--------------|

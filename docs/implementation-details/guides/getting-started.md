@@ -1,6 +1,6 @@
 # Getting Started — Developer Setup
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Prerequisites
 
@@ -137,6 +137,43 @@ Verify your identity:
 yarn porta whoami
 ```
 
+## Admin GUI Setup (Optional)
+
+The Admin GUI is a separate application in `admin-gui/`. To set it up:
+
+### 1. Install Admin GUI Dependencies
+
+```bash
+cd admin-gui
+yarn install
+cd ..
+```
+
+### 2. Configure Admin GUI Environment
+
+```bash
+cp admin-gui/.env.example admin-gui/.env
+```
+
+Edit `admin-gui/.env` with the client credentials from `porta init` output:
+
+```bash
+PORTA_ADMIN_PORTA_URL=http://localhost:3000
+PORTA_ADMIN_CLIENT_ID=<gui-client-id-from-porta-init>
+PORTA_ADMIN_CLIENT_SECRET=<gui-client-secret-from-porta-init>
+PORTA_ADMIN_SESSION_SECRET=<generate-random-string-32chars>
+REDIS_URL=redis://localhost:6379/1
+```
+
+### 3. Start the Admin GUI Dev Server
+
+```bash
+cd admin-gui
+yarn dev
+```
+
+The Admin GUI is available at `http://localhost:4002`. It authenticates via magic link through the Porta server.
+
 ## Project Layout Quick Reference
 
 ```
@@ -145,7 +182,7 @@ src/
 ├── server.ts          # Koa app factory (middleware + routes)
 ├── config/            # Zod-validated environment config
 ├── lib/               # Core infrastructure (DB, Redis, logger, keys)
-├── middleware/         # Koa middleware (auth, health, tenant resolver)
+├── middleware/         # Koa middleware (auth, health, tenant resolver, security headers)
 ├── oidc/              # OIDC provider configuration and adapters
 ├── organizations/     # Tenant management module
 ├── applications/      # Application management module
@@ -157,6 +194,12 @@ src/
 ├── two-factor/        # 2FA (TOTP, email OTP, recovery codes)
 ├── routes/            # API route handlers
 └── cli/               # CLI command implementations
+admin-gui/
+├── src/client/        # React SPA (FluentUI v9, React Router, React Query)
+├── src/server/        # Koa BFF (OIDC auth, session, CSRF, API proxy)
+├── src/shared/        # Shared types between client and server
+├── tests/             # Vitest unit tests + Playwright E2E tests
+└── public/            # Static assets
 tests/
 ├── unit/              # Unit tests (no external services)
 ├── integration/       # Integration tests (require Docker)
@@ -175,10 +218,13 @@ docker/                # Docker Compose + Dockerfile
 
 | Task | Command |
 |------|---------|
-| Start dev server | `yarn dev` |
-| Run all tests | `yarn test:all` |
-| Run unit tests only | `yarn test:unit` |
+| Start Porta dev server | `yarn dev` |
+| Start Admin GUI dev server | `cd admin-gui && yarn dev` |
+| Run all Porta tests | `yarn test:all` |
+| Run Porta unit tests only | `yarn test:unit` |
 | Run integration tests | `yarn test:integration` |
+| Run Admin GUI tests | `cd admin-gui && yarn test` |
+| Run Admin GUI E2E tests | `cd admin-gui && yarn test:e2e` |
 | Build for production | `yarn build` |
 | Full verify (lint + build + test) | `yarn verify` |
 | Create a migration | `yarn migrate:create <name>` |

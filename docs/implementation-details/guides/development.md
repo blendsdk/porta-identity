@@ -1,6 +1,6 @@
 # Development Workflow
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Coding Conventions
 
@@ -214,7 +214,40 @@ yarn verify
 
 ### Test Count
 
-Current coverage: **2,736+ unit tests** across 146 files, plus integration, e2e, pentest, and UI test suites.
+Current coverage:
+
+| Suite | Tests | Files |
+|-------|-------|-------|
+| **Porta unit tests** | 3,100+ | 150+ |
+| **Admin GUI Vitest** | 145 | 16 |
+| **Admin GUI Playwright E2E** | 204 | 23 |
+| **Integration** | 9 suites | — |
+| **E2E** | 20+ files | — |
+| **Pentest** | 32+ files | 11 categories |
+| **UI (Playwright)** | 20+ specs | — |
+
+### Admin GUI Testing
+
+The Admin GUI has its own test suite in `admin-gui/tests/`:
+
+```bash
+# Run Admin GUI unit tests (Vitest)
+cd admin-gui && yarn test
+
+# Run Admin GUI E2E tests (Playwright)
+cd admin-gui && yarn test:e2e
+```
+
+**E2E test architecture**: Playwright tests use an in-process Porta server (port 49300) + BFF (port 49301), magic-link authentication via MailHog, and `storageState` session persistence. Tests are organized by domain:
+
+```
+admin-gui/tests/e2e/
+├── fixtures/          # Admin fixtures (authenticated session)
+├── auth/              # Login/logout flows
+├── navigation/        # Sidebar, direct navigation, breadcrumbs
+├── pages/             # Per-page tests (dashboard, orgs, apps, users, etc.)
+└── workflows/         # Cross-page workflows (org lifecycle, error handling)
+```
 
 ## Database Migrations
 
@@ -304,6 +337,37 @@ This runs lint → build → test:all. All checks must pass.
 | Development | `development` | pino-pretty (human-readable) | `.env` file |
 | Test | `test` | Silent | Test-specific `.env` |
 | Production | `production` | JSON structured | Environment variables |
+
+## Admin GUI Development
+
+### SPA Development
+
+The Admin GUI SPA uses a different technology stack from the main Porta server:
+
+| Concern | Technology |
+|---------|-----------|
+| **UI Framework** | React 19 |
+| **Component Library** | FluentUI v9 (`@fluentui/react-components`) |
+| **State Management** | React Query (TanStack Query v5) |
+| **Routing** | React Router v7 |
+| **Build Tool** | Vite |
+| **Test Runner** | Vitest (unit) + Playwright (E2E) |
+
+### Key Patterns in the SPA
+
+- **React Query hooks per domain** — Each entity (orgs, apps, clients, users, roles, permissions, claims) has its own hook module in `admin-gui/src/client/api/`
+- **EntityDataGrid** — Generic reusable grid component for all entity list views
+- **AppShell layout** — Collapsible sidebar, top bar, breadcrumbs (FluentUI v9)
+- **Typed API client** — Central client with CSRF token injection, ETag support, and convenience methods
+
+### BFF Development
+
+The BFF server (`admin-gui/src/server/`) follows the same Koa patterns as the main Porta server. Key files:
+
+- `server.ts` — Koa app factory with session, CSRF, proxy, and static file middleware
+- `oidc.ts` — OIDC auth code flow (confidential client)
+- `session.ts` — Redis session store configuration
+- `proxy.ts` — API proxy with Bearer token injection and auto-refresh
 
 ## Related Documentation
 

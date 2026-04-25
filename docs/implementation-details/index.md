@@ -7,7 +7,7 @@ techdocs: true
 > **Project**: Porta
 > **Type**: Multi-tenant OIDC Provider (API / SaaS)
 > **Tech Stack**: TypeScript, Koa, node-oidc-provider, PostgreSQL, Redis
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ---
 

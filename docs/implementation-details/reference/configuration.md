@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
@@ -105,6 +105,26 @@ These variables are used by the test suites (integration, e2e, pentest):
 | `TEST_SMTP_HOST` | String | — | For tests | Test SMTP host (MailHog) |
 | `TEST_SMTP_PORT` | Integer | — | For tests | Test SMTP port |
 | `TEST_MAILHOG_URL` | String (URL) | — | For tests | MailHog API URL for test assertions |
+
+### Admin GUI (BFF)
+
+These variables configure the Admin GUI BFF server (`admin-gui/`). They are separate from the main Porta server configuration.
+
+| Variable | Type | Default | Required | Description |
+|----------|------|---------|----------|-------------|
+| `PORTA_SERVICE` | `admin` | — | Yes (Docker) | Set to `admin` to start the BFF instead of the OIDC server |
+| `PORTA_ADMIN_PORTA_URL` | String (URL) | — | **Yes** | Internal URL of the Porta server (e.g., `http://porta:3000` in Docker, `http://localhost:3000` in dev) |
+| `PORTA_ADMIN_CLIENT_ID` | String | — | **Yes** | OIDC client ID for the GUI confidential client (from `porta init` output) |
+| `PORTA_ADMIN_CLIENT_SECRET` | String | — | **Yes** | OIDC client secret for the GUI confidential client |
+| `PORTA_ADMIN_SESSION_SECRET` | String | — | **Yes** | Session encryption key (minimum 32 characters) |
+| `PORTA_ADMIN_PORT` | Integer | `4002` | No | BFF listen port |
+| `PORTA_ADMIN_PUBLIC_URL` | String (URL) | `http://localhost:4002` | No | Public URL for OIDC redirect URIs |
+| `PORTA_ADMIN_ORG_SLUG` | String | Auto-detected | No | Super-admin org slug (auto-detected from Porta metadata if not set) |
+| `REDIS_URL` | String (URL) | — | **Yes** | Redis URL for session storage (use DB 1: `redis://localhost:6379/1`) |
+| `NODE_ENV` | String | `development` | No | Runtime environment |
+| `LOG_LEVEL` | String | `info` | No | Pino log level |
+
+**Session storage**: The BFF uses Redis DB index 1 (separate from Porta's DB index 0) for session persistence. Sessions are server-side only — the browser receives an opaque session cookie.
 
 ### Internal / Escape Hatch
 

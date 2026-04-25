@@ -1,6 +1,6 @@
 # Data Model
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
@@ -12,7 +12,7 @@ Porta's data model is defined across 19 PostgreSQL migrations in `migrations/`. 
 erDiagram
     organizations ||--o{ users : "has"
     organizations ||--o{ clients : "has"
-    organizations }|--|| organizations : "branding_assets"
+    organizations ||--o{ branding_assets : "has"
 
     applications ||--o{ application_modules : "contains"
     applications ||--o{ clients : "belongs to"
@@ -32,6 +32,8 @@ erDiagram
     claim_definitions ||--o{ user_claim_values : "defined by"
 
     clients ||--o{ client_secrets : "has"
+
+    admin_sessions }o--o| users : "tracked"
 ```
 
 ## Core Entities
@@ -311,14 +313,50 @@ Immutable audit trail for all administrative actions.
 
 Includes an **automated retention policy** (migration 017) with a cleanup function triggered by a cron-like mechanism.
 
-### Admin Enhancements (Migration 018)
+### Branding Assets (Migration 018)
 
-- **`branding_assets`** — Binary storage (bytea) for organization logos and favicons
-- **`admin_sessions`** — Admin session tracking for the CLI and API
+Binary storage for organization logos and favicons.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `organization_id` | UUID | FK → organizations |
+| `asset_type` | VARCHAR(20) | `logo` or `favicon` |
+| `data` | BYTEA | Binary image data (max 512 KB) |
+| `mime_type` | VARCHAR(100) | Image MIME type |
+| `created_at` / `updated_at` | TIMESTAMPTZ | Auto-managed timestamps |
+
+**Key constraint**: Unique index on `(organization_id, asset_type)` — one logo and one favicon per organization.
+
+### Admin Sessions (Migration 018)
+
+OIDC session tracking for the admin session viewer and revocation UI.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `session_uid` | VARCHAR(255) | OIDC session unique identifier |
+| `user_id` | UUID | FK → users (nullable) |
+| `organization_id` | UUID | FK → organizations (nullable) |
+| `client_id` | VARCHAR(64) | OIDC client identifier |
+| `ip_address` | INET | Client IP address |
+| `user_agent` | TEXT | Client user-agent string |
+| `last_activity_at` | TIMESTAMPTZ | Last session activity |
+| `expires_at` | TIMESTAMPTZ | Session expiry time |
+| `created_at` | TIMESTAMPTZ | Session creation time |
+
+Mirrors Redis session data to PostgreSQL for admin viewing and revocation.
 
 ### Invitation Details (Migration 019)
 
-- Adds `invitation_details` JSONB column to `auth_tokens` for storing invitation metadata (inviter info, custom messages, role pre-assignments)
+Adds invitation metadata to the `auth_tokens` table:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `details` | JSONB | Pre-assignment metadata: roles, claims, personalMessage, inviterName |
+| `invited_by` | UUID | FK → users — the admin who created the invitation |
+
+These columns are added to the existing `auth_tokens` table (not a new table).
 
 ## Migration Strategy
 

@@ -1,10 +1,14 @@
 # Integrations Reference
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
-Porta integrates with four external systems: PostgreSQL, Redis, SMTP, and node-oidc-provider. This document describes each integration's configuration, usage patterns, and operational characteristics.
+Porta integrates with several external systems and libraries. This document describes each integration's configuration, usage patterns, and operational characteristics.
+
+**Core integrations**: PostgreSQL, Redis, SMTP, node-oidc-provider
+
+**Admin GUI integrations**: FluentUI v9, React Query, Vite, Playwright
 
 ## PostgreSQL 16
 
@@ -314,6 +318,99 @@ Custom login and consent pages are implemented as Koa routes (`src/routes/intera
 
 The provider is mounted as Koa middleware under `/:orgSlug/*` prefix in `src/server.ts`, after the tenant resolver middleware sets the organization context.
 
+## FluentUI v9
+
+### Purpose
+
+Microsoft's enterprise-grade React component library, used for all Admin GUI UI components.
+
+### Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `@fluentui/react-components` | Core component library (Button, Input, Dialog, etc.) |
+| `@fluentui/react-icons` | Fluent icon set |
+| `@fluentui/react-datepicker-compat` | Date picker component |
+
+### Usage Pattern
+
+The Admin GUI wraps the entire SPA in a `FluentProvider` with theme support (light/dark):
+
+```tsx
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+
+<FluentProvider theme={webLightTheme}>
+  <App />
+</FluentProvider>
+```
+
+All UI components use FluentUI primitives — no custom CSS frameworks (Tailwind, Bootstrap, etc.).
+
+## React Query (TanStack Query v5)
+
+### Purpose
+
+Server state management for the Admin GUI SPA. Handles data fetching, caching, cache invalidation, optimistic updates, and background refetching.
+
+### Usage Pattern
+
+Each entity domain has its own React Query hook module in `admin-gui/src/client/api/`:
+
+```typescript
+// Example: useOrganizations hook module
+export function useOrganizations(params?: ListParams) {
+  return useQuery({
+    queryKey: ['organizations', params],
+    queryFn: () => api.get('/api/admin/organizations', { params }),
+  });
+}
+
+export function useCreateOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateOrgInput) => api.post('/api/admin/organizations', data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['organizations'] }),
+  });
+}
+```
+
+**13 hook modules** cover all entity domains: organizations, applications, clients, users, roles, permissions, claims, config, keys, audit, sessions, stats, and export.
+
+## Vite
+
+### Purpose
+
+Build tool and dev server for the Admin GUI React SPA.
+
+### Configuration
+
+Vite config (`admin-gui/vite.config.ts`):
+- **Dev proxy**: `/api` and `/auth` requests proxied to BFF (port 4002)
+- **Build output**: `admin-gui/dist/client/` — static assets served by the BFF in production
+- **React plugin**: `@vitejs/plugin-react` for JSX/TSX compilation
+
+## Playwright
+
+### Purpose
+
+E2E browser testing for the Admin GUI. 204 tests across 23 spec files.
+
+### Test Architecture
+
+```mermaid
+graph LR
+    PW[Playwright Test] --> BFF[Admin GUI BFF<br/>Port 49301]
+    BFF --> PORTA[Porta Server<br/>Port 49300]
+    PORTA --> PG[(PostgreSQL)]
+    PORTA --> RD[(Redis)]
+    PW --> MH[MailHog API<br/>Magic Link Extraction]
+```
+
+- **In-process servers**: Porta and BFF start in the test process on ephemeral ports
+- **Magic-link auth**: Tests extract magic-link tokens from MailHog API
+- **Session persistence**: `storageState` stores authenticated session across tests
+- **Seed data**: Test fixtures create organizations, applications, users, etc.
+
 ## Integration Summary
 
 ```mermaid
@@ -325,6 +422,11 @@ graph TB
         CLI_CMD[CLI Commands]
     end
 
+    subgraph "Admin GUI"
+        BFF[Koa BFF]
+        SPA[React SPA<br/>FluentUI v9 + React Query]
+    end
+
     subgraph "PostgreSQL"
         TABLES[19 Tables]
         OIDC_PG[OIDC Long-Lived Store]
@@ -334,12 +436,16 @@ graph TB
         CACHE[Entity Cache]
         OIDC_RD[OIDC Short-Lived Store]
         RATE[Rate Limiters]
+        SESSIONS[BFF Sessions]
     end
 
     subgraph "SMTP"
         EMAIL[Email Delivery]
     end
 
+    SPA --> BFF
+    BFF --> KOA
+    BFF --> SESSIONS
     KOA --> OIDC
     KOA --> SERVICES
     SERVICES --> TABLES

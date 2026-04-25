@@ -1,6 +1,6 @@
 # Infrastructure
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
@@ -55,6 +55,53 @@ graph LR
 | Porta | `blendsdk/porta:latest` | 3000 | Multi-stage Alpine build |
 | PostgreSQL | `postgres:16-alpine` | 5432 | With `init-test-db.sql` for test DB |
 | Redis | `redis:7-alpine` | 6379 | Ephemeral (appendonly off) |
+
+### Admin GUI Service
+
+The Admin GUI runs as a separate Koa BFF process, deployable alongside or independently from the Porta server:
+
+```mermaid
+graph LR
+    subgraph "Admin GUI"
+        BFF[Koa BFF<br/>Port 4002]
+        SPA[React SPA<br/>Vite-built static assets]
+    end
+
+    subgraph "Porta Server"
+        PORTA[Porta API<br/>Port 3000]
+    end
+
+    subgraph "Data Stores"
+        RD[(Redis 7)]
+    end
+
+    BROWSER[Admin Browser] --> BFF
+    BFF --> SPA
+    BFF -->|API Proxy + Bearer Token| PORTA
+    BFF -->|Session Store| RD
+```
+
+| Component | Technology | Port | Purpose |
+|-----------|-----------|------|---------|
+| BFF Server | Koa + koa-session | 4002 | OIDC auth, session management, CSRF, API proxy |
+| React SPA | React 19 + FluentUI v9 | Served by BFF | Browser-based admin dashboard |
+| Session Store | Redis (ioredis) | 6379 (DB 1) | BFF session persistence |
+
+**Docker deployment**: The Admin GUI shares the same Docker image as Porta. Set `PORTA_SERVICE=admin` to start the BFF instead of the OIDC server. This is configured in the production Docker Compose:
+
+```yaml
+admin-gui:
+  image: blendsdk/porta:latest
+  environment:
+    PORTA_SERVICE: admin
+    PORTA_ADMIN_PORTA_URL: http://porta:3000
+    PORTA_ADMIN_CLIENT_ID: <from-porta-init>
+    PORTA_ADMIN_CLIENT_SECRET: <from-porta-init>
+    PORTA_ADMIN_SESSION_SECRET: <generate-random>
+    REDIS_URL: redis://redis:6379/1
+  ports:
+    - '4002:4002'
+```
 
 ## Container Build
 
@@ -149,6 +196,7 @@ graph LR
 | Port | Service | Protocol |
 |------|---------|----------|
 | 3000 | Porta HTTP server | HTTP/1.1 |
+| 4002 | Admin GUI BFF server | HTTP/1.1 |
 | 5432 | PostgreSQL | PostgreSQL wire protocol |
 | 6379 | Redis | RESP (Redis Serialization Protocol) |
 | 1025 | MailHog SMTP (dev only) | SMTP |

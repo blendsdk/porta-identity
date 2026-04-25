@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## High-Level Architecture
 
@@ -12,6 +12,7 @@ graph TB
         SPA[SPA / Browser]
         CLI[Porta CLI]
         M2M[Machine-to-Machine]
+        AGUI[Admin GUI Browser]
     end
 
     subgraph "Porta Server (Koa)"
@@ -20,6 +21,11 @@ graph TB
         OIDC[OIDC Provider<br/>/:orgSlug/.well-known/*]
         INT[Interaction Routes<br/>/:orgSlug/interaction/*]
         HEALTH[Health Check<br/>/health]
+    end
+
+    subgraph "Admin GUI (Koa BFF + React SPA)"
+        BFF[BFF Server<br/>Port 4002]
+        REACT[React SPA<br/>FluentUI v9]
     end
 
     subgraph "Data Stores"
@@ -34,6 +40,9 @@ graph TB
     SPA --> MW
     CLI --> MW
     M2M --> MW
+    AGUI --> BFF
+    BFF --> MW
+    REACT --> BFF
     MW --> ADMIN
     MW --> OIDC
     MW --> INT
@@ -45,6 +54,7 @@ graph TB
     INT --> PG
     INT --> RD
     INT --> SMTP
+    BFF --> RD
 ```
 
 ## Component Overview
@@ -61,6 +71,9 @@ graph TB
 | Config | zod | Environment validation with fail-fast semantics |
 | Signing | jose + crypto | ES256 (ECDSA P-256) token signing |
 | CLI | yargs | Admin command-line interface |
+| Admin GUI SPA | React 19 + FluentUI v9 | Browser-based admin dashboard |
+| Admin GUI BFF | Koa (separate process) | Backend-for-frontend: OIDC auth, session, API proxy |
+| Admin GUI Build | Vite | SPA bundler and dev server |
 
 ### Domain Modules
 
@@ -90,6 +103,30 @@ src/<module>/
 ├── service.ts        # Business logic, validation, orchestration
 ├── slugs.ts          # Slug generation and validation (where applicable)
 └── validators.ts     # Input validation (where applicable)
+```
+
+### Admin GUI Module
+
+The Admin GUI is a **separate application** in `admin-gui/` with its own package.json, build pipeline, and test suite. It consists of two layers:
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **React SPA** (`admin-gui/src/client/`) | React 19, FluentUI v9, React Router, React Query | Browser-based admin dashboard |
+| **Koa BFF** (`admin-gui/src/server/`) | Koa, koa-session, ioredis | OIDC auth, session management, CSRF, API proxy |
+
+The SPA communicates exclusively through the BFF — it never talks to the Porta Admin API directly. The BFF handles Bearer token injection, OIDC token refresh, and security concerns (CSRF, session cookies).
+
+**SPA Architecture:**
+
+```
+admin-gui/src/client/
+├── api/             # Typed API client + 13 React Query domain hook modules
+├── components/      # 27 reusable UI components (EntityDataGrid, StatusBadge, etc.)
+├── hooks/           # 8 hooks (useAuth, useOrgContext, useTheme, etc.)
+├── layouts/         # AppShell, Sidebar, TopBar, Breadcrumbs
+├── pages/           # Route page components (Dashboard, Orgs, Apps, Users, etc.)
+├── router.tsx       # React Router with breadcrumb-enabled routes
+└── types.ts         # Shared client-side type definitions
 ```
 
 ## Application Startup Sequence
@@ -147,10 +184,16 @@ graph TB
 |-----------|------|---------|
 | Error Handler | `error-handler.ts` | Global try/catch, hides internal details for 5xx |
 | Request Logger | `request-logger.ts` | UUID request ID, logs method/url/status/duration |
-| Security Headers | `server.ts` (inline) | CSP `default-src 'none'`, X-Frame-Options, etc. |
+| Security Headers | `security-headers.ts` | CSP `default-src 'none'`, X-Frame-Options, HSTS, etc. |
+| Metrics | `metrics.ts` | Prometheus metrics at `GET /metrics` (optional) |
 | Root Page | `root-page.ts` | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
 | Health Check | `health.ts` | DB + Redis connectivity check at `/health` |
+| Readiness | `ready.ts` | Readiness probe for container orchestration |
 | Admin Auth | `admin-auth.ts` | JWT Bearer validation for `/api/admin/*` routes |
+| Admin CORS | `admin-cors.ts` | CORS handling for `/api/admin/*` (configurable origins) |
+| Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints |
+| Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes |
+| Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints |
 | Tenant Resolver | `tenant-resolver.ts` | Cache-first org lookup from URL slug |
 | Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post` |
 | OIDC CORS | `oidc-cors.ts` | CORS handling for OIDC endpoints |
@@ -193,3 +236,4 @@ On `SIGTERM` or `SIGINT`:
 - [API Design](/implementation-details/architecture/api-design) — REST conventions and endpoint structure
 - [Security](/implementation-details/architecture/security) — Authentication, crypto, and isolation
 - [Configuration Reference](/implementation-details/reference/configuration) — All environment variables
+- [Admin GUI Guide](/guide/admin-gui) — Product documentation for the Admin GUI

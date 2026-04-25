@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-04-24
+> **Last Updated**: 2026-04-25
 
 ## Overview
 
@@ -22,6 +22,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure) | Accepted | — | Consistent module layout: types, repository, cache, service |
 | ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution) | Accepted | — | Per-client override with org-level default inheritance |
 | ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing) | Accepted | — | SHA-256 pre-hash + Argon2id for OIDC compatibility |
+| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff) | Accepted | 2026-04 | BFF pattern with confidential client for admin dashboard |
 
 ---
 
@@ -209,6 +210,34 @@ This page tracks all significant architecture decisions made during Porta's deve
 - ✅ Full Argon2id protection for stored secrets
 - ✅ SHA-256 pre-hash computed via middleware before reaching the provider
 - ⚠️ Two hash values stored per secret (marginal storage overhead)
+
+---
+
+## ADR-013: Admin GUI: React SPA + Koa BFF
+
+**Context**: Porta needs a web-based admin dashboard for managing organizations, applications, clients, users, RBAC, and system configuration. The dashboard must be secure (handles admin tokens), integrate with Porta's OIDC auth, and provide a modern UI. Options considered: (a) server-rendered pages (Handlebars), (b) SPA calling Admin API directly from the browser, (c) SPA with a Backend-for-Frontend (BFF) proxy.
+
+**Decision**: Use a **React SPA** with **FluentUI v9** served through a **Koa BFF** (Backend-for-Frontend). The BFF handles OIDC authentication as a confidential client, stores tokens in a server-side Redis session, and proxies API requests with Bearer token injection. The SPA never sees admin tokens.
+
+**Technology choices:**
+- **React 19** + **FluentUI v9** — Microsoft's enterprise design system, consistent component library
+- **React Query (TanStack Query)** — Server state management with caching, retry, and cache invalidation
+- **React Router** — Client-side routing with breadcrumb support
+- **Vite** — Fast build tooling for development and production
+- **Koa BFF** — Matches the main Porta server's framework (Koa), reuses patterns
+- **koa-session + ioredis** — Server-side session store in Redis (DB index 1)
+
+**Consequences:**
+- ✅ Admin tokens never reach the browser — immune to XSS token theft
+- ✅ Confidential client auth (client_secret_post) — stronger than public client PKCE
+- ✅ CSRF protection via double-submit cookie pattern
+- ✅ FluentUI v9 provides accessible, enterprise-grade components out of the box
+- ✅ React Query reduces boilerplate for data fetching and keeps UI in sync
+- ✅ Self-contained module (`admin-gui/`) with own package.json, tests, and build
+- ✅ Shares Docker image with Porta server (PORTA_SERVICE=admin mode)
+- ⚠️ Additional service to deploy (port 4002)
+- ⚠️ Separate dependency tree from the main Porta server
+- ⚠️ BFF adds a network hop between browser and Admin API
 
 ---
 
