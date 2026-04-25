@@ -71,7 +71,7 @@ vi.mock('../../../src/client/api/keys', () => ({
     mutateAsync: mockGenerateKey,
     isPending: false,
   })),
-  useRotateKey: vi.fn(() => ({
+  useRotateKeys: vi.fn(() => ({
     mutateAsync: mockRotateKey,
     isPending: false,
   })),

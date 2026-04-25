@@ -23,7 +23,7 @@ import {
   KeyRegular,
   LinkRegular,
 } from '@fluentui/react-icons';
-import { useSigningKeys, useGenerateKey, useRotateKey } from '../../api/keys';
+import { useSigningKeys, useGenerateKey, useRotateKeys } from '../../api/keys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TypeToConfirm } from '../../components/TypeToConfirm';
 import { CopyButton } from '../../components/CopyButton';
@@ -138,7 +138,7 @@ export function SigningKeys() {
 
   const { data, isLoading } = useSigningKeys();
   const generateMutation = useGenerateKey();
-  const rotateMutation = useRotateKey();
+  const rotateMutation = useRotateKeys();
 
   const keys: SigningKey[] = (data as any)?.data ?? (data as any) ?? [];
 
