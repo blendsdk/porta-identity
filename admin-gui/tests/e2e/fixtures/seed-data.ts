@@ -51,6 +51,17 @@ export interface SeedResult {
     active: { id: string; email: string; givenName: string; familyName: string };
     suspended: { id: string; email: string };
   };
+  /** Test roles in Acme Customer Portal for RBAC page tests */
+  testRoles: {
+    editor: { id: string; name: string; slug: string };
+    viewer: { id: string; name: string; slug: string };
+  };
+  /** Test permissions in Acme Customer Portal for RBAC page tests */
+  testPermissions: {
+    read: { id: string; name: string; slug: string };
+    write: { id: string; name: string; slug: string };
+    delete: { id: string; name: string; slug: string };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +109,7 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
   const {
     createTestApplication,
     createTestRole,
+    createTestPermission,
     createTestUserWithPassword,
     createTestClientWithSecret,
     createTestOrganization,
@@ -269,7 +281,49 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     [testSuspendedUser.user.id],
   );
 
-  // ── 11. Create audit log entries ──────────────────────────────────
+  // ── 11. Create test roles & permissions for RBAC page tests ───────
+  // Roles and permissions scoped to the Acme Customer Portal app
+  const editorRole = await createTestRole(testApp.id, {
+    name: 'Editor',
+    slug: 'editor',
+    description: 'Can create and edit content',
+  });
+
+  const viewerRole = await createTestRole(testApp.id, {
+    name: 'Viewer',
+    slug: 'viewer',
+    description: 'Read-only access to content',
+  });
+
+  const readPerm = await createTestPermission(testApp.id, {
+    name: 'Read Content',
+    slug: 'read-content',
+    description: 'Permission to view content',
+  });
+
+  const writePerm = await createTestPermission(testApp.id, {
+    name: 'Write Content',
+    slug: 'write-content',
+    description: 'Permission to create and edit content',
+  });
+
+  const deletePerm = await createTestPermission(testApp.id, {
+    name: 'Delete Content',
+    slug: 'delete-content',
+    description: 'Permission to delete content',
+  });
+
+  // Assign permissions to roles: editor gets all 3, viewer gets read only
+  await pool.query(
+    `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2), ($1, $3), ($1, $4)`,
+    [editorRole.id, readPerm.id, writePerm.id, deletePerm.id],
+  );
+  await pool.query(
+    `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)`,
+    [viewerRole.id, readPerm.id],
+  );
+
+  // ── 12. Create audit log entries ──────────────────────────────────
   // 12 entries with varied event types for the Audit Log page tests
   const auditEntries = [
     { eventType: 'user.login.success', category: 'authentication', desc: 'User logged in via magic link' },
@@ -321,6 +375,15 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     testUsers: {
       active: { id: testActiveUser.user.id, email: testActiveUser.user.email, givenName: 'Jane', familyName: 'Doe' },
       suspended: { id: testSuspendedUser.user.id, email: testSuspendedUser.user.email },
+    },
+    testRoles: {
+      editor: { id: editorRole.id, name: editorRole.name, slug: editorRole.slug },
+      viewer: { id: viewerRole.id, name: viewerRole.name, slug: viewerRole.slug },
+    },
+    testPermissions: {
+      read: { id: readPerm.id, name: readPerm.name, slug: readPerm.slug },
+      write: { id: writePerm.id, name: writePerm.name, slug: writePerm.slug },
+      delete: { id: deletePerm.id, name: deletePerm.name, slug: deletePerm.slug },
     },
   };
 }

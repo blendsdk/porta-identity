@@ -34,6 +34,11 @@ import { UserList } from './pages/users/UserList';
 import { CreateUser } from './pages/users/CreateUser';
 import { InviteUser } from './pages/users/InviteUser';
 import { UserDetail } from './pages/users/UserDetail';
+import { RoleList } from './pages/rbac/RoleList';
+import { RoleDetail } from './pages/rbac/RoleDetail';
+import { PermissionList } from './pages/rbac/PermissionList';
+import { PermissionDetail } from './pages/rbac/PermissionDetail';
+import { PermissionMatrix } from './pages/rbac/PermissionMatrix';
 
 /**
  * Application route tree.
@@ -145,10 +150,15 @@ export const router = createBrowserRouter([
             path: '/roles',
             handle: { breadcrumb: 'Roles' },
             children: [
-              { index: true, element: <StubPage title="Roles" /> },
+              { index: true, element: <RoleList /> },
+              {
+                path: 'matrix',
+                element: <PermissionMatrix />,
+                handle: { breadcrumb: 'Permission Matrix' },
+              },
               {
                 path: ':roleId',
-                element: <StubPage title="Role Detail" />,
+                element: <RoleDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {
@@ -164,7 +174,12 @@ export const router = createBrowserRouter([
             path: '/permissions',
             handle: { breadcrumb: 'Permissions' },
             children: [
-              { index: true, element: <StubPage title="Permissions" /> },
+              { index: true, element: <PermissionList /> },
+              {
+                path: ':permissionId',
+                element: <PermissionDetail />,
+                handle: { breadcrumb: 'Detail' },
+              },
               {
                 path: 'new',
                 element: <StubPage title="Create Permission" />,

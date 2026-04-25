@@ -12,6 +12,8 @@ const KEYS = {
   all: ['permissions'] as const,
   list: (appId: string, p?: ListParams) =>
     [...KEYS.all, 'list', appId, p] as const,
+  detail: (appId: string, id: string) =>
+    [...KEYS.all, appId, id] as const,
 };
 
 /** Fetch a paginated list of permissions for an application */
@@ -24,6 +26,18 @@ export function usePermissions(appId: string, params?: ListParams) {
         params as Record<string, string>,
       ),
     enabled: !!appId,
+  });
+}
+
+/** Fetch a single permission by appId and permissionId */
+export function usePermission(appId: string, permissionId: string) {
+  return useQuery({
+    queryKey: KEYS.detail(appId, permissionId),
+    queryFn: () =>
+      api.get<Permission>(
+        `/applications/${appId}/permissions/${permissionId}`,
+      ),
+    enabled: !!appId && !!permissionId,
   });
 }
 
@@ -48,7 +62,8 @@ export function useCreatePermission() {
 export function useArchivePermission() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.del(`/permissions/${id}`),
+    mutationFn: ({ appId, id }: { appId: string; id: string }) =>
+      api.del(`/applications/${appId}/permissions/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.all });
     },
