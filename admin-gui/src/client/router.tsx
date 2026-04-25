@@ -27,6 +27,8 @@ import { OrganizationDetail } from './pages/organizations/OrganizationDetail';
 import { ApplicationList } from './pages/applications/ApplicationList';
 import { CreateApplication } from './pages/applications/CreateApplication';
 import { ApplicationDetail } from './pages/applications/ApplicationDetail';
+import { ClientList } from './pages/clients/ClientList';
+import { CreateClient } from './pages/clients/CreateClient';
 
 /**
  * Application route tree.
@@ -95,7 +97,7 @@ export const router = createBrowserRouter([
             path: '/clients',
             handle: { breadcrumb: 'Clients' },
             children: [
-              { index: true, element: <StubPage title="Clients" /> },
+              { index: true, element: <ClientList /> },
               {
                 path: ':clientId',
                 element: <StubPage title="Client Detail" />,
@@ -103,7 +105,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'new',
-                element: <StubPage title="Create Client" />,
+                element: <CreateClient />,
                 handle: { breadcrumb: 'Create' },
               },
             ],
