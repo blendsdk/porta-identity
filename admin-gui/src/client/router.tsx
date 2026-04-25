@@ -23,6 +23,7 @@ import { GettingStarted } from './pages/wizard/GettingStarted';
 import { AdminProfile } from './pages/profile/AdminProfile';
 import { OrganizationList } from './pages/organizations/OrganizationList';
 import { CreateOrganization } from './pages/organizations/CreateOrganization';
+import { OrganizationDetail } from './pages/organizations/OrganizationDetail';
 
 /**
  * Application route tree.
@@ -56,7 +57,7 @@ export const router = createBrowserRouter([
               { index: true, element: <OrganizationList /> },
               {
                 path: ':orgId',
-                element: <StubPage title="Organization Detail" />,
+                element: <OrganizationDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {
