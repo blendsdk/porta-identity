@@ -210,7 +210,8 @@ function buildChartData(
  * Format an audit action string for display.
  * Converts "org.created" to "Organization Created" etc.
  */
-function formatAction(action: string): string {
+function formatAction(action: string | undefined | null): string {
+  if (!action) return 'Unknown Action';
   return action
     .replace(/[._]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
