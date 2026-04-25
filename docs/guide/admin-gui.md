@@ -228,7 +228,24 @@ The SPA includes the following system-level admin pages:
 ### Testing
 
 ```bash
+# Unit tests (Vitest — BFF + React components)
 cd admin-gui && yarn test
+
+# E2E tests (Playwright — full browser testing)
+cd admin-gui && yarn test:e2e
+
+# E2E tests in headed mode (visible browser)
+cd admin-gui && yarn test:e2e:headed
 ```
 
-Tests include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client).
+**Unit tests** include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client).
+
+**E2E tests** use Playwright to test the full admin GUI in a real browser. The test infrastructure:
+
+- Starts a real Porta server (port 49300) and BFF (port 49301) in-process
+- Seeds test data (admin user, organizations, clients)
+- Authenticates via the real magic-link flow using MailHog
+- Saves session state so all subsequent tests run authenticated
+- Tests cover: authentication flow, sidebar navigation, page rendering, routing, and 404 handling
+
+**Prerequisites for E2E tests:** Docker services must be running (`yarn docker:up` from the project root) for PostgreSQL, Redis, and MailHog.
