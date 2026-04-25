@@ -93,14 +93,14 @@ describe('API Client', () => {
       mockFetch.mockResolvedValue(jsonResponse([]));
       await api.get('/organizations', { search: 'test', page: 1 });
       const url = mockFetch.mock.calls[0][0];
-      expect(url).toBe('/api/admin/organizations?search=test&page=1');
+      expect(url).toBe('/api/organizations?search=test&page=1');
     });
 
     it('api.get skips null/undefined params', async () => {
       mockFetch.mockResolvedValue(jsonResponse([]));
       await api.get('/organizations', { search: 'test', filter: undefined, extra: null });
       const url = mockFetch.mock.calls[0][0];
-      expect(url).toBe('/api/admin/organizations?search=test');
+      expect(url).toBe('/api/organizations?search=test');
     });
 
     it('api.post sends JSON body', async () => {

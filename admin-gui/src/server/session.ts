@@ -85,8 +85,14 @@ export function createSessionStore(config: BffConfig, logger: Logger) {
         return null;
       }
 
-      // Update last activity timestamp to extend idle timeout
+      // Update last activity timestamp and persist to Redis immediately.
+      // koa-session compares ctx.session to the object returned by get() to detect changes,
+      // so modifying lastActivity here would not trigger a save — we must write it ourselves.
       sess.lastActivity = Date.now();
+      const ttlSec = await redis.ttl(key);
+      if (ttlSec > 0) {
+        await redis.setex(key, ttlSec, JSON.stringify(sess));
+      }
 
       return sess;
     },

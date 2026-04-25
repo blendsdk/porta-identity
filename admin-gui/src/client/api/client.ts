@@ -122,8 +122,8 @@ export async function apiRequestWithEtag<T>(
 
 // ── Typed convenience methods ──────────────────────────────────────
 
-/** BFF API base path */
-const API_BASE = '/api/admin';
+/** BFF API base path — the BFF proxy maps /api/* to /api/admin/* on Porta */
+const API_BASE = '/api';
 
 /** Build a full API URL from a relative path */
 function url(path: string): string {

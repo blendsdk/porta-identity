@@ -1,4 +1,5 @@
 import type { Middleware } from 'koa';
+import type { Logger } from 'pino';
 import crypto from 'node:crypto';
 
 /** HTTP header name for the CSRF token */
@@ -18,13 +19,18 @@ const CSRF_SESSION_KEY = '_csrfToken';
  * This prevents cross-site request forgery since the token
  * is not accessible to other origins (SameSite=Strict cookie + custom header).
  *
+ * @param logger - Optional Pino logger for CSRF diagnostic logging
  * @returns Koa middleware that enforces CSRF tokens on state-changing API requests
  */
-export function csrfProtection(): Middleware {
+export function csrfProtection(logger?: Logger): Middleware {
   return async (ctx, next) => {
     // Ensure a CSRF token exists in the session
     if (ctx.session && !ctx.session[CSRF_SESSION_KEY]) {
       ctx.session[CSRF_SESSION_KEY] = crypto.randomBytes(32).toString('hex');
+      logger?.debug(
+        { path: ctx.path, hasSession: !!ctx.session },
+        'CSRF: Generated new token for session',
+      );
     }
 
     // Skip CSRF validation for safe methods and non-API routes
@@ -36,6 +42,18 @@ export function csrfProtection(): Middleware {
       const expectedToken = ctx.session?.[CSRF_SESSION_KEY] as string | undefined;
 
       if (!token || !expectedToken || token !== expectedToken) {
+        logger?.warn(
+          {
+            path: ctx.path,
+            method: ctx.method,
+            hasToken: !!token,
+            hasExpected: !!expectedToken,
+            tokenMatch: token === expectedToken,
+            hasSession: !!ctx.session,
+            sessionKeys: ctx.session ? Object.keys(ctx.session) : [],
+          },
+          'CSRF: Token validation failed',
+        );
         ctx.status = 403;
         ctx.body = { error: 'Invalid CSRF token' };
         return;

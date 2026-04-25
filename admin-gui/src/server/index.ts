@@ -50,7 +50,7 @@ async function main(): Promise<void> {
 
   // 6. Mount middleware and routes in security-critical order
   // CSRF protection (validates tokens on state-changing requests)
-  app.use(csrfProtection());
+  app.use(csrfProtection(logger));
 
   // Health check (no auth required — used by load balancers)
   const healthRouter = createHealthRouter(config, redis);
