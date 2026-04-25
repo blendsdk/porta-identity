@@ -20,10 +20,15 @@ import {
 import { AddRegular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router';
 import { useOrganizations } from '../../api/organizations';
-import { EntityDataGrid, type Column } from '../../components/EntityDataGrid';
+import {
+  EntityDataGrid,
+  type DataGridColumn,
+  type SortState,
+} from '../../components/EntityDataGrid';
 import { StatusBadge } from '../../components/StatusBadge';
-import { EmptyState } from '../../components/EmptyState';
 import type { Organization, OrganizationStatus } from '../../types';
+
+const PAGE_SIZE = 20;
 
 const useStyles = makeStyles({
   root: {
@@ -53,7 +58,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 ];
 
 /** Column definitions for the organization data grid */
-const COLUMNS: Column<Organization>[] = [
+const COLUMNS: DataGridColumn<Organization>[] = [
   {
     key: 'name',
     label: 'Name',
@@ -102,22 +107,21 @@ export function OrganizationList() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrganizationStatus | ''>('');
   const [page, setPage] = useState(1);
-  const [sortField, setSortField] = useState<string>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sort, setSort] = useState<SortState>({ column: 'name', direction: 'asc' });
 
   // Build query params from state
   const params = {
     search: search || undefined,
     status: statusFilter || undefined,
-    page,
-    limit: 20,
-    sortBy: sortField,
-    sortOrder: sortDirection,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+    sortBy: sort.column,
+    sortOrder: sort.direction,
   };
 
   const { data, isLoading } = useOrganizations(params);
   const organizations = data?.data ?? [];
-  const totalPages = data?.pagination?.totalPages ?? 1;
+  const totalCount = data?.pagination?.total ?? 0;
 
   /** Navigate to organization detail on row click */
   const handleRowClick = useCallback(
@@ -128,9 +132,8 @@ export function OrganizationList() {
   );
 
   /** Handle sort changes from the data grid */
-  const handleSort = useCallback((field: string, direction: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(direction);
+  const handleSortChange = useCallback((newSort: SortState) => {
+    setSort(newSort);
     setPage(1); // Reset to first page on sort change
   }, []);
 
@@ -169,26 +172,22 @@ export function OrganizationList() {
       <EntityDataGrid<Organization>
         columns={COLUMNS}
         items={organizations}
+        getRowKey={(org) => org.id}
         loading={isLoading}
-        search={search}
+        searchQuery={search}
         onSearchChange={setSearch}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSort={handleSort}
+        searchPlaceholder="Search organizations..."
+        sort={sort}
+        onSortChange={handleSortChange}
         page={page}
-        totalPages={totalPages}
+        pageSize={PAGE_SIZE}
+        totalCount={totalCount}
         onPageChange={setPage}
         onRowClick={handleRowClick}
-        getRowId={(org) => org.id}
-        emptyContent={
-          <EmptyState
-            title="No organizations found"
-            description={
-              search || statusFilter
-                ? 'Try adjusting your search or filters.'
-                : 'Create your first organization to get started.'
-            }
-          />
+        emptyMessage={
+          search || statusFilter
+            ? 'No organizations found. Try adjusting your search or filters.'
+            : 'No organizations yet. Create your first organization to get started.'
         }
       />
     </div>
