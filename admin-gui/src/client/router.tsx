@@ -21,6 +21,8 @@ import { ImportPage } from './pages/import-export/ImportPage';
 import { SearchResults } from './pages/search/SearchResults';
 import { GettingStarted } from './pages/wizard/GettingStarted';
 import { AdminProfile } from './pages/profile/AdminProfile';
+import { OrganizationList } from './pages/organizations/OrganizationList';
+import { CreateOrganization } from './pages/organizations/CreateOrganization';
 
 /**
  * Application route tree.
@@ -51,7 +53,7 @@ export const router = createBrowserRouter([
             path: '/organizations',
             handle: { breadcrumb: 'Organizations' },
             children: [
-              { index: true, element: <StubPage title="Organizations" /> },
+              { index: true, element: <OrganizationList /> },
               {
                 path: ':orgId',
                 element: <StubPage title="Organization Detail" />,
@@ -59,7 +61,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'new',
-                element: <StubPage title="Create Organization" />,
+                element: <CreateOrganization />,
                 handle: { breadcrumb: 'Create' },
               },
             ],
