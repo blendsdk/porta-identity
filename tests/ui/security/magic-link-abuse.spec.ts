@@ -110,8 +110,14 @@ test.describe('Magic Link Abuse', () => {
     expect(bodyText?.toLowerCase()).toContain('email');
 
     // 4. Should not reveal that the account is suspended
-    expect(bodyText?.toLowerCase()).not.toContain('suspended');
-    expect(bodyText?.toLowerCase()).not.toContain('disabled');
+    //    Strip the email address from the body text before checking, since the
+    //    email itself may contain status words (e.g., "suspended@test.example.com")
+    //    and the magic-link-sent template correctly displays the submitted email.
+    const bodyWithoutEmail = bodyText
+      ?.toLowerCase()
+      .replace(testData.suspendedUserEmail.toLowerCase(), '[email]');
+    expect(bodyWithoutEmail).not.toContain('suspended');
+    expect(bodyWithoutEmail).not.toContain('disabled');
   });
 
   /**
@@ -139,6 +145,12 @@ test.describe('Magic Link Abuse', () => {
     expect(bodyText?.toLowerCase()).toContain('email');
 
     // 4. Should not reveal that the account is locked
-    expect(bodyText?.toLowerCase()).not.toContain('locked');
+    //    Strip the email address from the body text before checking, since the
+    //    email itself may contain status words (e.g., "locked@test.example.com")
+    //    and the magic-link-sent template correctly displays the submitted email.
+    const bodyWithoutEmail = bodyText
+      ?.toLowerCase()
+      .replace(testData.lockedUserEmail.toLowerCase(), '[email]');
+    expect(bodyWithoutEmail).not.toContain('locked');
   });
 });

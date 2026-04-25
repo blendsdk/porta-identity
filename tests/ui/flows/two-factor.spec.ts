@@ -28,8 +28,14 @@ test.describe('Two-Factor Authentication Flow', () => {
   // runs and Playwright retries. Without this, retries accumulate
   // OTP codes and the server throws "Too many active OTP codes",
   // causing email-waiting tests to time out on CI.
-  test.beforeEach(async ({ dbHelpers, mailCapture }) => {
-    await dbHelpers.expireAllOtpCodes();
+  //
+  // IMPORTANT: Use user-scoped expireOtpCodesForUser() instead of the
+  // global expireAllOtpCodes() to avoid cross-worker interference.
+  // two-factor-edge-cases.spec.ts runs on a different Playwright worker
+  // and also expires OTP codes — a global expire would invalidate codes
+  // being actively used by this worker.
+  test.beforeEach(async ({ dbHelpers, mailCapture, testData }) => {
+    await dbHelpers.expireOtpCodesForUser(testData.twoFactorEmailUser);
     await mailCapture.deleteAll();
   });
 
@@ -75,28 +81,39 @@ test.describe('Two-Factor Authentication Flow', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('**/interaction/*/two-factor', { timeout: 25_000 });
 
-    // 2. Clear MailHog to discard any stale OTP emails from previous tests.
-    //    Without this, a late-arriving email from a prior test's login can
-    //    race with this test's email, and waitForEmail may pick up the stale
-    //    one whose OTP code was already expired by beforeEach.
+    // 2. Clear MailHog and record timestamp to discard any stale OTP emails.
+    //    The login above sends OTP email #1 asynchronously. By recording the
+    //    time before the resend and using the `after` filter, we guarantee
+    //    waitForEmail picks up only the resend's email — not a late-arriving
+    //    login email whose code might collide in a retry scenario.
     await mailCapture.deleteAll();
+    const beforeResend = new Date();
 
     // 3. Resend OTP to get a fresh code in a clean inbox
     await page.click('form[action*="/two-factor/resend"] button');
     await page.waitForURL('**/interaction/*/two-factor*');
 
-    // 4. Retrieve the OTP code from MailHog
+    // 4. Retrieve the OTP code from MailHog (only emails after the resend click)
     const message = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
       subject: 'verification',
       timeout: 20_000,
+      after: beforeResend,
     });
 
     const otpCode = extractOtpCode(message);
+    // Diagnostic: log extracted code details if extraction fails or code is suspect
+    if (!otpCode) {
+      console.error('[2FA-TEST] Failed to extract OTP code from email:', {
+        subject: message.subject,
+        bodySnippet: message.body.substring(0, 200),
+        timestamp: message.timestamp.toISOString(),
+      });
+    }
     expect(otpCode).toBeTruthy();
 
-    // 5. Enter the OTP code and submit
+    // 5. Enter the OTP code and submit via the verify form (not the resend form)
     await page.fill('#code', otpCode!);
-    await page.click('button[type="submit"]');
+    await page.click('#verify-form button[type="submit"]');
 
     // 6. Should complete auth flow → consent (auto or explicit) → callback
     //    Handle potential consent page

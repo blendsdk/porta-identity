@@ -151,8 +151,9 @@ test.describe('Two-Factor Edge Cases', () => {
     // Extract the code from the email
     const otpCode = extractOtpCode(message) ?? '123456';
 
-    // Expire all OTP codes for this user via direct SQL
-    await dbHelpers.expireAllOtpCodes();
+    // Expire OTP codes for this specific user via direct SQL (user-scoped
+    // to avoid cross-worker interference with two-factor.spec.ts)
+    await dbHelpers.expireOtpCodesForUser(testData.twoFactorEmailUser);
 
     // Enter the now-expired code
     await page.fill('#code', otpCode);
