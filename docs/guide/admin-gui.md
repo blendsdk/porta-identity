@@ -208,6 +208,23 @@ The SPA communicates with the Porta server through the BFF proxy. The API client
 
 Domain-specific React Query hooks are provided for all entity types: organizations, applications, clients, users, roles, permissions, custom claims, sessions, audit, config, signing keys, stats, and import/export.
 
+### System Feature Pages
+
+The SPA includes the following system-level admin pages:
+
+| Page | Route | Description |
+|------|-------|-------------|
+| **Dashboard** | `/` | System-wide or org-scoped stats cards, login activity chart (Recharts), recent activity feed, quick actions. Switches to org-scoped stats when an org is selected. |
+| **Audit Log** | `/audit` | Filterable audit trail with date range, event type, actor, entity type filters. Expandable rows show full JSON event details. Supports CSV export of filtered results. |
+| **Sessions** | `/sessions` | Active session list with auto-refresh (30s). Single revoke via ConfirmDialog, bulk revoke by user/org/all with TypeToConfirm for destructive "revoke all". |
+| **Configuration** | `/config` | System config key-value editor with inline edit, type indicators (string/number/boolean/duration), and confirm dialog for changes. |
+| **Signing Keys** | `/keys` | ES256 signing key management — key list with ID copy, generate new key, rotate keys (TypeToConfirm), JWKS endpoint URL with CopyButton. |
+| **Export** | `/import-export` | Multi-entity JSON export with entity type checkboxes and Blob-based file download. |
+| **Import** | `/import-export/import` | Drag-and-drop JSON file upload, dry-run preview table with entity counts, confirmed import with progress indicator and result summary. |
+| **Search Results** | `/search?q=...` | Full-page search results grouped by entity type, navigated from the SearchOverlay (Cmd+K). |
+| **Getting Started** | `/getting-started` | Setup wizard checklist (create org, app, client, invite user, configure branding) with localStorage progress tracking and dismiss functionality. |
+| **Admin Profile** | `/profile` | Tabbed profile page: edit name/email, change password (current + new + confirm), TOTP setup (QR code + 6-digit verification + disable). |
+
 ### Testing
 
 ```bash
