@@ -260,12 +260,12 @@ cd admin-gui && yarn test:e2e:headed
 
 **Unit tests** (145 tests, 16 files) include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client, page rendering).
 
-**E2E tests** (120 tests, 8 spec files) use Playwright to test the full admin GUI in a real browser. The test infrastructure:
+**E2E tests** (204 tests, 23 spec files) use Playwright to test the full admin GUI in a real browser. The test infrastructure:
 
 - Starts a real Porta server (port 49300) and BFF (port 49301) in-process
 - Seeds test data (admin user, organizations, applications, clients, users, roles, permissions, claim definitions, audit log entries)
 - Authenticates via the real magic-link flow using MailHog
 - Saves session state so all subsequent tests run authenticated
-- Tests cover: sidebar navigation, direct URL navigation, and all entity pages (organizations, applications, clients, users, roles, permissions, custom claims) including list, detail, create forms, search, filtering, and status transitions
+- Tests cover: login redirects, sidebar/breadcrumb/topbar navigation, direct URL navigation, dashboard (stats, charts, quick actions), all entity pages (organizations, applications, clients, users, roles, permissions, custom claims) including list, detail, create forms, search, filtering, and status transitions, session management (revoke dialogs), audit log (filters, row expansion, CSV export), config editor (inline edit, confirm), signing keys (generate, rotate), export/import, search results, getting started wizard, and cross-page workflows (org lifecycle, error handling, back/forward)
 
 **Prerequisites for E2E tests:** Docker services must be running (`yarn docker:up` from the project root) for PostgreSQL, Redis, and MailHog.
