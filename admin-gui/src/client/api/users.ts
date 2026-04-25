@@ -116,3 +116,55 @@ export function useArchiveUser() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Invitation hooks
+// ---------------------------------------------------------------------------
+
+/** Request body for inviting a user */
+export interface InviteUserRequest {
+  email: string;
+  displayName?: string;
+  personalMessage?: string;
+  roles?: Array<{ applicationId: string; roleId: string }>;
+  claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>;
+  locale?: string;
+}
+
+/** Request body for invitation preview */
+export interface InvitePreviewRequest {
+  email: string;
+  displayName?: string;
+  personalMessage?: string;
+  locale?: string;
+}
+
+/** Invitation preview response */
+export interface InvitePreviewResponse {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+/** Send an invitation to a user within an organization */
+export function useInviteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orgId, data }: { orgId: string; data: InviteUserRequest }) =>
+      api.post<User>(`/organizations/${orgId}/users/invite`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+    },
+  });
+}
+
+/** Preview invitation email (without sending) */
+export function useInvitePreview() {
+  return useMutation({
+    mutationFn: ({ orgId, data }: { orgId: string; data: InvitePreviewRequest }) =>
+      api.post<{ data: InvitePreviewResponse }>(
+        `/organizations/${orgId}/users/invite/preview`,
+        data,
+      ),
+  });
+}

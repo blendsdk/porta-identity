@@ -32,6 +32,7 @@ import { CreateClient } from './pages/clients/CreateClient';
 import { ClientDetail } from './pages/clients/ClientDetail';
 import { UserList } from './pages/users/UserList';
 import { CreateUser } from './pages/users/CreateUser';
+import { InviteUser } from './pages/users/InviteUser';
 
 /**
  * Application route tree.
@@ -132,7 +133,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'invite',
-                element: <StubPage title="Invite User" />,
+                element: <InviteUser />,
                 handle: { breadcrumb: 'Invite' },
               },
             ],
