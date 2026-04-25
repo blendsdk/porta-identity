@@ -29,6 +29,7 @@ import { CreateApplication } from './pages/applications/CreateApplication';
 import { ApplicationDetail } from './pages/applications/ApplicationDetail';
 import { ClientList } from './pages/clients/ClientList';
 import { CreateClient } from './pages/clients/CreateClient';
+import { ClientDetail } from './pages/clients/ClientDetail';
 
 /**
  * Application route tree.
@@ -100,7 +101,7 @@ export const router = createBrowserRouter([
               { index: true, element: <ClientList /> },
               {
                 path: ':clientId',
-                element: <StubPage title="Client Detail" />,
+                element: <ClientDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {

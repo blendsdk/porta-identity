@@ -42,6 +42,10 @@ export interface SeedResult {
   testApp: { id: string; name: string; slug: string };
   /** Archived test application for status filter tests */
   archivedApp: { id: string; name: string; slug: string };
+  /** Test public client linked to Acme Customer Portal */
+  testClient: { id: string; clientId: string; name: string };
+  /** Test confidential client linked to Acme Customer Portal */
+  testConfidentialClient: { id: string; clientId: string; name: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +204,38 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     [archivedApp.id],
   );
 
-  // ── 9. Create audit log entries ───────────────────────────────────
+  // ── 9. Create test OIDC clients for client page tests ─────────────
+  // Public SPA client linked to Acme Customer Portal
+  const { client: testPublicClient } = await createTestClientWithSecret(
+    activeOrg.id,
+    testApp.id,
+    {
+      clientName: 'Acme SPA Client',
+      clientType: 'public',
+      applicationType: 'web',
+      tokenEndpointAuthMethod: 'none',
+      grantTypes: ['authorization_code', 'refresh_token'],
+      responseTypes: ['code'],
+      redirectUris: ['http://localhost:3000/callback'],
+    },
+  );
+
+  // Confidential backend client linked to Acme Customer Portal
+  const { client: testConfClient } = await createTestClientWithSecret(
+    activeOrg.id,
+    testApp.id,
+    {
+      clientName: 'Acme Backend Service',
+      clientType: 'confidential',
+      applicationType: 'web',
+      tokenEndpointAuthMethod: 'client_secret_post',
+      grantTypes: ['authorization_code', 'client_credentials', 'refresh_token'],
+      responseTypes: ['code'],
+      redirectUris: ['http://localhost:4000/auth/callback'],
+    },
+  );
+
+  // ── 10. Create audit log entries ──────────────────────────────────
   // 12 entries with varied event types for the Audit Log page tests
   const auditEntries = [
     { eventType: 'user.login.success', category: 'authentication', desc: 'User logged in via magic link' },
@@ -247,5 +282,7 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     },
     testApp: { id: testApp.id, name: testApp.name, slug: testApp.slug },
     archivedApp: { id: archivedApp.id, name: archivedApp.name, slug: archivedApp.slug },
+    testClient: { id: testPublicClient.id, clientId: testPublicClient.clientId, name: 'Acme SPA Client' },
+    testConfidentialClient: { id: testConfClient.id, clientId: testConfClient.clientId, name: 'Acme Backend Service' },
   };
 }

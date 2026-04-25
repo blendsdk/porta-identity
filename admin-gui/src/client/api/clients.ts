@@ -1,16 +1,18 @@
 /**
  * Clients API hooks.
- * React Query hooks for OAuth2/OIDC client CRUD operations.
+ * React Query hooks for OAuth2/OIDC client CRUD operations
+ * and client secret management (generate, list, revoke).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { Client } from '../types';
+import type { Client, ClientSecret } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
 const KEYS = {
   all: ['clients'] as const,
   list: (p?: ListParams) => [...KEYS.all, 'list', p] as const,
   detail: (id: string) => [...KEYS.all, id] as const,
+  secrets: (clientId: string) => [...KEYS.all, clientId, 'secrets'] as const,
 };
 
 /** Fetch a paginated list of clients */
@@ -75,6 +77,59 @@ export function useRevokeClient() {
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Client Secret Management
+// ---------------------------------------------------------------------------
+
+/** Fetch all secrets for a client (returns metadata, never plaintext) */
+export function useClientSecrets(clientId: string) {
+  return useQuery({
+    queryKey: KEYS.secrets(clientId),
+    queryFn: () => api.get<ClientSecret[]>(`/clients/${clientId}/secrets`),
+    enabled: !!clientId,
+  });
+}
+
+/** Generate a new secret for a client (returns plaintext once) */
+export function useGenerateClientSecret() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      clientId,
+      label,
+      expiresAt,
+    }: {
+      clientId: string;
+      label?: string;
+      expiresAt?: string;
+    }) =>
+      api.post<ClientSecret>(`/clients/${clientId}/secrets`, {
+        label,
+        expiresAt,
+      }),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: KEYS.secrets(v.clientId) });
+    },
+  });
+}
+
+/** Revoke a specific client secret */
+export function useRevokeClientSecret() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      clientId,
+      secretId,
+    }: {
+      clientId: string;
+      secretId: string;
+    }) => api.post<void>(`/clients/${clientId}/secrets/${secretId}/revoke`),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: KEYS.secrets(v.clientId) });
     },
   });
 }
