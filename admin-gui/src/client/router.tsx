@@ -24,6 +24,9 @@ import { AdminProfile } from './pages/profile/AdminProfile';
 import { OrganizationList } from './pages/organizations/OrganizationList';
 import { CreateOrganization } from './pages/organizations/CreateOrganization';
 import { OrganizationDetail } from './pages/organizations/OrganizationDetail';
+import { ApplicationList } from './pages/applications/ApplicationList';
+import { CreateApplication } from './pages/applications/CreateApplication';
+import { ApplicationDetail } from './pages/applications/ApplicationDetail';
 
 /**
  * Application route tree.
@@ -73,15 +76,15 @@ export const router = createBrowserRouter([
             path: '/applications',
             handle: { breadcrumb: 'Applications' },
             children: [
-              { index: true, element: <StubPage title="Applications" /> },
+              { index: true, element: <ApplicationList /> },
               {
                 path: ':appId',
-                element: <StubPage title="Application Detail" />,
+                element: <ApplicationDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {
                 path: 'new',
-                element: <StubPage title="Create Application" />,
+                element: <CreateApplication />,
                 handle: { breadcrumb: 'Create' },
               },
             ],

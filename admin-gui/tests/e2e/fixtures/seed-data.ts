@@ -38,6 +38,10 @@ export interface SeedResult {
     suspended: { id: string; slug: string };
     archived: { id: string; slug: string };
   };
+  /** Test application linked to the active test org (acme-corp) */
+  testApp: { id: string; name: string; slug: string };
+  /** Archived test application for status filter tests */
+  archivedApp: { id: string; name: string; slug: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +179,28 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     [archivedOrg.id],
   );
 
-  // ── 8. Create audit log entries ───────────────────────────────────
+  // ── 8. Create test applications for application page tests ────────
+  // Active application linked to acme-corp for list/detail tests
+  const testApp = await createTestApplication({
+    name: 'Acme Customer Portal',
+    slug: 'acme-customer-portal',
+    organizationId: activeOrg.id,
+    description: 'Customer-facing portal application',
+  });
+
+  // Archived application for status filter tests
+  const archivedApp = await createTestApplication({
+    name: 'Legacy Dashboard',
+    slug: 'legacy-dashboard',
+    organizationId: activeOrg.id,
+    description: 'Deprecated dashboard application',
+  });
+  await pool.query(
+    `UPDATE applications SET status = 'archived' WHERE id = $1`,
+    [archivedApp.id],
+  );
+
+  // ── 9. Create audit log entries ───────────────────────────────────
   // 12 entries with varied event types for the Audit Log page tests
   const auditEntries = [
     { eventType: 'user.login.success', category: 'authentication', desc: 'User logged in via magic link' },
@@ -220,5 +245,7 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
       suspended: { id: suspendedOrg.id, slug: suspendedOrg.slug },
       archived: { id: archivedOrg.id, slug: archivedOrg.slug },
     },
+    testApp: { id: testApp.id, name: testApp.name, slug: testApp.slug },
+    archivedApp: { id: archivedApp.id, name: archivedApp.name, slug: archivedApp.slug },
   };
 }
