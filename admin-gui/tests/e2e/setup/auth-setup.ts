@@ -1,106 +1,130 @@
 /**
- * Auth setup — performs the real magic-link authentication flow.
+ * Playwright auth setup — authenticates as admin via magic link.
  *
- * This is NOT a test file — it's a setup step that runs BEFORE all
- * other tests. It authenticates via the complete OIDC magic-link flow:
+ * This is a special Playwright "test" that runs as the first project
+ * (before any actual tests). It performs a real magic-link login flow:
  *
- *   1. Navigate to BFF root → SPA redirects to /login → /auth/login
- *   2. BFF redirects to Porta's OIDC authorize endpoint
- *   3. Porta shows the login interaction page
- *   4. Fill in email, click "Send Magic Link"
- *   5. Porta sends magic link email → MailHog captures it
- *   6. Extract magic link URL from MailHog
- *   7. Navigate to magic link → Porta validates → redirects to BFF callback
- *   8. BFF exchanges code → creates session → redirects to Dashboard
- *   9. Save browser storageState (cookies) for all subsequent tests
+ *   1. Clear MailHog inbox
+ *   2. Navigate to BFF /auth/login → OIDC authorize → Porta login page
+ *   3. Fill email + click "Send me a sign-in link"
+ *   4. Poll MailHog for the magic link email
+ *   5. Navigate to the magic link URL → Porta validates → BFF callback
+ *   6. BFF creates session → redirect to / (SPA loads)
+ *   7. Save storageState for all subsequent authenticated tests
  *
- * The saved storageState includes the BFF session cookie, so all
- * authenticated tests skip the login flow entirely.
+ * The saved storageState file (.auth/admin-session.json) contains the
+ * BFF session cookie, allowing all "authenticated" project tests to
+ * skip the login flow entirely.
  *
- * Configured as the 'auth-setup' project in playwright.config.ts
- * with `storageState: undefined` (no pre-existing auth).
+ * @see playwright.config.ts — "auth-setup" project configuration
+ * @see fixtures/mailhog.ts — MailHog client for email retrieval
+ * @see fixtures/seed-data.ts — Seed data (admin user, BFF client)
  */
 
 import { test as setup, expect } from '@playwright/test';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MailHogClient } from '../fixtures/mailhog.js';
 
-/** Path where authenticated browser state is saved */
-const AUTH_STATE_PATH = path.resolve(
-  path.dirname(new URL(import.meta.url).pathname),
-  '../.auth/admin-session.json',
-);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Admin email — set by global setup, also hardcoded as fallback */
+/**
+ * Path where authenticated browser state (cookies + storage) is saved.
+ * This directory is gitignored (tests/e2e/.auth/).
+ */
+const AUTH_FILE = path.resolve(__dirname, '../.auth/admin-session.json');
+
+/** Admin email address — set by global-setup via env var */
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@porta-test.local';
 
-/** MailHog API URL — set by global setup */
-const MAILHOG_URL = process.env.MAILHOG_API_URL ?? 'http://localhost:8025';
+/** MailHog API URL — set by global-setup via env var */
+const MAILHOG_API_URL = process.env.MAILHOG_API_URL ?? 'http://localhost:8025';
 
-setup('authenticate via magic link', async ({ page }) => {
-  const mailhog = new MailHogClient(MAILHOG_URL);
+/** BFF base URL — set by global-setup via env var */
+const ADMIN_GUI_URL = process.env.ADMIN_GUI_URL ?? 'http://localhost:49301';
 
-  // ── Step 0: Clear MailHog inbox to avoid stale emails ────────────
+setup('authenticate as admin via magic link', async ({ page }) => {
+  setup.setTimeout(60_000); // Allow 60s for the full auth flow
+
+  const mailhog = new MailHogClient(MAILHOG_API_URL);
+
+  // ── 1. Clear MailHog inbox ──────────────────────────────────────────
+  // Ensures we only find the magic link email sent during THIS flow,
+  // not leftover emails from previous test runs.
   await mailhog.clearAll();
 
-  // ── Step 1: Navigate to the BFF root ─────────────────────────────
-  // The SPA loads, checks /auth/me (unauthenticated), and redirects
-  // through /login → /auth/login → Porta's authorize endpoint →
-  // Porta's login interaction page.
-  //
-  // This involves multiple redirects, so we wait for the Porta login
-  // page to settle (it has the #email input).
-  await page.goto('/');
+  // ── 2. Navigate to BFF login — starts OIDC auth flow ──────────────
+  // GET /auth/login on the BFF:
+  //   → generates PKCE challenge (S256) + random state
+  //   → stores code_verifier + state in Koa session
+  //   → redirects to Porta's OIDC /authorize endpoint
+  // Porta's authorize endpoint:
+  //   → creates interaction (login prompt)
+  //   → redirects to /:orgSlug/interaction/:uid/login
+  await page.goto(`${ADMIN_GUI_URL}/auth/login`);
 
-  // Wait for the login page to fully load — Porta's interaction page
-  // has an email input field. The redirect chain is:
-  //   BFF / → SPA RequireAuth → /login → /auth/login → Porta authorize → Porta login
-  await page.waitForSelector('#email', { timeout: 30_000 });
+  // ── 3. Wait for Porta's login interaction page ────────────────────
+  // The login page is server-rendered by Porta (Handlebars template).
+  // It contains an email input and either:
+  //   - Both password + magic link forms ("both" mode)
+  //   - Magic link form only ("magic-link only" mode)
+  // We wait for the email input to confirm the page has loaded.
+  const emailInput = page.locator('input[name="email"], #email');
+  await expect(emailInput.first()).toBeVisible({ timeout: 15_000 });
 
-  // ── Step 2: Fill email and request magic link ────────────────────
-  await page.fill('#email', ADMIN_EMAIL);
+  // ── 4. Fill email address ─────────────────────────────────────────
+  // Fill the visible email field. In "both" mode, template JS copies
+  // this value to the magic link form's hidden email field on submit.
+  await emailInput.first().fill(ADMIN_EMAIL);
 
-  // Click the magic link button — this submits the magic link form.
-  // The button exists because the org's default_login_methods includes
-  // 'magic_link' (the default: ['password', 'magic_link']).
-  await page.click('#magic-link-btn');
+  // ── 5. Click the magic link button ────────────────────────────────
+  // The button text is "Send me a sign-in link" in all template modes.
+  // This submits POST /:orgSlug/interaction/:uid/magic-link which
+  // triggers Porta to send the magic link email via SMTP → MailHog.
+  const magicLinkButton = page.locator(
+    'button:has-text("sign-in link"), ' +
+    'input[type="submit"][value*="sign-in link"]',
+  );
+  await magicLinkButton.first().click();
 
-  // ── Step 3: Wait for confirmation page ───────────────────────────
-  // After submitting, Porta shows a "check your email" page.
-  // We don't need to assert on it — we just need to wait for the
-  // email to arrive in MailHog.
+  // ── 6. Wait for confirmation ──────────────────────────────────────
+  // After submitting, the page either:
+  //   - Shows a "check your email" inline message
+  //   - Redirects to a magic-link-sent confirmation page
+  // Wait briefly to ensure the email has been queued for sending.
+  await page.waitForTimeout(1_000);
 
-  // ── Step 4: Retrieve magic link from MailHog ─────────────────────
-  const message = await mailhog.waitForMessage(ADMIN_EMAIL, 15_000);
-  const magicLink = mailhog.extractMagicLink(message);
+  // ── 7. Poll MailHog for the magic link email ──────────────────────
+  // Porta sends the email via SMTP to MailHog (running on port 1025).
+  // We poll MailHog's REST API until the email arrives.
+  const message = await mailhog.waitForMessage(ADMIN_EMAIL, 30_000);
+  const magicLinkUrl = mailhog.extractMagicLink(message);
 
-  // The magic link URL points to Porta (e.g., http://localhost:49300/porta-admin/auth/magic-link/TOKEN)
-  expect(magicLink).toContain('/magic-link/');
+  // ── 8. Navigate to the magic link URL ─────────────────────────────
+  // The URL points to Porta (e.g., http://localhost:49300/:orgSlug/auth/magic-link?token=...&email=...).
+  // Porta validates the token, completes the OIDC interaction, and redirects:
+  //   → BFF /auth/callback?code=...&state=...
+  //   → BFF exchanges code for tokens (PKCE), creates session
+  //   → BFF redirects to / (SPA loads)
+  await page.goto(magicLinkUrl);
 
-  // ── Step 5: Click the magic link ─────────────────────────────────
-  // Navigate to the magic link URL. Porta verifies the token,
-  // resumes the OIDC interaction, and redirects through:
-  //   Porta magic-link verify → Porta consent (auto) → BFF /auth/callback → BFF /
-  await page.goto(magicLink);
+  // ── 9. Wait for authenticated SPA to load ─────────────────────────
+  // After the BFF callback creates the session and redirects to /,
+  // the SPA loads and the AppShell renders (sidebar, topbar, content).
+  // We wait for the app-shell data-testid to confirm full load.
+  await page.waitForURL(`${ADMIN_GUI_URL}/**`, { timeout: 30_000 });
 
-  // ── Step 6: Wait for authenticated Dashboard ─────────────────────
-  // After the auth flow completes, the BFF redirects to / and the
-  // SPA loads the Dashboard. We wait for a known element that only
-  // appears when authenticated.
-  //
-  // The Dashboard should have a heading or the AppShell layout visible.
-  // We use a generous timeout because the redirect chain is long.
-  await page.waitForURL('**/');
+  // Verify the SPA is loaded and authenticated
+  const appShell = page.locator('[data-testid="app-shell"]');
+  await expect(appShell).toBeVisible({ timeout: 15_000 });
 
-  // Verify we're on the authenticated app — the AppShell sidebar
-  // should be visible, or at minimum the /auth/me call returns
-  // authenticated: true. Let's check for the sidebar navigation.
-  await expect(page.locator('nav, [role="navigation"]').first()).toBeVisible({
-    timeout: 15_000,
-  });
+  // Double-check: sidebar should be visible (proves auth + SPA loaded)
+  const sidebar = page.locator('[data-testid="sidebar"]');
+  await expect(sidebar).toBeVisible({ timeout: 5_000 });
 
-  // ── Step 7: Save authenticated browser state ─────────────────────
-  // This saves cookies (including the BFF session cookie) to a file.
-  // All 'authenticated' project tests load this state, skipping login.
-  await page.context().storageState({ path: AUTH_STATE_PATH });
+  // ── 10. Save authenticated browser state ──────────────────────────
+  // Saves cookies (BFF session cookie) and localStorage/sessionStorage
+  // to a JSON file. The "authenticated" Playwright project uses this
+  // file as its storageState, skipping the login flow for all tests.
+  await page.context().storageState({ path: AUTH_FILE });
 });

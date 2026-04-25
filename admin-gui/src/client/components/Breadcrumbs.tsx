@@ -37,7 +37,7 @@ export function Breadcrumbs() {
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-testid="breadcrumbs">
       <Breadcrumb aria-label="Breadcrumb" size="medium">
         {breadcrumbs.map((crumb, index) => {
           const isLast = index === breadcrumbs.length - 1;

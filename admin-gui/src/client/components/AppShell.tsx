@@ -40,12 +40,12 @@ export function AppShell() {
   const styles = useStyles();
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-testid="app-shell">
       <EnvironmentBanner />
       <TopBar />
-      <div className={styles.body}>
+      <div className={styles.body} data-testid="app-body">
         <Sidebar />
-        <main className={styles.content}>
+        <main className={styles.content} data-testid="main-content">
           <Breadcrumbs />
           <Outlet />
         </main>

@@ -94,10 +94,10 @@ export function TopBar() {
   useKeyboardShortcut('mod+k', toggleSearch);
 
   return (
-    <header className={styles.root}>
+    <header className={styles.root} data-testid="topbar">
       {/* Left section: brand + org selector */}
       <div className={styles.left}>
-        <div className={styles.brand}>
+        <div className={styles.brand} data-testid="topbar-brand">
           <Text size={500} weight="bold">
             Porta Admin
           </Text>
@@ -117,6 +117,7 @@ export function TopBar() {
             onClick={toggleSearch}
             aria-label="Search"
             className={styles.searchButton}
+            data-testid="topbar-search"
           />
         </Tooltip>
 
@@ -128,6 +129,7 @@ export function TopBar() {
             onClick={toggleNotifications}
             aria-label="Notifications"
             className={styles.notificationButton}
+            data-testid="topbar-notifications"
           >
             {/* Notification count badge (placeholder — 0 for now) */}
             <Badge

@@ -52,7 +52,7 @@ export function UserMenu() {
   return (
     <Menu>
       <MenuTrigger disableButtonEnhancement>
-        <Button appearance="subtle" aria-label="User menu">
+        <Button appearance="subtle" aria-label="User menu" data-testid="user-menu-trigger">
           <span className={styles.trigger}>
             <Avatar
               name={displayName}
@@ -81,7 +81,7 @@ export function UserMenu() {
           </MenuItem>
           <MenuDivider />
           {/* Sign out */}
-          <MenuItem icon={<SignOutRegular />} onClick={logout}>
+          <MenuItem icon={<SignOutRegular />} onClick={logout} data-testid="user-menu-signout">
             Sign out
           </MenuItem>
         </MenuList>

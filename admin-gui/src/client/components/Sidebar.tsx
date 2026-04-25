@@ -243,6 +243,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
         aria-current={active && !hasChildren ? 'page' : undefined}
         aria-expanded={hasChildren ? isExpanded : undefined}
         title={collapsed ? item.label : undefined}
+        data-testid={`nav-item-${item.key}`}
       >
         <span className={styles.navIcon}>
           <Icon />
@@ -289,6 +290,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
         collapsed ? styles.collapsed : styles.expanded,
       )}
       aria-label="Main navigation"
+      data-testid="sidebar"
     >
       {/* Header with collapse toggle */}
       <div
@@ -311,6 +313,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
             className={styles.collapseButton}
             onClick={toggleCollapse}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            data-testid="sidebar-toggle"
           >
             <NavigationRegular />
           </button>
@@ -318,7 +321,7 @@ export function Sidebar({ defaultCollapsed = false }: SidebarProps) {
       </div>
 
       {/* Navigation items */}
-      <nav className={styles.nav}>
+      <nav className={styles.nav} data-testid="sidebar-nav">
         {visibleItems.map((item) => renderNavItem(item))}
       </nav>
     </aside>
