@@ -18,7 +18,7 @@ import {
   Option,
 } from '@fluentui/react-components';
 import { AddRegular } from '@fluentui/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useOrganizations } from '../../api/organizations';
 import { EntityDataGrid, type Column } from '../../components/EntityDataGrid';
 import { StatusBadge } from '../../components/StatusBadge';

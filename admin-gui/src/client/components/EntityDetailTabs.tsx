@@ -20,7 +20,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { ArrowLeftRegular } from '@fluentui/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { StatusBadge, type EntityStatus } from './StatusBadge';
 
 const useStyles = makeStyles({

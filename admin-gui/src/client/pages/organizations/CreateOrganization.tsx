@@ -24,7 +24,7 @@ import {
   MessageBarBody,
 } from '@fluentui/react-components';
 import { ArrowLeftRegular, SaveRegular } from '@fluentui/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useCreateOrganization } from '../../api/organizations';
 import { LoginMethodSelector } from '../../components/LoginMethodSelector';
 import type { LoginMethod, CreateOrganizationRequest } from '../../types';
