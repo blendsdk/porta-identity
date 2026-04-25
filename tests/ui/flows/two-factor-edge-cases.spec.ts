@@ -126,46 +126,10 @@ test.describe('Two-Factor Edge Cases', () => {
     expect(page.url()).toMatch(/\/two-factor/);
   });
 
-  // ── 9.2: Expired OTP code shows error with resend option ─────────────
-
-  test('expired OTP code shows error with resend option', async ({
-    page,
-    testData,
-    startAuthFlow,
-    mailCapture,
-    dbHelpers,
-  }) => {
-    await loginToTwoFactorPage(
-      page,
-      testData.twoFactorEmailUser,
-      testData.userPassword,
-      startAuthFlow,
-    );
-
-    // Wait for OTP email to arrive
-    const message = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
-      subject: 'verification',
-      timeout: 10_000,
-    });
-
-    // Extract the code from the email
-    const otpCode = extractOtpCode(message) ?? '123456';
-
-    // Expire OTP codes for this specific user via direct SQL (user-scoped
-    // to avoid cross-worker interference with two-factor.spec.ts)
-    await dbHelpers.expireOtpCodesForUser(testData.twoFactorEmailUser);
-
-    // Enter the now-expired code
-    await page.fill('#code', otpCode);
-    await page.click('button[type="submit"]');
-    await page.waitForLoadState('networkidle');
-
-    // Should show error about invalid/expired code
-    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
-
-    // Resend button should be available (for email OTP method)
-    await expect(page.locator('form[action*="/two-factor/resend"] button')).toBeVisible();
-  });
+  // NOTE: "expired OTP code shows error with resend option" (9.2) was moved
+  // to two-factor.spec.ts to share the same serial group. That test calls
+  // expireOtpCodesForUser() which would invalidate OTP codes in the main
+  // 2FA flow test when both files run on different parallel workers.
 
   // ── 9.3: Invalid TOTP code shows error ───────────────────────────────
 
