@@ -23,17 +23,17 @@ describe('StatsCard', () => {
   });
 
   it('should render positive trend', () => {
-    renderWithProvider(<StatsCard title="Users" value={100} trend={12} />);
-    expect(screen.getByText(/12%/)).toBeDefined();
+    renderWithProvider(<StatsCard title="Users" value={100} trend={{ value: 12, direction: 'up' }} />);
+    expect(screen.getByText(/12/)).toBeDefined();
   });
 
   it('should render negative trend', () => {
-    renderWithProvider(<StatsCard title="Users" value={100} trend={-5} />);
-    expect(screen.getByText(/5%/)).toBeDefined();
+    renderWithProvider(<StatsCard title="Users" value={100} trend={{ value: 5, direction: 'down' }} />);
+    expect(screen.getByText(/5/)).toBeDefined();
   });
 
   it('should render trend label', () => {
-    renderWithProvider(<StatsCard title="Users" value={100} trend={8} trendLabel="vs last month" />);
+    renderWithProvider(<StatsCard title="Users" value={100} trend={{ value: 8, direction: 'up' }} trendLabel="vs last month" />);
     expect(screen.getByText(/vs last month/)).toBeDefined();
   });
 });

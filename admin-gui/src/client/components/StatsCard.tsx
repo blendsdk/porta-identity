@@ -43,6 +43,14 @@ const useStyles = makeStyles({
   },
 });
 
+/** Trend indicator for StatsCard */
+export interface StatsCardTrend {
+  /** Trend numeric value (count or percentage) */
+  value: number;
+  /** Direction of the trend */
+  direction: 'up' | 'down';
+}
+
 /** Props for the StatsCard component */
 export interface StatsCardProps {
   /** Card title (e.g., "Total Organizations") */
@@ -51,8 +59,8 @@ export interface StatsCardProps {
   value: string | number;
   /** Optional icon displayed next to the title */
   icon?: ReactNode;
-  /** Optional trend percentage (positive = up, negative = down) */
-  trend?: number;
+  /** Optional trend indicator with value and direction */
+  trend?: StatsCardTrend;
   /** Trend label (e.g., "vs last month") */
   trendLabel?: string;
 }
@@ -73,10 +81,10 @@ export function StatsCard({ title, value, icon, trend, trendLabel }: StatsCardPr
       </div>
       <Text className={styles.value}>{value}</Text>
       {trend !== undefined && (
-        <span className={`${styles.trend} ${trend >= 0 ? styles.trendUp : styles.trendDown}`}>
-          {trend >= 0 ? <ArrowUpRegular /> : <ArrowDownRegular />}
+        <span className={`${styles.trend} ${trend.direction === 'up' ? styles.trendUp : styles.trendDown}`}>
+          {trend.direction === 'up' ? <ArrowUpRegular /> : <ArrowDownRegular />}
           <Text size={200}>
-            {Math.abs(trend)}%{trendLabel ? ` ${trendLabel}` : ''}
+            {trend.value}{trendLabel ? ` ${trendLabel}` : ''}
           </Text>
         </span>
       )}
