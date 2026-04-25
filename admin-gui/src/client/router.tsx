@@ -30,6 +30,8 @@ import { ApplicationDetail } from './pages/applications/ApplicationDetail';
 import { ClientList } from './pages/clients/ClientList';
 import { CreateClient } from './pages/clients/CreateClient';
 import { ClientDetail } from './pages/clients/ClientDetail';
+import { UserList } from './pages/users/UserList';
+import { CreateUser } from './pages/users/CreateUser';
 
 /**
  * Application route tree.
@@ -117,11 +119,16 @@ export const router = createBrowserRouter([
             path: '/users',
             handle: { breadcrumb: 'Users' },
             children: [
-              { index: true, element: <StubPage title="Users" /> },
+              { index: true, element: <UserList /> },
               {
                 path: ':userId',
                 element: <StubPage title="User Detail" />,
                 handle: { breadcrumb: 'Detail' },
+              },
+              {
+                path: 'new',
+                element: <CreateUser />,
+                handle: { breadcrumb: 'Create' },
               },
               {
                 path: 'invite',
