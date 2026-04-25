@@ -1,45 +1,72 @@
 /**
  * Dashboard statistics API hooks.
  *
- * Provides a React Query hook for fetching aggregated
- * dashboard statistics displayed on the admin home page.
+ * Provides React Query hooks for fetching aggregated dashboard
+ * statistics (system-wide and per-organization) displayed on the
+ * admin home page.
+ *
+ * Backend endpoints:
+ * - GET /api/admin/stats/overview → StatsOverview (system-wide)
+ * - GET /api/admin/stats/organization/:orgId → OrgStats (per-org)
  */
 import { useQuery } from '@tanstack/react-query';
 import { api } from './client';
-
-/** Aggregated counts shown on the admin dashboard */
-export interface DashboardStats {
-  /** Total number of organizations */
-  organizations: number;
-  /** Total number of users */
-  users: number;
-  /** Total number of applications */
-  applications: number;
-  /** Total number of OIDC clients */
-  clients: number;
-  /** Currently active session count */
-  activeSessions: number;
-  /** Number of audit events recorded today */
-  auditEventsToday: number;
-}
+import type { StatsOverview, OrgStats } from '../types';
 
 /** Query key factory for dashboard statistics */
 const KEYS = {
   all: ['stats'] as const,
+  overview: () => [...KEYS.all, 'overview'] as const,
+  org: (orgId: string) => [...KEYS.all, 'org', orgId] as const,
 };
 
 /**
- * Fetch aggregated dashboard statistics.
+ * Fetch system-wide dashboard statistics (all organizations).
  *
+ * Includes entity counts by status, login activity windows
+ * (24h/7d/30d), and system health indicators.
  * Results are considered fresh for 60 seconds to reduce
  * unnecessary refetches on the dashboard page.
  *
- * @returns React Query result containing {@link DashboardStats}.
+ * @returns React Query result containing {@link StatsOverview}.
  */
-export function useDashboardStats() {
+export function useOverviewStats() {
   return useQuery({
-    queryKey: KEYS.all,
-    queryFn: () => api.get<DashboardStats>('/stats'),
+    queryKey: KEYS.overview(),
+    queryFn: () =>
+      api.get<{ data: StatsOverview }>('/stats/overview').then((r) => r.data),
     staleTime: 60_000,
   });
+}
+
+/**
+ * Fetch per-organization dashboard statistics.
+ *
+ * Includes org-scoped user/client counts, login activity,
+ * and application count.
+ * Only enabled when an orgId is provided (non-null).
+ *
+ * @param orgId - Organization ID to scope stats to, or null to disable.
+ * @returns React Query result containing {@link OrgStats}.
+ */
+export function useOrgStats(orgId: string | null) {
+  return useQuery({
+    queryKey: KEYS.org(orgId ?? ''),
+    queryFn: () =>
+      api
+        .get<{ data: OrgStats }>(`/stats/organization/${orgId}`)
+        .then((r) => r.data),
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Legacy hook for backwards-compatible dashboard stats.
+ * Maps StatsOverview to the simplified DashboardStats shape.
+ *
+ * @deprecated Use {@link useOverviewStats} directly for richer data.
+ */
+export function useDashboardStats() {
+  return useOverviewStats();
 }

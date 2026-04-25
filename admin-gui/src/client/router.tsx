@@ -12,6 +12,15 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { NotFound } from './pages/NotFound';
 import { StubPage } from './pages/StubPage';
+import { AuditLog } from './pages/audit/AuditLog';
+import { SessionList } from './pages/sessions/SessionList';
+import { ConfigEditor } from './pages/config/ConfigEditor';
+import { SigningKeys } from './pages/keys/SigningKeys';
+import { ExportPage } from './pages/import-export/ExportPage';
+import { ImportPage } from './pages/import-export/ImportPage';
+import { SearchResults } from './pages/search/SearchResults';
+import { GettingStarted } from './pages/wizard/GettingStarted';
+import { AdminProfile } from './pages/profile/AdminProfile';
 
 /**
  * Application route tree.
@@ -168,36 +177,64 @@ export const router = createBrowserRouter([
           // Sessions
           {
             path: '/sessions',
-            element: <StubPage title="Sessions" />,
+            element: <SessionList />,
             handle: { breadcrumb: 'Sessions' },
           },
 
           // Audit Log
           {
             path: '/audit',
-            element: <StubPage title="Audit Log" />,
+            element: <AuditLog />,
             handle: { breadcrumb: 'Audit Log' },
           },
 
           // Configuration
           {
             path: '/config',
-            element: <StubPage title="Configuration" />,
+            element: <ConfigEditor />,
             handle: { breadcrumb: 'Configuration' },
           },
 
           // Signing Keys
           {
             path: '/keys',
-            element: <StubPage title="Signing Keys" />,
+            element: <SigningKeys />,
             handle: { breadcrumb: 'Signing Keys' },
           },
 
           // Import / Export
           {
             path: '/import-export',
-            element: <StubPage title="Import / Export" />,
             handle: { breadcrumb: 'Import / Export' },
+            children: [
+              { index: true, element: <ExportPage /> },
+              {
+                path: 'import',
+                element: <ImportPage />,
+                handle: { breadcrumb: 'Import' },
+              },
+            ],
+          },
+
+          // Search Results
+          {
+            path: '/search',
+            element: <SearchResults />,
+            handle: { breadcrumb: 'Search Results' },
+          },
+
+          // Getting Started Wizard
+          {
+            path: '/getting-started',
+            element: <GettingStarted />,
+            handle: { breadcrumb: 'Getting Started' },
+          },
+
+          // Admin Profile
+          {
+            path: '/profile',
+            element: <AdminProfile />,
+            handle: { breadcrumb: 'Profile' },
           },
 
           // Catch-all for unknown routes
