@@ -1,10 +1,13 @@
 /**
  * Sidebar navigation smoke tests.
  *
- * Verifies the authenticated admin GUI loads correctly:
+ * Verifies the authenticated admin GUI sidebar behavior:
  *   - AppShell layout (sidebar, topbar, content area)
  *   - All sidebar navigation items are visible
  *   - Navigation links route to the correct pages
+ *   - Active item highlighting (aria-current="page")
+ *   - Collapse/expand toggle
+ *   - System section items (Config, Keys, Import/Export)
  *   - No React crashes on page render (automatic via admin-fixtures)
  *
  * These tests use the storageState from auth-setup, so they
@@ -118,6 +121,64 @@ test.describe('Sidebar Navigation', () => {
     await expect(page).toHaveURL(/\/$/);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('text=Dashboard').first()).toBeVisible();
+  });
+
+  test('sidebar highlights active navigation item', async ({ page }) => {
+    await page.goto('/organizations');
+    await page.waitForLoadState('networkidle');
+
+    // The "Organizations" nav item should have aria-current="page"
+    const orgNavItem = page.locator('[data-testid="nav-item-organizations"]');
+    await expect(orgNavItem).toBeVisible({ timeout: 10_000 });
+    await expect(orgNavItem).toHaveAttribute('aria-current', 'page');
+
+    // Dashboard nav item should NOT have aria-current
+    const dashboardNavItem = page.locator('[data-testid="nav-item-dashboard"]');
+    await expect(dashboardNavItem).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  test('sidebar collapse and expand works', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const sidebar = page.locator('[data-testid="sidebar"]');
+    const toggleButton = page.locator('[data-testid="sidebar-toggle"]');
+    await expect(sidebar).toBeVisible({ timeout: 10_000 });
+    await expect(toggleButton).toBeVisible();
+
+    // Sidebar should start expanded (240px wide)
+    // Verify nav labels are visible when expanded
+    await expect(page.locator('[data-testid="sidebar-nav"] >> text="Dashboard"')).toBeVisible();
+
+    // Click collapse button
+    await toggleButton.click();
+
+    // After collapsing, nav labels should be hidden
+    // The sidebar width shrinks to 48px and labels are hidden
+    await expect(
+      page.locator('[data-testid="sidebar-nav"] >> text="Dashboard"'),
+    ).not.toBeVisible({ timeout: 5_000 });
+
+    // Click expand button to restore
+    await toggleButton.click();
+
+    // Labels should be visible again
+    await expect(
+      page.locator('[data-testid="sidebar-nav"] >> text="Dashboard"'),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('sidebar shows system section items', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const nav = page.locator('[data-testid="sidebar-nav"]');
+    await expect(nav).toBeVisible({ timeout: 10_000 });
+
+    // System section items should be visible: Configuration, Signing Keys, Import / Export
+    await expect(nav.locator('text="Configuration"')).toBeVisible();
+    await expect(nav.locator('text="Signing Keys"')).toBeVisible();
+    await expect(nav.locator('text="Import / Export"')).toBeVisible();
   });
 
   test('unknown route shows 404 page', async ({ page }) => {
