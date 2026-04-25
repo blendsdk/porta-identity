@@ -71,6 +71,9 @@ const ADMIN_GUI_ROOT = path.resolve(
   '../../..',
 );
 
+/** Path to project root (one level above admin-gui) */
+const PROJECT_ROOT = path.resolve(ADMIN_GUI_ROOT, '..');
+
 // ---------------------------------------------------------------------------
 // Global Setup
 // ---------------------------------------------------------------------------
@@ -87,6 +90,12 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   const startTime = Date.now();
   console.log('[Admin GUI E2E] Starting global setup...');
 
+  // Change CWD to project root — required because Porta's migrator,
+  // template engine, and i18n resolve paths relative to process.cwd().
+  // Playwright defaults to the admin-gui/ dir (where playwright.config.ts is).
+  const originalCwd = process.cwd();
+  process.chdir(PROJECT_ROOT);
+
   // =====================================================================
   // PHASE 1: Start Porta Server
   // =====================================================================
@@ -102,6 +111,9 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.SMTP_FROM = TEST_SMTP_FROM;
   process.env.COOKIE_KEYS = TEST_COOKIE_KEYS;
   process.env.ISSUER_BASE_URL = `http://localhost:${PORT_PORTA}`;
+  // 64 hex chars = 32-byte key for AES-256-GCM signing key encryption
+  process.env.SIGNING_KEY_ENCRYPTION_KEY =
+    'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
 
   // ── 1b. Dynamic imports (Porta modules) ────────────────────────────
   const { connectDatabase } = await import('../../../../src/lib/database.js');
@@ -147,11 +159,16 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // PHASE 2: Seed Test Data
   // =====================================================================
 
-  // Truncate and re-seed for a clean slate
+  // Truncate DB tables and flush Redis for a completely clean slate
   const { truncateAllTables, seedBaseData } = await import(
     '../../../../tests/integration/helpers/database.js'
   );
   await truncateAllTables();
+
+  // Flush Redis test DB to clear rate limits, caches, sessions from prior runs
+  const { getRedis } = await import('../../../../src/lib/redis.js');
+  await getRedis().flushdb();
+
   await seedBaseData();
 
   // Seed Admin GUI specific data (admin user, BFF client, test orgs, etc.)

@@ -128,9 +128,8 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
 
   // ── 5. Assign porta-admin role to admin user ──────────────────────
   await pool.query(
-    `INSERT INTO user_roles (id, user_id, role_id, organization_id)
-     VALUES (gen_random_uuid(), $1, $2, $3)`,
-    [user.id, role.id, superAdminOrg.id],
+    `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
+    [user.id, role.id],
   );
 
   // ── 6. Create BFF confidential OIDC client ────────────────────────
@@ -177,32 +176,33 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
   );
 
   // ── 8. Create audit log entries ───────────────────────────────────
-  // 12 entries with varied actions for the Audit Log page tests
-  const auditActions = [
-    { action: 'user.login', resourceType: 'user', details: { method: 'magic_link' } },
-    { action: 'user.created', resourceType: 'user', details: { email: ADMIN_EMAIL } },
-    { action: 'org.created', resourceType: 'organization', details: { name: 'Acme Corporation' } },
-    { action: 'org.updated', resourceType: 'organization', details: { field: 'status' } },
-    { action: 'client.created', resourceType: 'client', details: { type: 'confidential' } },
-    { action: 'role.assigned', resourceType: 'role', details: { role: 'porta-admin' } },
-    { action: 'config.updated', resourceType: 'system_config', details: { key: 'session_ttl' } },
-    { action: 'keys.rotated', resourceType: 'signing_key', details: { algorithm: 'ES256' } },
-    { action: 'session.revoked', resourceType: 'session', details: { reason: 'admin' } },
-    { action: 'user.password_reset', resourceType: 'user', details: { initiated: true } },
-    { action: 'org.suspended', resourceType: 'organization', details: { reason: 'policy' } },
-    { action: 'export.completed', resourceType: 'export', details: { format: 'csv', count: 42 } },
+  // 12 entries with varied event types for the Audit Log page tests
+  const auditEntries = [
+    { eventType: 'user.login.success', category: 'authentication', desc: 'User logged in via magic link' },
+    { eventType: 'user.created', category: 'admin', desc: 'Admin user created' },
+    { eventType: 'organization.created', category: 'admin', desc: 'Organization Acme Corporation created' },
+    { eventType: 'organization.updated', category: 'admin', desc: 'Organization status updated' },
+    { eventType: 'client.created', category: 'admin', desc: 'Confidential client created' },
+    { eventType: 'role.assigned', category: 'admin', desc: 'Role porta-admin assigned to user' },
+    { eventType: 'config.updated', category: 'admin', desc: 'System config session_ttl updated' },
+    { eventType: 'signing_key.rotated', category: 'security', desc: 'Signing keys rotated' },
+    { eventType: 'session.revoked', category: 'security', desc: 'Admin session revoked' },
+    { eventType: 'user.password_reset', category: 'authentication', desc: 'Password reset initiated' },
+    { eventType: 'organization.suspended', category: 'admin', desc: 'Organization suspended for policy' },
+    { eventType: 'export.completed', category: 'admin', desc: 'Data export completed (CSV, 42 records)' },
   ];
 
-  for (const entry of auditActions) {
+  for (const entry of auditEntries) {
     await pool.query(
-      `INSERT INTO audit_log (actor_type, actor_id, action, resource_type, resource_id, organization_id, details)
-       VALUES ('user', $1, $2, $3, gen_random_uuid()::text, $4, $5)`,
+      `INSERT INTO audit_log (actor_id, organization_id, event_type, event_category, description, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         user.id,
-        entry.action,
-        entry.resourceType,
         superAdminOrg.id,
-        JSON.stringify(entry.details),
+        entry.eventType,
+        entry.category,
+        entry.desc,
+        JSON.stringify({ seeded: true }),
       ],
     );
   }

@@ -19,6 +19,10 @@
  */
 
 import { defineConfig } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Porta OIDC server port for E2E tests */
 const PORT_PORTA = 49300;
@@ -63,9 +67,6 @@ export default defineConfig({
     /* Base URL is the BFF (serves SPA + API proxy) */
     baseURL: `http://localhost:${PORT_BFF}`,
 
-    /* Default: all authenticated tests use cached session state */
-    storageState: './tests/e2e/.auth/admin-session.json',
-
     /* Browser settings */
     headless: !isHeaded,
     viewport: { width: 1280, height: 720 },
@@ -105,6 +106,9 @@ export default defineConfig({
     {
       name: 'authenticated',
       testMatch: /\/(navigation|pages|workflows)\/.*\.spec\.ts/,
+      use: {
+        storageState: path.resolve(__dirname, 'tests/e2e/.auth/admin-session.json'),
+      },
       dependencies: ['auth-setup'],
     },
   ],
