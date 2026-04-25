@@ -33,6 +33,7 @@ import { ClientDetail } from './pages/clients/ClientDetail';
 import { UserList } from './pages/users/UserList';
 import { CreateUser } from './pages/users/CreateUser';
 import { InviteUser } from './pages/users/InviteUser';
+import { UserDetail } from './pages/users/UserDetail';
 
 /**
  * Application route tree.
@@ -123,7 +124,7 @@ export const router = createBrowserRouter([
               { index: true, element: <UserList /> },
               {
                 path: ':userId',
-                element: <StubPage title="User Detail" />,
+                element: <UserDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {

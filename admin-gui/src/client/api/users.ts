@@ -4,8 +4,8 @@
  * Users are scoped to an organization via orgId.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
-import type { User } from '../types';
+import { api, apiRequest } from './client';
+import type { User, Role } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
 const KEYS = {
@@ -166,5 +166,131 @@ export function useInvitePreview() {
         `/organizations/${orgId}/users/invite/preview`,
         data,
       ),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Additional status transition hooks
+// ---------------------------------------------------------------------------
+
+/** Deactivate a user (active → inactive) */
+export function useDeactivateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<User>(`/users/${id}/deactivate`),
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(id) });
+      qc.invalidateQueries({ queryKey: KEYS.all });
+    },
+  });
+}
+
+/** Unlock a user (locked → active) */
+export function useUnlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<User>(`/users/${id}/unlock`),
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(id) });
+      qc.invalidateQueries({ queryKey: KEYS.all });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Password & email verification hooks
+// ---------------------------------------------------------------------------
+
+/** Set or change a user's password */
+export function useSetPassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, password }: { userId: string; password: string }) =>
+      api.post(`/users/${userId}/password`, { password }),
+    onSuccess: (_d, { userId }) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(userId) });
+    },
+  });
+}
+
+/** Clear a user's password (make passwordless) */
+export function useClearPassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.del(`/users/${userId}/password`),
+    onSuccess: (_d, userId) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(userId) });
+    },
+  });
+}
+
+/** Mark a user's email as verified */
+export function useVerifyEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      api.post(`/users/${userId}/verify-email`),
+    onSuccess: (_d, userId) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(userId) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// User role hooks
+// ---------------------------------------------------------------------------
+
+/** Fetch roles assigned to a user within an organization */
+export function useUserRoles(orgId: string, userId: string) {
+  return useQuery({
+    queryKey: [...KEYS.detail(userId), 'roles'],
+    queryFn: () =>
+      api.get<Role[]>(
+        `/organizations/${orgId}/users/${userId}/roles`,
+      ),
+    enabled: !!orgId && !!userId,
+  });
+}
+
+/** Assign roles to a user */
+export function useAssignUserRoles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      orgId,
+      userId,
+      roleIds,
+    }: {
+      orgId: string;
+      userId: string;
+      roleIds: string[];
+    }) =>
+      api.put(`/organizations/${orgId}/users/${userId}/roles`, { roleIds }),
+    onSuccess: (_d, { userId }) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(userId) });
+    },
+  });
+}
+
+/** Remove roles from a user (uses apiRequest for DELETE with body) */
+export function useRemoveUserRoles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      orgId,
+      userId,
+      roleIds,
+    }: {
+      orgId: string;
+      userId: string;
+      roleIds: string[];
+    }) =>
+      apiRequest(`/api/organizations/${orgId}/users/${userId}/roles`, {
+        method: 'DELETE',
+        body: JSON.stringify({ roleIds }),
+      }),
+    onSuccess: (_d, { userId }) => {
+      qc.invalidateQueries({ queryKey: KEYS.detail(userId) });
+    },
   });
 }
