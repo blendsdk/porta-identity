@@ -46,6 +46,11 @@ export interface SeedResult {
   testClient: { id: string; clientId: string; name: string };
   /** Test confidential client linked to Acme Customer Portal */
   testConfidentialClient: { id: string; clientId: string; name: string };
+  /** Test users in acme-corp for user page tests */
+  testUsers: {
+    active: { id: string; email: string; givenName: string; familyName: string };
+    suspended: { id: string; email: string };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +240,36 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     },
   );
 
-  // ── 10. Create audit log entries ──────────────────────────────────
+  // ── 10. Create test users for user page tests ─────────────────────
+  // Active user in acme-corp for list/detail tests
+  const testActiveUser = await createTestUserWithPassword(
+    activeOrg.id,
+    'TestPassword123!',
+    {
+      email: 'jane.doe@acme-test.local',
+      givenName: 'Jane',
+      familyName: 'Doe',
+      emailVerified: true,
+    },
+  );
+
+  // Suspended user in acme-corp for status filter tests
+  const testSuspendedUser = await createTestUserWithPassword(
+    activeOrg.id,
+    'TestPassword123!',
+    {
+      email: 'suspended.user@acme-test.local',
+      givenName: 'Suspended',
+      familyName: 'Tester',
+      emailVerified: false,
+    },
+  );
+  await pool.query(
+    `UPDATE users SET status = 'suspended' WHERE id = $1`,
+    [testSuspendedUser.user.id],
+  );
+
+  // ── 11. Create audit log entries ──────────────────────────────────
   // 12 entries with varied event types for the Audit Log page tests
   const auditEntries = [
     { eventType: 'user.login.success', category: 'authentication', desc: 'User logged in via magic link' },
@@ -284,5 +318,9 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     archivedApp: { id: archivedApp.id, name: archivedApp.name, slug: archivedApp.slug },
     testClient: { id: testPublicClient.id, clientId: testPublicClient.clientId, name: 'Acme SPA Client' },
     testConfidentialClient: { id: testConfClient.id, clientId: testConfClient.clientId, name: 'Acme Backend Service' },
+    testUsers: {
+      active: { id: testActiveUser.user.id, email: testActiveUser.user.email, givenName: 'Jane', familyName: 'Doe' },
+      suspended: { id: testSuspendedUser.user.id, email: testSuspendedUser.user.email },
+    },
   };
 }
