@@ -208,6 +208,26 @@ The SPA communicates with the Porta server through the BFF proxy. The API client
 
 Domain-specific React Query hooks are provided for all entity types: organizations, applications, clients, users, roles, permissions, custom claims, sessions, audit, config, signing keys, stats, and import/export.
 
+### Entity Management Pages
+
+The SPA includes full CRUD management pages for all core entities:
+
+| Entity | List Route | Detail Route | Features |
+|--------|------------|--------------|----------|
+| **Organizations** | `/organizations` | `/organizations/:orgId` | Search, status filter, status transitions (suspend/activate/archive), create form, detail tabs (overview, applications, clients, users, branding, history) |
+| **Applications** | `/applications` | `/applications/:appId` | Org filter, search, status filter, create form, detail tabs (overview, modules, clients, roles, permissions, claims, history) |
+| **Clients** | `/clients` | `/clients/:clientId` | App filter, search, type filter, create form, detail tabs (overview, secrets, settings, history) |
+| **Users** | `/users` | `/users/:userId` | Org filter, search, status filter, create/invite forms, detail tabs (overview, roles, claims, sessions, 2FA, history) |
+| **Roles** | `/roles` | `/roles/:roleId` | App-scoped list, search, detail tabs (overview, permissions checkbox grid, users, history), permission matrix view at `/roles/matrix` |
+| **Permissions** | `/permissions` | `/permissions/:permissionId` | App-scoped list, search, detail tabs (overview, roles, history) |
+| **Custom Claims** | `/claims` | `/claims/:claimId` | App-scoped list, search, value type badges, token inclusion indicators, detail tabs (overview, history) |
+
+All entity pages follow a consistent pattern:
+- **List pages** use app/org filter dropdowns, client-side search, and table-based layouts with clickable rows
+- **Detail pages** use `EntityDetailTabs` for tabbed content with action buttons (archive with type-to-confirm)
+- **History tabs** show audit timeline entries filtered by entity ID
+- **Create pages** use multi-field forms with Zod validation
+
 ### System Feature Pages
 
 The SPA includes the following system-level admin pages:
@@ -238,14 +258,14 @@ cd admin-gui && yarn test:e2e
 cd admin-gui && yarn test:e2e:headed
 ```
 
-**Unit tests** include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client).
+**Unit tests** (145 tests, 16 files) include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client, page rendering).
 
-**E2E tests** use Playwright to test the full admin GUI in a real browser. The test infrastructure:
+**E2E tests** (120 tests, 8 spec files) use Playwright to test the full admin GUI in a real browser. The test infrastructure:
 
 - Starts a real Porta server (port 49300) and BFF (port 49301) in-process
-- Seeds test data (admin user, organizations, clients)
+- Seeds test data (admin user, organizations, applications, clients, users, roles, permissions, claim definitions, audit log entries)
 - Authenticates via the real magic-link flow using MailHog
 - Saves session state so all subsequent tests run authenticated
-- Tests cover: authentication flow, sidebar navigation, page rendering, routing, and 404 handling
+- Tests cover: sidebar navigation, direct URL navigation, and all entity pages (organizations, applications, clients, users, roles, permissions, custom claims) including list, detail, create forms, search, filtering, and status transitions
 
 **Prerequisites for E2E tests:** Docker services must be running (`yarn docker:up` from the project root) for PostgreSQL, Redis, and MailHog.
