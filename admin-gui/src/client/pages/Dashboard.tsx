@@ -430,12 +430,11 @@ function QuickActions() {
       </Button>
       <Button
         appearance="subtle"
-        icon={<ClipboardTextRegular />}
+        icon={<ArrowRightRegular />}
         iconPosition="after"
         onClick={() => navigate('/audit')}
       >
         View Audit Log
-        <ArrowRightRegular />
       </Button>
     </div>
   );
