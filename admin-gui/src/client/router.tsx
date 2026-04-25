@@ -39,6 +39,8 @@ import { RoleDetail } from './pages/rbac/RoleDetail';
 import { PermissionList } from './pages/rbac/PermissionList';
 import { PermissionDetail } from './pages/rbac/PermissionDetail';
 import { PermissionMatrix } from './pages/rbac/PermissionMatrix';
+import { ClaimDefinitionList } from './pages/custom-claims/ClaimDefinitionList';
+import { ClaimDefinitionDetail } from './pages/custom-claims/ClaimDefinitionDetail';
 
 /**
  * Application route tree.
@@ -193,10 +195,10 @@ export const router = createBrowserRouter([
             path: '/claims',
             handle: { breadcrumb: 'Custom Claims' },
             children: [
-              { index: true, element: <StubPage title="Custom Claims" /> },
+              { index: true, element: <ClaimDefinitionList /> },
               {
                 path: ':claimId',
-                element: <StubPage title="Claim Detail" />,
+                element: <ClaimDefinitionDetail />,
                 handle: { breadcrumb: 'Detail' },
               },
               {

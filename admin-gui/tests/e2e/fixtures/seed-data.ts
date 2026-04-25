@@ -110,6 +110,7 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     createTestApplication,
     createTestRole,
     createTestPermission,
+    createTestClaimDefinition,
     createTestUserWithPassword,
     createTestClientWithSecret,
     createTestOrganization,
@@ -311,6 +312,25 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
     name: 'Delete Content',
     slug: 'delete-content',
     description: 'Permission to delete content',
+  });
+
+  // ── 11b. Create test claim definitions for Custom Claims page tests ──
+  const departmentClaim = await createTestClaimDefinition(testApp.id, {
+    claimName: 'department',
+    claimType: 'string',
+    description: 'Employee department',
+    includeInIdToken: true,
+    includeInAccessToken: false,
+    includeInUserinfo: true,
+  });
+
+  const levelClaim = await createTestClaimDefinition(testApp.id, {
+    claimName: 'access_level',
+    claimType: 'number',
+    description: 'Numeric access level (1-10)',
+    includeInIdToken: false,
+    includeInAccessToken: true,
+    includeInUserinfo: false,
   });
 
   // Assign permissions to roles: editor gets all 3, viewer gets read only
