@@ -2,3 +2,8 @@ node_modules/
 dist/
 .env
 *.tsbuildinfo
+
+# Playwright E2E test artifacts
+tests/e2e/.auth/
+test-results/
+playwright-report/
