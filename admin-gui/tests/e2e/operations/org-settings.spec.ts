@@ -7,7 +7,7 @@
  * - Locale, login methods, 2FA policy changes with API verification
  * - Dirty state tracking (save/reset button enable/disable)
  * - Disabled state for archived organizations
- * - HTTP method bug detection (PATCH vs PUT — BUG-5)
+ * - HTTP method verification (PATCH vs PUT — BUG-5 resolved)
  *
  * @see plans/admin-gui-testing/04-entity-e2e-tests.md — Organization Settings
  * @see BUGS/5.organization-settimgs.md — Settings PATCH not persisting
@@ -208,17 +208,12 @@ test.describe('Organization Settings', () => {
   // Bug detector: HTTP method verification
   // -----------------------------------------------------------------------
 
-  test.fixme(
-    'settings save should use PUT method (BUG-5: currently uses PATCH which does not persist)',
+  test(
+    'settings save uses PUT method matching backend route',
     async ({ page, seedIds }) => {
-      // BUG-5: The Settings tab uses api.patch() for organization updates.
-      // The PATCH method returns HTTP 200 success, but the backend does not
-      // actually persist the changes. The expected correct method is PUT.
-      //
-      // When this bug is fixed (either by changing the frontend to use PUT
-      // or fixing the backend PATCH handler), this test should be un-fixme'd.
-      //
-      // @see BUGS/5.organization-settimgs.md
+      // Regression test for BUG-5: The Settings tab previously used api.patch()
+      // for organization updates, but the backend only registers PUT /:id.
+      // Fixed by changing all entity update hooks from api.patch() to api.put().
 
       await goToSettings(page, seedIds.activeOrgId);
 
@@ -233,8 +228,7 @@ test.describe('Organization Settings', () => {
         page.getByRole('button', { name: /save settings/i }).click(),
       ]);
 
-      // Expected: PUT (correct REST semantics for full resource update)
-      // Actual: PATCH (returns success but backend does not persist changes)
+      // Must be PUT to match backend router.put('/:id', ...)
       expect(request.method).toBe('PUT');
     },
   );

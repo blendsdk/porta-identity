@@ -11,7 +11,7 @@
 
 | Severity | Count | Status |
 |----------|-------|--------|
-| High     | 1     | Documented |
+| High     | 1     | ✅ Resolved |
 | Medium   | 0     | — |
 | Low      | 0     | — |
 | **Total** | **1** | — |
@@ -26,33 +26,31 @@
 
 ## Confirmed Bugs
 
-### BUG-5: Organization Settings Save Uses PATCH Instead of PUT
+### BUG-5: Entity Update Hooks Used PATCH Instead of PUT ✅ RESOLVED
 
 | Field | Value |
 |-------|-------|
 | **ID** | BUG-5 |
 | **Severity** | High |
 | **Category** | http-method |
-| **File** | `admin-gui/tests/e2e/operations/org-settings.spec.ts` |
-| **Line** | 211 |
-| **Status** | `test.fixme` — test written but skipped |
+| **File** | `admin-gui/src/client/api/organizations.ts` (and 3 others) |
+| **Status** | ✅ **Resolved** — `api.patch()` → `api.put()` in all 4 entity hooks |
+| **Resolved** | 2026-04-26 |
 
-**Description**: The Organization Detail Settings tab uses `api.patch()` to save
-organization settings (locale, default login methods, 2FA policy). The Porta
-backend admin API expects `PUT /api/admin/organizations/:id` for full updates.
-Using PATCH may cause settings to not persist correctly because the backend
-route handler expects a full replacement payload.
+**Root Cause**: All four entity update hooks (`useUpdateOrganization`,
+`useUpdateApplication`, `useUpdateClient`, `useUpdateUser`) used `api.patch()`
+to send PATCH requests. The backend only registers `router.put('/:id', ...)`
+routes for entity updates — no PATCH handlers exist. The BFF proxy forwards
+the HTTP method as-is, so PATCH requests would fail to match the backend routes.
 
-**Impact**: Organization settings changes (locale, login methods, 2FA) may silently
-fail to save, or partially save with missing fields reverting to defaults.
+**Fix Applied**: Changed `api.patch()` → `api.put()` in all 4 files:
+- `admin-gui/src/client/api/organizations.ts`
+- `admin-gui/src/client/api/applications.ts`
+- `admin-gui/src/client/api/clients.ts`
+- `admin-gui/src/client/api/users.ts`
 
-**Expected**: Settings save should use `api.put()` with the complete organization
-update payload.
-
-**Actual**: Settings save uses `api.patch()` which may not match the backend route.
-
-**Location in Code**: `admin-gui/src/client/pages/organizations/OrganizationDetail.tsx` —
-the `handleSave` function in the Settings tab.
+**Regression Test**: `org-settings.spec.ts` — "settings save uses PUT method
+matching backend route" (converted from `test.fixme` to active `test`).
 
 ---
 
@@ -153,6 +151,6 @@ npx playwright test
 ## Next Steps
 
 1. **Run full E2E suite** against live environment to discover additional failures
-2. **Fix BUG-5** (PATCH → PUT in organization settings save)
+2. ~~**Fix BUG-5** (PATCH → PUT in organization settings save)~~ ✅ Done
 3. **Address any new `test.fixme` failures** discovered during live execution
 4. **Convert passing tests** from `test.fixme` to `test` as bugs are fixed

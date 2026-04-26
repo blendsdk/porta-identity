@@ -58,7 +58,7 @@ export function useUpdateApplication() {
       id: string;
       data: Partial<Application>;
       etag?: string;
-    }) => unwrapData<Application>(await api.patch(`/applications/${id}`, data, etag)),
+    }) => unwrapData<Application>(await api.put(`/applications/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

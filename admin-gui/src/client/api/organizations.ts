@@ -58,7 +58,7 @@ export function useUpdateOrganization() {
       id: string;
       data: Partial<Organization>;
       etag?: string;
-    }) => unwrapData<Organization>(await api.patch(`/organizations/${id}`, data, etag)),
+    }) => unwrapData<Organization>(await api.put(`/organizations/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

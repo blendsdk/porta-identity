@@ -61,7 +61,7 @@ export function useUpdateUser() {
       id: string;
       data: Partial<User>;
       etag?: string;
-    }) => unwrapData<User>(await api.patch(`/users/${id}`, data, etag)),
+    }) => unwrapData<User>(await api.put(`/users/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

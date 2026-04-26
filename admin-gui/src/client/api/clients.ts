@@ -90,7 +90,7 @@ export function useUpdateClient() {
       id: string;
       data: Partial<Client>;
       etag?: string;
-    }) => mapApiClient(unwrapData(await api.patch(`/clients/${id}`, data, etag))),
+    }) => mapApiClient(unwrapData(await api.put(`/clients/${id}`, data, etag))),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
