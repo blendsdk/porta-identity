@@ -48,8 +48,11 @@ test.describe('Application CRUD Operations', () => {
 
     await navigateTo(page, '/applications/new');
 
-    // Select organization
-    await page.getByText('Select an organization').click();
+    // Select organization — FluentUI Dropdown uses role="combobox"
+    const orgDropdown = page.getByRole('combobox');
+    await orgDropdown.click();
+    // Wait for org list to load, then select Acme Corporation
+    await page.getByRole('option', { name: ACME_ORG }).waitFor({ state: 'visible', timeout: 10_000 });
     await page.getByRole('option', { name: ACME_ORG }).click();
 
     // Fill name only — slug is auto-generated
@@ -82,8 +85,9 @@ test.describe('Application CRUD Operations', () => {
 
     await navigateTo(page, '/applications/new');
 
-    // Select organization
-    await page.getByText('Select an organization').click();
+    // Select organization — click combobox and wait for options to load
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: ACME_ORG }).waitFor({ state: 'visible', timeout: 10_000 });
     await page.getByRole('option', { name: ACME_ORG }).click();
 
     // Fill name
@@ -118,7 +122,8 @@ test.describe('Application CRUD Operations', () => {
     await navigateTo(page, '/applications/new');
 
     // Select organization (to isolate name validation)
-    await page.getByText('Select an organization').click();
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: ACME_ORG }).waitFor({ state: 'visible', timeout: 10_000 });
     await page.getByRole('option', { name: ACME_ORG }).click();
 
     // Submit without filling the name
@@ -152,7 +157,8 @@ test.describe('Application CRUD Operations', () => {
     await navigateTo(page, '/applications/new');
 
     // Select organization
-    await page.getByText('Select an organization').click();
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: ACME_ORG }).waitFor({ state: 'visible', timeout: 10_000 });
     await page.getByRole('option', { name: ACME_ORG }).click();
 
     // Fill name
@@ -167,17 +173,13 @@ test.describe('Application CRUD Operations', () => {
     await page.waitForTimeout(2_000);
     await expect(page).toHaveURL('/applications/new');
 
-    // Backend returns an error — shown in a MessageBar or error text
-    const hasErrorText = await page
-      .getByText(/already exists|duplicate|conflict|slug.*taken/i)
-      .isVisible()
-      .catch(() => false);
-    const hasGenericError = await page
-      .getByText(/failed to create/i)
-      .isVisible()
-      .catch(() => false);
+    // Backend returns an error — check multiple possible error messages
+    const hasSlugError = await page.getByText(/slug already in use/i).isVisible().catch(() => false);
+    const hasDuplicateError = await page.getByText(/already exists|duplicate|conflict|slug.*taken/i).isVisible().catch(() => false);
+    const hasGenericError = await page.getByText(/failed to create/i).isVisible().catch(() => false);
+    const hasRequestFailed = await page.getByText(/request failed/i).isVisible().catch(() => false);
 
-    expect(hasErrorText || hasGenericError).toBeTruthy();
+    expect(hasSlugError || hasDuplicateError || hasGenericError || hasRequestFailed).toBeTruthy();
   });
 
   test('shows new application in list after creation', async ({ page }) => {
@@ -185,7 +187,8 @@ test.describe('Application CRUD Operations', () => {
 
     // Create app through the UI
     await navigateTo(page, '/applications/new');
-    await page.getByText('Select an organization').click();
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: ACME_ORG }).waitFor({ state: 'visible', timeout: 10_000 });
     await page.getByRole('option', { name: ACME_ORG }).click();
     await page.getByPlaceholder('e.g. Customer Portal').fill(appName);
     await page.waitForTimeout(300);

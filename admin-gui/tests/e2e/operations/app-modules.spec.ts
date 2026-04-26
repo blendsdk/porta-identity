@@ -22,7 +22,7 @@ import {
   clickTab,
 } from '../helpers/operations';
 import { captureApiRequest } from '../helpers/api-interceptors';
-import { createTestApp, uniqueName } from '../helpers/entity-factory';
+import { createTestApp, uniqueName, getCsrfToken } from '../helpers/entity-factory';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -40,9 +40,10 @@ test.describe('Application Module Operations', () => {
     await navigateToEntity(page, 'applications', seedIds.testAppId);
     await clickTab(page, 'Modules');
 
-    // All module labels should be visible
+    // All module labels should be visible — scope to tabpanel to avoid sidebar nav collisions
+    const tabpanel = page.getByRole('tabpanel');
     for (const label of MODULE_LABELS) {
-      await expect(page.getByText(label, { exact: true })).toBeVisible();
+      await expect(tabpanel.getByText(label, { exact: true })).toBeVisible();
     }
 
     // Each module should have a description
@@ -88,11 +89,15 @@ test.describe('Application Module Operations', () => {
     // Create a fresh app and enable a module via API first
     const app = await createTestApp(request, seedIds.activeOrgId, uniqueName('Module Disable'));
 
-    // Enable the auth module via API
+    // Enable the auth module via API (with CSRF token)
     const BFF_BASE_URL = process.env.ADMIN_GUI_URL ?? 'http://localhost:49301';
+    const csrf = await getCsrfToken(request);
     const enableResponse = await request.post(
       `${BFF_BASE_URL}/api/applications/${app.id}/modules`,
-      { data: { moduleType: 'auth' } },
+      {
+        data: { moduleType: 'auth' },
+        headers: { 'X-CSRF-Token': csrf },
+      },
     );
     expect(enableResponse.ok()).toBeTruthy();
 

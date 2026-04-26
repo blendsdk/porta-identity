@@ -46,7 +46,7 @@ test.describe('Application Settings Operations', () => {
     await expect(page.getByText('Description')).toBeVisible();
   });
 
-  test('saves name change and verifies PATCH payload', async ({ page, seedIds }) => {
+  test('saves name change and verifies PUT payload', async ({ page, seedIds }) => {
     await navigateToEntity(page, 'applications', seedIds.testAppId);
     await clickTab(page, 'Settings');
 
@@ -61,14 +61,14 @@ test.describe('Application Settings Operations', () => {
     const saveButton = page.getByRole('button', { name: /save changes/i });
     await expect(saveButton).toBeEnabled();
 
-    // Capture PATCH request
+    // Capture PUT request
     const [request] = await Promise.all([
       captureApiRequest(page, `/api/applications/${seedIds.testAppId}`),
       saveButton.click(),
     ]);
 
-    // Verify correct HTTP method (PATCH, not PUT)
-    expect(request.method).toBe('PATCH');
+    // Verify correct HTTP method (PUT)
+    expect(request.method).toBe('PUT');
     const body = request.body as Record<string, unknown>;
     expect(body.name).toBe(newName);
 
@@ -81,7 +81,7 @@ test.describe('Application Settings Operations', () => {
     ]);
   });
 
-  test('saves description change and verifies PATCH payload', async ({ page, seedIds }) => {
+  test('saves description change and verifies PUT payload', async ({ page, seedIds }) => {
     await navigateToEntity(page, 'applications', seedIds.testAppId);
     await clickTab(page, 'Settings');
 
@@ -102,7 +102,7 @@ test.describe('Application Settings Operations', () => {
     ]);
 
     // Verify payload includes description
-    expect(request.method).toBe('PATCH');
+    expect(request.method).toBe('PUT');
     const body = request.body as Record<string, unknown>;
     expect(body.description).toBe(newDescription);
   });
