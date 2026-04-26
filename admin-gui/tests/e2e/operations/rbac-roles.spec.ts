@@ -133,7 +133,7 @@ test.describe('Role CRUD Operations', () => {
 
     // Overview tab is default — check key fields
     await expect(page.getByText(EDITOR_ROLE).first()).toBeVisible();
-    await expect(page.getByText('editor')).toBeVisible(); // slug
+    await expect(page.getByText('editor', { exact: true })).toBeVisible(); // slug
     await expect(page.getByText('Can create and edit content')).toBeVisible();
   });
 
@@ -278,7 +278,7 @@ test.describe('Role Archive', () => {
 
     // Dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Archive Role')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Archive Role' })).toBeVisible();
 
     // Confirm button should be disabled until type-to-confirm
     const confirmButton = page

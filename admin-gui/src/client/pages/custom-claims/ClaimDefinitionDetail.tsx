@@ -183,7 +183,7 @@ export function ClaimDefinitionDetail() {
   const [showArchive, setShowArchive] = useState(false);
   const [archiveConfirmed, setArchiveConfirmed] = useState(false);
 
-  const { data: claim, isLoading } = useClaimDefinition(claimId);
+  const { data: claim, isLoading } = useClaimDefinition(appId, claimId);
   const archiveClaim = useArchiveClaimDefinition();
 
   if (!appId) {
@@ -228,7 +228,7 @@ export function ClaimDefinitionDetail() {
     (claim as { data?: typeof claim })?.data ?? claim;
 
   const handleArchive = () => {
-    archiveClaim.mutate(claimId, {
+    archiveClaim.mutate({ appId, id: claimId }, {
       onSuccess: () => navigate('/claims'),
     });
   };

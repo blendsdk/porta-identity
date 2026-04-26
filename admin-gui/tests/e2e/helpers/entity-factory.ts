@@ -230,17 +230,33 @@ export async function createTestClient(
     isConfidential?: boolean;
     redirectUris?: string[];
     grantTypes?: string[];
+    /** Organization ID — required by the backend for client creation */
+    organizationId?: string;
   },
 ): Promise<CreatedClient> {
   // Resolve effective client type: isConfidential convenience flag takes priority
   const effectiveType =
     options?.isConfidential ? 'confidential' : (options?.clientType ?? 'public');
+
+  // If organizationId not provided, use the seed active org (apps are platform-wide,
+  // not org-scoped, so we can't resolve orgId from the application)
+  let organizationId = options?.organizationId;
+  if (!organizationId) {
+    organizationId = process.env.SEED_ACTIVE_ORG_ID;
+  }
+  if (!organizationId) {
+    throw new Error(
+      'createTestClient requires organizationId — pass it explicitly or ensure SEED_ACTIVE_ORG_ID is set',
+    );
+  }
+
   const csrfToken = await getCsrfToken(request);
   const response = await request.post(`${BFF_BASE_URL}/api/clients`, {
     headers: { 'X-CSRF-Token': csrfToken },
     data: {
       clientName: name,
       applicationId: appId,
+      organizationId,
       clientType: effectiveType,
       applicationType: 'web',
       tokenEndpointAuthMethod: effectiveType === 'confidential' ? 'client_secret_post' : 'none',

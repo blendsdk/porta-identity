@@ -27,10 +27,11 @@ test.describe('Config Editor Operations', () => {
     // Page title
     await expect(page.getByRole('heading', { name: 'System Configuration' })).toBeVisible();
 
-    // Table headers
-    await expect(page.getByText('Key')).toBeVisible();
-    await expect(page.getByText('Value')).toBeVisible();
-    await expect(page.getByText('Type')).toBeVisible();
+    // Table headers (scoped to main to avoid sidebar matches)
+    const main = page.locator('main');
+    await expect(main.getByText('Key').first()).toBeVisible();
+    await expect(main.getByText('Value').first()).toBeVisible();
+    await expect(main.getByText('Type').first()).toBeVisible();
   });
 
   test('shows config entries with type badges', async ({ page }) => {

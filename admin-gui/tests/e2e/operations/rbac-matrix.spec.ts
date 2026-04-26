@@ -54,7 +54,7 @@ test.describe('Permission Matrix Operations', () => {
     await navigateTo(page, '/roles/matrix');
 
     await expect(
-      page.getByText('Permission Matrix', { exact: true }),
+      page.getByRole('heading', { name: 'Permission Matrix' }),
     ).toBeVisible();
 
     // App dropdown should be visible

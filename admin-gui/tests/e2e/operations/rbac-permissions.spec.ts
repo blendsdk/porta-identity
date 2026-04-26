@@ -149,7 +149,7 @@ test.describe('Permission Archive', () => {
 
     // Dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Archive Permission')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Archive Permission' })).toBeVisible();
 
     // Confirm button disabled until type-to-confirm
     const confirmButton = page

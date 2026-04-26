@@ -41,6 +41,19 @@ const PAGE_SIZE = 20;
 /** Maximum orgs to load in the filter dropdown */
 const MAX_ORGS = 100;
 
+/**
+ * Map DataGrid column keys (camelCase) to API sort column names (snake_case).
+ * The admin API accepts: email, given_name, family_name, created_at, last_login_at.
+ */
+const sortByMap: Record<string, string> = {
+  name: 'given_name',
+  email: 'email',
+  createdAt: 'created_at',
+  created_at: 'created_at',
+  lastLoginAt: 'last_login_at',
+  last_login_at: 'last_login_at',
+};
+
 const useStyles = makeStyles({
   root: {
     display: 'flex',
@@ -110,7 +123,7 @@ export function UserList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>({
-    column: 'createdAt',
+    column: 'created_at',
     direction: 'desc',
   });
 
@@ -130,7 +143,7 @@ export function UserList() {
     if (search) p.search = search;
     if (statusFilter) p.status = statusFilter;
     if (sort.column) {
-      p.sortBy = sort.column;
+      p.sortBy = sortByMap[sort.column] ?? 'created_at';
       p.sortOrder = sort.direction;
     }
     return p;

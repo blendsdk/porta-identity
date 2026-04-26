@@ -726,3 +726,171 @@ async function validatePreAssignments(
     throw err;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Standalone user router (non-org-scoped)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a standalone user admin router.
+ *
+ * Provides direct user access by userId at `/api/admin/users/:userId/*`
+ * without requiring the organizationId in the URL path. This is used by
+ * the Admin GUI SPA for user detail views and mutations where the user
+ * detail page only has the userId (from the URL) and not the orgId.
+ *
+ * The handlers delegate to the same user service functions as the
+ * org-scoped router. All routes require admin authentication and
+ * granular permissions.
+ *
+ * Prefix: /api/admin/users
+ */
+export function createStandaloneUserRouter(): Router {
+  const router = new Router({ prefix: '/api/admin/users' });
+
+  router.use(requireAdminAuth());
+
+  // GET /:userId — Get user by ID
+  router.get('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
+    const user = await userService.getUserById(ctx.params.userId);
+    if (!user) {
+      ctx.throw(404, 'User not found');
+      return;
+    }
+    setETagHeader(ctx, 'user', user.id, user.updatedAt);
+    ctx.body = { data: user };
+  });
+
+  // PUT /:userId — Update user profile
+  router.put('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
+    try {
+      const body = updateUserSchema.parse(ctx.request.body);
+      const current = await userService.getUserById(ctx.params.userId);
+      if (current && !checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
+      const input = { ...body, address: body.address ?? undefined };
+      const user = await userService.updateUser(ctx.params.userId, input);
+      setETagHeader(ctx, 'user', user.id, user.updatedAt);
+      ctx.body = { data: user };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/deactivate — Deactivate user
+  router.post('/:userId/deactivate', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await guardSuperAdmin(ctx.params.userId, 'deactivate');
+      await userService.deactivateUser(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/reactivate — Reactivate user (inactive → active)
+  router.post('/:userId/reactivate', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await userService.reactivateUser(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/activate — Alias for reactivate (SPA compatibility)
+  router.post('/:userId/activate', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await userService.reactivateUser(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/suspend — Suspend user
+  router.post('/:userId/suspend', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await guardSuperAdmin(ctx.params.userId, 'suspend');
+      const body = suspendUserSchema.parse(ctx.request.body ?? {});
+      await userService.suspendUser(ctx.params.userId, body.reason);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/unsuspend — Unsuspend user
+  router.post('/:userId/unsuspend', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await userService.unsuspendUser(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/lock — Lock user
+  router.post('/:userId/lock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await guardSuperAdmin(ctx.params.userId, 'lock');
+      const body = lockUserSchema.parse(ctx.request.body);
+      await userService.lockUser(ctx.params.userId, body.reason);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/unlock — Unlock user
+  router.post('/:userId/unlock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+    try {
+      await userService.unlockUser(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/password — Set password
+  router.post('/:userId/password', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
+    try {
+      const body = setPasswordSchema.parse(ctx.request.body);
+      await userService.setUserPassword(ctx.params.userId, body.password);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // DELETE /:userId/password — Clear password
+  router.delete('/:userId/password', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
+    try {
+      await userService.clearUserPassword(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // POST /:userId/verify-email — Mark email as verified
+  router.post('/:userId/verify-email', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
+    try {
+      await userService.markEmailVerified(ctx.params.userId);
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // GET /:userId/history — Entity change history
+  router.get('/:userId/history', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
+    try {
+      const history = await getEntityHistory('user', ctx.params.userId);
+      ctx.body = { data: history };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  return router;
+}

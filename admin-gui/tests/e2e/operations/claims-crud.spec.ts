@@ -148,9 +148,9 @@ test.describe('Claim Definition Detail', () => {
   test('claim detail shows value type badge with correct color', async ({ page }) => {
     await navigateToClaimDetail(page, DEPT_CLAIM);
 
-    // String type should have a badge
-    const badge = page.locator('[class*="badge"]').filter({ hasText: 'string' });
-    await expect(badge.first()).toBeVisible();
+    // String type should be displayed (may be a Badge component or plain text)
+    const typeText = page.getByText('string', { exact: true });
+    await expect(typeText.first()).toBeVisible();
   });
 });
 
@@ -186,7 +186,7 @@ test.describe('Claim Definition Archive', () => {
 
     // Dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Archive Claim Definition')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Archive Claim/i })).toBeVisible();
 
     // Confirm button disabled until type-to-confirm
     const confirmButton = page

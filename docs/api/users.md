@@ -249,3 +249,33 @@ Permanently anonymizes and deletes a user's personal data (GDPR Article 17 — r
 ::: danger Irreversible
 Data purge cannot be undone. Super-admin users cannot be purged as a safety measure.
 :::
+
+## Standalone User Routes
+
+In addition to the org-scoped routes above, a set of **standalone user routes** is available at `/api/admin/users/:userId`. These provide direct access to user detail and mutation operations by user ID, without requiring the organization ID in the URL path.
+
+**Base path:** `/api/admin/users/:userId`
+
+These routes are primarily used by the Admin GUI SPA, where the user detail page navigates by user ID only. They delegate to the same service functions and require the same admin authentication and RBAC permissions as the org-scoped routes.
+
+### Available Standalone Endpoints
+
+| Method | Path | Description | Permission |
+|--------|------|-------------|------------|
+| `GET` | `/:userId` | Get user by ID | `user:read` |
+| `PUT` | `/:userId` | Update user profile | `user:update` |
+| `POST` | `/:userId/deactivate` | Deactivate user | `user:suspend` |
+| `POST` | `/:userId/reactivate` | Reactivate user | `user:suspend` |
+| `POST` | `/:userId/activate` | Alias for reactivate | `user:suspend` |
+| `POST` | `/:userId/suspend` | Suspend user | `user:suspend` |
+| `POST` | `/:userId/unsuspend` | Unsuspend user | `user:suspend` |
+| `POST` | `/:userId/lock` | Lock user | `user:suspend` |
+| `POST` | `/:userId/unlock` | Unlock user | `user:suspend` |
+| `POST` | `/:userId/password` | Set password | `user:update` |
+| `DELETE` | `/:userId/password` | Clear password | `user:update` |
+| `POST` | `/:userId/verify-email` | Mark email verified | `user:update` |
+| `GET` | `/:userId/history` | Change history | `user:read` |
+
+::: tip
+The `activate` endpoint is an alias for `reactivate`, provided for client compatibility. Both perform the same `inactive → active` status transition.
+:::

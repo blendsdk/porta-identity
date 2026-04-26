@@ -27,6 +27,10 @@ function mapApiClient(raw: any): Client {
     isConfidential:
       raw.isConfidential ?? (raw.clientType === 'confidential'),
     description: raw.description ?? null,
+    grantTypes: raw.grantTypes ?? raw.grant_types ?? [],
+    responseTypes: raw.responseTypes ?? raw.response_types ?? [],
+    redirectUris: raw.redirectUris ?? raw.redirect_uris ?? [],
+    postLogoutRedirectUris: raw.postLogoutRedirectUris ?? raw.post_logout_redirect_uris ?? [],
   };
 }
 
@@ -119,7 +123,11 @@ export function useRevokeClient() {
 export function useClientSecrets(clientId: string) {
   return useQuery({
     queryKey: KEYS.secrets(clientId),
-    queryFn: () => api.get<ClientSecret[]>(`/clients/${clientId}/secrets`),
+    queryFn: async () => {
+      const res = await api.get<ClientSecret[] | { data: ClientSecret[] }>(`/clients/${clientId}/secrets`);
+      // Unwrap { data: [...] } envelope if present
+      return Array.isArray(res) ? res : (res as { data: ClientSecret[] }).data ?? [];
+    },
     enabled: !!clientId,
   });
 }

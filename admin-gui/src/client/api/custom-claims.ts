@@ -18,25 +18,51 @@ const KEYS = {
     [...KEYS.userClaims, 'list', userId] as const,
 };
 
+/**
+ * Map backend claim definition response to SPA ClaimDefinition type.
+ * Backend uses claimName/claimType; SPA uses name/valueType/slug.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapApiClaim(raw: any): ClaimDefinition {
+  return {
+    ...raw,
+    name: raw.name ?? raw.claimName ?? '',
+    slug: raw.slug ?? raw.claimName ?? '',
+    valueType: raw.valueType ?? raw.claimType ?? 'string',
+    isRequired: raw.isRequired ?? false,
+    defaultValue: raw.defaultValue ?? null,
+    validationRules: raw.validationRules ?? null,
+  };
+}
+
 /** Fetch a paginated list of claim definitions for an application */
 export function useClaimDefinitions(appId: string, params?: ListParams) {
   return useQuery({
     queryKey: KEYS.definitionList(appId, params),
-    queryFn: () =>
-      api.get<PaginatedResponse<ClaimDefinition>>(
-        `/applications/${appId}/claim-definitions`,
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<ClaimDefinition>>(
+        `/applications/${appId}/claims`,
         params as Record<string, string>,
-      ),
+      );
+      if (res?.data) {
+        res.data = res.data.map(mapApiClaim);
+      }
+      return res;
+    },
     enabled: !!appId,
   });
 }
 
-/** Fetch a single claim definition by ID */
-export function useClaimDefinition(id: string) {
+/** Fetch a single claim definition by ID (requires appId for scoped endpoint) */
+export function useClaimDefinition(appId: string, id: string) {
   return useQuery({
     queryKey: KEYS.definitionDetail(id),
-    queryFn: () => api.get<ClaimDefinition>(`/claim-definitions/${id}`),
-    enabled: !!id,
+    queryFn: async () => {
+      const res = await api.get<ClaimDefinition>(`/applications/${appId}/claims/${id}`);
+      const raw = (res as { data?: unknown })?.data ?? res;
+      return mapApiClaim(raw);
+    },
+    enabled: !!appId && !!id,
   });
 }
 
@@ -52,7 +78,7 @@ export function useCreateClaimDefinition() {
       data: Partial<ClaimDefinition>;
     }) =>
       api.post<ClaimDefinition>(
-        `/applications/${appId}/claim-definitions`,
+        `/applications/${appId}/claims`,
         data,
       ),
     onSuccess: () => {
@@ -65,7 +91,8 @@ export function useCreateClaimDefinition() {
 export function useArchiveClaimDefinition() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.del(`/claim-definitions/${id}`),
+    mutationFn: ({ appId, id }: { appId: string; id: string }) =>
+      api.del(`/applications/${appId}/claims/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.definitions });
     },

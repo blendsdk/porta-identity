@@ -30,12 +30,13 @@ test.describe('Audit Log Operations', () => {
     // Export CSV button
     await expect(page.getByRole('button', { name: /Export CSV/i })).toBeVisible();
 
-    // Filter labels
-    await expect(page.getByText('Event Type')).toBeVisible();
-    await expect(page.getByText('Actor')).toBeVisible();
-    await expect(page.getByText('Entity Type')).toBeVisible();
-    await expect(page.getByText('From')).toBeVisible();
-    await expect(page.getByText('To')).toBeVisible();
+    // Filter labels (scoped to main to avoid sidebar matches)
+    const main = page.locator('main');
+    await expect(main.getByText('Event Type').first()).toBeVisible();
+    await expect(main.getByText('Actor').first()).toBeVisible();
+    await expect(main.getByText('Entity Type').first()).toBeVisible();
+    await expect(main.getByText('From').first()).toBeVisible();
+    await expect(main.getByText('To').first()).toBeVisible();
 
     // Table headers (scope to table to avoid sidebar duplicates)
     const table = page.locator('table').first();

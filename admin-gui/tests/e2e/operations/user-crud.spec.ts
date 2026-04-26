@@ -57,15 +57,15 @@ test.describe('User CRUD Operations', () => {
     await page.getByRole('option', { name: ACME_ORG }).click();
 
     // Enter email
-    const emailInput = page.getByPlaceholder(/email/i);
+    const emailInput = page.getByPlaceholder('user@example.com');
     await emailInput.fill(email);
 
     // Enter name
-    const givenNameInput = page.getByPlaceholder('John');
+    const givenNameInput = page.getByPlaceholder('First name');
     if (await givenNameInput.isVisible()) {
       await givenNameInput.fill('Test');
     }
-    const familyNameInput = page.getByPlaceholder('Doe');
+    const familyNameInput = page.getByPlaceholder('Last name');
     if (await familyNameInput.isVisible()) {
       await familyNameInput.fill('User');
     }
@@ -76,9 +76,9 @@ test.describe('User CRUD Operations', () => {
       await setPasswordRadio.click();
 
       // Enter password
-      const passwordInput = page.getByPlaceholder(/password/i).first();
+      const passwordInput = page.getByPlaceholder('Minimum 8 characters');
       await passwordInput.fill('SecureP@ss123!');
-      const confirmInput = page.getByPlaceholder(/confirm/i);
+      const confirmInput = page.getByPlaceholder('Re-enter password');
       if (await confirmInput.isVisible()) {
         await confirmInput.fill('SecureP@ss123!');
       }
@@ -115,7 +115,7 @@ test.describe('User CRUD Operations', () => {
     await navigateTo(page, '/users/new');
 
     // Enter email but don't select org
-    const emailInput = page.getByPlaceholder(/email/i);
+    const emailInput = page.getByPlaceholder('user@example.com');
     await emailInput.fill('test@test.local');
 
     // Try to submit

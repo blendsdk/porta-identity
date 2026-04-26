@@ -53,7 +53,7 @@ test.describe('Session Management Operations', () => {
     await expect(table.getByText('Organization')).toBeVisible();
     await expect(table.getByText('IP Address')).toBeVisible();
     await expect(table.getByText('Created')).toBeVisible();
-    await expect(table.getByText('Last Active')).toBeVisible();
+    await expect(table.getByText('Expires')).toBeVisible();
     await expect(table.getByText('User Agent')).toBeVisible();
 
     // At least one session row exists
@@ -125,7 +125,7 @@ test.describe('Session Management Operations', () => {
     await revokeAllBtn.click();
 
     // Revoke ALL dialog with TypeToConfirm
-    await expect(page.getByText('Revoke ALL Sessions')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Revoke.*Sessions/i })).toBeVisible();
     await expect(page.getByText(/ALL active sessions/i)).toBeVisible();
 
     // TypeToConfirm input

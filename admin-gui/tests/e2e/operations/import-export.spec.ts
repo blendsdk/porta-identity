@@ -236,7 +236,7 @@ test.describe('Import Page Operations', () => {
     // Confirm dialog should appear
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(/Import \d+ records|Confirm/)).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /Confirm/i })).toBeVisible();
     await expect(dialog.getByText(/cannot be undone/i)).toBeVisible();
 
     // Cancel the dialog

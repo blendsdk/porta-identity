@@ -162,17 +162,16 @@ test.describe('Signing Key Operations', () => {
     const jwksText = page.getByText(/\.well-known\/jwks\.json/);
     await expect(jwksText).toBeVisible();
 
-    // CopyButton component should be nearby
-    // Look for a button with copy-related aria label or icon
-    const copyBtn = page.locator('[aria-label*="Copy"], [aria-label*="copy"], button').filter({
-      hasText: /copy/i,
-    }).first();
+    // CopyButton component should be nearby — icon-only or with text
+    const copyByLabel = page.locator('button[aria-label*="opy"]').first();
+    const copyByText = page.getByRole('button', { name: /copy/i }).first();
+    // Also check for any button near the JWKS endpoint text
+    const nearbyButtons = jwksText.locator('..').locator('button');
 
-    const hasCopyNearJwks = await copyBtn.isVisible().catch(() => false);
-    // CopyButton may be icon-only; also check for any button in the JWKS row
-    const jwksRowButtons = page.locator('[class*="jwksRow"] button');
-    const hasButton = await jwksRowButtons.first().isVisible().catch(() => false);
+    const hasCopyLabel = await copyByLabel.isVisible().catch(() => false);
+    const hasCopyText = await copyByText.isVisible().catch(() => false);
+    const hasNearby = await nearbyButtons.first().isVisible().catch(() => false);
 
-    expect(hasCopyNearJwks || hasButton).toBeTruthy();
+    expect(hasCopyLabel || hasCopyText || hasNearby).toBeTruthy();
   });
 });

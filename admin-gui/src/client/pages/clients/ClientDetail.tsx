@@ -205,29 +205,29 @@ function OverviewTab({ client, appName, orgName }: OverviewTabProps) {
 
         <Text className={styles.infoLabel} size={200}>Grant Types</Text>
         <div className={styles.badgeGroup}>
-          {client.grantTypes.map((gt) => (
+          {(client.grantTypes ?? []).map((gt) => (
             <Badge key={gt} appearance="outline" size="small">{gt}</Badge>
           ))}
         </div>
 
         <Text className={styles.infoLabel} size={200}>Response Types</Text>
         <div className={styles.badgeGroup}>
-          {client.responseTypes.map((rt) => (
+          {(client.responseTypes ?? []).map((rt) => (
             <Badge key={rt} appearance="outline" size="small">{rt}</Badge>
           ))}
         </div>
 
         <Text className={styles.infoLabel} size={200}>Redirect URIs</Text>
         <div className={styles.uriList}>
-          {client.redirectUris.length > 0
-            ? client.redirectUris.map((uri) => <Text key={uri} size={200}>{uri}</Text>)
+          {(client.redirectUris ?? []).length > 0
+            ? (client.redirectUris ?? []).map((uri) => <Text key={uri} size={200}>{uri}</Text>)
             : <Text size={200}>—</Text>}
         </div>
 
         <Text className={styles.infoLabel} size={200}>Post-Logout URIs</Text>
         <div className={styles.uriList}>
-          {client.postLogoutRedirectUris.length > 0
-            ? client.postLogoutRedirectUris.map((uri) => <Text key={uri} size={200}>{uri}</Text>)
+          {(client.postLogoutRedirectUris ?? []).length > 0
+            ? (client.postLogoutRedirectUris ?? []).map((uri) => <Text key={uri} size={200}>{uri}</Text>)
             : <Text size={200}>—</Text>}
         </div>
 
@@ -273,9 +273,9 @@ function SettingsTab({ client, onSave, saving }: SettingsTabProps) {
   const styles = useStyles();
   const [name, setName] = useState(client.name);
   const [description, setDescription] = useState(client.description ?? '');
-  const [redirectUris, setRedirectUris] = useState<string[]>([...client.redirectUris]);
-  const [postLogoutUris, setPostLogoutUris] = useState<string[]>([...client.postLogoutRedirectUris]);
-  const [grantTypes, setGrantTypes] = useState<GrantType[]>([...client.grantTypes]);
+  const [redirectUris, setRedirectUris] = useState<string[]>([...(client.redirectUris ?? [])]);
+  const [postLogoutUris, setPostLogoutUris] = useState<string[]>([...(client.postLogoutRedirectUris ?? [])]);
+  const [grantTypes, setGrantTypes] = useState<GrantType[]>([...(client.grantTypes ?? [])]);
   const [newRedirectUri, setNewRedirectUri] = useState('');
   const [newPostLogoutUri, setNewPostLogoutUri] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -286,17 +286,17 @@ function SettingsTab({ client, onSave, saving }: SettingsTabProps) {
   const isDirty =
     name !== client.name ||
     description !== (client.description ?? '') ||
-    JSON.stringify(redirectUris) !== JSON.stringify(client.redirectUris) ||
-    JSON.stringify(postLogoutUris) !== JSON.stringify(client.postLogoutRedirectUris) ||
-    JSON.stringify([...grantTypes].sort()) !== JSON.stringify([...client.grantTypes].sort());
+    JSON.stringify(redirectUris) !== JSON.stringify(client.redirectUris ?? []) ||
+    JSON.stringify(postLogoutUris) !== JSON.stringify(client.postLogoutRedirectUris ?? []) ||
+    JSON.stringify([...grantTypes].sort()) !== JSON.stringify([...(client.grantTypes ?? [])].sort());
 
   /** Reset form to current client values */
   const handleReset = useCallback(() => {
     setName(client.name);
     setDescription(client.description ?? '');
-    setRedirectUris([...client.redirectUris]);
-    setPostLogoutUris([...client.postLogoutRedirectUris]);
-    setGrantTypes([...client.grantTypes]);
+    setRedirectUris([...(client.redirectUris ?? [])]);
+    setPostLogoutUris([...(client.postLogoutRedirectUris ?? [])]);
+    setGrantTypes([...(client.grantTypes ?? [])]);
     setNewRedirectUri('');
     setNewPostLogoutUri('');
     setErrors({});
@@ -367,13 +367,13 @@ function SettingsTab({ client, onSave, saving }: SettingsTabProps) {
     const data: Partial<Client> = {};
     if (name !== client.name) data.name = name.trim();
     if (description !== (client.description ?? '')) data.description = description.trim();
-    if (JSON.stringify(redirectUris) !== JSON.stringify(client.redirectUris)) {
+    if (JSON.stringify(redirectUris) !== JSON.stringify(client.redirectUris ?? [])) {
       data.redirectUris = redirectUris;
     }
-    if (JSON.stringify(postLogoutUris) !== JSON.stringify(client.postLogoutRedirectUris)) {
+    if (JSON.stringify(postLogoutUris) !== JSON.stringify(client.postLogoutRedirectUris ?? [])) {
       data.postLogoutRedirectUris = postLogoutUris;
     }
-    if (JSON.stringify([...grantTypes].sort()) !== JSON.stringify([...client.grantTypes].sort())) {
+    if (JSON.stringify([...grantTypes].sort()) !== JSON.stringify([...(client.grantTypes ?? [])].sort())) {
       data.grantTypes = grantTypes;
     }
 
