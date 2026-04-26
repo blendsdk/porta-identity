@@ -226,23 +226,27 @@ export async function createTestClient(
   name: string,
   options?: {
     clientType?: 'public' | 'confidential';
+    /** Convenience alias for clientType: 'confidential' */
+    isConfidential?: boolean;
     redirectUris?: string[];
     grantTypes?: string[];
   },
 ): Promise<CreatedClient> {
+  // Resolve effective client type: isConfidential convenience flag takes priority
+  const effectiveType =
+    options?.isConfidential ? 'confidential' : (options?.clientType ?? 'public');
   const csrfToken = await getCsrfToken(request);
   const response = await request.post(`${BFF_BASE_URL}/api/clients`, {
     headers: { 'X-CSRF-Token': csrfToken },
     data: {
       clientName: name,
       applicationId: appId,
-      clientType: options?.clientType ?? 'public',
+      clientType: effectiveType,
       applicationType: 'web',
-      tokenEndpointAuthMethod: options?.clientType === 'confidential' ? 'client_secret_post' : 'none',
+      tokenEndpointAuthMethod: effectiveType === 'confidential' ? 'client_secret_post' : 'none',
       grantTypes: options?.grantTypes ?? ['authorization_code', 'refresh_token'],
       responseTypes: ['code'],
       redirectUris: options?.redirectUris ?? ['http://localhost:3000/callback'],
-      ...options,
     },
   });
 
@@ -266,19 +270,32 @@ export async function createTestClient(
  *
  * @param request - Playwright API request context (authenticated)
  * @param orgId - Organization UUID to create the user in
- * @param data - User details
+ * @param emailOrData - User email (string) or full user details object
+ * @param opts - Optional extra fields when first form (email string) is used
  * @returns The created user
  */
 export async function createTestUser(
   request: APIRequestContext,
   orgId: string,
-  data: {
-    email: string;
-    givenName: string;
-    familyName: string;
-    password?: string;
-  },
+  emailOrData:
+    | string
+    | {
+        email: string;
+        givenName?: string;
+        familyName?: string;
+        password?: string;
+      },
+  opts?: { givenName?: string; familyName?: string; password?: string },
 ): Promise<CreatedUser> {
+  const data =
+    typeof emailOrData === 'string'
+      ? {
+          email: emailOrData,
+          givenName: opts?.givenName ?? 'Test',
+          familyName: opts?.familyName ?? 'User',
+          ...opts,
+        }
+      : emailOrData;
   const csrfToken = await getCsrfToken(request);
   const response = await request.post(
     `${BFF_BASE_URL}/api/organizations/${orgId}/users`,

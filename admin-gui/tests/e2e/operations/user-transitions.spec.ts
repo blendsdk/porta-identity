@@ -31,7 +31,7 @@ test.describe('User Status Transitions', () => {
     page,
     seedIds,
   }) => {
-    await navigateToEntity(page, 'users', seedIds.testUserId);
+    await navigateToEntity(page, 'users', seedIds.activeUserId);
     await clickTab(page, 'Status');
 
     // Active user should have Deactivate and Suspend actions

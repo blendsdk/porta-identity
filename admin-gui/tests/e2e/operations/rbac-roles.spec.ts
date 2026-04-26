@@ -45,8 +45,8 @@ async function navigateToRoleDetail(
   await page.getByRole('option', { name: TEST_APP_NAME }).click();
   await page.waitForLoadState('networkidle');
 
-  // Click on the role row
-  await page.getByText(roleName).click();
+  // Click on the role row (scope to table/main to avoid sidebar duplicates)
+  await page.locator('main').getByText(roleName, { exact: true }).first().click();
   await page.waitForLoadState('networkidle');
 }
 
@@ -106,9 +106,9 @@ test.describe('Role CRUD Operations', () => {
     await page.getByRole('option', { name: TEST_APP_NAME }).click();
     await page.waitForLoadState('networkidle');
 
-    // Both seed roles should be visible
-    await expect(page.getByText(EDITOR_ROLE)).toBeVisible();
-    await expect(page.getByText(VIEWER_ROLE)).toBeVisible();
+    // Both seed roles should be visible (scope to main content area)
+    await expect(page.locator('main').getByText(EDITOR_ROLE).first()).toBeVisible();
+    await expect(page.locator('main').getByText(VIEWER_ROLE).first()).toBeVisible();
   });
 
   test('role list search filters by name', async ({ page }) => {
@@ -125,7 +125,7 @@ test.describe('Role CRUD Operations', () => {
     await page.waitForLoadState('networkidle');
 
     // Editor should be visible, Viewer may not be
-    await expect(page.getByText(EDITOR_ROLE)).toBeVisible();
+    await expect(page.locator('main').getByText(EDITOR_ROLE).first()).toBeVisible();
   });
 
   test('role detail overview shows name, slug, description', async ({ page }) => {
@@ -157,10 +157,11 @@ test.describe('Role Permission Assignment', () => {
     await navigateToRoleDetail(page, EDITOR_ROLE);
     await clickTab(page, 'Permissions');
 
-    // All 3 permissions should be visible
-    await expect(page.getByText(READ_PERM)).toBeVisible();
-    await expect(page.getByText(WRITE_PERM)).toBeVisible();
-    await expect(page.getByText(DELETE_PERM)).toBeVisible();
+    // All 3 permissions should be visible (scope to tabpanel)
+    const tabpanel = page.getByRole('tabpanel');
+    await expect(tabpanel.getByText(READ_PERM)).toBeVisible();
+    await expect(tabpanel.getByText(WRITE_PERM)).toBeVisible();
+    await expect(tabpanel.getByText(DELETE_PERM)).toBeVisible();
 
     // Editor has all 3 assigned — checkboxes should be present
     const checkboxes = page.getByRole('checkbox');

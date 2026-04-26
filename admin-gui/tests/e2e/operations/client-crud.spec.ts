@@ -48,7 +48,7 @@ test.describe('Client CRUD Operations', () => {
     await navigateTo(page, '/clients/new');
 
     // Step 1: Basic Info
-    await page.getByText('Select an application').click();
+    await page.locator('[role="combobox"]').first().click();
     await page.getByRole('option', { name: ACME_APP }).click();
     await page.getByPlaceholder(/e\.g\./i).fill(clientName);
     // Public is the default type
@@ -87,7 +87,7 @@ test.describe('Client CRUD Operations', () => {
     await navigateTo(page, '/clients/new');
 
     // Step 1: Basic Info — select confidential type
-    await page.getByText('Select an application').click();
+    await page.locator('[role="combobox"]').first().click();
     await page.getByRole('option', { name: ACME_APP }).click();
     await page.getByPlaceholder(/e\.g\./i).fill(clientName);
     await page.getByLabel(/confidential/i).click();
@@ -123,7 +123,7 @@ test.describe('Client CRUD Operations', () => {
     await navigateTo(page, '/clients/new');
 
     // Select application but leave name empty
-    await page.getByText('Select an application').click();
+    await page.locator('[role="combobox"]').first().click();
     await page.getByRole('option', { name: ACME_APP }).click();
 
     // Try to proceed
@@ -154,8 +154,8 @@ test.describe('Client CRUD Operations', () => {
     // Name
     await expect(page.locator('main').getByText(SEEDED_CLIENTS.publicClient).first()).toBeVisible();
 
-    // Type badge
-    await expect(page.getByText('Public')).toBeVisible();
+    // Type badge (scope to main to avoid sidebar/header duplicates)
+    await expect(page.locator('main').getByText('Public').first()).toBeVisible();
 
     // Status
     await expect(page.getByText(/active/i).first()).toBeVisible();
@@ -180,8 +180,8 @@ test.describe('Client CRUD Operations', () => {
   test('shows correct data on Overview tab for confidential client', async ({ page, seedIds }) => {
     await navigateToEntity(page, 'clients', seedIds.confClientId);
 
-    // Type badge should show Confidential
-    await expect(page.getByText('Confidential')).toBeVisible();
+    // Type badge should show Confidential (scope to main)
+    await expect(page.locator('main').getByText('Confidential').first()).toBeVisible();
 
     // Status
     await expect(page.getByText(/active/i).first()).toBeVisible();

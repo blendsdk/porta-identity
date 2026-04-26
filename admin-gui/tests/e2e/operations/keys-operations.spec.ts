@@ -48,11 +48,12 @@ test.describe('Signing Key Operations', () => {
       return;
     }
 
-    // Table headers
-    await expect(page.getByText('Key ID')).toBeVisible();
-    await expect(page.getByText('Algorithm')).toBeVisible();
-    await expect(page.getByText('Created')).toBeVisible();
-    await expect(page.getByText('Status')).toBeVisible();
+    // Table headers (scope to table to avoid duplicates)
+    const table = page.locator('table');
+    await expect(table.getByText('Key ID')).toBeVisible();
+    await expect(table.getByText('Algorithm')).toBeVisible();
+    await expect(table.getByText('Created')).toBeVisible();
+    await expect(table.getByText('Status')).toBeVisible();
 
     // At least one key row should exist
     expect(hasKeys).toBeTruthy();

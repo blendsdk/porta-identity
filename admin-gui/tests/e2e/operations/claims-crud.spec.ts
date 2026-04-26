@@ -40,7 +40,7 @@ async function navigateToClaimDetail(
   await page.getByRole('option', { name: TEST_APP_NAME }).click();
   await page.waitForLoadState('networkidle');
 
-  await page.getByText(claimName).click();
+  await page.locator('main').getByText(claimName, { exact: true }).first().click();
   await page.waitForLoadState('networkidle');
 }
 
@@ -57,8 +57,8 @@ test.describe('Claim Definition List Operations', () => {
     await page.getByRole('option', { name: TEST_APP_NAME }).click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText(DEPT_CLAIM)).toBeVisible();
-    await expect(page.getByText(LEVEL_CLAIM)).toBeVisible();
+    await expect(page.locator('main').getByText(DEPT_CLAIM).first()).toBeVisible();
+    await expect(page.locator('main').getByText(LEVEL_CLAIM).first()).toBeVisible();
   });
 
   test('claim list displays value type badges', async ({ page }) => {
@@ -100,7 +100,7 @@ test.describe('Claim Definition List Operations', () => {
     await searchInput.fill('department');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText(DEPT_CLAIM)).toBeVisible();
+    await expect(page.locator('main').getByText(DEPT_CLAIM).first()).toBeVisible();
   });
 
   test('Create Claim button is visible when app is selected', async ({ page }) => {

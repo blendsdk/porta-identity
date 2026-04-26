@@ -29,7 +29,7 @@ test.describe('User Profile Operations', () => {
     page,
     seedIds,
   }) => {
-    await navigateToEntity(page, 'users', seedIds.testUserId);
+    await navigateToEntity(page, 'users', seedIds.activeUserId);
     await clickTab(page, 'Profile');
 
     // Given Name should be pre-filled with "Jane"
@@ -140,7 +140,7 @@ test.describe('User Profile Operations', () => {
   });
 
   test('security tab shows password and 2FA status', async ({ page, seedIds }) => {
-    await navigateToEntity(page, 'users', seedIds.testUserId);
+    await navigateToEntity(page, 'users', seedIds.activeUserId);
     await clickTab(page, 'Security');
 
     // Should show password section

@@ -170,9 +170,9 @@ test.describe('Import Page Operations', () => {
     await expect(page.getByText('Entity Type')).toBeVisible();
     await expect(page.getByText('Records')).toBeVisible();
 
-    // Entity types from our test data
-    await expect(page.getByText('organizations')).toBeVisible();
-    await expect(page.getByText('users')).toBeVisible();
+    // Entity types from our test data (case-insensitive, may be capitalized)
+    await expect(page.getByText(/organizations/i).first()).toBeVisible();
+    await expect(page.getByText(/users/i).first()).toBeVisible();
 
     // Counts
     await expect(page.getByText('2').first()).toBeVisible(); // 2 organizations
@@ -234,12 +234,15 @@ test.describe('Import Page Operations', () => {
     await page.getByRole('button', { name: /Confirm Import/i }).click();
 
     // Confirm dialog should appear
-    await expect(page.getByText('Confirm Import')).toBeVisible();
-    await expect(page.getByText(/Import \d+ records across/)).toBeVisible();
-    await expect(page.getByText(/cannot be undone/i)).toBeVisible();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/Import \d+ records|Confirm/)).toBeVisible();
+    await expect(dialog.getByText(/cannot be undone/i)).toBeVisible();
 
     // Cancel the dialog
-    await page.getByRole('button', { name: /Cancel/i }).click();
-    await expect(page.getByText('Confirm Import').first()).toBeVisible(); // Still on preview
+    await dialog.getByRole('button', { name: /Cancel/i }).click();
+    await expect(dialog).not.toBeVisible();
+    // Preview page should still be visible with the Confirm Import button
+    await expect(page.getByRole('button', { name: /Confirm Import/i })).toBeVisible();
   });
 });

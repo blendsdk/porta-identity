@@ -47,13 +47,14 @@ test.describe('Session Management Operations', () => {
       return;
     }
 
-    // Table headers
-    await expect(page.getByText('User')).toBeVisible();
-    await expect(page.getByText('Organization')).toBeVisible();
-    await expect(page.getByText('IP Address')).toBeVisible();
-    await expect(page.getByText('Created')).toBeVisible();
-    await expect(page.getByText('Last Active')).toBeVisible();
-    await expect(page.getByText('User Agent')).toBeVisible();
+    // Table headers (scope to table to avoid sidebar duplicates)
+    const table = page.locator('table');
+    await expect(table.getByText('User')).toBeVisible();
+    await expect(table.getByText('Organization')).toBeVisible();
+    await expect(table.getByText('IP Address')).toBeVisible();
+    await expect(table.getByText('Created')).toBeVisible();
+    await expect(table.getByText('Last Active')).toBeVisible();
+    await expect(table.getByText('User Agent')).toBeVisible();
 
     // At least one session row exists
     expect(hasSessions).toBeTruthy();

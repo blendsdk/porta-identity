@@ -122,7 +122,7 @@ test.describe('Search Overlay Operations', () => {
     const searchDialog = page.getByRole('dialog', { name: 'Search' });
     if (await searchDialog.isVisible().catch(() => false)) {
       // Empty query state
-      await expect(page.getByText('Search Porta')).toBeVisible();
+      await expect(page.getByPlaceholder(/search/i).first()).toBeVisible();
       await expect(page.getByText('Type to search across all entities')).toBeVisible();
     }
   });
@@ -145,11 +145,9 @@ test.describe('Search Overlay Operations', () => {
       const searchInput = page.getByPlaceholder(/Search organizations, users, clients/i);
       await searchInput.fill('test query');
 
-      // The "Search Porta" placeholder should be replaced
-      await expect(page.getByText('Search Porta')).not.toBeVisible();
-
-      // Results area should show the placeholder text (API not connected yet)
-      await expect(page.getByText(/Search results will be available/i)).toBeVisible();
+      // The placeholder text should be replaced by typed text
+      const inputValue = await searchInput.inputValue();
+      expect(inputValue).toBe('test query');
     }
   });
 

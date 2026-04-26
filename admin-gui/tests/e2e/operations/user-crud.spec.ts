@@ -51,8 +51,8 @@ test.describe('User CRUD Operations', () => {
 
     await navigateTo(page, '/users/new');
 
-    // Select organization
-    const orgDropdown = page.getByText(/select.*organization/i);
+    // Select organization (combobox may already have a pre-selected value)
+    const orgDropdown = page.locator('[role="combobox"]').first();
     await orgDropdown.click();
     await page.getByRole('option', { name: ACME_ORG }).click();
 
@@ -99,8 +99,8 @@ test.describe('User CRUD Operations', () => {
   test('shows validation error for empty email', async ({ page }) => {
     await navigateTo(page, '/users/new');
 
-    // Select organization
-    const orgDropdown = page.getByText(/select.*organization/i);
+    // Select organization (combobox may already have a pre-selected value)
+    const orgDropdown = page.locator('[role="combobox"]').first();
     await orgDropdown.click();
     await page.getByRole('option', { name: ACME_ORG }).click();
 
@@ -138,8 +138,8 @@ test.describe('User CRUD Operations', () => {
   test('user list shows seeded users when org is selected', async ({ page }) => {
     await navigateTo(page, '/users');
 
-    // Select Acme org
-    const orgDropdown = page.getByText(/select.*organization|all organizations/i);
+    // Select Acme org (combobox may show "All Organizations" or pre-selected org)
+    const orgDropdown = page.locator('[role="combobox"]').first();
     await orgDropdown.click();
     await page.getByRole('option', { name: ACME_ORG }).click();
     await page.waitForLoadState('networkidle');
@@ -151,8 +151,8 @@ test.describe('User CRUD Operations', () => {
   test('filters users by search text', async ({ page }) => {
     await navigateTo(page, '/users');
 
-    // Select org first
-    const orgDropdown = page.getByText(/select.*organization|all organizations/i);
+    // Select org first (combobox may show "All Organizations" or pre-selected org)
+    const orgDropdown = page.locator('[role="combobox"]').first();
     await orgDropdown.click();
     await page.getByRole('option', { name: ACME_ORG }).click();
     await page.waitForLoadState('networkidle');
@@ -171,8 +171,8 @@ test.describe('User CRUD Operations', () => {
   test('navigates to user detail from list row click', async ({ page, seedIds }) => {
     await navigateTo(page, '/users');
 
-    // Select org
-    const orgDropdown = page.getByText(/select.*organization|all organizations/i);
+    // Select org (combobox may show "All Organizations" or pre-selected org)
+    const orgDropdown = page.locator('[role="combobox"]').first();
     await orgDropdown.click();
     await page.getByRole('option', { name: ACME_ORG }).click();
     await page.waitForLoadState('networkidle');
@@ -185,7 +185,7 @@ test.describe('User CRUD Operations', () => {
   });
 
   test('overview tab shows correct data for active user', async ({ page, seedIds }) => {
-    await navigateToEntity(page, 'users', seedIds.testUserId);
+    await navigateToEntity(page, 'users', seedIds.activeUserId);
 
     // Overview is default tab — verify key fields
     // Email
@@ -209,7 +209,7 @@ test.describe('User CRUD Operations', () => {
   });
 
   test('all 8 tabs are visible on user detail', async ({ page, seedIds }) => {
-    await navigateToEntity(page, 'users', seedIds.testUserId);
+    await navigateToEntity(page, 'users', seedIds.activeUserId);
 
     const expectedTabs = [
       'Overview',

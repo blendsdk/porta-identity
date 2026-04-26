@@ -36,13 +36,14 @@ test.describe('Dashboard Operations', () => {
     // Wait for loading to complete — stats cards should appear
     await page.waitForTimeout(2_000);
 
-    // Overview stats cards — 6 cards in system-wide view
-    await expect(page.getByText('Organizations')).toBeVisible();
-    await expect(page.getByText('Applications')).toBeVisible();
-    await expect(page.getByText('Clients')).toBeVisible();
-    await expect(page.getByText('Users')).toBeVisible();
-    await expect(page.getByText('Active Sessions')).toBeVisible();
-    await expect(page.getByText('Failed Logins (24h)')).toBeVisible();
+    // Overview stats cards — 6 cards in system-wide view (scope to main content)
+    const main = page.locator('main');
+    await expect(main.getByText('Organizations').first()).toBeVisible();
+    await expect(main.getByText('Applications').first()).toBeVisible();
+    await expect(main.getByText('Clients').first()).toBeVisible();
+    await expect(main.getByText('Users').first()).toBeVisible();
+    await expect(main.getByText('Active Sessions')).toBeVisible();
+    await expect(main.getByText('Failed Logins (24h)')).toBeVisible();
   });
 
   test('displays login activity chart with time window toggles', async ({ page }) => {

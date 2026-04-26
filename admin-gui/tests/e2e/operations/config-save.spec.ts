@@ -69,13 +69,13 @@ test.describe('Config Editor Operations', () => {
     }
 
     // Find and click the first edit button (icon button in the last column)
-    const editButtons = page.locator('table tbody tr button').first();
-    await editButtons.click();
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.locator('button').first().click();
 
     // Edit mode: should show an input field and save/cancel icon buttons
     // The input replaces the value text
-    const editInput = page.locator('table tbody input').first();
-    await expect(editInput).toBeVisible();
+    const editInput = firstRow.locator('input').first();
+    await expect(editInput).toBeVisible({ timeout: 5_000 });
   });
 
   test('cancels edit mode without saving', async ({ page }) => {
@@ -88,13 +88,13 @@ test.describe('Config Editor Operations', () => {
       return;
     }
 
-    // Enter edit mode
-    const editButton = page.locator('table tbody tr button').first();
-    await editButton.click();
+    // Enter edit mode on first row
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.locator('button').first().click();
 
     // Should see input field
-    const editInput = page.locator('table tbody input').first();
-    await expect(editInput).toBeVisible();
+    const editInput = firstRow.locator('input').first();
+    await expect(editInput).toBeVisible({ timeout: 5_000 });
 
     // Get the original value
     const originalValue = await editInput.inputValue();
@@ -102,13 +102,11 @@ test.describe('Config Editor Operations', () => {
     // Modify the value
     await editInput.fill('temporary-test-value-12345');
 
-    // Click cancel button (DismissRegular icon, second button in edit row)
-    // The edit row has two buttons: save (checkmark) and cancel (dismiss)
-    const cancelBtn = page.locator('table tbody tr [class*="editRow"] button').last();
-    await cancelBtn.click();
+    // Click cancel button — press Escape to cancel edit mode
+    await page.keyboard.press('Escape');
 
     // Edit input should be gone — back to display mode
-    await expect(editInput).not.toBeVisible();
+    await expect(editInput).not.toBeVisible({ timeout: 5_000 });
 
     // Value should NOT have changed — original value should still be visible
     const valueCell = page.locator('table tbody tr td').nth(1);
@@ -126,17 +124,19 @@ test.describe('Config Editor Operations', () => {
     }
 
     // Enter edit mode on first row
-    const editButton = page.locator('table tbody tr button').first();
-    await editButton.click();
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.locator('button').first().click();
 
     // Type a new value
-    const editInput = page.locator('table tbody input').first();
+    const editInput = firstRow.locator('input').first();
+    await expect(editInput).toBeVisible({ timeout: 5_000 });
     await editInput.clear();
     await editInput.fill('300');
 
-    // Click save button (CheckmarkRegular icon, first button in edit row)
-    const saveBtn = page.locator('table tbody tr [class*="editRow"] button').first();
-    await saveBtn.click();
+    // Click save — find the checkmark/save button (usually first of the edit action buttons)
+    const editBtns = firstRow.locator('button');
+    // After entering edit mode, row has save + cancel buttons
+    await editBtns.first().click();
 
     // Confirm dialog should appear
     await expect(page.getByText('Update Configuration')).toBeVisible();
@@ -153,17 +153,17 @@ test.describe('Config Editor Operations', () => {
       return;
     }
 
-    // Enter edit mode
-    const editButton = page.locator('table tbody tr button').first();
-    await editButton.click();
+    // Enter edit mode on first row
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.locator('button').first().click();
 
-    const editInput = page.locator('table tbody input').first();
+    const editInput = firstRow.locator('input').first();
+    await expect(editInput).toBeVisible({ timeout: 5_000 });
     await editInput.clear();
     await editInput.fill('999');
 
-    // Click save to open confirm dialog
-    const saveBtn = page.locator('table tbody tr [class*="editRow"] button').first();
-    await saveBtn.click();
+    // Click save button to open confirm dialog
+    await firstRow.locator('button').first().click();
 
     // Confirm dialog should appear
     await expect(page.getByText('Update Configuration')).toBeVisible();
@@ -187,19 +187,19 @@ test.describe('Config Editor Operations', () => {
     }
 
     // Enter edit mode on first row
-    const editButton = page.locator('table tbody tr button').first();
-    await editButton.click();
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.locator('button').first().click();
 
-    const editInput = page.locator('table tbody input').first();
+    const editInput = firstRow.locator('input').first();
+    await expect(editInput).toBeVisible({ timeout: 5_000 });
     const currentValue = await editInput.inputValue();
 
     // Set value (use current value to avoid actual changes in test env)
     await editInput.clear();
     await editInput.fill(currentValue);
 
-    // Click save
-    const saveBtn = page.locator('table tbody tr [class*="editRow"] button').first();
-    await saveBtn.click();
+    // Click save button
+    await firstRow.locator('button').first().click();
 
     // Confirm dialog appears — click Confirm
     await expect(page.getByText('Update Configuration')).toBeVisible();

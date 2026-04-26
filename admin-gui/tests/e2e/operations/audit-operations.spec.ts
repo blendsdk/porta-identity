@@ -37,10 +37,11 @@ test.describe('Audit Log Operations', () => {
     await expect(page.getByText('From')).toBeVisible();
     await expect(page.getByText('To')).toBeVisible();
 
-    // Table headers
-    await expect(page.getByText('Timestamp')).toBeVisible();
-    await expect(page.getByText('Event')).toBeVisible();
-    await expect(page.getByText('IP')).toBeVisible();
+    // Table headers (scope to table to avoid sidebar duplicates)
+    const table = page.locator('table').first();
+    await expect(table.getByText('Timestamp').first()).toBeVisible();
+    await expect(table.getByText('Event').first()).toBeVisible();
+    await expect(table.getByText('IP').first()).toBeVisible();
   });
 
   test('filters by event type dropdown', async ({ page }) => {
@@ -100,8 +101,8 @@ test.describe('Audit Log Operations', () => {
 
     await page.waitForTimeout(1_000);
 
-    // Filtered results — entity badges should show "organization"
-    const orgBadges = page.getByText('organization', { exact: true });
+    // Filtered results — entity badges should show "organization" (scope to main)
+    const orgBadges = page.locator('main').getByText('organization', { exact: true });
     const hasBadges = await orgBadges.first().isVisible().catch(() => false);
     const isEmpty = await page.getByText('No audit events found').isVisible().catch(() => false);
 

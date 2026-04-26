@@ -43,7 +43,7 @@ async function navigateToPermissionDetail(
   await page.getByRole('option', { name: TEST_APP_NAME }).click();
   await page.waitForLoadState('networkidle');
 
-  await page.getByText(permName).click();
+  await page.locator('main').getByText(permName, { exact: true }).first().click();
   await page.waitForLoadState('networkidle');
 }
 
@@ -60,9 +60,9 @@ test.describe('Permission CRUD Operations', () => {
     await page.getByRole('option', { name: TEST_APP_NAME }).click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText(READ_PERM)).toBeVisible();
-    await expect(page.getByText(WRITE_PERM)).toBeVisible();
-    await expect(page.getByText(DELETE_PERM)).toBeVisible();
+    await expect(page.locator('main').getByText(READ_PERM).first()).toBeVisible();
+    await expect(page.locator('main').getByText(WRITE_PERM).first()).toBeVisible();
+    await expect(page.locator('main').getByText(DELETE_PERM).first()).toBeVisible();
   });
 
   test('permission list search filters by name', async ({ page }) => {
@@ -116,9 +116,10 @@ test.describe('Permission CRUD Operations', () => {
     await navigateToPermissionDetail(page, READ_PERM);
     await clickTab(page, 'Roles');
 
-    // Both roles should be visible (Read Content is assigned to both)
-    await expect(page.getByText(EDITOR_ROLE)).toBeVisible();
-    await expect(page.getByText(VIEWER_ROLE)).toBeVisible();
+    // Both roles should be visible (Read Content is assigned to both — scope to tabpanel)
+    const tabpanel = page.getByRole('tabpanel');
+    await expect(tabpanel.getByText(EDITOR_ROLE)).toBeVisible();
+    await expect(tabpanel.getByText(VIEWER_ROLE)).toBeVisible();
   });
 });
 
