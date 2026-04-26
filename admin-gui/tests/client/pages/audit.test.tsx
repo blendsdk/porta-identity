@@ -22,24 +22,24 @@ vi.mock('react-router', () => ({
 const mockAuditEntries = [
   {
     id: 'a1',
-    action: 'user.login',
+    eventType: 'user.login',
+    eventCategory: 'user',
     actorId: 'u-admin',
-    actorEmail: 'admin@test.com',
-    targetType: 'user',
-    targetId: 'u1',
     organizationId: 'org-1',
+    userId: 'u1',
+    description: 'User logged in',
     metadata: { ip: '127.0.0.1' },
     ipAddress: '127.0.0.1',
     createdAt: '2026-04-20T10:00:00Z',
   },
   {
     id: 'a2',
-    action: 'org.created',
+    eventType: 'org.created',
+    eventCategory: 'organization',
     actorId: 'u-admin',
-    actorEmail: 'admin@test.com',
-    targetType: 'organization',
-    targetId: 'org-2',
     organizationId: 'org-2',
+    userId: null,
+    description: 'Organization created',
     metadata: { name: 'New Org' },
     ipAddress: '127.0.0.1',
     createdAt: '2026-04-20T09:00:00Z',
@@ -98,13 +98,13 @@ describe('AuditLog', () => {
     expect(orgCreated.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should render actor email', () => {
+  it('should render actor ID', () => {
     renderWithProvider(<AuditLog />);
-    const emails = screen.getAllByText('admin@test.com');
-    expect(emails.length).toBeGreaterThanOrEqual(1);
+    const actors = screen.getAllByText('u-admin');
+    expect(actors.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should render target types', () => {
+  it('should render event categories', () => {
     renderWithProvider(<AuditLog />);
     expect(screen.getByText('user')).toBeDefined();
     expect(screen.getByText('organization')).toBeDefined();
@@ -120,8 +120,8 @@ describe('AuditLog', () => {
     const user = userEvent.setup();
     renderWithProvider(<AuditLog />);
 
-    // Click on the first audit entry row (by actor email which is always visible)
-    const rows = screen.getAllByText('admin@test.com');
+    // Click on the first audit entry row (by actor ID which is always visible)
+    const rows = screen.getAllByText('u-admin');
     await user.click(rows[0]);
 
     // After expansion, metadata should be visible (multiple matches possible from ipAddress field + metadata)

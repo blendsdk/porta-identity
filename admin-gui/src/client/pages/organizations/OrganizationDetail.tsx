@@ -182,10 +182,10 @@ function formatShortDate(dateStr: string): string {
 function auditToTimeline(entry: AuditEntry): TimelineEntry {
   return {
     id: entry.id,
-    action: entry.action.replace(/\./g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    actor: entry.actorEmail ?? 'System',
+    action: entry.eventType.replace(/\./g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    actor: entry.actorId ?? 'System',
     timestamp: formatDate(entry.createdAt),
-    details: entry.metadata ? JSON.stringify(entry.metadata) : undefined,
+    details: entry.description ?? (entry.metadata ? JSON.stringify(entry.metadata) : undefined),
   };
 }
 
@@ -701,9 +701,6 @@ function HistoryTab({ orgId }: HistoryTabProps) {
   const { data, isLoading } = useAuditLog({
     organizationId: orgId,
     limit: 50,
-    offset: 0,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
   });
 
   if (isLoading) {
@@ -762,10 +759,13 @@ export function OrganizationDetail() {
           await archiveMutation.mutateAsync(orgId);
           break;
       }
-      setPendingAction(null);
-      setTypeConfirmed(false);
     } catch {
       // Error is handled by React Query — mutation error state
+    } finally {
+      // Always close the dialog and reset type confirmation,
+      // whether the mutation succeeded or failed
+      setPendingAction(null);
+      setTypeConfirmed(false);
     }
   }, [orgId, pendingAction, suspendMutation, activateMutation, archiveMutation]);
 

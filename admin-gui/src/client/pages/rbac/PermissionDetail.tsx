@@ -193,20 +193,19 @@ function RolesTab({
 function mapAuditEntries(entries: AuditEntry[]): TimelineEntry[] {
   return entries.map((e) => ({
     id: e.id,
-    action: e.action,
-    actor: e.actorEmail ?? 'System',
+    action: e.eventType,
+    actor: e.actorId ?? 'System',
     timestamp: new Date(e.createdAt).toLocaleString(),
-    details: e.metadata ? JSON.stringify(e.metadata) : undefined,
+    details: e.description ?? (e.metadata ? JSON.stringify(e.metadata) : undefined),
   }));
 }
 
 function HistoryTab({ permissionId }: { permissionId: string }) {
   const { data } = useAuditLog({
     limit: 50,
-    sortOrder: 'desc',
   });
   const allEntries = data?.data ?? [];
-  const filtered = allEntries.filter((e) => e.targetId === permissionId);
+  const filtered = allEntries.filter((e) => e.eventType.startsWith('permission.'));
   return <AuditTimeline entries={mapAuditEntries(filtered)} />;
 }
 

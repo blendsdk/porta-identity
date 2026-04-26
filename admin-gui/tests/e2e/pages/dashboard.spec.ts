@@ -56,8 +56,8 @@ test.describe('Dashboard', () => {
     }
 
     // At least 4 stats cards should be present (the card containers)
-    // Each StatsCard renders a value as a large text element
-    const statsValues = page.locator('[class*="value"]');
+    // Each StatsCard renders a value with data-testid="stats-value"
+    const statsValues = page.locator('[data-testid="stats-value"]');
     // Verify at least some stats rendered — they contain numeric text
     const cardCount = await statsValues.count();
     expect(cardCount).toBeGreaterThanOrEqual(4);

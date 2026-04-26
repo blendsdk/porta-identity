@@ -38,23 +38,30 @@ test.describe('Login Redirect (Unauthenticated)', () => {
     expect(url).toMatch(/\/login|\/auth/);
   });
 
-  test('login page renders redirect spinner', async ({ page }) => {
+  test('login page triggers redirect to OIDC login', async ({ page }) => {
     // Navigate directly to /login
     await page.goto('/login');
 
     // The Login component renders a Spinner with "Redirecting to login..."
-    // before doing window.location.href = '/auth/login'.
-    // We need to catch it quickly before the redirect fires.
-    const spinner = page.locator('text=/redirecting|loading/i');
-    // Either the spinner is visible (we caught it) or the page already redirected
+    // then immediately does window.location.href = '/auth/login'.
+    // The redirect often fires before Playwright can capture the spinner,
+    // so we accept either outcome:
+    //   1) Spinner is visible briefly (caught before redirect)
+    //   2) Page already redirected to /auth/login or /interaction
+    await page.waitForURL(/\/login|\/auth\/login|\/interaction/, { timeout: 10_000 });
+
+    // Wait a moment for potential redirect to complete
+    await page.waitForTimeout(1_000);
+
     const url = page.url();
     const redirected = url.includes('/auth/login') || url.includes('/interaction');
 
     if (!redirected) {
       // We're still on /login — spinner should be visible
+      const spinner = page.locator('text=/redirecting|loading|sign in/i');
       await expect(spinner.first()).toBeVisible({ timeout: 5_000 });
     }
-    // Either way, the login flow is triggered — test passes
+    // Either way, the login redirect flow is triggered — test passes
   });
 
   test('health endpoint is accessible without authentication', async ({

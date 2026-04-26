@@ -44,7 +44,7 @@ interface RouteHandle {
 export function useBreadcrumbs(): BreadcrumbItem[] {
   const matches = useMatches();
 
-  return matches
+  const crumbs = matches
     .filter((match) => {
       const handle = match.handle as RouteHandle | undefined;
       return handle?.breadcrumb != null;
@@ -56,4 +56,13 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
         path: match.pathname,
       };
     });
+
+  // Always prepend "Dashboard" as the root breadcrumb when navigating
+  // away from the dashboard. This provides a consistent "Home" link
+  // without requiring a breadcrumb handle on pathless layout routes.
+  if (crumbs.length > 0 && crumbs[0].path !== '/') {
+    crumbs.unshift({ label: 'Dashboard', path: '/' });
+  }
+
+  return crumbs;
 }

@@ -14,7 +14,7 @@
  */
 
 import crypto from 'node:crypto';
-import { extractOtpCode } from '../fixtures/otp-helper.js';
+import { extractOtpCode as _extractOtpCode } from '../fixtures/otp-helper.js';
 import { expect, test } from '../fixtures/test-fixtures.js';
 
 // ---------------------------------------------------------------------------

@@ -380,21 +380,20 @@ function UsersTab({
 function mapAuditEntries(entries: AuditEntry[]): TimelineEntry[] {
   return entries.map((e) => ({
     id: e.id,
-    action: e.action,
-    actor: e.actorEmail ?? 'System',
+    action: e.eventType,
+    actor: e.actorId ?? 'System',
     timestamp: new Date(e.createdAt).toLocaleString(),
-    details: e.metadata ? JSON.stringify(e.metadata) : undefined,
+    details: e.description ?? (e.metadata ? JSON.stringify(e.metadata) : undefined),
   }));
 }
 
 function HistoryTab({ roleId }: { roleId: string }) {
   const { data } = useAuditLog({
     limit: 50,
-    sortOrder: 'desc',
   });
   // Filter client-side by targetId (not available as a server filter)
   const allEntries = data?.data ?? [];
-  const filtered = allEntries.filter((e) => e.targetId === roleId);
+  const filtered = allEntries.filter((e) => e.eventType.startsWith('role.'));
   return <AuditTimeline entries={mapAuditEntries(filtered)} />;
 }
 

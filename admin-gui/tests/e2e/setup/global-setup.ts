@@ -5,13 +5,14 @@
  *   1. Set environment variables (Porta + BFF)
  *   2. Connect PostgreSQL + Redis
  *   3. Run all database migrations
- *   4. Initialize Porta subsystems (i18n, template engine)
- *   5. Generate signing keys + load OIDC TTL config
- *   6. Create Porta Koa app with OIDC provider → listen on 49300
- *   7. Seed base data + Admin GUI test data (orgs, users, clients, etc.)
- *   8. Create BFF Koa app → OIDC discovery → sessions → routes → listen on 49301
- *   9. Mount built SPA as static files on the BFF
- *  10. Export env vars for test fixtures
+ *   4. Truncate tables + flush Redis (clean slate for signing keys)
+ *   5. Initialize Porta subsystems (i18n, template engine)
+ *   6. Generate signing keys + load OIDC TTL config
+ *   7. Create Porta Koa app with OIDC provider → listen on 49300
+ *   8. Seed base data + Admin GUI test data (orgs, users, clients, etc.)
+ *   9. Create BFF Koa app → OIDC discovery → sessions → routes → listen on 49301
+ *  10. Mount built SPA as static files on the BFF
+ *  11. Export env vars for test fixtures
  *
  * The BFF is started AFTER Porta because it needs to discover Porta's
  * OIDC configuration during initialization (setupOidc fetches the
@@ -135,19 +136,37 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   await runMigrations();
   console.log('[Admin GUI E2E] Migrations complete');
 
-  // ── 1e. Initialize Porta subsystems ────────────────────────────────
+  // ── 1e. Clean slate ────────────────────────────────────────────────
+  // Truncate all tables BEFORE ensureSigningKeys() — the DB may contain
+  // signing keys encrypted with a different SIGNING_KEY_ENCRYPTION_KEY
+  // from a prior test run (e.g. `yarn test` uses a different key).
+  // Decrypting those keys with *this* run's key causes AES-GCM auth
+  // tag mismatch → SigningKeyCryptoError. Truncating first ensures
+  // ensureSigningKeys() finds an empty table and auto-generates fresh
+  // keys encrypted with the correct key.
+  const { truncateAllTables, seedBaseData } = await import(
+    '../../../../tests/integration/helpers/database.js'
+  );
+  await truncateAllTables();
+
+  // Flush Redis test DB to clear rate limits, caches, sessions from prior runs
+  const { getRedis } = await import('../../../../src/lib/redis.js');
+  await getRedis().flushdb();
+  console.log('[Admin GUI E2E] Tables truncated + Redis flushed');
+
+  // ── 1f. Initialize Porta subsystems ────────────────────────────────
   await initI18n();
   await initTemplateEngine();
 
-  // ── 1f. Signing keys + TTL config ──────────────────────────────────
+  // ── 1g. Signing keys + TTL config ──────────────────────────────────
   const jwks = await ensureSigningKeys();
   const ttl = await loadOidcTtlConfig();
 
-  // ── 1g. Create Porta OIDC provider + Koa app ──────────────────────
+  // ── 1h. Create Porta OIDC provider + Koa app ──────────────────────
   const provider = await createOidcProvider({ jwks, ttl });
   const portaApp = createPortaApp(provider);
 
-  // ── 1h. Start Porta on dedicated port ──────────────────────────────
+  // ── 1i. Start Porta on dedicated port ──────────────────────────────
   const portaServer: Server = portaApp.listen(PORT_PORTA);
   await new Promise<void>((resolve) => {
     if (portaServer.listening) resolve();
@@ -158,16 +177,6 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // =====================================================================
   // PHASE 2: Seed Test Data
   // =====================================================================
-
-  // Truncate DB tables and flush Redis for a completely clean slate
-  const { truncateAllTables, seedBaseData } = await import(
-    '../../../../tests/integration/helpers/database.js'
-  );
-  await truncateAllTables();
-
-  // Flush Redis test DB to clear rate limits, caches, sessions from prior runs
-  const { getRedis } = await import('../../../../src/lib/redis.js');
-  await getRedis().flushdb();
 
   await seedBaseData();
 

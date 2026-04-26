@@ -80,7 +80,7 @@ export default defineConfig({
     actionTimeout: 15_000,
 
     /* Slow down for headed debugging */
-    ...(isHeaded ? { launchOptions: { slowMo: 1000 } } : {}),
+    ...(isHeaded ? { launchOptions: { slowMo: 250 } } : {}),
   },
 
   projects: [

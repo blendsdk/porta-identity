@@ -5,8 +5,14 @@ import crypto from 'node:crypto';
 /** HTTP header name for the CSRF token */
 const CSRF_HEADER = 'x-csrf-token';
 
-/** Session key where the CSRF token is stored */
-const CSRF_SESSION_KEY = '_csrfToken';
+/**
+ * Session key where the CSRF token is stored.
+ *
+ * IMPORTANT: Must NOT start with underscore — koa-session v7's toJSON()
+ * strips all properties starting with '_' (treats them as "private stuff"),
+ * which would cause the CSRF token to be lost on every session save.
+ */
+const CSRF_SESSION_KEY = 'csrfSecret';
 
 /**
  * CSRF protection middleware.
@@ -38,25 +44,35 @@ export function csrfProtection(logger?: Logger): Middleware {
     const isApiRoute = ctx.path.startsWith('/api/');
 
     if (isStateChanging && isApiRoute) {
-      const token = ctx.get(CSRF_HEADER);
-      const expectedToken = ctx.session?.[CSRF_SESSION_KEY] as string | undefined;
+      // If the session has no auth data (expired or never authenticated),
+      // skip CSRF validation and let the downstream session guard return 401.
+      // CSRF protection is only meaningful for authenticated sessions — the
+      // purpose is to prevent another site from abusing an active session.
+      // Without auth data, there is no session to abuse.
+      const sess = ctx.session as Record<string, unknown> | undefined;
+      const hasAuthSession = !!(sess?.accessToken && sess?.user);
 
-      if (!token || !expectedToken || token !== expectedToken) {
-        logger?.warn(
-          {
-            path: ctx.path,
-            method: ctx.method,
-            hasToken: !!token,
-            hasExpected: !!expectedToken,
-            tokenMatch: token === expectedToken,
-            hasSession: !!ctx.session,
-            sessionKeys: ctx.session ? Object.keys(ctx.session) : [],
-          },
-          'CSRF: Token validation failed',
-        );
-        ctx.status = 403;
-        ctx.body = { error: 'Invalid CSRF token' };
-        return;
+      if (hasAuthSession) {
+        const token = ctx.get(CSRF_HEADER);
+        const expectedToken = sess?.[CSRF_SESSION_KEY] as string | undefined;
+
+        if (!token || !expectedToken || token !== expectedToken) {
+          logger?.warn(
+            {
+              path: ctx.path,
+              method: ctx.method,
+              hasToken: !!token,
+              hasExpected: !!expectedToken,
+              tokenMatch: token === expectedToken,
+              hasSession: !!ctx.session,
+              sessionKeys: ctx.session ? Object.keys(ctx.session) : [],
+            },
+            'CSRF: Token validation failed',
+          );
+          ctx.status = 403;
+          ctx.body = { error: 'Invalid CSRF token' };
+          return;
+        }
       }
     }
 

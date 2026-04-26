@@ -42,22 +42,22 @@ test.describe('Application List', () => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
 
-    // Page title should be visible
-    await expect(page.getByText('Applications', { exact: false })).toBeVisible();
-
-    // Create button should be present
+    // Create button should be present (verifies page loaded)
     await expect(page.getByRole('button', { name: /create application/i })).toBeVisible();
+
+    // Page title should be visible (scoped to main to avoid sidebar/breadcrumb matches)
+    await expect(page.locator('main').getByText('Applications').first()).toBeVisible();
   });
 
   test('displays seeded applications in the list', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
 
-    // The seeded active application should appear
-    await expect(page.getByText(SEEDED_APPS.active)).toBeVisible();
+    // The seeded active application should appear (scoped to table to avoid sidebar matches)
+    await expect(page.locator('table').getByText(SEEDED_APPS.active)).toBeVisible();
 
-    // The admin application should also appear
-    await expect(page.getByText(SEEDED_APPS.adminApp)).toBeVisible();
+    // The admin application should also appear (scoped to table — 'Porta Admin' also in topbar)
+    await expect(page.locator('table').getByText(SEEDED_APPS.adminApp)).toBeVisible();
   });
 
   test('filters applications by search text', async ({ page }) => {
@@ -69,9 +69,9 @@ test.describe('Application List', () => {
     await searchInput.fill('Customer');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText(SEEDED_APPS.active)).toBeVisible();
-    // Admin app should not match the search
-    await expect(page.getByText(SEEDED_APPS.adminApp)).not.toBeVisible();
+    await expect(page.locator('table').getByText(SEEDED_APPS.active)).toBeVisible();
+    // Admin app should not match the search (scoped to table — brand name stays in topbar)
+    await expect(page.locator('table').getByText(SEEDED_APPS.adminApp)).not.toBeVisible();
   });
 
   test('filters applications by status', async ({ page }) => {
@@ -95,14 +95,14 @@ test.describe('Application List', () => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
 
-    // Click on the seeded active application row
-    await page.getByText(SEEDED_APPS.active).click();
+    // Click on the seeded active application row (scoped to table)
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
 
     // Should navigate to the detail page
     await expect(page).toHaveURL(/\/applications\/[a-f0-9-]+/);
 
-    // Application name should be in the header
-    await expect(page.getByText(SEEDED_APPS.active)).toBeVisible();
+    // Application name should be in the header (scoped to main, skip sidebar)
+    await expect(page.locator('main').getByText(SEEDED_APPS.active).first()).toBeVisible();
   });
 });
 
@@ -118,11 +118,11 @@ test.describe('Application Create', () => {
     await page.getByRole('button', { name: /create application/i }).click();
     await expect(page).toHaveURL('/applications/new');
 
-    // Form fields should be present
-    await expect(page.getByText('Application Name')).toBeVisible();
-    await expect(page.getByText('Organization')).toBeVisible();
-    await expect(page.getByText('Slug')).toBeVisible();
-    await expect(page.getByText('Description')).toBeVisible();
+    // Form fields should be present (scoped to main to avoid sidebar matches)
+    await expect(page.locator('main').getByText('Application Name')).toBeVisible();
+    await expect(page.locator('main').getByText('Organization', { exact: true })).toBeVisible();
+    await expect(page.locator('main').getByText('Slug')).toBeVisible();
+    await expect(page.locator('main').getByText('Description')).toBeVisible();
   });
 
   test('validates required fields', async ({ page }) => {
@@ -173,36 +173,39 @@ test.describe('Application Detail', () => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
 
-    // Navigate to the seeded active application
-    await page.getByText(SEEDED_APPS.active).click();
+    // Navigate to the seeded active application (scoped to table)
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Overview tab should be active by default
-    await expect(page.getByText(SEEDED_APPS.active)).toBeVisible();
+    await expect(page.locator('main').getByText(SEEDED_APPS.active).first()).toBeVisible();
 
     // Key info should be present
-    await expect(page.getByText('acme-customer-portal')).toBeVisible(); // slug
-    await expect(page.getByText(ACME_ORG)).toBeVisible(); // org name
-    await expect(page.getByText('active')).toBeVisible(); // status
+    await expect(page.locator('main').getByText('acme-customer-portal')).toBeVisible(); // slug
+    await expect(page.locator('main').getByText(ACME_ORG)).toBeVisible(); // org name
+    await expect(page.getByText(/active/i).first()).toBeVisible(); // status (StatusBadge capitalizes)
   });
 
   test('shows the settings tab with editable fields', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Settings tab
     await page.getByRole('tab', { name: 'Settings' }).click();
 
-    // Should show name input and description textarea
-    await expect(page.getByRole('textbox', { name: /application name/i })).toBeVisible();
+    // Should show name input (FluentUI Label not associated via htmlFor — check by placeholder)
+    await expect(page.getByPlaceholder('e.g. Customer Portal')).toBeVisible();
   });
 
   test('shows the modules tab with toggle switches', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Modules tab
@@ -218,7 +221,8 @@ test.describe('Application Detail', () => {
   test('shows the clients tab', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Clients tab
@@ -232,7 +236,8 @@ test.describe('Application Detail', () => {
   test('shows the roles tab', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Roles tab
@@ -246,7 +251,8 @@ test.describe('Application Detail', () => {
   test('shows the permissions tab', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Permissions tab
@@ -259,7 +265,8 @@ test.describe('Application Detail', () => {
   test('shows the claims tab', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the Claims tab
@@ -272,7 +279,8 @@ test.describe('Application Detail', () => {
   test('shows the history tab', async ({ page }) => {
     await page.goto('/applications');
     await page.waitForLoadState('networkidle');
-    await page.getByText(SEEDED_APPS.active).click();
+    await page.locator('table').getByText(SEEDED_APPS.active).click();
+    await page.waitForURL(/\/applications\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Click the History tab
@@ -310,7 +318,7 @@ test.describe('Application Status Transitions', () => {
 
     // Should be on the detail page with active status
     await expect(page.getByText(archiveName)).toBeVisible();
-    await expect(page.getByText('active')).toBeVisible();
+    await expect(page.getByText(/active/i).first()).toBeVisible();
 
     // Click the Archive button
     await page.getByRole('button', { name: /archive/i }).click();
@@ -338,7 +346,7 @@ test.describe('Application Status Transitions', () => {
 
     // After archiving, the status should change to archived
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('archived')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/archived/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('archived application hides the archive button', async ({ page }) => {
@@ -377,7 +385,7 @@ test.describe('Application Status Transitions', () => {
     await page.getByRole('tab', { name: 'Settings' }).click();
 
     // The name input should be disabled for archived apps
-    const nameInput = page.getByRole('textbox', { name: /application name/i });
+    const nameInput = page.getByPlaceholder('e.g. Customer Portal');
     await expect(nameInput).toBeDisabled();
   });
 });

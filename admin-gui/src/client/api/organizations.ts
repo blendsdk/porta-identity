@@ -3,7 +3,7 @@
  * React Query hooks for organization CRUD operations.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
+import { api, unwrapData } from './client';
 import type { Organization } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
@@ -29,7 +29,7 @@ export function useOrganizations(params?: ListParams) {
 export function useOrganization(id: string) {
   return useQuery({
     queryKey: KEYS.detail(id),
-    queryFn: () => api.get<Organization>(`/organizations/${id}`),
+    queryFn: async () => unwrapData<Organization>(await api.get(`/organizations/${id}`)),
     enabled: !!id,
   });
 }
@@ -38,8 +38,8 @@ export function useOrganization(id: string) {
 export function useCreateOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Organization>) =>
-      api.post<Organization>('/organizations', data),
+    mutationFn: async (data: Partial<Organization>) =>
+      unwrapData<Organization>(await api.post('/organizations', data)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.all });
     },
@@ -50,7 +50,7 @@ export function useCreateOrganization() {
 export function useUpdateOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       data,
       etag,
@@ -58,7 +58,7 @@ export function useUpdateOrganization() {
       id: string;
       data: Partial<Organization>;
       etag?: string;
-    }) => api.patch<Organization>(`/organizations/${id}`, data, etag),
+    }) => unwrapData<Organization>(await api.patch(`/organizations/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -70,8 +70,8 @@ export function useUpdateOrganization() {
 export function useSuspendOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Organization>(`/organizations/${id}/suspend`),
+    mutationFn: async (id: string) =>
+      unwrapData<Organization>(await api.post(`/organizations/${id}/suspend`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -83,8 +83,8 @@ export function useSuspendOrganization() {
 export function useActivateOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Organization>(`/organizations/${id}/activate`),
+    mutationFn: async (id: string) =>
+      unwrapData<Organization>(await api.post(`/organizations/${id}/activate`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -96,8 +96,8 @@ export function useActivateOrganization() {
 export function useArchiveOrganization() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Organization>(`/organizations/${id}/archive`),
+    mutationFn: async (id: string) =>
+      unwrapData<Organization>(await api.post(`/organizations/${id}/archive`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

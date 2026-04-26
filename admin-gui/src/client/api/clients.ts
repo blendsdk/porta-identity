@@ -4,7 +4,7 @@
  * and client secret management (generate, list, revoke).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
+import { api, unwrapData } from './client';
 import type { Client, ClientSecret } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
@@ -15,15 +15,36 @@ const KEYS = {
   secrets: (clientId: string) => [...KEYS.all, clientId, 'secrets'] as const,
 };
 
+/**
+ * Map a backend client response to the SPA Client type.
+ * Backend uses `clientName` / `clientType` while SPA uses `name` / `isConfidential`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapApiClient(raw: any): Client {
+  return {
+    ...raw,
+    name: raw.name ?? raw.clientName ?? '',
+    isConfidential:
+      raw.isConfidential ?? (raw.clientType === 'confidential'),
+    description: raw.description ?? null,
+  };
+}
+
 /** Fetch a paginated list of clients */
 export function useClients(params?: ListParams) {
   return useQuery({
     queryKey: KEYS.list(params),
-    queryFn: () =>
-      api.get<PaginatedResponse<Client>>(
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<Client>>(
         '/clients',
         params as Record<string, string>,
-      ),
+      );
+      // Map backend field names to SPA field names
+      if (res?.data) {
+        res.data = res.data.map(mapApiClient);
+      }
+      return res;
+    },
   });
 }
 
@@ -31,17 +52,26 @@ export function useClients(params?: ListParams) {
 export function useClient(id: string) {
   return useQuery({
     queryKey: KEYS.detail(id),
-    queryFn: () => api.get<Client>(`/clients/${id}`),
+    queryFn: async () => mapApiClient(unwrapData(await api.get(`/clients/${id}`))),
     enabled: !!id,
   });
 }
 
-/** Create a new client */
+/**
+ * Create a new client.
+ * Backend returns { data: { client, secret }, warning? }.
+ * We unwrap to return { client, secret, warning? } so callers can access both.
+ */
 export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Client>) =>
-      api.post<Client>('/clients', data),
+    mutationFn: async (data: Partial<Client>) => {
+      const res = await api.post<Record<string, unknown>>('/clients', data);
+      const inner = unwrapData<Record<string, unknown>>(res);
+      // inner is { client: {...}, secret: "..." } or the client itself
+      const client = inner.client ? mapApiClient(inner.client) : mapApiClient(inner);
+      return { ...client, clientSecret: inner.secret as string | undefined };
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.all });
     },
@@ -52,7 +82,7 @@ export function useCreateClient() {
 export function useUpdateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       data,
       etag,
@@ -60,7 +90,7 @@ export function useUpdateClient() {
       id: string;
       data: Partial<Client>;
       etag?: string;
-    }) => api.patch<Client>(`/clients/${id}`, data, etag),
+    }) => mapApiClient(unwrapData(await api.patch(`/clients/${id}`, data, etag))),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -72,8 +102,8 @@ export function useUpdateClient() {
 export function useRevokeClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Client>(`/clients/${id}/revoke`),
+    mutationFn: async (id: string) =>
+      mapApiClient(unwrapData(await api.post(`/clients/${id}/revoke`))),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

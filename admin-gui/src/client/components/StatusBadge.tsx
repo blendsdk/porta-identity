@@ -58,9 +58,9 @@ export interface StatusBadgeProps {
  * Falls back to "informative" color for unknown status values.
  */
 export function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
-  const normalizedStatus = status.toLowerCase() as EntityStatus;
+  const normalizedStatus = (status ?? 'pending').toLowerCase() as EntityStatus;
   const color = STATUS_COLOR_MAP[normalizedStatus] ?? 'informative';
-  const label = STATUS_LABEL_MAP[normalizedStatus] ?? status;
+  const label = STATUS_LABEL_MAP[normalizedStatus] ?? status ?? 'Unknown';
 
   return (
     <Badge appearance="filled" color={color} size={size}>

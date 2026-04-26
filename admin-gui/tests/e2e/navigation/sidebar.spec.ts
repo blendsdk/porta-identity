@@ -116,8 +116,8 @@ test.describe('Sidebar Navigation', () => {
     await expect(page).toHaveURL(/\/organizations$/);
     await page.waitForLoadState('networkidle');
 
-    // Navigate back to dashboard
-    await page.locator('nav >> text="Dashboard"').click();
+    // Navigate back to dashboard (use sidebar-nav testid to avoid matching breadcrumb nav)
+    await page.locator('[data-testid="sidebar-nav"] >> text="Dashboard"').click();
     await expect(page).toHaveURL(/\/$/);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('text=Dashboard').first()).toBeVisible();

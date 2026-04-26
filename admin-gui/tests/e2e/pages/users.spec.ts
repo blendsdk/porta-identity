@@ -258,8 +258,8 @@ test.describe('User Detail', () => {
 
     // Key info should be present
     await expect(page.getByText('Jane')).toBeVisible(); // given name
-    await expect(page.getByText('active')).toBeVisible(); // status
-    await expect(page.getByText('Verified')).toBeVisible(); // email verified
+    await expect(page.getByText(/active/i).first()).toBeVisible(); // status (StatusBadge capitalizes)
+    await expect(page.getByText(/verified/i).first()).toBeVisible(); // email verified
   });
 
   test('shows the profile tab with editable fields', async ({ page }) => {
@@ -283,8 +283,8 @@ test.describe('User Detail', () => {
     await page.getByRole('tab', { name: 'Status' }).click();
 
     // Should show current status
-    await expect(page.getByText('Current Status:')).toBeVisible();
-    await expect(page.getByText('active')).toBeVisible();
+    await expect(page.getByText(/current status/i)).toBeVisible();
+    await expect(page.getByText(/active/i).first()).toBeVisible();
 
     // Should show available actions for active users
     await expect(page.getByRole('button', { name: /deactivate/i })).toBeVisible();

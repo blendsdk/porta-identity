@@ -630,8 +630,8 @@ function HistoryTab({ appId }: HistoryTabProps) {
     () =>
       rawEntries.map((e: AuditEntry) => ({
         id: e.id,
-        action: e.action,
-        actor: e.actorEmail ?? e.actorId ?? 'System',
+        action: e.eventType,
+        actor: e.actorId ?? 'System',
         timestamp: new Date(e.createdAt).toLocaleString(),
       })),
     [rawEntries],

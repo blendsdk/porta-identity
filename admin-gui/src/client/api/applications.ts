@@ -3,7 +3,7 @@
  * React Query hooks for application CRUD operations.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
+import { api, unwrapData } from './client';
 import type { Application } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
@@ -29,7 +29,7 @@ export function useApplications(params?: ListParams) {
 export function useApplication(id: string) {
   return useQuery({
     queryKey: KEYS.detail(id),
-    queryFn: () => api.get<Application>(`/applications/${id}`),
+    queryFn: async () => unwrapData<Application>(await api.get(`/applications/${id}`)),
     enabled: !!id,
   });
 }
@@ -38,8 +38,8 @@ export function useApplication(id: string) {
 export function useCreateApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Application>) =>
-      api.post<Application>('/applications', data),
+    mutationFn: async (data: Partial<Application>) =>
+      unwrapData<Application>(await api.post('/applications', data)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.all });
     },
@@ -50,7 +50,7 @@ export function useCreateApplication() {
 export function useUpdateApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       data,
       etag,
@@ -58,7 +58,7 @@ export function useUpdateApplication() {
       id: string;
       data: Partial<Application>;
       etag?: string;
-    }) => api.patch<Application>(`/applications/${id}`, data, etag),
+    }) => unwrapData<Application>(await api.patch(`/applications/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -70,8 +70,8 @@ export function useUpdateApplication() {
 export function useArchiveApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<Application>(`/applications/${id}/archive`),
+    mutationFn: async (id: string) =>
+      unwrapData<Application>(await api.post(`/applications/${id}/archive`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

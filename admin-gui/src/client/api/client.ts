@@ -120,6 +120,22 @@ export async function apiRequestWithEtag<T>(
   return { data, etag };
 }
 
+// ── Response envelope helper ───────────────────────────────────────
+
+/**
+ * Unwrap a backend `{ data: T }` response envelope.
+ * All Porta admin API detail/create/update endpoints wrap their response
+ * in `{ data: entity }`. This helper safely extracts the inner entity.
+ * If the response is NOT wrapped, it is returned as-is.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function unwrapData<T>(response: any): T {
+  if (response && typeof response === 'object' && 'data' in response && !Array.isArray(response.data)) {
+    return response.data as T;
+  }
+  return response as T;
+}
+
 // ── Typed convenience methods ──────────────────────────────────────
 
 /** BFF API base path — the BFF proxy maps /api/* to /api/admin/* on Porta */

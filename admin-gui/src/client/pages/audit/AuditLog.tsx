@@ -216,10 +216,10 @@ function exportToCsv(entries: AuditEntry[]): void {
   ];
   const rows = entries.map((e) => [
     e.createdAt,
-    e.action,
-    e.actorEmail ?? '',
-    e.targetType ?? '',
-    e.targetId ?? '',
+    e.eventType,
+    e.actorId ?? '',
+    e.eventCategory,
+    e.userId ?? '',
     e.ipAddress ?? '',
     e.metadata ? JSON.stringify(e.metadata) : '',
   ]);
@@ -273,20 +273,34 @@ export function AuditLog() {
   // Row expansion state
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Build filter params — only include non-empty values
+  // Build filter params — only include server-supported filters
   const params = useMemo<AuditFilters>(() => {
-    const p: AuditFilters = { limit: '25' };
+    const p: AuditFilters = { limit: 100 };
     if (eventType) p.eventType = eventType;
-    if (actorSearch) p.actorEmail = actorSearch;
-    if (targetType) p.targetType = targetType;
-    if (startDate) p.startDate = new Date(startDate).toISOString();
-    if (endDate) p.endDate = new Date(endDate).toISOString();
-    if (cursor) (p as Record<string, string>).cursor = cursor;
+    if (startDate) p.since = new Date(startDate).toISOString();
     return p;
-  }, [eventType, actorSearch, targetType, startDate, endDate, cursor]);
+  }, [eventType, startDate]);
 
   const { data, isLoading } = useAuditLog(params);
-  const entries: AuditEntry[] = (data as any)?.data ?? [];
+  const rawEntries: AuditEntry[] = (data as any)?.data ?? [];
+
+  // Client-side filtering for fields the backend doesn't support
+  const entries = useMemo(() => {
+    let result = rawEntries;
+    if (actorSearch) {
+      const search = actorSearch.toLowerCase();
+      result = result.filter((e) => e.actorId?.toLowerCase().includes(search));
+    }
+    if (targetType) {
+      result = result.filter((e) => e.eventCategory === targetType);
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter((e) => new Date(e.createdAt) <= end);
+    }
+    return result;
+  }, [rawEntries, actorSearch, targetType, endDate]);
   const pagination = (data as any)?.pagination;
 
   /** Reset all filters to defaults */
@@ -462,24 +476,24 @@ export function AuditLog() {
                     </td>
                     <td className={styles.td}>
                       <Badge appearance="outline" size="small">
-                        {formatAction(entry.action)}
+                        {formatAction(entry.eventType)}
                       </Badge>
                     </td>
                     <td className={styles.td}>
-                      {entry.actorEmail ?? (
+                      {entry.actorId ?? (
                         <Text italic size={200}>
                           system
                         </Text>
                       )}
                     </td>
                     <td className={styles.td}>
-                      {entry.targetType && (
+                      {entry.eventCategory && (
                         <Tooltip
-                          content={entry.targetId ?? ''}
+                          content={entry.userId ?? entry.description ?? ''}
                           relationship="description"
                         >
                           <Badge appearance="tint" size="small">
-                            {entry.targetType}
+                            {entry.eventCategory}
                           </Badge>
                         </Tooltip>
                       )}
@@ -495,12 +509,12 @@ export function AuditLog() {
                           {JSON.stringify(
                             {
                               id: entry.id,
-                              action: entry.action,
+                              eventType: entry.eventType,
+                              eventCategory: entry.eventCategory,
                               actorId: entry.actorId,
-                              actorEmail: entry.actorEmail,
-                              targetType: entry.targetType,
-                              targetId: entry.targetId,
                               organizationId: entry.organizationId,
+                              userId: entry.userId,
+                              description: entry.description,
                               ipAddress: entry.ipAddress,
                               metadata: entry.metadata,
                               createdAt: entry.createdAt,

@@ -4,7 +4,7 @@
  * Users are scoped to an organization via orgId.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiRequest } from './client';
+import { api, apiRequest, unwrapData } from './client';
 import type { User, Role } from '../types';
 import type { PaginatedResponse, ListParams } from '../../shared/types';
 
@@ -32,7 +32,7 @@ export function useUsers(orgId: string, params?: ListParams) {
 export function useUser(id: string) {
   return useQuery({
     queryKey: KEYS.detail(id),
-    queryFn: () => api.get<User>(`/users/${id}`),
+    queryFn: async () => unwrapData<User>(await api.get(`/users/${id}`)),
     enabled: !!id,
   });
 }
@@ -41,9 +41,9 @@ export function useUser(id: string) {
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ orgId, data }: { orgId: string; data: Partial<User> }) =>
-      api.post<User>(`/organizations/${orgId}/users`, data),
-    onSuccess: (_d, v) => {
+    mutationFn: async ({ orgId, data }: { orgId: string; data: Partial<User> }) =>
+      unwrapData<User>(await api.post(`/organizations/${orgId}/users`, data)),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEYS.all });
     },
   });
@@ -53,7 +53,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       data,
       etag,
@@ -61,7 +61,7 @@ export function useUpdateUser() {
       id: string;
       data: Partial<User>;
       etag?: string;
-    }) => api.patch<User>(`/users/${id}`, data, etag),
+    }) => unwrapData<User>(await api.patch(`/users/${id}`, data, etag)),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(v.id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -73,7 +73,7 @@ export function useUpdateUser() {
 export function useSuspendUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<User>(`/users/${id}/suspend`),
+    mutationFn: async (id: string) => unwrapData<User>(await api.post(`/users/${id}/suspend`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -85,7 +85,7 @@ export function useSuspendUser() {
 export function useActivateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<User>(`/users/${id}/activate`),
+    mutationFn: async (id: string) => unwrapData<User>(await api.post(`/users/${id}/activate`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -97,7 +97,7 @@ export function useActivateUser() {
 export function useLockUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<User>(`/users/${id}/lock`),
+    mutationFn: async (id: string) => unwrapData<User>(await api.post(`/users/${id}/lock`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });
@@ -109,7 +109,7 @@ export function useLockUser() {
 export function useArchiveUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post<User>(`/users/${id}/archive`),
+    mutationFn: async (id: string) => unwrapData<User>(await api.post(`/users/${id}/archive`)),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: KEYS.detail(id) });
       qc.invalidateQueries({ queryKey: KEYS.all });

@@ -388,15 +388,15 @@ export interface AdminSession {
 // Audit log entity
 // ---------------------------------------------------------------------------
 
-/** Audit log entry */
+/** Audit log entry — matches the backend GET /api/admin/audit response shape */
 export interface AuditEntry {
   id: string;
-  action: string;
+  eventType: string;
+  eventCategory: string;
   actorId: string | null;
-  actorEmail: string | null;
-  targetType: string | null;
-  targetId: string | null;
   organizationId: string | null;
+  userId: string | null;
+  description: string | null;
   metadata: Record<string, unknown> | null;
   ipAddress: string | null;
   createdAt: string;

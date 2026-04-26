@@ -28,11 +28,13 @@ test.describe('Audit Log', () => {
     const hasTable = await page.locator('table').isVisible().catch(() => false);
 
     if (hasTable) {
-      await expect(page.getByText('Timestamp', { exact: true })).toBeVisible();
-      await expect(page.getByText('Event', { exact: true })).toBeVisible();
-      await expect(page.getByText('Actor', { exact: true })).toBeVisible();
-      await expect(page.getByText('Entity', { exact: true })).toBeVisible();
-      await expect(page.getByText('IP', { exact: true })).toBeVisible();
+      // Scope to table to avoid matching filter labels with same text
+      const table = page.locator('table');
+      await expect(table.getByText('Timestamp', { exact: true })).toBeVisible();
+      await expect(table.getByText('Event', { exact: true })).toBeVisible();
+      await expect(table.getByText('Actor', { exact: true })).toBeVisible();
+      await expect(table.getByText('Entity', { exact: true })).toBeVisible();
+      await expect(table.getByText('IP', { exact: true })).toBeVisible();
     }
   });
 
@@ -45,7 +47,8 @@ test.describe('Audit Log', () => {
   });
 
   test('shows actor search input', async ({ page }) => {
-    await expect(page.getByText('Actor')).toBeVisible();
+    // Scope to main to avoid matching table column header
+    await expect(page.locator('main').getByText('Actor').first()).toBeVisible();
     await expect(
       page.getByPlaceholder(/search by email/i),
     ).toBeVisible();
@@ -59,13 +62,12 @@ test.describe('Audit Log', () => {
       // Click to expand
       await firstRow.click();
 
-      // Expanded row should show JSON-formatted details
-      // The component renders JSON.stringify with indentation
+      // Expanded row should show JSON-formatted metadata or detail content
       await expect(
-        page.locator('pre, [class*="expandedDetails"]').first(),
-      ).toBeVisible({ timeout: 3_000 }).catch(() => {
-        // Expanded details are in a monospace div, check for JSON-like content
-        expect(page.getByText(/"action"/).first()).toBeVisible();
+        page.locator('pre, [class*="expandedDetails"], [class*="metadata"]').first(),
+      ).toBeVisible({ timeout: 5_000 }).catch(async () => {
+        // Fallback: check for any JSON-like content in the expanded area
+        await expect(page.locator('main').getByText(/"seeded"/).first()).toBeVisible({ timeout: 3_000 });
       });
     }
   });

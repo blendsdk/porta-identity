@@ -391,14 +391,14 @@ function ActivityFeed({ entries }: { entries: AuditEntry[] }) {
       {entries.map((entry) => (
         <div key={entry.id} className={styles.activityItem}>
           <Badge appearance="outline" size="small">
-            {entry.targetType ?? 'system'}
+            {entry.eventCategory ?? 'system'}
           </Badge>
           <div className={styles.activityContent}>
             <Text size={300} weight="semibold">
-              {formatAction(entry.action)}
+              {formatAction(entry.eventType)}
             </Text>
             <Text size={200} className={styles.activityTime}>
-              {entry.actorEmail ?? 'system'} &middot;{' '}
+              {entry.actorId ?? 'system'} &middot;{' '}
               {formatRelativeTime(entry.createdAt)}
             </Text>
           </div>

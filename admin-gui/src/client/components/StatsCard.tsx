@@ -79,7 +79,7 @@ export function StatsCard({ title, value, icon, trend, trendLabel }: StatsCardPr
         </Text>
         {icon && <span>{icon}</span>}
       </div>
-      <Text className={styles.value}>{value}</Text>
+      <Text className={styles.value} data-testid="stats-value">{value}</Text>
       {trend !== undefined && (
         <span className={`${styles.trend} ${trend.direction === 'up' ? styles.trendUp : styles.trendDown}`}>
           {trend.direction === 'up' ? <ArrowUpRegular /> : <ArrowDownRegular />}

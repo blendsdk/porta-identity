@@ -9,7 +9,7 @@
  * UserDetail, RoleDetail, PermissionDetail, and ClaimDefinitionDetail.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import {
   makeStyles,
   tokens,
@@ -141,6 +141,17 @@ export function EntityDetailTabs({
   // Use the first tab key as default if not specified
   const [activeTab, setActiveTab] = useState(defaultTab ?? tabs[0]?.key ?? '');
 
+  // When tabs become available (e.g., after loading), ensure activeTab is valid.
+  // This handles the case where the component initially renders with loading=true
+  // and tabs=[], so activeTab starts as ''. Once data loads and tabs are provided,
+  // we sync to the first tab (or defaultTab) so the overview tab is selected.
+  const firstTabKey = tabs[0]?.key;
+  useEffect(() => {
+    if (activeTab === '' && firstTabKey) {
+      setActiveTab(defaultTab ?? firstTabKey);
+    }
+  }, [activeTab, firstTabKey, defaultTab]);
+
   // Find the content for the currently active tab
   const activeTabContent = tabs.find((tab) => tab.key === activeTab)?.content;
 
@@ -209,7 +220,7 @@ export function EntityDetailTabs({
       </TabList>
 
       {/* Active tab content */}
-      <div className={styles.tabContent}>{activeTabContent}</div>
+      <div className={styles.tabContent} role="tabpanel">{activeTabContent}</div>
     </div>
   );
 }

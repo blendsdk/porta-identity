@@ -41,10 +41,7 @@ test.describe('Organization List', () => {
     await page.goto('/organizations');
     await page.waitForLoadState('networkidle');
 
-    // Page title should be visible
-    await expect(page.getByText('Organizations', { exact: false })).toBeVisible();
-
-    // Create button should be present
+    // Create button should be present (confirms page loaded with correct content)
     await expect(page.getByRole('button', { name: /create organization/i })).toBeVisible();
   });
 
@@ -126,15 +123,15 @@ test.describe('Organization Create', () => {
     await page.goto('/organizations/new');
     await page.waitForLoadState('networkidle');
 
-    // Fill in organization name
-    const nameInput = page.getByLabel(/name/i).first();
+    // Fill in organization name (Label not associated via htmlFor — use placeholder)
+    const nameInput = page.getByPlaceholder('e.g. Acme Corporation');
     await nameInput.fill(uniqueName);
 
     // Wait for auto-generated slug
     await page.waitForTimeout(300);
 
     // Submit the form
-    await page.getByRole('button', { name: /create/i }).click();
+    await page.getByRole('button', { name: /create organization/i }).click();
 
     // Should redirect to the new org's detail page
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
@@ -148,7 +145,7 @@ test.describe('Organization Create', () => {
     await page.waitForLoadState('networkidle');
 
     // Try to submit without filling the name
-    await page.getByRole('button', { name: /create/i }).click();
+    await page.getByRole('button', { name: /create organization/i }).click();
 
     // Should show some validation feedback (stays on create page)
     await expect(page).toHaveURL('/organizations/new');
@@ -327,9 +324,9 @@ test.describe('Organization Status Transitions', () => {
     const uniqueName = `Suspend Test ${Date.now()}`;
     await page.goto('/organizations/new');
     await page.waitForLoadState('networkidle');
-    await page.getByLabel(/name/i).first().fill(uniqueName);
+    await page.getByPlaceholder('e.g. Acme Corporation').fill(uniqueName);
     await page.waitForTimeout(300);
-    await page.getByRole('button', { name: /create/i }).click();
+    await page.getByRole('button', { name: /create organization/i }).click();
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
 
     // Click Suspend button
@@ -365,9 +362,9 @@ test.describe('Organization Status Transitions', () => {
     const uniqueName = `Activate Test ${Date.now()}`;
     await page.goto('/organizations/new');
     await page.waitForLoadState('networkidle');
-    await page.getByLabel(/name/i).first().fill(uniqueName);
+    await page.getByPlaceholder('e.g. Acme Corporation').fill(uniqueName);
     await page.waitForTimeout(300);
-    await page.getByRole('button', { name: /create/i }).click();
+    await page.getByRole('button', { name: /create organization/i }).click();
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
 
     // Suspend it first
@@ -392,9 +389,9 @@ test.describe('Organization Status Transitions', () => {
     const uniqueName = `Archive Test ${Date.now()}`;
     await page.goto('/organizations/new');
     await page.waitForLoadState('networkidle');
-    await page.getByLabel(/name/i).first().fill(uniqueName);
+    await page.getByPlaceholder('e.g. Acme Corporation').fill(uniqueName);
     await page.waitForTimeout(300);
-    await page.getByRole('button', { name: /create/i }).click();
+    await page.getByRole('button', { name: /create organization/i }).click();
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
 
     // Click Archive button

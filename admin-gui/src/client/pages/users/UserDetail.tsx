@@ -274,12 +274,12 @@ function formatShortDate(dateStr: string): string {
 function auditToTimeline(entry: AuditEntry): TimelineEntry {
   return {
     id: entry.id,
-    action: entry.action
+    action: entry.eventType
       .replace(/\./g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase()),
-    actor: entry.actorEmail ?? 'System',
+    actor: entry.actorId ?? 'System',
     timestamp: formatDate(entry.createdAt),
-    details: entry.metadata ? JSON.stringify(entry.metadata) : undefined,
+    details: entry.description ?? (entry.metadata ? JSON.stringify(entry.metadata) : undefined),
   };
 }
 
@@ -1629,21 +1629,19 @@ interface HistoryTabProps {
 
 function HistoryTab({ userId }: HistoryTabProps) {
   const { data, isLoading } = useAuditLog({
-    targetType: 'user',
+    userId,
     limit: 50,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
   });
 
   if (isLoading) {
     return <Spinner label="Loading history..." />;
   }
 
-  // Filter audit entries for this user (as target)
+  // Filter audit entries for this user (as target or actor)
   const entries = (data?.data ?? [])
     .filter(
       (entry: AuditEntry) =>
-        entry.targetId === userId || entry.actorId === userId,
+        entry.userId === userId || entry.actorId === userId,
     )
     .map(auditToTimeline);
 

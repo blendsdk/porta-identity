@@ -98,6 +98,15 @@ export function ClientList() {
   }, [applications]);
 
   // Build query params — pass filters as ListParams
+  // Map UI column keys to admin API field names:
+  //   - 'name' → 'client_name' (API field name for client name)
+  //   - 'createdAt' → 'created_at' (API uses snake_case)
+  //   - others default to 'created_at' (only client_name and created_at are sortable)
+  const sortByMap: Record<string, string> = {
+    name: 'client_name',
+    createdAt: 'created_at',
+    status: 'created_at', // status is not a sortable API field; fall back
+  };
   const params = {
     search: search || undefined,
     status: statusFilter || undefined,
@@ -105,7 +114,7 @@ export function ClientList() {
     isConfidential: typeFilter === 'confidential' ? 'true' : typeFilter === 'public' ? 'false' : undefined,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
-    sortBy: sort.column,
+    sortBy: sortByMap[sort.column] ?? 'created_at',
     sortOrder: sort.direction,
   };
 
