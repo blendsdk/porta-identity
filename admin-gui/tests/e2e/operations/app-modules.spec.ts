@@ -152,7 +152,7 @@ test.describe('Application Module Operations', () => {
 
     // Archive dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText('Archive Application')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Archive Application' })).toBeVisible();
 
     // The confirm button should be disabled until we type the slug
     const confirmButton = page

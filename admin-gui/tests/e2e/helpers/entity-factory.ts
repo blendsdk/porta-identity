@@ -87,7 +87,7 @@ let cachedCsrfToken: string | null = null;
  * The BFF exposes the CSRF token in the GET /auth/me response.
  * We cache it since all requests share the same session.
  */
-async function getCsrfToken(request: APIRequestContext): Promise<string> {
+export async function getCsrfToken(request: APIRequestContext): Promise<string> {
   if (cachedCsrfToken) return cachedCsrfToken;
   const response = await request.get(`${BFF_BASE_URL}/auth/me`);
   if (!response.ok()) {
