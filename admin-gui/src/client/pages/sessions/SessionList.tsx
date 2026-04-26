@@ -438,8 +438,8 @@ export function SessionList() {
         </Text>
         <div className={styles.typeToConfirmWrapper}>
           <TypeToConfirm
-            confirmText="REVOKE ALL"
-            onConfirmed={setBulkRevokeConfirmed}
+          confirmValue="REVOKE ALL"
+          onConfirmedChange={setBulkRevokeConfirmed}
           />
         </div>
       </ConfirmDialog>

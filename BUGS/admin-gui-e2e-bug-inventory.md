@@ -1,11 +1,12 @@
 # Admin GUI E2E Bug Inventory
 
-> **Last Updated**: 2026-04-27 (Batch 5 — user API route fixes, sort column mapping)
+> **Last Updated**: 2026-04-27 (Batch 6 — client wizard, TypeToConfirm, session column)
 > **Full E2E Suite**: 429 tests total (expanded from 190 in Batch 3)
 > **Batch 4 Snapshot** (at test 259/429): 200 passed / 56 failed
 > **Batch 5 Fixes**: 2 SPA bugs + 1 server fix — user list sort mapping, standalone user admin routes
-> **Estimated Impact**: ~28 previously-blocked user tests unblocked (user-crud, user-settings, user-claims, user-roles, user-transitions)
-> **Improvement**: Batch 4 → 5: user detail page now loads, user list returns data
+> **Batch 6 Fixes**: 4 SPA bugs + 1 test fix — client wizard field mapping, TypeToConfirm prop names, session column header
+> **Estimated Impact**: ~11 client tests + ~4 key/session tests unblocked
+> **Improvement**: Client creation wizard now sends correct API fields; key rotate + session revoke-all dialogs now work
 >
 > ### Batch 4 Test Fixes
 > 1. **Strict mode in rbac-roles** — Scoped `getByText()` calls to `main` locator (6 occurrences); fixed status badges, tab selectors
@@ -64,10 +65,13 @@
 ### Category B: User Org Selector — ✅ FIXED (Batch 2)
 **Status**: User create/invite tests now pass with combobox selector.
 
-### Category C: TypeToConfirm / Archive Dialog Flow — 🟡 PARTIALLY FIXED
-**Pattern**: Archive/revoke actions in dropdown menus use `menuitem` role, but TypeToConfirm dialog interaction still fails.
-**Affected**: claims-crud (2), rbac-permissions (2), keys-operations (2), sessions-revoke (1)
-**Root Cause**: The `TypeToConfirm` component likely requires exact text match or the dialog structure differs from test expectations.
+### Category C: TypeToConfirm / Archive Dialog Flow — ✅ MOSTLY FIXED (Batch 6)
+**Pattern**: Archive/revoke actions in dropdown menus use `menuitem` role, and TypeToConfirm dialog had wrong prop names.
+**Affected**: keys-operations (2), sessions-revoke (1) — FIXED. claims-crud (2), rbac-permissions (2) — already used correct props.
+**Root Cause (BUG-33 + BUG-34)**: `SigningKeys.tsx` and `SessionList.tsx` passed wrong prop names to `TypeToConfirm`:
+  - `confirmText` instead of `confirmValue` → placeholder was `undefined`, input couldn't be found
+  - `onConfirmed` instead of `onConfirmedChange` → confirm button stayed permanently disabled
+**Fix**: Corrected prop names in both files. Claims/permissions archive dialogs already used correct props (issue there is likely menu item → dialog flow timing).
 
 ### Category D: User Detail Page Navigation — ✅ FIXED (Batch 5)
 **Pattern**: Navigating to `/users/{id}` from list page times out. Tests that depend on user detail page all fail.
@@ -77,10 +81,13 @@
 2. **Missing standalone user routes**: SPA calls `GET /api/users/{id}` (BFF → `GET /api/admin/users/{id}`) but Porta only had org-scoped routes at `/api/admin/organizations/:orgId/users/:userId`. The user detail page, update, and all status transitions failed with 404.
 **Fix**: Added `sortByMap` to UserList.tsx + created `createStandaloneUserRouter()` with all user CRUD/status routes at `/api/admin/users/:userId`.
 
-### Category E: Client Wizard / Detail — 🔴 STILL BROKEN  
-**Pattern**: Client creation wizard doesn't complete — POST payload verification fails. Client detail page doesn't load (timeouts).
+### Category E: Client Wizard / Detail — ✅ MOSTLY FIXED (Batch 6)
+**Pattern**: Client creation wizard didn't complete — POST payload had wrong field names and missing required fields.
 **Affected**: client-crud (3), client-secrets (4), client-settings (4)
-**Root Cause**: The client create wizard flow has changed — likely the wizard steps or field names don't match test expectations. Client detail page may have same loading issue as user detail.
+**Root Cause (BUG-35 + BUG-36)**: Two issues:
+1. **SPA→API field name mismatch**: SPA sent `name` (API expects `clientName`) and `isConfidential` boolean (API expects `clientType` enum string).
+2. **Missing required fields**: SPA didn't send `organizationId` or `applicationType`, both required by the Zod schema.
+**Fix**: Added `mapClientToApi()` reverse mapper in `useCreateClient` mutation + `CreateClient.tsx` now derives `organizationId` from the selected application. `applicationType` is auto-derived from `clientType` (public→spa, confidential→web).
 
 ### Category F: Error/Integration Tests — ℹ️ PRE-EXISTING
 **Pattern**: Mock-based error handling tests that intercept API responses.
@@ -130,6 +137,38 @@
 **Root Cause**: Archive/revoke actions are in `menuitem` role (FluentUI Menu), not `button` role. Changed `getByRole('button', { name: /archive/i })` → `getByRole('menuitem', { name: /archive/i })`.
 **Status**: Menu item is found but TypeToConfirm dialog interaction still fails — may need further investigation of dialog structure.
 
+## Fixed Bugs — Batch 5 (Commit 7)
+
+### BUG-31: UserList sort column mismatch ✅ FIXED (APP BUG)
+**Root Cause**: `UserList.tsx` sent `sortBy=createdAt` (camelCase) but the Porta API Zod schema only accepts `created_at` (snake_case) → 400 error → empty user list.
+**Fix**: Added `sortByMap` dictionary to translate DataGrid column keys to API field names.
+
+### BUG-32: Missing standalone user admin routes ✅ FIXED (SERVER BUG)
+**Root Cause**: SPA calls `GET /api/users/{id}` (BFF → `GET /api/admin/users/{id}`) but Porta only had org-scoped routes at `/api/admin/organizations/:orgId/users/:userId`.
+**Fix**: Added `createStandaloneUserRouter()` with 13 endpoints at `/api/admin/users/:userId`.
+
+## Fixed Bugs — Batch 6 (Commit 8)
+
+### BUG-33: SigningKeys.tsx TypeToConfirm wrong prop names ✅ FIXED (APP BUG)
+**Root Cause**: Used `confirmText="ROTATE"` and `onConfirmed={setRotateConfirmed}` but TypeToConfirm expects `confirmValue` and `onConfirmedChange`. Confirm button stayed permanently disabled.
+**Fix**: Changed `confirmText` → `confirmValue`, `onConfirmed` → `onConfirmedChange`.
+
+### BUG-34: SessionList.tsx TypeToConfirm wrong prop names ✅ FIXED (APP BUG)
+**Root Cause**: Same as BUG-33 but with `confirmText="REVOKE ALL"` and `onConfirmed={setBulkRevokeConfirmed}`.
+**Fix**: Changed `confirmText` → `confirmValue`, `onConfirmed` → `onConfirmedChange`.
+
+### BUG-35: Client wizard SPA→API field name mismatch ✅ FIXED (APP BUG)
+**Root Cause**: `useCreateClient` sent SPA field names (`name`, `isConfidential` boolean) directly to the API, but the Porta API expects `clientName` (string) and `clientType` ('public'|'confidential' enum).
+**Fix**: Added `mapClientToApi()` reverse mapper that translates SPA → API field names before POST.
+
+### BUG-36: Client wizard missing required API fields ✅ FIXED (APP BUG)
+**Root Cause**: Porta API requires `organizationId` and `applicationType` for client creation, but the SPA wizard didn't send either.
+**Fix**: `CreateClient.tsx` now derives `organizationId` from the selected application. `mapClientToApi()` auto-derives `applicationType` from `clientType` (public→'spa', confidential→'web').
+
+### BUG-37: Session column header mismatch ✅ FIXED (TEST BUG)
+**Root Cause**: Test expected "Expires" column header but `SessionList.tsx` renders "Last Active".
+**Fix**: Changed test assertion from `'Expires'` to `'Last Active'`.
+
 ---
 
 ## Remaining Work (Priority Order)
@@ -137,14 +176,23 @@
 ### P1: User Detail Page — ✅ FIXED (Batch 5) — ~28 tests unblocked
 The user detail page (`/users/{id}`) failed to load due to two bugs: (1) UserList sent invalid `sortBy=createdAt` causing 400 errors (BUG-31), and (2) Porta had no standalone user routes at `/api/admin/users/:userId` — only org-scoped routes (BUG-32). Fixed by adding `sortByMap` to UserList.tsx and `createStandaloneUserRouter()` in `src/routes/users.ts`. Now unblocks user-crud (5), user-settings (5), user-claims (4), user-roles (4), user-transitions (~10).
 
-### P2: Client Wizard Flow — ~11 tests blocked  
-Client creation wizard doesn't complete successfully. May be a wizard step sequence issue or field name mismatch. This blocks client-crud (3), client-secrets (4), client-settings (4).
+### P2: Client Wizard Flow — ✅ FIXED (Batch 6) — ~11 tests unblocked
+Client creation wizard sent wrong field names and was missing required fields (BUG-35, BUG-36). Fixed with `mapClientToApi()` reverse mapper and `organizationId` derivation from selected application. Client detail page should also work now since `useClient` already uses `mapApiClient` for response mapping.
 
-### P3: TypeToConfirm Dialog Interaction — ~7 tests
-The TypeToConfirm confirmation dialog doesn't interact correctly in tests. Affects archive operations in claims, permissions, keys, and sessions.
+### P3: TypeToConfirm Dialog — ✅ MOSTLY FIXED (Batch 6) — ~3 tests unblocked
+Keys rotate and session revoke-all dialogs had wrong TypeToConfirm prop names (BUG-33, BUG-34). Claims/permissions archive flows already used correct props — remaining failures there are likely menu item → dialog timing issues.
 
 ### P4: Error/Integration Tests — ~12 tests
 Pre-existing failures in error handling, CSRF protection, token refresh. Lower priority — these test edge cases.
+
+### P5: Remaining Minor Edge Cases — ~8 tests
+- audit-operations: 1 (event type dropdown interaction)
+- config-save: 1 (cancel edit mode)
+- search-functional: 2 (no-results display, grouped results)
+- rbac-roles: 1 (permissions checkbox count)
+- rbac-matrix: 1 (heading locator)
+- claims-crud: 2 (archive dialog timing)
+- rbac-permissions: 2 (archive dialog timing)
 
 ---
 

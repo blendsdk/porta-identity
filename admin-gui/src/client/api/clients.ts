@@ -62,15 +62,51 @@ export function useClient(id: string) {
 }
 
 /**
+ * Map SPA Client fields to backend API field names for create/update.
+ *
+ * SPA uses `name` / `isConfidential` (boolean).
+ * Backend expects `clientName` / `clientType` ('public'|'confidential').
+ * Backend also requires `organizationId` and `applicationType`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapClientToApi(data: Record<string, any>): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payload: Record<string, any> = { ...data };
+
+  // name → clientName
+  if ('name' in payload && !('clientName' in payload)) {
+    payload.clientName = payload.name;
+    delete payload.name;
+  }
+
+  // isConfidential (boolean) → clientType ('public'|'confidential')
+  if ('isConfidential' in payload && !('clientType' in payload)) {
+    payload.clientType = payload.isConfidential ? 'confidential' : 'public';
+    delete payload.isConfidential;
+  }
+
+  // Default applicationType based on clientType if not set
+  if (!payload.applicationType && payload.clientType) {
+    payload.applicationType = payload.clientType === 'public' ? 'spa' : 'web';
+  }
+
+  return payload;
+}
+
+/**
  * Create a new client.
  * Backend returns { data: { client, secret }, warning? }.
  * We unwrap to return { client, secret, warning? } so callers can access both.
+ *
+ * Automatically maps SPA field names (name, isConfidential) to API field
+ * names (clientName, clientType) and derives applicationType.
  */
 export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Partial<Client>) => {
-      const res = await api.post<Record<string, unknown>>('/clients', data);
+    mutationFn: async (data: Partial<Client> & { organizationId?: string; applicationType?: string }) => {
+      const payload = mapClientToApi(data as Record<string, unknown>);
+      const res = await api.post<Record<string, unknown>>('/clients', payload);
       const inner = unwrapData<Record<string, unknown>>(res);
       // inner is { client: {...}, secret: "..." } or the client itself
       const client = inner.client ? mapApiClient(inner.client) : mapApiClient(inner);

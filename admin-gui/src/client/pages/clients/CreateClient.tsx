@@ -736,11 +736,15 @@ export function CreateClient() {
   const handleComplete = useCallback(async () => {
     if (!validateStep(activeStep)) return;
 
+    // Look up organizationId from the selected application
+    const selectedApp = applications.find((a) => a.id === form.applicationId);
+
     try {
       const result = await createClient.mutateAsync({
         name: form.name.trim(),
         applicationId: form.applicationId,
         isConfidential: form.isConfidential,
+        organizationId: selectedApp?.organizationId,
         redirectUris: form.redirectUris,
         postLogoutRedirectUris: form.postLogoutRedirectUris.length > 0
           ? form.postLogoutRedirectUris
@@ -759,7 +763,7 @@ export function CreateClient() {
     } catch {
       // API errors are shown via createClient.error
     }
-  }, [form, activeStep, validateStep, createClient]);
+  }, [form, activeStep, validateStep, createClient, applications]);
 
   // After successful creation, show the success view
   if (createdResult) {

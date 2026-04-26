@@ -298,8 +298,8 @@ export function SigningKeys() {
         </Text>
         <div className={styles.typeToConfirmWrapper}>
           <TypeToConfirm
-            confirmText="ROTATE"
-            onConfirmed={setRotateConfirmed}
+          confirmValue="ROTATE"
+          onConfirmedChange={setRotateConfirmed}
           />
         </div>
       </ConfirmDialog>

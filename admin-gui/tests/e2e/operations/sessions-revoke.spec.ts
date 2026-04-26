@@ -53,7 +53,7 @@ test.describe('Session Management Operations', () => {
     await expect(table.getByText('Organization')).toBeVisible();
     await expect(table.getByText('IP Address')).toBeVisible();
     await expect(table.getByText('Created')).toBeVisible();
-    await expect(table.getByText('Expires')).toBeVisible();
+    await expect(table.getByText('Last Active')).toBeVisible();
     await expect(table.getByText('User Agent')).toBeVisible();
 
     // At least one session row exists
