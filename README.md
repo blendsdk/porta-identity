@@ -1,6 +1,18 @@
-> ⚠️ **Pre-release** — Porta has undergone production hardening (rate limiting, account
-> lockout, GDPR compliance, audit retention, defence-in-depth review) but has not yet
-> been battle-tested in production. APIs and database schemas may still change. Use with caution.
+> ⚠️ **Pre-release**
+>
+> Porta has undergone production hardening, including rate limiting, account lockout protection, GDPR-focused privacy controls, audit retention, and a defence-in-depth security review.
+>
+> However, it has not yet been extensively battle-tested in production. APIs, configuration options, and database schemas may still change before a stable release.
+>
+> Use with caution, especially in production environments.
+
+> ⚠️ **Coming soon: Porta Administration GUI**
+>
+> Porta already provides a powerful CLI for managing the Identity Provider and helping system administrators configure and operate their Porta installation.
+>
+> To make administration even easier, we are working on a comprehensive web-based Administration GUI. This new interface will simplify common administrative tasks, improve visibility, and make Porta easier to manage in real-world environments.
+>
+> Stay tuned for updates.
 
 [![CI](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/docker/v/blendsdk/porta?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/blendsdk/porta)
