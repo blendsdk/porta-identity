@@ -279,7 +279,7 @@ export function EntityDataGrid<T>({
   );
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-testid="entity-grid">
       {/* Toolbar: search + actions */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>

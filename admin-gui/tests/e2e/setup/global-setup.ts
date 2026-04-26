@@ -298,6 +298,26 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.ADMIN_EMAIL = ADMIN_EMAIL;
   process.env.MAILHOG_API_URL = MAILHOG_API_URL;
 
+  // Export seed entity IDs so tests can reference them directly
+  // (e.g., navigating to a known entity detail page, verifying API payloads)
+  process.env.SEED_SUPER_ADMIN_ORG_ID = seedResult.superAdminOrg.id;
+  process.env.SEED_ACTIVE_ORG_ID = seedResult.testOrgs.active.id;
+  process.env.SEED_SUSPENDED_ORG_ID = seedResult.testOrgs.suspended.id;
+  process.env.SEED_ARCHIVED_ORG_ID = seedResult.testOrgs.archived.id;
+  process.env.SEED_TEST_APP_ID = seedResult.testApp.id;
+  process.env.SEED_ARCHIVED_APP_ID = seedResult.archivedApp.id;
+  process.env.SEED_PUBLIC_CLIENT_ID = seedResult.testClient.id;
+  process.env.SEED_CONF_CLIENT_ID = seedResult.testConfidentialClient.id;
+  process.env.SEED_ACTIVE_USER_ID = seedResult.testUsers.active.id;
+  process.env.SEED_SUSPENDED_USER_ID = seedResult.testUsers.suspended.id;
+  process.env.SEED_EDITOR_ROLE_ID = seedResult.testRoles.editor.id;
+  process.env.SEED_VIEWER_ROLE_ID = seedResult.testRoles.viewer.id;
+  process.env.SEED_READ_PERM_ID = seedResult.testPermissions.read.id;
+  process.env.SEED_WRITE_PERM_ID = seedResult.testPermissions.write.id;
+  process.env.SEED_DELETE_PERM_ID = seedResult.testPermissions.delete.id;
+  process.env.SEED_DEPT_CLAIM_ID = seedResult.testClaims.department.id;
+  process.env.SEED_LEVEL_CLAIM_ID = seedResult.testClaims.accessLevel.id;
+
   // =====================================================================
   // PHASE 5: Store Server References for Teardown
   // =====================================================================

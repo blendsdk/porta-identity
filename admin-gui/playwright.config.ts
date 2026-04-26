@@ -102,10 +102,10 @@ export default defineConfig({
     },
 
     // ── Authenticated tests — uses cached storageState ──────────────
-    // All navigation, page, and workflow tests run authenticated
+    // All navigation, page, workflow, operation, error, and integration tests run authenticated
     {
       name: 'authenticated',
-      testMatch: /\/(navigation|pages|workflows)\/.*\.spec\.ts/,
+      testMatch: /\/(navigation|pages|workflows|operations|errors|integration|cross-page)\/.*\.spec\.ts/,
       use: {
         storageState: path.resolve(__dirname, 'tests/e2e/.auth/admin-session.json'),
       },

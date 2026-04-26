@@ -62,6 +62,11 @@ export interface SeedResult {
     write: { id: string; name: string; slug: string };
     delete: { id: string; name: string; slug: string };
   };
+  /** Test claim definitions in Acme Customer Portal for Custom Claims page tests */
+  testClaims: {
+    department: { id: string; claimName: string; claimType: string };
+    accessLevel: { id: string; claimName: string; claimType: string };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -404,6 +409,10 @@ export async function seedAdminGuiTestData(): Promise<SeedResult> {
       read: { id: readPerm.id, name: readPerm.name, slug: readPerm.slug },
       write: { id: writePerm.id, name: writePerm.name, slug: writePerm.slug },
       delete: { id: deletePerm.id, name: deletePerm.name, slug: deletePerm.slug },
+    },
+    testClaims: {
+      department: { id: departmentClaim.id, claimName: departmentClaim.claimName, claimType: departmentClaim.claimType },
+      accessLevel: { id: levelClaim.id, claimName: levelClaim.claimName, claimType: levelClaim.claimType },
     },
   };
 }

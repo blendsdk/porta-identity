@@ -17,6 +17,7 @@ import {
   tokens,
   Text,
   Card,
+  Badge,
   Button,
   Dropdown,
   Option,
@@ -35,6 +36,9 @@ import {
   CheckmarkCircleRegular,
   PauseCircleRegular,
   ArchiveRegular,
+  BuildingRegular,
+  ShieldCheckmarkRegular,
+  CalendarRegular,
 } from '@fluentui/react-icons';
 import { useParams, useNavigate } from 'react-router';
 import {
@@ -54,6 +58,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TypeToConfirm } from '../../components/TypeToConfirm';
 import { AuditTimeline, type TimelineEntry } from '../../components/AuditTimeline';
 import { StatusBadge } from '../../components/StatusBadge';
+import { CopyButton } from '../../components/CopyButton';
 import type {
   Organization,
   OrganizationStatus,
@@ -151,6 +156,98 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXL,
     textAlign: 'center',
   },
+  /* ---- Overview tab styles ---- */
+  overviewRoot: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXL,
+  },
+  statsRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: tokens.spacingHorizontalM,
+    '@media (max-width: 640px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  statCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spacingVerticalS,
+    paddingTop: tokens.spacingVerticalL,
+    paddingBottom: tokens.spacingVerticalL,
+    textAlign: 'center' as const,
+    minHeight: '100px',
+  },
+  statValue: {
+    fontSize: tokens.fontSizeHero700,
+    fontWeight: tokens.fontWeightBold,
+    lineHeight: tokens.lineHeightHero700,
+    color: tokens.colorBrandForeground1,
+  },
+  statLabel: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+  },
+  cardSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    paddingBottom: tokens.spacingVerticalXS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  cardHeaderIcon: {
+    color: tokens.colorBrandForeground1,
+    fontSize: '20px',
+  },
+  cardGrid: {
+    display: 'grid',
+    gridTemplateColumns: '160px 1fr',
+    gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    alignItems: 'center',
+    paddingTop: tokens.spacingVerticalS,
+    '@media (max-width: 640px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  cardLabel: {
+    color: tokens.colorNeutralForeground3,
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase200,
+  },
+  copyableValue: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+  },
+  methodBadges: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+    flexWrap: 'wrap' as const,
+  },
+  timestampFooter: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalL,
+    color: tokens.colorNeutralForeground3,
+    paddingTop: tokens.spacingVerticalS,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    flexWrap: 'wrap' as const,
+  },
+  timestampItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -236,6 +333,21 @@ const ACTION_CONFIG: Record<StatusAction, {
 // Overview tab
 // ---------------------------------------------------------------------------
 
+/** Map locale codes to display names */
+const LOCALE_NAMES: Record<string, string> = {
+  en: 'English',
+  nl: 'Dutch',
+  de: 'German',
+  fr: 'French',
+};
+
+/** Map 2FA policy to display info */
+const POLICY_DISPLAY: Record<TwoFactorPolicy, { text: string; color: 'informative' | 'success' | 'warning' }> = {
+  disabled: { text: 'Disabled', color: 'informative' },
+  optional: { text: 'Optional', color: 'warning' },
+  required: { text: 'Required', color: 'success' },
+};
+
 interface OverviewTabProps {
   org: Organization;
 }
@@ -243,58 +355,134 @@ interface OverviewTabProps {
 function OverviewTab({ org }: OverviewTabProps) {
   const styles = useStyles();
 
+  // Fetch app count for this org
+  const { data: appsData } = useApplications({
+    limit: 100,
+    offset: 0,
+    sortBy: 'name',
+    sortOrder: 'asc',
+  });
+  const appCount = useMemo(
+    () => (appsData?.data ?? []).filter((app: Application) => app.organizationId === org.id).length,
+    [appsData, org.id],
+  );
+
+  // Fetch user count for this org (limit: 1 — we only need the total)
+  const { data: usersData } = useUsers(org.id, {
+    limit: 1,
+    offset: 0,
+    sortBy: 'email',
+    sortOrder: 'asc',
+  });
+  const userCount = usersData?.pagination?.total ?? 0;
+
+  const tfaInfo = POLICY_DISPLAY[org.twoFactorPolicy];
+
   return (
-    <div className={styles.section}>
-      <div className={styles.infoGrid}>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Name</Text>
-          <Text className={styles.infoValue}>{org.name}</Text>
-        </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Slug</Text>
-          <Text className={`${styles.infoValue} ${styles.monoValue}`}>{org.slug}</Text>
-        </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Status</Text>
-          <div><StatusBadge status={org.status} /></div>
-        </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Locale</Text>
-          <Text className={styles.infoValue}>{org.defaultLocale}</Text>
-        </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Two-Factor Policy</Text>
-          <Text className={styles.infoValue}>
-            {org.twoFactorPolicy.charAt(0).toUpperCase() + org.twoFactorPolicy.slice(1)}
-          </Text>
-        </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Login Methods</Text>
-          <Text className={styles.infoValue}>
-            {org.defaultLoginMethods.length > 0
-              ? org.defaultLoginMethods.map((m) =>
-                  m === 'password' ? 'Password' : 'Magic Link',
-                ).join(', ')
-              : 'None configured'}
-          </Text>
-        </div>
-        {org.isSuperAdmin && (
-          <div className={styles.infoItem}>
-            <Text size={200} className={styles.infoLabel}>Role</Text>
-            <Text className={styles.superAdminBadge}>⭐ Super Admin Organization</Text>
+    <div className={styles.overviewRoot}>
+      {/* ---- Stats Row ---- */}
+      <div className={styles.statsRow}>
+        <Card className={styles.statCard}>
+          <Text className={styles.statLabel}>Status</Text>
+          <StatusBadge status={org.status} size="large" />
+        </Card>
+        <Card className={styles.statCard}>
+          <Text className={styles.statLabel}>Applications</Text>
+          <Text className={styles.statValue}>{appCount}</Text>
+        </Card>
+        <Card className={styles.statCard}>
+          <Text className={styles.statLabel}>Users</Text>
+          <Text className={styles.statValue}>{userCount}</Text>
+        </Card>
+      </div>
+
+      {/* ---- General Information ---- */}
+      <Card>
+        <div className={styles.cardSection}>
+          <div className={styles.cardHeader}>
+            <BuildingRegular className={styles.cardHeaderIcon} />
+            <Text size={400} weight="semibold">General Information</Text>
           </div>
-        )}
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Created</Text>
-          <Text className={styles.infoValue}>{formatDate(org.createdAt)}</Text>
+          <div className={styles.cardGrid}>
+            <Text className={styles.cardLabel}>Name</Text>
+            <Text weight="semibold">{org.name}</Text>
+
+            <Text className={styles.cardLabel}>Slug</Text>
+            <div className={styles.copyableValue}>
+              <Text style={{ fontFamily: 'monospace', fontSize: tokens.fontSizeBase200 }}>
+                {org.slug}
+              </Text>
+              <CopyButton value={org.slug} tooltip="Copy slug" />
+            </div>
+
+            <Text className={styles.cardLabel}>ID</Text>
+            <div className={styles.copyableValue}>
+              <Text style={{ fontFamily: 'monospace', fontSize: tokens.fontSizeBase200 }}>
+                {org.id}
+              </Text>
+              <CopyButton value={org.id} tooltip="Copy ID" />
+            </div>
+
+            {org.isSuperAdmin && (
+              <>
+                <Text className={styles.cardLabel}>Role</Text>
+                <div>
+                  <Badge appearance="tint" color="warning" size="medium">
+                    ⭐ Super Admin
+                  </Badge>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>Last Updated</Text>
-          <Text className={styles.infoValue}>{formatDate(org.updatedAt)}</Text>
+      </Card>
+
+      {/* ---- Security & Authentication ---- */}
+      <Card>
+        <div className={styles.cardSection}>
+          <div className={styles.cardHeader}>
+            <ShieldCheckmarkRegular className={styles.cardHeaderIcon} />
+            <Text size={400} weight="semibold">Security &amp; Authentication</Text>
+          </div>
+          <div className={styles.cardGrid}>
+            <Text className={styles.cardLabel}>Login Methods</Text>
+            <div className={styles.methodBadges}>
+              {org.defaultLoginMethods.length > 0
+                ? org.defaultLoginMethods.map((m) => (
+                    <Badge key={m} appearance="tint" color="brand" size="medium">
+                      {m === 'password' ? '🔑 Password' : '✨ Magic Link'}
+                    </Badge>
+                  ))
+                : <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    None configured
+                  </Text>
+              }
+            </div>
+
+            <Text className={styles.cardLabel}>Two-Factor Policy</Text>
+            <div>
+              <Badge appearance="tint" color={tfaInfo.color} size="medium">
+                {tfaInfo.text}
+              </Badge>
+            </div>
+
+            <Text className={styles.cardLabel}>Default Locale</Text>
+            <Text>
+              {LOCALE_NAMES[org.defaultLocale] ?? org.defaultLocale} ({org.defaultLocale})
+            </Text>
+          </div>
         </div>
-        <div className={styles.infoItem}>
-          <Text size={200} className={styles.infoLabel}>ID</Text>
-          <Text className={`${styles.infoValue} ${styles.monoValue}`}>{org.id}</Text>
+      </Card>
+
+      {/* ---- Timestamps Footer ---- */}
+      <div className={styles.timestampFooter}>
+        <div className={styles.timestampItem}>
+          <CalendarRegular style={{ fontSize: '14px' }} />
+          <Text size={200}>Created {formatDate(org.createdAt)}</Text>
+        </div>
+        <div className={styles.timestampItem}>
+          <CalendarRegular style={{ fontSize: '14px' }} />
+          <Text size={200}>Last updated {formatDate(org.updatedAt)}</Text>
         </div>
       </div>
     </div>
