@@ -16,6 +16,7 @@
  * @see plans/admin-gui-testing/04-entity-e2e-tests.md — Organization Transitions
  */
 
+import type { APIRequestContext } from '@playwright/test';
 import { test, expect } from '../fixtures/admin-fixtures';
 import {
   navigateToEntity,
@@ -26,6 +27,19 @@ import {
 } from '../helpers/operations';
 import { captureApiRequest } from '../helpers/api-interceptors';
 import { createTestOrg, uniqueName } from '../helpers/entity-factory';
+
+const BFF_BASE_URL = process.env.ADMIN_GUI_URL ?? 'http://localhost:49301';
+
+/** Cached CSRF token for direct API calls in transition tests */
+let _csrfToken: string | null = null;
+async function csrfToken(request: APIRequestContext): Promise<string> {
+  if (_csrfToken) return _csrfToken;
+  const resp = await request.get(`${BFF_BASE_URL}/auth/me`);
+  const body = await resp.json();
+  _csrfToken = body.csrfToken;
+  if (!_csrfToken) throw new Error('No csrfToken in /auth/me');
+  return _csrfToken;
+}
 
 // ---------------------------------------------------------------------------
 // Organization Status Transition Tests
@@ -62,8 +76,8 @@ test.describe('Organization Status Transitions', () => {
     // Verify correct API call
     expect(apiRequest.method).toBe('POST');
 
-    // Status badge should update to Suspended
-    await expect(page.getByText('Suspended')).toBeVisible({ timeout: 10_000 });
+    // Status badge should update to Suspended (appears in header + overview card)
+    await expect(page.getByText('Suspended').first()).toBeVisible({ timeout: 10_000 });
 
     // Suspend button should no longer be visible; Activate should appear
     await expect(page.getByRole('button', { name: /^suspend$/i })).not.toBeVisible();
@@ -73,16 +87,18 @@ test.describe('Organization Status Transitions', () => {
   test('activates a suspended organization', async ({ page, request }) => {
     // Create and suspend an org via API
     const org = await createTestOrg(request, uniqueName('Activate E2E'));
-    // Suspend it via API first
+    // Suspend it via API first (needs CSRF token for BFF)
+    const token = await csrfToken(request);
     const suspendResp = await request.post(
-      `${process.env.ADMIN_GUI_URL ?? 'http://localhost:49301'}/api/organizations/${org.id}/suspend`,
+      `${BFF_BASE_URL}/api/organizations/${org.id}/suspend`,
+      { headers: { 'X-CSRF-Token': token } },
     );
     expect(suspendResp.ok()).toBeTruthy();
 
     await navigateToEntity(page, 'organizations', org.id);
 
-    // Org should show as Suspended
-    await expect(page.getByText('Suspended')).toBeVisible();
+    // Org should show as Suspended (appears in header + overview card)
+    await expect(page.getByText('Suspended').first()).toBeVisible();
 
     // Click Activate button
     await page.getByRole('button', { name: /activate/i }).click();
@@ -98,8 +114,8 @@ test.describe('Organization Status Transitions', () => {
 
     expect(apiRequest.method).toBe('POST');
 
-    // Status should change back to Active
-    await expect(page.getByText('Active')).toBeVisible({ timeout: 10_000 });
+    // Status should change back to Active (appears in header + overview card)
+    await expect(page.getByText('Active').first()).toBeVisible({ timeout: 10_000 });
 
     // Activate button should disappear; Suspend should appear
     await expect(page.getByRole('button', { name: /^activate$/i })).not.toBeVisible();
@@ -129,8 +145,8 @@ test.describe('Organization Status Transitions', () => {
 
     expect(apiRequest.method).toBe('POST');
 
-    // Status should change to Archived
-    await expect(page.getByText('Archived')).toBeVisible({ timeout: 10_000 });
+    // Status should change to Archived (appears in header + overview card)
+    await expect(page.getByText('Archived').first()).toBeVisible({ timeout: 10_000 });
 
     // No action buttons should be visible for archived orgs
     await expect(page.getByRole('button', { name: /suspend/i })).not.toBeVisible();
@@ -154,8 +170,8 @@ test.describe('Organization Status Transitions', () => {
     // Dialog should close
     await expect(page.getByRole('dialog')).not.toBeVisible();
 
-    // Status should still be Active
-    await expect(page.getByText('Active')).toBeVisible();
+    // Status should still be Active (appears in header + overview card)
+    await expect(page.getByText('Active').first()).toBeVisible();
 
     // Suspend button should still be available (no transition occurred)
     await expect(page.getByRole('button', { name: /suspend/i })).toBeVisible();

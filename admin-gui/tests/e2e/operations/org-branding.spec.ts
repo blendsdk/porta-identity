@@ -13,7 +13,8 @@
  * @see plans/admin-gui-testing/04-entity-e2e-tests.md — Organization Branding
  */
 
-import path from 'path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from '../fixtures/admin-fixtures';
 import {
   navigateToEntity,
@@ -26,6 +27,8 @@ import { captureApiRequest } from '../helpers/api-interceptors';
 // ---------------------------------------------------------------------------
 
 /** Path to test fixture images */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/test-images');
 const TEST_LOGO_PATH = path.join(FIXTURES_DIR, 'test-logo.png');
 const TEST_FAVICON_PATH = path.join(FIXTURES_DIR, 'test-favicon.png');
@@ -53,7 +56,7 @@ test.describe('Organization Branding', () => {
 
     // Section titles
     await expect(page.getByText('Branding Settings')).toBeVisible();
-    await expect(page.getByText('Preview')).toBeVisible();
+    await expect(page.getByText('Preview', { exact: true })).toBeVisible();
 
     // Upload buttons
     await expect(page.getByRole('button', { name: /upload logo/i })).toBeVisible();

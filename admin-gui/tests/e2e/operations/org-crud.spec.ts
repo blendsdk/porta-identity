@@ -53,7 +53,7 @@ test.describe('Organization CRUD Operations', () => {
 
     // Should redirect to the new org's detail page
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
-    await expect(page.getByText(orgName)).toBeVisible();
+    await expect(page.getByText(orgName).first()).toBeVisible();
   });
 
   test('creates organization with all fields (name, slug, locale, login methods)', async ({ page }) => {
@@ -93,8 +93,8 @@ test.describe('Organization CRUD Operations', () => {
 
     // Should redirect to detail page showing the custom slug
     await page.waitForURL(/\/organizations\/[a-f0-9-]+$/, { timeout: 10_000 });
-    await expect(page.getByText(orgName)).toBeVisible();
-    await expect(page.getByText(customSlug)).toBeVisible();
+    await expect(page.getByText(orgName).first()).toBeVisible();
+    await expect(page.getByText(customSlug).first()).toBeVisible();
   });
 
   test('shows validation error for empty name', async ({ page }) => {
@@ -124,14 +124,14 @@ test.describe('Organization CRUD Operations', () => {
     await page.waitForTimeout(2_000);
     await expect(page).toHaveURL('/organizations/new');
 
-    // Backend returns an error — shown in a MessageBar
-    // The error message may vary (slug exists / conflict / duplicate)
-    const errorBar = page.locator('[class*="intent"][class*="error"], [data-intent="error"]').first();
-    const hasErrorBar = await errorBar.isVisible().catch(() => false);
-    const hasErrorText = await page.getByText(/already exists|duplicate|conflict|slug.*taken/i).isVisible().catch(() => false);
+    // Backend returns 400 "Slug already in use" — shown in a MessageBar via createOrg.isError
+    // Check for the actual error text from the backend, or the generic fallback
+    const hasSlugError = await page.getByText(/slug already in use/i).isVisible().catch(() => false);
+    const hasDuplicateError = await page.getByText(/already exists|duplicate|conflict|slug.*taken/i).isVisible().catch(() => false);
     const hasGenericError = await page.getByText(/failed to create/i).isVisible().catch(() => false);
+    const hasRequestFailed = await page.getByText(/request failed/i).isVisible().catch(() => false);
 
-    expect(hasErrorBar || hasErrorText || hasGenericError).toBeTruthy();
+    expect(hasSlugError || hasDuplicateError || hasGenericError || hasRequestFailed).toBeTruthy();
   });
 
   test('shows new organization in list after creation', async ({ page }) => {
@@ -167,7 +167,7 @@ test.describe('Organization CRUD Operations', () => {
     await expect(page).toHaveURL(new RegExp(`/organizations/${seedIds.activeOrgId}`));
 
     // Detail page should display the org info
-    await expect(page.getByText('Acme Corporation')).toBeVisible();
+    await expect(page.getByText('Acme Corporation').first()).toBeVisible();
   });
 
   test('shows correct data on Overview tab', async ({ page, seedIds }) => {
@@ -176,24 +176,27 @@ test.describe('Organization CRUD Operations', () => {
 
     // Overview tab is the default — verify all card sections
 
-    // Stats row: Status, Applications, Users
-    await expect(page.getByText('Status')).toBeVisible();
-    await expect(page.getByText('Applications')).toBeVisible();
-    await expect(page.getByText('Users')).toBeVisible();
+    // Overview tab content — scope to tabpanel to avoid sidebar/tab name collisions
+    const overview = page.getByRole('tabpanel');
+
+    // Stats row: Status, Applications, Users (labels are CSS text-transform: uppercase)
+    await expect(overview.getByText(/^status$/i)).toBeVisible();
+    await expect(overview.getByText(/^applications$/i)).toBeVisible();
+    await expect(overview.getByText(/^users$/i)).toBeVisible();
 
     // General Information card
-    await expect(page.getByText('General Information')).toBeVisible();
-    await expect(page.getByText('Acme Corporation')).toBeVisible();
-    await expect(page.getByText('acme-corp')).toBeVisible();
+    await expect(overview.getByText(/general information/i)).toBeVisible();
+    await expect(overview.getByText('Acme Corporation')).toBeVisible();
+    await expect(overview.getByText('acme-corp')).toBeVisible();
 
     // Security & Authentication card
-    await expect(page.getByText('Security & Authentication')).toBeVisible();
-    await expect(page.getByText('Login Methods')).toBeVisible();
-    await expect(page.getByText('Two-Factor Policy')).toBeVisible();
-    await expect(page.getByText('Default Locale')).toBeVisible();
+    await expect(overview.getByText(/security & authentication/i)).toBeVisible();
+    await expect(overview.getByText(/login methods/i)).toBeVisible();
+    await expect(overview.getByText(/two-factor policy/i)).toBeVisible();
+    await expect(overview.getByText(/default locale/i)).toBeVisible();
 
     // Timestamps footer
-    await expect(page.getByText(/Created /)).toBeVisible();
-    await expect(page.getByText(/Last updated /)).toBeVisible();
+    await expect(overview.getByText(/Created /)).toBeVisible();
+    await expect(overview.getByText(/Last updated /)).toBeVisible();
   });
 });

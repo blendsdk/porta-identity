@@ -70,6 +70,11 @@ export async function apiRequest<T>(
     );
   }
 
+  // Handle 204 No Content — return undefined (no body to parse)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 

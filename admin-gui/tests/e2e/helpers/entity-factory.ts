@@ -79,6 +79,28 @@ export interface CreatedClaimDefinition {
 /** BFF base URL — matches Playwright config and global-setup */
 const BFF_BASE_URL = process.env.ADMIN_GUI_URL ?? 'http://localhost:49301';
 
+/** Cached CSRF token — fetched once per test run from /auth/me */
+let cachedCsrfToken: string | null = null;
+
+/**
+ * Get a valid CSRF token from the BFF session.
+ * The BFF exposes the CSRF token in the GET /auth/me response.
+ * We cache it since all requests share the same session.
+ */
+async function getCsrfToken(request: APIRequestContext): Promise<string> {
+  if (cachedCsrfToken) return cachedCsrfToken;
+  const response = await request.get(`${BFF_BASE_URL}/auth/me`);
+  if (!response.ok()) {
+    throw new Error(`Failed to fetch /auth/me for CSRF token: ${response.status()}`);
+  }
+  const body = await response.json();
+  cachedCsrfToken = body.csrfToken;
+  if (!cachedCsrfToken) {
+    throw new Error('No csrfToken in /auth/me response');
+  }
+  return cachedCsrfToken;
+}
+
 // ---------------------------------------------------------------------------
 // Organization factories
 // ---------------------------------------------------------------------------
@@ -99,7 +121,9 @@ export async function createTestOrg(
     defaultLoginMethods?: string[];
   },
 ): Promise<CreatedOrganization> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(`${BFF_BASE_URL}/api/organizations`, {
+    headers: { 'X-CSRF-Token': csrfToken },
     data: {
       name,
       ...options,
@@ -133,7 +157,10 @@ export async function deleteTestOrg(
   id: string,
 ): Promise<void> {
   // Try archiving first (Porta doesn't support hard delete of orgs)
-  await request.post(`${BFF_BASE_URL}/api/organizations/${id}/archive`).catch(() => {
+  const csrfToken = await getCsrfToken(request);
+  await request.post(`${BFF_BASE_URL}/api/organizations/${id}/archive`, {
+    headers: { 'X-CSRF-Token': csrfToken },
+  }).catch(() => {
     // Ignore errors — org may already be archived
   });
 }
@@ -159,7 +186,9 @@ export async function createTestApp(
     description?: string;
   },
 ): Promise<CreatedApplication> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(`${BFF_BASE_URL}/api/applications`, {
+    headers: { 'X-CSRF-Token': csrfToken },
     data: {
       name,
       organizationId: orgId,
@@ -201,7 +230,9 @@ export async function createTestClient(
     grantTypes?: string[];
   },
 ): Promise<CreatedClient> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(`${BFF_BASE_URL}/api/clients`, {
+    headers: { 'X-CSRF-Token': csrfToken },
     data: {
       clientName: name,
       applicationId: appId,
@@ -248,9 +279,10 @@ export async function createTestUser(
     password?: string;
   },
 ): Promise<CreatedUser> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(
     `${BFF_BASE_URL}/api/organizations/${orgId}/users`,
-    { data },
+    { headers: { 'X-CSRF-Token': csrfToken }, data },
   );
 
   if (!response.ok()) {
@@ -283,9 +315,11 @@ export async function createTestRole(
   name: string,
   description?: string,
 ): Promise<CreatedRole> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(
     `${BFF_BASE_URL}/api/applications/${appId}/roles`,
     {
+      headers: { 'X-CSRF-Token': csrfToken },
       data: { name, description },
     },
   );
@@ -316,9 +350,11 @@ export async function createTestPermission(
   name: string,
   description?: string,
 ): Promise<CreatedPermission> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(
     `${BFF_BASE_URL}/api/applications/${appId}/permissions`,
     {
+      headers: { 'X-CSRF-Token': csrfToken },
       data: { name, description },
     },
   );
@@ -360,9 +396,11 @@ export async function createTestClaimDefinition(
     includeInUserinfo?: boolean;
   },
 ): Promise<CreatedClaimDefinition> {
+  const csrfToken = await getCsrfToken(request);
   const response = await request.post(
     `${BFF_BASE_URL}/api/applications/${appId}/claims`,
     {
+      headers: { 'X-CSRF-Token': csrfToken },
       data: {
         claimName,
         claimType,

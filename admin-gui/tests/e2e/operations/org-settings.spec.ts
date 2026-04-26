@@ -115,25 +115,29 @@ test.describe('Organization Settings', () => {
     await goToSettings(page, seedIds.activeOrgId);
 
     // Change 2FA policy — second combobox is the 2FA dropdown
+    // Default is "optional", so we change to "required" to trigger dirty state
     const tfaDropdown = page.getByRole('combobox').nth(1);
     await tfaDropdown.click();
-    await page.getByRole('option', { name: /Optional/i }).click();
+    await page.getByRole('option', { name: /Required/i }).click();
+
+    // Save button should be enabled after changing to a different value
+    const saveBtn = page.getByRole('button', { name: /save settings/i });
+    await expect(saveBtn).toBeEnabled({ timeout: 5_000 });
 
     // Capture and save
     const [request] = await Promise.all([
       captureApiRequest(page, '/api/organizations/'),
-      page.getByRole('button', { name: /save settings/i }).click(),
+      saveBtn.click(),
     ]);
 
     // Verify 2FA policy payload
     const body = request.body as Record<string, unknown>;
-    expect(body.twoFactorPolicy).toBe('optional');
+    expect(body.twoFactorPolicy).toBe('required');
 
-    // Restore to original value
-    await page.getByRole('combobox').nth(1).click();
-    await page.getByRole('option', { name: /Disabled/i }).click();
-    await page.getByRole('button', { name: /save settings/i }).click();
-    await page.waitForTimeout(1_000);
+    // Success message should appear
+    await expect(page.getByText(/settings saved|saved successfully/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   test('save button is disabled when no changes made', async ({ page, seedIds }) => {
@@ -217,10 +221,9 @@ test.describe('Organization Settings', () => {
 
       await goToSettings(page, seedIds.activeOrgId);
 
-      // Change locale to trigger dirty state
-      const localeDropdown = page.getByRole('combobox').first();
-      await localeDropdown.click();
-      await page.getByRole('option', { name: /Dutch/i }).click();
+      // Toggle login method to trigger dirty state (more reliable than locale
+      // since other tests may have already changed the locale value)
+      await page.getByRole('checkbox', { name: /Magic Link/i }).click();
 
       // Capture the API request
       const [request] = await Promise.all([

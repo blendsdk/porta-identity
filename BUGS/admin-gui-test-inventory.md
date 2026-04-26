@@ -1,26 +1,44 @@
-# Admin GUI E2E Test — Bug Inventory
+# Admin GUI Test — Bug Inventory
 
 > **Created**: 2026-04-26
-> **Source**: Comprehensive E2E test suite (Phases 2–8)
-> **Total New Tests**: 224 across 32 spec files
-> **Bugs Found**: 1 confirmed, additional candidates pending live E2E execution
+> **Last Updated**: 2026-04-26 (Phase 1 — GitHub setup + unit test verification)
+> **Source**: Comprehensive test suite (149 unit + 54 E2E spec files)
+> **Bugs Found**: 1 confirmed (resolved), additional candidates pending live E2E execution
+> **GitHub Tracking**: [Issues with `admin-gui` label](https://github.com/blendsdk/porta-identity/labels/admin-gui)
 
 ---
 
 ## Summary
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| High     | 1     | ✅ Resolved |
-| Medium   | 0     | — |
-| Low      | 0     | — |
-| **Total** | **1** | — |
+| Severity | Count | Open | Resolved |
+|----------|-------|------|----------|
+| High     | 1     | 0    | 1        |
+| Medium   | 0     | 0    | 0        |
+| Low      | 0     | 0    | 0        |
+| **Total** | **1** | **0** | **1** |
 
-> **Note**: This inventory reflects bugs discovered during test authoring.
-> Running the full E2E suite against a live environment may reveal additional
-> failures. Tests are designed to surface bugs as failing assertions rather
-> than silently passing — run `npx playwright test` with Docker services
-> and both Porta + BFF running to discover more issues.
+### Unit Test Status
+
+- **149/149 tests passing** (16 files, 0 failures)
+- **Warnings** (non-blocking):
+  - React key prop warning in `AuditLog` component
+  - Griffel CSS shorthand warning in Import/Export page (`borderColor`)
+
+### E2E Test Status
+
+- **Not yet executed** — pending Phase 2 infrastructure validation
+
+---
+
+## GitHub Labels
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `admin-gui` | `#1d76db` | Admin GUI module |
+| `e2e-discovered` | `#fbca04` | Found via E2E test execution |
+| `priority:high` | `#b60205` | Blocks production readiness |
+| `priority:medium` | `#ff9f1c` | Should fix before production |
+| `priority:low` | `#0e8a16` | Can fix post-launch |
 
 ---
 
@@ -31,11 +49,13 @@
 | Field | Value |
 |-------|-------|
 | **ID** | BUG-5 |
+| **GitHub Issue** | [#11](https://github.com/blendsdk/porta-identity/issues/11) (closed) |
 | **Severity** | High |
 | **Category** | http-method |
 | **File** | `admin-gui/src/client/api/organizations.ts` (and 3 others) |
 | **Status** | ✅ **Resolved** — `api.patch()` → `api.put()` in all 4 entity hooks |
 | **Resolved** | 2026-04-26 |
+| **Commit** | `ae80a7d` on `feature_admin_ui` |
 
 **Root Cause**: All four entity update hooks (`useUpdateOrganization`,
 `useUpdateApplication`, `useUpdateClient`, `useUpdateUser`) used `api.patch()`
@@ -49,9 +69,6 @@ the HTTP method as-is, so PATCH requests would fail to match the backend routes.
 - `admin-gui/src/client/api/clients.ts`
 - `admin-gui/src/client/api/users.ts`
 
-**Regression Test**: `org-settings.spec.ts` — "settings save uses PUT method
-matching backend route" (converted from `test.fixme` to active `test`).
-
 ---
 
 ## Potential Issues (Pending Live E2E Validation)
@@ -64,7 +81,7 @@ when running the full E2E suite.
 - **Risk**: Settings forms may not correctly track dirty state, allowing
   navigation without save warnings
 - **Tests**: `org-settings.spec.ts`, `app-settings.spec.ts`, `client-settings.spec.ts`
-- **Watch for**: `test.fixme` failures on dirty state / unsaved changes tests
+- **Watch for**: Failures on dirty state / unsaved changes tests
 
 ### 2. Status Transition Error Handling
 - **Risk**: Status transitions (suspend, archive, etc.) may not show proper
@@ -122,10 +139,13 @@ when running the full E2E suite.
 ## Running the Tests
 
 ```bash
-# Run all new E2E tests (requires Docker services + Porta + BFF running)
-cd admin-gui && npx playwright test operations/ integration/ errors/
+# Run all unit tests
+cd admin-gui && npx vitest run
 
-# Run by domain
+# Run all E2E tests (requires Docker services + Porta + BFF running)
+cd admin-gui && npx playwright test
+
+# Run E2E by domain
 npx playwright test operations/org-       # Organizations
 npx playwright test operations/app-       # Applications
 npx playwright test operations/client-    # Clients
@@ -141,16 +161,18 @@ npx playwright test operations/import-    # Import/Export
 npx playwright test operations/search-    # Search
 npx playwright test integration/          # BFF Integration
 npx playwright test errors/               # Error Handling
-
-# Run full suite (all 54 spec files — existing + new)
-npx playwright test
 ```
 
 ---
 
-## Next Steps
+## Phase Progress
 
-1. **Run full E2E suite** against live environment to discover additional failures
-2. ~~**Fix BUG-5** (PATCH → PUT in organization settings save)~~ ✅ Done
-3. **Address any new `test.fixme` failures** discovered during live execution
-4. **Convert passing tests** from `test.fixme` to `test` as bugs are fixed
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: GitHub Setup + Unit Tests | ✅ Complete | 5 labels created, BUG-5 → Issue #11, 149/149 unit tests pass |
+| Phase 2: E2E Infrastructure | ⏳ Pending | Docker + Playwright + auth smoke test |
+| Phase 3: Core Entities (Orgs, Apps, Clients, Users) | ⏳ Pending | |
+| Phase 4: RBAC, Claims, System Pages | ⏳ Pending | |
+| Phase 5: Integration, Errors, Navigation | ⏳ Pending | |
+| Phase 6: Production Readiness Verification | ⏳ Pending | |
+| Phase 7: Documentation | ⏳ Pending | |
