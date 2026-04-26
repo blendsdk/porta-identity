@@ -258,14 +258,56 @@ cd admin-gui && yarn test:e2e
 cd admin-gui && yarn test:e2e:headed
 ```
 
-**Unit tests** (145 tests, 16 files) include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client, page rendering).
+**Unit tests** (149 tests, 16 files) include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client, page rendering).
 
-**E2E tests** (204 tests, 23 spec files) use Playwright to test the full admin GUI in a real browser. The test infrastructure:
+**E2E tests** (54 spec files) use Playwright to test the full admin GUI in a real browser. The test suite is organized into:
+
+- **Existing tests** (22 spec files in `pages/`, `navigation/`, `auth/`, `workflows/`) — page rendering, navigation, login flow, and cross-page workflows
+- **New comprehensive operations tests** (32 spec files in `operations/`, `integration/`, `errors/`) — 224 tests covering CRUD operations, settings save, status transitions, BFF proxy verification, error handling, and security controls
+
+The test infrastructure includes:
 
 - Starts a real Porta server (port 49300) and BFF (port 49301) in-process
 - Seeds test data (admin user, organizations, applications, clients, users, roles, permissions, claim definitions, audit log entries)
 - Authenticates via the real magic-link flow using MailHog
 - Saves session state so all subsequent tests run authenticated
-- Tests cover: login redirects, sidebar/breadcrumb/topbar navigation, direct URL navigation, dashboard (stats, charts, quick actions), all entity pages (organizations, applications, clients, users, roles, permissions, custom claims) including list, detail, create forms, search, filtering, and status transitions, session management (revoke dialogs), audit log (filters, row expansion, CSV export), config editor (inline edit, confirm), signing keys (generate, rotate), export/import, search results, getting started wizard, and cross-page workflows (org lifecycle, error handling, back/forward)
+- **Shared helpers** (`tests/e2e/helpers/`): UI operation helpers (navigation, forms, dialogs), API interceptors (capture requests, mock errors/timeouts), entity factories (programmatic CRUD via API)
+- **Test fixtures** (`tests/e2e/fixtures/`): seed data, test images for branding, test JSON for import
+
+**Test categories:**
+
+| Directory | Spec Files | Description |
+|-----------|-----------|-------------|
+| `operations/` | 25 | Entity CRUD, settings, transitions, branding, system pages |
+| `integration/` | 3 | BFF proxy methods, token refresh, CSRF protection |
+| `errors/` | 3 | Validation errors, API errors (4xx/5xx), network errors |
+| `pages/` | 14 | Page rendering and component display |
+| `navigation/` | 4 | Sidebar, breadcrumbs, topbar, direct URL |
+| `auth/` | 1 | Login redirect flow |
+| `workflows/` | 3 | Cross-page workflows (org lifecycle, error handling) |
+
+**Running tests by domain:**
+
+```bash
+# All new operation tests
+cd admin-gui && npx playwright test operations/ integration/ errors/
+
+# By entity domain
+npx playwright test operations/org-       # Organizations (29 tests)
+npx playwright test operations/app-       # Applications (20 tests)
+npx playwright test operations/client-    # Clients (18 tests)
+npx playwright test operations/user-      # Users (28 tests)
+npx playwright test operations/rbac-      # RBAC (28 tests)
+npx playwright test operations/claims-    # Custom Claims (11 tests)
+
+# System pages
+npx playwright test operations/dashboard operations/audit- operations/config-
+npx playwright test operations/keys- operations/sessions- operations/import- operations/search-
+
+# BFF integration & error handling
+npx playwright test integration/ errors/
+```
+
+**Bug inventory:** See `BUGS/admin-gui-test-inventory.md` for discovered issues.
 
 **Prerequisites for E2E tests:** Docker services must be running (`yarn docker:up` from the project root) for PostgreSQL, Redis, and MailHog.
