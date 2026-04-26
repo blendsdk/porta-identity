@@ -74,13 +74,47 @@
 - **Root cause:** Status text ("Active", "Suspended", "Archived") appears in both page header badge and overview tab badge
 - **Fix:** Added `.first()` to all status badge assertions
 
-## Untested Domains (Pending)
+### BUG-12: CreateApplication org dropdown returns empty listbox (APP BUG)
+- **File:** `admin-gui/src/client/pages/applications/CreateApplication.tsx`
+- **Type:** App bug (critical — blocks all app creation tests)
+- **Root cause:** `useOrganizations({ limit: 200, status: 'active' })` returns empty data. The BFF API proxy GET `/api/organizations?status=active&limit=200` may fail silently or return data in unexpected format. The FluentUI Dropdown listbox renders empty.
+- **Impact:** Blocks 5 CRUD tests (#2,3,4,6,7 in app-crud.spec.ts)
+- **Status:** Needs investigation of BFF proxy GET /api/organizations response
 
-- Applications (operations/app-*)
+### BUG-13: Module enable via direct API fails (non-OK response)
+- **File:** `admin-gui/tests/e2e/operations/app-modules.spec.ts:88`
+- **Type:** App/test bug (direct API POST to enable module returns error)
+- **Root cause:** `request.post('/api/applications/{id}/modules', { data: { moduleType: 'auth' } })` returns non-OK. Could be content-type issue or the endpoint expects a different payload format.
+- **Impact:** Blocks module disable test
+- **Status:** Needs investigation
+
+### BUG-14: App Overview tab assertions expect wrong text
+- **File:** `admin-gui/tests/e2e/operations/app-crud.spec.ts:224`
+- **Type:** Test fix needed (assertions may not match actual overview layout)
+- **Root cause:** The app overview tab may use different card layout than org overview
+- **Status:** Needs investigation
+
+## Test Suite Status Summary
+
+| Suite | Pass | Fail | Total | Notes |
+|-------|------|------|-------|-------|
+| org-branding | 8 | 0 | 8 | ✅ All pass |
+| org-crud | 7 | 0 | 7 | ✅ All pass |
+| org-settings | 8 | 0 | 8 | ✅ All pass |
+| org-transitions | 6 | 0 | 6 | ✅ All pass |
+| app-crud | 2 | 7 | 9 | ⚠️ 5 blocked by BUG-12 (empty org dropdown) |
+| app-modules | 4 | 2 | 6 | ⚠️ BUG-13 (module enable API), BUG-14 (archive strict mode) |
+| app-settings | 6 | 0 | 6 | ✅ All pass (after PATCH→PUT fix) |
+| client-* | ? | ? | ? | Pending |
+| user-* | ? | ? | ? | Pending |
+| rbac-* | ? | ? | ? | Pending |
+| claims-* | ? | ? | ? | Pending |
+| system pages | ? | ? | ? | Pending |
+
+## Untested Domains (Full sweep in progress)
+
 - Clients (operations/client-*)
 - Users (operations/user-*)
 - RBAC (operations/rbac-*)
 - Custom Claims (operations/claims-*)
-- System pages (system/*)
-- Error handling (errors/*)
-- Integration tests (integration/*)
+- System pages (dashboard, audit, config, keys, sessions, import-export, search)
