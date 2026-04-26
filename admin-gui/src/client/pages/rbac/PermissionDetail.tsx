@@ -126,7 +126,7 @@ function RolesTab({
   // Fetch all roles for this app, then check which include this permission.
   // We fetch the roles list and for each check its permissions.
   const { data: rolesData, isLoading: rolesLoading } = useRoles(appId, {
-    limit: 200,
+    limit: 100,
   });
   const allRoles: Role[] = rolesData?.data ?? [];
 

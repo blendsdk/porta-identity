@@ -76,7 +76,7 @@ export function RoleList() {
 
   // Fetch applications for the filter dropdown
   const { data: appsData } = useApplications({
-    limit: 200,
+    limit: 100,
     sortBy: 'name',
     sortOrder: 'asc',
   });

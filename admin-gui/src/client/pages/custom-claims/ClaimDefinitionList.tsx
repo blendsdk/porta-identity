@@ -98,7 +98,7 @@ export function ClaimDefinitionList() {
   const [search, setSearch] = useState('');
 
   // Fetch all applications for the dropdown
-  const { data: appsData } = useApplications({ limit: 200 });
+  const { data: appsData } = useApplications({ limit: 100 });
   const apps: Application[] = appsData?.data ?? [];
 
   // Auto-select first app if none selected
@@ -109,7 +109,7 @@ export function ClaimDefinitionList() {
   // Fetch claim definitions for selected app
   const { data: claimsData, isLoading } = useClaimDefinitions(
     selectedAppId,
-    { limit: 200 },
+    { limit: 100 },
   );
   const allClaims: ClaimDefinition[] = claimsData?.data ?? [];
 

@@ -85,7 +85,7 @@ export function ClientList() {
   const [sort, setSort] = useState<SortState>({ column: 'name', direction: 'asc' });
 
   // Fetch applications for the filter dropdown and name lookups
-  const { data: appsData } = useApplications({ limit: 200, sortBy: 'name', sortOrder: 'asc' });
+  const { data: appsData } = useApplications({ limit: 100, sortBy: 'name', sortOrder: 'asc' });
   const applications = appsData?.data ?? [];
 
   // Build a map of app ID → app name for fast lookup in table cells

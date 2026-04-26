@@ -89,7 +89,7 @@ export function CreateApplication() {
 
   // Fetch active organizations for the dropdown
   const { data: orgsData } = useOrganizations({
-    limit: 200,
+    limit: 100,
     status: 'active',
     sortBy: 'name',
     sortOrder: 'asc',

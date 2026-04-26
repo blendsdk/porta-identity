@@ -905,7 +905,7 @@ export function InviteUser() {
 
   // Fetch organizations for step 1 dropdown
   const { data: orgsData } = useOrganizations({
-    limit: 200,
+    limit: 100,
     status: 'active',
     sortBy: 'name',
     sortOrder: 'asc',
@@ -914,7 +914,7 @@ export function InviteUser() {
 
   // Fetch applications (for step 2 & 3) — we load all active apps
   const { data: appsData } = useApplications({
-    limit: 200,
+    limit: 100,
     status: 'active',
     sortBy: 'name',
     sortOrder: 'asc',

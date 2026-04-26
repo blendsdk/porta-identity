@@ -77,7 +77,7 @@ export function ApplicationList() {
 
   // Fetch organizations for the filter dropdown and name lookups.
   // We fetch a generous page since this is used only for the dropdown.
-  const { data: orgsData } = useOrganizations({ limit: 200, sortBy: 'name', sortOrder: 'asc' });
+  const { data: orgsData } = useOrganizations({ limit: 100, sortBy: 'name', sortOrder: 'asc' });
   const organizations = orgsData?.data ?? [];
 
   // Build a map of org ID → org name for fast lookup in table cells

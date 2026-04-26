@@ -187,7 +187,7 @@ function PermissionsTab({
   // Fetch all permissions for the app
   const { data: allPermsData, isLoading: permsLoading } = usePermissions(
     appId,
-    { limit: 200 },
+    { limit: 100 },
   );
   const allPermissions: Permission[] = allPermsData?.data ?? [];
 

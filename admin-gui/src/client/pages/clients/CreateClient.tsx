@@ -659,7 +659,7 @@ export function CreateClient() {
 
   // Fetch active applications for step 1 dropdown
   const { data: appsData } = useApplications({
-    limit: 200,
+    limit: 100,
     status: 'active',
     sortBy: 'name',
     sortOrder: 'asc',

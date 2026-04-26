@@ -110,13 +110,13 @@ type MatrixState = Map<string, Set<string>>;
 function useMatrixData(appId: string) {
   // Fetch all roles
   const { data: rolesData, isLoading: rolesLoading } = useRoles(appId, {
-    limit: 200,
+    limit: 100,
   });
   const roles: Role[] = rolesData?.data ?? [];
 
   // Fetch all permissions
   const { data: permsData, isLoading: permsLoading } = usePermissions(appId, {
-    limit: 200,
+    limit: 100,
   });
   const permissions: Permission[] = permsData?.data ?? [];
 
@@ -148,7 +148,7 @@ export function PermissionMatrix() {
 
   // Fetch applications
   const { data: appsData } = useApplications({
-    limit: 200,
+    limit: 100,
     sortBy: 'name',
     sortOrder: 'asc',
   });
