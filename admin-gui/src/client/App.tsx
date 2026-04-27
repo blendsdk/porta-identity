@@ -1,12 +1,29 @@
 /**
  * Root application component — Placeholder version.
  *
- * Provides FluentUI theming, auth context, toast notifications,
- * and error boundary wrapping a placeholder "Under Development" page.
+ * Sets up the full React provider tree and renders a placeholder
+ * "Under Development" page. The full admin dashboard SPA is under
+ * active development; this file will evolve into the real app shell.
  *
- * The full admin dashboard SPA is under development.
- * This placeholder validates the BFF auth flow and provides
- * a foundation for the SPA rebuild.
+ * ## Provider tree (outermost → innermost)
+ *
+ * ```
+ * FluentProvider (theming — light/dark via useThemePreference)
+ *   └─ AuthProvider (session fetch from /auth/me, CSRF sync)
+ *        └─ ToastProvider (FluentUI Toaster instance)
+ *             └─ ErrorBoundary (catches rendering errors)
+ *                  └─ PlaceholderPage (current content)
+ * ```
+ *
+ * When building the real dashboard, replace `<PlaceholderPage />` with
+ * a router and page components. The provider order above must be
+ * preserved — each layer depends on the one above it.
+ *
+ * **Important:** `useThemePreference()` and `useToast()` are called in
+ * `App()` itself (outside providers) because they only need React hooks,
+ * not context from AuthProvider or ToastProvider.
+ *
+ * @module App
  */
 
 import {
@@ -204,9 +221,13 @@ function PlaceholderPage() {
 }
 
 /**
- * Root app component.
- * Provider order: FluentProvider (theming) → AuthProvider (auth) →
- * ToastProvider (notifications) → ErrorBoundary → PlaceholderPage.
+ * Root app component — assembles the provider tree.
+ *
+ * Provider order is significant and must not be reordered:
+ * 1. `FluentProvider` — theming (all FluentUI components need this)
+ * 2. `AuthProvider` — fetches session, sets CSRF token on API client
+ * 3. `ToastProvider` — renders the Toaster instance for notifications
+ * 4. `ErrorBoundary` — catches rendering errors in the page subtree
  */
 export function App() {
   const { theme } = useThemePreference();

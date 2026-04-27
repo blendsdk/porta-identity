@@ -1,6 +1,35 @@
 /**
  * Copy to clipboard hook.
- * Provides a function to copy text to the clipboard with success/error feedback.
+ *
+ * Provides a `copy(text)` function and reactive feedback state (`copied`, `error`).
+ * After a successful copy, `copied` is `true` for a configurable duration
+ * (default 2 seconds), then automatically resets. This enables "copy → show
+ * checkmark → revert" UI patterns without manual timeout management.
+ *
+ * Uses the Clipboard API (`navigator.clipboard.writeText`). If the browser
+ * blocks clipboard access, the `error` field contains the failure message.
+ *
+ * @example
+ * ```tsx
+ * import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
+ *
+ * function SecretDisplay({ secret }: { secret: string }) {
+ *   const { copy, copied, error } = useCopyToClipboard(3000); // 3s feedback
+ *
+ *   return (
+ *     <div>
+ *       <code>{secret}</code>
+ *       <button onClick={() => copy(secret)}>
+ *         {copied ? '✓ Copied' : 'Copy'}
+ *       </button>
+ *       {error && <span style={{ color: 'red' }}>{error}</span>}
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @see {@link CopyButton} — a ready-made FluentUI button that wraps this hook
+ * @module useCopyToClipboard
  */
 
 import { useState, useCallback, useRef } from 'react';

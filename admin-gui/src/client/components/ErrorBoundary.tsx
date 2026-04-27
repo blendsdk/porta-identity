@@ -1,7 +1,48 @@
 /**
  * Error boundary component.
- * Catches unhandled React rendering errors and displays a fallback UI
- * with a retry button. Prevents the entire app from crashing.
+ *
+ * Catches unhandled React rendering errors anywhere in its subtree and
+ * displays a friendly fallback UI with a retry button, preventing the
+ * entire app from crashing due to a single component error.
+ *
+ * ## Why this is a class component
+ *
+ * React's error boundary API is **only available through class component
+ * lifecycle methods** — specifically `getDerivedStateFromError()` and
+ * `componentDidCatch()`. There is no hook equivalent (`useErrorBoundary`
+ * does not exist in React). This is the only class component in the
+ * admin GUI codebase and **must remain a class**. Do not refactor to a
+ * function component.
+ *
+ * To keep the class surface minimal, the actual fallback **UI** is rendered
+ * by the `ErrorFallback` function component (which can use hooks like
+ * `useStyles()`), while the class only handles the error-catching lifecycle.
+ *
+ * **When to use:** Wrap any subtree where an unhandled rendering error
+ * should not crash the entire app. Typically placed at the app root and
+ * optionally around high-risk sections (e.g. third-party integrations).
+ *
+ * **Provider requirement:** The default fallback UI requires `FluentProvider`
+ * in the tree above the boundary. If you pass a custom `fallback` prop,
+ * that constraint does not apply.
+ *
+ * @example
+ * ```tsx
+ * import { ErrorBoundary } from '../components/ErrorBoundary';
+ *
+ * // Basic usage — wraps children, shows default retry UI on error
+ * <ErrorBoundary>
+ *   <DashboardPage />
+ * </ErrorBoundary>
+ *
+ * // Custom fallback UI
+ * <ErrorBoundary fallback={<div>Something broke. Please refresh.</div>}>
+ *   <SettingsPage />
+ * </ErrorBoundary>
+ * ```
+ *
+ * @see https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
+ * @module ErrorBoundary
  */
 
 import { Component, type ReactNode, type ErrorInfo } from 'react';
@@ -65,7 +106,12 @@ interface ErrorBoundaryState {
 
 /**
  * React error boundary that catches rendering errors in its subtree.
- * Shows a friendly fallback UI with a retry button.
+ *
+ * **This must be a class component** — React only exposes error boundary
+ * lifecycle methods (`getDerivedStateFromError`, `componentDidCatch`) on
+ * class components. There is no hook equivalent in React.
+ *
+ * @see https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
