@@ -6,10 +6,10 @@ The `porta provision` command creates organizations, applications, clients, role
 
 ```bash
 # Preview what will be created (no changes)
-porta provision --file my-setup.yaml --dry-run
+porta provision -f my-setup.yaml --dry-run
 
 # Apply the configuration
-porta provision --file my-setup.yaml
+porta provision -f my-setup.yaml
 
 # Apply with merge mode (skip existing, add new)
 porta provision --file my-setup.yaml --mode merge
@@ -142,6 +142,7 @@ organizations:
 | `redirect_uris` | string[] | No | Allowed redirect URIs |
 | `response_types` | string[] | No | OAuth response types |
 | `scope` | string | No | Space-separated scope string |
+| `login_methods` | string[] | No | Per-client login method override (null = inherit from org) |
 
 ### Role
 
@@ -157,7 +158,7 @@ organizations:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Display name |
-| `slug` | string | No | URL-friendly identifier |
+| `slug` | string | Yes | URL-friendly identifier |
 | `description` | string | No | Permission description |
 
 ### Claim Definition
@@ -165,8 +166,8 @@ organizations:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Display name |
-| `slug` | string | No | URL-friendly identifier |
-| `claim_type` | string | No | Value type: `string`, `number`, `boolean`, `json` |
+| `slug` | string | Yes | URL-friendly identifier |
+| `claim_type` | string | Yes | Value type: `string`, `number`, `boolean`, `json` |
 | `description` | string | No | Claim description |
 
 ### Config

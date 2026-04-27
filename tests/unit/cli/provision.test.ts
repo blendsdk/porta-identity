@@ -516,4 +516,47 @@ describe('parseProvisioningFile', () => {
       fs.unlinkSync(ymlPath);
     }
   });
+
+  it('throws on malformed YAML content', () => {
+    const badYamlPath = path.join(testDir, 'provision-bad.yaml');
+    // Invalid YAML: tabs mixed with spaces, unclosed quotes
+    fs.writeFileSync(badYamlPath, ':\n  - :\n    bad: [unclosed\n  "no end');
+    try {
+      expect(() => parseProvisioningFile(badYamlPath)).toThrow();
+    } finally {
+      fs.unlinkSync(badYamlPath);
+    }
+  });
+
+  it('throws on malformed JSON content', () => {
+    const badJsonPath = path.join(testDir, 'provision-bad.json');
+    fs.writeFileSync(badJsonPath, '{ "version": "1.0", organizations: }');
+    try {
+      expect(() => parseProvisioningFile(badJsonPath)).toThrow();
+    } finally {
+      fs.unlinkSync(badJsonPath);
+    }
+  });
+
+  it('handles empty YAML file (returns undefined/null)', () => {
+    const emptyPath = path.join(testDir, 'provision-empty.yaml');
+    fs.writeFileSync(emptyPath, '');
+    try {
+      const result = parseProvisioningFile(emptyPath);
+      // Empty YAML parses to undefined — schema validation catches this downstream
+      expect(result === undefined || result === null).toBe(true);
+    } finally {
+      fs.unlinkSync(emptyPath);
+    }
+  });
+
+  it('handles empty JSON file (throws parse error)', () => {
+    const emptyJsonPath = path.join(testDir, 'provision-empty.json');
+    fs.writeFileSync(emptyJsonPath, '');
+    try {
+      expect(() => parseProvisioningFile(emptyJsonPath)).toThrow();
+    } finally {
+      fs.unlinkSync(emptyJsonPath);
+    }
+  });
 });
