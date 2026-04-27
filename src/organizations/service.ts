@@ -25,6 +25,8 @@ import type {
   BrandingInput,
   ListOrganizationsOptions,
   PaginatedResult,
+  CascadeCounts,
+  DestroyResult,
 } from './types.js';
 import {
   insertOrganization,
@@ -34,6 +36,8 @@ import {
   listOrganizations as repoList,
   listOrganizationsCursor as repoListCursor,
   slugExists,
+  hardDeleteOrganization,
+  getCascadeCounts as repoGetCascadeCounts,
 } from './repository.js';
 import type { ListOrganizationsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
@@ -541,4 +545,85 @@ export async function validateSlugAvailability(
   }
 
   return { isValid: true };
+}
+
+// ---------------------------------------------------------------------------
+// Destroy (hard delete)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get cascade counts for an organization (preview of what will be deleted).
+ *
+ * @param orgId - Organization UUID
+ * @returns Counts of each child entity type
+ */
+export async function getCascadeCounts(orgId: string): Promise<CascadeCounts> {
+  return repoGetCascadeCounts(orgId);
+}
+
+/**
+ * Destroy an organization and all its child entities via CASCADE.
+ *
+ * Safety checks:
+ * 1. Organization must exist
+ * 2. Organization must NOT be the super-admin org (application-level check)
+ * 3. Cascade counts are calculated before deletion (for audit trail)
+ * 4. Audit log is written BEFORE deletion (org_id becomes NULL after DELETE)
+ * 5. Hard-delete with SQL-level super-admin guard (defense in depth)
+ * 6. Cache invalidated after successful deletion
+ *
+ * @param idOrSlug - Organization ID or slug
+ * @param actorId - ID of the admin performing the destruction (for audit log)
+ * @returns Object with the deleted org and cascade counts
+ * @throws OrganizationNotFoundError if org doesn't exist
+ * @throws OrganizationValidationError if org is super-admin
+ */
+export async function destroyOrganization(
+  idOrSlug: string,
+  actorId?: string,
+): Promise<DestroyResult> {
+  // 1. Resolve org (try by ID first, then by slug)
+  let org = await findOrganizationById(idOrSlug);
+  if (!org) {
+    org = await findOrganizationBySlug(idOrSlug);
+  }
+  if (!org) {
+    throw new OrganizationNotFoundError(idOrSlug);
+  }
+
+  // 2. Super-admin protection (application-level check)
+  if (org.isSuperAdmin) {
+    throw new OrganizationValidationError(
+      'Cannot destroy the super-admin organization',
+    );
+  }
+
+  // 3. Count cascade targets (for audit trail and response)
+  const cascadeCounts = await repoGetCascadeCounts(org.id);
+
+  // 4. Write audit log BEFORE deletion (org_id will be SET NULL after delete)
+  await writeAuditLog({
+    organizationId: org.id,
+    actorId,
+    eventType: 'org.destroyed',
+    eventCategory: 'admin',
+    metadata: {
+      name: org.name,
+      slug: org.slug,
+      cascadeCounts,
+    },
+  });
+
+  // 5. Hard-delete (CASCADE handles children)
+  const deleted = await hardDeleteOrganization(org.id);
+  if (!deleted) {
+    throw new OrganizationValidationError(
+      'Failed to delete organization — it may be the super-admin org',
+    );
+  }
+
+  // 6. Invalidate cache
+  await invalidateOrganizationCache(org.slug, org.id);
+
+  return { organization: org, cascadeCounts };
 }

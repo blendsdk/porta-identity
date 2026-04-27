@@ -192,3 +192,23 @@ export function mapRowToOrganization(row: OrganizationRow): Organization {
     updatedAt: row.updated_at,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Destroy operation types
+// ---------------------------------------------------------------------------
+
+/** Counts of child entities that will be cascade-deleted with an organization. */
+export interface CascadeCounts {
+  applications: number;
+  clients: number;
+  users: number;
+  roles: number;
+  permissions: number;
+  claim_definitions: number;
+}
+
+/** Result of a successful organization destroy operation. */
+export interface DestroyResult {
+  organization: Organization;
+  cascadeCounts: CascadeCounts;
+}

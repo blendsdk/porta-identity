@@ -313,5 +313,40 @@ export function createOrganizationRouter(): Router {
     }
   });
 
+  // -------------------------------------------------------------------------
+  // DELETE /:idOrSlug — Permanently destroy organization (cascade)
+  // -------------------------------------------------------------------------
+  router.delete('/:idOrSlug', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
+    try {
+      const { idOrSlug } = ctx.params;
+      const dryRun = ctx.query['dry-run'] === 'true';
+
+      if (dryRun) {
+        // Resolve org and return cascade counts without deleting
+        const org = await organizationService.getOrganizationById(idOrSlug)
+          ?? await organizationService.getOrganizationBySlug(idOrSlug);
+        if (!org) {
+          ctx.throw(404, `Organization not found: ${idOrSlug}`);
+          return;
+        }
+        if (org.isSuperAdmin) {
+          ctx.throw(400, 'Cannot destroy the super-admin organization');
+          return;
+        }
+        const cascadeCounts = await organizationService.getCascadeCounts(org.id);
+        ctx.body = { dryRun: true, organization: org, cascadeCounts };
+        return;
+      }
+
+      const result = await organizationService.destroyOrganization(
+        idOrSlug,
+        ctx.state.adminUser?.id,
+      );
+      ctx.body = result;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
   return router;
 }

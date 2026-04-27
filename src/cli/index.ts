@@ -36,6 +36,7 @@ import { initCommand } from './commands/init.js';
 import { loginCommand } from './commands/login.js';
 import { logoutCommand } from './commands/logout.js';
 import { whoamiCommand } from './commands/whoami.js';
+import { provisionCommand } from './commands/provision.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -106,6 +107,8 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
     .command(appCommand)
     .command(clientCommand)
     .command(userCommand)
+    // Provisioning command
+    .command(provisionCommand)
     .demandCommand(1, 'You need to specify a command')
     .strict()
     .help()

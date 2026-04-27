@@ -439,3 +439,69 @@ export async function slugExists(slug: string, excludeId?: string): Promise<bool
   );
   return result.rows[0].exists;
 }
+
+// ---------------------------------------------------------------------------
+// Hard delete
+// ---------------------------------------------------------------------------
+
+/**
+ * Hard-delete an organization from the database.
+ *
+ * PostgreSQL CASCADE foreign keys automatically delete all child entities:
+ * applications, clients, users, roles, permissions, claim definitions,
+ * user claim values, user roles, branding assets, and admin sessions.
+ * Audit log entries have their organization_id set to NULL (ON DELETE SET NULL).
+ *
+ * The `AND is_super_admin = FALSE` clause is a database-level safety check —
+ * even if application code has a bug, the super-admin org cannot be deleted.
+ *
+ * @param id - Organization UUID
+ * @returns true if the row was deleted, false if not found or super-admin
+ */
+export async function hardDeleteOrganization(id: string): Promise<boolean> {
+  const pool = getPool();
+  const result = await pool.query(
+    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
+    [id],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * Count all child entities that will be cascade-deleted with an organization.
+ * Used for dry-run display and confirmation prompts.
+ *
+ * Runs all counts in a single query using scalar subqueries for efficiency.
+ * Roles, permissions, and claim definitions are counted via their parent
+ * application's organization_id join.
+ *
+ * @param orgId - Organization UUID
+ * @returns Counts of each child entity type
+ */
+export async function getCascadeCounts(orgId: string): Promise<{
+  applications: number;
+  clients: number;
+  users: number;
+  roles: number;
+  permissions: number;
+  claim_definitions: number;
+}> {
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT
+       (SELECT COUNT(*) FROM applications WHERE organization_id = $1)::int AS applications,
+       (SELECT COUNT(*) FROM clients WHERE organization_id = $1)::int AS clients,
+       (SELECT COUNT(*) FROM users WHERE organization_id = $1)::int AS users,
+       (SELECT COUNT(*) FROM roles r
+        JOIN applications a ON r.application_id = a.id
+        WHERE a.organization_id = $1)::int AS roles,
+       (SELECT COUNT(*) FROM permissions p
+        JOIN applications a ON p.application_id = a.id
+        WHERE a.organization_id = $1)::int AS permissions,
+       (SELECT COUNT(*) FROM claim_definitions cd
+        JOIN applications a ON cd.application_id = a.id
+        WHERE a.organization_id = $1)::int AS claim_definitions`,
+    [orgId],
+  );
+  return result.rows[0];
+}

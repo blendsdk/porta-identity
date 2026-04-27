@@ -7,7 +7,10 @@
  * - dry-run: show what would change without applying
  *
  * All changes are applied in a single PostgreSQL transaction for atomicity.
- * Entities are processed in dependency order to satisfy foreign key constraints.
+ * Entities are processed in 8 phases in dependency order:
+ * 1. Organizations, 2. Applications, 3. Clients, 4. Roles,
+ * 5. Permissions, 6. Claim definitions, 7. Role-permission mappings,
+ * 8. System config overrides.
  *
  * Security: Never imports sensitive data (passwords, secrets, keys).
  *
@@ -114,6 +117,20 @@ const claimDefinitionSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
 });
 
+/**
+ * Schema for role-permission mappings.
+ * Links roles to permissions after both are created during import.
+ * Uses slug-based references resolved against the appMap.
+ */
+const rolePermissionMappingSchema = z.object({
+  role_slug: z.string().min(1),
+  permission_slugs: z.array(z.string().min(1)),
+  application_slug: z.string().min(1),
+  organization_slug: z.string().min(1),
+});
+
+export type RolePermissionMappingInput = z.infer<typeof rolePermissionMappingSchema>;
+
 /** The full import manifest schema */
 export const importManifestSchema = z.object({
   version: z.string(),
@@ -124,6 +141,10 @@ export const importManifestSchema = z.object({
   roles: z.array(roleSchema).optional().default([]),
   permissions: z.array(permissionSchema).optional().default([]),
   claim_definitions: z.array(claimDefinitionSchema).optional().default([]),
+  // Phase 7: Role-permission mappings — applied after roles + permissions are created
+  role_permission_mappings: z.array(rolePermissionMappingSchema).optional().default([]),
+  // Phase 8: System config overrides — only updates existing keys
+  config: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 });
 
 export type ImportManifest = z.infer<typeof importManifestSchema>;
@@ -203,6 +224,16 @@ export async function importData(
     // Phase 6: Claim definitions — depend on applications
     for (const claim of manifest.claim_definitions ?? []) {
       await processClaimDefinition(client, claim, mode, result, orgMap, appMap);
+    }
+
+    // Phase 7: Role-permission mappings — depend on roles + permissions being created
+    for (const mapping of manifest.role_permission_mappings ?? []) {
+      await processRolePermissionMapping(client, mapping, mode, result, orgMap, appMap);
+    }
+
+    // Phase 8: System config overrides — only updates existing keys
+    for (const [key, value] of Object.entries(manifest.config ?? {})) {
+      await processConfigOverride(client, key, value, mode, result);
     }
 
     // Dry-run: rollback (no actual changes)
@@ -635,6 +666,176 @@ async function processClaimDefinition(
   } catch (err) {
     result.errors.push({
       type: 'claim_definition', slug: claim.slug,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+// ============================================================================
+// Phase 7 & 8 processors (role-permission mappings + system config)
+// ============================================================================
+
+/**
+ * Process a single role-permission mapping from the manifest.
+ *
+ * Resolves the role and each permission by slug within the application,
+ * then inserts the mapping rows. Uses ON CONFLICT DO NOTHING for
+ * idempotent merge-mode behavior.
+ *
+ * @param client - Database client within the transaction
+ * @param mapping - The role-permission mapping definition
+ * @param mode - Import mode (merge, overwrite, dry-run)
+ * @param result - Accumulator for import results
+ * @param _orgMap - Organization slug→ID map (unused but kept for signature consistency)
+ * @param appMap - Application "orgSlug:appSlug"→ID map
+ */
+async function processRolePermissionMapping(
+  client: any,
+  mapping: RolePermissionMappingInput,
+  mode: ImportMode,
+  result: ImportResult,
+  _orgMap: Map<string, string>,
+  appMap: Map<string, string>,
+): Promise<void> {
+  try {
+    // Resolve application ID from the composite key
+    const appKey = `${mapping.organization_slug}:${mapping.application_slug}`;
+    const appId = appMap.get(appKey);
+
+    if (!appId) {
+      result.errors.push({
+        type: 'role_permission_mapping',
+        slug: mapping.role_slug,
+        error: `Application not found: ${appKey}`,
+      });
+      return;
+    }
+
+    // Find role by slug within the application
+    const roleResult = await client.query(
+      'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
+      [mapping.role_slug, appId],
+    );
+    if (roleResult.rowCount === 0) {
+      result.errors.push({
+        type: 'role_permission_mapping',
+        slug: mapping.role_slug,
+        error: `Role not found: ${mapping.role_slug}`,
+      });
+      return;
+    }
+    const roleId = roleResult.rows[0].id;
+
+    // Process each permission in the mapping
+    for (const permSlug of mapping.permission_slugs) {
+      const permResult = await client.query(
+        'SELECT id FROM permissions WHERE slug = $1 AND application_id = $2',
+        [permSlug, appId],
+      );
+      if (permResult.rowCount === 0) {
+        result.errors.push({
+          type: 'role_permission_mapping',
+          slug: `${mapping.role_slug}→${permSlug}`,
+          error: `Permission not found: ${permSlug}`,
+        });
+        continue;
+      }
+      const permId = permResult.rows[0].id;
+
+      if (mode === 'dry-run') {
+        result.created.push({
+          type: 'role_permission_mapping',
+          slug: `${mapping.role_slug}→${permSlug}`,
+          name: `${mapping.role_slug} → ${permSlug}`,
+        });
+        continue;
+      }
+
+      // Insert mapping with ON CONFLICT DO NOTHING for idempotent merge behavior
+      await client.query(
+        `INSERT INTO role_permissions (role_id, permission_id)
+         VALUES ($1, $2)
+         ON CONFLICT (role_id, permission_id) DO NOTHING`,
+        [roleId, permId],
+      );
+
+      result.created.push({
+        type: 'role_permission_mapping',
+        slug: `${mapping.role_slug}→${permSlug}`,
+        name: `${mapping.role_slug} → ${permSlug}`,
+      });
+    }
+  } catch (err) {
+    result.errors.push({
+      type: 'role_permission_mapping',
+      slug: mapping.role_slug,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Process a single system config override from the manifest.
+ *
+ * Only updates existing config keys — does not create new ones.
+ * This prevents typos from silently creating invalid config entries.
+ * Only keys seeded by migration 011 (or added by future migrations) can be set.
+ *
+ * @param client - Database client within the transaction
+ * @param key - Config key to update
+ * @param value - New value (string, number, or boolean — stored as JSONB)
+ * @param mode - Import mode (merge, overwrite, dry-run)
+ * @param result - Accumulator for import results
+ */
+async function processConfigOverride(
+  client: any,
+  key: string,
+  value: string | number | boolean,
+  mode: ImportMode,
+  result: ImportResult,
+): Promise<void> {
+  try {
+    // Check if config key exists — we only update, never create
+    const existing = await client.query(
+      'SELECT id FROM system_config WHERE key = $1',
+      [key],
+    );
+
+    if (existing.rowCount === 0) {
+      result.errors.push({
+        type: 'config',
+        slug: key,
+        error: `Config key not found: ${key} (only existing keys can be updated)`,
+      });
+      return;
+    }
+
+    if (mode === 'dry-run') {
+      result.updated.push({
+        type: 'config',
+        slug: key,
+        name: key,
+        changes: [`value → ${String(value)}`],
+      });
+      return;
+    }
+
+    // Update existing config value — cast to JSONB via text
+    await client.query(
+      `UPDATE system_config SET value = to_jsonb($1::text), updated_at = NOW() WHERE key = $2`,
+      [String(value), key],
+    );
+
+    result.updated.push({
+      type: 'config',
+      slug: key,
+      name: key,
+      changes: [`value → ${String(value)}`],
+    });
+  } catch (err) {
+    result.errors.push({
+      type: 'config',
+      slug: key,
       error: err instanceof Error ? err.message : 'Unknown error',
     });
   }

@@ -28,12 +28,13 @@ import {
   printTable,
   success,
   warn,
+  error,
   outputResult,
   truncateId,
   formatDate,
   printTotal,
 } from '../output.js';
-import { confirm } from '../prompt.js';
+import { confirm, promptInput } from '../prompt.js';
 import { parseLoginMethodsFlag } from '../parsers.js';
 
 // ---------------------------------------------------------------------------
@@ -529,7 +530,80 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }, args.verbose);
         },
       )
-      .demandCommand(1, 'Specify an org subcommand: create, list, show, update, suspend, activate, archive, branding');
+      // ── destroy ─────────────────────────────────────────────────────
+      .command<OrgIdArgs>(
+        'destroy <id-or-slug>',
+        'Permanently destroy an organization and all its data (CASCADE)',
+        (y) =>
+          y.positional('id-or-slug', {
+            type: 'string',
+            demandOption: true,
+            description: 'Organization UUID or slug',
+          }),
+        async (argv) => {
+          const args = argv as unknown as OrgIdArgs;
+          await withErrorHandling(async () => {
+            await withHttpClient(args, async (client) => {
+              const idOrSlug = args['id-or-slug'];
+
+              // 1. Always fetch cascade counts first (dry-run query)
+              const preview = await client.delete<{
+                dryRun: boolean;
+                organization: OrgData;
+                cascadeCounts: {
+                  applications: number;
+                  clients: number;
+                  users: number;
+                  roles: number;
+                  permissions: number;
+                  claim_definitions: number;
+                };
+              }>(
+                `/api/admin/organizations/${encodeURIComponent(idOrSlug)}?dry-run=true`,
+              );
+              const { organization: org, cascadeCounts: counts } = preview.data;
+
+              // 2. Display what will be destroyed
+              console.log('');
+              warn('This will PERMANENTLY destroy the following:');
+              console.log('');
+              console.log(`  Organization:      ${org.name} (${org.slug})`);
+              console.log(`  Applications:      ${counts.applications}`);
+              console.log(`  Clients:           ${counts.clients}`);
+              console.log(`  Users:             ${counts.users}`);
+              console.log(`  Roles:             ${counts.roles}`);
+              console.log(`  Permissions:       ${counts.permissions}`);
+              console.log(`  Claim Definitions: ${counts.claim_definitions}`);
+              console.log('');
+
+              // 3. If dry-run, stop here
+              if (args['dry-run']) {
+                warn('Dry run — no changes made.');
+                return;
+              }
+
+              // 4. Type-to-confirm (unless --force)
+              if (!args.force) {
+                const confirmSlug = await promptInput(
+                  `Type the organization slug "${org.slug}" to confirm destruction: `,
+                );
+                if (confirmSlug !== org.slug) {
+                  error('Slug does not match. Destruction cancelled.');
+                  return;
+                }
+              }
+
+              // 5. Execute destruction
+              await client.delete(
+                `/api/admin/organizations/${encodeURIComponent(idOrSlug)}`,
+              );
+
+              success(`Organization "${org.name}" and all its data have been permanently destroyed.`);
+            });
+          }, args.verbose);
+        },
+      )
+      .demandCommand(1, 'Specify an org subcommand: create, list, show, update, suspend, activate, archive, destroy, branding');
   },
   handler: () => {
     // No-op — subcommands handle execution
