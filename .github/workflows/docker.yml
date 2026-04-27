@@ -2,6 +2,7 @@
 # Porta Docker — Build & Push to Docker Hub
 #
 # Triggers:
+#   - workflow_dispatch: Manual trigger from GitHub Actions UI → "latest"
 #   - workflow_run: After "Build and Test" succeeds on main → "latest"
 #   - Git tag v* → semver tags (e.g. v1.2.3 → 1.2.3, 1.2, 1, latest)
 #
@@ -15,6 +16,9 @@
 name: Docker Release
 
 on:
+  # Manual trigger from GitHub Actions UI
+  workflow_dispatch:
+
   # Auto-publish after CI passes on main
   workflow_run:
     workflows: ["Build and Test"]
@@ -48,7 +52,7 @@ jobs:
         with:
           images: blendsdk/porta
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
