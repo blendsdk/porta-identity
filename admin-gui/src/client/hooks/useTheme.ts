@@ -3,18 +3,15 @@
  * Persists preference to localStorage, respects system preference as default.
  */
 
-import { useState, useEffect } from 'react';
-import { getTheme, type ThemeMode } from '../theme';
 import type { Theme } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
+import { getTheme, type ThemeMode } from '../theme';
 
 const STORAGE_KEY = 'porta-admin-theme';
 
 /** Detect system color scheme preference */
 function getSystemPreference(): ThemeMode {
-  if (
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  ) {
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     return 'dark';
   }
   return 'light';
@@ -46,6 +43,7 @@ export function useThemePreference(): {
 
   const toggleTheme = () => {
     setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+    window.location.reload(); // Reload to apply theme change globally
   };
 
   return { theme: getTheme(mode), mode, toggleTheme };
