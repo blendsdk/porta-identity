@@ -1,14 +1,14 @@
 /**
  * Playwright global setup — starts a real Porta server for UI tests.
  *
- * Reuses the shared server-setup module (same as E2E/pentest suites)
- * which handles the full startup sequence:
+ * Startup sequence:
  *   1. Sets test environment variables (DATABASE_URL, REDIS_URL, etc.)
  *   2. Connects to the test database and Redis
  *   3. Runs all migrations against the test database
- *   4. Initializes i18n and template engine
- *   5. Generates signing keys and loads OIDC TTL config
- *   6. Creates a Koa server with a real OIDC provider
+ *   4. Truncates all tables (clean slate for signing keys)
+ *   5. Initializes i18n and template engine
+ *   6. Generates signing keys and loads OIDC TTL config
+ *   7. Creates a Koa server with a real OIDC provider
  *
  * After the server starts, this module seeds test data (org, app,
  * client, user) using the integration test factories and exports
@@ -110,6 +110,11 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.SMTP_FROM = TEST_SMTP_FROM;
   process.env.COOKIE_KEYS = TEST_COOKIE_KEYS;
   process.env.ISSUER_BASE_URL = `http://localhost:${UI_TEST_PORT}`;
+  // 64 hex chars = 32-byte key for AES-256-GCM signing key encryption.
+  // Must be set explicitly — the DB may contain signing keys encrypted
+  // with a different key from a prior test suite run.
+  process.env.SIGNING_KEY_ENCRYPTION_KEY =
+    'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
 
   // ── Step 2: Dynamic imports ────────────────────────────────────────
   // Import after env vars are set so modules read correct config
@@ -130,19 +135,31 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // ── Step 4: Run migrations ─────────────────────────────────────────
   await runMigrations();
 
-  // ── Step 5: Initialize subsystems ──────────────────────────────────
+  // ── Step 5: Clean slate ────────────────────────────────────────────
+  // Truncate all tables BEFORE ensureSigningKeys() — the DB may contain
+  // signing keys encrypted with a different SIGNING_KEY_ENCRYPTION_KEY
+  // from a prior test run (e.g. `yarn test` uses a different key).
+  // Decrypting those with *this* run's key causes AES-GCM auth tag
+  // mismatch → SigningKeyCryptoError. Truncating first ensures
+  // ensureSigningKeys() auto-generates fresh keys with the correct key.
+  const { truncateAllTables, seedBaseData } = await import(
+    '../../integration/helpers/database.js'
+  );
+  await truncateAllTables();
+
+  // ── Step 6: Initialize subsystems ──────────────────────────────────
   await initI18n();
   await initTemplateEngine();
 
-  // ── Step 6: Signing keys & TTL config ──────────────────────────────
+  // ── Step 7: Signing keys & TTL config ──────────────────────────────
   const jwks = await ensureSigningKeys();
   const ttl = await loadOidcTtlConfig();
 
-  // ── Step 7: Create OIDC provider & Koa app ─────────────────────────
+  // ── Step 8: Create OIDC provider & Koa app ─────────────────────────
   const provider = await createOidcProvider({ jwks, ttl });
   const app = createApp(provider);
 
-  // ── Step 8: Start server on dedicated port ─────────────────────────
+  // ── Step 9: Start server on dedicated port ─────────────────────────
   server = app.listen(UI_TEST_PORT, () => {
     console.log(`[UI Test] Porta server listening on port ${UI_TEST_PORT}`);
   });
@@ -153,12 +170,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     else server!.on('listening', resolve);
   });
 
-  // ── Step 9: Seed test data ─────────────────────────────────────────
-  // Truncate existing data and re-seed base data for a clean slate
-  const { truncateAllTables, seedBaseData } = await import(
-    '../../integration/helpers/database.js'
-  );
-  await truncateAllTables();
+  // ── Step 10: Seed test data ────────────────────────────────────────
   await seedBaseData();
 
   // Create a full test tenant: org → app → public client (with secret) → user (with password)

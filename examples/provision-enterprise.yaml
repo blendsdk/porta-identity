@@ -1,0 +1,179 @@
+# Enterprise provisioning example
+# Full-featured setup with multiple applications, detailed RBAC,
+# custom claims, system configuration, and multiple clients per app.
+#
+# Usage:
+#   porta provision --file examples/provision-enterprise.yaml --dry-run
+#   porta provision --file examples/provision-enterprise.yaml
+
+version: "1.0"
+
+# ── System Configuration ─────────────────────────────────────
+config:
+  access_token_ttl: "3600"          # 1 hour
+  refresh_token_ttl: "604800"       # 7 days
+  session_ttl: "43200"              # 12 hours
+
+# ── Organizations ─────────────────────────────────────────────
+organizations:
+  - name: Enterprise Corp
+    slug: enterprise
+    default_locale: en
+    default_login_methods:
+      - password
+      - magic_link
+
+    applications:
+      # ── ERP Application ──────────────────────────────────────
+      - name: ERP System
+        slug: erp
+        description: Enterprise resource planning platform
+
+        clients:
+          - client_name: ERP Web Application
+            application_type: web
+            grant_types:
+              - authorization_code
+              - refresh_token
+            redirect_uris:
+              - https://erp.enterprise.com/callback
+              - https://erp-staging.enterprise.com/callback
+            response_types:
+              - code
+            scope: openid profile email erp:read erp:write
+
+          - client_name: ERP Mobile App
+            application_type: native
+            grant_types:
+              - authorization_code
+              - refresh_token
+            redirect_uris:
+              - com.enterprise.erp://callback
+            response_types:
+              - code
+            scope: openid profile email erp:read
+
+        permissions:
+          - name: View Finance
+            slug: view-finance
+          - name: Edit Finance
+            slug: edit-finance
+          - name: View HR
+            slug: view-hr
+          - name: Edit HR
+            slug: edit-hr
+          - name: View Inventory
+            slug: view-inventory
+          - name: Edit Inventory
+            slug: edit-inventory
+          - name: System Admin
+            slug: system-admin
+
+        roles:
+          - name: Finance Manager
+            slug: finance-manager
+            description: Full access to financial data
+            permissions:
+              - view-finance
+              - edit-finance
+
+          - name: HR Manager
+            slug: hr-manager
+            description: Full access to HR data
+            permissions:
+              - view-hr
+              - edit-hr
+
+          - name: Operations Manager
+            slug: operations-manager
+            description: Inventory and supply chain access
+            permissions:
+              - view-inventory
+              - edit-inventory
+
+          - name: Executive
+            slug: executive
+            description: Read-only access to all departments
+            permissions:
+              - view-finance
+              - view-hr
+              - view-inventory
+
+          - name: Super Admin
+            slug: super-admin
+            description: Full platform access
+            permissions:
+              - view-finance
+              - edit-finance
+              - view-hr
+              - edit-hr
+              - view-inventory
+              - edit-inventory
+              - system-admin
+
+        claim_definitions:
+          - name: Department
+            slug: department
+            claim_type: string
+            description: Employee department (Finance, HR, Operations, etc.)
+          - name: Employee ID
+            slug: employee-id
+            claim_type: string
+            description: Unique employee identifier
+          - name: Cost Center
+            slug: cost-center
+            claim_type: string
+            description: Cost center code for expense tracking
+          - name: Manager
+            slug: is-manager
+            claim_type: boolean
+            description: Whether the user is a people manager
+
+      # ── Customer Portal ──────────────────────────────────────
+      - name: Customer Portal
+        slug: customer-portal
+        description: Self-service portal for customers
+
+        clients:
+          - client_name: Customer Portal Web
+            application_type: web
+            grant_types:
+              - authorization_code
+            redirect_uris:
+              - https://customers.enterprise.com/callback
+            response_types:
+              - code
+            scope: openid profile email
+
+        permissions:
+          - name: View Orders
+            slug: view-orders
+          - name: Place Orders
+            slug: place-orders
+          - name: View Invoices
+            slug: view-invoices
+
+        roles:
+          - name: Customer
+            slug: customer
+            description: Standard customer access
+            permissions:
+              - view-orders
+              - place-orders
+              - view-invoices
+          - name: Customer Viewer
+            slug: customer-viewer
+            description: Read-only access for auditors
+            permissions:
+              - view-orders
+              - view-invoices
+
+        claim_definitions:
+          - name: Customer Tier
+            slug: customer-tier
+            claim_type: string
+            description: Customer service tier (bronze, silver, gold, platinum)
+          - name: Account Number
+            slug: account-number
+            claim_type: string
+            description: Customer account number

@@ -2,8 +2,9 @@
  * User-role assignment API routes.
  *
  * All routes are under `/api/admin/organizations/:orgId/users/:userId/roles`
- * and require super-admin authorization. Provides endpoints for managing
- * role assignments on a per-user basis and resolving effective permissions.
+ * and require admin authorization with granular permissions. Provides
+ * endpoints for managing role assignments on a per-user basis and
+ * resolving effective permissions.
  *
  * Route structure:
  *   GET    /              — List roles for a user
@@ -20,6 +21,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
@@ -62,9 +65,9 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 /**
  * Create the user-role assignment router.
  *
- * All routes require super-admin authorization. User-role assignments
- * are scoped to a user within an organization via :orgId and :userId
- * URL parameters.
+ * All routes require admin authorization with granular permissions.
+ * User-role assignments are scoped to a user within an organization
+ * via :orgId and :userId URL parameters.
  *
  * Prefix: /api/admin/organizations/:orgId/users/:userId/roles
  *
@@ -73,13 +76,13 @@ function handleError(ctx: { status: number; body: unknown; throw: (status: numbe
 export function createUserRoleRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations/:orgId/users/:userId/roles' });
 
-  // All routes require super-admin access
+  // All routes require admin authentication
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // GET / — List roles for user
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
       const roles = await userRoleService.getUserRoles(ctx.params.userId);
       ctx.body = { data: roles };
@@ -91,7 +94,7 @@ export function createUserRoleRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT / — Assign roles to user
   // -------------------------------------------------------------------------
-  router.put('/', async (ctx) => {
+  router.put('/', requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN), async (ctx) => {
     try {
       const body = roleIdsSchema.parse(ctx.request.body);
       await userRoleService.assignRolesToUser(ctx.params.userId, body.roleIds);
@@ -104,7 +107,7 @@ export function createUserRoleRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE / — Remove roles from user
   // -------------------------------------------------------------------------
-  router.delete('/', async (ctx) => {
+  router.delete('/', requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN), async (ctx) => {
     try {
       const body = roleIdsSchema.parse(ctx.request.body);
       await userRoleService.removeRolesFromUser(ctx.params.userId, body.roleIds);
@@ -118,7 +121,7 @@ export function createUserRoleRouter(): Router {
   // GET /permissions — List resolved permissions for user
   // Resolves all permissions across all assigned roles (deduplicated)
   // -------------------------------------------------------------------------
-  router.get('/permissions', async (ctx) => {
+  router.get('/permissions', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
       const permissions = await userRoleService.getUserPermissions(ctx.params.userId);
       ctx.body = { data: permissions };

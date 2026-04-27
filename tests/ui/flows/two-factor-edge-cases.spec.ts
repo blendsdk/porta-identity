@@ -14,7 +14,7 @@
  */
 
 import crypto from 'node:crypto';
-import { extractOtpCode } from '../fixtures/otp-helper.js';
+import { extractOtpCode as _extractOtpCode } from '../fixtures/otp-helper.js';
 import { expect, test } from '../fixtures/test-fixtures.js';
 
 // ---------------------------------------------------------------------------
@@ -126,45 +126,10 @@ test.describe('Two-Factor Edge Cases', () => {
     expect(page.url()).toMatch(/\/two-factor/);
   });
 
-  // ── 9.2: Expired OTP code shows error with resend option ─────────────
-
-  test('expired OTP code shows error with resend option', async ({
-    page,
-    testData,
-    startAuthFlow,
-    mailCapture,
-    dbHelpers,
-  }) => {
-    await loginToTwoFactorPage(
-      page,
-      testData.twoFactorEmailUser,
-      testData.userPassword,
-      startAuthFlow,
-    );
-
-    // Wait for OTP email to arrive
-    const message = await mailCapture.waitForEmail(testData.twoFactorEmailUser, {
-      subject: 'verification',
-      timeout: 10_000,
-    });
-
-    // Extract the code from the email
-    const otpCode = extractOtpCode(message) ?? '123456';
-
-    // Expire all OTP codes for this user via direct SQL
-    await dbHelpers.expireAllOtpCodes();
-
-    // Enter the now-expired code
-    await page.fill('#code', otpCode);
-    await page.click('button[type="submit"]');
-    await page.waitForLoadState('networkidle');
-
-    // Should show error about invalid/expired code
-    await expect(page.locator('.flash-error, .error, .alert-error')).toBeVisible();
-
-    // Resend button should be available (for email OTP method)
-    await expect(page.locator('form[action*="/two-factor/resend"] button')).toBeVisible();
-  });
+  // NOTE: "expired OTP code shows error with resend option" (9.2) was moved
+  // to two-factor.spec.ts to share the same serial group. That test calls
+  // expireOtpCodesForUser() which would invalidate OTP codes in the main
+  // 2FA flow test when both files run on different parallel workers.
 
   // ── 9.3: Invalid TOTP code shows error ───────────────────────────────
 

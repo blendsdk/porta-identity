@@ -2,13 +2,8 @@
 # Porta Docker — Build & Push to Docker Hub
 #
 # Triggers:
+#   - workflow_run: After "Build and Test" succeeds on main → "latest"
 #   - Git tag v* → semver tags (e.g. v1.2.3 → 1.2.3, 1.2, 1, latest)
-#   - Manual workflow_dispatch → "latest" + optional custom tag
-#
-# NOTE: Auto-publish on main branch CI pass is intentionally disabled.
-# While dev happens directly on main, Docker images should only be
-# published via manual dispatch or version tags. Re-enable the
-# workflow_run trigger when a release branch strategy is adopted.
 #
 # Also syncs docker/DOCKERHUB.md to the Docker Hub repo description.
 #
@@ -20,16 +15,15 @@
 name: Docker Release
 
 on:
+  # Auto-publish after CI passes on main
+  workflow_run:
+    workflows: ["Build and Test"]
+    types: [completed]
+    branches: [main]
+
   # Run directly on version tags (CI already passed on main before tagging)
   push:
     tags: ['v*']
-  # Manual trigger (operator takes responsibility for CI status)
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Image tag (e.g. "0.1.0"). Leave empty for "latest" only.'
-        required: false
-        default: ''
 
 concurrency:
   group: docker-${{ github.ref }}
@@ -39,6 +33,10 @@ jobs:
   build-and-push:
     name: Build & Push
     runs-on: ubuntu-latest
+    # Skip if triggered by workflow_run but CI failed
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v6
@@ -50,11 +48,10 @@ jobs:
         with:
           images: blendsdk/porta
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag == '' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
 
       # Set up multi-platform build support
       - name: Set up QEMU
@@ -84,7 +81,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       # Sync docker/DOCKERHUB.md to Docker Hub repo description
-      # Only runs on tag pushes (not manual dispatch)
+      # Only runs on tag pushes (not workflow_run)
       - name: Update Docker Hub description
         if: github.event_name == 'push'
         uses: peter-evans/dockerhub-description@v5

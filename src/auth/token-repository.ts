@@ -33,6 +33,19 @@ export interface TokenRecord {
   createdAt: Date;
 }
 
+/**
+ * Extended token record for invitation tokens with optional details.
+ *
+ * The details JSONB column stores pre-assignment metadata (roles, claims,
+ * personal message) that should be applied when the invitation is accepted.
+ */
+export interface InvitationTokenRecord extends TokenRecord {
+  /** JSONB details stored with the invitation (roles, claims, personalMessage, inviterName) */
+  details: Record<string, unknown> | null;
+  /** User ID of the admin who created this invitation */
+  invitedBy: string | null;
+}
+
 /** Raw database row shape (snake_case) from the token tables */
 interface TokenRow {
   id: string;
@@ -41,6 +54,12 @@ interface TokenRow {
   expires_at: Date;
   used_at: Date | null;
   created_at: Date;
+}
+
+/** Extended row shape for invitation_tokens with details column */
+interface InvitationTokenRow extends TokenRow {
+  details: Record<string, unknown> | null;
+  invited_by: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,4 +246,78 @@ export async function invalidateUserTokens(table: TokenTable, userId: string): P
   if (count > 0) {
     logger.debug({ table, userId, count }, 'User tokens invalidated');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Invitation-specific operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert an invitation token with optional details and inviter metadata.
+ *
+ * Unlike the generic insertToken(), this stores additional JSONB details
+ * (pre-assigned roles, claims, personal message) and tracks who sent the invite.
+ *
+ * @param userId - UUID of the invited user
+ * @param tokenHash - SHA-256 hex hash of the plaintext token
+ * @param expiresAt - When this invitation expires
+ * @param details - Optional JSONB details (roles, claims, personalMessage, inviterName)
+ * @param invitedBy - Optional UUID of the admin who created this invitation
+ */
+export async function insertInvitationToken(
+  userId: string,
+  tokenHash: string,
+  expiresAt: Date,
+  details?: Record<string, unknown> | null,
+  invitedBy?: string | null,
+): Promise<void> {
+  const pool = getPool();
+
+  await pool.query(
+    `INSERT INTO invitation_tokens (user_id, token_hash, expires_at, details, invited_by)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, tokenHash, expiresAt, details ? JSON.stringify(details) : null, invitedBy ?? null],
+  );
+
+  logger.debug({ userId, hasDetails: !!details }, 'Invitation token inserted');
+}
+
+/**
+ * Find a valid invitation token with its details metadata.
+ *
+ * Returns the full InvitationTokenRecord including the details JSONB
+ * column, which stores pre-assignment metadata for roles, claims, etc.
+ *
+ * @param tokenHash - SHA-256 hex hash to look up
+ * @returns The invitation token record with details, or null if not found/expired/used
+ */
+export async function findValidInvitationToken(
+  tokenHash: string,
+): Promise<InvitationTokenRecord | null> {
+  const pool = getPool();
+
+  const result = await pool.query<InvitationTokenRow>(
+    `SELECT id, user_id, token_hash, expires_at, used_at, created_at, details, invited_by
+     FROM invitation_tokens
+     WHERE token_hash = $1
+       AND used_at IS NULL
+       AND expires_at > NOW()`,
+    [tokenHash],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    userId: row.user_id,
+    tokenHash: row.token_hash,
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
+    details: row.details,
+    invitedBy: row.invited_by,
+  };
 }

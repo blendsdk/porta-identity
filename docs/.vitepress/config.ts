@@ -23,6 +23,10 @@ export default withMermaid(
         { text: 'Admin API', link: '/api/overview' },
         { text: 'CLI', link: '/cli/overview' },
         { text: 'Database', link: '/database/schema' },
+        {
+          text: 'Implementation Details',
+          link: '/implementation-details/',
+        },
       ],
 
       // ── Sidebar (multi-sidebar keyed by path prefix) ────────
@@ -46,6 +50,7 @@ export default withMermaid(
             text: 'Operations',
             items: [
               { text: 'Deployment', link: '/guide/deployment' },
+              { text: 'Admin GUI', link: '/guide/admin-gui' },
               { text: 'FAQ', link: '/guide/faq' },
             ],
           },
@@ -114,6 +119,7 @@ export default withMermaid(
               { text: 'Clients', link: '/cli/clients' },
               { text: 'Users', link: '/cli/users' },
               { text: 'Infrastructure', link: '/cli/infrastructure' },
+              { text: 'Provisioning', link: '/cli/provisioning' },
             ],
           },
         ],
@@ -124,6 +130,83 @@ export default withMermaid(
             items: [
               { text: 'Schema Overview', link: '/database/schema' },
               { text: 'Migrations', link: '/database/migrations' },
+            ],
+          },
+        ],
+
+        // ── Implementation Details (techdocs) ───────────────────
+        '/implementation-details/': [
+          {
+            text: 'Overview',
+            items: [
+              {
+                text: 'Introduction',
+                link: '/implementation-details/',
+              },
+            ],
+          },
+          {
+            text: 'Architecture',
+            items: [
+              {
+                text: 'System Overview',
+                link: '/implementation-details/architecture/system-overview',
+              },
+              {
+                text: 'Data Model',
+                link: '/implementation-details/architecture/data-model',
+              },
+              {
+                text: 'API Design',
+                link: '/implementation-details/architecture/api-design',
+              },
+              {
+                text: 'Infrastructure',
+                link: '/implementation-details/architecture/infrastructure',
+              },
+              {
+                text: 'Security',
+                link: '/implementation-details/architecture/security',
+              },
+            ],
+          },
+          {
+            text: 'Architecture Decisions',
+            items: [
+              {
+                text: 'Decision Log',
+                link: '/implementation-details/decisions/',
+              },
+            ],
+          },
+          {
+            text: 'Developer Guides',
+            items: [
+              {
+                text: 'Getting Started',
+                link: '/implementation-details/guides/getting-started',
+              },
+              {
+                text: 'Development Workflow',
+                link: '/implementation-details/guides/development',
+              },
+              {
+                text: 'Deployment',
+                link: '/implementation-details/guides/deployment',
+              },
+            ],
+          },
+          {
+            text: 'Reference',
+            items: [
+              {
+                text: 'Configuration',
+                link: '/implementation-details/reference/configuration',
+              },
+              {
+                text: 'Integrations',
+                link: '/implementation-details/reference/integrations',
+              },
             ],
           },
         ],

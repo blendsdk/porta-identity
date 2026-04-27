@@ -59,6 +59,7 @@ vi.mock('../../../../src/applications/index.js', () => ({
 
 vi.mock('../../../../src/clients/index.js', () => ({
   createClient: vi.fn(),
+  generateSecret: vi.fn(),
 }));
 
 vi.mock('../../../../src/users/index.js', () => ({
@@ -78,6 +79,13 @@ vi.mock('../../../../src/lib/signing-keys.js', () => ({
   ensureSigningKeys: vi.fn(),
 }));
 
+// Mock database — needed for system_config INSERT in Step 13
+vi.mock('../../../../src/lib/database.js', () => ({
+  getPool: vi.fn().mockReturnValue({
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports — AFTER mock definitions
 // ---------------------------------------------------------------------------
@@ -90,7 +98,7 @@ import {
   getApplicationBySlug,
   createApplication,
 } from '../../../../src/applications/index.js';
-import { createClient } from '../../../../src/clients/index.js';
+import { createClient, generateSecret } from '../../../../src/clients/index.js';
 import {
   createUser,
   reactivateUser,
@@ -103,6 +111,7 @@ import {
   assignRolesToUser,
 } from '../../../../src/rbac/index.js';
 import { ensureSigningKeys } from '../../../../src/lib/signing-keys.js';
+import { ALL_ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../../../../src/lib/admin-permissions.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
 
 // ---------------------------------------------------------------------------
@@ -141,12 +150,32 @@ const fakeAdminRole = {
 };
 
 const fakeAdminClient = {
-  id: 'client-admin-id',
+  id: 'client-cli-id',
   clientId: 'porta-cli-abc123',
   clientName: 'Porta Admin CLI',
   clientType: 'public' as const,
   applicationType: 'native' as const,
   status: 'active' as const,
+};
+
+/** Fake admin GUI confidential client (Step 7b in init) */
+const fakeGuiClient = {
+  id: 'client-gui-id',
+  clientId: 'porta-gui-xyz789',
+  clientName: 'Porta Admin GUI',
+  clientType: 'confidential' as const,
+  applicationType: 'web' as const,
+  status: 'active' as const,
+};
+
+/** Fake secret result returned by generateSecret for the GUI client */
+const fakeGuiSecretResult = {
+  id: 'secret-gui-id',
+  clientId: 'client-gui-id',
+  label: 'Initial secret (porta init)',
+  plaintext: 'super-secret-gui-plaintext-abc123',
+  expiresAt: null,
+  createdAt: new Date(),
 };
 
 const fakeAdminUser = {
@@ -206,10 +235,15 @@ describe('CLI Init Command', () => {
     );
     vi.mocked(getApplicationBySlug).mockResolvedValue(null);
     vi.mocked(createApplication).mockResolvedValue(fakeAdminApp as never);
-    vi.mocked(createClient).mockResolvedValue({
-      client: fakeAdminClient as never,
-      secret: null,
-    });
+
+    // createClient is called twice: first for CLI (public), then for GUI (confidential).
+    // Use mockResolvedValueOnce to return different clients per call.
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ client: fakeAdminClient as never, secret: null })
+      .mockResolvedValueOnce({ client: fakeGuiClient as never, secret: null });
+
+    // generateSecret is called once for the GUI confidential client
+    vi.mocked(generateSecret).mockResolvedValue(fakeGuiSecretResult as never);
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
     vi.mocked(reactivateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
@@ -248,32 +282,30 @@ describe('CLI Init Command', () => {
         }),
       );
 
-      expect(createPermission).toHaveBeenCalledTimes(8);
+      // Should create all 42 granular permissions
+      expect(createPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
       expect(createPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
-          slug: 'admin:organizations:manage',
+          slug: 'admin:org:create',
         }),
       );
       expect(createPermission).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: 'admin:system:manage' }),
+        expect.objectContaining({ slug: 'admin:audit:read' }),
       );
 
+      // Should create all 5 admin roles
+      expect(createRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
       expect(createRole).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
-          slug: 'porta-admin',
-          name: 'Porta Administrator',
+          slug: 'porta-super-admin',
+          name: 'Super Admin',
         }),
       );
 
-      expect(assignPermissionsToRole).toHaveBeenCalledWith(
-        'role-admin-id',
-        expect.arrayContaining([
-          'perm-1', 'perm-2', 'perm-3', 'perm-4',
-          'perm-5', 'perm-6', 'perm-7', 'perm-8',
-        ]),
-      );
+      // Should assign permissions to each role
+      expect(assignPermissionsToRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
 
       expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -304,6 +336,80 @@ describe('CLI Init Command', () => {
       ]);
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Admin GUI client creation (Step 7b)
+  // -------------------------------------------------------------------------
+
+  describe('admin GUI client creation', () => {
+    it('should create a confidential GUI client after the CLI client', async () => {
+      await runInit(createArgv());
+
+      // createClient should be called twice — CLI first, then GUI
+      expect(createClient).toHaveBeenCalledTimes(2);
+
+      // First call: CLI public client
+      expect(createClient).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          clientName: 'Porta Admin CLI',
+          clientType: 'public',
+          applicationType: 'native',
+          requirePkce: true,
+        }),
+      );
+
+      // Second call: GUI confidential client
+      expect(createClient).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          organizationId: 'org-super-admin-id',
+          applicationId: 'app-admin-id',
+          clientName: 'Porta Admin GUI',
+          clientType: 'confidential',
+          applicationType: 'web',
+          redirectUris: ['http://localhost:4002/auth/callback'],
+          postLogoutRedirectUris: ['http://localhost:4002'],
+          grantTypes: ['authorization_code', 'refresh_token'],
+          scope: 'openid profile email offline_access',
+          requirePkce: false,
+          tokenEndpointAuthMethod: 'client_secret_post',
+          loginMethods: ['magic_link'],
+        }),
+      );
+    });
+
+    it('should generate a secret for the GUI client', async () => {
+      await runInit(createArgv());
+
+      // generateSecret should be called once with the GUI client's DB ID
+      expect(generateSecret).toHaveBeenCalledOnce();
+      expect(generateSecret).toHaveBeenCalledWith(
+        'client-gui-id',
+        { label: 'Initial secret (porta init)' },
+      );
+    });
+
+    it('should display a warning about saving the GUI client secret', async () => {
+      await runInit(createArgv());
+
+      // The warn() call includes a message about saving the secret
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Save this secret'),
+      );
+    });
+
+    it('should not generate a secret for the CLI public client', async () => {
+      await runInit(createArgv());
+
+      // generateSecret is called only for the GUI client, not the CLI client.
+      // Verify it was called with the GUI client ID, not the CLI client ID.
+      expect(generateSecret).not.toHaveBeenCalledWith(
+        'client-cli-id',
+        expect.anything(),
+      );
     });
   });
 

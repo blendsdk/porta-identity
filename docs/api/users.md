@@ -38,15 +38,72 @@ POST /api/admin/organizations/:orgId/users
 POST /api/admin/organizations/:orgId/users/invite
 ```
 
-Creates a user with `invited` status and sends an invitation email.
+**Permission:** `user:invite`
+
+Creates a user (if they don't exist) and sends an enhanced invitation email. Supports optional personal message, role/claim pre-assignment, and inviter tracking. Pre-assigned roles and claims are stored in the invitation token and automatically applied when the user accepts the invitation.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `email` | string | ✅ | Email address |
-| `given_name` | string | | First name |
-| `family_name` | string | | Last name |
+| `displayName` | string | | Display name for the invitation email |
+| `personalMessage` | string | | Personal message from the admin (max 500 chars, included in email) |
+| `roles` | array | | Roles to pre-assign on acceptance |
+| `roles[].applicationId` | uuid | ✅ | Application the role belongs to |
+| `roles[].roleId` | uuid | ✅ | Role ID to assign |
+| `claims` | array | | Custom claim values to pre-assign on acceptance |
+| `claims[].applicationId` | uuid | ✅ | Application the claim belongs to |
+| `claims[].claimDefinitionId` | uuid | ✅ | Claim definition ID |
+| `claims[].value` | any | ✅ | Claim value |
+| `locale` | string | | Locale for the invitation email (default: org default) |
 
-**Response:** `201 Created` — User with `invited` status.
+**Response:** `201 Created` (new user) or `200 OK` (existing user re-invited).
+
+```json
+{
+  "data": {
+    "userId": "uuid",
+    "email": "user@example.com",
+    "created": true,
+    "invitationSent": true,
+    "expiresAt": "2026-01-08T00:00:00.000Z"
+  }
+}
+```
+
+**Pre-assignment behavior:**
+- Referenced applications, roles, and claim definitions are validated at invite time
+- Pre-assignments are applied automatically when the invitation is accepted
+- If a role or claim is deleted between invitation and acceptance, that assignment is skipped (best-effort)
+- Previous pending invitation tokens for the same user are automatically invalidated
+
+## Preview Invitation Email
+
+```http
+POST /api/admin/organizations/:orgId/users/invite/preview
+```
+
+**Permission:** `user:invite`
+
+Renders the invitation email without sending it. Returns the HTML, plain text, and subject line for admin review before sending.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | ✅ | Recipient email (for template personalization) |
+| `displayName` | string | | Display name |
+| `personalMessage` | string | | Personal message to include |
+| `locale` | string | | Locale for rendering |
+
+**Response:** `200 OK`
+
+```json
+{
+  "data": {
+    "html": "<html>...</html>",
+    "text": "Plain text version...",
+    "subject": "John Doe has invited you to Acme Corp"
+  }
+}
+```
 
 ## List Users
 
@@ -191,4 +248,34 @@ Permanently anonymizes and deletes a user's personal data (GDPR Article 17 — r
 
 ::: danger Irreversible
 Data purge cannot be undone. Super-admin users cannot be purged as a safety measure.
+:::
+
+## Standalone User Routes
+
+In addition to the org-scoped routes above, a set of **standalone user routes** is available at `/api/admin/users/:userId`. These provide direct access to user detail and mutation operations by user ID, without requiring the organization ID in the URL path.
+
+**Base path:** `/api/admin/users/:userId`
+
+These routes are primarily used by the Admin GUI SPA, where the user detail page navigates by user ID only. They delegate to the same service functions and require the same admin authentication and RBAC permissions as the org-scoped routes.
+
+### Available Standalone Endpoints
+
+| Method | Path | Description | Permission |
+|--------|------|-------------|------------|
+| `GET` | `/:userId` | Get user by ID | `user:read` |
+| `PUT` | `/:userId` | Update user profile | `user:update` |
+| `POST` | `/:userId/deactivate` | Deactivate user | `user:suspend` |
+| `POST` | `/:userId/reactivate` | Reactivate user | `user:suspend` |
+| `POST` | `/:userId/activate` | Alias for reactivate | `user:suspend` |
+| `POST` | `/:userId/suspend` | Suspend user | `user:suspend` |
+| `POST` | `/:userId/unsuspend` | Unsuspend user | `user:suspend` |
+| `POST` | `/:userId/lock` | Lock user | `user:suspend` |
+| `POST` | `/:userId/unlock` | Unlock user | `user:suspend` |
+| `POST` | `/:userId/password` | Set password | `user:update` |
+| `DELETE` | `/:userId/password` | Clear password | `user:update` |
+| `POST` | `/:userId/verify-email` | Mark email verified | `user:update` |
+| `GET` | `/:userId/history` | Change history | `user:read` |
+
+::: tip
+The `activate` endpoint is an alias for `reactivate`, provided for client compatibility. Both perform the same `inactive → active` status transition.
 :::

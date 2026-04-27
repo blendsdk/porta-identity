@@ -139,6 +139,9 @@ export interface DbHelpers {
 
   /** Expire all active OTP codes (for testing expired-code error path) */
   expireAllOtpCodes(): Promise<void>;
+
+  /** Expire OTP codes for a specific user by email (worker-safe) */
+  expireOtpCodesForUser(email: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -450,6 +453,26 @@ async function expireAllOtpCodes(): Promise<void> {
   );
 }
 
+/**
+ * Expire OTP codes for a specific user identified by email.
+ *
+ * Worker-safe alternative to expireAllOtpCodes() — only affects the
+ * specified user's codes, preventing cross-worker interference when
+ * multiple 2FA test files run concurrently on different Playwright workers.
+ *
+ * @param email - Email address of the user whose OTP codes should be expired
+ */
+async function expireOtpCodesForUser(email: string): Promise<void> {
+  const db = getTestPool();
+  await db.query(
+    `UPDATE two_factor_otp_codes
+       SET expires_at = NOW() - INTERVAL '1 hour'
+     WHERE used_at IS NULL
+       AND user_id IN (SELECT id FROM users WHERE email = $1)`,
+    [email],
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Fixture Factory
 // ---------------------------------------------------------------------------
@@ -476,5 +499,6 @@ export function createDbHelpers(): DbHelpers {
     getUserPasswordHash,
     getOrgIdBySlug,
     expireAllOtpCodes,
+    expireOtpCodesForUser,
   };
 }

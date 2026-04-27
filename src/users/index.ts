@@ -26,6 +26,7 @@ export {
   getUserByEmail,
   updateUser,
   listUsersByOrganization,
+  listUsersCursor,
   deactivateUser,
   reactivateUser,
   suspendUser,
@@ -46,6 +47,10 @@ export {
 // Claims builder
 export { buildUserClaims, hasAddress } from './claims.js';
 export type { OidcClaims, OidcAddress } from './claims.js';
+
+// Cursor pagination types (re-exported for route consumers)
+export type { ListUsersCursorOptions } from './repository.js';
+export type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // Error types
 export { UserNotFoundError, UserValidationError } from './errors.js';

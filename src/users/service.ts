@@ -35,12 +35,14 @@ import {
   getPasswordHash,
   updateUser as repoUpdate,
   listUsers as repoList,
+  listUsersCursor as repoListCursor,
   emailExists,
   updateLoginStats,
   incrementFailedLoginCount,
   resetFailedLoginCount,
 } from './repository.js';
-import type { UpdateUserData } from './repository.js';
+import type { UpdateUserData, ListUsersCursorOptions } from './repository.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getCachedUserById, cacheUser, invalidateUserCache } from './cache.js';
 import { validatePassword, hashPassword, verifyPassword } from './password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -265,6 +267,19 @@ export async function listUsersByOrganization(
   options: UserListOptions,
 ): Promise<PaginatedResult<User>> {
   return repoList(options);
+}
+
+/**
+ * List users with cursor-based keyset pagination.
+ * Supports all existing filters (org scope, status, search, sort).
+ *
+ * @param options - Cursor, limit, filter, and sort options (orgId required)
+ * @returns Cursor-paginated result with nextCursor/hasMore
+ */
+export async function listUsersCursor(
+  options: ListUsersCursorOptions,
+): Promise<CursorPaginatedResult<User>> {
+  return repoListCursor(options);
 }
 
 // ---------------------------------------------------------------------------

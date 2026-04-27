@@ -166,3 +166,71 @@ GET /api/admin/organizations/:id/branding
 ```
 
 **Response:** `200 OK` — Branding fields for the organization.
+
+## Destroy Organization
+
+```http
+DELETE /api/admin/organizations/:idOrSlug
+```
+
+Permanently hard-deletes an organization and all child entities via PostgreSQL CASCADE. The super-admin organization is protected and cannot be deleted.
+
+**Permission:** `ORG_ARCHIVE`
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dry-run` | boolean | If `true`, return cascade counts without deleting |
+
+### Dry Run Response
+
+```http
+DELETE /api/admin/organizations/acme?dry-run=true
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "dryRun": true,
+  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
+  "cascadeCounts": {
+    "applications": 3,
+    "clients": 5,
+    "users": 42,
+    "roles": 8,
+    "permissions": 16,
+    "claim_definitions": 4
+  }
+}
+```
+
+### Destroy Response
+
+```http
+DELETE /api/admin/organizations/acme
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
+  "cascadeCounts": {
+    "applications": 3,
+    "clients": 5,
+    "users": 42,
+    "roles": 8,
+    "permissions": 16,
+    "claim_definitions": 4
+  }
+}
+```
+
+**Error responses:**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Attempting to destroy the super-admin organization |
+| `404` | Organization not found |

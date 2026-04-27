@@ -332,16 +332,20 @@ describe('admin auth middleware', () => {
         email: 'admin@example.com',
         organizationId: 'org-admin-uuid',
         roles: ['porta-admin'],
+        permissions: expect.any(Array),
       });
+      // Legacy porta-admin resolves to all permissions (super-admin equivalent)
+      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(0);
       // Verify the token was looked up with the correct value
       expect(mockAccessTokenFind).toHaveBeenCalledWith('valid-opaque-token');
     });
 
-    it('includes all role slugs in adminUser.roles', async () => {
+    it('includes only porta-* role slugs in adminUser.roles', async () => {
       setupHappyPath();
       vi.mocked(getUserRoles).mockResolvedValue([
-        { id: 'r1', applicationId: 'app-1', name: 'Admin', slug: 'porta-admin', description: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: 'r2', applicationId: 'app-1', name: 'Auditor', slug: 'auditor', description: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 'r1', applicationId: 'app-1', name: 'Admin', slug: 'porta-super-admin', description: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 'r2', applicationId: 'app-1', name: 'Auditor', slug: 'porta-auditor', description: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 'r3', applicationId: 'app-1', name: 'Custom', slug: 'custom-role', description: null, createdAt: new Date(), updatedAt: new Date() },
       ] as never);
 
       const middleware = requireAdminAuth();
@@ -352,7 +356,13 @@ describe('admin auth middleware', () => {
 
       expect(next).toHaveBeenCalledOnce();
       expect(ctx.state.adminUser).toBeDefined();
-      expect((ctx.state.adminUser as { roles: string[] }).roles).toEqual(['porta-admin', 'auditor']);
+      // Only porta-* roles are included, not custom-role
+      expect((ctx.state.adminUser as { roles: string[] }).roles).toEqual([
+        'porta-super-admin',
+        'porta-auditor',
+      ]);
+      // Permissions should be resolved from both admin roles
+      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(0);
     });
   });
 });

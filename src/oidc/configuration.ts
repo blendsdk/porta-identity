@@ -463,6 +463,7 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
     extraClientMetadata: {
       properties: [
         'organizationId',
+        'client_name',
         'urn:porta:allowed_origins',
         'urn:porta:client_type',
         // Per-client login method override. Raw value from findForOidc():

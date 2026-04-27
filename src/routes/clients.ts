@@ -32,6 +32,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
@@ -39,6 +41,8 @@ import * as organizationService from '../organizations/service.js';
 import type { Client } from '../clients/types.js';
 import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -104,6 +108,18 @@ const updateClientSchema = z.object({
 const listClientsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  organizationId: z.string().uuid().optional(),
+  applicationId: z.string().uuid().optional(),
+  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+/** Schema for cursor-based listing (keyset pagination) */
+const listClientsCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
   organizationId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
   status: z.enum(['active', 'inactive', 'revoked']).optional(),
@@ -195,7 +211,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create client
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE), async (ctx) => {
     try {
       const body = createClientSchema.parse(ctx.request.body);
 
@@ -227,11 +243,17 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List clients (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listClientsCursorSchema.parse(ctx.query);
+        const result = await clientService.listClientsCursor(query);
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listClientsSchema.parse(ctx.query);
-      // Use the listClientsByOrganization or generic listing
-      // The service accepts full ListClientsOptions
       const result = await clientService.listClientsByOrganization(
         query.organizationId ?? '',
         query,
@@ -245,22 +267,26 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id — Get client by ID
   // -------------------------------------------------------------------------
-  router.get('/:id', async (ctx) => {
+  router.get('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     const client = await clientService.getClientById(ctx.params.id);
     if (!client) {
       ctx.throw(404, 'Client not found');
       return; // unreachable — keeps TS narrowing happy across the call boundary
     }
+    setETagHeader(ctx, 'client', client.id, client.updatedAt);
     ctx.body = { data: await withEffectiveLoginMethods(client) };
   });
 
   // -------------------------------------------------------------------------
   // PUT /:id — Update client
   // -------------------------------------------------------------------------
-  router.put('/:id', async (ctx) => {
+  router.put('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       const body = updateClientSchema.parse(ctx.request.body);
+      const current = await clientService.getClientById(ctx.params.id);
+      if (current && !checkIfMatch(ctx, 'client', current.id, current.updatedAt, current)) return;
       const client = await clientService.updateClient(ctx.params.id, body);
+      setETagHeader(ctx, 'client', client.id, client.updatedAt);
       ctx.body = { data: await withEffectiveLoginMethods(client) };
     } catch (err) {
       handleError(ctx, err);
@@ -270,7 +296,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/revoke — Revoke client (permanent)
   // -------------------------------------------------------------------------
-  router.post('/:id/revoke', async (ctx) => {
+  router.post('/:id/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
     try {
       await clientService.revokeClient(ctx.params.id);
       ctx.status = 204;
@@ -282,7 +308,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/activate — Activate client
   // -------------------------------------------------------------------------
-  router.post('/:id/activate', async (ctx) => {
+  router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       await clientService.activateClient(ctx.params.id);
       ctx.status = 204;
@@ -294,7 +320,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/deactivate — Deactivate client
   // -------------------------------------------------------------------------
-  router.post('/:id/deactivate', async (ctx) => {
+  router.post('/:id/deactivate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       await clientService.deactivateClient(ctx.params.id);
       ctx.status = 204;
@@ -306,7 +332,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/secrets — Generate new secret
   // -------------------------------------------------------------------------
-  router.post('/:id/secrets', async (ctx) => {
+  router.post('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
       const body = createSecretSchema.parse(ctx.request.body);
       const secret = await secretService.generateAndStore(ctx.params.id, body);
@@ -323,15 +349,28 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id/secrets — List secrets (no hashes)
   // -------------------------------------------------------------------------
-  router.get('/:id/secrets', async (ctx) => {
+  router.get('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
     const secrets = await secretService.listByClient(ctx.params.id);
     ctx.body = { data: secrets };
   });
 
   // -------------------------------------------------------------------------
+  // GET /:id/history — Client change history
+  // -------------------------------------------------------------------------
+  router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('client', ctx.params.id, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
+  });
+
+  // -------------------------------------------------------------------------
   // POST /:id/secrets/:secretId/revoke — Revoke a secret
   // -------------------------------------------------------------------------
-  router.post('/:id/secrets/:secretId/revoke', async (ctx) => {
+  router.post('/:id/secrets/:secretId/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
     try {
       await secretService.revoke(ctx.params.secretId);
       ctx.status = 204;

@@ -23,6 +23,16 @@ vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
+// Mock ETag helpers (route tests don't exercise HTTP headers)
+vi.mock('../../../src/lib/etag.js', () => ({
+  setETagHeader: vi.fn(),
+  checkIfMatch: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../../../src/lib/entity-history.js', () => ({
+  getEntityHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
+}));
+
 import * as applicationService from '../../../src/applications/service.js';
 import { createApplicationRouter } from '../../../src/routes/applications.js';
 

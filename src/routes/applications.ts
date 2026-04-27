@@ -28,7 +28,11 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as applicationService from '../applications/service.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
+import { getEntityHistory } from '../lib/entity-history.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
 
 // ---------------------------------------------------------------------------
@@ -52,6 +56,16 @@ const updateApplicationSchema = z.object({
 const listApplicationsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['active', 'inactive', 'archived']).optional(),
+  search: z.string().max(255).optional(),
+  sortBy: z.enum(['name', 'created_at']).default('created_at'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+/** Schema for cursor-based listing (keyset pagination) */
+const listApplicationsCursorSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
   status: z.enum(['active', 'inactive', 'archived']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
@@ -118,7 +132,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create application
   // -------------------------------------------------------------------------
-  router.post('/', async (ctx) => {
+  router.post('/', requirePermission(ADMIN_PERMISSIONS.APP_CREATE), async (ctx) => {
     try {
       const body = createApplicationSchema.parse(ctx.request.body);
       const app = await applicationService.createApplication(body);
@@ -132,8 +146,16 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List applications (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     try {
+      // Cursor-based pagination when `cursor` or `limit` param is present
+      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+        const query = listApplicationsCursorSchema.parse(ctx.query);
+        const result = await applicationService.listApplicationsCursor(query);
+        ctx.body = result;
+        return;
+      }
+      // Default: offset-based pagination (backward compatible)
       const query = listApplicationsSchema.parse(ctx.query);
       const result = await applicationService.listApplications(query);
       ctx.body = result;
@@ -145,7 +167,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id — Get application by ID
   // -------------------------------------------------------------------------
-  router.get('/:id', async (ctx) => {
+  router.get('/:id', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     const param = ctx.params.id;
     // Support both UUID and slug lookups — CLI and API consumers may use either
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
@@ -154,17 +176,23 @@ export function createApplicationRouter(): Router {
       : await applicationService.getApplicationBySlug(param);
     if (!app) {
       ctx.throw(404, 'Application not found');
+      return; // unreachable — keeps TS narrowing happy
     }
+    setETagHeader(ctx, 'application', app.id, app.updatedAt);
     ctx.body = { data: app };
   });
 
   // -------------------------------------------------------------------------
   // PUT /:id — Update application
   // -------------------------------------------------------------------------
-  router.put('/:id', async (ctx) => {
+  router.put('/:id', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = updateApplicationSchema.parse(ctx.request.body);
+      // Check If-Match for optimistic concurrency (optional — backward compatible)
+      const current = await applicationService.getApplicationById(ctx.params.id);
+      if (current && !checkIfMatch(ctx, 'application', current.id, current.updatedAt, current)) return;
       const app = await applicationService.updateApplication(ctx.params.id, body);
+      setETagHeader(ctx, 'application', app.id, app.updatedAt);
       ctx.body = { data: app };
     } catch (err) {
       handleError(ctx, err);
@@ -174,7 +202,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/archive — Archive application
   // -------------------------------------------------------------------------
-  router.post('/:id/archive', async (ctx) => {
+  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.APP_ARCHIVE), async (ctx) => {
     try {
       await applicationService.archiveApplication(ctx.params.id);
       ctx.status = 204;
@@ -186,7 +214,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/activate — Activate application
   // -------------------------------------------------------------------------
-  router.post('/:id/activate', async (ctx) => {
+  router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.activateApplication(ctx.params.id);
       ctx.status = 204;
@@ -198,7 +226,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/deactivate — Deactivate application
   // -------------------------------------------------------------------------
-  router.post('/:id/deactivate', async (ctx) => {
+  router.post('/:id/deactivate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.deactivateApplication(ctx.params.id);
       ctx.status = 204;
@@ -210,7 +238,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/modules — Create module
   // -------------------------------------------------------------------------
-  router.post('/:id/modules', async (ctx) => {
+  router.post('/:id/modules', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = createModuleSchema.parse(ctx.request.body);
       const mod = await applicationService.createModule(ctx.params.id, body);
@@ -224,7 +252,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:id/modules — List modules for an application
   // -------------------------------------------------------------------------
-  router.get('/:id/modules', async (ctx) => {
+  router.get('/:id/modules', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
     const modules = await applicationService.listModules(ctx.params.id);
     ctx.body = { data: modules };
   });
@@ -232,7 +260,7 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id/modules/:moduleId — Update module
   // -------------------------------------------------------------------------
-  router.put('/:id/modules/:moduleId', async (ctx) => {
+  router.put('/:id/modules/:moduleId', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       const body = updateModuleSchema.parse(ctx.request.body);
       const mod = await applicationService.updateModule(ctx.params.moduleId, body);
@@ -243,9 +271,22 @@ export function createApplicationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
+  // GET /:id/history — Application change history
+  // -------------------------------------------------------------------------
+  router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
+    const { limit, after, event_type } = ctx.query as Record<string, string>;
+    const result = await getEntityHistory('application', ctx.params.id, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      after: after || undefined,
+      eventTypePrefix: event_type || undefined,
+    });
+    ctx.body = result;
+  });
+
+  // -------------------------------------------------------------------------
   // POST /:id/modules/:moduleId/deactivate — Deactivate module
   // -------------------------------------------------------------------------
-  router.post('/:id/modules/:moduleId/deactivate', async (ctx) => {
+  router.post('/:id/modules/:moduleId/deactivate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
     try {
       await applicationService.deactivateModule(ctx.params.moduleId);
       ctx.status = 204;

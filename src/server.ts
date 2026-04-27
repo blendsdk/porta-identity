@@ -38,7 +38,7 @@ import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
-import { createUserRouter } from './routes/users.js';
+import { createUserRouter, createStandaloneUserRouter } from './routes/users.js';
 import { createInteractionRouter } from './routes/interactions.js';
 import { createMagicLinkRouter } from './routes/magic-link.js';
 import { createPasswordResetRouter } from './routes/password-reset.js';
@@ -51,6 +51,12 @@ import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
 import { createKeysRouter } from './routes/keys.js';
 import { createAuditRouter } from './routes/audit.js';
+import { createStatsRouter } from './routes/stats.js';
+import { createSessionRouter, createUserSessionRouter } from './routes/sessions.js';
+import { createBulkRouter } from './routes/bulk.js';
+import { createExportRouter } from './routes/exports.js';
+import { createImportRouter } from './routes/imports.js';
+import { createBrandingRouter } from './routes/branding.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
@@ -239,6 +245,13 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
 
+  // Standalone user admin API — non-org-scoped user access by userId
+  // Mounted at /api/admin/users/:userId (see routes/users.ts)
+  // Used by the Admin GUI SPA for user detail/mutation operations
+  const standaloneUserRouter = createStandaloneUserRouter();
+  app.use(standaloneUserRouter.routes());
+  app.use(standaloneUserRouter.allowedMethods());
+
   // RBAC & Custom Claims admin APIs (RD-08) — requires admin authentication
   // Role management at /api/admin/applications/:appId/roles
   const roleRouter = createRoleRouter();
@@ -277,6 +290,48 @@ export function createApp(oidcProvider?: Provider): Koa {
   const auditRouter = createAuditRouter();
   app.use(auditRouter.routes());
   app.use(auditRouter.allowedMethods());
+
+  // Dashboard statistics API — requires admin authentication
+  // Mounted at /api/admin/stats (see routes/stats.ts)
+  const statsRouter = createStatsRouter();
+  app.use(statsRouter.routes());
+  app.use(statsRouter.allowedMethods());
+
+  // Session management API — requires admin authentication
+  // Mounted at /api/admin/sessions (see routes/sessions.ts)
+  const sessionRouter = createSessionRouter();
+  app.use(sessionRouter.routes());
+  app.use(sessionRouter.allowedMethods());
+
+  // User session revocation — requires admin authentication
+  // Mounted at /api/admin/users/:userId/sessions (see routes/sessions.ts)
+  const userSessionRouter = createUserSessionRouter();
+  app.use(userSessionRouter.routes());
+  app.use(userSessionRouter.allowedMethods());
+
+  // Bulk operations API — requires admin authentication
+  // Mounted at /api/admin/bulk (see routes/bulk.ts)
+  const bulkRouter = createBulkRouter();
+  app.use(bulkRouter.routes());
+  app.use(bulkRouter.allowedMethods());
+
+  // Branding assets API — requires admin authentication
+  // Mounted at /api/admin/organizations/:orgId/branding (see routes/branding.ts)
+  const brandingRouter = createBrandingRouter();
+  app.use(brandingRouter.routes());
+  app.use(brandingRouter.allowedMethods());
+
+  // Data export API — requires admin authentication
+  // Mounted at /api/admin/export (see routes/exports.ts)
+  const exportRouter = createExportRouter();
+  app.use(exportRouter.routes());
+  app.use(exportRouter.allowedMethods());
+
+  // Data import API — requires admin authentication
+  // Mounted at /api/admin/import (see routes/imports.ts)
+  const importRouter = createImportRouter();
+  app.use(importRouter.routes());
+  app.use(importRouter.allowedMethods());
 
   // OIDC interaction routes — mounted at /interaction/:uid/* (root level).
   // These must be at the root (not under /:orgSlug) because the provider sets

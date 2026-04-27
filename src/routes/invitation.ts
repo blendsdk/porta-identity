@@ -25,7 +25,9 @@ import type { Context } from 'koa';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
+import { findValidInvitationToken, markTokenUsed } from '../auth/token-repository.js';
+import type { InvitationTokenRecord } from '../auth/token-repository.js';
+import { getPool } from '../lib/database.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
@@ -144,7 +146,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // Validate the invitation token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidToken('invitation_tokens', tokenHash);
+  const tokenRecord = await findValidInvitationToken(tokenHash);
 
   if (!tokenRecord) {
     // Token is invalid, expired, or already used — show expired page
@@ -216,7 +218,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // Step 2: Re-validate the invitation token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidToken('invitation_tokens', tokenHash);
+  const tokenRecord = await findValidInvitationToken(tokenHash);
 
   if (!tokenRecord) {
     // Token expired between page load and form submission
@@ -260,6 +262,9 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     // Step 7: Mark invitation token as used (single-use)
     await markTokenUsed('invitation_tokens', tokenRecord.id);
 
+    // Step 7.5: Apply pre-assigned roles and claims from invitation details
+    await applyPreAssignments(tokenRecord, org.id);
+
     // Step 8: Audit log
     writeAuditLog({
       organizationId: org.id,
@@ -268,6 +273,10 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       eventCategory: 'authentication',
       description: 'Invitation accepted — account set up successfully',
       ipAddress: ctx.ip,
+      metadata: {
+        preAssignedRoles: (tokenRecord.details?.roles as unknown[] | undefined)?.length ?? 0,
+        preAssignedClaims: (tokenRecord.details?.claims as unknown[] | undefined)?.length ?? 0,
+      },
     });
 
     // Step 9: Render success page
@@ -326,4 +335,120 @@ async function renderInviteFormWithError(
   };
 
   await renderAndRespond(ctx, 'accept-invite', context, statusCode);
+}
+
+// ---------------------------------------------------------------------------
+// Pre-assignment application
+// ---------------------------------------------------------------------------
+
+/** Role pre-assignment shape stored in invitation token details */
+interface RolePreAssignment {
+  applicationId: string;
+  roleId: string;
+}
+
+/** Claim pre-assignment shape stored in invitation token details */
+interface ClaimPreAssignment {
+  applicationId: string;
+  claimDefinitionId: string;
+  value: unknown;
+}
+
+/**
+ * Apply pre-assigned roles and claims from the invitation token details.
+ *
+ * This runs after the invitation is accepted (password set, email verified,
+ * token marked as used). Pre-assignments are best-effort: if a role or claim
+ * no longer exists (admin deleted it between invitation and acceptance), the
+ * individual assignment is skipped and logged, but does not fail the overall
+ * invitation acceptance.
+ *
+ * Uses parameterized SQL — no string interpolation for security.
+ *
+ * @param tokenRecord - The invitation token record with details
+ * @param orgId - Organization ID for audit logging
+ */
+async function applyPreAssignments(
+  tokenRecord: InvitationTokenRecord,
+  orgId: string,
+): Promise<void> {
+  if (!tokenRecord.details) return;
+
+  const pool = getPool();
+  const userId = tokenRecord.userId;
+  const roles = tokenRecord.details.roles as RolePreAssignment[] | undefined;
+  const claims = tokenRecord.details.claims as ClaimPreAssignment[] | undefined;
+
+  // Apply role pre-assignments
+  if (roles?.length) {
+    for (const role of roles) {
+      try {
+        // Verify role still exists before assigning (defensive)
+        const roleCheck = await pool.query(
+          `SELECT id FROM roles WHERE id = $1 AND application_id = $2`,
+          [role.roleId, role.applicationId],
+        );
+        if (roleCheck.rows.length === 0) {
+          logger.warn({ roleId: role.roleId, userId }, 'Pre-assigned role no longer exists, skipping');
+          continue;
+        }
+
+        // Insert user-role mapping (ON CONFLICT DO NOTHING for idempotency)
+        await pool.query(
+          `INSERT INTO user_roles (user_id, role_id)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id, role_id) DO NOTHING`,
+          [userId, role.roleId],
+        );
+
+        logger.debug({ userId, roleId: role.roleId }, 'Pre-assigned role applied');
+      } catch (err) {
+        logger.warn({ err, userId, roleId: role.roleId }, 'Failed to apply pre-assigned role');
+      }
+    }
+  }
+
+  // Apply claim pre-assignments
+  if (claims?.length) {
+    for (const claim of claims) {
+      try {
+        // Verify claim definition still exists
+        const defCheck = await pool.query(
+          `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+          [claim.claimDefinitionId, claim.applicationId],
+        );
+        if (defCheck.rows.length === 0) {
+          logger.warn({ claimDefinitionId: claim.claimDefinitionId, userId }, 'Pre-assigned claim definition no longer exists, skipping');
+          continue;
+        }
+
+        // Upsert user claim value
+        await pool.query(
+          `INSERT INTO user_claim_values (user_id, claim_definition_id, value)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, claim_definition_id) DO UPDATE SET value = EXCLUDED.value`,
+          [userId, claim.claimDefinitionId, JSON.stringify(claim.value)],
+        );
+
+        logger.debug({ userId, claimDefinitionId: claim.claimDefinitionId }, 'Pre-assigned claim applied');
+      } catch (err) {
+        logger.warn({ err, userId, claimDefinitionId: claim.claimDefinitionId }, 'Failed to apply pre-assigned claim');
+      }
+    }
+  }
+
+  // Audit log pre-assignment application
+  if ((roles?.length ?? 0) > 0 || (claims?.length ?? 0) > 0) {
+    writeAuditLog({
+      organizationId: orgId,
+      userId,
+      eventType: 'user.invite.pre_assignments_applied',
+      eventCategory: 'authentication',
+      description: `Pre-assignments applied: ${roles?.length ?? 0} roles, ${claims?.length ?? 0} claims`,
+      metadata: {
+        roles: roles?.map(r => r.roleId) ?? [],
+        claims: claims?.map(c => c.claimDefinitionId) ?? [],
+      },
+    });
+  }
 }

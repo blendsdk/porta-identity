@@ -38,6 +38,7 @@ import {
   findApplicationBySlug,
   updateApplication as repoUpdateApp,
   listApplications as repoListApps,
+  listApplicationsCursor as repoListAppsCursor,
   slugExists,
   insertModule,
   findModuleById,
@@ -45,6 +46,8 @@ import {
   listModules as repoListModules,
   moduleSlugExists,
 } from './repository.js';
+import type { ListApplicationsCursorOptions } from './repository.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
   getCachedApplicationById,
   getCachedApplicationBySlug,
@@ -225,6 +228,19 @@ export async function listApplications(
   options: ListApplicationsOptions,
 ): Promise<PaginatedResult<Application>> {
   return repoListApps(options);
+}
+
+/**
+ * List applications with cursor-based keyset pagination.
+ * Provides stable, efficient pagination without COUNT queries.
+ *
+ * @param options - Cursor, limit, filter, and sort options
+ * @returns Cursor-paginated result with nextCursor/hasMore
+ */
+export async function listApplicationsCursor(
+  options: ListApplicationsCursorOptions,
+): Promise<CursorPaginatedResult<Application>> {
+  return repoListAppsCursor(options);
 }
 
 // ===========================================================================

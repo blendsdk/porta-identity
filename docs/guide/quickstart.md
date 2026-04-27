@@ -127,6 +127,9 @@ SIGNING_KEY_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string-for-signing-k
 
 # Auto-run database migrations on startup (set to "false" after initial setup)
 PORTA_AUTO_MIGRATE=true
+
+# Docker service mode (server = OIDC server, admin = Admin GUI)
+# PORTA_SERVICE=server
 ```
 
 **4. Start all services**

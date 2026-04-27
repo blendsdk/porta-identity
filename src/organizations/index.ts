@@ -17,6 +17,8 @@ export type {
   BrandingInput,
   ListOrganizationsOptions,
   PaginatedResult,
+  CascadeCounts,
+  DestroyResult,
 } from './types.js';
 
 // Service functions
@@ -31,8 +33,15 @@ export {
   archiveOrganization,
   restoreOrganization,
   listOrganizations,
+  listOrganizationsCursor,
   validateSlugAvailability,
+  getCascadeCounts,
+  destroyOrganization,
 } from './service.js';
+
+// Cursor pagination types (re-exported for route consumers)
+export type { ListOrganizationsCursorOptions } from './repository.js';
+export type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // Error types
 export {

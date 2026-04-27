@@ -1,0 +1,71 @@
+# Multi-organization provisioning example
+# Creates two separate organizations, each with their own applications.
+# Useful for SaaS platforms with multiple tenants.
+#
+# Usage:
+#   porta provision --file examples/provision-multi-org.yaml --dry-run
+#   porta provision --file examples/provision-multi-org.yaml
+
+version: "1.0"
+
+organizations:
+  # ── Tenant 1 ───────────────────────────────────────────────
+  - name: Acme Corp
+    slug: acme
+    default_locale: en
+
+    applications:
+      - name: CRM
+        slug: crm
+        description: Customer relationship management
+
+        clients:
+          - client_name: CRM Web App
+            application_type: web
+            grant_types: [authorization_code, refresh_token]
+            redirect_uris: [https://crm.acme.com/callback]
+            response_types: [code]
+            scope: openid profile email
+
+        permissions:
+          - { name: Read Contacts, slug: read-contacts }
+          - { name: Write Contacts, slug: write-contacts }
+          - { name: Delete Contacts, slug: delete-contacts }
+
+        roles:
+          - name: Sales Rep
+            slug: sales-rep
+            permissions: [read-contacts, write-contacts]
+          - name: Sales Manager
+            slug: sales-manager
+            permissions: [read-contacts, write-contacts, delete-contacts]
+
+  # ── Tenant 2 ───────────────────────────────────────────────
+  - name: Globex Industries
+    slug: globex
+    default_locale: en
+
+    applications:
+      - name: Inventory
+        slug: inventory
+        description: Warehouse inventory management
+
+        clients:
+          - client_name: Inventory Dashboard
+            application_type: web
+            grant_types: [authorization_code]
+            redirect_uris: [https://inv.globex.com/callback]
+            response_types: [code]
+            scope: openid profile
+
+        permissions:
+          - { name: View Stock, slug: view-stock }
+          - { name: Adjust Stock, slug: adjust-stock }
+
+        roles:
+          - name: Warehouse Staff
+            slug: warehouse-staff
+            permissions: [view-stock, adjust-stock]
+          - name: Auditor
+            slug: auditor
+            permissions: [view-stock]

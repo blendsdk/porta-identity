@@ -1,0 +1,39 @@
+version: "1.0"
+
+organizations:
+  - name: Test Org
+    slug: test-org
+    default_locale: en
+
+    applications:
+      - name: Test App
+        slug: test-app
+        description: A test application
+
+        clients:
+          - client_name: Test Web Client
+            application_type: web
+            grant_types: [authorization_code]
+            redirect_uris: [https://app.test.com/callback]
+            response_types: [code]
+            scope: openid profile email
+
+        permissions:
+          - name: Read
+            slug: read
+          - name: Write
+            slug: write
+
+        roles:
+          - name: Admin
+            slug: admin
+            description: Full access
+            permissions: [read, write]
+          - name: Viewer
+            slug: viewer
+            permissions: [read]
+
+        claim_definitions:
+          - name: Department
+            slug: department
+            claim_type: string

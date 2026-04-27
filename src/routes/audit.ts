@@ -2,7 +2,7 @@
  * Audit log admin API routes.
  *
  * All routes are under `/api/admin/audit` and require admin
- * authentication (Bearer JWT via requireAdminAuth).
+ * authorization with granular permissions.
  *
  * Route structure:
  *   GET    /                  — List audit log events (filtered, paginated)
@@ -21,6 +21,8 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
+import { requirePermission } from '../middleware/require-permission.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { getPool } from '../lib/database.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 
@@ -31,9 +33,9 @@ import { getSystemConfigNumber } from '../lib/system-config.js';
 /**
  * Create the audit log admin API router.
  *
- * All routes require admin authentication. Provides read-only access
- * to the `audit_log` table with optional filtering by event type,
- * organization, user, and date range.
+ * All routes require admin authorization with granular permissions.
+ * Provides read-only access to the `audit_log` table with optional
+ * filtering by event type, organization, user, and date range.
  *
  * @returns Koa router mounted at /api/admin/audit
  */
@@ -44,7 +46,7 @@ export function createAuditRouter(): Router {
   router.use(requireAdminAuth());
 
   // ── GET / — List audit log events ─────────────────────────────────
-  router.get('/', async (ctx) => {
+  router.get('/', requirePermission(ADMIN_PERMISSIONS.AUDIT_READ), async (ctx) => {
     // Parse and validate query parameters
     const limit = Math.min(
       Math.max(1, parseInt(ctx.query.limit as string, 10) || 50),
@@ -135,7 +137,7 @@ export function createAuditRouter(): Router {
     dryRun: z.boolean().optional().default(false),
   });
 
-  router.post('/cleanup', async (ctx) => {
+  router.post('/cleanup', requirePermission(ADMIN_PERMISSIONS.CONFIG_UPDATE), async (ctx) => {
     // Parse and validate request body (all fields optional)
     const body = cleanupSchema.parse(ctx.request.body ?? {});
 

@@ -14,6 +14,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { upsertSession, revokeSession } from '../lib/session-tracking.js';
 import type { AdapterPayload } from './postgres-adapter.js';
 
 /**
@@ -122,6 +123,23 @@ export class RedisAdapter {
     }
 
     await pipeline.exec();
+
+    // Fire-and-forget: mirror session data to PostgreSQL for admin listing.
+    // Only Session model needs tracking — other models (Interaction, AuthorizationCode, etc.)
+    // are short-lived artifacts that don't need admin visibility.
+    if (this.name === 'Session') {
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
+      upsertSession({
+        sessionId: id,
+        userId: payload.accountId as string | undefined,
+        organizationId: payload.orgId as string | undefined,
+        grantId: payload.grantId as string | undefined,
+        expiresAt,
+      }).catch(() => {
+        // Intentionally swallowed — tracking must never break the OIDC flow.
+        // upsertSession already logs warnings internally.
+      });
+    }
   }
 
   /**
@@ -243,6 +261,15 @@ export class RedisAdapter {
     }
 
     await redis.del(...keysToDelete);
+
+    // Fire-and-forget: mark session as revoked in PostgreSQL tracking table.
+    // Only Session model needs tracking — other model destroys don't need admin visibility.
+    if (this.name === 'Session') {
+      revokeSession(id).catch(() => {
+        // Intentionally swallowed — tracking must never break the OIDC flow.
+        // revokeSession already logs warnings internally.
+      });
+    }
   }
 
   /**

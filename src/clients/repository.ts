@@ -22,6 +22,8 @@ import type {
   PaginatedResult,
 } from './types.js';
 import { mapRowToClient } from './types.js';
+import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
 
 // ===========================================================================
 // Insert
@@ -351,6 +353,95 @@ export async function listClients(
     pageSize,
     totalPages: Math.ceil(total / pageSize),
   };
+}
+
+// ===========================================================================
+// List (cursor-based)
+// ===========================================================================
+
+/** Options for cursor-based client listing */
+export interface ListClientsCursorOptions {
+  cursor?: string;
+  limit?: number;
+  organizationId?: string;
+  applicationId?: string;
+  status?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * List clients with cursor-based keyset pagination.
+ *
+ * @param options - Cursor pagination, filter, and sort options
+ * @returns Cursor-paginated result with clients
+ */
+export async function listClientsCursor(
+  options: ListClientsCursorOptions,
+): Promise<CursorPaginatedResult<Client>> {
+  const pool = getPool();
+  const limit = Math.min(Math.max(1, options.limit ?? 25), 100);
+  const sortColumn = ALLOWED_SORT_COLUMNS[options.sortBy ?? 'created_at'] ?? 'created_at';
+  const direction = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
+  const comparator = direction === 'ASC' ? '>' : '<';
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let paramIndex = 1;
+
+  if (options.cursor) {
+    const decoded = decodeCursor(options.cursor);
+    if (decoded) {
+      if (decoded.s === null) {
+        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        params.push(decoded.i);
+        paramIndex++;
+      } else {
+        conditions.push(`(${sortColumn}, id) ${comparator} ($${paramIndex}, $${paramIndex + 1})`);
+        params.push(decoded.s, decoded.i);
+        paramIndex += 2;
+      }
+    }
+  }
+
+  if (options.organizationId) {
+    conditions.push(`organization_id = $${paramIndex}`);
+    params.push(options.organizationId);
+    paramIndex++;
+  }
+
+  if (options.applicationId) {
+    conditions.push(`application_id = $${paramIndex}`);
+    params.push(options.applicationId);
+    paramIndex++;
+  }
+
+  if (options.status) {
+    conditions.push(`status = $${paramIndex}`);
+    params.push(options.status);
+    paramIndex++;
+  }
+
+  if (options.search) {
+    conditions.push(`client_name ILIKE $${paramIndex}`);
+    params.push(`%${options.search}%`);
+    paramIndex++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const sql = `SELECT * FROM clients ${whereClause} ORDER BY ${sortColumn} ${direction}, id ${direction} LIMIT $${paramIndex}`;
+  params.push(limit + 1);
+
+  const result = await pool.query<ClientRow>(sql, params);
+  const rows = result.rows.map(mapRowToClient);
+
+  return buildCursorResult(
+    rows,
+    limit,
+    (c) => sortColumn === 'client_name' ? c.clientName : c.createdAt.toISOString(),
+    (c) => c.id,
+  );
 }
 
 // ===========================================================================

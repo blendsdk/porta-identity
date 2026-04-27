@@ -26,7 +26,14 @@ vi.mock('../../../src/auth/tokens.js', () => ({
 
 vi.mock('../../../src/auth/token-repository.js', () => ({
   findValidToken: vi.fn(),
+  findValidInvitationToken: vi.fn(),
   markTokenUsed: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn().mockReturnValue({
+    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+  }),
 }));
 
 vi.mock('../../../src/auth/i18n.js', () => ({
@@ -144,7 +151,7 @@ describe('invitation routes', () => {
 
   describe('GET /:orgSlug/auth/accept-invite/:token — showAcceptInvite', () => {
     it('should render accept-invite form for valid token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'GET', 'accept-invite');
@@ -160,7 +167,7 @@ describe('invitation routes', () => {
     });
 
     it('should render invite-expired page for invalid token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(null);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'GET', 'accept-invite');
@@ -182,8 +189,8 @@ describe('invitation routes', () => {
 
   describe('POST /:orgSlug/auth/accept-invite/:token — processAcceptInvite', () => {
     it('should set password, verify email, and render success page', async () => {
-      const tokenRecord = { id: 'tok-1', userId: 'user-uuid-1' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
+      const tokenRecord = { id: 'tok-1', userId: 'user-uuid-1', details: null, invitedBy: null };
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(tokenRecord as never);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
@@ -229,7 +236,7 @@ describe('invitation routes', () => {
     });
 
     it('should render invite-expired when token expired during submission', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(null);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
@@ -247,7 +254,7 @@ describe('invitation routes', () => {
     });
 
     it('should show error when passwords do not match', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
@@ -264,7 +271,7 @@ describe('invitation routes', () => {
     });
 
     it('should show error when password validation fails', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
       vi.mocked(passwordUtils.validatePassword).mockReturnValue({ isValid: false, error: 'Too short' });
 
       const router = createInvitationRouter();
@@ -282,7 +289,7 @@ describe('invitation routes', () => {
     });
 
     it('should show error when setUserPassword throws', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
       vi.mocked(userService.setUserPassword).mockRejectedValue(new Error('DB error'));
 
       const router = createInvitationRouter();

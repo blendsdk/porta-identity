@@ -13,10 +13,11 @@ porta init
 **What it does:**
 
 1. Creates the **super-admin organization** (`porta-admin`)
-2. Creates the **admin application** with the `porta-admin` RBAC role
-3. Creates a **PKCE-enabled OIDC client** for the CLI
-4. Creates the **first admin user** (prompts for email and password)
-5. Assigns the `porta-admin` role to the first user
+2. Creates the **admin application** with granular RBAC permissions and roles
+3. Creates a **PKCE-enabled public OIDC client** for the CLI
+4. Creates a **confidential OIDC client** for the [Admin GUI](/guide/admin-gui) (with client secret)
+5. Creates the **first admin user** (prompts for email and password)
+6. Assigns the `porta-admin` role to the first user
 
 **Mode:** Direct DB (connects directly to PostgreSQL and Redis)
 

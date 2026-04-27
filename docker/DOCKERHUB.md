@@ -153,7 +153,8 @@ docker exec -it porta-app porta init
 This interactive command creates:
 - The super-admin organization
 - The admin application with RBAC permissions
-- A PKCE client for CLI authentication
+- A PKCE public client for CLI authentication
+- A confidential client for the Admin GUI (with client secret)
 - Your first admin user (you'll be prompted for email, name, and password)
 
 Or run it non-interactively:
@@ -210,6 +211,22 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 | `LOG_LEVEL` | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
 | `PORTA_AUTO_MIGRATE` | `false` | Auto-run DB migrations on startup |
 | `PORTA_WAIT_TIMEOUT` | `60` | Seconds to wait for DB/Redis at startup |
+| `PORTA_SERVICE` | `server` | Service mode: `server` (OIDC) or `admin` (Admin GUI) |
+
+### Admin GUI Environment Variables
+
+> **Note:** The Admin GUI web interface is currently a placeholder. The BFF server is fully functional with OIDC authentication. The full admin dashboard is under development. Use the Porta CLI for full administration capabilities.
+
+When running the Admin GUI (`PORTA_SERVICE=admin`), these additional variables apply:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORTA_ADMIN_PORT` | `4002` | Admin GUI BFF listen port |
+| `PORTA_ADMIN_PORTA_URL` | — | **Required.** URL of the Porta OIDC server |
+| `PORTA_ADMIN_CLIENT_ID` | — | **Required.** OIDC client ID (from `porta init`) |
+| `PORTA_ADMIN_CLIENT_SECRET` | — | **Required.** OIDC client secret (from `porta init`) |
+| `PORTA_ADMIN_SESSION_SECRET` | — | **Required.** Session cookie signing secret (≥32 chars) |
+| `PORTA_ADMIN_PUBLIC_URL` | `http://localhost:4002` | Public-facing URL of the admin GUI |
 
 ### Generating Production Secrets
 
