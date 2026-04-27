@@ -2,6 +2,12 @@
 
 The Porta Admin GUI is a web-based administration console for managing your Porta deployment. It provides a React-based single-page application (SPA) served through a Koa Backend-for-Frontend (BFF) that handles authentication, session management, and API proxying.
 
+::: info Current State
+The Admin GUI web interface is currently a **placeholder**. The BFF server is fully functional with OIDC authentication, session management, CSRF protection, and API proxying. The full admin dashboard SPA is under active development.
+
+**For full administration capabilities, use the [Porta CLI](/cli/overview)** (`porta` command).
+:::
+
 ## Architecture
 
 ```
@@ -17,7 +23,7 @@ The Porta Admin GUI is a web-based administration console for managing your Port
                     └──────────────┘
 ```
 
-- **React SPA** — FluentUI v9 components, served as static files by the BFF
+- **React SPA** — FluentUI v9 placeholder (full dashboard under development)
 - **BFF Server** — Koa application that handles OIDC authentication, manages sessions in Redis, and proxies API requests to the Porta server
 - **Session Store** — Redis-backed sessions with configurable TTL
 
@@ -129,185 +135,99 @@ The Porta Docker image supports two service modes via `PORTA_SERVICE`:
 
 ## Security
 
-- **Session cookies** use `httpOnly`, `sameSite: lax`, and `secure` (in production) attributes
-- **CSRF protection** via double-submit cookie pattern on state-changing requests
-- **API proxy** adds Bearer tokens server-side — tokens never reach the browser
-- **Security headers** include CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
-- **Health check** at `GET /health` verifies Redis and Porta server connectivity
+The BFF implements multiple security layers:
+
+- **httpOnly session cookies** — tokens never reach the browser
+- **CSRF double-submit cookies** — protects state-changing requests
+- **Server-side Bearer injection** — API requests authenticated server-side
+- **Security headers** — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- **Session timeouts** — 30-minute idle, 8-hour absolute maximum
+- **PKCE (S256)** — Proof Key for Code Exchange for the authorization flow
+
+## BFF Server Components
+
+The BFF server (`admin-gui/src/server/`) includes:
+
+| Component | Description |
+|---|---|
+| `index.ts` | Server entry point, startup orchestration, graceful shutdown |
+| `config.ts` | Zod-validated environment configuration |
+| `oidc.ts` | OIDC client discovery and token management |
+| `session.ts` | Redis-backed session configuration |
+| `routes/auth.ts` | Login, callback, logout, session info endpoints |
+| `routes/api-proxy.ts` | Authenticated API proxy to Porta server |
+| `routes/health.ts` | BFF health check (Redis + Porta connectivity) |
+| `routes/spa.ts` | Static file serving + SPA fallback |
+| `middleware/csrf.ts` | CSRF double-submit cookie validation |
+| `middleware/security-headers.ts` | Security header injection |
+| `middleware/session-guard.ts` | Session authentication guard |
+| `middleware/request-logger.ts` | Request logging with request ID |
+
+## Foundational Client Components
+
+The following client-side components are included as a foundation for the SPA rebuild:
+
+| Component | Description |
+|---|---|
+| `api/client.ts` | Typed fetch wrapper with CSRF injection, 401 redirect, ETag support |
+| `hooks/useAuth.tsx` | Auth context — fetches `/auth/me`, manages login/logout, CSRF |
+| `hooks/useTheme.ts` | FluentUI light/dark theme with localStorage persistence |
+| `hooks/useToast.ts` | FluentUI toast notification wrapper |
+| `hooks/useCopyToClipboard.ts` | Clipboard API utility hook |
+| `components/ErrorBoundary.tsx` | React error boundary with retry UI |
+| `components/ToastProvider.tsx` | FluentUI Toaster wrapper |
+| `components/StatusBadge.tsx` | Status → colored FluentUI badge mapping |
+| `components/CopyButton.tsx` | Click-to-copy button |
+| `components/EmptyState.tsx` | Empty state display with icon + action |
+| `components/LoadingSkeleton.tsx` | Loading shimmer placeholders |
+| `components/ConfirmDialog.tsx` | Confirmation dialog |
+| `theme.ts` | FluentUI theme definitions |
+
+## Testing
+
+### BFF Server Tests
+
+The BFF server has comprehensive unit tests:
+
+```bash
+cd admin-gui
+yarn test
+```
+
+| Test File | Coverage |
+|---|---|
+| `tests/server/config.test.ts` | Configuration validation |
+| `tests/server/csrf.test.ts` | CSRF protection |
+| `tests/server/health.test.ts` | Health check endpoint |
+| `tests/server/security-headers.test.ts` | Security header injection |
+| `tests/server/session-guard.test.ts` | Session authentication |
+
+### Placeholder Test
+
+A basic placeholder test validates the SPA renders correctly:
+
+| Test File | Coverage |
+|---|---|
+| `tests/client/placeholder.test.tsx` | Renders placeholder page, auth controls, theme toggle |
 
 ## Troubleshooting
 
-### Common Issues
+### BFF won't start
 
-**"OIDC discovery failed"**
-- Verify `PORTA_ADMIN_PORTA_URL` points to a running Porta server
-- Check that the Porta server's health endpoint (`/health`) returns OK
+1. Verify Porta server is running and accessible at `PORTA_ADMIN_PORTA_URL`
+2. Verify Redis is running and accessible at `REDIS_URL`
+3. Check that `PORTA_ADMIN_CLIENT_ID` and `PORTA_ADMIN_CLIENT_SECRET` are correct
+4. Ensure `PORTA_ADMIN_SESSION_SECRET` is at least 32 characters
 
-**"Invalid client credentials"**
-- Verify `PORTA_ADMIN_CLIENT_ID` and `PORTA_ADMIN_CLIENT_SECRET` match the values from `porta init`
-- If the secret was lost, generate a new one: `porta client secret generate <client-id>`
+### Authentication fails
 
-**"Session store unavailable"**
-- Verify `REDIS_URL` points to a running Redis instance
-- Check Redis connectivity: `redis-cli -u $REDIS_URL ping`
+1. Verify the admin GUI client exists: `porta client list`
+2. Check redirect URI matches: should be `http://localhost:4002/auth/callback`
+3. Verify the organization slug is correct (auto-detected from super-admin org)
+4. Check Porta server logs for OIDC errors
 
-**"CSRF validation failed"**
-- Clear browser cookies and try again
-- Ensure `PORTA_ADMIN_PUBLIC_URL` matches the URL in the browser address bar
+### Cannot connect to Porta API
 
-## SPA Architecture
-
-The React SPA uses FluentUI v9 and follows a structured component architecture:
-
-### Layout Components
-
-| Component | Description |
-|-----------|-------------|
-| `AppShell` | Root layout with sidebar + top bar + main content area |
-| `Sidebar` | Collapsible navigation with grouped menu items and org switcher |
-| `TopBar` | Header with search (Cmd+K), notifications, theme toggle, user menu |
-| `Breadcrumbs` | Auto-generated from React Router matches |
-
-### Reusable Components
-
-| Component | Description |
-|-----------|-------------|
-| `EntityDataGrid` | Generic data table with search, sort, pagination, bulk selection |
-| `StatusBadge` | Colored badge for entity status (active, suspended, archived, etc.) |
-| `ConfirmDialog` | Modal confirmation with optional type-to-confirm for destructive actions |
-| `WizardStepper` | Multi-step form wizard with progress indicators |
-| `StatsCard` | Dashboard metric card with trend indicators |
-| `AuditTimeline` | Vertical timeline for entity change history |
-| `EmptyState` | Placeholder for pages/lists with no data |
-| `LoadingSkeleton` | Animated loading placeholders (table, card, detail variants) |
-| `CopyButton` | One-click clipboard copy with visual feedback |
-| `ErrorBoundary` | Catches rendering errors with retry UI |
-| `SearchOverlay` | Global search overlay (Cmd+K) |
-| `NotificationPanel` | Side drawer for system notifications |
-| `ToastProvider` | Toast notification system |
-
-### Hooks
-
-| Hook | Description |
-|------|-------------|
-| `useAuth` | Authentication state and user info from BFF |
-| `useOrgContext` | Current organization selection (persisted to localStorage) |
-| `useTheme` | FluentUI theme preference (light/dark/system) |
-| `useKeyboardShortcut` | Global keyboard shortcut handler |
-| `useCopyToClipboard` | Clipboard copy with feedback state |
-| `useToast` | Toast notification dispatch |
-
-### API Client Layer
-
-The SPA communicates with the Porta server through the BFF proxy. The API client (`src/client/api/client.ts`) provides:
-
-- **CSRF protection** — Automatically includes `X-CSRF-Token` header on state-changing requests
-- **Auth handling** — Redirects to `/auth/login` on 401 responses
-- **ETag support** — `apiRequestWithEtag()` for optimistic concurrency
-- **Typed convenience methods** — `api.get()`, `api.post()`, `api.patch()`, `api.del()`
-
-Domain-specific React Query hooks are provided for all entity types: organizations, applications, clients, users, roles, permissions, custom claims, sessions, audit, config, signing keys, stats, and import/export.
-
-### Entity Management Pages
-
-The SPA includes full CRUD management pages for all core entities:
-
-| Entity | List Route | Detail Route | Features |
-|--------|------------|--------------|----------|
-| **Organizations** | `/organizations` | `/organizations/:orgId` | Search, status filter, status transitions (suspend/activate/archive), create form, detail tabs (overview, applications, clients, users, branding, history) |
-| **Applications** | `/applications` | `/applications/:appId` | Org filter, search, status filter, create form, detail tabs (overview, modules, clients, roles, permissions, claims, history) |
-| **Clients** | `/clients` | `/clients/:clientId` | App filter, search, type filter, create form, detail tabs (overview, secrets, settings, history) |
-| **Users** | `/users` | `/users/:userId` | Org filter, search, status filter, create/invite forms, detail tabs (overview, roles, claims, sessions, 2FA, history) |
-| **Roles** | `/roles` | `/roles/:roleId` | App-scoped list, search, detail tabs (overview, permissions checkbox grid, users, history), permission matrix view at `/roles/matrix` |
-| **Permissions** | `/permissions` | `/permissions/:permissionId` | App-scoped list, search, detail tabs (overview, roles, history) |
-| **Custom Claims** | `/claims` | `/claims/:claimId` | App-scoped list, search, value type badges, token inclusion indicators, detail tabs (overview, history) |
-
-All entity pages follow a consistent pattern:
-- **List pages** use app/org filter dropdowns, client-side search, and table-based layouts with clickable rows
-- **Detail pages** use `EntityDetailTabs` for tabbed content with action buttons (archive with type-to-confirm)
-- **History tabs** show audit timeline entries filtered by entity ID
-- **Create pages** use multi-field forms with Zod validation
-
-### System Feature Pages
-
-The SPA includes the following system-level admin pages:
-
-| Page | Route | Description |
-|------|-------|-------------|
-| **Dashboard** | `/` | System-wide or org-scoped stats cards, login activity chart (Recharts), recent activity feed, quick actions. Switches to org-scoped stats when an org is selected. |
-| **Audit Log** | `/audit` | Filterable audit trail with date range, event type, actor, entity type filters. Expandable rows show full JSON event details. Supports CSV export of filtered results. |
-| **Sessions** | `/sessions` | Active session list with auto-refresh (30s). Single revoke via ConfirmDialog, bulk revoke by user/org/all with TypeToConfirm for destructive "revoke all". |
-| **Configuration** | `/config` | System config key-value editor with inline edit, type indicators (string/number/boolean/duration), and confirm dialog for changes. |
-| **Signing Keys** | `/keys` | ES256 signing key management — key list with ID copy, generate new key, rotate keys (TypeToConfirm), JWKS endpoint URL with CopyButton. |
-| **Export** | `/import-export` | Multi-entity JSON export with entity type checkboxes and Blob-based file download. |
-| **Import** | `/import-export/import` | Drag-and-drop JSON file upload, dry-run preview table with entity counts, confirmed import with progress indicator and result summary. |
-| **Search Results** | `/search?q=...` | Full-page search results grouped by entity type, navigated from the SearchOverlay (Cmd+K). |
-| **Getting Started** | `/getting-started` | Setup wizard checklist (create org, app, client, invite user, configure branding) with localStorage progress tracking and dismiss functionality. |
-| **Admin Profile** | `/profile` | Tabbed profile page: edit name/email, change password (current + new + confirm), TOTP setup (QR code + 6-digit verification + disable). |
-
-### Testing
-
-```bash
-# Unit tests (Vitest — BFF + React components)
-cd admin-gui && yarn test
-
-# E2E tests (Playwright — full browser testing)
-cd admin-gui && yarn test:e2e
-
-# E2E tests in headed mode (visible browser)
-cd admin-gui && yarn test:e2e:headed
-```
-
-**Unit tests** (149 tests, 16 files) include server-side BFF tests (config, CSRF, health, security headers, session guard) and client-side component/hook tests (StatusBadge, EmptyState, StatsCard, AuditTimeline, API client, page rendering).
-
-**E2E tests** (54 spec files) use Playwright to test the full admin GUI in a real browser. The test suite is organized into:
-
-- **Existing tests** (22 spec files in `pages/`, `navigation/`, `auth/`, `workflows/`) — page rendering, navigation, login flow, and cross-page workflows
-- **New comprehensive operations tests** (32 spec files in `operations/`, `integration/`, `errors/`) — 224 tests covering CRUD operations, settings save, status transitions, BFF proxy verification, error handling, and security controls
-
-The test infrastructure includes:
-
-- Starts a real Porta server (port 49300) and BFF (port 49301) in-process
-- Seeds test data (admin user, organizations, applications, clients, users, roles, permissions, claim definitions, audit log entries)
-- Authenticates via the real magic-link flow using MailHog
-- Saves session state so all subsequent tests run authenticated
-- **Shared helpers** (`tests/e2e/helpers/`): UI operation helpers (navigation, forms, dialogs), API interceptors (capture requests, mock errors/timeouts), entity factories (programmatic CRUD via API)
-- **Test fixtures** (`tests/e2e/fixtures/`): seed data, test images for branding, test JSON for import
-
-**Test categories:**
-
-| Directory | Spec Files | Description |
-|-----------|-----------|-------------|
-| `operations/` | 25 | Entity CRUD, settings, transitions, branding, system pages |
-| `integration/` | 3 | BFF proxy methods, token refresh, CSRF protection |
-| `errors/` | 3 | Validation errors, API errors (4xx/5xx), network errors |
-| `pages/` | 14 | Page rendering and component display |
-| `navigation/` | 4 | Sidebar, breadcrumbs, topbar, direct URL |
-| `auth/` | 1 | Login redirect flow |
-| `workflows/` | 3 | Cross-page workflows (org lifecycle, error handling) |
-
-**Running tests by domain:**
-
-```bash
-# All new operation tests
-cd admin-gui && npx playwright test operations/ integration/ errors/
-
-# By entity domain
-npx playwright test operations/org-       # Organizations (29 tests)
-npx playwright test operations/app-       # Applications (20 tests)
-npx playwright test operations/client-    # Clients (18 tests)
-npx playwright test operations/user-      # Users (28 tests)
-npx playwright test operations/rbac-      # RBAC (28 tests)
-npx playwright test operations/claims-    # Custom Claims (11 tests)
-
-# System pages
-npx playwright test operations/dashboard operations/audit- operations/config-
-npx playwright test operations/keys- operations/sessions- operations/import- operations/search-
-
-# BFF integration & error handling
-npx playwright test integration/ errors/
-```
-
-**Bug inventory:** See `BUGS/admin-gui-test-inventory.md` for discovered issues.
-
-**Prerequisites for E2E tests:** Docker services must be running (`yarn docker:up` from the project root) for PostgreSQL, Redis, and MailHog.
+1. Verify `PORTA_ADMIN_PORTA_URL` is correct and reachable from the BFF
+2. In Docker, use the service name (e.g., `http://porta:3000`), not `localhost`
+3. Check that the BFF health endpoint reports both checks as "ok": `GET /health`

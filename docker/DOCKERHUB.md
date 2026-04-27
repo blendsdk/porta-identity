@@ -215,6 +215,8 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 
 ### Admin GUI Environment Variables
 
+> **Note:** The Admin GUI web interface is currently a placeholder. The BFF server is fully functional with OIDC authentication. The full admin dashboard is under development. Use the Porta CLI for full administration capabilities.
+
 When running the Admin GUI (`PORTA_SERVICE=admin`), these additional variables apply:
 
 | Variable | Default | Description |
