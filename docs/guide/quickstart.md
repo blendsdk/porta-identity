@@ -1,28 +1,77 @@
 # Quick Start
 
-Get Porta running locally in under 5 minutes. Choose the path that fits your goal:
+Get Porta running in 5 minutes with Docker.
 
-- **🐳 Docker Hub** (recommended) — Run Porta from Docker Hub with zero setup
-- **📦 Clone & Docker** — Clone the repo and use the included Docker Compose
-- **💻 Source** — Set up a development environment for contributing
-
-## Path 1: Docker Hub Quick Start {#docker-hub}
-
-The fastest way to try Porta. No git clone required — just create two files and run.
-
-### Prerequisites
+## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2+
 
-### Steps
+::: info Looking for other setup methods?
+This guide uses Docker Hub images for the fastest setup. For cloning the repo or developing from source, see [Setup Alternatives](./setup-alternatives.md).
+:::
 
-**1. Create a project directory**
+---
+
+## Step 1: Create a Project Directory
 
 ```bash
 mkdir porta && cd porta
 ```
 
-**2. Create `docker-compose.yml`**
+---
+
+## Step 2: Generate Required Secrets
+
+::: danger Required — Do Not Skip
+Porta requires **3 cryptographic secrets** to operate securely. These protect session cookies, 2FA secrets, and signing keys. **You must generate unique values** — do not use the defaults or placeholders.
+:::
+
+Run these commands to generate all three secrets:
+
+```bash
+# 1. Cookie signing key (base64, at least 32 chars)
+echo "COOKIE_KEYS=$(openssl rand -base64 32)"
+
+# 2. Two-Factor encryption key (64 hex chars = 32 bytes, AES-256-GCM)
+echo "TWO_FACTOR_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
+
+# 3. Signing key encryption key (64 hex chars = 32 bytes, AES-256-GCM)
+echo "SIGNING_KEY_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
+```
+
+**Save the output** — you'll paste these into your `.env` file in Step 4.
+
+| Secret | Purpose | Format |
+|--------|---------|--------|
+| `COOKIE_KEYS` | Signs OIDC session cookies | Base64 string, ≥32 chars |
+| `TWO_FACTOR_ENCRYPTION_KEY` | Encrypts TOTP authenticator secrets at rest | 64 hex characters (32 bytes) |
+| `SIGNING_KEY_ENCRYPTION_KEY` | Encrypts ES256 signing key private keys at rest | 64 hex characters (32 bytes) |
+
+---
+
+## Step 3: SMTP — Email is Required
+
+::: warning Porta requires a working SMTP server
+Magic links, user invitations, password resets, and email-based 2FA all send emails. Without SMTP, these features will fail silently.
+:::
+
+**For local development**, we include [MailHog](https://github.com/mailhog/MailHog) in the Docker Compose file below — it catches all outgoing emails and provides a web inbox at [http://localhost:8025](http://localhost:8025). No extra setup needed.
+
+**For production**, configure a real SMTP server:
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `SMTP_HOST` | `smtp.sendgrid.net` | SMTP server hostname |
+| `SMTP_PORT` | `587` | SMTP port (587 for STARTTLS, 465 for SSL) |
+| `SMTP_USER` | `apikey` | SMTP username |
+| `SMTP_PASS` | `SG.xxxxx` | SMTP password or API key |
+| `SMTP_FROM` | `noreply@yourdomain.com` | Sender email address |
+
+Popular options: [SendGrid](https://sendgrid.com/), [Amazon SES](https://aws.amazon.com/ses/), [Postmark](https://postmarkapp.com/), [Mailgun](https://www.mailgun.com/), or any SMTP-compatible service.
+
+---
+
+## Step 4: Create `docker-compose.yml`
 
 Create a file called `docker-compose.yml`:
 
@@ -80,90 +129,101 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── MailHog (dev email testing) ─────────────
+  mailhog:
+    image: mailhog/mailhog
+    container_name: porta-mailhog
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    profiles:
+      - dev
+
 volumes:
   porta_pgdata:
     driver: local
 ```
 
-**3. Create `.env`**
+::: tip MailHog for development
+Start with `docker compose --profile dev up -d` to include MailHog. Then open [http://localhost:8025](http://localhost:8025) to see all emails Porta sends.
+:::
 
-Create a `.env` file in the same directory:
+---
+
+## Step 5: Create `.env`
+
+Create a `.env` file and **paste in your generated secrets from Step 2**:
 
 ```env
-# Server
+# ── Server ────────────────────────────────────
 NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 
-# Database password (used by both Porta and PostgreSQL)
+# ── Database ──────────────────────────────────
 POSTGRES_PASSWORD=porta_secret
 
-# OIDC issuer — change to your public-facing URL
+# ── OIDC ──────────────────────────────────────
 ISSUER_BASE_URL=http://localhost:3000
 
-# Cookie signing key — CHANGE THIS in production!
-COOKIE_KEYS=CHANGE-ME-to-a-random-string-at-least-32-chars
+# ── Secrets (paste values from Step 2) ────────
+COOKIE_KEYS=<paste-your-cookie-key-here>
+TWO_FACTOR_ENCRYPTION_KEY=<paste-your-2fa-key-here>
+SIGNING_KEY_ENCRYPTION_KEY=<paste-your-signing-key-here>
 
-# Email (configure SMTP for magic links, invitations, password reset)
-SMTP_HOST=localhost
+# ── Email (MailHog for dev, real SMTP for prod)
+SMTP_HOST=mailhog
 SMTP_PORT=1025
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=noreply@porta.local
 
-# Logging
+# ── Logging ───────────────────────────────────
 LOG_LEVEL=info
 
-# Two-Factor Authentication — CHANGE THIS in production!
-TWO_FACTOR_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string
-
-# Signing Key Encryption — CHANGE THIS in production!
-# AES-256-GCM key for encrypting ES256 signing key private keys at rest.
-# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-SIGNING_KEY_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string-for-signing-keys
-
-# Reverse proxy — set to "true" when behind a TLS-terminating proxy
-# TRUST_PROXY=false
-
-# Auto-run database migrations on startup (set to "false" after initial setup)
+# ── Startup ───────────────────────────────────
 PORTA_AUTO_MIGRATE=true
-
-# Docker service mode (server = OIDC server, admin = Admin GUI)
-# PORTA_SERVICE=server
+TRUST_PROXY=false
 ```
 
-**4. Start all services**
+::: danger Replace the secret placeholders!
+Replace `<paste-your-cookie-key-here>`, `<paste-your-2fa-key-here>`, and `<paste-your-signing-key-here>` with the values you generated in Step 2. Porta will refuse to start with placeholder values in production.
+:::
+
+---
+
+## Step 6: Start Services
 
 ```bash
+# For development (with MailHog email testing):
+docker compose --profile dev up -d
+
+# For production (without MailHog):
 docker compose up -d
 ```
 
-This starts:
-- **porta** — The Porta OIDC provider (port 3000)
-- **postgres** — PostgreSQL 16 database
-- **redis** — Redis 7 cache
-
-**5. Wait for health checks**
+Wait a few seconds for PostgreSQL and Redis to become healthy, then verify:
 
 ```bash
-# Check that Porta is healthy
 curl http://localhost:3000/health
 ```
 
-You should see a JSON response with `"status": "ok"`. If the container is still starting,
-wait a few seconds — the entrypoint waits for PostgreSQL and Redis before starting Porta.
+You should see `{"status":"ok","database":"ok","redis":"ok"}`.
 
-**6. Bootstrap the admin system**
+---
+
+## Step 7: Bootstrap the Admin System
 
 ```bash
 docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
-- The super-admin organization
-- The admin application with RBAC permissions
-- A PKCE client for CLI authentication
-- Your first admin user (you'll be prompted for email, name, and password)
+- The **super-admin organization** (`porta-admin`)
+- The **admin application** with 42 RBAC permissions
+- A **PKCE client** for CLI authentication
+- A **confidential client** for the Admin GUI
+- Your **first admin user** (you'll be prompted for email, name, and password)
 
 You can also run it non-interactively:
 
@@ -175,8 +235,16 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
+Then authenticate the CLI:
+
+```bash
+docker exec -it porta-app porta login
+```
+
+The CLI prints an authorization URL — open it in your browser, log in, then paste the callback URL back into the terminal.
+
 ::: tip CLI Wrapper Script
-For an even cleaner experience, download [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh), save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
+Download [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh), save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then run:
 ```bash
 ./porta init
 ./porta login
@@ -184,247 +252,101 @@ For an even cleaner experience, download [`porta.sh`](https://github.com/blendsd
 ```
 :::
 
-**7. Authenticate the CLI**
-
-```bash
-docker exec -it porta-app porta login
-```
-
-Since you're running inside Docker, the CLI **automatically detects** the container and uses manual mode. It will print an authorization URL — open it in your host browser, log in with the admin credentials you just created, then paste the callback URL back into the terminal.
-
-```
-Container environment detected — using manual login mode.
-
-Open this URL in your browser to log in:
-  http://localhost:3000/porta-admin/auth?...
-
-Paste the callback URL: <paste URL from browser address bar>
-
-✅ Logged in as admin@example.com
-```
-
-After logging in, you can use all admin commands:
-
-```bash
-docker exec -it porta-app porta whoami
-docker exec -it porta-app porta org list
-```
-
-**8. Verify**
-
-Open [http://localhost:3000/health](http://localhost:3000/health) in your browser.
-The health endpoint confirms the server, database, and Redis are all connected.
-
-### Stopping
-
-```bash
-docker compose down
-```
-
-Add `-v` to also remove the PostgreSQL data volume (fresh start):
-
-```bash
-docker compose down -v
-```
-
 ---
 
-## Path 2: Clone & Docker Compose {#docker}
+## Step 8: Set Up Your Environment with Provisioning
 
-Use the included Docker Compose file from the repository. Useful if you want to
-explore the full project or customize the Docker setup.
+Now that Porta is running, use **declarative provisioning** to create your organizations, applications, clients, roles, and permissions in one command.
 
-### Prerequisites
+**1. Create a `setup.yaml` file:**
 
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2+
-- [Git](https://git-scm.com/)
+```yaml
+version: "1.0"
 
-### Steps
+organizations:
+  - name: My Company
+    slug: my-company
 
-**1. Clone the repository**
+    applications:
+      - name: Web Portal
+        slug: web-portal
 
-```bash
-git clone https://github.com/blendsdk/porta-identity.git
-cd porta-identity
+        clients:
+          - client_name: Web App
+            application_type: web
+            grant_types:
+              - authorization_code
+              - refresh_token
+            redirect_uris:
+              - http://localhost:8080/callback
+            response_types:
+              - code
+            scope: openid profile email
+
+        roles:
+          - name: Admin
+            slug: admin
+            permissions:
+              - manage-users
+              - manage-settings
+          - name: Viewer
+            slug: viewer
+            permissions:
+              - read-data
+
+        permissions:
+          - name: Manage Users
+            slug: manage-users
+          - name: Manage Settings
+            slug: manage-settings
+          - name: Read Data
+            slug: read-data
 ```
 
-**2. Configure environment**
+**2. Preview what will be created:**
 
 ```bash
-cp .env.docker .env.docker.local
+docker exec porta-app porta provision -f /dev/stdin --dry-run < setup.yaml
 ```
 
-Edit `.env.docker.local` if needed. The defaults work for local evaluation. Key settings:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ISSUER_BASE_URL` | `http://localhost:3000` | Public URL of your Porta instance |
-| `COOKIE_KEYS` | `CHANGE-ME-...` | Cookie signing key (change for production) |
-| `PORTA_AUTO_MIGRATE` | `true` | Auto-run database migrations on startup |
-| `POSTGRES_PASSWORD` | `porta_secret` | PostgreSQL password |
-
-**3. Start all services**
+**3. Apply the configuration:**
 
 ```bash
-docker compose -f docker/docker-compose.prod.yml up -d
+docker exec porta-app porta provision -f /dev/stdin < setup.yaml
 ```
 
-This starts:
-- **porta** — The Porta OIDC provider (port 3000)
-- **postgres** — PostgreSQL 16 database
-- **redis** — Redis 7 cache
-
-::: tip Email Testing
-To enable the MailHog email testing UI, start with the `dev` profile:
-```bash
-docker compose -f docker/docker-compose.prod.yml --profile dev up -d
-```
-Then open [http://localhost:8025](http://localhost:8025) for the MailHog inbox.
+::: tip More examples
+See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `examples/provision-enterprise.yaml` in the repository, or read the full [Provisioning Guide](../cli/provisioning.md).
 :::
 
-**4. Wait for health checks**
+---
+
+## Step 9: Verify Everything Works
 
 ```bash
-# Check that Porta is healthy
+# Check health
 curl http://localhost:3000/health
+
+# List organizations
+docker exec porta-app porta org list
+
+# Open MailHog to see test emails (if using dev profile)
+# http://localhost:8025
 ```
 
-You should see a JSON response with `"status": "ok"`. If the container is still starting,
-wait a few seconds — the entrypoint waits for PostgreSQL and Redis before starting Porta.
-
-**5. Bootstrap the admin system**
-
-```bash
-docker exec -it porta-app porta init
-```
-
-This interactive command creates:
-- The super-admin organization
-- The admin application with RBAC permissions
-- A PKCE client for CLI authentication
-- Your first admin user (you'll be prompted for email, name, and password)
-
-You can also run it non-interactively:
-
-```bash
-docker exec porta-app porta init \
-  --email admin@example.com \
-  --given-name Admin \
-  --family-name User \
-  --password 'YourSecurePassword123!'
-```
-
-**6. Authenticate the CLI**
-
-```bash
-docker exec -it porta-app porta login
-```
-
-The CLI auto-detects the Docker container and uses manual mode — it prints an auth URL for you to open in your host browser, then you paste the callback URL back. See [porta login](../cli/bootstrap.md#porta-login) for details.
-
-**7. Verify**
-
-Open [http://localhost:3000/health](http://localhost:3000/health) in your browser.
-The health endpoint confirms the server, database, and Redis are all connected.
-
-### Stopping
-
-```bash
-docker compose -f docker/docker-compose.prod.yml down
-```
-
-Add `-v` to also remove the PostgreSQL data volume (fresh start):
-
-```bash
-docker compose -f docker/docker-compose.prod.yml down -v
-```
+Open [http://localhost:3000/health](http://localhost:3000/health) in your browser to confirm the server, database, and Redis are all connected.
 
 ---
 
-## Path 3: Source Development Setup {#source}
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) ≥ 22.0.0
-- [Yarn](https://classic.yarnpkg.com/) Classic 1.22 (NOT npm, NOT Berry)
-- [Docker](https://docs.docker.com/get-docker/) + Docker Compose (for infrastructure services)
-
-### Steps
-
-**1. Clone and install**
+## Stopping & Cleanup
 
 ```bash
-git clone https://github.com/blendsdk/porta-identity.git
-cd porta-identity
-yarn install
+# Stop all services
+docker compose down
+
+# Stop and delete all data (fresh start)
+docker compose down -v
 ```
-
-**2. Configure environment**
-
-```bash
-cp .env.example .env
-```
-
-The defaults in `.env.example` work for local development with the Docker-based infrastructure.
-
-**3. Start infrastructure**
-
-```bash
-yarn docker:up
-```
-
-This starts PostgreSQL 16, Redis 7, and MailHog using Docker Compose.
-
-**4. Build and initialize**
-
-```bash
-# Compile TypeScript
-yarn build
-
-# Run database migrations
-node dist/cli/index.js migrate up
-
-# Bootstrap admin system (interactive)
-node dist/cli/index.js init
-```
-
-**5. Start the development server**
-
-```bash
-yarn dev
-```
-
-The server starts with hot-reload via `tsx watch` on [http://localhost:3000](http://localhost:3000).
-
-**6. Run tests**
-
-```bash
-# Full verification (lint + build + test)
-yarn verify
-
-# Or individually:
-yarn lint           # ESLint
-yarn test:unit      # Unit tests only
-yarn test:integration  # Integration tests (requires docker:up)
-```
-
----
-
-## Environment Variables
-
-See the [Environment Variables](./environment.md) page for the complete reference.
-
-Key variables for getting started:
-
-| Variable | Dev Default | Docker Default | Description |
-|----------|-------------|----------------|-------------|
-| `NODE_ENV` | `development` | `production` | Runtime mode |
-| `PORT` | `3000` | `3000` | HTTP server port |
-| `DATABASE_URL` | `postgresql://porta:porta_dev@localhost:5432/porta` | `postgresql://porta:porta_secret@postgres:5432/porta` | PostgreSQL connection |
-| `REDIS_URL` | `redis://localhost:6379` | `redis://redis:6379` | Redis connection |
-| `ISSUER_BASE_URL` | `http://localhost:3000` | `http://localhost:3000` | OIDC issuer URL |
-| `COOKIE_KEYS` | `dev-cookie-key-...` | Change this! | Cookie signing key |
-| `TRUST_PROXY` | `false` | `false` | Set `true` behind a TLS proxy ([details](./environment.md#reverse-proxy)) |
 
 ---
 
@@ -432,62 +354,42 @@ Key variables for getting started:
 
 ### Container won't start
 
-**Check logs:**
 ```bash
 docker compose logs porta
 ```
 
 **Common causes:**
+- Missing or placeholder secrets — check your `.env` (see [Step 2](#step-2-generate-required-secrets))
 - PostgreSQL not ready yet — the entrypoint waits up to 60 seconds
-- Missing or invalid environment variables — check your `.env` file
-- Port 3000 already in use — change `PORT` in your env file
+- Port 3000 already in use — change `PORT` in your `.env` file
+
+### Emails not being sent
+
+- **Development:** Make sure you started with `--profile dev` for MailHog, and check [http://localhost:8025](http://localhost:8025)
+- **Production:** Verify your SMTP settings. Test with `telnet your-smtp-host 587`.
+- Check Porta logs: `docker compose logs porta | grep -i smtp`
+
+### Login page loads but authentication fails
+
+Most likely **missing `TRUST_PROXY=true`** when running behind a TLS-terminating reverse proxy (nginx, Traefik, cloud load balancer). See [Environment Variables → Reverse Proxy](./environment.md#reverse-proxy).
 
 ### Health check failing
 
 ```bash
-# Check individual services
-docker compose ps
+docker compose ps   # All services should show "healthy"
+docker compose logs postgres  # Check database
 ```
-
-All services should show "healthy". If PostgreSQL is unhealthy, check:
-```bash
-docker compose logs postgres
-```
-
-### Migration errors
-
-If migrations fail during auto-migrate:
-```bash
-# Check migration status
-docker exec porta-app porta migrate status
-
-# Run manually with verbose output
-docker exec porta-app porta migrate up
-```
-
-### Login page loads but authentication fails silently
-
-If the login page renders but submitting the form redirects back without logging in,
-the most likely cause is **missing `TRUST_PROXY` configuration**. When Porta runs behind
-a TLS-terminating reverse proxy (nginx, Traefik, cloud load balancer), it must be told
-to trust `X-Forwarded-Proto` headers so it can set `Secure` cookies correctly.
-
-**Fix:** Add `TRUST_PROXY=true` to your `.env` file and restart Porta.
-
-See [Environment Variables → Reverse Proxy](./environment.md#reverse-proxy) for details.
-
-### Port conflicts
-
-If port 3000, 5432, or 6379 are already in use, update the port mappings in
-your `docker-compose.yml` or stop conflicting services.
 
 ---
 
 ## Next Steps
 
-- 📖 [Architecture Overview](./architecture.md) — Understand how Porta is designed
-- 💻 [CLI Reference](../cli/overview.md) — Full CLI command documentation
+- 📖 [Architecture Overview](./architecture.md) — How Porta is designed
+- 🔧 [Provisioning Guide](../cli/provisioning.md) — Full provisioning file format reference
+- 💻 [CLI Reference](../cli/overview.md) — All CLI commands
 - 📋 [Admin API](../api/overview.md) — REST API reference
 - 🔑 [OIDC & Authentication](../concepts/oidc.md) — How OIDC works in Porta
 - 🏢 [Multi-Tenancy](../concepts/multi-tenancy.md) — Organization-scoped tenancy model
+- ⚙️ [Environment Variables](./environment.md) — Complete configuration reference
 - 🚢 [Deployment Guide](./deployment.md) — Production deployment guidance
+- 🖥️ [Setup Alternatives](./setup-alternatives.md) — Clone & Docker or source development setup
