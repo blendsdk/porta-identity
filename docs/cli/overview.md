@@ -1,6 +1,6 @@
 # CLI Overview
 
-The `porta` CLI is an admin tool for managing your Porta identity platform from the command line. It supports 14 top-level commands covering everything from initial bootstrap to day-to-day user management.
+The `porta` CLI is an admin tool for managing your Porta identity platform from the command line. It supports 15 top-level commands covering everything from initial bootstrap to day-to-day user management and declarative provisioning.
 
 ## Installation
 
@@ -51,6 +51,7 @@ Every command supports these global flags:
 | [`porta app`](/cli/applications) | HTTP | Manage applications, modules, roles, permissions, claims |
 | [`porta client`](/cli/clients) | HTTP | Manage OIDC clients and secrets |
 | [`porta user`](/cli/users) | HTTP | Manage users, roles, claims, 2FA, GDPR export/purge |
+| [`porta provision`](/cli/provisioning) | HTTP | Declarative provisioning from YAML/JSON files |
 
 ## Dual-Mode Architecture
 

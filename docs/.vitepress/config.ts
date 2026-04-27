@@ -119,6 +119,7 @@ export default withMermaid(
               { text: 'Clients', link: '/cli/clients' },
               { text: 'Users', link: '/cli/users' },
               { text: 'Infrastructure', link: '/cli/infrastructure' },
+              { text: 'Provisioning', link: '/cli/provisioning' },
             ],
           },
         ],

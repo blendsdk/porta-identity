@@ -1,0 +1,50 @@
+# Simple provisioning example
+# Creates a single organization with one application and basic RBAC.
+#
+# Usage:
+#   porta provision --file examples/provision-simple.yaml --dry-run
+#   porta provision --file examples/provision-simple.yaml
+
+version: "1.0"
+
+organizations:
+  - name: Acme Corp
+    slug: acme
+    default_locale: en
+
+    applications:
+      - name: Web Portal
+        slug: web-portal
+        description: Main customer-facing web application
+
+        clients:
+          - client_name: Web Portal SPA
+            application_type: web
+            grant_types:
+              - authorization_code
+              - refresh_token
+            redirect_uris:
+              - http://localhost:3000/callback
+              - https://portal.acme.com/callback
+            response_types:
+              - code
+            scope: openid profile email
+
+        permissions:
+          - name: Read
+            slug: read
+          - name: Write
+            slug: write
+
+        roles:
+          - name: Admin
+            slug: admin
+            description: Full access
+            permissions:
+              - read
+              - write
+          - name: Viewer
+            slug: viewer
+            description: Read-only access
+            permissions:
+              - read

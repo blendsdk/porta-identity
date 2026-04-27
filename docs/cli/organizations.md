@@ -87,3 +87,47 @@ porta org branding --id <org-id> \
 | `--primary-color` | Primary accent color (hex) |
 | `--company-name` | Display name on login pages |
 | `--custom-css` | Custom CSS for login pages |
+
+## `porta org destroy`
+
+Permanently destroy an organization and all its child entities (applications, clients, users, roles, permissions, claim definitions). Uses PostgreSQL CASCADE deletion. The super-admin organization is protected and cannot be destroyed.
+
+```bash
+# Preview what will be destroyed (no changes)
+porta org destroy <id-or-slug> --dry-run
+
+# Destroy with type-to-confirm safety prompt
+porta org destroy acme-corp
+
+# Skip confirmation (for scripting)
+porta org destroy acme-corp --force
+```
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview cascade counts without deleting |
+| `--force` | Skip the type-to-confirm safety prompt |
+
+### Cascade Preview
+
+The command always shows what will be destroyed before prompting:
+
+```
+⚠️  This will PERMANENTLY destroy the following:
+
+  Organization:      Acme Corp (acme-corp)
+  Applications:      3
+  Clients:           5
+  Users:             42
+  Roles:             8
+  Permissions:       16
+  Claim Definitions: 4
+
+Type the organization slug "acme-corp" to confirm destruction:
+```
+
+### Safety
+
+- The super-admin organization **cannot** be destroyed (enforced at both SQL and application level)
+- An audit log entry is written **before** deletion (the organization ID is preserved in the audit trail)
+- The `--force` flag skips the interactive prompt but still requires admin authentication and the `ORG_ARCHIVE` permission

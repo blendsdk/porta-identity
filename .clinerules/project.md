@@ -278,7 +278,7 @@ src/
       keys.ts        # porta keys list/generate/rotate — ES256 signing keys (HTTP)
       config.ts      # porta config list/get/set — system configuration (HTTP)
       audit.ts       # porta audit list — audit log viewer (HTTP)
-      org.ts         # porta org create/list/show/update/suspend/activate/archive/branding (HTTP)
+      org.ts         # porta org create/list/show/update/suspend/activate/archive/destroy/branding (HTTP)
       app.ts         # porta app create/list/show/update/archive + module/role/permission/claim (HTTP)
       app-module.ts  # porta app module add/remove/list — application modules (HTTP)
       app-role.ts    # porta app role create/list/show/update/archive/assign-perm/remove-perm (HTTP)
@@ -289,6 +289,7 @@ src/
       user.ts        # porta user create/invite/list/show/update + 6 status + set-password + roles/claims/2fa (HTTP)
       user-role.ts   # porta user roles assign/remove/list — user role assignments (HTTP)
       user-claim.ts  # porta user claims set/remove/list — user custom claim values (HTTP)
+      provision.ts   # porta provision --file <yaml|json> — declarative environment setup (HTTP)
   server.ts          # Koa app factory with middleware stack + routes + OIDC mounting
   index.ts           # Entry point: DB → Redis → keys → TTLs → provider → server
 templates/           # Handlebars templates for auth UI pages
@@ -387,7 +388,9 @@ dist/                # TypeScript build output (gitignored)
 - **Custom claims module** — Claim definitions per application, user claim values, type-validated, cached
 - **Functional code style** — standalone exported functions, not classes
 - **Admin auth middleware** — JWT Bearer token authentication for `/api/admin/*` routes. Validates ES256 tokens against Porta's own signing keys (self-authentication), verifies issuer matches super-admin org, checks user is active and belongs to super-admin org, checks `porta-admin` RBAC role. Sets `ctx.state.adminUser` for downstream handlers. Unauthenticated metadata endpoint at `GET /api/admin/metadata` for CLI login discovery.
-- **CLI module** — yargs-based admin CLI (`porta`), 14 top-level commands, dual-mode bootstrap: `withBootstrap()` (direct-DB for init/migrate/seed) and `withHttpClient()` (authenticated HTTP for all other commands). `porta init` bootstraps admin app + RBAC + PKCE client + GUI confidential client + first user. `porta login` runs OIDC Auth Code + PKCE via browser, stores credentials at `~/.porta/credentials.json`. `AdminHttpClient` handles Bearer token injection, auto-refresh, and HTTP error mapping. Table + JSON output, confirmation prompts, 220+ CLI tests
+- **CLI module** — yargs-based admin CLI (`porta`), 15 top-level commands, dual-mode bootstrap: `withBootstrap()` (direct-DB for init/migrate/seed) and `withHttpClient()` (authenticated HTTP for all other commands). `porta init` bootstraps admin app + RBAC + PKCE client + GUI confidential client + first user. `porta login` runs OIDC Auth Code + PKCE via browser, stores credentials at `~/.porta/credentials.json`. `AdminHttpClient` handles Bearer token injection, auto-refresh, and HTTP error mapping. Table + JSON output, confirmation prompts, 220+ CLI tests
+- **Provisioning module** — `porta provision --file <yaml|json>` declarative environment setup. Nested YAML schema (orgs→apps→clients/roles/perms/claims) validated by Zod, transformed to flat import manifest, sent via Admin API. Supports `--mode merge|overwrite`, `--dry-run`, `--json`. Inline role-permission mappings and system config overrides. Examples at `examples/provision-*.yaml`.
+- **Organization destroy** — `porta org destroy <slug>` hard-deletes an organization and all child entities via PostgreSQL CASCADE. Dual-layer super-admin protection (SQL `WHERE is_super_admin=FALSE` + service-level check). Dry-run preview with cascade counts, type-to-confirm safety prompt, `--force` for scripting. `DELETE /api/admin/organizations/:idOrSlug` API endpoint.
 - **Two-factor module** — Email OTP, TOTP (authenticator), recovery codes, per-org policy, login flow integration, templates, i18n, CLI admin (status/disable/reset), AES-256-GCM secret encryption, Argon2id recovery hashing
 - **Login methods module** — Per-client `login_methods` override (NULL = inherit from org) + per-org `default_login_methods` (NOT NULL, DB DEFAULT `{password,magic_link}`). Resolution via `resolveLoginMethods(org, client)`. Enforced on 5 endpoints (interaction `/login`, `/magic-link`, forgot-password GET/POST, reset-password POST) **before** CSRF/rate-limit/user-lookup with 403 + audit event `security.login_method_disabled`. Login template renders 4 modes (both / password-only / magic-link-only / empty fallback) and honours OIDC `login_hint`. Admin API + CLI support per-client override get/set/clear.
 - **Admin API enhancements** — Granular RBAC permissions (17 permissions across 6 domains), cursor-based keyset pagination on all entity repos, ETag/If-Match optimistic concurrency, dashboard statistics, entity change history, session management/revocation, bulk status operations, branding asset management (logo/favicon bytea storage), and CSV/JSON data export. Migration 018 adds `branding_assets` and `admin_sessions` tables.
