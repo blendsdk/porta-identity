@@ -86,7 +86,7 @@ Each entity (organization, application, client, user) exposes a history endpoint
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `limit` | number | 20 | Number of history entries (max 100) |
-| `after` | string | — | Cursor for pagination (audit log entry ID) |
+| `after` | string | — | Opaque cursor for pagination (pass `nextCursor` from previous response) |
 | `event_type` | string | — | Filter by event type prefix (e.g., `org.status`) |
 
 ### Response
@@ -104,6 +104,6 @@ Each entity (organization, application, client, user) exposes a history endpoint
     }
   ],
   "hasMore": true,
-  "nextCursor": "uuid"
+  "nextCursor": "eyJjIjoiMjAyNi0wMS0xNVQxMDozMDowMFoiLCJpIjoiOThmZTQ2M2EtLi4uIn0"
 }
 ```

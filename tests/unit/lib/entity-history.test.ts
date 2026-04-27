@@ -11,6 +11,16 @@ function createMockPool() {
   return { query: vi.fn() };
 }
 
+/** Create a base64url-encoded composite cursor matching the production format */
+function testCursor(createdAt: string, id: string): string {
+  return Buffer.from(JSON.stringify({ c: createdAt, i: id })).toString('base64url');
+}
+
+/** Decode a base64url-encoded composite cursor for assertions */
+function decodeCursor(cursor: string): { c: string; i: string } {
+  return JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+}
+
 describe('entity-history', () => {
   let mockPool: ReturnType<typeof createMockPool>;
 
@@ -52,11 +62,20 @@ describe('entity-history', () => {
     it('should apply cursor-based pagination (after parameter)', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await getEntityHistory('organization', 'org-123', { after: '50' });
+      const cursor = testCursor('2026-01-15T10:00:00.000Z', 'some-uuid-50');
+      await getEntityHistory('organization', 'org-123', { after: cursor });
 
       const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('id < $2');
-      expect(params[1]).toBe('50');
+      // Composite cursor uses row-value comparison on (created_at, id)
+      expect(sql).toContain('(created_at, id) < ($2, $3)');
+      expect(params[1]).toBe('2026-01-15T10:00:00.000Z');
+      expect(params[2]).toBe('some-uuid-50');
+    });
+
+    it('should throw on malformed cursor', async () => {
+      await expect(
+        getEntityHistory('organization', 'org-123', { after: 'not-valid' }),
+      ).rejects.toThrow('Invalid pagination cursor');
     });
 
     it('should apply event type prefix filter', async () => {
@@ -71,12 +90,13 @@ describe('entity-history', () => {
 
     it('should indicate hasMore when results exceed limit', async () => {
       // Default limit is 20, so 21 results means hasMore
+      const now = new Date('2026-03-01T12:00:00.000Z');
       const rows = Array.from({ length: 21 }, (_, i) => ({
         id: String(100 - i),
         event_type: 'org.updated',
         actor_id: null,
         metadata: null,
-        created_at: new Date(),
+        created_at: now,
       }));
       mockPool.query.mockResolvedValue({ rows });
 
@@ -84,7 +104,11 @@ describe('entity-history', () => {
 
       expect(result.data).toHaveLength(20);
       expect(result.hasMore).toBe(true);
-      expect(result.nextCursor).toBe('81'); // last item's id
+      // nextCursor is now a composite cursor encoding (created_at, id)
+      expect(result.nextCursor).not.toBeNull();
+      const cursor = decodeCursor(result.nextCursor!);
+      expect(cursor.i).toBe('81'); // last item's id
+      expect(cursor.c).toBe(now.toISOString()); // last item's created_at
     });
 
     it('should clamp limit to max 100', async () => {
@@ -119,16 +143,19 @@ describe('entity-history', () => {
     it('should combine after and eventTypePrefix filters', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
+      const cursor = testCursor('2026-02-01T08:30:00.000Z', 'uuid-42');
       await getEntityHistory('organization', 'org-123', {
-        after: '42',
+        after: cursor,
         eventTypePrefix: 'org.',
       });
 
       const [sql, params] = mockPool.query.mock.calls[0];
-      expect(sql).toContain('id < $2');
-      expect(sql).toContain('event_type LIKE $3');
-      expect(params[1]).toBe('42');
-      expect(params[2]).toBe('org.%');
+      // Composite cursor uses 2 params ($2, $3), so event_type LIKE is $4
+      expect(sql).toContain('(created_at, id) < ($2, $3)');
+      expect(sql).toContain('event_type LIKE $4');
+      expect(params[1]).toBe('2026-02-01T08:30:00.000Z');
+      expect(params[2]).toBe('uuid-42');
+      expect(params[3]).toBe('org.%');
     });
 
     it('should throw for unsupported entity types', async () => {

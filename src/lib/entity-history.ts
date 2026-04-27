@@ -32,7 +32,7 @@ export interface HistoryEntry {
 export interface HistoryOptions {
   /** Maximum number of entries to return (default: 20, max: 100) */
   limit?: number;
-  /** Cursor for pagination (audit log ID to start after) */
+  /** Opaque cursor for pagination (pass nextCursor from previous response) */
   after?: string;
   /** Filter by event type prefix (e.g., 'org.' for all org events) */
   eventTypePrefix?: string;
@@ -58,6 +58,49 @@ const ENTITY_FK_COLUMN: Record<string, string> = {
   organization: 'organization_id',
   user: 'user_id',
 };
+
+// ============================================================================
+// Cursor helpers
+// ============================================================================
+
+/** Decoded cursor containing both sort-key fields */
+interface DecodedCursor {
+  createdAt: string;
+  id: string;
+}
+
+/**
+ * Encode a composite pagination cursor from the last row's created_at and id.
+ *
+ * The cursor is a base64url-encoded JSON object `{ c, i }` where `c` is the
+ * ISO 8601 timestamp and `i` is the UUID. This ensures keyset pagination
+ * works correctly even with random UUIDs (v4), because the row-value
+ * comparison `(created_at, id) < (cursor.c, cursor.i)` respects the
+ * `ORDER BY created_at DESC, id DESC` ordering.
+ */
+function encodeCursor(createdAt: Date, id: string): string {
+  return Buffer.from(JSON.stringify({ c: createdAt.toISOString(), i: id })).toString('base64url');
+}
+
+/**
+ * Decode a composite pagination cursor back into its constituent fields.
+ *
+ * @throws Error if the cursor is malformed or missing required fields
+ */
+function decodeCursor(cursor: string): DecodedCursor {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
+      c?: string;
+      i?: string;
+    };
+    if (!parsed.c || !parsed.i) {
+      throw new Error('Missing cursor fields');
+    }
+    return { createdAt: parsed.c, id: parsed.i };
+  } catch {
+    throw new Error('Invalid pagination cursor');
+  }
+}
 
 // ============================================================================
 // Implementation
@@ -96,9 +139,13 @@ export async function getEntityHistory(
   let paramIndex = 2;
 
   if (options.after) {
-    conditions.push(`id < $${paramIndex}`);
-    params.push(options.after);
-    paramIndex++;
+    // Decode composite cursor: base64-encoded JSON { c: ISO timestamp, i: UUID }
+    // Row-value comparison ensures correct keyset pagination with the
+    // ORDER BY created_at DESC, id DESC sort order, regardless of random UUID values.
+    const cursor = decodeCursor(options.after);
+    conditions.push(`(created_at, id) < ($${paramIndex}, $${paramIndex + 1})`);
+    params.push(cursor.createdAt, cursor.id);
+    paramIndex += 2;
   }
 
   if (options.eventTypePrefix) {
@@ -136,6 +183,9 @@ export async function getEntityHistory(
   return {
     data,
     hasMore,
-    nextCursor: hasMore && data.length > 0 ? data[data.length - 1].id : null,
+    nextCursor:
+      hasMore && data.length > 0
+        ? encodeCursor(data[data.length - 1].createdAt, data[data.length - 1].id)
+        : null,
   };
 }
