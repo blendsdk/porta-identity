@@ -84,6 +84,7 @@ const clientSchema = z.object({
   client_name: z.string().min(1).max(255),
   application_slug: z.string().min(1),
   organization_slug: z.string().min(1),
+  client_type: z.enum(['confidential', 'public']),
   application_type: z.string().optional(),
   grant_types: z.array(z.string()).optional(),
   redirect_uris: z.array(z.string()).optional(),
@@ -439,9 +440,10 @@ async function processClient(
       }
 
       await client.query(
-        `UPDATE clients SET application_type = $1, grant_types = $2, redirect_uris = $3,
-         response_types = $4, scope = $5, updated_at = NOW() WHERE id = $6`,
+        `UPDATE clients SET client_type = $1, application_type = $2, grant_types = $3, redirect_uris = $4,
+         response_types = $5, scope = $6, updated_at = NOW() WHERE id = $7`,
         [
+          clientDef.client_type,
           clientDef.application_type ?? 'web',
           clientDef.grant_types ?? ['authorization_code'],
           clientDef.redirect_uris ?? [],
@@ -452,7 +454,7 @@ async function processClient(
       );
       result.updated.push({
         type: 'client', slug: clientDef.client_name, name: clientDef.client_name,
-        changes: ['application_type', 'grant_types', 'redirect_uris'],
+        changes: ['client_type', 'application_type', 'grant_types', 'redirect_uris'],
       });
     } else {
       if (mode === 'dry-run') {
@@ -465,11 +467,12 @@ async function processClient(
       const clientId = randomBytes(16).toString('hex');
 
       await client.query(
-        `INSERT INTO clients (client_id, client_name, organization_id, application_id, application_type,
-         grant_types, redirect_uris, response_types, scope, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')`,
+        `INSERT INTO clients (client_id, client_name, organization_id, application_id, client_type,
+         application_type, grant_types, redirect_uris, response_types, scope, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')`,
         [
           clientId, clientDef.client_name, orgId, appId,
+          clientDef.client_type,
           clientDef.application_type ?? 'web',
           clientDef.grant_types ?? ['authorization_code'],
           clientDef.redirect_uris ?? [],

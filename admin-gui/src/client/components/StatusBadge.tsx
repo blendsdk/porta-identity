@@ -1,7 +1,41 @@
 /**
  * Status badge component.
- * Renders a colored badge indicating entity status (active, suspended, archived, etc.).
- * Maps status strings to FluentUI badge colors.
+ *
+ * Renders a colored FluentUI Badge indicating entity status. Maps Porta's
+ * status strings to appropriate badge colors:
+ *
+ * | Status      | Color         | Meaning                     |
+ * |-------------|---------------|-----------------------------|
+ * | `active`    | `success`     | Entity is live and usable   |
+ * | `suspended` | `warning`     | Temporarily disabled        |
+ * | `archived`  | `informative` | Soft-deleted / read-only    |
+ * | `invited`   | `brand`       | User invitation sent        |
+ * | `pending`   | `warning`     | Awaiting action             |
+ * | `locked`    | `danger`      | Locked due to security      |
+ * | `disabled`  | `informative` | Manually disabled           |
+ * | `revoked`   | `danger`      | Access revoked              |
+ * | `expired`   | `informative` | Time-limited, now expired   |
+ *
+ * Unknown status values fall back to `"informative"` color and display the
+ * raw status string as the label.
+ *
+ * **When to use:** Anywhere an entity status needs visual representation —
+ * table rows, detail page headers, list items.
+ *
+ * **Provider requirement:** Must be rendered inside a `FluentProvider`.
+ *
+ * @example
+ * ```tsx
+ * import { StatusBadge } from '../components/StatusBadge';
+ *
+ * // In a table cell
+ * <StatusBadge status={org.status} />
+ *
+ * // With custom size
+ * <StatusBadge status="suspended" size="small" />
+ * ```
+ *
+ * @module StatusBadge
  */
 
 import { Badge } from '@fluentui/react-components';

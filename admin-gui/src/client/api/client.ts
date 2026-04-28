@@ -1,8 +1,70 @@
 /**
- * Fetch wrapper for BFF API calls.
- * Includes CSRF token in headers for state-changing requests.
- * Handles 401 responses by redirecting to login.
- * Provides typed convenience methods (get, post, put, patch, del).
+ * Typed API client for BFF API calls.
+ *
+ * This module provides all HTTP communication between the React SPA and the
+ * BFF (Backend-for-Frontend) proxy server. The BFF in turn forwards requests
+ * to the Porta admin API with Bearer token injection.
+ *
+ * ## Request flow
+ *
+ * ```
+ * SPA component → api.get/post/put/patch/del()
+ *     → apiRequest() adds Accept, Content-Type, X-CSRF-Token headers
+ *         → fetch(/api/...) hits the BFF proxy
+ *             → BFF injects Bearer token, forwards to Porta server
+ * ```
+ *
+ * ## CSRF protection
+ *
+ * A module-level CSRF token is set once by {@link AuthProvider} (via
+ * `setCsrfToken()`) after fetching `/auth/me`. All state-changing requests
+ * (`POST`, `PUT`, `PATCH`, `DELETE`) automatically include the token as
+ * an `X-CSRF-Token` header. GET requests do not send the token.
+ *
+ * ## Authentication / 401 handling
+ *
+ * If any request receives a `401` response, the client assumes the session
+ * has expired and immediately redirects to `/auth/login`. This is a hard
+ * redirect — no error is surfaced to the UI.
+ *
+ * ## ETag / Optimistic concurrency
+ *
+ * For entities that support optimistic concurrency (most Porta entities),
+ * use `api.getWithEtag()` to fetch both the data and the `ETag` header.
+ * Then pass the ETag to `api.put()` or `api.patch()` as the third argument
+ * to set the `If-Match` header. A `409 Conflict` response means the entity
+ * was modified by someone else.
+ *
+ * ## Response envelope
+ *
+ * All Porta admin API detail/create/update endpoints wrap their response in
+ * `{ data: entity }`. Use {@link unwrapData} to extract the inner entity.
+ *
+ * @example
+ * ```tsx
+ * import { api, ApiError, unwrapData } from '../api/client';
+ *
+ * // Simple GET
+ * const orgs = await api.get<OrgListResponse>('/organizations');
+ *
+ * // GET with ETag for optimistic concurrency
+ * const { data, etag } = await api.getWithEtag<OrgResponse>('/organizations/acme');
+ * const org = unwrapData(data);
+ *
+ * // PUT with If-Match
+ * await api.put('/organizations/acme', { name: 'Acme Corp' }, etag);
+ *
+ * // Error handling
+ * try {
+ *   await api.del('/organizations/acme');
+ * } catch (err) {
+ *   if (err instanceof ApiError && err.status === 409) {
+ *     toast.error('Conflict', 'Entity was modified by another user.');
+ *   }
+ * }
+ * ```
+ *
+ * @module api/client
  */
 
 let csrfToken: string | null = null;
@@ -12,7 +74,25 @@ export function setCsrfToken(token: string | null): void {
   csrfToken = token;
 }
 
-/** Typed API error with status and server error body */
+/**
+ * Typed API error thrown when a fetch response is not OK (status >= 400).
+ *
+ * Consumers can check `err.status` for HTTP status codes and `err.body`
+ * for the parsed JSON error body from the server (if available).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await api.post('/organizations', { name: '' });
+ * } catch (err) {
+ *   if (err instanceof ApiError) {
+ *     console.log(err.status);  // 422
+ *     console.log(err.message); // "Validation failed"
+ *     console.log(err.body);    // { error: "Validation failed", details: [...] }
+ *   }
+ * }
+ * ```
+ */
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -30,7 +110,21 @@ export interface ApiResponse<T> {
   etag?: string;
 }
 
-/** Base API client that calls the BFF proxy */
+/**
+ * Low-level fetch wrapper that calls the BFF proxy.
+ *
+ * Automatically adds `Accept: application/json`, CSRF token for state-changing
+ * methods, and `Content-Type: application/json` when appropriate. Handles 401
+ * by redirecting to login and 204 by returning `undefined`.
+ *
+ * **Prefer using the `api.*` convenience methods** over calling this directly.
+ *
+ * @typeParam T - Expected response body type
+ * @param path - Request URL path (relative or absolute)
+ * @param options - Standard `RequestInit` options (method, body, headers, etc.)
+ * @returns Parsed JSON response body
+ * @throws {ApiError} When response status >= 400 (except 401, which redirects)
+ */
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -164,9 +258,30 @@ function buildQuery(params?: Record<string, string | number | boolean | undefine
   return `?${qs}`;
 }
 
-/** Typed API client with convenience methods */
+/**
+ * Typed API client with convenience methods.
+ *
+ * All paths are relative to the BFF API base (`/api`). The BFF proxy
+ * maps `/api/*` to `/api/admin/*` on the Porta server.
+ *
+ * @example
+ * ```ts
+ * // List organizations with query params
+ * const orgs = await api.get<OrgList>('/organizations', { status: 'active', limit: 20 });
+ *
+ * // Create a new organization
+ * const newOrg = await api.post<OrgResponse>('/organizations', { name: 'Acme' });
+ *
+ * // Update with optimistic concurrency
+ * const { data, etag } = await api.getWithEtag<OrgResponse>('/organizations/acme');
+ * await api.put('/organizations/acme', { name: 'Acme Corp' }, etag);
+ *
+ * // Delete
+ * await api.del('/organizations/acme');
+ * ```
+ */
 export const api = {
-  /** GET request */
+  /** GET request — fetches JSON data from the given path with optional query params */
   get<T>(path: string, params?: Record<string, string | number | boolean | undefined | null>): Promise<T> {
     return apiRequest<T>(url(path) + buildQuery(params));
   },

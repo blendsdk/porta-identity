@@ -245,3 +245,66 @@ describe('importManifestSchema — backward compatibility', () => {
     expect(result.success).toBe(true);
   });
 });
+
+// ============================================================================
+// Client schema — client_type validation tests
+// ============================================================================
+
+describe('importManifestSchema — client_type', () => {
+  const baseClient = {
+    client_name: 'Test Client',
+    application_slug: 'app',
+    organization_slug: 'org',
+    application_type: 'web',
+    grant_types: ['authorization_code'],
+    redirect_uris: ['https://example.com/callback'],
+    response_types: ['code'],
+    scope: 'openid',
+  };
+
+  it('accepts client with client_type "confidential"', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, client_type: 'confidential' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].client_type).toBe('confidential');
+    }
+  });
+
+  it('accepts client with client_type "public"', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, client_type: 'public' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].client_type).toBe('public');
+    }
+  });
+
+  it('rejects client without client_type', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects client with invalid client_type', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, client_type: 'hybrid' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+});

@@ -1,7 +1,48 @@
 /**
  * Toast notification hook.
- * Provides a simple API to dispatch toast notifications using
- * FluentUI v9's Toaster system. Must be used within a ToastProvider.
+ *
+ * Provides a simplified API to dispatch toast notifications using FluentUI v9's
+ * Toaster system. Returns a `toasterId` (which must be passed to
+ * {@link ToastProvider}) and convenience methods for each intent level.
+ *
+ * ## Default timeouts
+ *
+ * | Method      | Intent    | Auto-dismiss |
+ * |-------------|-----------|-------------|
+ * | `success()` | success   | 3 000 ms    |
+ * | `info()`    | info      | 3 000 ms    |
+ * | `warning()` | warning   | 4 000 ms    |
+ * | `error()`   | error     | 5 000 ms    |
+ * | `notify()`  | custom    | 3 000 ms (default, overridable) |
+ *
+ * ## Setup requirement
+ *
+ * A `<ToastProvider toasterId={toasterId}>` must be present in the component
+ * tree (typically at the app root). Without it, dispatched toasts are silently
+ * ignored by FluentUI.
+ *
+ * @example
+ * ```tsx
+ * import { useToast } from '../hooks/useToast';
+ *
+ * function SaveButton({ onSave }: { onSave: () => Promise<void> }) {
+ *   const { success, error } = useToast();
+ *
+ *   const handleSave = async () => {
+ *     try {
+ *       await onSave();
+ *       success('Saved', 'Changes have been saved successfully.');
+ *     } catch (err) {
+ *       error('Save failed', err instanceof Error ? err.message : 'Unknown error');
+ *     }
+ *   };
+ *
+ *   return <Button onClick={handleSave}>Save</Button>;
+ * }
+ * ```
+ *
+ * @see {@link ToastProvider} — the component that renders the FluentUI Toaster
+ * @module useToast
  */
 
 import { useId } from 'react';

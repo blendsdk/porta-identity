@@ -50,6 +50,7 @@ describe('provisioningSchema', () => {
               clients: [
                 {
                   client_name: 'Web App',
+                  client_type: 'confidential',
                   application_type: 'web',
                   grant_types: ['authorization_code'],
                   redirect_uris: ['https://crm.acme.com/callback'],
@@ -182,6 +183,7 @@ describe('transformToManifest', () => {
               clients: [
                 {
                   client_name: 'Web App',
+                  client_type: 'confidential',
                   application_type: 'web',
                   grant_types: ['authorization_code'],
                 },

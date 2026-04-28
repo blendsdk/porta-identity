@@ -1,7 +1,44 @@
 /**
  * Loading skeleton component.
- * Renders animated placeholder shapes while content is loading.
- * Supports table, card, and detail page variants.
+ *
+ * Renders animated placeholder shapes while content is loading. Provides three
+ * layout variants that visually approximate the content they replace:
+ *
+ * | Variant    | Use case                                           |
+ * |------------|----------------------------------------------------|
+ * | `"table"`  | Data grids and list views (default)                 |
+ * | `"card"`   | Card-based layouts (e.g. dashboard widgets)         |
+ * | `"detail"` | Detail/show pages with header + sections            |
+ *
+ * The `rows` prop controls how many skeleton rows/cards are rendered
+ * (ignored for the `"detail"` variant which has a fixed structure).
+ *
+ * **When to use:** As the loading state for any async data-driven view.
+ * Prefer skeletons over spinners when the layout of the final content is
+ * predictable — they reduce perceived loading time.
+ *
+ * **Provider requirement:** Must be rendered inside a `FluentProvider`.
+ *
+ * @example
+ * ```tsx
+ * import { LoadingSkeleton } from '../components/LoadingSkeleton';
+ *
+ * function OrganizationList() {
+ *   const { data, loading } = useOrganizations();
+ *
+ *   if (loading) return <LoadingSkeleton variant="table" rows={8} />;
+ *   return <OrgTable data={data} />;
+ * }
+ *
+ * function OrgDetailPage() {
+ *   const { data, loading } = useOrganization(id);
+ *
+ *   if (loading) return <LoadingSkeleton variant="detail" />;
+ *   return <OrgDetail org={data} />;
+ * }
+ * ```
+ *
+ * @module LoadingSkeleton
  */
 
 import {

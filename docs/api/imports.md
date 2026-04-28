@@ -86,6 +86,7 @@ Entities are processed in **dependency order** to satisfy foreign key constraint
   "client_name": "Web Client",
   "application_slug": "my-app",
   "organization_slug": "acme-corp",
+  "client_type": "confidential",
   "application_type": "web",
   "grant_types": ["authorization_code"],
   "redirect_uris": ["https://app.example.com/callback"],

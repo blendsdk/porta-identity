@@ -1,7 +1,37 @@
 /**
  * Empty state component.
- * Shown when a list or page has no data to display.
- * Includes an optional icon, title, description, and action button.
+ *
+ * Shown when a list, table, or page has no data to display. Renders a centered
+ * layout with an icon, title, optional description, and optional action button
+ * (e.g. "Create first organization").
+ *
+ * **When to use:** Any data-driven view that can be empty — entity lists,
+ * search results with no matches, detail pages for missing entities.
+ *
+ * **Provider requirement:** Must be rendered inside a `FluentProvider`.
+ *
+ * @example
+ * ```tsx
+ * import { EmptyState } from '../components/EmptyState';
+ * import { PeopleRegular } from '@fluentui/react-icons';
+ *
+ * function UserList({ users }: { users: User[] }) {
+ *   if (users.length === 0) {
+ *     return (
+ *       <EmptyState
+ *         title="No users yet"
+ *         description="Create your first user to get started."
+ *         icon={<PeopleRegular />}
+ *         actionLabel="Create User"
+ *         onAction={() => navigate('/users/create')}
+ *       />
+ *     );
+ *   }
+ *   return <UserTable users={users} />;
+ * }
+ * ```
+ *
+ * @module EmptyState
  */
 
 import type { ReactNode } from 'react';

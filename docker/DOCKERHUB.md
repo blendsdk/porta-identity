@@ -168,11 +168,17 @@ docker exec porta-app porta init \
 ```
 
 > **💡 CLI Wrapper Script**
-> For an even cleaner experience, download the [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh) wrapper script, save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then you can simply run:
+> For a cleaner experience, install the CLI wrapper:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
+>   -o porta && chmod +x porta
+> ```
+> Then run commands directly:
 > ```bash
 > ./porta init
 > ./porta login
 > ./porta org list
+> ./porta provision -f setup.yaml
 > ```
 
 ### 6. Authenticate the CLI

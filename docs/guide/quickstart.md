@@ -243,18 +243,35 @@ docker exec -it porta-app porta login
 
 The CLI prints an authorization URL — open it in your browser, log in, then paste the callback URL back into the terminal.
 
-::: tip CLI Wrapper Script
-Download [`porta.sh`](https://github.com/blendsdk/porta-identity/blob/main/docker/porta.sh), save it as `porta` next to your `docker-compose.yml`, and make it executable (`chmod +x porta`). Then run:
+---
+
+## Step 8: Install the CLI Wrapper
+
+Download the `porta` wrapper script for a cleaner command-line experience:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
+  -o porta && chmod +x porta
+```
+
+This script forwards commands to the Porta container, with automatic host file detection for provisioning. Now you can run:
+
 ```bash
 ./porta init
 ./porta login
 ./porta org list
 ```
+
+::: info Without the wrapper
+All commands also work with `docker exec`:
+```bash
+docker exec -it porta-app porta init
+```
 :::
 
 ---
 
-## Step 8: Set Up Your Environment with Provisioning
+## Step 9: Set Up Your Environment with Provisioning
 
 Now that Porta is running, use **declarative provisioning** to create your organizations, applications, clients, roles, and permissions in one command.
 
@@ -306,14 +323,20 @@ organizations:
 **2. Preview what will be created:**
 
 ```bash
-docker exec porta-app porta provision -f /dev/stdin --dry-run < setup.yaml
+./porta provision -f setup.yaml --dry-run
 ```
 
 **3. Apply the configuration:**
 
 ```bash
+./porta provision -f setup.yaml
+```
+
+::: info Without the wrapper
+```bash
 docker exec porta-app porta provision -f /dev/stdin < setup.yaml
 ```
+:::
 
 ::: tip More examples
 See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `examples/provision-enterprise.yaml` in the repository, or read the full [Provisioning Guide](../cli/provisioning.md).
@@ -321,7 +344,7 @@ See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `
 
 ---
 
-## Step 9: Verify Everything Works
+## Step 10: Verify Everything Works
 
 ```bash
 # Check health
