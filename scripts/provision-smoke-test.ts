@@ -51,6 +51,34 @@ function log(msg: string) {
   console.log(msg);
 }
 
+/** Print generated client credentials in a readable format */
+function printCredentials(credentials: Array<{
+  clientName: string;
+  clientId: string;
+  clientType: string;
+  secretPlaintext?: string;
+  secretLabel?: string;
+  secretExpiresAt?: string;
+}>) {
+  if (credentials.length === 0) return;
+  log('  📋 Credentials:');
+  for (const c of credentials) {
+    log(`     Client: ${c.clientName}`);
+    log(`       client_id:  ${c.clientId}`);
+    log(`       type:       ${c.clientType}`);
+    if (c.secretPlaintext) {
+      log(`       secret:     ${c.secretPlaintext}  ⚠️  SAVE THIS — shown only once!`);
+    }
+    if (c.secretLabel) {
+      log(`       label:      ${c.secretLabel}`);
+    }
+    if (c.secretExpiresAt) {
+      log(`       expires_at: ${c.secretExpiresAt}`);
+    }
+    log('');
+  }
+}
+
 function pass(name: string, detail: string, start: number) {
   const ms = Date.now() - start;
   results.push({ name, passed: true, detail, durationMs: ms });
@@ -138,6 +166,7 @@ async function main() {
         } else {
           const creds = result.credentials.filter((c) => c.clientType === 'confidential' && c.secretPlaintext);
           pass(name, `Created: ${result.created.length}, Credentials: ${creds.length} confidential secrets`, t);
+          printCredentials(result.credentials);
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -169,6 +198,7 @@ async function main() {
             `Mappings: ${mappingCount}, Config: ${hasConfig}`,
             t,
           );
+          printCredentials(result.credentials);
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -335,6 +365,7 @@ organizations:
                 `${creds.length} secrets, passwords hashed with Argon2id`,
                 t,
               );
+              printCredentials(result.credentials);
             }
           }
         }
@@ -394,6 +425,7 @@ organizations:
           fail(name, `Expected entities to be updated in overwrite mode, got 0 updates. Created: ${result.created.length}, Skipped: ${result.skipped.length}`, t);
         } else {
           pass(name, `Updated: ${result.updated.length}, Created: ${result.created.length}`, t);
+          printCredentials(result.credentials);
         }
       } catch (err) {
         fail(name, String(err), t);
