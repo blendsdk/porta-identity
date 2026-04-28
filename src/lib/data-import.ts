@@ -110,6 +110,13 @@ const clientSchema = z.object({
   scope: z.string().optional(),
   login_methods: z.array(z.string()).optional().nullable(),
   token_endpoint_auth_method: z.string().optional(),
+  // Phase 2: additional OIDC client fields matching the DB schema
+  post_logout_redirect_uris: z.array(z.string()).optional(),
+  allowed_origins: z.array(z.string()).optional(),
+  require_pkce: z.boolean().optional(),
+  // Phase 2: secret configuration — flattened from nested YAML secret block
+  secret_label: z.string().max(255).optional().nullable(),
+  secret_expires_at: z.string().optional().nullable(),
 });
 
 const roleSchema = z.object({
@@ -345,7 +352,7 @@ async function processOrganization(
       // Build INSERT dynamically: omit default_login_methods when not specified
       // so the DB NOT NULL DEFAULT '{password,magic_link}' applies
       const columns = ['name', 'slug', 'default_locale', 'status'];
-      const values = [org.name, org.slug, org.default_locale ?? null, 'active'];
+      const values: (string | string[] | null)[] = [org.name, org.slug, org.default_locale ?? null, 'active'];
       if (org.default_login_methods) {
         columns.splice(3, 0, 'default_login_methods');
         values.splice(3, 0, org.default_login_methods);
@@ -482,7 +489,8 @@ async function processClient(
       await client.query(
         `UPDATE clients SET client_type = $1, application_type = $2, grant_types = $3, redirect_uris = $4,
          response_types = $5, scope = $6, login_methods = $7, token_endpoint_auth_method = $8,
-         updated_at = NOW() WHERE id = $9`,
+         post_logout_redirect_uris = $9, allowed_origins = $10, require_pkce = $11,
+         updated_at = NOW() WHERE id = $12`,
         [
           clientDef.client_type,
           clientDef.application_type ?? 'web',
@@ -492,12 +500,16 @@ async function processClient(
           clientDef.scope ?? 'openid',
           clientDef.login_methods ?? null,
           updateAuthMethod,
+          clientDef.post_logout_redirect_uris ?? [],
+          clientDef.allowed_origins ?? [],
+          clientDef.require_pkce ?? true,
           existing[0].id,
         ],
       );
       result.updated.push({
         type: 'client', slug: clientDef.client_name, name: clientDef.client_name,
-        changes: ['client_type', 'application_type', 'grant_types', 'redirect_uris', 'login_methods', 'token_endpoint_auth_method'],
+        changes: ['client_type', 'application_type', 'grant_types', 'redirect_uris', 'login_methods',
+          'token_endpoint_auth_method', 'post_logout_redirect_uris', 'allowed_origins', 'require_pkce'],
       });
       // Report existing credentials for updated clients (no secret regeneration in overwrite)
       result.credentials.push({
@@ -530,8 +542,8 @@ async function processClient(
       const { rows: insertedRows } = await client.query(
         `INSERT INTO clients (client_id, client_name, organization_id, application_id, client_type,
          application_type, grant_types, redirect_uris, response_types, scope, login_methods,
-         token_endpoint_auth_method, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active') RETURNING id`,
+         token_endpoint_auth_method, post_logout_redirect_uris, allowed_origins, require_pkce, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'active') RETURNING id`,
         [
           clientId, clientDef.client_name, orgId, appId,
           clientDef.client_type,
@@ -542,6 +554,9 @@ async function processClient(
           clientDef.scope ?? 'openid',
           clientDef.login_methods ?? null,
           authMethod,
+          clientDef.post_logout_redirect_uris ?? [],
+          clientDef.allowed_origins ?? [],
+          clientDef.require_pkce ?? true,
         ],
       );
       const clientDbId = insertedRows[0].id;
@@ -558,7 +573,9 @@ async function processClient(
         const secretResult = await client.query(
           `INSERT INTO client_secrets (client_id, secret_hash, secret_sha256, label, expires_at)
            VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-          [clientDbId, secretHash, secretSha256, null, null],
+          [clientDbId, secretHash, secretSha256,
+           clientDef.secret_label ?? null,
+           clientDef.secret_expires_at ?? null],
         );
         secretPlaintext = plaintext;
         secretId = secretResult.rows[0].id;
@@ -572,6 +589,8 @@ async function processClient(
         clientType: clientDef.client_type,
         ...(secretPlaintext ? { secretPlaintext } : {}),
         ...(secretId ? { secretId } : {}),
+        ...(clientDef.secret_label ? { secretLabel: clientDef.secret_label } : {}),
+        ...(clientDef.secret_expires_at ? { secretExpiresAt: clientDef.secret_expires_at } : {}),
       });
     }
   } catch (err) {

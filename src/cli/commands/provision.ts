@@ -46,6 +46,17 @@ const provisionClientSchema = z.object({
   response_types: z.array(z.string()).optional(),
   scope: z.string().optional(),
   login_methods: z.array(z.string()).optional().nullable(),
+  // Phase 2: additional OIDC client fields
+  post_logout_redirect_uris: z.array(z.string()).optional(),
+  allowed_origins: z.array(z.string()).optional(),
+  require_pkce: z.boolean().optional(),
+  token_endpoint_auth_method: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
+  // Phase 2: secret configuration block (label + expiry)
+  secret: z.object({
+    label: z.string().max(255).optional(),
+    expires_at: z.string().optional(),   // ISO date string
+    expires_in: z.string().optional(),   // Duration: 90d, 6m, 1y, 24h
+  }).optional(),
 });
 
 /** Permission definition nested under an application */
@@ -148,6 +159,39 @@ export function parseProvisioningFile(filePath: string): unknown {
 }
 
 // ============================================================================
+// Duration parser — converts human-friendly durations to ISO dates
+// ============================================================================
+
+/**
+ * Parse a duration string into a future Date.
+ *
+ * Supports: Nd (days), Nm (months), Ny (years), Nh (hours).
+ * Examples: "90d" (90 days), "6m" (6 months), "1y" (1 year), "24h" (24 hours).
+ *
+ * @param duration - Duration string in format "<number><unit>"
+ * @returns Future Date calculated from now + duration
+ * @throws Error if the duration format is invalid
+ */
+export function parseDuration(duration: string): Date {
+  const match = duration.match(/^(\d+)([dmyh])$/);
+  if (!match) {
+    throw new Error(`Invalid duration format: "${duration}". Use Nd, Nm, Ny, or Nh (e.g., 90d, 6m, 1y, 24h).`);
+  }
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2];
+  const date = new Date();
+
+  switch (unit) {
+    case 'd': date.setDate(date.getDate() + amount); break;
+    case 'm': date.setMonth(date.getMonth() + amount); break;
+    case 'y': date.setFullYear(date.getFullYear() + amount); break;
+    case 'h': date.setHours(date.getHours() + amount); break;
+  }
+  return date;
+}
+
+// ============================================================================
 // Transformer — nested provisioning format → flat import manifest
 // ============================================================================
 
@@ -212,12 +256,51 @@ export function transformToManifest(input: ProvisioningFile): TransformResult {
         description: app.description,
       });
 
-      // Flatten clients — add org + app slug references
-      for (const client of app.clients ?? []) {
+      // Flatten clients — validate secret block, flatten to secret_label + secret_expires_at
+      for (const clientDef of app.clients ?? []) {
+        // Phase 2: Validate secret block constraints
+        if (clientDef.secret) {
+          if (clientDef.client_type === 'public') {
+            throw new Error(
+              `Client "${clientDef.client_name}": secret block not allowed on public clients`,
+            );
+          }
+          if (clientDef.secret.expires_at && clientDef.secret.expires_in) {
+            throw new Error(
+              `Client "${clientDef.client_name}": expires_at and expires_in are mutually exclusive`,
+            );
+          }
+        }
+
+        // Phase 2: Emit warning for require_pkce: false (PKCE is recommended)
+        if (clientDef.require_pkce === false) {
+          console.warn(
+            `⚠ Client "${clientDef.client_name}": require_pkce is false — PKCE is strongly recommended for all clients`,
+          );
+        }
+
+        // Flatten secret config block into secret_label + secret_expires_at
+        let secretLabel: string | undefined;
+        let secretExpiresAt: string | undefined;
+
+        if (clientDef.secret) {
+          secretLabel = clientDef.secret.label;
+          if (clientDef.secret.expires_at) {
+            secretExpiresAt = clientDef.secret.expires_at;
+          } else if (clientDef.secret.expires_in) {
+            secretExpiresAt = parseDuration(clientDef.secret.expires_in).toISOString();
+          }
+        }
+
+        // Destructure to omit the nested secret block from the spread
+        const { secret: _secretBlock, ...clientFields } = clientDef;
+
         manifest.clients.push({
-          ...client,
+          ...clientFields,
           application_slug: appSlug,
           organization_slug: orgSlug,
+          ...(secretLabel !== undefined ? { secret_label: secretLabel } : {}),
+          ...(secretExpiresAt !== undefined ? { secret_expires_at: secretExpiresAt } : {}),
         });
       }
 

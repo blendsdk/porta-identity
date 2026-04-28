@@ -608,3 +608,268 @@ describe('parseProvisioningFile', () => {
     }
   });
 });
+
+// ============================================================================
+// Phase 2: parseDuration() tests
+// ============================================================================
+
+import { parseDuration } from '../../../src/cli/commands/provision.js';
+
+describe('parseDuration', () => {
+  it('should parse days (e.g., "90d")', () => {
+    const now = new Date();
+    const result = parseDuration('90d');
+    // Should be ~90 days in the future (within 1 second tolerance)
+    const expectedMs = now.getTime() + 90 * 24 * 60 * 60 * 1000;
+    expect(Math.abs(result.getTime() - expectedMs)).toBeLessThan(1000);
+  });
+
+  it('should parse months (e.g., "6m")', () => {
+    const now = new Date();
+    const result = parseDuration('6m');
+    // Should be ~6 months from now
+    const expected = new Date(now);
+    expected.setMonth(expected.getMonth() + 6);
+    expect(Math.abs(result.getTime() - expected.getTime())).toBeLessThan(1000);
+  });
+
+  it('should parse years (e.g., "1y")', () => {
+    const now = new Date();
+    const result = parseDuration('1y');
+    const expected = new Date(now);
+    expected.setFullYear(expected.getFullYear() + 1);
+    expect(Math.abs(result.getTime() - expected.getTime())).toBeLessThan(1000);
+  });
+
+  it('should parse hours (e.g., "24h")', () => {
+    const now = new Date();
+    const result = parseDuration('24h');
+    const expectedMs = now.getTime() + 24 * 60 * 60 * 1000;
+    expect(Math.abs(result.getTime() - expectedMs)).toBeLessThan(1000);
+  });
+
+  it('should throw on invalid format', () => {
+    expect(() => parseDuration('invalid')).toThrow('Invalid duration format');
+    expect(() => parseDuration('90x')).toThrow('Invalid duration format');
+    expect(() => parseDuration('')).toThrow('Invalid duration format');
+    expect(() => parseDuration('d90')).toThrow('Invalid duration format');
+  });
+
+  it('should throw on missing number', () => {
+    expect(() => parseDuration('d')).toThrow('Invalid duration format');
+  });
+
+  it('should handle large values', () => {
+    const result = parseDuration('365d');
+    expect(result.getTime()).toBeGreaterThan(Date.now());
+  });
+});
+
+// ============================================================================
+// Phase 2: provisioningSchema — new client fields
+// ============================================================================
+
+describe('provisioningSchema — Phase 2 client fields', () => {
+  const makeInput = (clientOverrides = {}) => ({
+    version: '1.0',
+    organizations: [{
+      name: 'Org',
+      slug: 'org',
+      applications: [{
+        name: 'App',
+        slug: 'app',
+        clients: [{
+          client_name: 'Test Client',
+          client_type: 'confidential',
+          redirect_uris: ['https://example.com/cb'],
+          ...clientOverrides,
+        }],
+      }],
+    }],
+  });
+
+  it('accepts post_logout_redirect_uris', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ post_logout_redirect_uris: ['https://example.com/logout'] }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts allowed_origins', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ allowed_origins: ['https://example.com'] }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts require_pkce: true', () => {
+    const result = provisioningSchema.safeParse(makeInput({ require_pkce: true }));
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts require_pkce: false', () => {
+    const result = provisioningSchema.safeParse(makeInput({ require_pkce: false }));
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts token_endpoint_auth_method enum values', () => {
+    for (const method of ['client_secret_basic', 'client_secret_post', 'none']) {
+      const result = provisioningSchema.safeParse(
+        makeInput({ token_endpoint_auth_method: method }),
+      );
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('rejects invalid token_endpoint_auth_method', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ token_endpoint_auth_method: 'private_key_jwt' }),
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts secret block with label only', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ secret: { label: 'production-key' } }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts secret block with expires_at only', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ secret: { expires_at: '2027-01-01T00:00:00Z' } }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts secret block with expires_in only', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ secret: { expires_in: '90d' } }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts secret block with label + expires_in', () => {
+    const result = provisioningSchema.safeParse(
+      makeInput({ secret: { label: 'staging', expires_in: '6m' } }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts empty secret block', () => {
+    const result = provisioningSchema.safeParse(makeInput({ secret: {} }));
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================================
+// Phase 2: transformToManifest — secret block validation + flattening
+// ============================================================================
+
+describe('transformToManifest — Phase 2 secret block', () => {
+  const makeProvisionFile = (clientOverrides = {}): ProvisioningFile => ({
+    version: '1.0',
+    organizations: [{
+      name: 'Org',
+      slug: 'org',
+      applications: [{
+        name: 'App',
+        slug: 'app',
+        clients: [{
+          client_name: 'Test Client',
+          client_type: 'confidential',
+          redirect_uris: ['https://example.com/cb'],
+          ...clientOverrides,
+        }],
+        roles: [],
+        permissions: [],
+        claim_definitions: [],
+      }],
+    }],
+  });
+
+  it('should flatten secret label to secret_label', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ secret: { label: 'prod-key' } }),
+    );
+    expect(manifest.clients[0].secret_label).toBe('prod-key');
+  });
+
+  it('should flatten secret expires_at to secret_expires_at', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ secret: { expires_at: '2027-06-15T00:00:00Z' } }),
+    );
+    expect(manifest.clients[0].secret_expires_at).toBe('2027-06-15T00:00:00Z');
+  });
+
+  it('should convert expires_in to ISO date in secret_expires_at', () => {
+    const before = Date.now();
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ secret: { expires_in: '90d' } }),
+    );
+    const expiresAt = new Date(manifest.clients[0].secret_expires_at!);
+    // Should be ~90 days from now
+    const expectedMin = before + 89 * 24 * 60 * 60 * 1000;
+    const expectedMax = before + 91 * 24 * 60 * 60 * 1000;
+    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+    expect(expiresAt.getTime()).toBeLessThan(expectedMax);
+  });
+
+  it('should not include nested secret block in flat manifest', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ secret: { label: 'test' } }),
+    );
+    // The flat manifest should not have a "secret" property
+    expect((manifest.clients[0] as any).secret).toBeUndefined();
+  });
+
+  it('should not add secret fields when no secret block present', () => {
+    const { manifest } = transformToManifest(makeProvisionFile({}));
+    expect(manifest.clients[0].secret_label).toBeUndefined();
+    expect(manifest.clients[0].secret_expires_at).toBeUndefined();
+  });
+
+  it('should throw when secret block is on a public client', () => {
+    expect(() =>
+      transformToManifest(
+        makeProvisionFile({ client_type: 'public', secret: { label: 'test' } }),
+      ),
+    ).toThrow('secret block not allowed on public clients');
+  });
+
+  it('should throw when both expires_at and expires_in are set', () => {
+    expect(() =>
+      transformToManifest(
+        makeProvisionFile({
+          secret: { expires_at: '2027-01-01T00:00:00Z', expires_in: '90d' },
+        }),
+      ),
+    ).toThrow('expires_at and expires_in are mutually exclusive');
+  });
+
+  it('should pass through post_logout_redirect_uris to flat manifest', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ post_logout_redirect_uris: ['https://example.com/logout'] }),
+    );
+    expect(manifest.clients[0].post_logout_redirect_uris).toEqual(['https://example.com/logout']);
+  });
+
+  it('should pass through allowed_origins to flat manifest', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ allowed_origins: ['https://example.com'] }),
+    );
+    expect(manifest.clients[0].allowed_origins).toEqual(['https://example.com']);
+  });
+
+  it('should pass through require_pkce to flat manifest', () => {
+    const { manifest } = transformToManifest(makeProvisionFile({ require_pkce: false }));
+    expect(manifest.clients[0].require_pkce).toBe(false);
+  });
+
+  it('should pass through token_endpoint_auth_method to flat manifest', () => {
+    const { manifest } = transformToManifest(
+      makeProvisionFile({ token_endpoint_auth_method: 'client_secret_basic' }),
+    );
+    expect(manifest.clients[0].token_endpoint_auth_method).toBe('client_secret_basic');
+  });
+});

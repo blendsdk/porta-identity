@@ -491,6 +491,214 @@ describe('ImportResult — credentials array', () => {
 });
 
 // ============================================================================
+// Phase 2: Client — post_logout_redirect_uris, allowed_origins, require_pkce
+// ============================================================================
+
+describe('importManifestSchema — Phase 2 client fields', () => {
+  const baseClient = {
+    client_name: 'Test Client',
+    application_slug: 'app',
+    organization_slug: 'org',
+    client_type: 'confidential' as const,
+    scope: 'openid',
+  };
+
+  it('should accept client with post_logout_redirect_uris', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, post_logout_redirect_uris: ['https://example.com/logout'] }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].post_logout_redirect_uris).toEqual(['https://example.com/logout']);
+    }
+  });
+
+  it('should accept client with allowed_origins', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, allowed_origins: ['https://example.com', 'https://app.example.com'] }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].allowed_origins).toEqual(['https://example.com', 'https://app.example.com']);
+    }
+  });
+
+  it('should accept client with require_pkce: true', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, require_pkce: true }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].require_pkce).toBe(true);
+    }
+  });
+
+  it('should accept client with require_pkce: false', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, require_pkce: false }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].require_pkce).toBe(false);
+    }
+  });
+
+  it('should accept client without Phase 2 fields (all optional)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].post_logout_redirect_uris).toBeUndefined();
+      expect(result.data.clients[0].allowed_origins).toBeUndefined();
+      expect(result.data.clients[0].require_pkce).toBeUndefined();
+    }
+  });
+
+  it('should reject require_pkce as non-boolean', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, require_pkce: 'yes' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept client with all Phase 2 fields together', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{
+        ...baseClient,
+        post_logout_redirect_uris: ['https://example.com/logout'],
+        allowed_origins: ['https://example.com'],
+        require_pkce: true,
+        secret_label: 'my-secret',
+        secret_expires_at: '2027-01-01T00:00:00Z',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const c = result.data.clients[0];
+      expect(c.post_logout_redirect_uris).toEqual(['https://example.com/logout']);
+      expect(c.allowed_origins).toEqual(['https://example.com']);
+      expect(c.require_pkce).toBe(true);
+      expect(c.secret_label).toBe('my-secret');
+      expect(c.secret_expires_at).toBe('2027-01-01T00:00:00Z');
+    }
+  });
+});
+
+// ============================================================================
+// Phase 2: Client — secret_label + secret_expires_at schema tests
+// ============================================================================
+
+describe('importManifestSchema — secret config (flat manifest)', () => {
+  const baseClient = {
+    client_name: 'Test Client',
+    application_slug: 'app',
+    organization_slug: 'org',
+    client_type: 'confidential' as const,
+    scope: 'openid',
+  };
+
+  it('should accept client with secret_label', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, secret_label: 'production-key' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].secret_label).toBe('production-key');
+    }
+  });
+
+  it('should accept client with secret_expires_at (ISO date)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, secret_expires_at: '2027-06-15T00:00:00.000Z' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].secret_expires_at).toBe('2027-06-15T00:00:00.000Z');
+    }
+  });
+
+  it('should accept client with both secret_label and secret_expires_at', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{
+        ...baseClient,
+        secret_label: 'staging-key',
+        secret_expires_at: '2027-12-31T23:59:59Z',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept null secret_label and secret_expires_at', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, secret_label: null, secret_expires_at: null }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].secret_label).toBeNull();
+      expect(result.data.clients[0].secret_expires_at).toBeNull();
+    }
+  });
+
+  it('should reject secret_label longer than 255 characters', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, secret_label: 'x'.repeat(256) }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept client without secret config (backward compatible)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].secret_label).toBeUndefined();
+      expect(result.data.clients[0].secret_expires_at).toBeUndefined();
+    }
+  });
+});
+
+// ============================================================================
 // Client schema — client_type validation tests
 // ============================================================================
 
