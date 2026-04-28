@@ -430,6 +430,31 @@ async function processOrganization(
         columns.splice(3, 0, 'default_login_methods');
         values.splice(3, 0, org.default_login_methods);
       }
+      // Phase 3: Branding + 2FA policy columns
+      if (org.two_factor_policy) {
+        columns.push('two_factor_policy');
+        values.push(org.two_factor_policy);
+      }
+      if (org.branding_primary_color) {
+        columns.push('branding_primary_color');
+        values.push(org.branding_primary_color);
+      }
+      if (org.branding_company_name) {
+        columns.push('branding_company_name');
+        values.push(org.branding_company_name);
+      }
+      if (org.branding_custom_css) {
+        columns.push('branding_custom_css');
+        values.push(org.branding_custom_css);
+      }
+      if (org.branding_logo_url) {
+        columns.push('branding_logo_url');
+        values.push(org.branding_logo_url);
+      }
+      if (org.branding_favicon_url) {
+        columns.push('branding_favicon_url');
+        values.push(org.branding_favicon_url);
+      }
       const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
       const { rows } = await client.query(
         `INSERT INTO organizations (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
@@ -769,7 +794,7 @@ async function processPermission(
       }
 
       await client.query(
-        `UPDATE permissions SET name = $1, description = $2, updated_at = NOW() WHERE id = $3`,
+        `UPDATE permissions SET name = $1, description = $2 WHERE id = $3`,
         [perm.name, perm.description ?? null, existing[0].id],
       );
       result.updated.push({ type: 'permission', slug: perm.slug, name: perm.name, changes: ['name', 'description'] });
@@ -817,8 +842,10 @@ async function processClaimDefinition(
       return;
     }
 
+    // Table is custom_claim_definitions with claim_name column (unique per app)
+    // The manifest slug maps to claim_name in the DB
     const { rows: existing } = await client.query(
-      'SELECT id FROM claim_definitions WHERE slug = $1 AND application_id = $2',
+      'SELECT id FROM custom_claim_definitions WHERE claim_name = $1 AND application_id = $2',
       [claim.slug, appId],
     );
 
@@ -829,13 +856,13 @@ async function processClaimDefinition(
       }
 
       await client.query(
-        `UPDATE claim_definitions SET name = $1, description = $2, claim_type = $3,
-         updated_at = NOW() WHERE id = $4`,
-        [claim.name, claim.description ?? null, claim.claim_type, existing[0].id],
+        `UPDATE custom_claim_definitions SET description = $1, claim_type = $2,
+         updated_at = NOW() WHERE id = $3`,
+        [claim.description ?? null, claim.claim_type, existing[0].id],
       );
       result.updated.push({
         type: 'claim_definition', slug: claim.slug, name: claim.name,
-        changes: ['name', 'description', 'claim_type'],
+        changes: ['description', 'claim_type'],
       });
     } else {
       if (mode === 'dry-run') {
@@ -844,9 +871,9 @@ async function processClaimDefinition(
       }
 
       await client.query(
-        `INSERT INTO claim_definitions (name, slug, application_id, claim_type, description)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [claim.name, claim.slug, appId, claim.claim_type, claim.description ?? null],
+        `INSERT INTO custom_claim_definitions (claim_name, application_id, claim_type, description)
+         VALUES ($1, $2, $3, $4)`,
+        [claim.slug, appId, claim.claim_type, claim.description ?? null],
       );
       result.created.push({ type: 'claim_definition', slug: claim.slug, name: claim.name });
     }
@@ -1293,7 +1320,7 @@ async function processUserClaimValue(
     }
 
     const { rows: claimRows } = await client.query(
-      'SELECT id, claim_type FROM custom_claim_definitions WHERE slug = $1 AND application_id = $2',
+      'SELECT id, claim_type FROM custom_claim_definitions WHERE claim_name = $1 AND application_id = $2',
       [claimValue.claim_slug, appId],
     );
     if (claimRows.length === 0) {
