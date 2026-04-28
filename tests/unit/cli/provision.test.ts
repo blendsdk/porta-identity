@@ -873,3 +873,361 @@ describe('transformToManifest — Phase 2 secret block', () => {
     expect(manifest.clients[0].token_endpoint_auth_method).toBe('client_secret_basic');
   });
 });
+
+// ============================================================================
+// Phase 3: User provisioning schema tests
+// ============================================================================
+
+describe('provisioningSchema — Phase 3 users', () => {
+  it('accepts org with users array', () => {
+    const input = {
+      version: '1.0',
+      allow_passwords: true,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{ name: 'App', slug: 'app' }],
+        users: [{
+          email: 'alice@test.local',
+          given_name: 'Alice',
+          family_name: 'Test',
+          password: 'SecurePass123!',
+          email_verified: true,
+          status: 'active',
+        }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts user with role and claim references', () => {
+    const input = {
+      version: '1.0',
+      allow_passwords: true,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{ name: 'App', slug: 'app', roles: [{ name: 'Admin', slug: 'admin' }] }],
+        users: [{
+          email: 'alice@test.local',
+          password: 'SecurePass123!',
+          roles: [{ app: 'app', role: 'admin' }],
+          claims: [{ app: 'app', claim: 'dept', value: 'Eng' }],
+        }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts user without password (passwordless flow)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        users: [{
+          email: 'bob@test.local',
+          given_name: 'Bob',
+          email_verified: false,
+        }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects user with invalid email', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        users: [{ email: 'not-an-email' }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('defaults allow_passwords to false when omitted', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{ name: 'Test Org', slug: 'test-org' }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.allow_passwords).toBe(false);
+    }
+  });
+});
+
+// ============================================================================
+// Phase 3: Module schema tests
+// ============================================================================
+
+describe('provisioningSchema — Phase 3 modules', () => {
+  it('accepts application with modules array', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{
+          name: 'App', slug: 'app',
+          modules: [
+            { name: 'Dashboard', slug: 'dashboard', status: 'active' },
+            { name: 'Reports', slug: 'reports', description: 'Reporting module' },
+          ],
+        }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts application without modules (optional)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{ name: 'App', slug: 'app' }],
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================================
+// Phase 3: Branding + 2FA schema tests
+// ============================================================================
+
+describe('provisioningSchema — Phase 3 branding + 2FA', () => {
+  it('accepts org with branding block', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Branded Org', slug: 'branded',
+        branding: {
+          primary_color: '#ff6600',
+          company_name: 'Branded Corp',
+          custom_css: 'body { color: red; }',
+        },
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts org with two_factor_policy', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Secure Org', slug: 'secure',
+        two_factor_policy: 'required_totp',
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid two_factor_policy value', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Bad Org', slug: 'bad',
+        two_factor_policy: 'always_on',
+      }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all valid 2FA policy values', () => {
+    for (const policy of ['optional', 'required_email', 'required_totp', 'required_any']) {
+      const input = {
+        version: '1.0',
+        organizations: [{
+          name: 'Test', slug: 'test',
+          two_factor_policy: policy,
+        }],
+      };
+      const result = provisioningSchema.safeParse(input);
+      expect(result.success, `Policy '${policy}' should be valid`).toBe(true);
+    }
+  });
+
+  it('accepts org without branding (optional)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{ name: 'Plain Org', slug: 'plain' }],
+    };
+    const result = provisioningSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================================
+// Phase 3: transformToManifest — users, modules, branding, 2FA
+// ============================================================================
+
+describe('transformToManifest — Phase 3 features', () => {
+  it('extracts users to flat manifest with org_slug', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      allow_passwords: true,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{ name: 'App', slug: 'app' }],
+        users: [{
+          email: 'alice@test.local',
+          given_name: 'Alice',
+          family_name: 'Test',
+          password: 'SecurePass123!',
+          email_verified: true,
+          status: 'active',
+        }],
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.users).toHaveLength(1);
+    expect(manifest.users![0].email).toBe('alice@test.local');
+    expect(manifest.users![0].organization_slug).toBe('test-org');
+    expect(manifest.users![0].given_name).toBe('Alice');
+    // Password should be hashed (Argon2id)
+    expect(manifest.users![0].password_hash).toBeDefined();
+    expect(manifest.users![0].password_hash).toMatch(/^\$argon2id\$/);
+  });
+
+  it('extracts user-role assignments from nested refs', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      allow_passwords: true,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{
+          name: 'App', slug: 'app',
+          roles: [{ name: 'Admin', slug: 'admin' }],
+        }],
+        users: [{
+          email: 'alice@test.local',
+          password: 'SecurePass123!',
+          roles: [{ app: 'app', role: 'admin' }],
+        }],
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.user_role_assignments).toHaveLength(1);
+    expect(manifest.user_role_assignments![0]).toEqual({
+      email: 'alice@test.local',
+      organization_slug: 'test-org',
+      application_slug: 'app',
+      role_slug: 'admin',
+    });
+  });
+
+  it('extracts user-claim values from nested refs', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      allow_passwords: true,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{
+          name: 'App', slug: 'app',
+          claim_definitions: [{ name: 'Dept', slug: 'dept', claim_type: 'string' }],
+        }],
+        users: [{
+          email: 'alice@test.local',
+          password: 'SecurePass123!',
+          claims: [{ app: 'app', claim: 'dept', value: 'Engineering' }],
+        }],
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.user_claim_values).toHaveLength(1);
+    expect(manifest.user_claim_values![0]).toEqual({
+      email: 'alice@test.local',
+      organization_slug: 'test-org',
+      application_slug: 'app',
+      claim_slug: 'dept',
+      value: 'Engineering',
+    });
+  });
+
+  it('extracts application modules to flat manifest', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        applications: [{
+          name: 'App', slug: 'app',
+          modules: [
+            { name: 'Dashboard', slug: 'dashboard', description: 'Main dashboard', status: 'active' },
+            { name: 'Reports', slug: 'reports' },
+          ],
+        }],
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.application_modules).toHaveLength(2);
+    expect(manifest.application_modules![0].slug).toBe('dashboard');
+    expect(manifest.application_modules![0].application_slug).toBe('app');
+    expect(manifest.application_modules![0].organization_slug).toBe('test-org');
+  });
+
+  it('maps branding block to flat org fields', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      organizations: [{
+        name: 'Branded Org', slug: 'branded',
+        branding: {
+          primary_color: '#ff6600',
+          company_name: 'Branded Corp',
+          custom_css: 'body { color: red; }',
+        },
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.organizations[0].branding_primary_color).toBe('#ff6600');
+    expect(manifest.organizations[0].branding_company_name).toBe('Branded Corp');
+    expect(manifest.organizations[0].branding_custom_css).toBe('body { color: red; }');
+  });
+
+  it('maps two_factor_policy to flat org field', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      organizations: [{
+        name: 'Secure Org', slug: 'secure',
+        two_factor_policy: 'required_totp',
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.organizations[0].two_factor_policy).toBe('required_totp');
+  });
+
+  it('throws when password is set but allow_passwords is false', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      allow_passwords: false,
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        users: [{
+          email: 'alice@test.local',
+          password: 'ShouldBeRejected123!',
+        }],
+      }],
+    };
+    await expect(transformToManifest(input)).rejects.toThrow('allow_passwords');
+  });
+
+  it('handles user without password (no hash)', async () => {
+    const input: ProvisioningFile = {
+      version: '1.0',
+      organizations: [{
+        name: 'Test Org', slug: 'test-org',
+        users: [{ email: 'nopass@test.local' }],
+      }],
+    };
+    const { manifest } = await transformToManifest(input);
+    expect(manifest.users).toHaveLength(1);
+    expect(manifest.users![0].password_hash).toBeUndefined();
+  });
+});

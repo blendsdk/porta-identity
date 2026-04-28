@@ -760,3 +760,291 @@ describe('importManifestSchema — client_type', () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ============================================================================
+// Phase 3: importManifestSchema — user, module, assignment schemas
+// ============================================================================
+
+describe('importManifestSchema — Phase 3 users', () => {
+  it('accepts manifest with users array', () => {
+    const input = {
+      version: '1.0',
+      users: [{
+        email: 'alice@test.local',
+        organization_slug: 'test-org',
+        given_name: 'Alice',
+        family_name: 'Test',
+        status: 'active',
+        email_verified: true,
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts user with password_hash', () => {
+    const input = {
+      version: '1.0',
+      users: [{
+        email: 'alice@test.local',
+        organization_slug: 'test-org',
+        password_hash: '$argon2id$v=19$m=65536,t=3,p=4$abc$def',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts user without optional fields', () => {
+    const input = {
+      version: '1.0',
+      users: [{
+        email: 'minimal@test.local',
+        organization_slug: 'test-org',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects user without email', () => {
+    const input = {
+      version: '1.0',
+      users: [{ organization_slug: 'test-org' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects user without organization_slug', () => {
+    const input = {
+      version: '1.0',
+      users: [{ email: 'alice@test.local' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid email format', () => {
+    const input = {
+      version: '1.0',
+      users: [{ email: 'not-an-email', organization_slug: 'test' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid user status', () => {
+    const input = {
+      version: '1.0',
+      users: [{ email: 'a@b.com', organization_slug: 'test', status: 'deleted' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('defaults users to empty array when omitted', () => {
+    const input = { version: '1.0' };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.users).toEqual([]);
+    }
+  });
+});
+
+describe('importManifestSchema — Phase 3 application modules', () => {
+  it('accepts manifest with application_modules', () => {
+    const input = {
+      version: '1.0',
+      application_modules: [{
+        name: 'Dashboard',
+        slug: 'dashboard',
+        application_slug: 'app',
+        organization_slug: 'org',
+        description: 'Main dashboard',
+        status: 'active',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts module without optional fields', () => {
+    const input = {
+      version: '1.0',
+      application_modules: [{
+        name: 'Reports',
+        slug: 'reports',
+        application_slug: 'app',
+        organization_slug: 'org',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects module with invalid status', () => {
+    const input = {
+      version: '1.0',
+      application_modules: [{
+        name: 'Bad',
+        slug: 'bad',
+        application_slug: 'app',
+        organization_slug: 'org',
+        status: 'deleted',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('defaults application_modules to empty array', () => {
+    const input = { version: '1.0' };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.application_modules).toEqual([]);
+    }
+  });
+});
+
+describe('importManifestSchema — Phase 3 user-role assignments', () => {
+  it('accepts manifest with user_role_assignments', () => {
+    const input = {
+      version: '1.0',
+      user_role_assignments: [{
+        email: 'alice@test.local',
+        organization_slug: 'org',
+        application_slug: 'app',
+        role_slug: 'admin',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects assignment without email', () => {
+    const input = {
+      version: '1.0',
+      user_role_assignments: [{
+        organization_slug: 'org',
+        application_slug: 'app',
+        role_slug: 'admin',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('defaults user_role_assignments to empty array', () => {
+    const input = { version: '1.0' };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.user_role_assignments).toEqual([]);
+    }
+  });
+});
+
+describe('importManifestSchema — Phase 3 user claim values', () => {
+  it('accepts manifest with user_claim_values', () => {
+    const input = {
+      version: '1.0',
+      user_claim_values: [{
+        email: 'alice@test.local',
+        organization_slug: 'org',
+        application_slug: 'app',
+        claim_slug: 'department',
+        value: 'Engineering',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts claim value with different types', () => {
+    for (const value of ['string-val', 42, true, { nested: 'json' }]) {
+      const input = {
+        version: '1.0',
+        user_claim_values: [{
+          email: 'a@b.com',
+          organization_slug: 'org',
+          application_slug: 'app',
+          claim_slug: 'test',
+          value,
+        }],
+      };
+      const result = importManifestSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('defaults user_claim_values to empty array', () => {
+    const input = { version: '1.0' };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.user_claim_values).toEqual([]);
+    }
+  });
+});
+
+describe('importManifestSchema — Phase 3 organization branding + 2FA fields', () => {
+  it('accepts organization with branding fields', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Branded Org',
+        slug: 'branded',
+        branding_primary_color: '#ff6600',
+        branding_company_name: 'Branded Corp',
+        branding_custom_css: 'body { color: red; }',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts organization with two_factor_policy', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{
+        name: 'Secure Org',
+        slug: 'secure',
+        two_factor_policy: 'required_totp',
+      }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts all valid 2FA policy values', () => {
+    for (const policy of ['optional', 'required_email', 'required_totp', 'required_any']) {
+      const input = {
+        version: '1.0',
+        organizations: [{ name: 'Test', slug: 'test', two_factor_policy: policy }],
+      };
+      const result = importManifestSchema.safeParse(input);
+      expect(result.success, `Policy '${policy}' should be valid`).toBe(true);
+    }
+  });
+
+  it('rejects invalid two_factor_policy', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{ name: 'Test', slug: 'test', two_factor_policy: 'always_on' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts org without branding fields (backward compatible)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [{ name: 'Plain Org', slug: 'plain' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+});
