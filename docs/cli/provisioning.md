@@ -18,6 +18,40 @@ porta provision --file my-setup.yaml --mode merge
 porta provision --file my-setup.yaml --json
 ```
 
+## Docker Usage
+
+When running Porta via Docker, use the CLI wrapper script or stdin piping
+to pass provisioning files from the host to the container.
+
+### With the CLI Wrapper (Recommended)
+
+The `porta` wrapper script automatically detects host files and pipes them
+to the container:
+
+```bash
+# Install the wrapper (one-time)
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
+  -o porta && chmod +x porta
+
+# Use normally — host files work transparently
+./porta provision -f setup.yaml --dry-run
+./porta provision -f setup.yaml
+./porta provision -f setup.yaml --mode overwrite
+```
+
+### Without the Wrapper
+
+Pipe the file via stdin using shell redirection:
+
+```bash
+docker exec porta-app porta provision -f /dev/stdin < setup.yaml
+docker exec porta-app porta provision -f /dev/stdin --dry-run < setup.yaml
+```
+
+> **Note:** The file path passed to `-f` is resolved inside the container.
+> Host paths like `./setup.yaml` won't work with `docker exec` directly — use
+> the wrapper or stdin piping instead.
+
 ## File Format
 
 Provisioning files use a nested, human-readable structure. The file describes organizations at the top level, with applications, clients, roles, permissions, and claims nested inside.

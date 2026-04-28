@@ -99,7 +99,15 @@ The CLI auto-detects the Docker container and uses manual mode — it prints an 
 
 **7. Set up your environment**
 
-Use [declarative provisioning](../cli/provisioning.md) to create organizations, applications, and clients:
+Use [declarative provisioning](../cli/provisioning.md) to create organizations, applications, and clients.
+
+Using the [CLI wrapper](./quickstart.md#step-8-install-the-cli-wrapper):
+
+```bash
+./porta provision -f setup.yaml
+```
+
+Or without the wrapper:
 
 ```bash
 docker exec porta-app porta provision -f /dev/stdin < setup.yaml
