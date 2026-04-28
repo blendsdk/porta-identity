@@ -21,6 +21,7 @@ organizations:
 
         clients:
           - client_name: CRM Web App
+            client_type: confidential
             application_type: web
             grant_types: [authorization_code, refresh_token]
             redirect_uris: [https://crm.acme.com/callback]
@@ -52,6 +53,7 @@ organizations:
 
         clients:
           - client_name: Inventory Dashboard
+            client_type: confidential
             application_type: web
             grant_types: [authorization_code]
             redirect_uris: [https://inv.globex.com/callback]

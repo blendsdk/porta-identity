@@ -19,6 +19,7 @@ organizations:
 
         clients:
           - client_name: Web Portal SPA
+            client_type: public
             application_type: web
             grant_types:
               - authorization_code

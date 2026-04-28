@@ -39,6 +39,7 @@ import { generateSlug } from '../../organizations/slugs.js';
 /** Client definition nested under an application */
 const provisionClientSchema = z.object({
   client_name: z.string().min(1).max(255),
+  client_type: z.enum(['confidential', 'public']),
   application_type: z.string().optional(),
   grant_types: z.array(z.string()).optional(),
   redirect_uris: z.array(z.string()).optional(),

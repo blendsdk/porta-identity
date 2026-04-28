@@ -12,6 +12,7 @@ organizations:
 
         clients:
           - client_name: Test Web Client
+            client_type: public
             application_type: web
             grant_types: [authorization_code]
             redirect_uris: [https://app.test.com/callback]

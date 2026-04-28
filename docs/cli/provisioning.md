@@ -58,6 +58,7 @@ organizations:
 
         clients:
           - client_name: Web App
+            client_type: confidential
             application_type: web
             grant_types:
               - authorization_code
@@ -137,6 +138,7 @@ organizations:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `client_name` | string | Yes | Human-readable name |
+| `client_type` | string | Yes | `confidential` or `public` |
 | `application_type` | string | No | `web` or `native` |
 | `grant_types` | string[] | No | OAuth grant types |
 | `redirect_uris` | string[] | No | Allowed redirect URIs |

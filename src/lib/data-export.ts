@@ -63,11 +63,11 @@ const EXPORT_QUERIES: Record<ExportEntityType, {
     columns: ['id', 'name', 'slug', 'status', 'is_super_admin', 'default_locale', 'created_at', 'updated_at'],
   },
   clients: {
-    sql: `SELECT c.id, c.client_id, c.client_name, c.status, c.application_type,
+    sql: `SELECT c.id, c.client_id, c.client_name, c.client_type, c.status, c.application_type,
                  c.grant_types, c.redirect_uris, c.created_at, c.updated_at
           FROM clients c WHERE c.organization_id = $1
           ORDER BY c.created_at`,
-    columns: ['id', 'client_id', 'client_name', 'status', 'application_type', 'grant_types', 'redirect_uris', 'created_at', 'updated_at'],
+    columns: ['id', 'client_id', 'client_name', 'client_type', 'status', 'application_type', 'grant_types', 'redirect_uris', 'created_at', 'updated_at'],
     needsOrgId: true,
   },
   roles: {
