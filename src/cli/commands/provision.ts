@@ -59,6 +59,49 @@ const provisionClientSchema = z.object({
   }).optional(),
 });
 
+/** User role reference (app + role slug) */
+const provisionUserRoleRefSchema = z.object({
+  app: z.string().min(1),
+  role: z.string().min(1),
+});
+
+/** User claim reference (app + claim slug + value) */
+const provisionUserClaimRefSchema = z.object({
+  app: z.string().min(1),
+  claim: z.string().min(1),
+  value: z.unknown(),
+});
+
+/** User definition nested under an organization */
+const provisionUserSchema = z.object({
+  email: z.string().min(1).email(),
+  given_name: z.string().max(255).optional(),
+  family_name: z.string().max(255).optional(),
+  locale: z.string().max(10).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  email_verified: z.boolean().optional(),
+  password: z.string().optional(),
+  roles: z.array(provisionUserRoleRefSchema).optional().default([]),
+  claims: z.array(provisionUserClaimRefSchema).optional().default([]),
+});
+
+/** Application module definition */
+const provisionModuleSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(1).max(63),
+  description: z.string().max(1000).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+});
+
+/** Organization branding configuration */
+const provisionBrandingSchema = z.object({
+  primary_color: z.string().max(20).optional(),
+  company_name: z.string().max(255).optional(),
+  custom_css: z.string().max(10000).optional(),
+  logo_url: z.string().url().max(2048).optional(),
+  favicon_url: z.string().url().max(2048).optional(),
+});
+
 /** Permission definition nested under an application */
 const provisionPermissionSchema = z.object({
   name: z.string().min(1).max(255),
@@ -82,7 +125,7 @@ const provisionClaimSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
 });
 
-/** Application with nested children (clients, roles, permissions, claims) */
+/** Application with nested children (clients, roles, permissions, claims, modules) */
 const provisionApplicationSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(63).optional(), // auto-generated from name if omitted
@@ -91,15 +134,19 @@ const provisionApplicationSchema = z.object({
   roles: z.array(provisionRoleSchema).optional().default([]),
   permissions: z.array(provisionPermissionSchema).optional().default([]),
   claim_definitions: z.array(provisionClaimSchema).optional().default([]),
+  modules: z.array(provisionModuleSchema).optional().default([]),
 });
 
-/** Organization with nested applications */
+/** Organization with nested applications, users, branding, 2FA */
 const provisionOrganizationSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(63).optional(), // auto-generated from name if omitted
   default_locale: z.string().max(10).optional().nullable(),
   default_login_methods: z.array(z.string()).optional(),
+  two_factor_policy: z.enum(['optional', 'required_email', 'required_totp', 'required_any']).optional(),
+  branding: provisionBrandingSchema.optional(),
   applications: z.array(provisionApplicationSchema).optional().default([]),
+  users: z.array(provisionUserSchema).optional().default([]),
 });
 
 /**
@@ -111,6 +158,7 @@ const provisionOrganizationSchema = z.object({
 export const provisioningSchema = z.object({
   version: z.string(),
   config: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  allow_passwords: z.boolean().optional().default(false),
   organizations: z.array(provisionOrganizationSchema).min(1),
 });
 
@@ -220,7 +268,7 @@ export interface TransformResult {
  * @param input - Validated provisioning file structure
  * @returns Flat import manifest with role-permission mappings and config
  */
-export function transformToManifest(input: ProvisioningFile): TransformResult {
+export async function transformToManifest(input: ProvisioningFile): Promise<TransformResult> {
   const manifest: ImportManifest = {
     version: input.version,
     organizations: [],
@@ -230,20 +278,90 @@ export function transformToManifest(input: ProvisioningFile): TransformResult {
     permissions: [],
     claim_definitions: [],
     role_permission_mappings: [],
+    users: [],
+    application_modules: [],
+    user_role_assignments: [],
+    user_claim_values: [],
   };
+
+  // Phase 3: Validate allow_passwords enforcement before processing
+  if (!input.allow_passwords) {
+    for (const org of input.organizations) {
+      for (const user of org.users ?? []) {
+        if (user.password) {
+          throw new Error(
+            `User "${user.email}": password field requires "allow_passwords: true" at top level. ` +
+            'Password provisioning is for development/testing only.',
+          );
+        }
+      }
+    }
+  }
 
   const rolePermissionMappings: RolePermissionMappingInput[] = [];
 
   for (const org of input.organizations) {
     const orgSlug = org.slug ?? generateSlug(org.name);
 
-    // Add organization to flat list
+    // Add organization to flat list (with branding + 2FA)
     manifest.organizations.push({
       name: org.name,
       slug: orgSlug,
       default_locale: org.default_locale,
       default_login_methods: org.default_login_methods,
+      two_factor_policy: org.two_factor_policy,
+      branding_primary_color: org.branding?.primary_color,
+      branding_company_name: org.branding?.company_name,
+      branding_custom_css: org.branding?.custom_css,
+      branding_logo_url: org.branding?.logo_url,
+      branding_favicon_url: org.branding?.favicon_url,
     });
+
+    // Phase 3: Flatten users + extract role/claim assignments
+    for (const user of org.users ?? []) {
+      let passwordHash: string | undefined;
+      if (user.password && input.allow_passwords) {
+        const { validatePassword } = await import('../../users/password.js');
+        const { hashPassword } = await import('../../users/password.js');
+        const validation = validatePassword(user.password);
+        if (!validation.isValid) {
+          throw new Error(`User "${user.email}": ${validation.error}`);
+        }
+        passwordHash = await hashPassword(user.password);
+      }
+
+      manifest.users!.push({
+        email: user.email,
+        organization_slug: orgSlug,
+        given_name: user.given_name,
+        family_name: user.family_name,
+        locale: user.locale,
+        status: user.status,
+        email_verified: user.email_verified,
+        password_hash: passwordHash,
+      });
+
+      // Extract user-role assignments
+      for (const roleRef of user.roles ?? []) {
+        manifest.user_role_assignments!.push({
+          email: user.email,
+          organization_slug: orgSlug,
+          application_slug: roleRef.app,
+          role_slug: roleRef.role,
+        });
+      }
+
+      // Extract user-claim values
+      for (const claimRef of user.claims ?? []) {
+        manifest.user_claim_values!.push({
+          email: user.email,
+          organization_slug: orgSlug,
+          application_slug: claimRef.app,
+          claim_slug: claimRef.claim,
+          value: claimRef.value,
+        });
+      }
+    }
 
     for (const app of org.applications ?? []) {
       const appSlug = app.slug ?? generateSlug(app.name);
@@ -340,6 +458,18 @@ export function transformToManifest(input: ProvisioningFile): TransformResult {
       for (const claim of app.claim_definitions ?? []) {
         manifest.claim_definitions.push({
           ...claim,
+          application_slug: appSlug,
+          organization_slug: orgSlug,
+        });
+      }
+
+      // Phase 3: Flatten application modules — add app slug reference
+      for (const mod of app.modules ?? []) {
+        manifest.application_modules!.push({
+          name: mod.name,
+          slug: mod.slug,
+          description: mod.description,
+          status: mod.status,
           application_slug: appSlug,
           organization_slug: orgSlug,
         });
@@ -538,8 +668,8 @@ export const provisionCommand: CommandModule<GlobalOptions, ProvisionOptions> = 
           throw new Error(`Invalid provisioning file:\n${issues}`);
         }
 
-        // 3. Transform nested → flat manifest
-        const { manifest, mappingCount, hasConfig } = transformToManifest(parseResult.data);
+        // 3. Transform nested → flat manifest (async for password hashing)
+        const { manifest, mappingCount, hasConfig } = await transformToManifest(parseResult.data);
 
         if (!isJson) {
           // Count discrete entities (excludes role-permission mappings and config — those are separate)

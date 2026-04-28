@@ -152,14 +152,14 @@ describe('provisioningSchema', () => {
 // ============================================================================
 
 describe('transformToManifest', () => {
-  it('transforms a single org with no applications', () => {
+  it('transforms a single org with no applications', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
         { name: 'Test Org', slug: 'test-org', applications: [] },
       ],
     };
-    const { manifest, mappingCount, hasConfig } = transformToManifest(input);
+    const { manifest, mappingCount, hasConfig } = await transformToManifest(input);
 
     expect(manifest.version).toBe('1.0');
     expect(manifest.organizations).toHaveLength(1);
@@ -169,7 +169,7 @@ describe('transformToManifest', () => {
     expect(hasConfig).toBe(false);
   });
 
-  it('flattens nested organizations → applications → clients', () => {
+  it('flattens nested organizations → applications → clients', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -196,7 +196,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest } = transformToManifest(input);
+    const { manifest } = await transformToManifest(input);
 
     expect(manifest.organizations).toHaveLength(1);
     expect(manifest.applications).toHaveLength(1);
@@ -206,7 +206,7 @@ describe('transformToManifest', () => {
     expect(manifest.clients[0].application_slug).toBe('crm');
   });
 
-  it('flattens roles and permissions with org/app references', () => {
+  it('flattens roles and permissions with org/app references', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -226,7 +226,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest } = transformToManifest(input);
+    const { manifest } = await transformToManifest(input);
 
     expect(manifest.roles).toHaveLength(1);
     expect(manifest.roles[0]).toMatchObject({
@@ -244,7 +244,7 @@ describe('transformToManifest', () => {
     });
   });
 
-  it('extracts role-permission mappings from inline permissions', () => {
+  it('extracts role-permission mappings from inline permissions', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -275,7 +275,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest, mappingCount } = transformToManifest(input);
+    const { manifest, mappingCount } = await transformToManifest(input);
 
     expect(mappingCount).toBe(2);
     expect(manifest.role_permission_mappings).toHaveLength(2);
@@ -291,7 +291,7 @@ describe('transformToManifest', () => {
     });
   });
 
-  it('passes through config overrides', () => {
+  it('passes through config overrides', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       config: { access_token_ttl: '7200', session_ttl: '43200' },
@@ -299,7 +299,7 @@ describe('transformToManifest', () => {
         { name: 'Org', slug: 'org', applications: [] },
       ],
     };
-    const { manifest, hasConfig } = transformToManifest(input);
+    const { manifest, hasConfig } = await transformToManifest(input);
 
     expect(hasConfig).toBe(true);
     expect(manifest.config).toEqual({
@@ -308,7 +308,7 @@ describe('transformToManifest', () => {
     });
   });
 
-  it('generates slugs from names when slug is omitted', () => {
+  it('generates slugs from names when slug is omitted', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -326,7 +326,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest } = transformToManifest(input);
+    const { manifest } = await transformToManifest(input);
 
     // Slugs should be auto-generated from names (kebab-case)
     expect(manifest.organizations[0].slug).toBeTruthy();
@@ -335,7 +335,7 @@ describe('transformToManifest', () => {
     expect(manifest.roles[0].slug).toBeTruthy();
   });
 
-  it('handles multi-org with multiple apps correctly', () => {
+  it('handles multi-org with multiple apps correctly', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -377,7 +377,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest } = transformToManifest(input);
+    const { manifest } = await transformToManifest(input);
 
     expect(manifest.organizations).toHaveLength(2);
     expect(manifest.applications).toHaveLength(3);
@@ -386,7 +386,7 @@ describe('transformToManifest', () => {
     expect(manifest.applications[2].organization_slug).toBe('org-b');
   });
 
-  it('flattens claim definitions with correct references', () => {
+  it('flattens claim definitions with correct references', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -413,7 +413,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest } = transformToManifest(input);
+    const { manifest } = await transformToManifest(input);
 
     expect(manifest.claim_definitions).toHaveLength(1);
     expect(manifest.claim_definitions[0]).toMatchObject({
@@ -426,7 +426,7 @@ describe('transformToManifest', () => {
     });
   });
 
-  it('handles roles without permissions (no mappings generated)', () => {
+  it('handles roles without permissions (no mappings generated)', async () => {
     const input: ProvisioningFile = {
       version: '1.0',
       organizations: [
@@ -446,7 +446,7 @@ describe('transformToManifest', () => {
         },
       ],
     };
-    const { manifest, mappingCount } = transformToManifest(input);
+    const { manifest, mappingCount } = await transformToManifest(input);
 
     expect(manifest.roles).toHaveLength(1);
     expect(mappingCount).toBe(0);
@@ -788,23 +788,23 @@ describe('transformToManifest — Phase 2 secret block', () => {
     }],
   });
 
-  it('should flatten secret label to secret_label', () => {
-    const { manifest } = transformToManifest(
+  it('should flatten secret label to secret_label', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ secret: { label: 'prod-key' } }),
     );
     expect(manifest.clients[0].secret_label).toBe('prod-key');
   });
 
-  it('should flatten secret expires_at to secret_expires_at', () => {
-    const { manifest } = transformToManifest(
+  it('should flatten secret expires_at to secret_expires_at', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ secret: { expires_at: '2027-06-15T00:00:00Z' } }),
     );
     expect(manifest.clients[0].secret_expires_at).toBe('2027-06-15T00:00:00Z');
   });
 
-  it('should convert expires_in to ISO date in secret_expires_at', () => {
+  it('should convert expires_in to ISO date in secret_expires_at', async () => {
     const before = Date.now();
-    const { manifest } = transformToManifest(
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ secret: { expires_in: '90d' } }),
     );
     const expiresAt = new Date(manifest.clients[0].secret_expires_at!);
@@ -815,59 +815,59 @@ describe('transformToManifest — Phase 2 secret block', () => {
     expect(expiresAt.getTime()).toBeLessThan(expectedMax);
   });
 
-  it('should not include nested secret block in flat manifest', () => {
-    const { manifest } = transformToManifest(
+  it('should not include nested secret block in flat manifest', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ secret: { label: 'test' } }),
     );
     // The flat manifest should not have a "secret" property
     expect((manifest.clients[0] as any).secret).toBeUndefined();
   });
 
-  it('should not add secret fields when no secret block present', () => {
-    const { manifest } = transformToManifest(makeProvisionFile({}));
+  it('should not add secret fields when no secret block present', async () => {
+    const { manifest } = await transformToManifest(makeProvisionFile({}));
     expect(manifest.clients[0].secret_label).toBeUndefined();
     expect(manifest.clients[0].secret_expires_at).toBeUndefined();
   });
 
-  it('should throw when secret block is on a public client', () => {
-    expect(() =>
+  it('should throw when secret block is on a public client', async () => {
+    await expect(
       transformToManifest(
         makeProvisionFile({ client_type: 'public', secret: { label: 'test' } }),
       ),
-    ).toThrow('secret block not allowed on public clients');
+    ).rejects.toThrow('secret block not allowed on public clients');
   });
 
-  it('should throw when both expires_at and expires_in are set', () => {
-    expect(() =>
+  it('should throw when both expires_at and expires_in are set', async () => {
+    await expect(
       transformToManifest(
         makeProvisionFile({
           secret: { expires_at: '2027-01-01T00:00:00Z', expires_in: '90d' },
         }),
       ),
-    ).toThrow('expires_at and expires_in are mutually exclusive');
+    ).rejects.toThrow('expires_at and expires_in are mutually exclusive');
   });
 
-  it('should pass through post_logout_redirect_uris to flat manifest', () => {
-    const { manifest } = transformToManifest(
+  it('should pass through post_logout_redirect_uris to flat manifest', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ post_logout_redirect_uris: ['https://example.com/logout'] }),
     );
     expect(manifest.clients[0].post_logout_redirect_uris).toEqual(['https://example.com/logout']);
   });
 
-  it('should pass through allowed_origins to flat manifest', () => {
-    const { manifest } = transformToManifest(
+  it('should pass through allowed_origins to flat manifest', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ allowed_origins: ['https://example.com'] }),
     );
     expect(manifest.clients[0].allowed_origins).toEqual(['https://example.com']);
   });
 
-  it('should pass through require_pkce to flat manifest', () => {
-    const { manifest } = transformToManifest(makeProvisionFile({ require_pkce: false }));
+  it('should pass through require_pkce to flat manifest', async () => {
+    const { manifest } = await transformToManifest(makeProvisionFile({ require_pkce: false }));
     expect(manifest.clients[0].require_pkce).toBe(false);
   });
 
-  it('should pass through token_endpoint_auth_method to flat manifest', () => {
-    const { manifest } = transformToManifest(
+  it('should pass through token_endpoint_auth_method to flat manifest', async () => {
+    const { manifest } = await transformToManifest(
       makeProvisionFile({ token_endpoint_auth_method: 'client_secret_basic' }),
     );
     expect(manifest.clients[0].token_endpoint_auth_method).toBe('client_secret_basic');

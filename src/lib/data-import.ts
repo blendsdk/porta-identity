@@ -7,12 +7,13 @@
  * - dry-run: show what would change without applying
  *
  * All changes are applied in a single PostgreSQL transaction for atomicity.
- * Entities are processed in 8 phases in dependency order:
- * 1. Organizations, 2. Applications, 3. Clients, 4. Roles,
- * 5. Permissions, 6. Claim definitions, 7. Role-permission mappings,
- * 8. System config overrides.
+ * Entities are processed in 12 phases in dependency order:
+ * 1. Organizations (+branding, 2FA), 2. Applications, 3. Clients + secrets,
+ * 4. Roles, 5. Permissions, 6. Claim definitions, 7. Role-permission mappings,
+ * 8. Application modules, 9. Users, 10. User-role assignments,
+ * 11. User claim values, 12. System config overrides.
  *
- * Security: Never imports sensitive data (passwords, secrets, keys).
+ * Security: Passwords are pre-hashed by CLI (Argon2id). Never stores plaintext.
  *
  * @module data-import
  * @see 07-import-export-invitation.md
@@ -89,6 +90,13 @@ const organizationSchema = z.object({
   slug: z.string().min(1).max(63),
   default_login_methods: z.array(z.string()).optional(),
   default_locale: z.string().max(10).optional().nullable(),
+  // Phase 3: org-level fields
+  two_factor_policy: z.enum(['optional', 'required_email', 'required_totp', 'required_any']).optional(),
+  branding_primary_color: z.string().max(20).optional(),
+  branding_company_name: z.string().max(255).optional(),
+  branding_custom_css: z.string().max(10000).optional(),
+  branding_logo_url: z.string().max(2048).optional(),
+  branding_favicon_url: z.string().max(2048).optional(),
 });
 
 const applicationSchema = z.object({
@@ -158,6 +166,45 @@ const rolePermissionMappingSchema = z.object({
 
 export type RolePermissionMappingInput = z.infer<typeof rolePermissionMappingSchema>;
 
+/** Phase 3: User schema (flat manifest format) */
+const userSchema = z.object({
+  email: z.string().min(1).email(),
+  organization_slug: z.string().min(1),
+  given_name: z.string().max(255).optional(),
+  family_name: z.string().max(255).optional(),
+  locale: z.string().max(10).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+  email_verified: z.boolean().optional(),
+  password_hash: z.string().optional(),
+});
+
+/** Phase 3: Application module schema */
+const applicationModuleSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(1).max(63),
+  application_slug: z.string().min(1),
+  organization_slug: z.string().min(1),
+  description: z.string().max(1000).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+});
+
+/** Phase 3: User-role assignment schema */
+const userRoleAssignmentSchema = z.object({
+  email: z.string().min(1).email(),
+  organization_slug: z.string().min(1),
+  application_slug: z.string().min(1),
+  role_slug: z.string().min(1),
+});
+
+/** Phase 3: User claim value schema */
+const userClaimValueSchema = z.object({
+  email: z.string().min(1).email(),
+  organization_slug: z.string().min(1),
+  application_slug: z.string().min(1),
+  claim_slug: z.string().min(1),
+  value: z.unknown(),
+});
+
 /** The full import manifest schema */
 export const importManifestSchema = z.object({
   version: z.string(),
@@ -172,6 +219,11 @@ export const importManifestSchema = z.object({
   role_permission_mappings: z.array(rolePermissionMappingSchema).optional().default([]),
   // Phase 8: System config overrides — only updates existing keys
   config: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  // Phase 3: Users, modules, assignments
+  users: z.array(userSchema).optional().default([]),
+  application_modules: z.array(applicationModuleSchema).optional().default([]),
+  user_role_assignments: z.array(userRoleAssignmentSchema).optional().default([]),
+  user_claim_values: z.array(userClaimValueSchema).optional().default([]),
 });
 
 export type ImportManifest = z.infer<typeof importManifestSchema>;
@@ -259,7 +311,28 @@ export async function importData(
       await processRolePermissionMapping(client, mapping, mode, result, orgMap, appMap);
     }
 
-    // Phase 8: System config overrides — only updates existing keys
+    // Phase 8: Application modules — depend on applications
+    for (const mod of manifest.application_modules ?? []) {
+      await processApplicationModule(client, mod, mode, result, orgMap, appMap);
+    }
+
+    // Phase 9: Users — depend on organizations
+    const userMap = new Map<string, string>(); // "orgSlug:email" → user ID
+    for (const user of manifest.users ?? []) {
+      await processUser(client, user, mode, result, orgMap, userMap);
+    }
+
+    // Phase 10: User-role assignments — depend on users + roles
+    for (const assignment of manifest.user_role_assignments ?? []) {
+      await processUserRoleAssignment(client, assignment, mode, result, orgMap, appMap, userMap);
+    }
+
+    // Phase 11: User claim values — depend on users + claim definitions
+    for (const claimValue of manifest.user_claim_values ?? []) {
+      await processUserClaimValue(client, claimValue, mode, result, orgMap, appMap, userMap);
+    }
+
+    // Phase 12: System config overrides — only updates existing keys
     for (const [key, value] of Object.entries(manifest.config ?? {})) {
       await processConfigOverride(client, key, value, mode, result);
     }
@@ -950,6 +1023,312 @@ async function processConfigOverride(
     result.errors.push({
       type: 'config',
       slug: key,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+// ============================================================================
+// Phase 3 processors (users, modules, assignments)
+// ============================================================================
+
+/**
+ * Process a single user from the manifest.
+ * Users are matched by email + org. Password hash is pre-computed by CLI.
+ */
+async function processUser(
+  client: any,
+  user: z.infer<typeof userSchema>,
+  mode: ImportMode,
+  result: ImportResult,
+  orgMap: Map<string, string>,
+  userMap: Map<string, string>,
+): Promise<void> {
+  try {
+    const orgId = await resolveOrgId(client, user.organization_slug, orgMap);
+    if (!orgId) {
+      result.errors.push({
+        type: 'user', slug: user.email,
+        error: `Parent organization '${user.organization_slug}' not found`,
+      });
+      return;
+    }
+
+    const { rows: existing } = await client.query(
+      'SELECT id FROM users WHERE email = $1 AND organization_id = $2',
+      [user.email, orgId],
+    );
+
+    const userMapKey = `${user.organization_slug}:${user.email}`;
+
+    if (existing.length > 0) {
+      userMap.set(userMapKey, existing[0].id);
+
+      if (mode === 'merge' || mode === 'dry-run') {
+        result.skipped.push({ type: 'user', slug: user.email, reason: 'Already exists' });
+        return;
+      }
+
+      // Overwrite mode — update user fields
+      await client.query(
+        `UPDATE users SET given_name = $1, family_name = $2, locale = $3,
+         email_verified = COALESCE($4, email_verified),
+         status = COALESCE($5, status),
+         updated_at = NOW() WHERE id = $6`,
+        [
+          user.given_name ?? null, user.family_name ?? null,
+          user.locale ?? null, user.email_verified ?? null,
+          user.status ?? null, existing[0].id,
+        ],
+      );
+      result.updated.push({
+        type: 'user', slug: user.email, name: user.email,
+        changes: ['given_name', 'family_name', 'locale', 'email_verified', 'status'],
+      });
+    } else {
+      if (mode === 'dry-run') {
+        result.created.push({ type: 'user', slug: user.email, name: user.email });
+        return;
+      }
+
+      const { rows } = await client.query(
+        `INSERT INTO users (email, organization_id, given_name, family_name, locale,
+         email_verified, password_hash, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [
+          user.email, orgId,
+          user.given_name ?? null, user.family_name ?? null,
+          user.locale ?? null, user.email_verified ?? false,
+          user.password_hash ?? null, user.status ?? 'active',
+        ],
+      );
+      userMap.set(userMapKey, rows[0].id);
+      result.created.push({ type: 'user', slug: user.email, name: user.email });
+    }
+  } catch (err) {
+    result.errors.push({
+      type: 'user', slug: user.email,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Process a single application module from the manifest.
+ * Matched by slug + application.
+ */
+async function processApplicationModule(
+  client: any,
+  mod: z.infer<typeof applicationModuleSchema>,
+  mode: ImportMode,
+  result: ImportResult,
+  orgMap: Map<string, string>,
+  appMap: Map<string, string>,
+): Promise<void> {
+  try {
+    const appId = await resolveAppId(
+      client, mod.organization_slug, mod.application_slug, orgMap, appMap,
+    );
+    if (!appId) {
+      result.errors.push({
+        type: 'application_module', slug: mod.slug,
+        error: `Parent application '${mod.application_slug}' not found`,
+      });
+      return;
+    }
+
+    const { rows: existing } = await client.query(
+      'SELECT id FROM application_modules WHERE slug = $1 AND application_id = $2',
+      [mod.slug, appId],
+    );
+
+    if (existing.length > 0) {
+      if (mode === 'merge' || mode === 'dry-run') {
+        result.skipped.push({ type: 'application_module', slug: mod.slug, reason: 'Already exists' });
+        return;
+      }
+
+      await client.query(
+        `UPDATE application_modules SET name = $1, description = $2, status = COALESCE($3, status),
+         updated_at = NOW() WHERE id = $4`,
+        [mod.name, mod.description ?? null, mod.status ?? null, existing[0].id],
+      );
+      result.updated.push({
+        type: 'application_module', slug: mod.slug, name: mod.name,
+        changes: ['name', 'description', 'status'],
+      });
+    } else {
+      if (mode === 'dry-run') {
+        result.created.push({ type: 'application_module', slug: mod.slug, name: mod.name });
+        return;
+      }
+
+      await client.query(
+        `INSERT INTO application_modules (name, slug, application_id, description, status)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [mod.name, mod.slug, appId, mod.description ?? null, mod.status ?? 'active'],
+      );
+      result.created.push({ type: 'application_module', slug: mod.slug, name: mod.name });
+    }
+  } catch (err) {
+    result.errors.push({
+      type: 'application_module', slug: mod.slug,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Process a user-role assignment. Resolves user + role by slug/email.
+ * Uses ON CONFLICT DO NOTHING for idempotent behavior.
+ */
+async function processUserRoleAssignment(
+  client: any,
+  assignment: z.infer<typeof userRoleAssignmentSchema>,
+  mode: ImportMode,
+  result: ImportResult,
+  _orgMap: Map<string, string>,
+  appMap: Map<string, string>,
+  userMap: Map<string, string>,
+): Promise<void> {
+  try {
+    const userMapKey = `${assignment.organization_slug}:${assignment.email}`;
+    const userId = userMap.get(userMapKey);
+    if (!userId) {
+      result.errors.push({
+        type: 'user_role_assignment',
+        slug: `${assignment.email}→${assignment.role_slug}`,
+        error: `User not found: ${assignment.email} in org ${assignment.organization_slug}`,
+      });
+      return;
+    }
+
+    const appKey = `${assignment.organization_slug}:${assignment.application_slug}`;
+    const appId = appMap.get(appKey);
+    if (!appId) {
+      result.errors.push({
+        type: 'user_role_assignment',
+        slug: `${assignment.email}→${assignment.role_slug}`,
+        error: `Application not found: ${assignment.application_slug}`,
+      });
+      return;
+    }
+
+    const { rows: roleRows } = await client.query(
+      'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
+      [assignment.role_slug, appId],
+    );
+    if (roleRows.length === 0) {
+      result.errors.push({
+        type: 'user_role_assignment',
+        slug: `${assignment.email}→${assignment.role_slug}`,
+        error: `Role not found: ${assignment.role_slug}`,
+      });
+      return;
+    }
+
+    if (mode === 'dry-run') {
+      result.created.push({
+        type: 'user_role_assignment',
+        slug: `${assignment.email}→${assignment.role_slug}`,
+        name: `${assignment.email} → ${assignment.role_slug}`,
+      });
+      return;
+    }
+
+    await client.query(
+      `INSERT INTO user_roles (user_id, role_id, assigned_by)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, role_id) DO NOTHING`,
+      [userId, roleRows[0].id, null],
+    );
+    result.created.push({
+      type: 'user_role_assignment',
+      slug: `${assignment.email}→${assignment.role_slug}`,
+      name: `${assignment.email} → ${assignment.role_slug}`,
+    });
+  } catch (err) {
+    result.errors.push({
+      type: 'user_role_assignment',
+      slug: `${assignment.email}→${assignment.role_slug}`,
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Process a user claim value. Resolves user + claim definition by slug.
+ * Uses ON CONFLICT DO UPDATE for upsert behavior.
+ */
+async function processUserClaimValue(
+  client: any,
+  claimValue: z.infer<typeof userClaimValueSchema>,
+  mode: ImportMode,
+  result: ImportResult,
+  _orgMap: Map<string, string>,
+  appMap: Map<string, string>,
+  userMap: Map<string, string>,
+): Promise<void> {
+  try {
+    const userMapKey = `${claimValue.organization_slug}:${claimValue.email}`;
+    const userId = userMap.get(userMapKey);
+    if (!userId) {
+      result.errors.push({
+        type: 'user_claim_value',
+        slug: `${claimValue.email}:${claimValue.claim_slug}`,
+        error: `User not found: ${claimValue.email} in org ${claimValue.organization_slug}`,
+      });
+      return;
+    }
+
+    const appKey = `${claimValue.organization_slug}:${claimValue.application_slug}`;
+    const appId = appMap.get(appKey);
+    if (!appId) {
+      result.errors.push({
+        type: 'user_claim_value',
+        slug: `${claimValue.email}:${claimValue.claim_slug}`,
+        error: `Application not found: ${claimValue.application_slug}`,
+      });
+      return;
+    }
+
+    const { rows: claimRows } = await client.query(
+      'SELECT id, claim_type FROM custom_claim_definitions WHERE slug = $1 AND application_id = $2',
+      [claimValue.claim_slug, appId],
+    );
+    if (claimRows.length === 0) {
+      result.errors.push({
+        type: 'user_claim_value',
+        slug: `${claimValue.email}:${claimValue.claim_slug}`,
+        error: `Claim definition not found: ${claimValue.claim_slug}`,
+      });
+      return;
+    }
+
+    if (mode === 'dry-run') {
+      result.created.push({
+        type: 'user_claim_value',
+        slug: `${claimValue.email}:${claimValue.claim_slug}`,
+        name: `${claimValue.email} → ${claimValue.claim_slug}`,
+      });
+      return;
+    }
+
+    await client.query(
+      `INSERT INTO custom_claim_values (user_id, claim_id, value)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, claim_id) DO UPDATE SET value = $3`,
+      [userId, claimRows[0].id, JSON.stringify(claimValue.value)],
+    );
+    result.created.push({
+      type: 'user_claim_value',
+      slug: `${claimValue.email}:${claimValue.claim_slug}`,
+      name: `${claimValue.email} → ${claimValue.claim_slug}`,
+    });
+  } catch (err) {
+    result.errors.push({
+      type: 'user_claim_value',
+      slug: `${claimValue.email}:${claimValue.claim_slug}`,
       error: err instanceof Error ? err.message : 'Unknown error',
     });
   }
