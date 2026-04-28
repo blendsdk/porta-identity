@@ -26,7 +26,7 @@ import { z } from 'zod';
 import { parse as parseYaml } from 'yaml';
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../index.js';
-import type { ImportManifest, ImportResult, RolePermissionMappingInput } from '../../lib/data-import.js';
+import type { ImportManifest, ImportClientCredentials, ImportResult, RolePermissionMappingInput } from '../../lib/data-import.js';
 import { withHttpClient } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { printTable, printJson, success, warn, error } from '../output.js';
@@ -338,6 +338,34 @@ function displayResult(result: ImportResult, mode: string): void {
   } else {
     console.log(`  Errors: 0`);
   }
+
+  // Display client credentials — shown once, never stored in plaintext
+  displayCredentials(result.credentials);
+}
+
+/**
+ * Display a credentials table for all processed clients.
+ *
+ * Shows a warning banner because secrets are only shown once during
+ * import and cannot be retrieved afterwards.
+ *
+ * @param credentials - Array of client credentials from the import result
+ */
+function displayCredentials(credentials: ImportClientCredentials[]): void {
+  if (!credentials || credentials.length === 0) return;
+
+  console.log();
+  warn('IMPORTANT: Copy these credentials now. Secrets will NOT be shown again!');
+  console.log();
+  printTable(
+    ['Client Name', 'Client ID', 'Type', 'Secret'],
+    credentials.map((c) => [
+      c.clientName,
+      c.clientId,
+      c.clientType,
+      c.secretPlaintext ?? '—',
+    ]),
+  );
 }
 
 /**
@@ -431,6 +459,7 @@ export const provisionCommand: CommandModule<GlobalOptions, ProvisionOptions> = 
         const { manifest, mappingCount, hasConfig } = transformToManifest(parseResult.data);
 
         if (!isJson) {
+          // Count discrete entities (excludes role-permission mappings and config — those are separate)
           const entityCount =
             manifest.organizations.length +
             manifest.applications.length +

@@ -1,9 +1,13 @@
 # Simple provisioning example
-# Creates a single organization with one application and basic RBAC.
+# Creates a single organization with one application, a public SPA client,
+# a confidential backend client (auto-generates secret), and basic RBAC.
 #
 # Usage:
 #   porta provision --file examples/provision-simple.yaml --dry-run
 #   porta provision --file examples/provision-simple.yaml
+#
+# After provisioning, copy the displayed client credentials — secrets
+# are shown only once and cannot be retrieved later.
 
 version: "1.0"
 
@@ -11,6 +15,10 @@ organizations:
   - name: Acme Corp
     slug: acme
     default_locale: en
+    # Override default login methods (DB default: [password, magic_link])
+    default_login_methods:
+      - password
+      - magic_link
 
     applications:
       - name: Web Portal
@@ -18,6 +26,7 @@ organizations:
         description: Main customer-facing web application
 
         clients:
+          # Public SPA client — no secret generated
           - client_name: Web Portal SPA
             client_type: public
             application_type: web
@@ -30,6 +39,24 @@ organizations:
             response_types:
               - code
             scope: openid profile email
+
+          # Confidential backend client — secret auto-generated on import
+          - client_name: Web Portal API
+            client_type: confidential
+            application_type: web
+            grant_types:
+              - authorization_code
+              - refresh_token
+              - client_credentials
+            redirect_uris:
+              - http://localhost:4000/callback
+              - https://api.acme.com/callback
+            response_types:
+              - code
+            scope: openid profile email
+            # Per-client login method override (null = inherit from org)
+            login_methods:
+              - password
 
         permissions:
           - name: Read

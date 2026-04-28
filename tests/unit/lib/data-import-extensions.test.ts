@@ -1,13 +1,16 @@
 /**
- * Unit tests for import engine extensions (Phase 7 & 8).
+ * Unit tests for import engine extensions.
  *
  * Tests the role-permission mapping schema, system config schema,
- * and backward compatibility with old manifests that don't include
- * the new fields.
+ * backward compatibility with old manifests, and Phase 1 enhancements
+ * (default_login_methods, login_methods, token_endpoint_auth_method,
+ * client_id format, credentials types).
  */
 
 import { describe, it, expect } from 'vitest';
 import { importManifestSchema } from '../../../src/lib/data-import.js';
+import type { ImportResult, ImportClientCredentials } from '../../../src/lib/data-import.js';
+import { generateClientId } from '../../../src/clients/crypto.js';
 
 // ============================================================================
 // Role-permission mapping schema tests
@@ -243,6 +246,247 @@ describe('importManifestSchema — backward compatibility', () => {
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================================
+// Client schema — client_type validation tests
+// ============================================================================
+
+// ============================================================================
+// Phase 1: Organization — default_login_methods schema tests
+// ============================================================================
+
+describe('importManifestSchema — organization default_login_methods', () => {
+  it('should accept organization with default_login_methods array', () => {
+    const input = {
+      version: '1.0',
+      organizations: [
+        { name: 'Org', slug: 'org', default_login_methods: ['password', 'magic_link'] },
+      ],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.organizations[0].default_login_methods).toEqual(['password', 'magic_link']);
+    }
+  });
+
+  it('should accept organization with password-only login method', () => {
+    const input = {
+      version: '1.0',
+      organizations: [
+        { name: 'Org', slug: 'org', default_login_methods: ['password'] },
+      ],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.organizations[0].default_login_methods).toEqual(['password']);
+    }
+  });
+
+  it('should accept organization without default_login_methods (uses DB default)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [
+        { name: 'Org', slug: 'org' },
+      ],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Omitted = undefined, which maps to null in SQL → DB default {password, magic_link}
+      expect(result.data.organizations[0].default_login_methods).toBeUndefined();
+    }
+  });
+
+  it('should accept organization with both default_locale and default_login_methods', () => {
+    const input = {
+      version: '1.0',
+      organizations: [
+        { name: 'Org', slug: 'org', default_locale: 'en', default_login_methods: ['magic_link'] },
+      ],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.organizations[0].default_locale).toBe('en');
+      expect(result.data.organizations[0].default_login_methods).toEqual(['magic_link']);
+    }
+  });
+});
+
+// ============================================================================
+// Phase 1: Client — login_methods + token_endpoint_auth_method schema tests
+// ============================================================================
+
+describe('importManifestSchema — client login_methods + token_endpoint_auth_method', () => {
+  const baseClient = {
+    client_name: 'Test Client',
+    application_slug: 'app',
+    organization_slug: 'org',
+    client_type: 'public' as const,
+    scope: 'openid',
+  };
+
+  it('should accept client with login_methods array', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, login_methods: ['password'] }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].login_methods).toEqual(['password']);
+    }
+  });
+
+  it('should accept client with null login_methods (inherit from org)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, login_methods: null }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].login_methods).toBeNull();
+    }
+  });
+
+  it('should accept client without login_methods (omitted = undefined)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].login_methods).toBeUndefined();
+    }
+  });
+
+  it('should accept client with token_endpoint_auth_method override', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, client_type: 'confidential', token_endpoint_auth_method: 'client_secret_basic' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.clients[0].token_endpoint_auth_method).toBe('client_secret_basic');
+    }
+  });
+
+  it('should accept client without token_endpoint_auth_method (auto-derived from type)', () => {
+    const input = {
+      version: '1.0',
+      organizations: [],
+      clients: [{ ...baseClient, client_type: 'public' }],
+    };
+    const result = importManifestSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Omitted = undefined; import engine derives 'none' for public, 'client_secret_post' for confidential
+      expect(result.data.clients[0].token_endpoint_auth_method).toBeUndefined();
+    }
+  });
+});
+
+// ============================================================================
+// Phase 1: Client ID format + credentials type tests
+// ============================================================================
+
+describe('generateClientId — format validation', () => {
+  it('should generate a base64url-encoded string (~43 chars)', () => {
+    const clientId = generateClientId();
+    // 32 random bytes → base64url ≈ 43 characters
+    expect(clientId.length).toBeGreaterThanOrEqual(42);
+    expect(clientId.length).toBeLessThanOrEqual(44);
+  });
+
+  it('should use only base64url-safe characters', () => {
+    const clientId = generateClientId();
+    // base64url: A-Z, a-z, 0-9, -, _ (no +, /, or = padding)
+    expect(clientId).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  it('should generate unique values on each call', () => {
+    const ids = new Set(Array.from({ length: 20 }, () => generateClientId()));
+    expect(ids.size).toBe(20);
+  });
+});
+
+describe('ImportClientCredentials type — structural validation', () => {
+  it('should represent a public client credential (no secret)', () => {
+    const cred: ImportClientCredentials = {
+      clientName: 'SPA Client',
+      clientId: generateClientId(),
+      clientType: 'public',
+    };
+    expect(cred.secretPlaintext).toBeUndefined();
+    expect(cred.secretId).toBeUndefined();
+    expect(cred.clientType).toBe('public');
+  });
+
+  it('should represent a confidential client credential with secret', () => {
+    const cred: ImportClientCredentials = {
+      clientName: 'Backend Client',
+      clientId: generateClientId(),
+      clientType: 'confidential',
+      secretPlaintext: 'test-secret-value',
+      secretId: 'some-uuid',
+    };
+    expect(cred.secretPlaintext).toBe('test-secret-value');
+    expect(cred.secretId).toBe('some-uuid');
+    expect(cred.clientType).toBe('confidential');
+  });
+
+  it('should represent a dry-run credential with indicator text', () => {
+    const cred: ImportClientCredentials = {
+      clientName: 'My Client',
+      clientId: '(would be generated)',
+      clientType: 'confidential',
+      secretPlaintext: '(would be generated)',
+    };
+    expect(cred.clientId).toBe('(would be generated)');
+    expect(cred.secretPlaintext).toBe('(would be generated)');
+  });
+});
+
+describe('ImportResult — credentials array', () => {
+  it('should include credentials array in result structure', () => {
+    const result: ImportResult = {
+      mode: 'merge',
+      created: [],
+      updated: [],
+      skipped: [],
+      errors: [],
+      credentials: [],
+    };
+    expect(result.credentials).toBeDefined();
+    expect(Array.isArray(result.credentials)).toBe(true);
+  });
+
+  it('should accumulate credentials from multiple clients', () => {
+    const result: ImportResult = {
+      mode: 'merge',
+      created: [],
+      updated: [],
+      skipped: [],
+      errors: [],
+      credentials: [
+        { clientName: 'Client A', clientId: 'id-a', clientType: 'public' },
+        { clientName: 'Client B', clientId: 'id-b', clientType: 'confidential', secretPlaintext: 'secret-b' },
+      ],
+    };
+    expect(result.credentials).toHaveLength(2);
+    expect(result.credentials[0].clientType).toBe('public');
+    expect(result.credentials[1].secretPlaintext).toBe('secret-b');
   });
 });
 

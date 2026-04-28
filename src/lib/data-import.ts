@@ -21,6 +21,7 @@
 import { z } from 'zod';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
+import { generateClientId, generateSecret, hashSecret, sha256Secret } from '../clients/crypto.js';
 
 // ============================================================================
 // Types
@@ -50,6 +51,21 @@ export interface ImportErrorResult {
   error: string;
 }
 
+/** Client credentials generated during import (shown once, never stored in plaintext) */
+export interface ImportClientCredentials {
+  clientName: string;
+  clientId: string;
+  clientType: 'confidential' | 'public';
+  /** Raw secret — only present on create for confidential clients */
+  secretPlaintext?: string;
+  /** DB row ID of the generated secret */
+  secretId?: string;
+  /** Optional label for the secret (Phase 2) */
+  secretLabel?: string;
+  /** Optional expiry for the secret (Phase 2) */
+  secretExpiresAt?: string;
+}
+
 /** Full import result */
 export interface ImportResult {
   mode: ImportMode;
@@ -57,6 +73,8 @@ export interface ImportResult {
   updated: ImportEntityResult[];
   skipped: ImportSkippedResult[];
   errors: ImportErrorResult[];
+  /** Credentials for all processed clients (created, skipped, updated, dry-run) */
+  credentials: ImportClientCredentials[];
 }
 
 // ============================================================================
@@ -91,6 +109,7 @@ const clientSchema = z.object({
   response_types: z.array(z.string()).optional(),
   scope: z.string().optional(),
   login_methods: z.array(z.string()).optional().nullable(),
+  token_endpoint_auth_method: z.string().optional(),
 });
 
 const roleSchema = z.object({
@@ -184,6 +203,7 @@ export async function importData(
     updated: [],
     skipped: [],
     errors: [],
+    credentials: [],
   };
 
   const pool = getPool();
@@ -304,15 +324,16 @@ async function processOrganization(
         return;
       }
 
-      // Overwrite mode — update
+      // Overwrite mode — update (COALESCE preserves DB default when not specified)
       await client.query(
         `UPDATE organizations SET name = $1, default_locale = $2,
-         updated_at = NOW() WHERE slug = $3`,
-        [org.name, org.default_locale ?? null, org.slug],
+         default_login_methods = COALESCE($3, default_login_methods),
+         updated_at = NOW() WHERE slug = $4`,
+        [org.name, org.default_locale ?? null, org.default_login_methods ?? null, org.slug],
       );
       result.updated.push({
         type: 'organization', slug: org.slug, name: org.name,
-        changes: ['name', 'default_locale'].filter(Boolean),
+        changes: ['name', 'default_locale', 'default_login_methods'].filter(Boolean),
       });
     } else {
       // Create new organization
@@ -321,10 +342,18 @@ async function processOrganization(
         return;
       }
 
+      // Build INSERT dynamically: omit default_login_methods when not specified
+      // so the DB NOT NULL DEFAULT '{password,magic_link}' applies
+      const columns = ['name', 'slug', 'default_locale', 'status'];
+      const values = [org.name, org.slug, org.default_locale ?? null, 'active'];
+      if (org.default_login_methods) {
+        columns.splice(3, 0, 'default_login_methods');
+        values.splice(3, 0, org.default_login_methods);
+      }
+      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
       const { rows } = await client.query(
-        `INSERT INTO organizations (name, slug, default_locale, status)
-         VALUES ($1, $2, $3, 'active') RETURNING id`,
-        [org.name, org.slug, org.default_locale ?? null],
+        `INSERT INTO organizations (${columns.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+        values,
       );
       orgMap.set(org.slug, rows[0].id);
       result.created.push({ type: 'organization', slug: org.slug, name: org.name });
@@ -428,20 +457,32 @@ async function processClient(
       return;
     }
 
+    // Fetch client_id + client_type for credential reporting on skip/update paths
     const { rows: existing } = await client.query(
-      'SELECT id FROM clients WHERE client_name = $1 AND application_id = $2',
+      'SELECT id, client_id, client_type FROM clients WHERE client_name = $1 AND application_id = $2',
       [clientDef.client_name, appId],
     );
 
     if (existing.length > 0) {
       if (mode === 'merge' || mode === 'dry-run') {
         result.skipped.push({ type: 'client', slug: clientDef.client_name, reason: 'Already exists' });
+        // Report existing credentials for skipped clients (no secret — already issued)
+        result.credentials.push({
+          clientName: clientDef.client_name,
+          clientId: existing[0].client_id,
+          clientType: existing[0].client_type,
+        });
         return;
       }
 
+      // Derive token_endpoint_auth_method from client_type if not explicitly set
+      const updateAuthMethod = clientDef.token_endpoint_auth_method
+        ?? (clientDef.client_type === 'public' ? 'none' : 'client_secret_post');
+
       await client.query(
         `UPDATE clients SET client_type = $1, application_type = $2, grant_types = $3, redirect_uris = $4,
-         response_types = $5, scope = $6, updated_at = NOW() WHERE id = $7`,
+         response_types = $5, scope = $6, login_methods = $7, token_endpoint_auth_method = $8,
+         updated_at = NOW() WHERE id = $9`,
         [
           clientDef.client_type,
           clientDef.application_type ?? 'web',
@@ -449,27 +490,48 @@ async function processClient(
           clientDef.redirect_uris ?? [],
           clientDef.response_types ?? ['code'],
           clientDef.scope ?? 'openid',
+          clientDef.login_methods ?? null,
+          updateAuthMethod,
           existing[0].id,
         ],
       );
       result.updated.push({
         type: 'client', slug: clientDef.client_name, name: clientDef.client_name,
-        changes: ['client_type', 'application_type', 'grant_types', 'redirect_uris'],
+        changes: ['client_type', 'application_type', 'grant_types', 'redirect_uris', 'login_methods', 'token_endpoint_auth_method'],
+      });
+      // Report existing credentials for updated clients (no secret regeneration in overwrite)
+      result.credentials.push({
+        clientName: clientDef.client_name,
+        clientId: existing[0].client_id,
+        clientType: existing[0].client_type,
       });
     } else {
       if (mode === 'dry-run') {
         result.created.push({ type: 'client', slug: clientDef.client_name, name: clientDef.client_name });
+        // Dry-run credential indicators — show what would be generated
+        result.credentials.push({
+          clientName: clientDef.client_name,
+          clientId: '(would be generated)',
+          clientType: clientDef.client_type,
+          ...(clientDef.client_type === 'confidential'
+            ? { secretPlaintext: '(would be generated)' }
+            : {}),
+        });
         return;
       }
 
-      // Generate a new client_id for the imported client
-      const { randomBytes } = await import('node:crypto');
-      const clientId = randomBytes(16).toString('hex');
+      // Generate base64url client_id using the standard crypto utility
+      const clientId = generateClientId();
 
-      await client.query(
+      // Derive token_endpoint_auth_method from client_type if not explicitly set
+      const authMethod = clientDef.token_endpoint_auth_method
+        ?? (clientDef.client_type === 'public' ? 'none' : 'client_secret_post');
+
+      const { rows: insertedRows } = await client.query(
         `INSERT INTO clients (client_id, client_name, organization_id, application_id, client_type,
-         application_type, grant_types, redirect_uris, response_types, scope, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active')`,
+         application_type, grant_types, redirect_uris, response_types, scope, login_methods,
+         token_endpoint_auth_method, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active') RETURNING id`,
         [
           clientId, clientDef.client_name, orgId, appId,
           clientDef.client_type,
@@ -478,9 +540,39 @@ async function processClient(
           clientDef.redirect_uris ?? [],
           clientDef.response_types ?? ['code'],
           clientDef.scope ?? 'openid',
+          clientDef.login_methods ?? null,
+          authMethod,
         ],
       );
+      const clientDbId = insertedRows[0].id;
+
+      // Generate secret for confidential clients within the same transaction
+      let secretPlaintext: string | undefined;
+      let secretId: string | undefined;
+
+      if (clientDef.client_type === 'confidential') {
+        const plaintext = generateSecret();
+        const secretHash = await hashSecret(plaintext);
+        const secretSha256 = sha256Secret(plaintext);
+
+        const secretResult = await client.query(
+          `INSERT INTO client_secrets (client_id, secret_hash, secret_sha256, label, expires_at)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [clientDbId, secretHash, secretSha256, null, null],
+        );
+        secretPlaintext = plaintext;
+        secretId = secretResult.rows[0].id;
+      }
+
       result.created.push({ type: 'client', slug: clientDef.client_name, name: clientDef.client_name });
+      // Report credentials — secret only present for newly created confidential clients
+      result.credentials.push({
+        clientName: clientDef.client_name,
+        clientId,
+        clientType: clientDef.client_type,
+        ...(secretPlaintext ? { secretPlaintext } : {}),
+        ...(secretId ? { secretId } : {}),
+      });
     }
   } catch (err) {
     result.errors.push({
