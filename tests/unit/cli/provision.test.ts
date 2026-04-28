@@ -561,4 +561,50 @@ describe('parseProvisioningFile', () => {
       fs.unlinkSync(emptyJsonPath);
     }
   });
+
+  it('parses extensionless file as YAML (stdin support)', () => {
+    // Simulate an extensionless file like /dev/stdin by creating a temp
+    // file without an extension containing valid YAML content
+    const noExtPath = path.join(testDir, 'provision-noext');
+    fs.writeFileSync(
+      noExtPath,
+      'version: "1.0"\norganizations:\n  - name: Stdin Test\n    slug: stdin-test\n',
+    );
+    try {
+      const result = parseProvisioningFile(noExtPath);
+      expect((result as { version: string }).version).toBe('1.0');
+      expect((result as { organizations: unknown[] }).organizations).toHaveLength(1);
+    } finally {
+      fs.unlinkSync(noExtPath);
+    }
+  });
+
+  it('parses extensionless file containing JSON as YAML (JSON is valid YAML)', () => {
+    // YAML is a superset of JSON, so JSON content parses correctly
+    const noExtPath = path.join(testDir, 'provision-noext-json');
+    const data = {
+      version: '1.0',
+      organizations: [{ name: 'JSON via stdin', slug: 'json-stdin' }],
+    };
+    fs.writeFileSync(noExtPath, JSON.stringify(data));
+    try {
+      const result = parseProvisioningFile(noExtPath);
+      expect(result).toEqual(data);
+    } finally {
+      fs.unlinkSync(noExtPath);
+    }
+  });
+
+  it('skips existence check for /dev/stdin path', () => {
+    // /dev/stdin may not exist on all platforms (e.g., Windows CI),
+    // but the code should not throw "File not found" for it.
+    // We can't fully test /dev/stdin without a pipe, but we verify
+    // the existence check is skipped (it will throw a read error instead).
+    try {
+      parseProvisioningFile('/dev/stdin');
+    } catch (e) {
+      // Should NOT be "File not found" — should be a read error or empty content error
+      expect((e as Error).message).not.toContain('File not found');
+    }
+  });
 });

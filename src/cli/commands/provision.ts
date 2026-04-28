@@ -110,17 +110,22 @@ export type ProvisioningFile = z.infer<typeof provisioningSchema>;
 // ============================================================================
 
 /**
- * Read and parse a provisioning file from disk.
+ * Read and parse a provisioning file from disk or stdin.
  *
  * Detects format by file extension (.yaml/.yml for YAML, .json for JSON).
- * Returns the raw parsed object for subsequent schema validation.
+ * When reading from `/dev/stdin` (no extension), defaults to YAML parsing
+ * which also handles valid JSON since YAML is a superset of JSON.
  *
- * @param filePath - Path to the provisioning file
+ * @param filePath - Path to the provisioning file, or `/dev/stdin` for piped input
  * @returns Parsed file contents as a plain object
  * @throws Error if file not found, unreadable, or unsupported extension
  */
 export function parseProvisioningFile(filePath: string): unknown {
-  if (!fs.existsSync(filePath)) {
+  // /dev/stdin is a special file — skip the existence check since it may
+  // not pass fs.existsSync on all platforms but is always readable when
+  // stdin is piped.
+  const isStdin = filePath === '/dev/stdin';
+  if (!isStdin && !fs.existsSync(filePath)) {
     throw new Error(`File not found: ${filePath}`);
   }
 
@@ -131,6 +136,10 @@ export function parseProvisioningFile(filePath: string): unknown {
     return parseYaml(content);
   } else if (ext === '.json') {
     return JSON.parse(content);
+  } else if (isStdin || ext === '') {
+    // No extension (stdin pipe or extensionless path) — parse as YAML.
+    // YAML is a superset of JSON, so this handles both formats.
+    return parseYaml(content);
   } else {
     throw new Error(
       `Unsupported file format: ${ext}. Use .yaml, .yml, or .json`,
