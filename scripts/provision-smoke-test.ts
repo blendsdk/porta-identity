@@ -20,6 +20,10 @@
  * Usage:
  *   yarn tsx scripts/provision-smoke-test.ts
  *
+ * Output:
+ *   Test results (YAML manifests + JSON import results) are saved to
+ *   scripts/tmp-smoke-results/ for inspection. This directory is gitignored.
+ *
  * Exit code: 0 = all passed, 1 = failures
  */
 
@@ -31,7 +35,7 @@ dotenv.config();
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 // ---------------------------------------------------------------------------
 // Test state
@@ -95,10 +99,50 @@ function fail(name: string, detail: string, start: number) {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Output directory for test results (gitignored via scripts/tmp-* pattern) */
+const OUTPUT_DIR = path.resolve(import.meta.dirname ?? '.', 'tmp-smoke-results');
+
+function ensureOutputDir() {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
 function loadYamlFile(filePath: string): unknown {
   const abs = path.resolve(import.meta.dirname ?? '.', '..', filePath);
   const content = fs.readFileSync(abs, 'utf-8');
   return parseYaml(content);
+}
+
+/** Save a YAML source file + JSON import result to disk for inspection */
+function saveTestOutput(
+  testSlug: string,
+  opts: {
+    yamlSource?: string;
+    manifest?: unknown;
+    result?: unknown;
+  },
+) {
+  try {
+    if (opts.yamlSource) {
+      fs.writeFileSync(
+        path.join(OUTPUT_DIR, `${testSlug}-source.yaml`),
+        opts.yamlSource.trim() + '\n',
+      );
+    }
+    if (opts.manifest) {
+      fs.writeFileSync(
+        path.join(OUTPUT_DIR, `${testSlug}-manifest.yaml`),
+        stringifyYaml(opts.manifest, { lineWidth: 120 }),
+      );
+    }
+    if (opts.result) {
+      fs.writeFileSync(
+        path.join(OUTPUT_DIR, `${testSlug}-result.json`),
+        JSON.stringify(opts.result, null, 2) + '\n',
+      );
+    }
+  } catch {
+    // Non-critical — don't fail the test over file writes
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +178,8 @@ async function main() {
     // Clean slate: Remove test-specific data from previous runs
     // (We use unique slugs prefixed with 'smoke-' to avoid conflicts)
     // ------------------------------------------------------------------
+    ensureOutputDir();
+
     log('[Setup] Cleaning previous smoke-test data...');
     await pool.query(`DELETE FROM organizations WHERE slug LIKE 'smoke-%'`);
     await pool.query(`DELETE FROM organizations WHERE slug IN ('acme', 'enterprise')`);
@@ -167,6 +213,7 @@ async function main() {
           const creds = result.credentials.filter((c) => c.clientType === 'confidential' && c.secretPlaintext);
           pass(name, `Created: ${result.created.length}, Credentials: ${creds.length} confidential secrets`, t);
           printCredentials(result.credentials);
+          saveTestOutput('test-1-simple', { manifest, result });
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -199,6 +246,7 @@ async function main() {
             t,
           );
           printCredentials(result.credentials);
+          saveTestOutput('test-2-enterprise', { manifest, result });
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -366,6 +414,7 @@ organizations:
                 t,
               );
               printCredentials(result.credentials);
+              saveTestOutput('test-3-full-feature', { yamlSource: fullFeatureYaml, manifest, result });
             }
           }
         }
@@ -426,6 +475,7 @@ organizations:
         } else {
           pass(name, `Updated: ${result.updated.length}, Created: ${result.created.length}`, t);
           printCredentials(result.credentials);
+          saveTestOutput('test-5-overwrite', { manifest, result });
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -464,6 +514,7 @@ organizations:
           fail(name, 'Dry-run created entities in the database!', t);
         } else {
           pass(name, `Dry-run result — would create: ${result.created.length}, DB rows: 0 (correct)`, t);
+          saveTestOutput('test-6-dryrun', { yamlSource: dryRunYaml, manifest, result });
         }
       } catch (err) {
         fail(name, String(err), t);
@@ -589,6 +640,8 @@ organizations:
   }
 
   log('');
+  log(`📁 Test output saved to: ${OUTPUT_DIR}/`);
+  log('   (manifests as YAML, import results as JSON — gitignored)\n');
 
   if (failed > 0) {
     log('❌ Some tests failed!\n');

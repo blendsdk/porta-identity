@@ -339,7 +339,14 @@ docker exec porta-app porta provision -f /dev/stdin < setup.yaml
 :::
 
 ::: tip More examples
-See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `examples/provision-enterprise.yaml` in the repository, or read the full [Provisioning Guide](../cli/provisioning.md).
+The repository includes ready-to-use provisioning files at different complexity levels:
+
+- **`examples/provision-simple.yaml`** — Single org, one app, public + confidential client, basic RBAC
+- **`examples/provision-multi-org.yaml`** — Multi-tenant SaaS with two isolated organizations
+- **`examples/provision-enterprise.yaml`** — Enterprise setup with multiple apps, custom claims, and system config
+- **`examples/provision-full.yaml`** — **Complete feature showcase**: users with passwords, application modules, branding, 2FA policy, secret config, role/claim assignments
+
+Read the full [Provisioning Guide](../cli/provisioning.md) for the complete file format reference.
 :::
 
 ---

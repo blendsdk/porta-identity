@@ -408,6 +408,29 @@ The command supports both YAML and JSON:
 - **Version control** — Keep your provisioning files in git alongside your application code
 - **Environment variants** — Create separate files for dev, staging, and production
 
+## Examples
+
+The repository includes four ready-to-use example files at increasing complexity levels. Each can be applied directly or used as a starting point for your own provisioning files.
+
+```bash
+# Preview any example without making changes
+porta provision -f examples/provision-simple.yaml --dry-run
+
+# Apply an example
+porta provision -f examples/provision-simple.yaml
+```
+
+| Example | What It Demonstrates |
+|---------|---------------------|
+| [`provision-simple.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-simple.yaml) | **Getting started** — Single org (`acme`), one app, public SPA client + confidential API client, 2 permissions, 2 roles with permission mappings, per-client login method override |
+| [`provision-multi-org.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-multi-org.yaml) | **Multi-tenancy** — Two isolated organizations (`acme`, `globex`), each with their own app, clients, permissions, and roles. Shows how tenant isolation works in provisioning |
+| [`provision-enterprise.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-enterprise.yaml) | **Enterprise setup** — One org with 2 applications (ERP + Customer Portal), 10 permissions, 7 roles, 3 clients (web + native + portal), 2 custom claim definitions, and system config TTL overrides |
+| [`provision-full.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-full.yaml) | **Complete feature showcase** — Every provisioning feature in one file: org branding (color, company name, custom CSS), 2FA policy, login methods, 3 application modules, 3 roles with permission mappings, 7 permissions, 3 custom claims, public + confidential client with secret config (label + expiry), 3 users with passwords and role/claim assignments, system config. Requires `allow_passwords: true` |
+
+::: tip Progression path
+Start with `provision-simple.yaml` to understand the basics, then graduate to `provision-full.yaml` when you need the complete feature set. Copy any example and customize it for your environment.
+:::
+
 ## Related
 
 - [CLI Overview](/cli/overview) — Full CLI command reference
