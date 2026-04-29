@@ -58,6 +58,7 @@ import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
 import { adminCors } from './middleware/admin-cors.js';
+import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
 import { adminRateLimiter } from './middleware/admin-rate-limiter.js';
@@ -413,6 +414,20 @@ export function createApp(oidcProvider?: Provider): Koa {
       }
       await next();
     });
+
+    // OIDC CORS — pre-sets Access-Control-Allow-Origin and related headers
+    // BEFORE the request enters oidc-provider's internal Koa context.
+    //
+    // node-oidc-provider uses @koa/cors with keepHeadersOnError: false,
+    // which strips CORS headers from error responses (e.g., 400 from the
+    // token endpoint). This middleware fixes that by setting CORS headers
+    // at the outer Koa level. The provider's cors.js detects existing
+    // access-control-* headers and skips its own handling, so our headers
+    // survive both success and error responses.
+    //
+    // Mounted after body parser so client_id is available for production
+    // origin checks. OPTIONS preflights are short-circuited here with 204.
+    oidcRouter.use(oidcPreflightCors());
 
     // Pre-hash client secrets with SHA-256 before oidc-provider processes them.
     // This enables secure secret storage: we store SHA-256 hashes in the DB,
