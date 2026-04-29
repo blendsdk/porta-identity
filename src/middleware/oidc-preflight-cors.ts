@@ -44,6 +44,7 @@
 import type { Middleware } from 'koa';
 import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
+import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -133,6 +134,54 @@ function setPreflightHeaders(
 }
 
 // ---------------------------------------------------------------------------
+// Bearer token → clientId resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `clientId` from an opaque Bearer access token by looking
+ * up its record in Redis.
+ *
+ * node-oidc-provider stores opaque access tokens in Redis under the key
+ * `oidc:AccessToken:{tokenValue}`. The stored JSON payload includes a
+ * `clientId` field identifying which client the token was issued to.
+ *
+ * This lookup is best-effort: if the token is missing, expired, malformed,
+ * or Redis is unavailable, `null` is returned and CORS headers are not set.
+ * The actual token validation is still performed by the provider downstream.
+ *
+ * @param authHeader - The raw `Authorization` header value (e.g., 'Bearer abc123')
+ * @returns The clientId if resolved, or null
+ */
+async function resolveClientIdFromBearerToken(authHeader: string): Promise<string | null> {
+  if (!authHeader) return null;
+
+  // Extract the token value from "Bearer <token>"
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  if (!match) return null;
+
+  const tokenValue = match[1];
+
+  try {
+    const redis = getRedis();
+    const raw = await redis.get(`oidc:AccessToken:${tokenValue}`);
+    if (!raw) return null;
+
+    const payload = JSON.parse(raw) as Record<string, unknown>;
+    const clientId = payload.clientId;
+    return typeof clientId === 'string' && clientId.length > 0 ? clientId : null;
+  } catch (err) {
+    // Redis unavailable or payload malformed — graceful degradation.
+    // The provider will still validate the token; we just can't set
+    // CORS headers pre-emptively.
+    logger.debug(
+      { err },
+      'OIDC CORS: failed to resolve clientId from Bearer token',
+    );
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Middleware factory
 // ---------------------------------------------------------------------------
 
@@ -191,22 +240,34 @@ export function oidcPreflightCors(): Middleware {
     }
 
     // Production mode: client-based CORS check.
-    // Read client_id from the parsed body (set by upstream body parser).
-    // Token, revocation, and introspection endpoints send client_id in
-    // the form-encoded body (client_secret_post auth) or not at all
-    // (client_secret_basic sends it in the Authorization header).
+    // Strategy: identify the client from one of two sources, then check
+    // whether the requesting origin is allowed for that client.
+    //
+    //   1. `client_id` in the body — token, revocation, introspection
+    //      endpoints send client_id in the form-encoded body.
+    //   2. Bearer token in `Authorization` header — userinfo (/me) and
+    //      other authenticated GET endpoints. The access token record in
+    //      Redis contains the clientId that issued it.
+    //
+    // If neither source yields a client, no CORS headers are set (safe
+    // default: browser blocks the cross-origin response).
     const body = ctx.request.body as Record<string, unknown> | undefined;
-    const clientId =
+    let clientId: string | null =
       typeof body?.client_id === 'string' && body.client_id.length > 0
         ? body.client_id
         : null;
 
+    // Fallback: extract clientId from a Bearer access token stored in Redis.
+    // This enables CORS for endpoints like /me (userinfo) where the only
+    // client identifier is embedded in the opaque access token record.
     if (!clientId) {
-      // No client_id in body — can't perform client-based CORS check.
-      // Don't set CORS headers. The provider will still process the
-      // request, but the browser won't be able to read the response.
-      // This is correct: if we can't identify the client, we can't
-      // authorize the origin.
+      clientId = await resolveClientIdFromBearerToken(ctx.get('Authorization'));
+    }
+
+    if (!clientId) {
+      // Can't identify client from body or Bearer token — skip CORS.
+      // The provider will process the request, but the browser blocks
+      // the cross-origin response. This is correct security behavior.
       return next();
     }
 
