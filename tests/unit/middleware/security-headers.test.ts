@@ -338,4 +338,60 @@ describe('security-headers middleware', () => {
       expect(HTML_CSP).toContain("default-src 'none'");
     });
   });
+
+  // -------------------------------------------------------------------------
+  // OIDC provider compatibility — HTML_CSP must work with node-oidc-provider
+  // -------------------------------------------------------------------------
+
+  describe('OIDC provider compatibility', () => {
+    // node-oidc-provider's pushScriptSrcSha() (lib/helpers/script_src_sha.js)
+    // only adds inline-script SHA hashes when `script-src` already exists in
+    // the CSP. If the CSP lacks a `script-src` directive, the helper silently
+    // does nothing — leaving form_post and web_message response modes broken.
+    //
+    // Additionally, oidcProvider.callback() creates its own internal Koa
+    // context and calls ctx.res.end() directly, so Phase 3 (post-response
+    // CSP upgrade) never runs for OIDC provider responses.
+    //
+    // server.ts fixes this by setting HTML_CSP before calling
+    // oidcProvider.callback(). These tests verify HTML_CSP has the
+    // directives required by the provider.
+
+    it('HTML_CSP includes script-src for pushScriptSrcSha compatibility', () => {
+      // node-oidc-provider's form_post and web_message renderers call
+      // pushScriptSrcSha() which only modifies the CSP when script-src exists.
+      expect(HTML_CSP).toContain('script-src');
+    });
+
+    it('HTML_CSP allows inline scripts for form_post auto-submit', () => {
+      // form_post response mode renders: <script>document.forms[0].submit()</script>
+      expect(HTML_CSP).toContain("script-src 'unsafe-inline'");
+    });
+
+    it('HTML_CSP allows inline styles for provider HTML pages', () => {
+      // Provider rendering hooks (logout, error) and templates use inline styles
+      expect(HTML_CSP).toContain("style-src 'unsafe-inline'");
+    });
+
+    it('DEFAULT_CSP lacks script-src (requires pre-override for provider)', () => {
+      // Confirm the DEFAULT_CSP does NOT have script-src — this is the reason
+      // server.ts must override the CSP before calling oidcProvider.callback().
+      // If DEFAULT_CSP ever gains script-src, this test and the server.ts
+      // override should be re-evaluated.
+      expect(DEFAULT_CSP).not.toContain('script-src');
+    });
+
+    it('Phase 3 does not run for provider.callback() responses', async () => {
+      // Simulate what happens with oidcProvider.callback(): the downstream
+      // handler writes directly to ctx.res and calls res.end(), but does NOT
+      // set Content-Type on our Koa context. Phase 3 sees no Content-Type
+      // and leaves the strict DEFAULT_CSP in place.
+      const ctx = await invokeMiddleware(() => {
+        // Downstream does not set Content-Type (simulates provider.callback()
+        // which writes to ctx.res directly, bypassing our Koa context).
+      });
+      // Without the server.ts override, the CSP would remain as DEFAULT_CSP.
+      expect(ctx._headers['Content-Security-Policy']).toBe(DEFAULT_CSP);
+    });
+  });
 });

@@ -29,7 +29,7 @@ import Router from '@koa/router';
 import type Provider from 'oidc-provider';
 import { requestLogger } from './middleware/request-logger.js';
 import { errorHandler } from './middleware/error-handler.js';
-import { securityHeaders } from './middleware/security-headers.js';
+import { securityHeaders, HTML_CSP } from './middleware/security-headers.js';
 import { healthCheck } from './middleware/health.js';
 import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
@@ -441,6 +441,27 @@ export function createApp(oidcProvider?: Provider): Koa {
       // handlers (important for third-party / cross-org clients).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (ctx.req as any)._portaOrganization = ctx.state.organization;
+
+      // Override CSP for OIDC provider responses.
+      //
+      // The security-headers middleware (Phase 1) set the strict default CSP
+      // (`default-src 'none'`) on ctx.res.  That CSP lacks a `script-src`
+      // directive.  node-oidc-provider's `pushScriptSrcSha()` helper only
+      // adds inline-script hashes when `script-src` already exists in the
+      // CSP — so with our strict default, it silently does nothing.
+      //
+      // Additionally, `oidcProvider.callback()` creates its own internal Koa
+      // context and calls `ctx.res.end()` directly, which means our Phase 3
+      // (post-response CSP upgrade for HTML) never runs for provider responses.
+      //
+      // Setting the HTML-safe CSP here fixes both issues:
+      //   - form_post / web_message response modes render HTML with inline
+      //     <script> tags that need `script-src 'unsafe-inline'`
+      //   - Logout, error, and device-flow pages rendered by provider hooks
+      //     use inline styles needing `style-src 'unsafe-inline'`
+      //   - Non-HTML provider responses (token, jwks, introspection JSON)
+      //     are unaffected — browsers don't execute scripts in JSON responses
+      ctx.set('Content-Security-Policy', HTML_CSP);
 
       // Delegate to node-oidc-provider's Koa callback handler
       await oidcProvider.callback()(ctx.req, ctx.res);
