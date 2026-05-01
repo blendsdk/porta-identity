@@ -5,7 +5,7 @@ import { logEvent } from '/js/ui.js';
 
 /**
  * Fetch the UserInfo endpoint using the current access token.
- * @param {string} authority - OIDC issuer URL (e.g., http://localhost:3000/playground-no2fa)
+ * @param {string} authority - OIDC issuer URL (e.g., https://porta.local:3443/playground-no2fa)
  * @param {string} accessToken - Bearer access token
  * @returns {Promise<object|null>} UserInfo claims or null on error
  */

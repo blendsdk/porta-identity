@@ -40,7 +40,7 @@ import { homedir } from 'node:os';
  * and refresh tokens when they expire.
  */
 export interface StoredCredentials {
-  /** Porta server URL (e.g., "http://localhost:3000") */
+  /** Porta server URL (e.g., "https://porta.local:3443") */
   server: string;
   /** Organization slug for the admin org (e.g., "porta-admin") */
   orgSlug: string;

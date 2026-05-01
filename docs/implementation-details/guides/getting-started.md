@@ -50,7 +50,7 @@ DATABASE_URL=postgresql://porta:porta@localhost:5432/porta
 REDIS_URL=redis://localhost:6379
 
 # OIDC
-ISSUER_BASE_URL=http://localhost:3000
+ISSUER_BASE_URL=https://porta.local:3443
 
 # Security (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 COOKIE_KEYS=your-random-hex-string-here
@@ -99,14 +99,14 @@ The `porta init` command creates:
 yarn dev
 ```
 
-The server starts at `http://localhost:3000` with hot-reload via `tsx watch`.
+The server starts at `https://porta.local:3443` with hot-reload via `tsx watch`.
 
 ### 8. Verify Setup
 
 Check the health endpoint:
 
 ```bash
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 ```
 
 Expected response:
@@ -158,7 +158,7 @@ cp admin-gui/.env.example admin-gui/.env
 Edit `admin-gui/.env` with the client credentials from `porta init` output:
 
 ```bash
-PORTA_ADMIN_PORTA_URL=http://localhost:3000
+PORTA_ADMIN_PORTA_URL=https://porta.local:3443
 PORTA_ADMIN_CLIENT_ID=<gui-client-id-from-porta-init>
 PORTA_ADMIN_CLIENT_SECRET=<gui-client-secret-from-porta-init>
 PORTA_ADMIN_SESSION_SECRET=<generate-random-string-32chars>

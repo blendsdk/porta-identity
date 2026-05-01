@@ -34,7 +34,7 @@ organizations:
               - authorization_code
               - refresh_token
             redirect_uris:
-              - http://localhost:3000/callback
+              - https://porta.local:3443/callback
               - https://portal.acme.com/callback
             response_types:
               - code

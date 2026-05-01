@@ -44,7 +44,7 @@
 import type { Middleware } from 'koa';
 import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
-import { getRedis } from '../lib/redis.js';
+import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -139,15 +139,21 @@ function setPreflightHeaders(
 
 /**
  * Extract the `clientId` from an opaque Bearer access token by looking
- * up its record in Redis.
+ * up its record in PostgreSQL.
  *
- * node-oidc-provider stores opaque access tokens in Redis under the key
- * `oidc:AccessToken:{tokenValue}`. The stored JSON payload includes a
- * `clientId` field identifying which client the token was issued to.
+ * node-oidc-provider stores opaque access tokens in the `oidc_payloads`
+ * table (via the PostgresAdapter) with `type = 'AccessToken'`. The token
+ * value sent by the client IS the `jti`, which is the `id` column in the
+ * table. The JSONB `payload` column includes a `clientId` field.
  *
- * This lookup is best-effort: if the token is missing, expired, malformed,
- * or Redis is unavailable, `null` is returned and CORS headers are not set.
- * The actual token validation is still performed by the provider downstream.
+ * NOTE: AccessToken is a long-lived model routed to PostgreSQL by the
+ * hybrid adapter factory (adapter-factory.ts). Short-lived models like
+ * Session and AuthorizationCode go to Redis, but AccessToken does NOT.
+ *
+ * This lookup is best-effort: if the token is missing, expired, or the
+ * database is unavailable, `null` is returned and CORS headers are not
+ * set. The actual token validation is still performed by the provider
+ * downstream.
  *
  * @param authHeader - The raw `Authorization` header value (e.g., 'Bearer abc123')
  * @returns The clientId if resolved, or null
@@ -162,15 +168,21 @@ async function resolveClientIdFromBearerToken(authHeader: string): Promise<strin
   const tokenValue = match[1];
 
   try {
-    const redis = getRedis();
-    const raw = await redis.get(`oidc:AccessToken:${tokenValue}`);
-    if (!raw) return null;
+    const pool = getPool();
+    const result = await pool.query<{ client_id: string }>(
+      `SELECT payload->>'clientId' AS client_id
+       FROM oidc_payloads
+       WHERE id = $1 AND type = 'AccessToken'
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [tokenValue],
+    );
 
-    const payload = JSON.parse(raw) as Record<string, unknown>;
-    const clientId = payload.clientId;
+    if (result.rows.length === 0) return null;
+
+    const clientId = result.rows[0].client_id;
     return typeof clientId === 'string' && clientId.length > 0 ? clientId : null;
   } catch (err) {
-    // Redis unavailable or payload malformed — graceful degradation.
+    // Database unavailable — graceful degradation.
     // The provider will still validate the token; we just can't set
     // CORS headers pre-emptively.
     logger.debug(
@@ -247,7 +259,7 @@ export function oidcPreflightCors(): Middleware {
     //      endpoints send client_id in the form-encoded body.
     //   2. Bearer token in `Authorization` header — userinfo (/me) and
     //      other authenticated GET endpoints. The access token record in
-    //      Redis contains the clientId that issued it.
+    //      PostgreSQL contains the clientId that issued it.
     //
     // If neither source yields a client, no CORS headers are set (safe
     // default: browser blocks the cross-origin response).
@@ -257,7 +269,7 @@ export function oidcPreflightCors(): Middleware {
         ? body.client_id
         : null;
 
-    // Fallback: extract clientId from a Bearer access token stored in Redis.
+    // Fallback: extract clientId from a Bearer access token stored in PostgreSQL.
     // This enables CORS for endpoints like /me (userinfo) where the only
     // client identifier is embedded in the opaque access token record.
     if (!clientId) {

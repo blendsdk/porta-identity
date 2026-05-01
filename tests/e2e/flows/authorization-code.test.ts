@@ -28,7 +28,7 @@ describe('Authorization Code + PKCE Flow (E2E)', () => {
   let http: TestHttpClient;
 
   beforeAll(() => {
-    baseUrl = process.env.TEST_SERVER_URL ?? 'http://localhost:3000';
+    baseUrl = process.env.TEST_SERVER_URL ?? 'https://porta.local:3443';
   });
 
   beforeEach(async () => {

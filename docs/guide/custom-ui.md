@@ -41,7 +41,7 @@ porta org branding <org-id> \
 ### Setting Branding via Admin API
 
 ```bash
-curl -X PUT http://localhost:3000/api/admin/organizations/<org-id>/branding \
+curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id>/branding \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -525,7 +525,7 @@ COPY my-templates/ /app/templates/default/
      --primary-color "#E11D48" \
      --company-name "Test Corp"
    ```
-3. **Open the login page** at `http://localhost:3000/<org-slug>/auth`
+3. **Open the login page** at `https://porta.local:3443/<org-slug>/auth`
 4. **Test each flow**:
    - Password login
    - Magic link request (check MailHog at `http://localhost:8025` for emails)

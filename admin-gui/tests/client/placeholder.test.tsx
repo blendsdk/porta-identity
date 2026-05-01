@@ -75,7 +75,7 @@ describe('Placeholder App', () => {
             authenticated: true,
             user: {
               id: 'test-id',
-              email: 'admin@porta.test',
+              email: 'admin@porta.local',
               name: 'Test Admin',
               roles: ['porta-admin'],
               orgId: 'org-1',
@@ -89,7 +89,7 @@ describe('Placeholder App', () => {
     render(<App />);
     expect(await screen.findByText('Sign Out')).toBeInTheDocument();
     expect(screen.getByText('Test Admin')).toBeInTheDocument();
-    expect(screen.getByText('admin@porta.test')).toBeInTheDocument();
+    expect(screen.getByText('admin@porta.local')).toBeInTheDocument();
     expect(screen.getByText('porta-admin')).toBeInTheDocument();
   });
 

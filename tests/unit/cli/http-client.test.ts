@@ -34,7 +34,7 @@ import type { StoredCredentials } from '../../../src/cli/token-store.js';
 /** Valid credentials fixture for test setup */
 function makeCredentials(overrides?: Partial<StoredCredentials>): StoredCredentials {
   return {
-    server: 'http://localhost:3000',
+    server: 'https://porta.local:3443',
     orgSlug: 'porta-admin',
     clientId: 'test-client-id',
     accessToken: 'valid-access-token',
@@ -96,7 +96,7 @@ describe('AdminHttpClient', () => {
       await client.get('/api/admin/organizations');
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations',
+        'https://porta.local:3443/api/admin/organizations',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer valid-access-token',
@@ -180,7 +180,7 @@ describe('AdminHttpClient', () => {
       await client.get('/api/admin/organizations');
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations',
+        'https://porta.local:3443/api/admin/organizations',
         expect.objectContaining({ method: 'GET' }),
       );
     });
@@ -210,7 +210,7 @@ describe('AdminHttpClient', () => {
       await client.get('/api/admin/organizations', {});
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations',
+        'https://porta.local:3443/api/admin/organizations',
         expect.any(Object),
       );
     });
@@ -237,7 +237,7 @@ describe('AdminHttpClient', () => {
       await client.post('/api/admin/organizations', { name: 'Acme' });
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations',
+        'https://porta.local:3443/api/admin/organizations',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -286,7 +286,7 @@ describe('AdminHttpClient', () => {
       await client.put('/api/admin/organizations/1', { name: 'Updated' });
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations/1',
+        'https://porta.local:3443/api/admin/organizations/1',
         expect.objectContaining({
           method: 'PUT',
           headers: expect.objectContaining({
@@ -305,7 +305,7 @@ describe('AdminHttpClient', () => {
       await client.delete('/api/admin/organizations/1');
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:3000/api/admin/organizations/1',
+        'https://porta.local:3443/api/admin/organizations/1',
         expect.objectContaining({ method: 'DELETE' }),
       );
     });

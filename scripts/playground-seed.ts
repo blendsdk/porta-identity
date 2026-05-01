@@ -805,7 +805,7 @@ async function main() {
     console.log('[H] Writing playground config...');
 
     const configObj = {
-      portaUrl: 'http://localhost:3000',
+      portaUrl: 'https://porta.local:3443',
       playgroundUrl: 'http://localhost:4000',
       mailhogUrl: 'http://localhost:8025',
       organizations: Object.fromEntries(
@@ -862,7 +862,7 @@ async function main() {
     // BFF config — JSON format consumed by the BFF playground server.
     // Includes client secrets (needed for confidential client auth).
     const bffConfigObj = {
-      portaUrl: 'http://localhost:3000',
+      portaUrl: 'https://porta.local:3443',
       bffUrl: 'http://localhost:4001',
       mailhogUrl: 'http://localhost:8025',
       redis: { host: 'localhost', port: 6379 },
@@ -1048,11 +1048,11 @@ function printSummary(
 
   // Quick reference
   console.log('Quick Reference:');
-  console.log('  Porta:        http://localhost:3000');
+  console.log('  Porta:        https://porta.local:3443');
   console.log('  SPA:          http://localhost:4000');
   console.log('  BFF:          http://localhost:4001');
   console.log('  MailHog:      http://localhost:8025');
-  console.log(`  Discovery:    http://localhost:3000/playground-no2fa/.well-known/openid-configuration`);
+  console.log(`  Discovery:    https://porta.local:3443/playground-no2fa/.well-known/openid-configuration`);
   console.log();
   console.log(SEP);
 }

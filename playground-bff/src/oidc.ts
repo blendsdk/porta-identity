@@ -22,7 +22,7 @@ const discoveredConfigs = new Map<string, oidc.Configuration>();
  *
  * Porta uses path-based multi-tenancy but its issuer is the root URL.
  * The discovery endpoint is at /:orgSlug/.well-known/openid-configuration
- * but the issuer in the response is http://localhost:3000 (root).
+ * but the issuer in the response is https://porta.local:3443 (root).
  *
  * openid-client v6 compares the issuer in the response against the URL
  * passed to discovery(). To make this work, we discover against the root
@@ -47,7 +47,7 @@ function createOrgDiscoveryFetch(portaUrl: string, orgSlug: string): typeof fetc
  * Discover and configure an openid-client Configuration for a specific org.
  * Caches the result so subsequent calls reuse the discovery response.
  *
- * @param portaUrl - Base URL of the Porta server (e.g. http://localhost:3000)
+ * @param portaUrl - Base URL of the Porta server (e.g. https://porta.local:3443)
  * @param org - Organization configuration with client credentials
  * @returns Configured openid-client Configuration
  */

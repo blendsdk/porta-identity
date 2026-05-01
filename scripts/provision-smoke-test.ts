@@ -325,7 +325,7 @@ organizations:
               - authorization_code
               - refresh_token
             redirect_uris:
-              - http://localhost:3000/callback
+              - https://porta.local:3443/callback
             response_types:
               - code
             scope: openid profile email

@@ -39,7 +39,7 @@ interface ServiceHealth {
  */
 async function checkViaHttp(): Promise<ServiceHealth[]> {
   const creds = readCredentials();
-  const server = creds?.server ?? 'http://localhost:3000';
+  const server = creds?.server ?? 'https://porta.local:3443';
 
   try {
     const response = await fetch(`${server}/health`, {

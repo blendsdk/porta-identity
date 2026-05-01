@@ -88,7 +88,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: 'postgresql://porta:porta_dev@localhost:5432/porta_test',
             REDIS_URL: 'redis://localhost:6379/1',
-            ISSUER_BASE_URL: 'http://localhost:3000',
+            ISSUER_BASE_URL: 'https://porta.local:3443',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',
             SMTP_PORT: '1025',
@@ -115,7 +115,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl,
             REDIS_URL: testRedisUrl,
-            ISSUER_BASE_URL: 'http://localhost:3000',
+            ISSUER_BASE_URL: 'https://porta.local:3443',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',
             SMTP_PORT: '1025',
@@ -140,7 +140,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl,
             REDIS_URL: testRedisUrl,
-            ISSUER_BASE_URL: 'http://localhost:0',
+            ISSUER_BASE_URL: 'https://localhost:0',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',
             SMTP_PORT: '1025',
@@ -165,7 +165,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl,
             REDIS_URL: testRedisUrl,
-            ISSUER_BASE_URL: 'http://localhost:0',
+            ISSUER_BASE_URL: 'https://localhost:0',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',
             SMTP_PORT: '1025',

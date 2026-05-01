@@ -18,7 +18,7 @@ This single command:
 
 **URLs:**
 - **Playground:** http://localhost:4000
-- **Porta:** http://localhost:3000
+- **Porta:** https://porta.local:3443
 - **MailHog:** http://localhost:8025 (email inbox for OTP codes, magic links, etc.)
 
 Press **Ctrl+C** to stop all services.
@@ -132,7 +132,7 @@ playground/
 | Issue | Solution |
 |-------|----------|
 | "Config not loaded" error | Run `yarn tsx scripts/playground-seed.ts` to generate config |
-| Porta status dot is red | Check if Porta is running: `curl http://localhost:3000/health` |
+| Porta status dot is red | Check if Porta is running: `curl https://porta.local:3443/health` |
 | MailHog unreachable | Check Docker: `docker compose -f docker/docker-compose.yml ps` |
 | Login redirect fails | Verify the org slug exists and client is registered |
 | Token refresh fails | The playground uses `offline_access` scope — verify client config |

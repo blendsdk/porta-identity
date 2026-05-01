@@ -47,7 +47,7 @@ export async function checkServiceStatus() {
   // Check Porta
   const portaDot = document.getElementById('status-porta');
   try {
-    const res = await fetch('http://localhost:3000/health', { mode: 'cors' });
+    const res = await fetch('https://porta.local:3443/health', { mode: 'cors' });
     portaDot.className = res.ok ? 'status-dot ok' : 'status-dot err';
     portaDot.title = res.ok ? 'Porta: healthy' : 'Porta: unhealthy';
   } catch {

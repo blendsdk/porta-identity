@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OIDC Callback</title>
+  <style>
+    body { font-family: monospace; max-width: 800px; margin: 2em auto; padding: 0 1em; }
+    [data-testid="callback-error"] { background: #d32f2f; color: white; padding: 1em; margin: 1em 0; border-radius: 4px; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "oidc-client-ts": "/lib/oidc-client-ts.js",
+      "jwt-decode": "/lib/jwt-decode.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <p data-testid="callback-status">Processing login...</p>
+  <div data-testid="callback-error" style="display:none"></div>
+
+  <script type="module">
+    import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
+
+    try {
+      const config = await fetch('/config.json').then(r => r.json());
+      const mgr = new UserManager({
+        authority: config.porta.baseUrl,
+        metadataUrl: `${config.porta.baseUrl}/${config.orgSlug}/.well-known/openid-configuration`,
+        client_id: config.spa.clientId,
+        redirect_uri: config.spa.redirectUri,
+        scope: config.spa.scope,
+        response_type: 'code',
+        userStore: new WebStorageStateStore({ store: window.localStorage }),
+      });
+      await mgr.signinRedirectCallback();
+      console.log('[SPA Callback] Login complete, redirecting to /');
+      window.location.href = '/';
+    } catch (err) {
+      console.error('[SPA Callback] Error:', err);
+      document.querySelector('[data-testid="callback-status"]').textContent = 'Login failed';
+      const errorEl = document.querySelector('[data-testid="callback-error"]');
+      errorEl.textContent = 'Error: ' + err.message;
+      errorEl.style.display = '';
+    }
+  </script>
+</body>
+</html>

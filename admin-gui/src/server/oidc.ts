@@ -53,7 +53,7 @@ export async function setupOidc(config: BffConfig, logger: Logger): Promise<Oidc
   logger.info({ issuer: metadata.issuer }, 'OIDC discovery document fetched');
 
   // Step 3: Construct Configuration directly from the fetched metadata.
-  // Porta's issuer is the base URL (e.g., http://localhost:3000), not the
+  // Porta's issuer is the base URL (e.g., https://porta.local:3443), not the
   // org-scoped URL. We construct the Configuration manually to avoid the
   // issuer mismatch that client.discovery() would reject.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
