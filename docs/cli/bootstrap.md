@@ -67,7 +67,7 @@ porta login [--server <url>] [--no-browser] [--client-id <id>]
 
 | Flag | Description |
 |------|-------------|
-| `--server` | Porta server URL (default: `http://localhost:3000`) |
+| `--server` | Porta server URL (default: `https://porta.local:3443`) |
 | `--no-browser` | Use manual mode — print URL instead of opening browser |
 | `--client-id` | Override the auto-discovered admin client ID |
 
@@ -101,7 +101,7 @@ $ porta login --no-browser
 
 Open this URL in your browser to log in:
 
-  http://localhost:3000/porta-admin/auth?response_type=code&client_id=...
+  https://porta.local:3443/porta-admin/auth?response_type=code&client_id=...
 
 After logging in, your browser will redirect to a page that won't load.
 Copy the full URL from your browser's address bar and paste it below.
@@ -145,7 +145,7 @@ porta whoami
 │ Email     │ admin@example.com                    │
 │ Org       │ porta-admin                          │
 │ Roles     │ porta-admin                          │
-│ Server    │ http://localhost:3000                 │
+│ Server    │ https://porta.local:3443              │
 └───────────┴──────────────────────────────────────┘
 ```
 

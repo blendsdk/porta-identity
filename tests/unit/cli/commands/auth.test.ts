@@ -55,7 +55,7 @@ import type { StoredCredentials } from '../../../../src/cli/token-store.js';
 /** Creates a valid StoredCredentials object for testing */
 function createTestCredentials(overrides: Partial<StoredCredentials> = {}): StoredCredentials {
   return {
-    server: 'http://localhost:3000',
+    server: 'https://porta.local:3443',
     orgSlug: 'porta-admin',
     clientId: 'test-client-id-abc123',
     accessToken: 'test-access-token',
@@ -174,7 +174,7 @@ describe('whoami command', () => {
       expect.stringContaining('porta-admin'),
     );
     expect(mockConsoleLog).toHaveBeenCalledWith(
-      expect.stringContaining('localhost:3000'),
+      expect.stringContaining('porta.local:3443'),
     );
     expect(mockExit).toHaveBeenCalledWith(0);
   });
@@ -189,7 +189,7 @@ describe('whoami command', () => {
 
     expect(printJson).toHaveBeenCalledWith(
       expect.objectContaining({
-        server: 'http://localhost:3000',
+        server: 'https://porta.local:3443',
         orgSlug: 'porta-admin',
         sub: 'user-uuid-123',
         email: 'admin@example.com',

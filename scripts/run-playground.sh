@@ -86,7 +86,7 @@ PORTA_PID=$!
 # Wait for Porta health endpoint
 MAX_RETRIES=30
 RETRY=0
-until curl -sf http://localhost:3000/health > /dev/null 2>&1; do
+until curl -sf https://porta.local:3443/health > /dev/null 2>&1; do
   RETRY=$((RETRY + 1))
   if [ $RETRY -ge $MAX_RETRIES ]; then
     echo "  ❌ Porta did not become healthy in time"
@@ -94,7 +94,7 @@ until curl -sf http://localhost:3000/health > /dev/null 2>&1; do
   fi
   sleep 1
 done
-echo "  ✅ Porta server running on http://localhost:3000"
+echo "  ✅ Porta server running on https://porta.local:3443"
 
 # Step 5: Install playground dependencies and start static server
 echo "[5/6] Starting SPA playground..."
@@ -145,7 +145,7 @@ echo "🎮 Playground ready!"
 echo ""
 echo "  SPA:         http://localhost:4000"
 echo "  BFF:         http://localhost:4001"
-echo "  Porta:       http://localhost:3000"
+echo "  Porta:       https://porta.local:3443"
 echo "  MailHog:     http://localhost:8025"
 echo ""
 echo "  Login-method demo:"

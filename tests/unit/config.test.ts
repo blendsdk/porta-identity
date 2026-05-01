@@ -7,7 +7,7 @@ const validEnv = {
   host: '0.0.0.0',
   databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
   redisUrl: 'redis://localhost:6379',
-  issuerBaseUrl: 'http://localhost:3000',
+  issuerBaseUrl: 'https://porta.local:3443',
   cookieKeys: ['test-cookie-key-at-least-16-chars'],
   smtp: {
     host: 'localhost',
@@ -35,7 +35,7 @@ describe('config schema', () => {
     const minimal = {
       databaseUrl: 'postgresql://localhost/test',
       redisUrl: 'redis://localhost:6379',
-      issuerBaseUrl: 'http://localhost:3000',
+      issuerBaseUrl: 'https://porta.local:3443',
       cookieKeys: ['minimal-test-cookie-key-16ch'],
       smtp: {
         host: 'localhost',
@@ -159,11 +159,11 @@ describe('config schema', () => {
   });
 
   describe('trustProxy validation', () => {
-    it('defaults to false when not provided', () => {
+    it('defaults to true when not provided', () => {
       const result = configSchema.safeParse(validEnv);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.trustProxy).toBe(false);
+        expect(result.data.trustProxy).toBe(true);
       }
     });
 

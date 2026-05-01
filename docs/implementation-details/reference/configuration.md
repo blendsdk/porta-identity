@@ -113,7 +113,7 @@ These variables configure the Admin GUI BFF server (`admin-gui/`). They are sepa
 | Variable | Type | Default | Required | Description |
 |----------|------|---------|----------|-------------|
 | `PORTA_SERVICE` | `admin` | — | Yes (Docker) | Set to `admin` to start the BFF instead of the OIDC server |
-| `PORTA_ADMIN_PORTA_URL` | String (URL) | — | **Yes** | Internal URL of the Porta server (e.g., `http://porta:3000` in Docker, `http://localhost:3000` in dev) |
+| `PORTA_ADMIN_PORTA_URL` | String (URL) | — | **Yes** | Internal URL of the Porta server (e.g., `http://porta:3000` in Docker, `https://porta.local:3443` in dev) |
 | `PORTA_ADMIN_CLIENT_ID` | String | — | **Yes** | OIDC client ID for the GUI confidential client (from `porta init` output) |
 | `PORTA_ADMIN_CLIENT_SECRET` | String | — | **Yes** | OIDC client secret for the GUI confidential client |
 | `PORTA_ADMIN_SESSION_SECRET` | String | — | **Yes** | Session encryption key (minimum 32 characters) |
@@ -185,7 +185,7 @@ DATABASE_URL=postgresql://porta:porta_dev@localhost:5432/porta
 REDIS_URL=redis://localhost:6379
 
 # OIDC
-ISSUER_BASE_URL=http://localhost:3000
+ISSUER_BASE_URL=https://porta.local:3443
 COOKIE_KEYS=dev-cookie-key-change-me-in-production
 
 # Email (MailHog for dev)

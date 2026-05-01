@@ -60,7 +60,7 @@ describe('config schema — production safety rules', () => {
       host: '0.0.0.0',
       databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
       redisUrl: 'redis://localhost:6379',
-      issuerBaseUrl: 'http://localhost:3000',
+      issuerBaseUrl: 'https://porta.local:3443',
       cookieKeys: ['dev-cookie-key-change-me-in-production'],
       smtp: {
         host: 'localhost',
@@ -82,7 +82,7 @@ describe('config schema — production safety rules', () => {
       nodeEnv: 'test',
       databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta_test',
       redisUrl: 'redis://localhost:6379/1',
-      issuerBaseUrl: 'http://localhost:3000',
+      issuerBaseUrl: 'https://porta.local:3443',
       cookieKeys: ['dev-cookie-key-change-me-in-production'],
       smtp: { host: 'localhost', port: 1025, from: 'test@test.com' },
       logLevel: 'debug',
@@ -269,7 +269,7 @@ describe('config schema — production safety rules', () => {
 
     it('should accept HTTP issuer on localhost (dev convenience)', () => {
       const { success } = parseAndGetMessages({
-        issuerBaseUrl: 'http://localhost:3000',
+        issuerBaseUrl: 'https://porta.local:3443',
       });
       expect(success).toBe(true);
     });
@@ -380,7 +380,7 @@ describe('config schema — production safety rules', () => {
         nodeEnv: 'production',
         databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
         redisUrl: 'redis://localhost:6379',
-        issuerBaseUrl: 'http://localhost:3000',
+        issuerBaseUrl: 'https://porta.local:3443',
         cookieKeys: ['dev-cookie-key-change-me-in-production'],
         smtp: { host: 'localhost', port: 1025, from: 'noreply@porta.local' },
         logLevel: 'debug',

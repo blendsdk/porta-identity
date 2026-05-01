@@ -37,7 +37,7 @@ Edit `.env.docker.local` and **generate your secrets** (see [Quick Start → Ste
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ISSUER_BASE_URL` | `http://localhost:3000` | Public URL of your Porta instance |
+| `ISSUER_BASE_URL` | `https://porta.local:3443` | Public URL of your Porta instance |
 | `COOKIE_KEYS` | — | Cookie signing key (**must generate**) |
 | `TWO_FACTOR_ENCRYPTION_KEY` | — | 2FA encryption key (**must generate**) |
 | `SIGNING_KEY_ENCRYPTION_KEY` | — | Signing key encryption (**must generate**) |
@@ -66,7 +66,7 @@ Then open [http://localhost:8025](http://localhost:8025) for the MailHog inbox.
 **4. Wait for health checks**
 
 ```bash
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 ```
 
 You should see a JSON response with `"status": "ok"`.
@@ -181,7 +181,7 @@ node dist/cli/index.js init
 yarn dev
 ```
 
-The server starts with hot-reload via `tsx watch` on [http://localhost:3000](http://localhost:3000).
+The server starts with hot-reload via `tsx watch` on [https://porta.local:3443](https://porta.local:3443).
 
 **6. Run tests**
 

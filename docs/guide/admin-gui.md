@@ -54,7 +54,7 @@ Configure the admin GUI using these environment variables:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORTA_ADMIN_PORT` | No | `4002` | Port for the admin GUI BFF server |
-| `PORTA_ADMIN_PORTA_URL` | **Yes** | — | URL of the Porta server (e.g., `http://localhost:3000`) |
+| `PORTA_ADMIN_PORTA_URL` | **Yes** | — | URL of the Porta server (e.g., `https://porta.local:3443`) |
 | `PORTA_ADMIN_CLIENT_ID` | **Yes** | — | OIDC client ID (from `porta init`) |
 | `PORTA_ADMIN_CLIENT_SECRET` | **Yes** | — | OIDC client secret (from `porta init`) |
 | `PORTA_ADMIN_SESSION_SECRET` | **Yes** | — | Secret for signing session cookies (min 32 chars) |

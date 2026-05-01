@@ -31,7 +31,7 @@ describe('Magic Link Flow (E2E)', () => {
   let user: User;
 
   beforeAll(() => {
-    baseUrl = process.env.TEST_SERVER_URL ?? 'http://localhost:3000';
+    baseUrl = process.env.TEST_SERVER_URL ?? 'https://porta.local:3443';
     mailhog = new MailHogClient();
   });
 

@@ -12,10 +12,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // (vi.mock calls are hoisted above imports by Vitest)
 // ---------------------------------------------------------------------------
 
-const { mockConfig, mockGetClientByClientId, mockRedisGet } = vi.hoisted(() => ({
+const { mockConfig, mockGetClientByClientId, mockPoolQuery } = vi.hoisted(() => ({
   mockConfig: { nodeEnv: 'development' as string },
   mockGetClientByClientId: vi.fn(),
-  mockRedisGet: vi.fn(),
+  mockPoolQuery: vi.fn(),
 }));
 
 vi.mock('../../../src/config/index.js', () => ({
@@ -26,8 +26,8 @@ vi.mock('../../../src/clients/service.js', () => ({
   getClientByClientId: (...args: unknown[]) => mockGetClientByClientId(...args),
 }));
 
-vi.mock('../../../src/lib/redis.js', () => ({
-  getRedis: () => ({ get: mockRedisGet }),
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: () => ({ query: mockPoolQuery }),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -76,6 +76,17 @@ function createMockCtx(options: {
   };
 
   return ctx;
+}
+
+/**
+ * Create a mock PostgreSQL query result for access token lookup.
+ * Simulates: SELECT payload->>'clientId' AS client_id FROM oidc_payloads ...
+ */
+function mockTokenResult(clientId: string | null) {
+  if (clientId === null) {
+    return { rows: [] };
+  }
+  return { rows: [{ client_id: clientId }] };
 }
 
 type NextFn = () => Promise<void>;
@@ -363,17 +374,17 @@ describe('oidcPreflightCors', () => {
     it('should handle redirect_uri with different port', async () => {
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: [],
-        redirectUris: ['http://localhost:3000/callback'],
+        redirectUris: ['https://porta.local:3443/callback'],
       });
 
       const ctx = createMockCtx({
-        origin: 'http://localhost:3000',
+        origin: 'https://porta.local:3443',
         body: { client_id: 'dev-client' },
       });
 
       await middleware(ctx as any, async () => {});
 
-      expect(ctx._headers['Access-Control-Allow-Origin']).toBe('http://localhost:3000');
+      expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://porta.local:3443');
     });
 
     it('should skip native app scheme redirect_uris', async () => {
@@ -417,6 +428,7 @@ describe('oidcPreflightCors', () => {
 
   // =========================================================================
   // Production mode — Bearer token CORS (userinfo / /me endpoint)
+  // AccessToken is stored in PostgreSQL (oidc_payloads table), NOT Redis.
   // =========================================================================
 
   describe('production mode — Bearer token CORS', () => {
@@ -424,9 +436,9 @@ describe('oidcPreflightCors', () => {
       mockConfig.nodeEnv = 'production';
     });
 
-    it('should resolve clientId from Bearer token in Redis and allow origin', async () => {
-      // Simulate access token stored in Redis with clientId
-      mockRedisGet.mockResolvedValue(JSON.stringify({ clientId: 'spa-client' }));
+    it('should resolve clientId from Bearer token in PostgreSQL and allow origin', async () => {
+      // Simulate access token found in oidc_payloads with clientId
+      mockPoolQuery.mockResolvedValue(mockTokenResult('spa-client'));
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: [],
         redirectUris: ['https://psteniusubi.github.io/oidc-tester/callback'],
@@ -441,14 +453,18 @@ describe('oidcPreflightCors', () => {
 
       await middleware(ctx as any, async () => {});
 
-      expect(mockRedisGet).toHaveBeenCalledWith('oidc:AccessToken:opaque-token-abc123');
+      // Should query oidc_payloads for the token
+      expect(mockPoolQuery).toHaveBeenCalledWith(
+        expect.stringContaining('oidc_payloads'),
+        ['opaque-token-abc123'],
+      );
       expect(mockGetClientByClientId).toHaveBeenCalledWith('spa-client');
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://psteniusubi.github.io');
       expect(ctx._headers['Vary']).toBe('Origin');
     });
 
     it('should resolve clientId from Bearer token for /userinfo path', async () => {
-      mockRedisGet.mockResolvedValue(JSON.stringify({ clientId: 'web-client' }));
+      mockPoolQuery.mockResolvedValue(mockTokenResult('web-client'));
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: ['http://localhost:4000'],
         redirectUris: [],
@@ -480,14 +496,14 @@ describe('oidcPreflightCors', () => {
 
       await middleware(ctx as any, async () => {});
 
-      // Should use client_id from body, not look up Bearer token
-      expect(mockRedisGet).not.toHaveBeenCalled();
+      // Should use client_id from body, not look up Bearer token in DB
+      expect(mockPoolQuery).not.toHaveBeenCalled();
       expect(mockGetClientByClientId).toHaveBeenCalledWith('body-client');
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://spa.example.com');
     });
 
-    it('should not set CORS when Bearer token not found in Redis', async () => {
-      mockRedisGet.mockResolvedValue(null);
+    it('should not set CORS when Bearer token not found in PostgreSQL', async () => {
+      mockPoolQuery.mockResolvedValue(mockTokenResult(null));
 
       const ctx = createMockCtx({
         origin: 'https://spa.example.com',
@@ -502,9 +518,9 @@ describe('oidcPreflightCors', () => {
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
 
-    it('should not set CORS when Bearer token has no clientId', async () => {
-      // Token record exists but has no clientId field
-      mockRedisGet.mockResolvedValue(JSON.stringify({ accountId: 'user-1' }));
+    it('should not set CORS when token payload has no clientId', async () => {
+      // Token record exists but payload->>'clientId' returns null
+      mockPoolQuery.mockResolvedValue({ rows: [{ client_id: null }] });
 
       const ctx = createMockCtx({
         origin: 'https://spa.example.com',
@@ -520,7 +536,7 @@ describe('oidcPreflightCors', () => {
     });
 
     it('should not set CORS when origin does not match Bearer token client', async () => {
-      mockRedisGet.mockResolvedValue(JSON.stringify({ clientId: 'trusted-client' }));
+      mockPoolQuery.mockResolvedValue(mockTokenResult('trusted-client'));
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: ['https://trusted.example.com'],
         redirectUris: ['https://trusted.example.com/callback'],
@@ -538,8 +554,8 @@ describe('oidcPreflightCors', () => {
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
-    it('should gracefully handle Redis error during Bearer token lookup', async () => {
-      mockRedisGet.mockRejectedValue(new Error('Redis connection lost'));
+    it('should gracefully handle database error during Bearer token lookup', async () => {
+      mockPoolQuery.mockRejectedValue(new Error('Connection refused'));
 
       const ctx = createMockCtx({
         origin: 'https://spa.example.com',
@@ -556,21 +572,6 @@ describe('oidcPreflightCors', () => {
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
-    it('should gracefully handle malformed JSON in Redis token record', async () => {
-      mockRedisGet.mockResolvedValue('not-valid-json{{{');
-
-      const ctx = createMockCtx({
-        origin: 'https://spa.example.com',
-        method: 'GET',
-        path: '/acme/me',
-        authorization: 'Bearer bad-record-token',
-      });
-
-      await middleware(ctx as any, async () => {});
-
-      expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
-    });
-
     it('should ignore non-Bearer authorization headers', async () => {
       const ctx = createMockCtx({
         origin: 'https://spa.example.com',
@@ -581,7 +582,7 @@ describe('oidcPreflightCors', () => {
 
       await middleware(ctx as any, async () => {});
 
-      expect(mockRedisGet).not.toHaveBeenCalled();
+      expect(mockPoolQuery).not.toHaveBeenCalled();
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
@@ -595,13 +596,13 @@ describe('oidcPreflightCors', () => {
 
       await middleware(ctx as any, async () => {});
 
-      expect(mockRedisGet).not.toHaveBeenCalled();
+      expect(mockPoolQuery).not.toHaveBeenCalled();
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
 
     it('should handle POST with Bearer token (e.g., token revocation)', async () => {
       // POST request without client_id but with Bearer token
-      mockRedisGet.mockResolvedValue(JSON.stringify({ clientId: 'my-client' }));
+      mockPoolQuery.mockResolvedValue(mockTokenResult('my-client'));
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: ['https://spa.example.com'],
         redirectUris: [],
@@ -617,8 +618,28 @@ describe('oidcPreflightCors', () => {
 
       await middleware(ctx as any, async () => {});
 
-      expect(mockRedisGet).toHaveBeenCalledWith('oidc:AccessToken:access-token-for-revocation');
+      expect(mockPoolQuery).toHaveBeenCalledWith(
+        expect.stringContaining('oidc_payloads'),
+        ['access-token-for-revocation'],
+      );
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://spa.example.com');
+    });
+
+    it('should handle empty string clientId from PostgreSQL', async () => {
+      // Edge case: payload->>'clientId' returns empty string
+      mockPoolQuery.mockResolvedValue({ rows: [{ client_id: '' }] });
+
+      const ctx = createMockCtx({
+        origin: 'https://spa.example.com',
+        method: 'GET',
+        path: '/acme/me',
+        authorization: 'Bearer token-empty-client',
+      });
+
+      await middleware(ctx as any, async () => {});
+
+      expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
+      expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
   });
 });

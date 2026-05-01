@@ -59,7 +59,7 @@ import { promptInput } from '../prompt.js';
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Default Porta server URL for local development */
-const DEFAULT_SERVER = 'http://localhost:3000';
+const DEFAULT_SERVER = 'https://porta.local:3443';
 
 /** OIDC scopes requested during the login flow */
 const SCOPES = 'openid profile email offline_access';

@@ -164,7 +164,7 @@ HOST=0.0.0.0
 POSTGRES_PASSWORD=porta_secret
 
 # ── OIDC ──────────────────────────────────────
-ISSUER_BASE_URL=http://localhost:3000
+ISSUER_BASE_URL=https://porta.local:3443
 
 # ── Secrets (paste values from Step 2) ────────
 COOKIE_KEYS=<paste-your-cookie-key-here>
@@ -205,7 +205,7 @@ docker compose up -d
 Wait a few seconds for PostgreSQL and Redis to become healthy, then verify:
 
 ```bash
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 ```
 
 You should see `{"status":"ok","database":"ok","redis":"ok"}`.
@@ -355,7 +355,7 @@ Read the full [Provisioning Guide](../cli/provisioning.md) for the complete file
 
 ```bash
 # Check health
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 
 # List organizations
 docker exec porta-app porta org list
@@ -364,7 +364,7 @@ docker exec porta-app porta org list
 # http://localhost:8025
 ```
 
-Open [http://localhost:3000/health](http://localhost:3000/health) in your browser to confirm the server, database, and Redis are all connected.
+Open [https://porta.local:3443/health](https://porta.local:3443/health) in your browser to confirm the server, database, and Redis are all connected.
 
 ---
 

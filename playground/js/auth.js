@@ -94,7 +94,7 @@ export async function handleCallback() {
     // Restore the authority and client_id that were used for the login redirect.
     // Reads from localStorage (shared across tabs) so magic link flows work
     // even when the callback opens in a different tab than the original login.
-    const authority = localStorage.getItem('playground_authority') || 'http://localhost:3000';
+    const authority = localStorage.getItem('playground_authority') || 'https://porta.local:3443';
     const clientId = localStorage.getItem('playground_client_id') || 'placeholder';
 
     const tempManager = new UserManager({

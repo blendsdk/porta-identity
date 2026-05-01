@@ -29,7 +29,7 @@ yarn playground
 ```
 
 This starts:
-- **Porta** on `http://localhost:3000`
+- **Porta** on `https://porta.local:3443`
 - **SPA Playground** on `http://localhost:4000`
 - **BFF Playground** on `http://localhost:4001`
 - **MailHog** on `http://localhost:8025`

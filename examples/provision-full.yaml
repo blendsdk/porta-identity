@@ -122,10 +122,10 @@ organizations:
               - authorization_code
               - refresh_token
             redirect_uris:
-              - http://localhost:3000/callback
-              - http://localhost:3000/silent-renew
+              - https://porta.local:3443/callback
+              - https://porta.local:3443/silent-renew
             post_logout_redirect_uris:
-              - http://localhost:3000
+              - https://porta.local:3443
             response_types:
               - code
             scope: openid profile email offline_access

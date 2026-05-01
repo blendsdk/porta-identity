@@ -12,7 +12,7 @@ vi.mock('../../../src/organizations/repository.js', () => ({
 
 vi.mock('../../../src/config/index.js', () => ({
   config: {
-    issuerBaseUrl: 'http://localhost:3000',
+    issuerBaseUrl: 'https://porta.local:3443',
     nodeEnv: 'test',
     port: 3000,
     host: '0.0.0.0',
@@ -104,7 +104,7 @@ describe('tenant-resolver', () => {
 
     await middleware(ctx as never, next);
 
-    expect(ctx.state.issuer).toBe('http://localhost:3000/test-org');
+    expect(ctx.state.issuer).toBe('https://porta.local:3443/test-org');
   });
 
   it('should set full Organization object on ctx.state', async () => {

@@ -131,7 +131,7 @@ export interface HttpResponse<T = unknown> {
  * stored credentials and validates the user is logged in.
  */
 export class AdminHttpClient {
-  /** Base server URL (e.g., "http://localhost:3000") */
+  /** Base server URL (e.g., "https://porta.local:3443") */
   private readonly server: string;
 
   /** Current credentials — mutated when tokens are refreshed */

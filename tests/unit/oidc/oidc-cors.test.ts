@@ -8,7 +8,7 @@ vi.mock('../../../src/config/index.js', () => ({
     host: '0.0.0.0',
     databaseUrl: 'postgresql://localhost/porta',
     redisUrl: 'redis://localhost:6379',
-    issuerBaseUrl: 'http://localhost:3000',
+    issuerBaseUrl: 'https://porta.local:3443',
     cookieKeys: ['test-cookie-key-0123456789'],
     smtp: { host: 'localhost', port: 587, user: '', pass: '', from: 'test@test.com' },
     logLevel: 'info',
@@ -126,10 +126,10 @@ describe('oidc-cors', () => {
 
   it('handles redirect_uris with port numbers correctly', () => {
     const client = {
-      redirect_uris: ['http://localhost:3000/callback'],
+      redirect_uris: ['https://porta.local:3443/callback'],
     };
     // Different port = different origin
-    expect(oidcCors(null, 'http://localhost:3000', client)).toBe(true);
+    expect(oidcCors(null, 'https://porta.local:3443', client)).toBe(true);
     expect(oidcCors(null, 'http://localhost:4000', client)).toBe(false);
   });
 

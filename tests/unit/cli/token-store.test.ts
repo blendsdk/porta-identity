@@ -46,7 +46,7 @@ const {
 /** Creates a valid StoredCredentials object for testing */
 function createTestCredentials(overrides: Partial<StoredCredentials> = {}): StoredCredentials {
   return {
-    server: 'http://localhost:3000',
+    server: 'https://porta.local:3443',
     orgSlug: 'porta-admin',
     clientId: 'test-client-id-abc123',
     accessToken: 'test-access-token',
@@ -272,7 +272,7 @@ describe('token-store', () => {
       // Verify the fetch was called with correct URL and body
       expect(fetchMock).toHaveBeenCalledOnce();
       const [url, options] = fetchMock.mock.calls[0];
-      expect(url).toBe('http://localhost:3000/porta-admin/token');
+      expect(url).toBe('https://porta.local:3443/porta-admin/token');
       expect(options.method).toBe('POST');
 
       // Parse the URL-encoded body to verify parameters

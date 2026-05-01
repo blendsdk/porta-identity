@@ -18,7 +18,7 @@ describe('OIDC Discovery (E2E)', () => {
   let orgSlug: string;
 
   beforeAll(() => {
-    baseUrl = process.env.TEST_SERVER_URL ?? 'http://localhost:3000';
+    baseUrl = process.env.TEST_SERVER_URL ?? 'https://porta.local:3443';
   });
 
   beforeEach(async () => {
