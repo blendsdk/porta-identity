@@ -36,9 +36,12 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import { writeAuditLog } from '../lib/audit-log.js';
-import { getTwoFactorStatus, disableTwoFactor, regenerateRecoveryCodes } from '../two-factor/service.js';
+import { getTwoFactorStatus, disableTwoFactor, regenerateRecoveryCodes, getTwoFactorSummary } from '../two-factor/service.js';
+import type { TwoFactorPolicy } from '../two-factor/types.js';
 import { TwoFactorNotEnabledError } from '../two-factor/errors.js';
 import { getUserById } from '../users/service.js';
+import { getOrganizationById, updateOrganization } from '../organizations/service.js';
+import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import type { User } from '../users/types.js';
 
 // ---------------------------------------------------------------------------
@@ -236,6 +239,140 @@ export function createTwoFactorUserAdminRouter(): Router {
         warning: 'These codes will not be shown again. Provide them to the user securely.',
       },
     };
+  });
+
+  return router;
+}
+
+// ---------------------------------------------------------------------------
+// Org-level validation schemas
+// ---------------------------------------------------------------------------
+
+/** Path parameters for org-level endpoints */
+const orgPathParamsSchema = z.object({
+  orgId: z.string().uuid(),
+});
+
+/** Valid 2FA policy values */
+const VALID_POLICIES: TwoFactorPolicy[] = ['optional', 'required_email', 'required_totp', 'required_any'];
+
+/** Body schema for PUT /policy */
+const updatePolicySchema = z.object({
+  twoFactorPolicy: z.enum(['optional', 'required_email', 'required_totp', 'required_any']),
+});
+
+// ---------------------------------------------------------------------------
+// Org-level router factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create the org-level 2FA admin router.
+ *
+ * Provides policy management and enrollment summary for an organization.
+ * PUT /policy uses ETag/If-Match for optimistic concurrency.
+ *
+ * Prefix: /api/admin/organizations/:orgId/two-factor
+ *
+ * @returns Configured Koa Router
+ */
+export function createTwoFactorOrgAdminRouter(): Router {
+  const router = new Router({
+    prefix: '/api/admin/organizations/:orgId/two-factor',
+  });
+
+  // All routes require admin authentication
+  router.use(requireAdminAuth());
+
+  // -------------------------------------------------------------------------
+  // GET /policy — Get org 2FA policy (SH-1)
+  // Permission: admin:org:read
+  // -------------------------------------------------------------------------
+  router.get('/policy', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    const { orgId } = orgPathParamsSchema.parse(ctx.params);
+
+    const org = await getOrganizationById(orgId);
+    if (!org) {
+      ctx.status = 404;
+      ctx.body = { error: 'Organization not found' };
+      return;
+    }
+
+    setETagHeader(ctx, 'organization', org.id, org.updatedAt);
+    ctx.body = {
+      data: {
+        twoFactorPolicy: org.twoFactorPolicy,
+        validPolicies: VALID_POLICIES,
+      },
+    };
+  });
+
+  // -------------------------------------------------------------------------
+  // PUT /policy — Update org 2FA policy (SH-2)
+  // Permission: admin:org:update
+  // Uses ETag/If-Match for optimistic concurrency
+  // Super-admin org policy changes are protected
+  // -------------------------------------------------------------------------
+  router.put('/policy', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
+    const { orgId } = orgPathParamsSchema.parse(ctx.params);
+
+    const body = updatePolicySchema.parse(ctx.request.body);
+
+    // ETag/If-Match optimistic concurrency (optional — backward compatible)
+    const current = await getOrganizationById(orgId);
+    if (!current) {
+      ctx.status = 404;
+      ctx.body = { error: 'Organization not found' };
+      return;
+    }
+
+    if (!checkIfMatch(ctx, 'organization', current.id, current.updatedAt, current)) return;
+
+    const previousPolicy = current.twoFactorPolicy;
+
+    // Update org via existing organization service
+    const updated = await updateOrganization(orgId, {
+      twoFactorPolicy: body.twoFactorPolicy,
+    });
+
+    // Audit log (AR #78)
+    writeAuditLog({
+      organizationId: orgId,
+      actorId: ctx.state.adminUser?.id,
+      eventType: 'org.2fa.policyChanged',
+      eventCategory: 'admin',
+      description: `Admin changed 2FA policy from "${previousPolicy}" to "${body.twoFactorPolicy}"`,
+      metadata: { previousPolicy, newPolicy: body.twoFactorPolicy },
+    });
+
+    setETagHeader(ctx, 'organization', updated.id, updated.updatedAt);
+    ctx.body = {
+      data: {
+        twoFactorPolicy: updated.twoFactorPolicy,
+        validPolicies: VALID_POLICIES,
+      },
+    };
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /summary — Get org 2FA enrollment summary (SH-3)
+  // Permission: admin:org:read OR admin:user:read (dual permission per AR #90)
+  // Returns aggregate statistics with Cache-Control
+  // -------------------------------------------------------------------------
+  router.get('/summary', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    const { orgId } = orgPathParamsSchema.parse(ctx.params);
+
+    const org = await getOrganizationById(orgId);
+    if (!org) {
+      ctx.status = 404;
+      ctx.body = { error: 'Organization not found' };
+      return;
+    }
+
+    const summary = await getTwoFactorSummary(orgId);
+
+    // Short cache since summary is aggregate and not latency-critical (AR #92)
+    ctx.set('Cache-Control', 'private, max-age=30');
+    ctx.body = { data: summary };
   });
 
   return router;

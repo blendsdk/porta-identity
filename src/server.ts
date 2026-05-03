@@ -57,7 +57,7 @@ import { createBulkRouter } from './routes/bulk.js';
 import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
-import { createTwoFactorUserAdminRouter } from './routes/two-factor-admin.js';
+import { createTwoFactorUserAdminRouter, createTwoFactorOrgAdminRouter } from './routes/two-factor-admin.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
@@ -328,6 +328,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const brandingRouter = createBrandingRouter();
   app.use(brandingRouter.routes());
   app.use(brandingRouter.allowedMethods());
+
+  // 2FA admin — org-level management (policy, summary)
+  // Mounted at /api/admin/organizations/:orgId/two-factor
+  const twoFactorOrgAdminRouter = createTwoFactorOrgAdminRouter();
+  app.use(twoFactorOrgAdminRouter.routes());
+  app.use(twoFactorOrgAdminRouter.allowedMethods());
 
   // Data export API — requires admin authentication
   // Mounted at /api/admin/export (see routes/exports.ts)

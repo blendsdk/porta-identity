@@ -19,6 +19,7 @@
  */
 
 import { config } from '../config/index.js';
+import { getPool } from '../lib/database.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { TwoFactorMethod, TwoFactorSetupResult, TwoFactorStatus, TwoFactorPolicy } from './types.js';
@@ -746,4 +747,74 @@ export function determineTwoFactorMethod(
     default:
       return null;
   }
+}
+
+// ===========================================================================
+// Admin summary functions
+// ===========================================================================
+
+/**
+ * 2FA enrollment summary for an organization.
+ * Used by the GET /summary admin endpoint (SH-3).
+ */
+export interface TwoFactorSummary {
+  totalUsers: number;
+  enabledCount: number;
+  disabledCount: number;
+  totpCount: number;
+  emailCount: number;
+  complianceRate: number;
+}
+
+/**
+ * Get an aggregate 2FA enrollment summary for an organization.
+ *
+ * Runs a single SQL query with conditional aggregation to count
+ * users by 2FA status, method, and calculate compliance rate.
+ *
+ * @param orgId - Organization UUID
+ * @returns Aggregate summary with counts and compliance rate
+ */
+export async function getTwoFactorSummary(orgId: string): Promise<TwoFactorSummary> {
+  const pool = getPool();
+
+  const result = await pool.query<{
+    total_users: string;
+    enabled_count: string;
+    disabled_count: string;
+    totp_count: string;
+    email_count: string;
+  }>(
+    `SELECT
+       COUNT(*)::text                                         AS total_users,
+       COUNT(*) FILTER (WHERE two_factor_enabled = TRUE)::text  AS enabled_count,
+       COUNT(*) FILTER (WHERE two_factor_enabled = FALSE)::text AS disabled_count,
+       COUNT(*) FILTER (WHERE two_factor_method = 'totp')::text AS totp_count,
+       COUNT(*) FILTER (WHERE two_factor_method = 'email')::text AS email_count
+     FROM users
+     WHERE organization_id = $1
+       AND status != 'archived'`,
+    [orgId],
+  );
+
+  const row = result.rows[0];
+  const totalUsers = parseInt(row.total_users, 10);
+  const enabledCount = parseInt(row.enabled_count, 10);
+  const disabledCount = parseInt(row.disabled_count, 10);
+  const totpCount = parseInt(row.totp_count, 10);
+  const emailCount = parseInt(row.email_count, 10);
+
+  // Compliance rate: percentage of non-archived users with 2FA enabled (AR #92)
+  const complianceRate = totalUsers > 0
+    ? Math.round((enabledCount / totalUsers) * 10000) / 10000
+    : 0;
+
+  return {
+    totalUsers,
+    enabledCount,
+    disabledCount,
+    totpCount,
+    emailCount,
+    complianceRate,
+  };
 }
