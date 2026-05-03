@@ -41,8 +41,8 @@ describe('super-admin-protection', () => {
       expect(PROTECTED_OPERATIONS).toContain('remove-super-admin-role');
     });
 
-    it('should have exactly 6 operations', () => {
-      expect(PROTECTED_OPERATIONS.length).toBe(6);
+    it('should have exactly 7 operations', () => {
+      expect(PROTECTED_OPERATIONS.length).toBe(7);
     });
   });
 

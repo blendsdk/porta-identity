@@ -24,7 +24,7 @@ describe('ADMIN_PERMISSIONS', () => {
   });
 
   it('should have all permission slugs in module:resource:action format', () => {
-    const pattern = /^[a-z]+:[a-z]+:[a-z_]+$/;
+    const pattern = /^[a-z]+:[a-z]+:[a-z0-9_]+$/;
     for (const [key, slug] of Object.entries(ADMIN_PERMISSIONS)) {
       expect(slug, `${key} should match module:resource:action format`).toMatch(pattern);
     }

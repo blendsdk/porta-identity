@@ -16,6 +16,7 @@
  *   - Lock
  *   - Deactivate
  *   - Remove porta-super-admin role
+ *   - Manage 2FA (disable, reset, regenerate recovery codes)
  *
  * @module lib/super-admin-protection
  */
@@ -40,6 +41,7 @@ export const PROTECTED_OPERATIONS = [
   'lock',
   'deactivate',
   'remove-super-admin-role',
+  'manage-2fa',
 ] as const;
 
 export type ProtectedOperation = (typeof PROTECTED_OPERATIONS)[number];

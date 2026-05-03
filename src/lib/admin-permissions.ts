@@ -51,6 +51,7 @@ export const ADMIN_PERMISSIONS = {
   USER_SUSPEND: 'admin:user:suspend',
   USER_ARCHIVE: 'admin:user:archive',
   USER_INVITE: 'admin:user:invite',
+  USER_2FA: 'admin:user:2fa',
 
   // Role management
   ROLE_CREATE: 'admin:role:create',
@@ -162,6 +163,7 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
       ADMIN_PERMISSIONS.USER_SUSPEND,
       ADMIN_PERMISSIONS.USER_ARCHIVE,
       ADMIN_PERMISSIONS.USER_INVITE,
+      ADMIN_PERMISSIONS.USER_2FA,
       ADMIN_PERMISSIONS.ROLE_ASSIGN,
       ADMIN_PERMISSIONS.ROLE_READ,
       ADMIN_PERMISSIONS.CLAIM_READ,
