@@ -57,6 +57,7 @@ import { createBulkRouter } from './routes/bulk.js';
 import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
+import { createTwoFactorUserAdminRouter } from './routes/two-factor-admin.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
@@ -268,6 +269,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userRoleRouter = createUserRoleRouter();
   app.use(userRoleRouter.routes());
   app.use(userRoleRouter.allowedMethods());
+
+  // 2FA admin — user-level management (status, disable, reset, regenerate)
+  // Mounted at /api/admin/organizations/:orgId/users/:userId/two-factor
+  const twoFactorUserAdminRouter = createTwoFactorUserAdminRouter();
+  app.use(twoFactorUserAdminRouter.routes());
+  app.use(twoFactorUserAdminRouter.allowedMethods());
 
   // Custom claims at /api/admin/applications/:appId/claims
   const customClaimRouter = createCustomClaimRouter();
