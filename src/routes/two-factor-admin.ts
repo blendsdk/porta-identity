@@ -33,7 +33,7 @@ import type { RouterContext } from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, isSuperAdminRole } from '../lib/admin-permissions.js';
 import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { getTwoFactorStatus, disableTwoFactor, regenerateRecoveryCodes, getTwoFactorSummary } from '../two-factor/service.js';
@@ -327,6 +327,19 @@ export function createTwoFactorOrgAdminRouter(): Router {
 
     if (!checkIfMatch(ctx, 'organization', current.id, current.updatedAt, current)) return;
 
+    // Super-admin org protection (AR #82, AR #91):
+    // Non-super-admin actors cannot modify the super-admin org's policy.
+    // Super-admin actors CAN modify their own org (to strengthen security).
+    if (current.isSuperAdmin) {
+      const actorRoles: string[] = ctx.state.adminUser?.roles ?? [];
+      const actorIsSuperAdmin = actorRoles.some(isSuperAdminRole);
+      if (!actorIsSuperAdmin) {
+        ctx.status = 403;
+        ctx.body = { error: 'Cannot modify the super-admin organization policy' };
+        return;
+      }
+    }
+
     const previousPolicy = current.twoFactorPolicy;
 
     // Update org via existing organization service
@@ -355,10 +368,10 @@ export function createTwoFactorOrgAdminRouter(): Router {
 
   // -------------------------------------------------------------------------
   // GET /summary — Get org 2FA enrollment summary (SH-3)
-  // Permission: admin:org:read OR admin:user:read (dual permission per AR #90)
+  // Permission: admin:org:read + admin:user:read (dual permission per AR #85)
   // Returns aggregate statistics with Cache-Control
   // -------------------------------------------------------------------------
-  router.get('/summary', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+  router.get('/summary', requirePermission(ADMIN_PERMISSIONS.ORG_READ, ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
     const { orgId } = orgPathParamsSchema.parse(ctx.params);
 
     const org = await getOrganizationById(orgId);

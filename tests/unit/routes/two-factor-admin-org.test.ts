@@ -106,7 +106,8 @@ function createMockCtx(overrides: {
     state: {
       adminUser: {
         id: ADMIN_ID,
-        permissions: ['admin:org:read', 'admin:org:update'],
+        permissions: ['admin:org:read', 'admin:org:update', 'admin:user:read'],
+        roles: [] as string[],
       },
     },
   };
@@ -240,6 +241,94 @@ describe('two-factor-admin org-level routes', () => {
       const ctx = createMockCtx({ body: { twoFactorPolicy: 'invalid_policy' } });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow();
+    });
+
+    it('should return 403 when non-super-admin tries to modify super-admin org policy', async () => {
+      // Org is the super-admin org, but actor is NOT a super-admin role
+      const superAdminOrg = createTestOrg({ isSuperAdmin: true });
+      vi.mocked(getOrganizationById).mockResolvedValue(superAdminOrg);
+      vi.mocked(checkIfMatch).mockReturnValue(true);
+
+      const layer = findLayer(createTwoFactorOrgAdminRouter(), 'PUT', '/policy');
+      const ctx = createMockCtx({ body: { twoFactorPolicy: 'required_totp' } });
+      // Actor has org-admin role, not super-admin
+      ctx.state.adminUser.roles = ['porta-org-admin'];
+      await execHandler(layer!, ctx);
+
+      expect(ctx.status).toBe(403);
+      expect(ctx.body).toEqual({ error: 'Cannot modify the super-admin organization policy' });
+      expect(updateOrganization).not.toHaveBeenCalled();
+    });
+
+    it('should allow super-admin to modify their own org policy (self-management)', async () => {
+      // Org is the super-admin org AND actor IS a super-admin
+      const superAdminOrg = createTestOrg({ isSuperAdmin: true });
+      const updatedOrg = createTestOrg({
+        isSuperAdmin: true,
+        twoFactorPolicy: 'required_totp',
+        updatedAt: new Date('2026-01-02'),
+      });
+      vi.mocked(getOrganizationById).mockResolvedValue(superAdminOrg);
+      vi.mocked(checkIfMatch).mockReturnValue(true);
+      vi.mocked(updateOrganization).mockResolvedValue(updatedOrg);
+
+      const layer = findLayer(createTwoFactorOrgAdminRouter(), 'PUT', '/policy');
+      const ctx = createMockCtx({ body: { twoFactorPolicy: 'required_totp' } });
+      // Actor has the super-admin role — should be allowed
+      ctx.state.adminUser.roles = ['porta-super-admin'];
+      await execHandler(layer!, ctx);
+
+      expect(ctx.body).toEqual({
+        data: {
+          twoFactorPolicy: 'required_totp',
+          validPolicies: ['optional', 'required_email', 'required_totp', 'required_any'],
+        },
+      });
+      expect(updateOrganization).toHaveBeenCalled();
+    });
+
+    it('should allow legacy porta-admin role to modify super-admin org policy', async () => {
+      // Backward compatibility: legacy porta-admin should also be recognized as super-admin
+      const superAdminOrg = createTestOrg({ isSuperAdmin: true });
+      const updatedOrg = createTestOrg({
+        isSuperAdmin: true,
+        twoFactorPolicy: 'required_email',
+        updatedAt: new Date('2026-01-02'),
+      });
+      vi.mocked(getOrganizationById).mockResolvedValue(superAdminOrg);
+      vi.mocked(checkIfMatch).mockReturnValue(true);
+      vi.mocked(updateOrganization).mockResolvedValue(updatedOrg);
+
+      const layer = findLayer(createTwoFactorOrgAdminRouter(), 'PUT', '/policy');
+      const ctx = createMockCtx({ body: { twoFactorPolicy: 'required_email' } });
+      // Legacy role should also be recognized
+      ctx.state.adminUser.roles = ['porta-admin'];
+      await execHandler(layer!, ctx);
+
+      expect(updateOrganization).toHaveBeenCalled();
+      expect(ctx.body).toEqual({
+        data: {
+          twoFactorPolicy: 'required_email',
+          validPolicies: ['optional', 'required_email', 'required_totp', 'required_any'],
+        },
+      });
+    });
+
+    it('should not block policy update for non-super-admin org', async () => {
+      // Normal (non-super-admin) org should not trigger the protection check
+      const normalOrg = createTestOrg({ isSuperAdmin: false });
+      const updated = createTestOrg({ twoFactorPolicy: 'required_any' });
+      vi.mocked(getOrganizationById).mockResolvedValue(normalOrg);
+      vi.mocked(checkIfMatch).mockReturnValue(true);
+      vi.mocked(updateOrganization).mockResolvedValue(updated);
+
+      const layer = findLayer(createTwoFactorOrgAdminRouter(), 'PUT', '/policy');
+      const ctx = createMockCtx({ body: { twoFactorPolicy: 'required_any' } });
+      // Even without super-admin role, normal orgs should work fine
+      ctx.state.adminUser.roles = ['porta-org-admin'];
+      await execHandler(layer!, ctx);
+
+      expect(updateOrganization).toHaveBeenCalled();
     });
   });
 
