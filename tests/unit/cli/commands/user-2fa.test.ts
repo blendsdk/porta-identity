@@ -1,8 +1,8 @@
 /**
- * Unit tests for the CLI user 2FA commands (status, disable, reset).
+ * Unit tests for the CLI user 2FA commands in direct-DB mode (--direct).
  *
- * Mocks service layer, bootstrap, prompt, and output utilities to test
- * command handler logic in isolation.
+ * Tests the withBootstrap path: direct PostgreSQL access for status,
+ * disable, and reset. HTTP mode tests are in user-2fa-http.test.ts.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
   withBootstrap: vi.fn(async (_args: unknown, fn: () => Promise<void>) => fn()),
+  withHttpClient: vi.fn(async (_args: unknown, fn: (client: unknown) => Promise<void>) => fn({})),
 }));
 
 vi.mock('../../../../src/cli/error-handler.js', () => ({
@@ -62,19 +63,18 @@ import { findUserById } from '../../../../src/users/repository.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Execute a subcommand by building yargs and running it. */
+/** Execute a subcommand in direct-DB mode (--direct flag). */
 async function runSubcommand(args: string[]) {
-  // Dynamically import yargs to build the command
   const yargs = (await import('yargs')).default;
   const parser = yargs()
     .command(userTwoFaCommand as any)
     .fail(false)
     .exitProcess(false);
 
-  await parser.parseAsync(['2fa', ...args, '--force']);
+  await parser.parseAsync(['2fa', ...args, '--force', '--direct']);
 }
 
-describe('CLI user 2fa commands', () => {
+describe('CLI user 2fa commands — direct mode', () => {
   beforeEach(() => vi.clearAllMocks());
 
   describe('userTwoFaCommand', () => {
@@ -87,7 +87,7 @@ describe('CLI user 2fa commands', () => {
     });
   });
 
-  describe('2fa status', () => {
+  describe('2fa status (direct)', () => {
     it('should display 2FA status for a user', async () => {
       await runSubcommand(['status', 'user-uuid-1']);
 
@@ -104,7 +104,7 @@ describe('CLI user 2fa commands', () => {
     });
   });
 
-  describe('2fa disable', () => {
+  describe('2fa disable (direct)', () => {
     it('should disable 2FA after confirmation', async () => {
       await runSubcommand(['disable', 'user-uuid-1']);
 
@@ -122,7 +122,7 @@ describe('CLI user 2fa commands', () => {
     });
   });
 
-  describe('2fa reset', () => {
+  describe('2fa reset (direct)', () => {
     it('should reset 2FA after confirmation', async () => {
       await runSubcommand(['reset', 'user-uuid-1']);
 
