@@ -125,31 +125,66 @@ porta user claims list --org-id <id> --user-id <id>
 
 ## Two-Factor Authentication
 
-Admin commands for managing a user's 2FA enrollment.
+Admin commands for managing a user's 2FA enrollment. By default, these commands use HTTP mode (authenticated via `porta login`). Use `--direct` to bypass HTTP and connect directly to the database (useful for emergency access when the server is down).
+
+**Permission required:** `admin:user:2fa` (for disable, reset, and recovery code operations)
 
 ### `porta user 2fa status`
 
 ```bash
+# HTTP mode (default — requires porta login)
 porta user 2fa status --org-id <id> --user-id <id>
+
+# Direct mode (connects directly to database)
+porta user 2fa status --user-id <id> --direct
 ```
 
-Shows whether 2FA is enabled, the method (TOTP/email), and enrollment date.
+Shows whether 2FA is enabled, the active method (`email` or `totp`), TOTP configuration status, and remaining recovery code count.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID (not needed in direct mode) |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection instead of HTTP |
+| `--json` | | Output as JSON |
 
 ### `porta user 2fa disable`
 
 ```bash
+# HTTP mode
 porta user 2fa disable --org-id <id> --user-id <id>
+
+# Direct mode
+porta user 2fa disable --user-id <id> --direct
 ```
 
-Force-disables 2FA for the user. Prompts for confirmation.
+Force-disables 2FA for the user. Prompts for confirmation (use `--force` to skip). Protected: cannot disable the super-admin user's 2FA.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection |
+| `--force` | | Skip confirmation prompt |
 
 ### `porta user 2fa reset`
 
 ```bash
+# HTTP mode
 porta user 2fa reset --org-id <id> --user-id <id>
+
+# Direct mode
+porta user 2fa reset --user-id <id> --direct
 ```
 
-Resets 2FA, forcing the user to re-enroll on next login. Prompts for confirmation.
+Resets 2FA by disabling and clearing all enrollment data, forcing the user to re-enroll on next login. Prompts for confirmation. Protected: cannot reset the super-admin user's 2FA.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection |
+| `--force` | | Skip confirmation prompt |
 
 ---
 
