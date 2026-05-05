@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Multi-tenant OIDC provider built on node-oidc-provider + Koa + TypeScript",
   "private": true,
+  "workspaces": ["packages/porta-sdk"],
   "type": "module",
   "engines": {
     "node": ">=22.0.0",

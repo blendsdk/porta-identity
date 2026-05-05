@@ -1,0 +1,33 @@
+{
+  "name": "@porta/sdk",
+  "version": "0.1.0",
+  "description": "Universal TypeScript SDK for the Porta Admin API",
+  "type": "module",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./browser": { "import": "./dist/browser.js", "types": "./dist/browser.d.ts" },
+    "./node": { "import": "./dist/node.js", "types": "./dist/node.d.ts" },
+    "./agent": { "import": "./dist/agent.js", "types": "./dist/agent.d.ts" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "typecheck": "tsc --noEmit",
+    "verify": "yarn lint && yarn typecheck && yarn test && yarn build",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

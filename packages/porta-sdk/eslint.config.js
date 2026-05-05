@@ -26,6 +26,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'admin-gui/', 'packages/'],
+    ignores: ['dist/', 'node_modules/'],
   },
 );
