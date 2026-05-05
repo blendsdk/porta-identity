@@ -71,4 +71,5 @@ export interface UserListParams {
   order?: 'asc' | 'desc';
   status?: UserStatus;
   organizationId?: string;
+  [key: string]: string | number | boolean | undefined | null;
 }

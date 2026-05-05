@@ -19,4 +19,5 @@ export interface SessionListParams {
   page?: number;
   pageSize?: number;
   userId?: string;
+  [key: string]: string | number | boolean | undefined | null;
 }

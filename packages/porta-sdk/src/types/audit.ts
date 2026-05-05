@@ -28,4 +28,5 @@ export interface AuditListParams {
   resourceId?: string;
   from?: string;
   to?: string;
+  [key: string]: string | number | boolean | undefined | null;
 }
