@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-05-05 21:00
-> **Progress**: 69/85 tasks (81%)
+> **Progress**: 85/85 tasks (100%)
 > **CodeOps Version**: 1.0.0
 
 ## Overview
@@ -610,10 +610,10 @@ Build `@porta/sdk` — a universal TypeScript SDK for the Porta Admin API with t
 - [x] 6.1.4 Create node entrypoint ✅ (completed: 2026-05-05 19:28)
 - [x] 6.1.5 Create agent entrypoint ✅ (completed: 2026-05-05 19:28)
 - [x] 6.1.6 Write client factory tests (3 tests) ✅ (completed: 2026-05-05 19:35)
-- [ ] 6.2.1 Update Dockerfile — add SDK build stage
-- [ ] 6.2.2 Add @porta/sdk file: dependency to admin-gui
-- [ ] 6.2.3 Run yarn install in admin-gui to verify resolution
-- [ ] 6.2.4 Verify root project yarn verify still passes
+- [x] 6.2.1 Update Dockerfile — add SDK build stage ✅ (completed: 2026-05-05 21:15)
+- [x] 6.2.2 Add @porta/sdk file: dependency to admin-gui ✅ (completed: 2026-05-05 21:15)
+- [x] 6.2.3 Run yarn install in admin-gui to verify resolution ✅ (completed: 2026-05-05 21:16)
+- [x] 6.2.4 Verify root project yarn verify still passes (3,660 tests) ✅ (completed: 2026-05-05 21:23)
 
 ### Phase 7: AI Agent Layer
 - [x] 7.1.1 Create agent types (ToolDefinition, ToolParameter, ToolResult) ✅ (completed: 2026-05-05 19:30)
@@ -624,26 +624,26 @@ Build `@porta/sdk` — a universal TypeScript SDK for the Porta Admin API with t
 - [x] 7.2.3 Write executor tests (in agent.test.ts) ✅ (completed: 2026-05-05 19:35)
 
 ### Phase 8: Type Compatibility & Final Verification
-- [ ] 8.1.1 Write type compatibility tests for all entity types
-- [ ] 8.1.2 Verify all type compatibility tests pass
+- [x] 8.1.1 Write type compatibility tests for all entity types (18 tests, 9 entities) ✅ (completed: 2026-05-05 21:37)
+- [x] 8.1.2 Verify all type compatibility tests pass (18/18) ✅ (completed: 2026-05-05 21:37)
 - [x] 8.2.1 Run full SDK verify (274 tests passing) ✅ (completed: 2026-05-05 19:36)
-- [x] 8.2.2 Run root project verify (3,034 tests passing) ✅ (completed: 2026-05-05 19:36)
-- [ ] 8.2.3 Fix any remaining issues, add missing JSDoc
+- [x] 8.2.2 Run root project verify (3,660 tests passing) ✅ (completed: 2026-05-05 21:23)
+- [x] 8.2.3 JSDoc already present on all public exports ✅ (completed: 2026-05-05 21:42)
 
 ### Phase 9: Documentation
 - [x] 9.1.1 Create SDK documentation page (docs/guide/sdk.md + VitePress sidebar) ✅ (completed: 2026-05-05 19:34)
-- [ ] 9.1.2 Create SDK README (packages/porta-sdk/README.md)
-- [ ] 9.1.3 Create browser usage guide
-- [ ] 9.1.4 Create Node.js usage guide
-- [ ] 9.2.1 Create AI agent guide
-- [ ] 9.2.2 Create CLI migration guide
-- [ ] 9.2.3 Create admin-GUI migration guide
+- [x] 9.1.2 Create SDK README (packages/porta-sdk/README.md) ✅ (completed: 2026-05-05 21:15)
+- [x] 9.1.3 Create browser usage guide (docs/guide/sdk-browser.md) ✅ (completed: 2026-05-05 21:39)
+- [x] 9.1.4 Create Node.js usage guide (docs/guide/sdk-node.md) ✅ (completed: 2026-05-05 21:40)
+- [x] 9.2.1 Create AI agent guide (docs/guide/sdk-agent.md) ✅ (completed: 2026-05-05 21:40)
+- [x] 9.2.2 Create CLI migration guide (docs/guide/sdk-cli-migration.md) ✅ (completed: 2026-05-05 21:41)
+- [x] 9.2.3 Create admin-GUI migration guide (docs/guide/sdk-gui-migration.md) ✅ (completed: 2026-05-05 21:41)
 
 ### Phase 10: Documentation Review & Update
-- [ ] 10.1.1 Review implementation against docs/ coverage checklist
-- [ ] 10.1.2 Add/update documentation for new or changed features
-- [ ] 10.1.3 Update docs/index.md if new pages were added
-- [ ] 10.1.4 Update .clinerules/project.md if structure/rules changed
+- [x] 10.1.1 Review implementation against docs/ coverage checklist ✅ (completed: 2026-05-05 21:42)
+- [x] 10.1.2 Add/update documentation — 6 new guide pages + VitePress sidebar ✅ (completed: 2026-05-05 21:42)
+- [x] 10.1.3 Update docs/index.md — added SDK feature card ✅ (completed: 2026-05-05 21:42)
+- [x] 10.1.4 Update .clinerules/project.md — SDK package structure added ✅ (completed: 2026-05-05 21:15)
 
 ---
 
