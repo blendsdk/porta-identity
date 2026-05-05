@@ -47,6 +47,12 @@ export default withMermaid(
             ],
           },
           {
+            text: 'Development',
+            items: [
+              { text: 'TypeScript SDK', link: '/guide/sdk' },
+            ],
+          },
+          {
             text: 'Operations',
             items: [
               { text: 'Deployment', link: '/guide/deployment' },
