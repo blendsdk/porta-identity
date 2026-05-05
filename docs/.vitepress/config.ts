@@ -42,9 +42,7 @@ export default withMermaid(
           },
           {
             text: 'Customization',
-            items: [
-              { text: 'Custom UI Tutorial', link: '/guide/custom-ui' },
-            ],
+            items: [{ text: 'Custom UI Tutorial', link: '/guide/custom-ui' }],
           },
           {
             text: 'Development',
@@ -251,8 +249,7 @@ export default withMermaid(
 
       // ── Edit link ───────────────────────────────────────────
       editLink: {
-        pattern:
-          'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
+        pattern: 'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
         text: 'Edit this page on GitHub',
       },
     },
