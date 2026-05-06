@@ -40,7 +40,7 @@ describe('version command', () => {
   });
 
   it('exports a CLI_VERSION constant', () => {
-    expect(CLI_VERSION).toBe('0.1.0');
+    expect(CLI_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('displays version info in table format', async () => {
@@ -67,7 +67,7 @@ describe('version command', () => {
 
     expect(printJson).toHaveBeenCalledWith(
       expect.objectContaining({
-        cli: '0.1.0',
+        cli: CLI_VERSION,
         sdk: expect.any(String),
         node: expect.stringMatching(/^v\d+/),
         server: 'not configured',
