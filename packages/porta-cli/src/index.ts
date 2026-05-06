@@ -16,18 +16,31 @@
  *   --insecure   Skip TLS certificate verification (self-signed certs)
  *   --force      Skip confirmation prompts for destructive operations
  *
+ * Bootstrap commands (no auth required):
+ *   login        Authenticate with a Porta server via OIDC browser flow
+ *   logout       Clear stored authentication tokens
+ *   whoami       Show current authenticated identity
+ *   version      Show CLI, SDK, and server version information
+ *   doctor       Run diagnostic checks on CLI configuration
+ *   completion   Generate shell completion script
+ *
  * @module index
  */
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { loginCommand } from './commands/login.js';
+import { logoutCommand } from './commands/logout.js';
+import { whoamiCommand } from './commands/whoami.js';
+import { versionCommand } from './commands/version.js';
+import { doctorCommand } from './commands/doctor.js';
+import { completionCommand } from './commands/completion.js';
 
 /**
  * Builds and runs the CLI.
  *
  * Configures yargs with global options, registers all command modules,
- * and parses the command line arguments. Commands are registered in
- * later phases as they are migrated from the server CLI.
+ * and parses the command line arguments.
  */
 async function main(): Promise<void> {
   await yargs(hideBin(process.argv))
@@ -62,11 +75,19 @@ async function main(): Promise<void> {
       describe: 'Skip confirmation prompts',
       global: true,
     })
-    // Commands will be registered here as they are migrated
+    // Bootstrap commands (no auth required)
+    .command(loginCommand)
+    .command(logoutCommand)
+    .command(whoamiCommand)
+    .command(versionCommand)
+    .command(doctorCommand)
+    .command(completionCommand)
+    // Domain commands will be registered here in Phase 3
     .demandCommand(1, 'Please specify a command')
     .strict()
     .help()
     .version(false) // Disable default --version; we use a custom version command
+    .completion('completion', false) // Enable yargs completion but hide from help (we have our own command)
     .parse();
 }
 
