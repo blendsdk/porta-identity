@@ -39,6 +39,15 @@ import { orgCommand } from './commands/org.js';
 import { appCommand } from './commands/app.js';
 import { clientCommand } from './commands/client.js';
 import { userCommand } from './commands/user.js';
+import { keysCommand } from './commands/keys.js';
+import { configCommand } from './commands/config.js';
+import { auditCommand } from './commands/audit.js';
+import { provisionCommand } from './commands/provision.js';
+import { healthCommand } from './commands/health.js';
+import { sessionsCommand } from './commands/sessions.js';
+import { bulkCommand } from './commands/bulk.js';
+import { statsCommand } from './commands/stats.js';
+import { exportsCommand } from './commands/exports.js';
 
 /**
  * Builds and runs the CLI.
@@ -91,6 +100,17 @@ async function main(): Promise<void> {
     .command(appCommand)
     .command(clientCommand)
     .command(userCommand)
+    // Infrastructure commands (auth required)
+    .command(keysCommand)
+    .command(configCommand)
+    .command(auditCommand)
+    .command(sessionsCommand)
+    .command(statsCommand)
+    .command(bulkCommand)
+    .command(exportsCommand)
+    .command(provisionCommand)
+    // Unauthenticated commands
+    .command(healthCommand)
     .demandCommand(1, 'Please specify a command')
     .strict()
     .help()
