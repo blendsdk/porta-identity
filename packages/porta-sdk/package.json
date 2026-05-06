@@ -4,12 +4,26 @@
   "description": "Universal TypeScript SDK for the Porta Admin API",
   "type": "module",
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./browser": { "import": "./dist/browser.js", "types": "./dist/browser.d.ts" },
-    "./node": { "import": "./dist/node.js", "types": "./dist/node.d.ts" },
-    "./agent": { "import": "./dist/agent.js", "types": "./dist/agent.d.ts" }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser.js",
+      "types": "./dist/browser.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node.js",
+      "types": "./dist/node.d.ts"
+    },
+    "./agent": {
+      "import": "./dist/agent.js",
+      "types": "./dist/agent.d.ts"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
