@@ -22,9 +22,9 @@
     "@portaidentity/sdk": "0.1.0",
     "chalk": "^5.0.0",
     "cli-table3": "^0.6.0",
-    "jose": "^6.0.0",
+    "jose": "^6.2.3",
     "open": "^11.0.0",
-    "yaml": "^2.0.0",
+    "yaml": "^2.8.4",
     "yargs": "^18.0.0"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.0.0",
     "typescript": "^6.0.0",
-    "typescript-eslint": "^8.0.0",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^4.0.0"
   },
   "publishConfig": {
