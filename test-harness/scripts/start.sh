@@ -66,14 +66,23 @@ until curl -ksf https://porta.local:3443/health > /dev/null 2>&1; do
 done
 echo "  Porta is healthy (via nginx TLS proxy at porta.local:3443)!"
 
-# 6. Run seed
-echo "--- Step 6: Seeding test data ---"
+# 6. Bootstrap admin infrastructure (porta init) — required for standalone CLI auth
+echo "--- Step 6: Bootstrapping admin infrastructure ---"
+docker exec test-harness-porta-1 porta init --force \
+  --email admin@porta.local \
+  --given-name Admin \
+  --family-name User \
+  --password 'TestPassword123!'
+echo "  Admin infrastructure ready!"
+
+# 7. Run seed
+echo "--- Step 7: Seeding test data ---"
 cd "$PROJECT_ROOT"
 npx tsx test-harness/scripts/seed.ts
 echo "  Seed complete!"
 
-# 7. Copy SPA vendor libs from node_modules
-echo "--- Step 7: Copying SPA vendor libs ---"
+# 8. Copy SPA vendor libs from node_modules
+echo "--- Step 8: Copying SPA vendor libs ---"
 mkdir -p "$PROJECT_ROOT/test-harness/spa/lib"
 cp "$PROJECT_ROOT/test-harness/node_modules/oidc-client-ts/dist/esm/oidc-client-ts.js" \
    "$PROJECT_ROOT/test-harness/spa/lib/oidc-client-ts.js"
@@ -81,19 +90,19 @@ cp "$PROJECT_ROOT/test-harness/node_modules/jwt-decode/build/esm/index.js" \
    "$PROJECT_ROOT/test-harness/spa/lib/jwt-decode.js"
 echo "  Libs copied!"
 
-# 8. Start SPA HTTPS server (background) — serves SPA over HTTPS for Crypto.subtle
-echo "--- Step 8: Starting SPA HTTPS server on port 4100 ---"
+# 9. Start SPA HTTPS server (background) — serves SPA over HTTPS for Crypto.subtle
+echo "--- Step 9: Starting SPA HTTPS server on port 4100 ---"
 npx tsx "$PROJECT_ROOT/test-harness/spa-server.ts" &
 SPA_PID=$!
 echo "  SPA PID: $SPA_PID"
 
-# 9. Start BFF server (background)
-echo "--- Step 9: Starting BFF server on port 4101 ---"
+# 10. Start BFF server (background)
+echo "--- Step 10: Starting BFF server on port 4101 ---"
 npx tsx test-harness/bff/server.ts &
 BFF_PID=$!
 echo "  BFF PID: $BFF_PID"
 
-# 10. Wait for SPA and BFF to be ready
+# 11. Wait for SPA and BFF to be ready
 sleep 2
 
 echo ""
