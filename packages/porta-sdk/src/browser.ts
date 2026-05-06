@@ -1,9 +1,9 @@
 /**
- * @porta/sdk/browser — Browser entrypoint.
+ * @portaidentity/sdk/browser — Browser entrypoint.
  *
  * Exports the browser (fetch-based) transport.
  *
- * @module @porta/sdk/browser
+ * @module @portaidentity/sdk/browser
  */
 
 // Browser transport

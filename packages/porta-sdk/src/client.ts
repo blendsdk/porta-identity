@@ -88,9 +88,9 @@ export interface PortaClient {
  *
  * @example
  * ```typescript
- * import { createPortaClient } from '@porta/sdk';
- * import { createNodeTransport } from '@porta/sdk/node';
- * import { createTokenAuth } from '@porta/sdk/node';
+ * import { createPortaClient } from '@portaidentity/sdk';
+ * import { createNodeTransport } from '@portaidentity/sdk/node';
+ * import { createTokenAuth } from '@portaidentity/sdk/node';
  *
  * const transport = createNodeTransport({
  *   baseUrl: 'https://porta.local:3443/api/admin',

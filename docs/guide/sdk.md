@@ -1,13 +1,13 @@
 # TypeScript SDK
 
-The `@porta/sdk` package provides a universal TypeScript client for the Porta Admin API. It works in Node.js, browsers, and AI agent environments.
+The `@portaidentity/sdk` package provides a universal TypeScript client for the Porta Admin API. It works in Node.js, browsers, and AI agent environments.
 
 ## Installation
 
 ```bash
-yarn add @porta/sdk
+yarn add @portaidentity/sdk
 # or
-npm install @porta/sdk
+npm install @portaidentity/sdk
 ```
 
 The package is located at `packages/porta-sdk/` in the monorepo.
@@ -15,8 +15,8 @@ The package is located at `packages/porta-sdk/` in the monorepo.
 ## Quick Start (Node.js)
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createTokenAuth } from '@porta/sdk/node';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
   baseUrl: 'https://porta.local:3443/api/admin',
@@ -40,8 +40,8 @@ const user = await porta.users.create({
 ## Quick Start (Browser)
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createBrowserTransport, createTokenAuth } from '@porta/sdk/browser';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createBrowserTransport, createTokenAuth } from '@portaidentity/sdk/browser';
 
 const transport = createBrowserTransport({
   baseUrl: '/api/admin',
@@ -56,24 +56,24 @@ const stats = await porta.stats.get();
 
 | Import Path | Purpose | Environment |
 |---|---|---|
-| `@porta/sdk` | Client factory, types, errors, pagination | Universal |
-| `@porta/sdk/node` | Node.js transport, all auth providers | Node.js |
-| `@porta/sdk/browser` | Fetch-based transport, token auth | Browser |
-| `@porta/sdk/agent` | AI agent tool definitions & executor | AI agents |
+| `@portaidentity/sdk` | Client factory, types, errors, pagination | Universal |
+| `@portaidentity/sdk/node` | Node.js transport, all auth providers | Node.js |
+| `@portaidentity/sdk/browser` | Fetch-based transport, token auth | Browser |
+| `@portaidentity/sdk/agent` | AI agent tool definitions & executor | AI agents |
 
 ## Authentication Providers
 
 ### Bearer Token
 
 ```typescript
-import { createTokenAuth } from '@porta/sdk/node';
+import { createTokenAuth } from '@portaidentity/sdk/node';
 const auth = createTokenAuth('your-token');
 ```
 
 ### Client Credentials (M2M)
 
 ```typescript
-import { createClientCredentialsAuth } from '@porta/sdk/node';
+import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 const auth = createClientCredentialsAuth({
   tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
   clientId: 'my-client-id',
@@ -84,7 +84,7 @@ const auth = createClientCredentialsAuth({
 ### CLI Auth (stored credentials)
 
 ```typescript
-import { createCliAuth } from '@porta/sdk/node';
+import { createCliAuth } from '@portaidentity/sdk/node';
 const auth = createCliAuth({
   credentialsPath: '~/.porta/credentials.json',
   refreshEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
@@ -156,7 +156,7 @@ All API errors throw typed error classes:
 | `PortaServerError` | 5xx | Server error |
 
 ```typescript
-import { PortaNotFoundError, PortaValidationError } from '@porta/sdk';
+import { PortaNotFoundError, PortaValidationError } from '@portaidentity/sdk';
 
 try {
   await porta.organizations.get('nonexistent');
@@ -172,10 +172,10 @@ try {
 
 ## AI Agent Integration
 
-The `@porta/sdk/agent` entrypoint provides tool definitions compatible with LLM function-calling:
+The `@portaidentity/sdk/agent` entrypoint provides tool definitions compatible with LLM function-calling:
 
 ```typescript
-import { getToolDefinitions, executeTool } from '@porta/sdk/agent';
+import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 // Get all available tools for the AI model
 const tools = getToolDefinitions(); // 47 tool definitions

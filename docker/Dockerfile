@@ -24,7 +24,7 @@ COPY src/ src/
 RUN yarn build
 
 # ──────────────────────────────────────────────
-# Stage 2: Build @porta/sdk
+# Stage 2: Build @portaidentity/sdk
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS sdk-builder
 

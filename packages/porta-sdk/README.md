@@ -1,4 +1,4 @@
-# @porta/sdk
+# @portaidentity/sdk
 
 Universal TypeScript SDK for the Porta Admin API — works in **browsers**, **Node.js**, and **AI agents**.
 
@@ -16,10 +16,10 @@ Universal TypeScript SDK for the Porta Admin API — works in **browsers**, **No
 
 ```bash
 # From the Porta project root (workspace dependency)
-yarn add @porta/sdk
+yarn add @portaidentity/sdk
 
 # Or reference as file dependency
-"@porta/sdk": "file:../packages/porta-sdk"
+"@portaidentity/sdk": "file:../packages/porta-sdk"
 ```
 
 ## Quick Start
@@ -27,7 +27,7 @@ yarn add @porta/sdk
 ### Browser (Admin GUI / BFF)
 
 ```typescript
-import { createPortaClient, createBrowserTransport } from '@porta/sdk/browser';
+import { createPortaClient, createBrowserTransport } from '@portaidentity/sdk/browser';
 
 const transport = createBrowserTransport({
   baseUrl: '/api/admin',    // BFF proxy path
@@ -52,7 +52,7 @@ const user = await client.users.create('org-id', {
 ### Node.js (Automation / CLI)
 
 ```typescript
-import { createPortaClient, createNodeTransport, createTokenAuth } from '@porta/sdk/node';
+import { createPortaClient, createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const auth = createTokenAuth('your-bearer-token');
 
@@ -76,7 +76,7 @@ await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
 ### Client Credentials (Server-to-Server)
 
 ```typescript
-import { createPortaClient, createNodeTransport, createClientCredentialsAuth } from '@porta/sdk/node';
+import { createPortaClient, createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
   tokenUrl: 'https://porta.local:3443/super-admin/oidc/token',
@@ -96,8 +96,8 @@ const client = createPortaClient(transport);
 ### AI Agent Integration
 
 ```typescript
-import { createPortaClient, getToolDefinitions, executeTool } from '@porta/sdk/agent';
-import { createNodeTransport, createTokenAuth } from '@porta/sdk/node';
+import { createPortaClient, getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 // Get tool definitions for LLM function calling
 const tools = getToolDefinitions();
@@ -146,7 +146,7 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 ## Error Handling
 
 ```typescript
-import { PortaNotFoundError, PortaConflictError, PortaHttpError } from '@porta/sdk';
+import { PortaNotFoundError, PortaConflictError, PortaHttpError } from '@portaidentity/sdk';
 
 try {
   await client.organizations.get('nonexistent');
@@ -176,7 +176,7 @@ const allUsers = await client.users.listAll('org-id');
 ## Architecture
 
 ```
-@porta/sdk
+@portaidentity/sdk
 ├── transport/          # HTTP abstraction layer
 │   ├── types.ts        # HttpTransport, TransportRequest, TransportResponse
 │   ├── browser-transport.ts  # Fetch + CSRF cookies + 401 redirect
@@ -201,10 +201,10 @@ const allUsers = await client.users.listAll('org-id');
 
 | Import Path | Includes | Excludes |
 |------------|----------|----------|
-| `@porta/sdk` | Types, errors, pagination, client factory | Transport, auth (bring your own) |
-| `@porta/sdk/browser` | + BrowserTransport | NodeTransport, auth providers |
-| `@porta/sdk/node` | + NodeTransport, all auth providers | BrowserTransport |
-| `@porta/sdk/agent` | + Tool definitions, executeTool | Transports, auth |
+| `@portaidentity/sdk` | Types, errors, pagination, client factory | Transport, auth (bring your own) |
+| `@portaidentity/sdk/browser` | + BrowserTransport | NodeTransport, auth providers |
+| `@portaidentity/sdk/node` | + NodeTransport, all auth providers | BrowserTransport |
+| `@portaidentity/sdk/agent` | + Tool definitions, executeTool | Transports, auth |
 
 ## Testing
 

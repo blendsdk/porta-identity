@@ -1,6 +1,6 @@
 # SDK CLI Migration Guide
 
-This document describes the future migration strategy for replacing the CLI's `AdminHttpClient` with `@porta/sdk`. This is a **reference document** — the migration has not yet been implemented.
+This document describes the future migration strategy for replacing the CLI's `AdminHttpClient` with `@portaidentity/sdk`. This is a **reference document** — the migration has not yet been implemented.
 
 ## Current Architecture
 
@@ -21,7 +21,7 @@ Key components:
 
 ## Target Architecture
 
-Replace `AdminHttpClient` with `@porta/sdk`:
+Replace `AdminHttpClient` with `@portaidentity/sdk`:
 
 ```
 porta user list
@@ -33,7 +33,7 @@ porta user list
 
 ## Migration Benefits
 
-| Aspect | Before (AdminHttpClient) | After (@porta/sdk) |
+| Aspect | Before (AdminHttpClient) | After (@portaidentity/sdk) |
 |---|---|---|
 | **Type safety** | Manual URL building, untyped responses | Fully typed methods and return values |
 | **Auth refresh** | Manual token refresh logic | Automatic via CliAuth provider |
@@ -46,12 +46,12 @@ porta user list
 
 ### Phase 1: Parallel Setup
 
-Add `@porta/sdk` as a dependency and create a shared `createCliPortaClient()` helper:
+Add `@portaidentity/sdk` as a dependency and create a shared `createCliPortaClient()` helper:
 
 ```typescript
 // src/cli/sdk-client.ts
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createCliAuth } from '@porta/sdk/node';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createCliAuth } from '@portaidentity/sdk/node';
 import { getCredentialsPath, getApiBaseUrl } from './bootstrap.js';
 
 export function createCliPortaClient() {
@@ -108,7 +108,7 @@ async function listOrgs(client: AdminHttpClient, args: ListArgs) {
 }
 ```
 
-### After (@porta/sdk)
+### After (@portaidentity/sdk)
 
 ```typescript
 // src/cli/commands/org.ts — list subcommand

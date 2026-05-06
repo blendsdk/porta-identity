@@ -1,6 +1,6 @@
 # SDK Admin GUI Migration Guide
 
-This document describes the future migration strategy for replacing the Admin GUI's custom API client (`admin-gui/src/client/api/client.ts`) with `@porta/sdk`. This is a **reference document** — the migration has not yet been implemented.
+This document describes the future migration strategy for replacing the Admin GUI's custom API client (`admin-gui/src/client/api/client.ts`) with `@portaidentity/sdk`. This is a **reference document** — the migration has not yet been implemented.
 
 ## Current Architecture
 
@@ -22,7 +22,7 @@ Key components:
 
 ## Target Architecture
 
-Replace the custom API client with `@porta/sdk/browser`:
+Replace the custom API client with `@portaidentity/sdk/browser`:
 
 ```
 React Component
@@ -36,7 +36,7 @@ React Component
 
 ## Migration Benefits
 
-| Aspect | Before (custom client) | After (@porta/sdk) |
+| Aspect | Before (custom client) | After (@portaidentity/sdk) |
 |---|---|---|
 | **Type safety** | Partial — manual response typing | Full — SDK types for all entities |
 | **CSRF handling** | Custom implementation | Built into BrowserTransport |
@@ -49,12 +49,12 @@ React Component
 
 ### Phase 1: Add SDK Dependency
 
-The `@porta/sdk` file dependency is already configured in `admin-gui/package.json`:
+The `@portaidentity/sdk` file dependency is already configured in `admin-gui/package.json`:
 
 ```json
 {
   "dependencies": {
-    "@porta/sdk": "file:../packages/porta-sdk"
+    "@portaidentity/sdk": "file:../packages/porta-sdk"
   }
 }
 ```
@@ -65,8 +65,8 @@ Replace the custom client initialization:
 
 ```typescript
 // admin-gui/src/client/api/porta.ts
-import { createPortaClient } from '@porta/sdk';
-import { createBrowserTransport } from '@porta/sdk/browser';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createBrowserTransport } from '@portaidentity/sdk/browser';
 
 export const porta = createPortaClient({
   transport: createBrowserTransport({
@@ -151,7 +151,7 @@ try {
 }
 
 // After — typed SDK errors
-import { PortaValidationError } from '@porta/sdk';
+import { PortaValidationError } from '@portaidentity/sdk';
 
 try {
   await porta.users.create(userData);
@@ -175,7 +175,7 @@ The SDK replaces only the **browser-side** fetch wrapper, not the server-side pr
 
 ## Timeline
 
-This migration is planned for when the Admin GUI dashboard is actively developed. The placeholder SPA does not make significant API calls, so there is no urgency. When dashboard components are built, they should use `@porta/sdk` directly instead of the custom client.
+This migration is planned for when the Admin GUI dashboard is actively developed. The placeholder SPA does not make significant API calls, so there is no urgency. When dashboard components are built, they should use `@portaidentity/sdk` directly instead of the custom client.
 
 ## See Also
 

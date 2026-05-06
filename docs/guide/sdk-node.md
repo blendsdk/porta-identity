@@ -1,20 +1,20 @@
 # SDK Node.js Usage
 
-This guide covers using `@porta/sdk` in Node.js applications — automation scripts, CI/CD pipelines, microservices, and backend integrations.
+This guide covers using `@portaidentity/sdk` in Node.js applications — automation scripts, CI/CD pipelines, microservices, and backend integrations.
 
 ## Setup
 
 ### Install
 
 ```bash
-yarn add @porta/sdk
+yarn add @portaidentity/sdk
 ```
 
 ### Create Client
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createTokenAuth } from '@porta/sdk/node';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
   baseUrl: 'https://porta.local:3443/api/admin',
@@ -33,7 +33,7 @@ The Node.js entrypoint provides three authentication strategies.
 Use a pre-obtained token. Best for scripts and one-off automation:
 
 ```typescript
-import { createTokenAuth } from '@porta/sdk/node';
+import { createTokenAuth } from '@portaidentity/sdk/node';
 
 const auth = createTokenAuth('eyJhbGciOiJFUzI1NiIs...');
 ```
@@ -46,7 +46,7 @@ const auth = createTokenAuth('eyJhbGciOiJFUzI1NiIs...');
 Use OIDC client credentials grant for server-to-server communication. Best for long-running services:
 
 ```typescript
-import { createClientCredentialsAuth } from '@porta/sdk/node';
+import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
   tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
@@ -66,7 +66,7 @@ Features:
 Reads credentials from `~/.porta/credentials.json`, written by `porta login`. Best for CLI tools:
 
 ```typescript
-import { createCliAuth } from '@porta/sdk/node';
+import { createCliAuth } from '@portaidentity/sdk/node';
 
 const auth = createCliAuth({
   credentialsPath: '~/.porta/credentials.json',
@@ -95,8 +95,8 @@ This happens transparently — you don't need to handle 401s in your code.
 ### Automation Script
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@porta/sdk/node';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const porta = createPortaClient({
   transport: createNodeTransport({
@@ -189,7 +189,7 @@ import {
   PortaValidationError,
   PortaNotFoundError,
   PortaRateLimitError,
-} from '@porta/sdk';
+} from '@portaidentity/sdk';
 
 try {
   await porta.organizations.create({ name: '' });

@@ -13,7 +13,7 @@
  *
  * @example
  * ```typescript
- * import { createClientCredentialsAuth } from '@porta/sdk';
+ * import { createClientCredentialsAuth } from '@portaidentity/sdk';
  *
  * const auth = createClientCredentialsAuth({
  *   tokenEndpoint: 'https://porta.example.com/super-admin/token',

@@ -1,5 +1,5 @@
 {
-  "name": "@porta/sdk",
+  "name": "@portaidentity/sdk",
   "version": "0.1.0",
   "description": "Universal TypeScript SDK for the Porta Admin API",
   "type": "module",
@@ -27,6 +27,9 @@
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^4.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=22.0.0"

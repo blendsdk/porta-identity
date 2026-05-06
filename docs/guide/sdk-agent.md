@@ -1,6 +1,6 @@
 # SDK AI Agent Guide
 
-The `@porta/sdk/agent` entrypoint enables AI agents (LLMs with function-calling) to manage Porta infrastructure through structured tool definitions. This is designed for MCP servers, OpenAI function-calling, LangChain tools, and similar agent frameworks.
+The `@portaidentity/sdk/agent` entrypoint enables AI agents (LLMs with function-calling) to manage Porta infrastructure through structured tool definitions. This is designed for MCP servers, OpenAI function-calling, LangChain tools, and similar agent frameworks.
 
 ## Overview
 
@@ -20,9 +20,9 @@ The agent layer provides:
 ## Quick Start
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@porta/sdk/node';
-import { getToolDefinitions, executeTool } from '@porta/sdk/agent';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 // 1. Create an authenticated client
 const porta = createPortaClient({
@@ -93,7 +93,7 @@ console.log('Domains:', [...domains]);
 The `executeTool()` function dispatches a tool call to the correct SDK domain method:
 
 ```typescript
-import { executeTool } from '@porta/sdk/agent';
+import { executeTool } from '@portaidentity/sdk/agent';
 
 // The AI agent says: "call organizations.create with { name: 'Acme Corp' }"
 const result = await executeTool(porta, 'organizations.create', {
@@ -127,9 +127,9 @@ To build an MCP server that exposes Porta tools:
 
 ```typescript
 import { McpServer } from '@anthropic-ai/mcp-sdk';
-import { createPortaClient } from '@porta/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@porta/sdk/node';
-import { getToolDefinitions, executeTool } from '@porta/sdk/agent';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 const porta = createPortaClient({
   transport: createNodeTransport({
@@ -163,7 +163,7 @@ await server.start();
 ## OpenAI Function-Calling Integration
 
 ```typescript
-import { getToolDefinitions, executeTool } from '@porta/sdk/agent';
+import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 // Convert to OpenAI function-calling format
 const openAiTools = getToolDefinitions().map(tool => ({

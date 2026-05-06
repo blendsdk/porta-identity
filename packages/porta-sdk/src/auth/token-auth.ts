@@ -10,7 +10,7 @@
  *
  * @example
  * ```typescript
- * import { createTokenAuth } from '@porta/sdk';
+ * import { createTokenAuth } from '@portaidentity/sdk';
  *
  * const auth = createTokenAuth({ token: 'eyJhbGciOi...' });
  * const client = createPortaClient({ baseUrl: '...', auth });

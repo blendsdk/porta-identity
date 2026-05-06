@@ -1,10 +1,10 @@
 /**
- * @porta/sdk/agent — AI Agent entrypoint.
+ * @portaidentity/sdk/agent — AI Agent entrypoint.
  *
  * Provides tool definitions for all Porta SDK operations and an executor
  * that maps tool names + arguments to PortaClient method calls.
  *
- * @module @porta/sdk/agent
+ * @module @portaidentity/sdk/agent
  */
 
 import type { PortaClient } from './client.js';

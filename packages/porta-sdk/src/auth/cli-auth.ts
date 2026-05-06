@@ -14,7 +14,7 @@
  *
  * @example
  * ```typescript
- * import { createCliAuth } from '@porta/sdk';
+ * import { createCliAuth } from '@portaidentity/sdk';
  *
  * // Uses default ~/.porta/credentials.json
  * const auth = createCliAuth();

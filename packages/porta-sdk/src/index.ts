@@ -1,15 +1,15 @@
 /**
- * @porta/sdk — Main entrypoint.
+ * @portaidentity/sdk — Main entrypoint.
  *
  * Re-exports the client factory, all types, domain interfaces,
  * error classes, and pagination utilities.
  *
  * Transport and auth providers are available from platform-specific entrypoints:
- * - `@porta/sdk/node` — Node.js transport + all auth providers
- * - `@porta/sdk/browser` — Browser (fetch) transport
- * - `@porta/sdk/agent` — AI agent tool definitions
+ * - `@portaidentity/sdk/node` — Node.js transport + all auth providers
+ * - `@portaidentity/sdk/browser` — Browser (fetch) transport
+ * - `@portaidentity/sdk/agent` — AI agent tool definitions
  *
- * @module @porta/sdk
+ * @module @portaidentity/sdk
  */
 
 // Client factory

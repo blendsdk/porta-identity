@@ -1,5 +1,5 @@
 /**
- * Vitest configuration for @porta/sdk.
+ * Vitest configuration for @portaidentity/sdk.
  *
  * All SDK tests are pure unit tests — no external services required.
  * Tests use mock transports to verify domain logic, error handling,

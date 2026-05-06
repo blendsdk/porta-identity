@@ -1,9 +1,9 @@
 /**
- * @porta/sdk/node — Node.js entrypoint.
+ * @portaidentity/sdk/node — Node.js entrypoint.
  *
  * Exports Node.js-specific transport and all auth providers.
  *
- * @module @porta/sdk/node
+ * @module @portaidentity/sdk/node
  */
 
 // Node transport

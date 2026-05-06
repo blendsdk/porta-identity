@@ -1,6 +1,6 @@
 # SDK Browser Usage
 
-This guide covers using `@porta/sdk` in browser applications, such as the Porta Admin GUI or custom admin dashboards.
+This guide covers using `@portaidentity/sdk` in browser applications, such as the Porta Admin GUI or custom admin dashboards.
 
 ## Architecture: BFF Pattern
 
@@ -23,14 +23,14 @@ The BFF handles OIDC authentication and stores tokens server-side. The browser S
 ### Install
 
 ```bash
-yarn add @porta/sdk
+yarn add @portaidentity/sdk
 ```
 
 ### Create Client
 
 ```typescript
-import { createPortaClient } from '@porta/sdk';
-import { createBrowserTransport } from '@porta/sdk/browser';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createBrowserTransport } from '@portaidentity/sdk/browser';
 
 const transport = createBrowserTransport({
   // BFF proxy endpoint — NOT the Porta API directly
@@ -107,7 +107,7 @@ import {
   PortaValidationError,
   PortaNotFoundError,
   PortaForbiddenError,
-} from '@porta/sdk';
+} from '@portaidentity/sdk';
 
 try {
   await porta.users.create({ organizationId, email, name });
