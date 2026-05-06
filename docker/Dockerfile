@@ -16,6 +16,10 @@ RUN apk add --no-cache python3 make g++
 
 # Copy dependency manifests first for Docker layer caching
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --frozen-lockfile
 
 # Copy source and compile TypeScript
@@ -71,6 +75,10 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --production --frozen-lockfile
 
 # ──────────────────────────────────────────────

@@ -1768,7 +1768,7 @@
   dependencies:
     playwright "1.59.1"
 
-"@porta/sdk@file:../packages/porta-sdk":
+"@portaidentity/sdk@file:../packages/porta-sdk":
   version "0.1.0"
 
 "@rolldown/pluginutils@1.0.0-beta.27":
