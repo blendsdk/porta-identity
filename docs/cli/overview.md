@@ -1,110 +1,133 @@
 # CLI Overview
 
-The `porta` CLI is an admin tool for managing your Porta identity platform from the command line. It supports 15 top-level commands covering everything from initial bootstrap to day-to-day user management and declarative provisioning.
+The `porta` CLI is the admin tool for managing your Porta identity platform from the command line. It is distributed as a **standalone npm package** that connects to a running Porta server via the Admin API.
+
+## Architecture
+
+The Porta CLI has two components:
+
+| Component | Package | Purpose |
+|-----------|---------|---------|
+| **Standalone CLI** | `@portaidentity/cli` | Full admin tool — 20+ commands, installs via npm |
+| **Server CLI** | Built into `porta` server | Infrastructure-only — init, migrate, seed, health |
+
+The standalone CLI uses the **`@portaidentity/sdk`** under the hood, authenticating via OIDC (Auth Code + PKCE) to the Porta server's Admin API. The server CLI uses direct database access for bootstrapping operations.
 
 ## Installation
 
-The CLI is included with Porta. In a development environment:
+### Standalone CLI (Recommended)
+
+Install the standalone CLI globally to manage any Porta server:
 
 ```bash
-# Run via yarn
-yarn porta <command>
+# Install globally
+npm install -g @portaidentity/cli
 
-# Or via npx after building
-npx porta <command>
+# Or use npx
+npx @portaidentity/cli <command>
+
+# Verify installation
+porta version
 ```
 
-In production, the CLI can be invoked directly if Porta is installed globally or via the `bin` entry:
+### Server CLI (Docker / Development)
+
+The server image includes infrastructure-only commands. In Docker:
 
 ```bash
-porta <command>
+# Via docker exec
+docker exec -it porta-app porta init
+docker exec -it porta-app porta migrate up
+
+# Via the porta.sh wrapper script
+./porta init
+./porta migrate up
 ```
+
+In development:
+
+```bash
+yarn porta init
+yarn porta migrate up
+```
+
+## Authentication
+
+The standalone CLI authenticates using OIDC Authorization Code flow with PKCE:
+
+```bash
+# Login (opens browser for authentication)
+porta login
+
+# Login with explicit server URL
+porta login --server https://porta.example.com:3443
+
+# Check current identity
+porta whoami
+
+# Logout
+porta logout
+```
+
+Credentials are stored at `~/.porta/credentials.json` with `0600` permissions.
 
 ## Global Options
 
-Every command supports these global flags:
+Every standalone CLI command supports these global flags:
 
 | Flag | Description |
 |------|-------------|
+| `--server <url>` | Porta server URL (or set `PORTA_SERVER` env var) |
 | `--json` | Output results as JSON instead of formatted tables |
 | `--verbose` | Enable verbose/debug logging |
 | `--force` | Skip confirmation prompts |
-| `--dry-run` | Show what would happen without making changes |
-| `--database-url` | Override `DATABASE_URL` for direct-DB commands |
-| `--redis-url` | Override `REDIS_URL` for direct-DB commands |
+| `--insecure` | Allow self-signed TLS certificates |
+
+Server CLI commands support:
+
+| Flag | Description |
+|------|-------------|
+| `--database-url` | Override `DATABASE_URL` |
+| `--redis-url` | Override `REDIS_URL` |
 
 ## Command Reference
 
-| Command | Mode | Description |
-|---------|------|-------------|
-| [`porta init`](/cli/bootstrap#porta-init) | Direct DB | Bootstrap admin infrastructure |
-| [`porta login`](/cli/bootstrap#porta-login) | HTTP | Authenticate via OIDC (auto-detects Docker) |
-| [`porta logout`](/cli/bootstrap#porta-logout) | HTTP | Clear stored credentials |
-| [`porta whoami`](/cli/bootstrap#porta-whoami) | HTTP | Display current identity |
-| [`porta health`](/cli/infrastructure#porta-health) | Both | Check DB + Redis connectivity |
-| [`porta migrate`](/cli/infrastructure#porta-migrate) | Direct DB | Run database migrations |
-| [`porta seed`](/cli/infrastructure#porta-seed) | Direct DB | Load development seed data |
-| [`porta keys`](/cli/infrastructure#porta-keys) | HTTP | Manage signing keys |
-| [`porta config`](/cli/infrastructure#porta-config) | HTTP | Manage system configuration |
-| [`porta audit`](/cli/infrastructure#porta-audit) | HTTP | View and manage audit logs (list, cleanup) |
-| [`porta org`](/cli/organizations) | HTTP | Manage organizations |
-| [`porta app`](/cli/applications) | HTTP | Manage applications, modules, roles, permissions, claims |
-| [`porta client`](/cli/clients) | HTTP | Manage OIDC clients and secrets |
-| [`porta user`](/cli/users) | HTTP | Manage users, roles, claims, 2FA, GDPR export/purge |
-| [`porta provision`](/cli/provisioning) | HTTP | Declarative provisioning from YAML/JSON files |
+### Standalone CLI (`@portaidentity/cli`)
 
-## Dual-Mode Architecture
+| Command | Description |
+|---------|-------------|
+| `porta login` | Authenticate via OIDC (browser-based) |
+| `porta logout` | Clear stored credentials |
+| `porta whoami` | Display current identity |
+| `porta version` | Show CLI, SDK, and server version info |
+| `porta org` | Manage organizations (CRUD, status, branding, destroy) |
+| `porta app` | Manage applications, modules, roles, permissions, claims |
+| `porta client` | Manage OIDC clients and secrets |
+| `porta user` | Manage users (CRUD, status, password, roles, claims, 2FA) |
+| `porta keys` | Manage ES256 signing keys |
+| `porta config` | Manage system configuration |
+| `porta audit` | View audit log entries |
+| `porta health` | Check server health (via API) |
+| `porta provision` | Declarative environment setup from YAML/JSON |
 
-The CLI operates in two modes depending on the command:
+### Server CLI (Infrastructure Only)
 
-### Direct DB Mode
+These commands are available inside the Porta Docker container or development environment:
 
-Commands like `init`, `migrate`, and `seed` connect directly to PostgreSQL and Redis. These are used for initial setup and infrastructure operations that must work before the HTTP server is running.
+| Command | Description |
+|---------|-------------|
+| `porta init` | Bootstrap admin infrastructure (direct-DB) |
+| `porta migrate` | Run database migrations (up/down/status) |
+| `porta seed` | Load development seed data |
+| `porta health` | Check DB + Redis connectivity (direct) |
+| `porta user 2fa` | Admin 2FA status/disable/reset (direct-DB) |
 
-```bash
-# These connect directly to the database
-porta init
-porta migrate up
-porta seed run
-```
+## Detailed Documentation
 
-### HTTP Mode
-
-All other commands communicate with the Porta server via the Admin API. They require authentication (via `porta login`) and use Bearer token authorization. When running inside Docker or headless environments, `porta login` automatically uses a manual paste-URL mode — see [porta login](/cli/bootstrap#porta-login) for details.
-
-```bash
-# These use the Admin API
-porta org list
-porta user create --org-id <id> --email alice@example.com
-porta client list
-```
-
-## Output Formats
-
-By default, the CLI displays results as formatted tables:
-
-```
-┌──────────────────────────────────────┬────────────┬──────────┐
-│ ID                                   │ Name       │ Status   │
-├──────────────────────────────────────┼────────────┼──────────┤
-│ 550e8400-e29b-41d4-a716-44665544...  │ Acme Corp  │ active   │
-│ 6ba7b810-9dad-11d1-80b4-00c04fd4...  │ Globex     │ active   │
-└──────────────────────────────────────┴────────────┴──────────┘
-```
-
-Use `--json` for machine-readable output:
-
-```bash
-porta org list --json
-```
-
-```json
-[
-  { "id": "550e8400-...", "name": "Acme Corp", "status": "active" },
-  { "id": "6ba7b810-...", "name": "Globex", "status": "active" }
-]
-```
-
-## Credential Storage
-
-After `porta login`, credentials are stored at `~/.porta/credentials.json` with `0600` file permissions (readable only by the current user). The CLI automatically refreshes expired access tokens using the stored refresh token.
+- [Bootstrap & Authentication](./bootstrap.md) — `porta init`, `porta login`, `porta logout`
+- [Organizations](./organizations.md) — `porta org` subcommands
+- [Applications](./applications.md) — `porta app` and nested subcommands
+- [Clients](./clients.md) — `porta client` and secret management
+- [Users](./users.md) — `porta user` with status, password, roles, claims, 2FA
+- [Infrastructure](./infrastructure.md) — `porta migrate`, `porta seed`, `porta health`
+- [Provisioning](./provisioning.md) — `porta provision` declarative setup
