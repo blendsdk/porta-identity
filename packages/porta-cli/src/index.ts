@@ -35,6 +35,7 @@ import { whoamiCommand } from './commands/whoami.js';
 import { versionCommand } from './commands/version.js';
 import { doctorCommand } from './commands/doctor.js';
 import { completionCommand } from './commands/completion.js';
+import { orgCommand } from './commands/org.js';
 
 /**
  * Builds and runs the CLI.
@@ -82,7 +83,8 @@ async function main(): Promise<void> {
     .command(versionCommand)
     .command(doctorCommand)
     .command(completionCommand)
-    // Domain commands will be registered here in Phase 3
+    // Domain commands (auth required)
+    .command(orgCommand)
     .demandCommand(1, 'Please specify a command')
     .strict()
     .help()
