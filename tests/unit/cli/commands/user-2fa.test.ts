@@ -13,7 +13,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
   withBootstrap: vi.fn(async (_args: unknown, fn: () => Promise<void>) => fn()),
-  withHttpClient: vi.fn(async (_args: unknown, fn: (client: unknown) => Promise<void>) => fn({})),
 }));
 
 vi.mock('../../../../src/cli/error-handler.js', () => ({
