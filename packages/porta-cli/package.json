@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Standalone CLI for the Porta Identity Platform",
   "type": "module",
   "bin": {
