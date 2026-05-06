@@ -64,15 +64,6 @@ import { confirm, question } from '../../src/prompt.js';
 // Test data
 // ---------------------------------------------------------------------------
 
-const baseArgs = {
-  json: false,
-  verbose: false,
-  insecure: false,
-  force: false,
-  server: undefined as string | undefined,
-  _: ['org'],
-  $0: 'porta',
-};
 
 const sampleOrg = {
   id: 'org-uuid-1234-5678-abcd',
@@ -110,7 +101,6 @@ describe('org command', () => {
   // Helper: invoke a subcommand handler through yargs builder
   async function invokeSubcommand(subcommand: string, extraArgs: Record<string, unknown> = {}) {
     const yargs = (await import('yargs')).default;
-    const { hideBin } = await import('yargs/helpers');
     const cmd = await getCommand();
 
     // Build argv array

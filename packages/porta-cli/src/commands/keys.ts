@@ -20,7 +20,7 @@ import { confirm } from '../prompt.js';
 // Arg types
 // ---------------------------------------------------------------------------
 
-interface KeysBaseArgs extends GlobalOptions {}
+type KeysBaseArgs = GlobalOptions;
 
 // ---------------------------------------------------------------------------
 // Command

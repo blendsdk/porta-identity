@@ -2,7 +2,7 @@
  * Tests for OAuth callback server and manual URL parsing.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   startCallbackServer,
   parseCallbackUrl,

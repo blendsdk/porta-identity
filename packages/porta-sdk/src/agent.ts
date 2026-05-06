@@ -174,6 +174,7 @@ export async function executeTool(
       return { success: false, error: `Invalid tool name: ${toolName}. Expected format: domain.method` };
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const domainObj = (client as unknown as Record<string, Record<string, Function>>)[domain];
     if (!domainObj) {
       return { success: false, error: `Unknown domain: ${domain}` };

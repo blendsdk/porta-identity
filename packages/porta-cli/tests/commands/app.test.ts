@@ -75,7 +75,6 @@ vi.mock('../../src/prompt.js', () => ({
   question: vi.fn(),
 }));
 
-import { handleError } from '../../src/error-handler.js';
 import { printTable, printJson, success, warn, info } from '../../src/output.js';
 import { confirm } from '../../src/prompt.js';
 
