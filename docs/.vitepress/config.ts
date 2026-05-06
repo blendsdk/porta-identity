@@ -47,6 +47,23 @@ export default withMermaid(
             ],
           },
           {
+            text: 'Development',
+            items: [
+              { text: 'TypeScript SDK', link: '/guide/sdk' },
+              { text: 'SDK Browser Usage', link: '/guide/sdk-browser' },
+              { text: 'SDK Node.js Usage', link: '/guide/sdk-node' },
+              { text: 'SDK AI Agent Guide', link: '/guide/sdk-agent' },
+              {
+                text: 'SDK CLI Migration',
+                link: '/guide/sdk-cli-migration',
+              },
+              {
+                text: 'SDK GUI Migration',
+                link: '/guide/sdk-gui-migration',
+              },
+            ],
+          },
+          {
             text: 'Operations',
             items: [
               { text: 'Deployment', link: '/guide/deployment' },

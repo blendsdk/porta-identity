@@ -235,37 +235,37 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-Then authenticate the CLI:
-
-```bash
-docker exec -it porta-app porta login
-```
-
-The CLI prints an authorization URL — open it in your browser, log in, then paste the callback URL back into the terminal.
-
 ---
 
-## Step 8: Install the CLI Wrapper
+## Step 8: Install the Standalone CLI
 
-Download the `porta` wrapper script for a cleaner command-line experience:
+The Porta Docker image includes infrastructure commands only (`init`, `migrate`, `seed`, `health`). For full admin management, install the **standalone CLI** on your workstation:
 
+```bash
+npm install -g @portaidentity/cli
+```
+
+Then authenticate against your Porta server:
+
+```bash
+porta login --server https://porta.local:3443
+```
+
+The CLI opens your browser for OIDC authentication. After logging in, you can manage everything:
+
+```bash
+porta whoami           # Check current identity
+porta org list         # List organizations
+porta version          # Show CLI/SDK/server versions
+```
+
+::: tip Docker wrapper (infrastructure only)
+For init/migrate commands inside the container, you can also download the wrapper script:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
   -o porta && chmod +x porta
-```
-
-This script forwards commands to the Porta container, with automatic host file detection for provisioning. Now you can run:
-
-```bash
 ./porta init
-./porta login
-./porta org list
-```
-
-::: info Without the wrapper
-All commands also work with `docker exec`:
-```bash
-docker exec -it porta-app porta init
+./porta migrate status
 ```
 :::
 

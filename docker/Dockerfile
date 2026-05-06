@@ -16,6 +16,10 @@ RUN apk add --no-cache python3 make g++
 
 # Copy dependency manifests first for Docker layer caching
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --frozen-lockfile
 
 # Copy source and compile TypeScript
@@ -24,11 +28,30 @@ COPY src/ src/
 RUN yarn build
 
 # ──────────────────────────────────────────────
-# Stage 2: Build Admin GUI (React SPA + BFF)
+# Stage 2: Build @portaidentity/sdk
+# ──────────────────────────────────────────────
+FROM node:22-alpine AS sdk-builder
+
+WORKDIR /app/packages/porta-sdk
+
+# Copy dependency manifests first for Docker layer caching
+COPY packages/porta-sdk/package.json packages/porta-sdk/yarn.lock* ./
+RUN yarn install --frozen-lockfile 2>/dev/null || yarn install
+
+# Copy source and compile TypeScript
+COPY packages/porta-sdk/tsconfig.json ./
+COPY packages/porta-sdk/src/ src/
+RUN yarn build
+
+# ──────────────────────────────────────────────
+# Stage 3: Build Admin GUI (React SPA + BFF)
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS admin-builder
 
 WORKDIR /app/admin-gui
+
+# Copy SDK build output so file: dependency resolves
+COPY --from=sdk-builder /app/packages/porta-sdk/ /app/packages/porta-sdk/
 
 # Copy dependency manifests first for Docker layer caching
 COPY admin-gui/package.json admin-gui/yarn.lock ./
@@ -42,7 +65,7 @@ COPY admin-gui/public/ ./public/
 RUN yarn build
 
 # ──────────────────────────────────────────────
-# Stage 3: Production dependencies only
+# Stage 4: Production dependencies only
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS deps
 
@@ -52,10 +75,14 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --production --frozen-lockfile
 
 # ──────────────────────────────────────────────
-# Stage 4: Runtime
+# Stage 5: Runtime
 # ──────────────────────────────────────────────
 FROM node:22-alpine
 

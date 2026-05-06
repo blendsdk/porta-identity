@@ -1768,6 +1768,9 @@
   dependencies:
     playwright "1.59.1"
 
+"@portaidentity/sdk@file:../packages/porta-sdk":
+  version "0.1.0"
+
 "@rolldown/pluginutils@1.0.0-beta.27":
   version "1.0.0-beta.27"
   resolved "https://registry.yarnpkg.com/@rolldown/pluginutils/-/pluginutils-1.0.0-beta.27.tgz#47d2bf4cef6d470b22f5831b420f8964e0bf755f"

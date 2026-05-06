@@ -167,8 +167,15 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-> **💡 CLI Wrapper Script**
-> For a cleaner experience, install the CLI wrapper:
+> **💡 Standalone CLI**
+> For full admin management, install the standalone CLI on your workstation:
+> ```bash
+> npm install -g @portaidentity/cli
+> porta login --server https://porta.local:3443
+> porta org list
+> ```
+>
+> **Docker wrapper** (infrastructure commands only):
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
 >   -o porta && chmod +x porta

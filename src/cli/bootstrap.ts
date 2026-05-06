@@ -1,16 +1,12 @@
 /**
- * CLI bootstrap — manages two execution modes for CLI commands.
+ * CLI bootstrap — direct-DB execution mode for infrastructure commands.
  *
- * **Direct-DB mode** (`withBootstrap`):
- *   Used by `porta init`, `porta migrate`, and `porta seed` — commands
- *   that need direct database/Redis access because the HTTP server may
- *   not be running yet. Connects to PostgreSQL + Redis, runs the command,
- *   and disconnects.
+ * Provides `withBootstrap()` for commands that need direct database/Redis
+ * access (init, migrate, seed, health --direct, user 2fa --direct).
  *
- * **HTTP mode** (`withHttpClient`):
- *   Used by all other CLI commands. Reads stored credentials from
- *   `~/.porta/credentials.json`, creates an authenticated HTTP client,
- *   and passes it to the command handler. No DB/Redis connection needed.
+ * These commands run before or without the HTTP server, so they connect
+ * directly to PostgreSQL + Redis. The HTTP-based admin commands have been
+ * extracted to the standalone `@portaidentity/cli` package.
  *
  * Uses dynamic imports so that the config module (which validates env vars
  * at load time) isn't triggered until bootstrap() is called. This allows
@@ -22,7 +18,6 @@
 
 import 'dotenv/config';
 import type { GlobalOptions } from './index.js';
-import { createHttpClient, type AdminHttpClient } from './http-client.js';
 
 /**
  * Bootstrap the CLI environment: load dotenv, connect DB + Redis.
@@ -102,39 +97,4 @@ export async function withBootstrap<T>(
   } finally {
     await shutdown();
   }
-}
-
-/**
- * HTTP client wrapper for authenticated CLI commands.
- *
- * Creates an AdminHttpClient from stored credentials and passes it to
- * the command handler. No DB/Redis connection is needed — all data
- * flows through the admin API over HTTP.
- *
- * Use this instead of `withBootstrap()` for all commands that operate
- * against a running Porta server (everything except init/migrate/seed).
- *
- * ```typescript
- * await withHttpClient(argv, async (client) => {
- *   const { data } = await client.get('/api/admin/organizations');
- *   printTable(headers, data.data.map(...));
- * });
- * ```
- *
- * @param argv - Parsed CLI global options from yargs
- * @param fn - The command handler that receives an authenticated HTTP client
- * @returns The return value of the command handler
- * @throws HttpAuthError if not logged in or session expired
- */
-export async function withHttpClient<T>(
-  argv: GlobalOptions,
-  fn: (client: AdminHttpClient) => Promise<T>,
-): Promise<T> {
-  // Suppress logs in non-verbose mode — consistent with direct-DB mode
-  if (!argv.verbose) {
-    process.env.LOG_LEVEL = 'fatal';
-  }
-
-  const client = createHttpClient();
-  return fn(client);
 }

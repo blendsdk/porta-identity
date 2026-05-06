@@ -18,6 +18,7 @@
  */
 
 // ⚠️ TEST HARNESS ONLY — trust self-signed cert for HTTPS calls to Porta via nginx
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';

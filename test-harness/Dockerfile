@@ -4,23 +4,51 @@
 # This multi-stage build reuses ALL stages from the production Dockerfile,
 # then adds pino-pretty so NODE_ENV=development + LOG_LEVEL=debug works.
 
-# ─── Stage 1-3: Reuse production build (deps, builder, admin-builder) ───
+# ─── Stage 1: Build @portaidentity/sdk ───
+# Required because admin-gui depends on SDK via file: reference
+FROM node:22-alpine AS sdk-builder
+
+WORKDIR /app/packages/porta-sdk
+
+COPY packages/porta-sdk/package.json packages/porta-sdk/yarn.lock* ./
+RUN yarn install --frozen-lockfile 2>/dev/null || yarn install
+
+COPY packages/porta-sdk/tsconfig.json ./
+COPY packages/porta-sdk/src/ src/
+RUN yarn build
+
+# ─── Stage 2: Production dependencies ───
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+# (only name/version — no deps, keeps the install focused on server deps)
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --production --frozen-lockfile
 
+# ─── Stage 3: Build TypeScript (Porta server) ───
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json yarn.lock ./
+# Create workspace stubs so yarn resolves the workspaces field without error
+RUN mkdir -p packages/porta-sdk packages/porta-cli \
+    && echo '{"name":"@portaidentity/sdk","version":"0.1.0"}' > packages/porta-sdk/package.json \
+    && echo '{"name":"@portaidentity/cli","version":"0.1.0"}' > packages/porta-cli/package.json
 RUN yarn install --frozen-lockfile
 COPY tsconfig.json ./
 COPY src/ src/
 RUN yarn build
 
+# ─── Stage 4: Build Admin GUI (React SPA + BFF) ───
 FROM node:22-alpine AS admin-builder
 WORKDIR /app/admin-gui
+
+# Copy SDK build output so file: dependency resolves
+COPY --from=sdk-builder /app/packages/porta-sdk/ /app/packages/porta-sdk/
+
 COPY admin-gui/package.json admin-gui/yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY admin-gui/tsconfig*.json admin-gui/vite.config.ts ./
@@ -29,7 +57,7 @@ COPY admin-gui/src/ ./src/
 COPY admin-gui/public/ ./public/
 RUN yarn build
 
-# ─── Stage 4: Final image with pino-pretty for dev/debug logging ───
+# ─── Stage 5: Final image with pino-pretty for dev/debug logging ───
 FROM node:22-alpine
 RUN apk add --no-cache curl tini
 RUN addgroup -S porta && adduser -S porta -G porta

@@ -26,6 +26,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@portaidentity/sdk": "file:../packages/porta-sdk",
     "@fluentui/react-components": "^9.0.0",
     "@fluentui/react-icons": "^2.0.0",
     "@koa/router": "^15.0.0",

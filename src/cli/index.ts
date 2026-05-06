@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 
 /**
- * Porta CLI entry point.
+ * Porta server CLI entry point — infrastructure commands only.
  *
- * Sets up yargs with global options and registers all command modules.
- * Each command module handles its own subcommand registration.
+ * This is the reduced server-embedded CLI that ships inside the Docker image.
+ * It provides only direct-DB commands that need to run before or without
+ * the HTTP server (bootstrap, migrations, seed, health check, 2FA admin).
  *
- * The CLI is a thin presentation layer over the existing service modules.
- * It connects to DB/Redis, runs a single command, and disconnects.
+ * All HTTP-based admin commands (org, app, client, user, keys, config,
+ * audit, sessions, stats, bulk, exports, provision) have been extracted
+ * to the standalone `@portaidentity/cli` package.
  *
  * Usage: porta <command> <subcommand> [options]
+ *
+ * Commands:
+ *   init       Bootstrap admin infrastructure (first-time setup)
+ *   migrate    Run database migrations (up/down/status)
+ *   seed       Load development seed data
+ *   health     Check server health (--direct mode, DB + Redis)
+ *   user       2FA admin commands (status/disable/reset --direct)
  *
  * Global options:
  *   --json          Output in JSON format (default: table)
@@ -22,21 +31,11 @@
 
 import yargs, { type Argv } from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { healthCommand } from './commands/health.js';
+import { initCommand } from './commands/init.js';
 import { migrateCommand } from './commands/migrate.js';
 import { seedCommand } from './commands/seed.js';
-import { keysCommand } from './commands/keys.js';
-import { configCommand } from './commands/config.js';
-import { auditCommand } from './commands/audit.js';
-import { orgCommand } from './commands/org.js';
-import { appCommand } from './commands/app.js';
-import { clientCommand } from './commands/client.js';
-import { userCommand } from './commands/user.js';
-import { initCommand } from './commands/init.js';
-import { loginCommand } from './commands/login.js';
-import { logoutCommand } from './commands/logout.js';
-import { whoamiCommand } from './commands/whoami.js';
-import { provisionCommand } from './commands/provision.js';
+import { healthCommand } from './commands/health.js';
+import { userCommand } from './commands/user-2fa.js';
 
 /** Global option types shared by all commands */
 export interface GlobalOptions {
@@ -90,29 +89,19 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
       type: 'string',
       description: 'Redis connection URL override',
     })
-    // Bootstrap & authentication commands
+    // Infrastructure commands (direct-DB only)
     .command(initCommand)
-    .command(loginCommand)
-    .command(logoutCommand)
-    .command(whoamiCommand)
-    // Infrastructure commands
-    .command(healthCommand)
     .command(migrateCommand)
     .command(seedCommand)
-    .command(keysCommand)
-    .command(configCommand)
-    .command(auditCommand)
-    // Domain commands
-    .command(orgCommand)
-    .command(appCommand)
-    .command(clientCommand)
+    .command(healthCommand)
     .command(userCommand)
-    // Provisioning command
-    .command(provisionCommand)
     .demandCommand(1, 'You need to specify a command')
     .strict()
     .help()
     .version()
+    .epilogue(
+      'For full admin CLI (org, app, client, user, etc.), install @portaidentity/cli',
+    )
     .wrap(Math.min(120, process.stdout.columns ?? 80));
 
   return cli as Argv<GlobalOptions>;

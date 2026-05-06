@@ -42,10 +42,6 @@ vi.mock('../../../../src/lib/redis.js', () => ({
   }),
 }));
 
-// Mock token store — health command reads server URL from stored credentials
-vi.mock('../../../../src/cli/token-store.js', () => ({
-  readCredentials: vi.fn().mockReturnValue(null),
-}));
 
 import { healthCommand } from '../../../../src/cli/commands/health.js';
 import { printTable, success, error as errorFn, outputResult } from '../../../../src/cli/output.js';
