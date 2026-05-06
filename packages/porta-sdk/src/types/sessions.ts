@@ -5,14 +5,17 @@
  */
 
 export interface AdminSession {
-  id: string;
+  sessionId: string;
   userId: string;
-  userEmail: string;
+  clientId: string | null;
+  organizationId: string | null;
+  grantId: string | null;
   ipAddress: string | null;
   userAgent: string | null;
   lastActivityAt: string;
   createdAt: string;
   expiresAt: string;
+  revokedAt: string | null;
 }
 
 export interface SessionListParams {

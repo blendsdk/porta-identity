@@ -46,14 +46,17 @@ import { confirm } from '../../src/prompt.js';
 // ---------------------------------------------------------------------------
 
 const sampleSession = {
-  id: 'session-uuid-1234',
+  sessionId: 'session-uuid-1234',
   userId: 'user-uuid-1',
-  userEmail: 'admin@example.com',
+  clientId: null,
+  organizationId: null,
+  grantId: null,
   ipAddress: '192.168.1.1',
   userAgent: 'Mozilla/5.0',
   lastActivityAt: '2024-01-01T12:00:00Z',
   createdAt: '2024-01-01T00:00:00Z',
   expiresAt: '2024-01-02T00:00:00Z',
+  revokedAt: null,
 };
 
 const paginatedResult = {

@@ -75,17 +75,17 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            const sessions = result.data;
+            const sessions = result.data ?? [];
             if (sessions.length === 0) {
               warn('No active sessions found');
               return;
             }
 
             printTable(
-              ['ID', 'User', 'IP', 'Last Activity', 'Expires'],
+              ['Session ID', 'User ID', 'IP', 'Last Activity', 'Expires'],
               sessions.map((s) => [
-                truncate(s.id, 12),
-                s.userEmail,
+                truncate(s.sessionId, 12),
+                truncate(s.userId, 12),
                 s.ipAddress ?? '—',
                 formatDate(s.lastActivityAt),
                 formatDate(s.expiresAt),
