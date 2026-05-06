@@ -37,6 +37,7 @@ import { doctorCommand } from './commands/doctor.js';
 import { completionCommand } from './commands/completion.js';
 import { orgCommand } from './commands/org.js';
 import { appCommand } from './commands/app.js';
+import { clientCommand } from './commands/client.js';
 
 /**
  * Builds and runs the CLI.
@@ -87,6 +88,7 @@ async function main(): Promise<void> {
     // Domain commands (auth required)
     .command(orgCommand)
     .command(appCommand)
+    .command(clientCommand)
     .demandCommand(1, 'Please specify a command')
     .strict()
     .help()
