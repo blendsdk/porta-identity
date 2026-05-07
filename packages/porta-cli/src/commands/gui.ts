@@ -38,8 +38,11 @@ export const guiCommand: CommandModule<GlobalOptions, GuiOptions> = {
 
   handler: async (argv) => {
     try {
-      // Dynamic import — admin-gui is NOT a CLI dependency
-      const adminGui = (await import('@portaidentity/admin-gui')) as {
+      // Dynamic import — admin-gui is an optional peer, not a CLI dependency.
+      // Use a variable so TypeScript won't resolve the module at compile time
+      // (the package may not be installed or built during CLI typecheck).
+      const guiModule = '@portaidentity/admin-gui';
+      const adminGui = (await import(/* webpackIgnore: true */ guiModule)) as {
         startServer: (options: {
           server?: string;
           port?: number;
