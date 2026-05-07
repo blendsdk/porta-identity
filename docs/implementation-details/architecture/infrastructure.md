@@ -1,6 +1,6 @@
 # Infrastructure
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## Overview
 
@@ -56,14 +56,14 @@ graph LR
 | PostgreSQL | `postgres:16-alpine` | 5432 | With `init-test-db.sql` for test DB |
 | Redis | `redis:7-alpine` | 6379 | Ephemeral (appendonly off) |
 
-### Admin GUI Service
+### Admin GUI
 
-The Admin GUI runs as a separate Koa BFF process, deployable alongside or independently from the Porta server:
+The Admin GUI is a **standalone package** (`@portaidentity/admin-gui`) that runs outside the Docker image. It connects to the Porta server's Admin API over HTTP/HTTPS and authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions.
 
 ```mermaid
 graph LR
-    subgraph "Admin GUI"
-        BFF[Koa BFF<br/>Port 4002]
+    subgraph "Admin GUI (Standalone)"
+        BFF[Koa BFF]
         SPA[React SPA<br/>Vite-built static assets]
     end
 
@@ -71,37 +71,12 @@ graph LR
         PORTA[Porta API<br/>Port 3000]
     end
 
-    subgraph "Data Stores"
-        RD[(Redis 7)]
-    end
-
     BROWSER[Admin Browser] --> BFF
     BFF --> SPA
     BFF -->|API Proxy + Bearer Token| PORTA
-    BFF -->|Session Store| RD
 ```
 
-| Component | Technology | Port | Purpose |
-|-----------|-----------|------|---------|
-| BFF Server | Koa + koa-session | 4002 | OIDC auth, session management, CSRF, API proxy |
-| React SPA | React 19 + FluentUI v9 | Served by BFF | Browser-based admin dashboard |
-| Session Store | Redis (ioredis) | 6379 (DB 1) | BFF session persistence |
-
-**Docker deployment**: The Admin GUI shares the same Docker image as Porta. Set `PORTA_SERVICE=admin` to start the BFF instead of the OIDC server. This is configured in the production Docker Compose:
-
-```yaml
-admin-gui:
-  image: blendsdk/porta:latest
-  environment:
-    PORTA_SERVICE: admin
-    PORTA_ADMIN_PORTA_URL: http://porta:3000
-    PORTA_ADMIN_CLIENT_ID: <from-porta-init>
-    PORTA_ADMIN_CLIENT_SECRET: <from-porta-init>
-    PORTA_ADMIN_SESSION_SECRET: <generate-random>
-    REDIS_URL: redis://redis:6379/1
-  ports:
-    - '4002:4002'
-```
+The Admin GUI is **not bundled in the Docker image**. It is installed and run separately via `npx @portaidentity/admin-gui` or `porta gui`. See the [Admin GUI product documentation](/guide/admin-gui) for details.
 
 ## Container Build
 
@@ -196,7 +171,6 @@ graph LR
 | Port | Service | Protocol |
 |------|---------|----------|
 | 3000 | Porta HTTP server | HTTP/1.1 |
-| 4002 | Admin GUI BFF server | HTTP/1.1 |
 | 5432 | PostgreSQL | PostgreSQL wire protocol |
 | 6379 | Redis | RESP (Redis Serialization Protocol) |
 | 1025 | MailHog SMTP (dev only) | SMTP |

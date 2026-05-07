@@ -222,7 +222,6 @@ This interactive command creates:
 - The **super-admin organization** (`porta-admin`)
 - The **admin application** with 42 RBAC permissions
 - A **PKCE client** for CLI authentication
-- A **confidential client** for the Admin GUI
 - Your **first admin user** (you'll be prompted for email, name, and password)
 
 You can also run it non-interactively:

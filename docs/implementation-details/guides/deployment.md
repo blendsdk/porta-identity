@@ -1,6 +1,6 @@
 # Deployment Guide
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## Deployment Options
 
@@ -223,70 +223,27 @@ Porta enforces production safety checks via Zod's `superRefine`:
 | Audit log | Retention policy configured |
 | Admin access | First admin user created via `porta init` |
 
-## Admin GUI Deployment
+## Admin GUI
 
-The Admin GUI is deployed as a separate service using the same Docker image with `PORTA_SERVICE=admin`.
+The Admin GUI is a **standalone package** (`@portaidentity/admin-gui`) — it is **not** bundled in the Porta Docker image. It runs as a separate process that connects to the Porta server's Admin API.
 
-### Docker Compose
+### Running the Admin GUI
 
-Add the admin-gui service to your `docker-compose.yml`:
+Install and run via npm:
 
-```yaml
-admin-gui:
-  image: blendsdk/porta:latest
-  environment:
-    PORTA_SERVICE: admin
-    PORTA_ADMIN_PORTA_URL: http://porta:3000
-    PORTA_ADMIN_CLIENT_ID: ${ADMIN_GUI_CLIENT_ID}
-    PORTA_ADMIN_CLIENT_SECRET: ${ADMIN_GUI_CLIENT_SECRET}
-    PORTA_ADMIN_SESSION_SECRET: ${ADMIN_GUI_SESSION_SECRET}
-    PORTA_ADMIN_PUBLIC_URL: https://admin.yourdomain.com
-    REDIS_URL: redis://redis:6379/1
-    NODE_ENV: production
-  ports:
-    - '4002:4002'
-  depends_on:
-    - porta
-    - redis
-  restart: unless-stopped
+```bash
+npx @portaidentity/admin-gui --server https://auth.yourdomain.com
 ```
 
-### Reverse Proxy
+Or via the Porta CLI:
 
-Add a separate nginx location or virtual host for the Admin GUI:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name admin.yourdomain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:4002;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```bash
+porta gui --server https://auth.yourdomain.com
 ```
 
-### Admin GUI Environment Variables
+The Admin GUI authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions. No client secrets, Redis, or special environment variables are needed.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PORTA_SERVICE` | Yes | Set to `admin` to start the BFF |
-| `PORTA_ADMIN_PORTA_URL` | Yes | Internal URL of the Porta server |
-| `PORTA_ADMIN_CLIENT_ID` | Yes | OIDC client ID (from `porta init`) |
-| `PORTA_ADMIN_CLIENT_SECRET` | Yes | OIDC client secret (from `porta init`) |
-| `PORTA_ADMIN_SESSION_SECRET` | Yes | Session encryption key (≥32 chars) |
-| `PORTA_ADMIN_PUBLIC_URL` | Recommended | Public URL for OIDC redirects |
-| `REDIS_URL` | Yes | Redis URL (use DB 1 to separate from Porta) |
-| `PORTA_ADMIN_PORT` | No | Listen port (default: 4002) |
-
-See the [Configuration Reference](/implementation-details/reference/configuration) for full details.
+See the [Admin GUI product documentation](/guide/admin-gui) for full details.
 
 ## Upgrades
 

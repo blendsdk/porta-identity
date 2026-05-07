@@ -15,7 +15,8 @@
   },
   "scripts": {
     "kill": "fuser -k 3000/tcp 2>/dev/null || true",
-    "dev": "yarn kill && tsx watch src/index.ts",
+    "dev": "yarn kill && concurrently --kill-others --names porta,admin-gui --prefix-colors blue,green \"tsx watch src/index.ts\" \"yarn workspace @portaidentity/admin-gui dev\"",
+    "dev:server": "yarn kill && tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run --project unit --project integration",
@@ -94,6 +95,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "concurrently": "9.2.1",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.59.1",
     "@semantic-release/commit-analyzer": "13.0.1",

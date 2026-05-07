@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## Overview
 
@@ -224,7 +224,7 @@ The `failed_login_count` column on users tracks consecutive failed attempts. Aft
 
 ## Admin GUI (BFF) Security
 
-The Admin GUI uses a **Backend-for-Frontend** (BFF) pattern that keeps all security-sensitive operations server-side:
+The Admin GUI (`@portaidentity/admin-gui`) is a **standalone package** that uses a Backend-for-Frontend (BFF) pattern with OIDC Authorization Code + PKCE (public client). All security-sensitive operations remain server-side in the BFF process.
 
 ### BFF Authentication Flow
 
@@ -236,35 +236,25 @@ sequenceDiagram
 
     Browser->>BFF: GET /admin (unauthenticated)
     BFF->>Browser: Redirect to BFF /auth/login
-    BFF->>Porta: OIDC Auth Code flow (confidential client)
-    Porta->>Browser: Login page (magic_link method)
+    BFF->>Porta: OIDC Auth Code + PKCE flow (public client)
+    Porta->>Browser: Login page
     Browser->>Porta: Complete login
     Porta->>BFF: Authorization code callback
-    BFF->>Porta: Exchange code for tokens (client_secret_post)
-    BFF->>BFF: Store tokens in server-side session (Redis)
-    BFF->>Browser: Set session cookie (HttpOnly, Secure, SameSite)
+    BFF->>Porta: Exchange code for tokens (with PKCE code_verifier)
+    BFF->>BFF: Store tokens in in-memory session
+    BFF->>Browser: Set session cookie (HttpOnly, SameSite=Lax)
 ```
 
 **Key security properties:**
 
 | Property | Implementation |
 |----------|---------------|
-| **Token storage** | Access/refresh tokens stored server-side in Redis session — never exposed to browser |
-| **Session cookies** | `HttpOnly`, `Secure`, `SameSite=Lax` — immune to XSS token theft |
-| **CSRF protection** | Double-submit cookie pattern: `X-CSRF-Token` header validated on state-changing requests |
-| **Confidential client** | BFF authenticates with `client_secret_post` — secret never leaves server |
+| **Token storage** | Access/refresh tokens stored server-side in BFF in-memory session — never exposed to browser |
+| **Session cookies** | `HttpOnly`, `SameSite=Lax` — immune to XSS token theft |
+| **PKCE public client** | Authorization Code + PKCE (S256) — no client secret needed |
 | **API proxy** | BFF injects Bearer token into API requests — SPA never sees admin tokens |
 | **Token refresh** | BFF handles automatic token refresh transparently |
-| **Login method** | Uses `magic_link` login method (no password stored in browser) |
-
-### CSRF Double-Submit Cookie
-
-The BFF implements CSRF protection using the double-submit cookie pattern:
-
-1. Server sets a CSRF token in a cookie (readable by JavaScript)
-2. SPA reads the cookie value and sends it as `X-CSRF-Token` header on mutations
-3. BFF validates that header value matches cookie value on POST/PUT/PATCH/DELETE
-4. Prevents cross-site request forgery even if session cookie is automatically sent
+| **No Redis dependency** | Sessions stored in BFF process memory — lost on restart (users re-login) |
 
 ### BFF Security Headers
 

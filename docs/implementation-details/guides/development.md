@@ -1,6 +1,6 @@
 # Development Workflow
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## Coding Conventions
 
@@ -228,26 +228,14 @@ Current coverage:
 
 ### Admin GUI Testing
 
-The Admin GUI has its own test suite in `admin-gui/tests/`:
+The Admin GUI (`packages/porta-admin-gui/`) has its own test suite:
 
 ```bash
-# Run Admin GUI unit tests (Vitest)
-cd admin-gui && yarn test
-
-# Run Admin GUI E2E tests (Playwright)
-cd admin-gui && yarn test:e2e
+# Run Admin GUI tests from root
+yarn workspace @portaidentity/admin-gui test
 ```
 
-**E2E test architecture**: Playwright tests use an in-process Porta server (port 49300) + BFF (port 49301), magic-link authentication via MailHog, and `storageState` session persistence. Tests are organized by domain:
-
-```
-admin-gui/tests/e2e/
-├── fixtures/          # Admin fixtures (authenticated session)
-├── auth/              # Login/logout flows
-├── navigation/        # Sidebar, direct navigation, breadcrumbs
-├── pages/             # Per-page tests (dashboard, orgs, apps, users, etc.)
-└── workflows/         # Cross-page workflows (org lifecycle, error handling)
-```
+The standalone Admin GUI package includes 8 unit test files (~60 tests) and 1 integration test.
 
 ## Database Migrations
 
@@ -340,34 +328,46 @@ This runs lint → build → test:all. All checks must pass.
 
 ## Admin GUI Development
 
-### SPA Development
+The Admin GUI is a standalone package at `packages/porta-admin-gui/` (`@portaidentity/admin-gui`). It uses a Koa BFF + React/Vite SPA architecture with OIDC Authorization Code + PKCE (public client) and in-memory sessions.
 
-The Admin GUI SPA uses a different technology stack from the main Porta server:
+### Technology Stack
 
 | Concern | Technology |
 |---------|-----------|
 | **UI Framework** | React 19 |
 | **Component Library** | FluentUI v9 (`@fluentui/react-components`) |
-| **State Management** | React Query (TanStack Query v5) |
-| **Routing** | React Router v7 |
+| **BFF Framework** | Koa 3.x |
+| **Auth** | OIDC Authorization Code + PKCE (public client, openid-client v6) |
+| **Sessions** | In-memory (no Redis) |
 | **Build Tool** | Vite |
-| **Test Runner** | Vitest (unit) + Playwright (E2E) |
+| **Test Runner** | Vitest |
 
-### Key Patterns in the SPA
+### Development Mode
 
-- **React Query hooks per domain** — Each entity (orgs, apps, clients, users, roles, permissions, claims) has its own hook module in `admin-gui/src/client/api/`
-- **EntityDataGrid** — Generic reusable grid component for all entity list views
-- **AppShell layout** — Collapsible sidebar, top bar, breadcrumbs (FluentUI v9)
-- **Typed API client** — Central client with CSRF token injection, ETag support, and convenience methods
+`yarn dev` from the project root starts both the Porta server and Admin GUI concurrently. To work on the Admin GUI alone:
 
-### BFF Development
+```bash
+yarn workspace @portaidentity/admin-gui dev
+```
 
-The BFF server (`admin-gui/src/server/`) follows the same Koa patterns as the main Porta server. Key files:
+### Key Patterns
 
-- `server.ts` — Koa app factory with session, CSRF, proxy, and static file middleware
-- `oidc.ts` — OIDC auth code flow (confidential client)
-- `session.ts` — Redis session store configuration
-- `proxy.ts` — API proxy with Bearer token injection and auto-refresh
+- **7 foundational components** — ErrorBoundary, StatusBadge, ConfirmDialog, CopyButton, EmptyState, LoadingSkeleton, ToastProvider
+- **4 hooks** — useAuth, useTheme, useToast, useCopyToClipboard
+- **Typed API client** — With ETag support and Bearer token injection
+- **Security headers middleware** — CSP, X-Frame-Options, etc.
+- **API proxy middleware** — Proxies `/api/*` to Porta server with Bearer token injection
+- **SPA fallback middleware** — Serves the Vite-built SPA for client-side routing
+
+### BFF Architecture
+
+The BFF (`packages/porta-admin-gui/src/`) key files:
+
+- `server.ts` — Koa app factory with middleware stack
+- `auth/` — OIDC Auth Code + PKCE login flow, callback server, metadata
+- `session.ts` — In-memory session store (no Redis dependency)
+- `middleware/` — Security headers, error handler, API proxy, SPA fallback
+- `config.ts` — Server URL resolution (flag > env > credentials)
 
 ## Related Documentation
 

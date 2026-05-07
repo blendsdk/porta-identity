@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## High-Level Architecture
 
@@ -23,8 +23,8 @@ graph TB
         HEALTH[Health Check<br/>/health]
     end
 
-    subgraph "Admin GUI (Koa BFF + React SPA)"
-        BFF[BFF Server<br/>Port 4002]
+    subgraph "Admin GUI (Standalone — @portaidentity/admin-gui)"
+        BFF[Koa BFF Server]
         REACT[React SPA<br/>FluentUI v9]
     end
 
@@ -54,7 +54,6 @@ graph TB
     INT --> PG
     INT --> RD
     INT --> SMTP
-    BFF --> RD
 ```
 
 ## Component Overview
@@ -63,7 +62,7 @@ graph TB
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| HTTP Server | Koa 2.x | Request handling, middleware pipeline |
+| HTTP Server | Koa 3.x | Request handling, middleware pipeline |
 | OIDC Engine | node-oidc-provider 9.x | OpenID Connect protocol implementation |
 | Database | PostgreSQL 16 (pg) | Persistent storage, long-lived OIDC artifacts |
 | Cache/Sessions | Redis 7 (ioredis) | Short-lived OIDC artifacts, tenant cache, rate limits |
@@ -71,8 +70,8 @@ graph TB
 | Config | zod | Environment validation with fail-fast semantics |
 | Signing | jose + crypto | ES256 (ECDSA P-256) token signing |
 | CLI | yargs | Admin command-line interface |
-| Admin GUI SPA | React 19 + FluentUI v9 | Browser-based admin dashboard |
-| Admin GUI BFF | Koa (separate process) | Backend-for-frontend: OIDC auth, session, API proxy |
+| Admin GUI SPA | React 19 + FluentUI v9 | Browser-based admin dashboard (standalone package) |
+| Admin GUI BFF | Koa (standalone process) | Backend-for-frontend: OIDC auth (PKCE public client), in-memory sessions, API proxy |
 | Admin GUI Build | Vite | SPA bundler and dev server |
 
 ### Domain Modules
@@ -107,25 +106,30 @@ src/<module>/
 
 ### Admin GUI Module
 
-The Admin GUI is a **separate application** in `admin-gui/` with its own package.json, build pipeline, and test suite. It consists of two layers:
+The Admin GUI is a **standalone package** at `packages/porta-admin-gui/` (`@portaidentity/admin-gui`). It is a Koa BFF + React/Vite SPA that authenticates as an OIDC public client using Authorization Code + PKCE. It uses in-memory sessions (no Redis dependency) with `SameSite=Lax` cookies.
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **React SPA** (`admin-gui/src/client/`) | React 19, FluentUI v9, React Router, React Query | Browser-based admin dashboard |
-| **Koa BFF** (`admin-gui/src/server/`) | Koa, koa-session, ioredis | OIDC auth, session management, CSRF, API proxy |
+| **React SPA** (`packages/porta-admin-gui/src/client/`) | React 19, FluentUI v9, React Router, React Query | Browser-based admin dashboard |
+| **Koa BFF** (`packages/porta-admin-gui/src/`) | Koa, in-memory sessions | OIDC auth (PKCE), API proxy with Bearer token injection |
 
-The SPA communicates exclusively through the BFF — it never talks to the Porta Admin API directly. The BFF handles Bearer token injection, OIDC token refresh, and security concerns (CSRF, session cookies).
+The SPA communicates exclusively through the BFF — it never talks to the Porta Admin API directly. The BFF handles Bearer token injection and OIDC token refresh.
+
+**Launching the Admin GUI:**
+
+- **Development**: `yarn dev` from root starts both the Porta server and Admin GUI (BFF + Vite SPA) concurrently
+- **Standalone**: `porta gui` (via `@portaidentity/cli`) or `npx @portaidentity/admin-gui`
+- Server URL resolution: CLI flag `--server` > `PORTA_SERVER` env var > `~/.porta/credentials.json`
 
 **SPA Architecture:**
 
 ```
-admin-gui/src/client/
-├── api/             # Typed API client + 13 React Query domain hook modules
-├── components/      # 27 reusable UI components (EntityDataGrid, StatusBadge, etc.)
-├── hooks/           # 8 hooks (useAuth, useOrgContext, useTheme, etc.)
-├── layouts/         # AppShell, Sidebar, TopBar, Breadcrumbs
-├── pages/           # Route page components (Dashboard, Orgs, Apps, Users, etc.)
-├── router.tsx       # React Router with breadcrumb-enabled routes
+packages/porta-admin-gui/src/client/
+├── api/             # Typed API client + React Query domain hook modules
+├── components/      # Reusable UI components (StatusBadge, ConfirmDialog, etc.)
+├── hooks/           # Hooks (useAuth, useTheme, useToast, useCopyToClipboard)
+├── layouts/         # AppShell layout
+├── pages/           # Route page components
 └── types.ts         # Shared client-side type definitions
 ```
 

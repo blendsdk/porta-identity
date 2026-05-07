@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-04-25
+> **Last Updated**: 2026-05-07
 
 ## Overview
 
@@ -8,7 +8,7 @@ Porta exposes three distinct API surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
 2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
-3. **Admin GUI BFF** (`/api/*`, `/auth/*`) — Backend-for-frontend proxy that wraps the Admin API with session-based auth, CSRF, and security headers (see [Admin GUI architecture](/implementation-details/architecture/system-overview#admin-gui-module))
+3. **Admin GUI BFF** (`/api/*`, `/auth/*`) — Standalone backend-for-frontend (`@portaidentity/admin-gui`) that wraps the Admin API with session-based auth and security headers (see [Admin GUI architecture](/implementation-details/architecture/system-overview#admin-gui-module))
 
 This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider). For BFF details, see the [Security Architecture](/implementation-details/architecture/security#admin-gui-bff-security).
 
