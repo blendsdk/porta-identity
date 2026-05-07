@@ -22,14 +22,22 @@
       }
     ],
     [
+      "@semantic-release/npm",
+      {
+        "pkgRoot": "packages/porta-admin-gui"
+      }
+    ],
+    [
       "@semantic-release/git",
       {
         "assets": [
           "package.json",
           "packages/porta-sdk/package.json",
           "packages/porta-cli/package.json",
+          "packages/porta-admin-gui/package.json",
           "packages/porta-sdk/src/version.ts",
-          "packages/porta-cli/src/commands/version.ts"
+          "packages/porta-cli/src/commands/version.ts",
+          "packages/porta-admin-gui/src/version.ts"
         ],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }

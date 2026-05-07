@@ -22,4 +22,8 @@ docker stop $(docker ps -q) 2>/dev/null || true
 # 4. Prune stopped containers
 docker container prune -f 2>/dev/null || true
 
+echo "Stopping SPA and BFF"
+kill -9 $(lsof -ti:4100) 2>/dev/null || true
+kill -9 $(lsof -ti:4101) 2>/dev/null || true
+
 echo "=== All stopped ==="

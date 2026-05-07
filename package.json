@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "packages/porta-sdk",
-    "packages/porta-cli"
+    "packages/porta-cli",
+    "packages/porta-admin-gui"
   ],
   "type": "module",
   "engines": {
@@ -42,7 +43,10 @@
     "test:packages": "yarn test:sdk && yarn test:cli",
     "verify:sdk": "yarn workspace @portaidentity/sdk verify",
     "verify:cli": "yarn workspace @portaidentity/cli verify",
-    "verify": "yarn lint && yarn build && yarn test:all && yarn verify:sdk && yarn verify:cli",
+    "build:gui": "yarn workspace @portaidentity/admin-gui build",
+    "test:gui": "yarn workspace @portaidentity/admin-gui test",
+    "verify:gui": "yarn workspace @portaidentity/admin-gui verify",
+    "verify": "yarn lint && yarn build && yarn test:all && yarn verify:sdk && yarn verify:cli && yarn verify:gui",
     "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
     "migrate:rollback": "node-pg-migrate down --migrations-dir migrations --migration-file-language sql --count 1",
     "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language sql",
