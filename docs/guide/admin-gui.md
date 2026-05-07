@@ -3,96 +3,115 @@
 The Porta Admin GUI is a web-based administration console for managing your Porta deployment. It provides a React-based single-page application (SPA) served through a Koa Backend-for-Frontend (BFF) that handles authentication, session management, and API proxying.
 
 ::: info Current State
-The Admin GUI web interface is currently a **placeholder**. The BFF server is fully functional with OIDC authentication, session management, CSRF protection, and API proxying. The full admin dashboard SPA is under active development.
+The Admin GUI web interface is currently a **placeholder**. The BFF server is fully functional with OIDC authentication, session management, and API proxying. The full admin dashboard SPA is under active development.
 
 **For full administration capabilities, use the [Porta CLI](/cli/overview)** (`porta` command).
 :::
 
+## Two Deployment Modes
+
+The Admin GUI is available in two forms:
+
+| Mode | Package | Use Case |
+|------|---------|----------|
+| **Standalone** (recommended) | `@portaidentity/admin-gui` | Local admin access via `porta gui` or `npx` |
+| **Embedded** | Built into Docker image | Server-side deployment with `PORTA_SERVICE=admin` |
+
+### Standalone Mode
+
+The standalone admin GUI runs as a local BFF on your workstation. It connects to a remote Porta server using the same OIDC client as the CLI — no client secret needed.
+
+```bash
+# Via the CLI (recommended)
+porta gui
+
+# Or directly via npx
+npx @portaidentity/admin-gui --server https://porta.example.com
+
+# Or install globally
+npm install -g @portaidentity/admin-gui
+porta-gui --server https://porta.example.com
+```
+
+**Key features of standalone mode:**
+- Uses the CLI's public OIDC client (Auth Code + PKCE) — no client secret
+- In-memory sessions (no Redis needed)
+- SameSite=Strict cookies (no CSRF tokens needed)
+- Auto-opens browser on startup
+- Reads server URL from `~/.porta/credentials.json` if `porta login` was used
+
+### Embedded Mode (Docker)
+
+The embedded admin GUI runs as a service within the Porta Docker image, suitable for always-on server deployments. See [Docker Deployment](#docker-deployment) below.
+
 ## Architecture
+
+### Standalone Architecture
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌───────────────┐
+│   Browser    │────▶│  Local BFF       │────▶│  Porta Server │
+│  (React SPA) │◀────│  (Koa, port 4002)│◀────│  (remote)     │
+└─────────────┘     └──────────────────┘     └───────────────┘
+                     In-memory sessions
+                     SameSite=Strict cookies
+```
+
+### Embedded Architecture
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌───────────────┐
 │   Browser    │────▶│  Admin GUI BFF   │────▶│  Porta Server │
 │  (React SPA) │◀────│  (Koa, port 4002)│◀────│  (port 3000)  │
 └─────────────┘     └──────────────────┘     └───────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │    Redis     │
-                    │  (sessions)  │
-                    └──────────────┘
+                            │
+                            ▼
+                     ┌──────────────┐
+                     │    Redis     │
+                     │  (sessions)  │
+                     └──────────────┘
 ```
-
-- **React SPA** — FluentUI v9 placeholder (full dashboard under development)
-- **BFF Server** — Koa application that handles OIDC authentication, manages sessions in Redis, and proxies API requests to the Porta server
-- **Session Store** — Redis-backed sessions with configurable TTL
 
 ## Prerequisites
 
-- A running Porta server (port 3000 by default)
-- Redis (shared with or separate from the Porta server)
-- An OIDC client registered for the admin GUI (created automatically by `porta init`)
+- A running Porta server
+- `porta init` completed (creates the public OIDC client used by both CLI and GUI)
+- For standalone mode: `porta login` or `--server` flag
+- For embedded mode: Redis and environment variables
 
-## Setup
+## Quick Start (Standalone)
 
-### Automatic Setup (Recommended)
+```bash
+# 1. Ensure Porta server is running and you're authenticated
+porta login --server https://porta.example.com:3443
 
-When you run `porta init`, it automatically creates an "Admin GUI" confidential OIDC client with:
+# 2. Launch the admin GUI
+porta gui
 
-- **Client type**: Confidential (with client secret)
-- **Grant types**: `authorization_code`, `refresh_token`
-- **Redirect URI**: `http://localhost:4002/auth/callback`
-- **Login method**: `magic_link` (passwordless)
-- **Token endpoint auth**: `client_secret_post`
+# The browser opens automatically at http://127.0.0.1:4002
+```
 
-The client ID and secret are displayed in the init summary. **Save the secret — it cannot be retrieved later.**
+### CLI Options
 
-### Environment Variables
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--server` | From credentials | Porta server URL |
+| `--port` | `4002` | BFF listen port |
+| `--no-open` | `false` | Don't auto-open browser |
+| `--insecure` | `false` | Skip TLS certificate verification |
 
-Configure the admin GUI using these environment variables:
+### Environment Variables (Standalone)
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `PORTA_ADMIN_PORT` | No | `4002` | Port for the admin GUI BFF server |
-| `PORTA_ADMIN_PORTA_URL` | **Yes** | — | URL of the Porta server (e.g., `https://porta.local:3443`) |
-| `PORTA_ADMIN_CLIENT_ID` | **Yes** | — | OIDC client ID (from `porta init`) |
-| `PORTA_ADMIN_CLIENT_SECRET` | **Yes** | — | OIDC client secret (from `porta init`) |
-| `PORTA_ADMIN_SESSION_SECRET` | **Yes** | — | Secret for signing session cookies (min 32 chars) |
-| `PORTA_ADMIN_PUBLIC_URL` | No | `http://localhost:4002` | Public-facing URL of the admin GUI |
-| `PORTA_ADMIN_ORG_SLUG` | No | Auto-detected | Organization slug for OIDC discovery |
-| `PORTA_ADMIN_SESSION_TTL` | No | `3600` | Session duration in seconds |
-| `REDIS_URL` | **Yes** | — | Redis connection string (e.g., `redis://localhost:6379/1`) |
-| `NODE_ENV` | No | `development` | Environment mode |
-| `LOG_LEVEL` | No | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
-
-### Local Development
-
-```bash
-# 1. Start Porta infrastructure
-yarn docker:up
-
-# 2. Start Porta server
-yarn dev
-
-# 3. Run porta init (if not already done)
-porta init
-
-# 4. Configure admin GUI
-cd admin-gui
-cp .env.example .env
-# Edit .env with the client ID and secret from porta init
-
-# 5. Start admin GUI in dev mode
-yarn dev
-```
-
-The admin GUI will be available at `http://localhost:4002`.
+| `PORTA_SERVER` | No | From credentials | Porta server URL (overridden by `--server`) |
+| `PORTA_GUI_PORT` | No | `4002` | BFF listen port (overridden by `--port`) |
 
 ## Docker Deployment
 
 ### Using Docker Compose
 
-The admin GUI runs as a separate service in the same Docker image, controlled by the `PORTA_SERVICE` environment variable:
+The embedded admin GUI runs as a separate service in the same Docker image, controlled by the `PORTA_SERVICE` environment variable:
 
 ```yaml
 # In docker/docker-compose.prod.yml
@@ -114,6 +133,22 @@ porta-admin:
       condition: service_healthy
 ```
 
+### Embedded Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORTA_ADMIN_PORT` | No | `4002` | Port for the admin GUI BFF server |
+| `PORTA_ADMIN_PORTA_URL` | **Yes** | — | URL of the Porta server (e.g., `http://porta:3000`) |
+| `PORTA_ADMIN_CLIENT_ID` | **Yes** | — | OIDC client ID |
+| `PORTA_ADMIN_CLIENT_SECRET` | **Yes** | — | OIDC client secret |
+| `PORTA_ADMIN_SESSION_SECRET` | **Yes** | — | Secret for signing session cookies (min 32 chars) |
+| `PORTA_ADMIN_PUBLIC_URL` | No | `http://localhost:4002` | Public-facing URL |
+| `PORTA_ADMIN_ORG_SLUG` | No | Auto-detected | Organization slug for OIDC discovery |
+| `PORTA_ADMIN_SESSION_TTL` | No | `3600` | Session duration in seconds |
+| `REDIS_URL` | **Yes** | — | Redis connection string |
+| `NODE_ENV` | No | `development` | Environment mode |
+| `LOG_LEVEL` | No | `info` | Log verbosity |
+
 ### Service Modes
 
 The Porta Docker image supports two service modes via `PORTA_SERVICE`:
@@ -121,11 +156,23 @@ The Porta Docker image supports two service modes via `PORTA_SERVICE`:
 | Value | Description |
 |-------|-------------|
 | `server` (default) | Runs the Porta OIDC server |
-| `admin` | Runs the Admin GUI BFF |
+| `admin` | Runs the Admin GUI BFF (embedded mode) |
 
 ## Authentication Flow
 
-1. User visits the admin GUI at `http://localhost:4002`
+### Standalone Flow (PKCE)
+
+1. User visits `http://127.0.0.1:4002`
+2. BFF redirects to Porta's OIDC authorization endpoint with PKCE challenge
+3. User authenticates (password, magic link, or 2FA depending on org config)
+4. Porta redirects back to `/auth/callback` with an authorization code
+5. BFF exchanges the code using PKCE verifier (no client secret)
+6. BFF stores the session in memory and sets a SameSite=Strict session cookie
+7. Subsequent API requests are proxied through the BFF with Bearer token injection
+
+### Embedded Flow (Confidential Client)
+
+1. User visits the admin GUI URL
 2. BFF redirects to Porta's OIDC authorization endpoint
 3. User authenticates via magic link (passwordless email)
 4. Porta redirects back to `/auth/callback` with an authorization code
@@ -135,59 +182,40 @@ The Porta Docker image supports two service modes via `PORTA_SERVICE`:
 
 ## Security
 
-The BFF implements multiple security layers:
+Both modes implement multiple security layers:
 
-- **httpOnly session cookies** — tokens never reach the browser
-- **CSRF double-submit cookies** — protects state-changing requests
-- **Server-side Bearer injection** — API requests authenticated server-side
-- **Security headers** — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
-- **Session timeouts** — 30-minute idle, 8-hour absolute maximum
-- **PKCE (S256)** — Proof Key for Code Exchange for the authorization flow
-
-## BFF Server Components
-
-The BFF server (`admin-gui/src/server/`) includes:
-
-| Component | Description |
-|---|---|
-| `index.ts` | Server entry point, startup orchestration, graceful shutdown |
-| `config.ts` | Zod-validated environment configuration |
-| `oidc.ts` | OIDC client discovery and token management |
-| `session.ts` | Redis-backed session configuration |
-| `routes/auth.ts` | Login, callback, logout, session info endpoints |
-| `routes/api-proxy.ts` | Authenticated API proxy to Porta server |
-| `routes/health.ts` | BFF health check (Redis + Porta connectivity) |
-| `routes/spa.ts` | Static file serving + SPA fallback |
-| `middleware/csrf.ts` | CSRF double-submit cookie validation |
-| `middleware/security-headers.ts` | Security header injection |
-| `middleware/session-guard.ts` | Session authentication guard |
-| `middleware/request-logger.ts` | Request logging with request ID |
-
-## Foundational Client Components
-
-The following client-side components are included as a foundation for the SPA rebuild:
-
-| Component | Description |
-|---|---|
-| `api/client.ts` | Typed fetch wrapper with CSRF injection, 401 redirect, ETag support |
-| `hooks/useAuth.tsx` | Auth context — fetches `/auth/me`, manages login/logout, CSRF |
-| `hooks/useTheme.ts` | FluentUI light/dark theme with localStorage persistence |
-| `hooks/useToast.ts` | FluentUI toast notification wrapper |
-| `hooks/useCopyToClipboard.ts` | Clipboard API utility hook |
-| `components/ErrorBoundary.tsx` | React error boundary with retry UI |
-| `components/ToastProvider.tsx` | FluentUI Toaster wrapper |
-| `components/StatusBadge.tsx` | Status → colored FluentUI badge mapping |
-| `components/CopyButton.tsx` | Click-to-copy button |
-| `components/EmptyState.tsx` | Empty state display with icon + action |
-| `components/LoadingSkeleton.tsx` | Loading shimmer placeholders |
-| `components/ConfirmDialog.tsx` | Confirmation dialog |
-| `theme.ts` | FluentUI theme definitions |
+| Security Feature | Standalone | Embedded |
+|-----------------|-----------|----------|
+| httpOnly session cookies | ✅ | ✅ |
+| Server-side Bearer injection | ✅ | ✅ |
+| Security headers (CSP, X-Frame, etc.) | ✅ | ✅ |
+| PKCE (S256) | ✅ | ✅ |
+| SameSite=Strict cookies | ✅ | — |
+| CSRF double-submit cookies | — | ✅ |
+| Redis sessions | — | ✅ |
+| Session timeouts | 1 hour | Configurable |
 
 ## Testing
 
-### BFF Server Tests
+### Standalone Package Tests
 
-The BFF server has comprehensive unit tests:
+```bash
+cd packages/porta-admin-gui
+yarn test
+```
+
+| Test File | Tests | Coverage |
+|---|---|---|
+| `tests/unit/config.test.ts` | 13 | Config resolution priority chain |
+| `tests/unit/session.test.ts` | 15 | In-memory session store |
+| `tests/unit/security-headers.test.ts` | 7 | Security header injection |
+| `tests/unit/error-handler.test.ts` | 8 | Error handling, no leakage |
+| `tests/unit/token-manager.test.ts` | 7 | Token refresh, session mutation |
+| `tests/unit/api-proxy.test.ts` | 2 | API proxy routing |
+| `tests/unit/auth-routes.test.ts` | 3 | Auth endpoint contracts |
+| `tests/unit/gui-command.test.ts` | 4 | CLI command definition |
+
+### Embedded BFF Tests
 
 ```bash
 cd admin-gui
@@ -202,32 +230,29 @@ yarn test
 | `tests/server/security-headers.test.ts` | Security header injection |
 | `tests/server/session-guard.test.ts` | Session authentication |
 
-### Placeholder Test
-
-A basic placeholder test validates the SPA renders correctly:
-
-| Test File | Coverage |
-|---|---|
-| `tests/client/placeholder.test.tsx` | Renders placeholder page, auth controls, theme toggle |
-
 ## Troubleshooting
 
-### BFF won't start
+### Standalone: `porta gui` not found
+
+1. Install the admin GUI package: `npm install -g @portaidentity/admin-gui`
+2. Or use `npx @portaidentity/admin-gui --server <url>`
+3. The `porta gui` command requires `@portaidentity/admin-gui` to be installed globally or in the project
+
+### Standalone: Authentication fails
+
+1. Ensure `porta login` works first (same OIDC client)
+2. Check that the Porta server has the CLI client with `http://127.0.0.1/auth/callback` redirect URI
+3. If using self-signed certs, add `--insecure`
+
+### Embedded: BFF won't start
 
 1. Verify Porta server is running and accessible at `PORTA_ADMIN_PORTA_URL`
 2. Verify Redis is running and accessible at `REDIS_URL`
 3. Check that `PORTA_ADMIN_CLIENT_ID` and `PORTA_ADMIN_CLIENT_SECRET` are correct
 4. Ensure `PORTA_ADMIN_SESSION_SECRET` is at least 32 characters
 
-### Authentication fails
-
-1. Verify the admin GUI client exists: `porta client list`
-2. Check redirect URI matches: should be `http://localhost:4002/auth/callback`
-3. Verify the organization slug is correct (auto-detected from super-admin org)
-4. Check Porta server logs for OIDC errors
-
 ### Cannot connect to Porta API
 
-1. Verify `PORTA_ADMIN_PORTA_URL` is correct and reachable from the BFF
+1. Verify the server URL is correct and reachable from the BFF
 2. In Docker, use the service name (e.g., `http://porta:3000`), not `localhost`
-3. Check that the BFF health endpoint reports both checks as "ok": `GET /health`
+3. Check that the BFF health endpoint reports checks as "ok": `GET /health`

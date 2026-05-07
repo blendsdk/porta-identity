@@ -109,6 +109,7 @@ Server CLI commands support:
 | `porta audit` | View audit log entries |
 | `porta health` | Check server health (via API) |
 | `porta provision` | Declarative environment setup from YAML/JSON |
+| `porta gui` | Launch the standalone Admin GUI in your browser |
 
 ### Server CLI (Infrastructure Only)
 
@@ -131,3 +132,4 @@ These commands are available inside the Porta Docker container or development en
 - [Users](./users.md) — `porta user` with status, password, roles, claims, 2FA
 - [Infrastructure](./infrastructure.md) — `porta migrate`, `porta seed`, `porta health`
 - [Provisioning](./provisioning.md) — `porta provision` declarative setup
+- [Admin GUI](/guide/admin-gui) — `porta gui` standalone admin web console
