@@ -162,7 +162,7 @@ function PlaceholderPage() {
                 </Body1>
               </div>
               <Body1>{user.email}</Body1>
-              {user.roles.length > 0 && (
+              {user.roles && user.roles.length > 0 && (
                 <div className={styles.userRow}>
                   {user.roles.map((role) => (
                     <Badge key={role} appearance="filled" color="brand" size="small">

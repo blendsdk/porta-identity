@@ -24,6 +24,8 @@ export interface AuthUser {
   sub: string;
   name: string;
   email: string;
+  /** User roles (if returned by the BFF). */
+  roles?: string[];
 }
 
 /** Auth context value provided to consumers. */

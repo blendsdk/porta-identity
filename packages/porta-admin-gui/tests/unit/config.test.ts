@@ -130,6 +130,22 @@ describe('resolveConfig', () => {
       const config = resolveConfig({ server: 'https://s.com', port: 7000 });
       expect(config.port).toBe(7000);
     });
+
+    it('publicPort defaults to same as port', () => {
+      const config = resolveConfig({ server: 'https://s.com' });
+      expect(config.publicPort).toBe(config.port);
+    });
+
+    it('publicPort defaults to same as custom port', () => {
+      const config = resolveConfig({ server: 'https://s.com', port: 5000 });
+      expect(config.publicPort).toBe(5000);
+    });
+
+    it('publicPort can differ from port (dev mode: Vite on publicPort, BFF on port)', () => {
+      const config = resolveConfig({ server: 'https://s.com', port: 4003, publicPort: 4002 });
+      expect(config.port).toBe(4003);
+      expect(config.publicPort).toBe(4002);
+    });
   });
 
   // ---------- Boolean flags ----------

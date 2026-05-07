@@ -41,10 +41,36 @@ export interface OidcConfig {
 }
 
 /**
+ * Create a custom fetch that rewrites the root well-known URL to the
+ * org-scoped well-known URL.
+ *
+ * Porta uses path-based multi-tenancy: the OIDC well-known endpoint lives at
+ * `/{orgSlug}/.well-known/openid-configuration`, but the discovery document
+ * returns `issuer` as the base server URL (without org slug). openid-client
+ * discovers against the base URL (matching the issuer), so we intercept
+ * the fetch to redirect it to the correct org-scoped path.
+ *
+ * @param baseUrl - Porta server base URL (e.g. "https://porta.local:3443")
+ * @param orgSlug - Organization slug (e.g. "porta-admin")
+ * @returns Custom fetch function for openid-client discovery
+ */
+function createOrgDiscoveryFetch(baseUrl: string, orgSlug: string): client.CustomFetch {
+  const rootWellKnown = `${baseUrl}/.well-known/openid-configuration`;
+  const orgWellKnown = `${baseUrl}/${orgSlug}/.well-known/openid-configuration`;
+  return (url: string, options: client.CustomFetchOptions) => {
+    if (url === rootWellKnown) return fetch(orgWellKnown, options as RequestInit);
+    return fetch(url, options as RequestInit);
+  };
+}
+
+/**
  * Discover OIDC configuration from the Porta server.
  *
  * Uses `openid-client.discovery()` to fetch the OpenID Provider's metadata
- * from the well-known configuration endpoint.
+ * from the well-known configuration endpoint. Because Porta uses path-based
+ * multi-tenancy, the issuer in the discovery document is the base server URL
+ * (without org slug), while the well-known endpoint lives under `/{orgSlug}/`.
+ * A custom fetch rewrites the discovery URL to the correct org-scoped path.
  *
  * @param params - Discovery parameters (server URL, org slug, client ID, port).
  * @returns Resolved OIDC configuration for use in auth routes.
@@ -52,18 +78,26 @@ export interface OidcConfig {
 export async function discoverOidc(params: OidcDiscoveryParams): Promise<OidcConfig> {
   const { serverUrl, orgSlug, clientId, port } = params;
 
-  // Issuer URL includes the org slug path prefix for multi-tenant OIDC
-  const issuer = new URL(`/${orgSlug}`, serverUrl).href;
+  // The issuer returned by the OIDC provider is the base server URL
+  // (without org slug) — this is how node-oidc-provider works with
+  // path-based multi-tenancy (the org prefix is stripped before the
+  // provider sees the request).
+  const issuer = serverUrl.replace(/\/+$/, '');
   const redirectUri = `http://127.0.0.1:${port}/auth/callback`;
   const postLogoutRedirectUri = `http://127.0.0.1:${port}`;
 
-  // Discover OIDC configuration via well-known endpoint
+  // Discover OIDC configuration via well-known endpoint.
+  // We discover against the base URL (matching the issuer) and use
+  // a custom fetch to redirect to the org-scoped well-known path.
   const config = await client.discovery(
     new URL(issuer),
     clientId,
     undefined, // No client secret — public client
     undefined, // No client auth method
-    { execute: [client.allowInsecureRequests] },
+    {
+      execute: [client.allowInsecureRequests],
+      [client.customFetch]: createOrgDiscoveryFetch(issuer, orgSlug),
+    },
   );
 
   return {

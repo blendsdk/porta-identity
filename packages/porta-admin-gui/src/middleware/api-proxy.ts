@@ -86,7 +86,7 @@ export function createApiProxy(
 
       // Forward response status and body
       ctx.status = response.status;
-      ctx.body = response.data;
+      ctx.body = response.body;
 
       // Forward ETag header for optimistic concurrency
       if (response.headers?.['etag']) {
@@ -99,7 +99,7 @@ export function createApiProxy(
       if (err instanceof PortaHttpError) {
         // SDK HTTP error — convert back to HTTP response for SPA
         ctx.status = err.status;
-        ctx.body = { error: err.message, code: err.code };
+        ctx.body = { error: err.message, status: err.status };
       } else {
         // Network error or refresh failure — clear session, return 401
         if (ctx.state.sessionId) {

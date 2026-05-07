@@ -8,7 +8,7 @@
  *
  * Cookie configuration per RD-30 §Session & Cookie Management:
  * - HttpOnly: true (JavaScript cannot access)
- * - SameSite: Strict (prevents cross-site cookie attachment)
+ * - SameSite: Lax (allows cookie on OIDC callback redirect — a safe top-level GET)
  * - Secure: false (HTTP localhost — Secure cookies don't work on plain HTTP)
  * - Path: /
  * - Max-Age: 3600 (1 hour)
@@ -75,7 +75,7 @@ export function sessionMiddleware(
 export function setSessionCookie(ctx: Context, sessionId: string): void {
   ctx.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax', // Lax required for OIDC — callback is a cross-site redirect (GET)
     secure: false, // HTTP localhost — Secure flag not applicable
     path: '/',
     maxAge: COOKIE_MAX_AGE_SECONDS * 1000, // Koa expects milliseconds
@@ -91,7 +91,7 @@ export function setSessionCookie(ctx: Context, sessionId: string): void {
 export function clearSessionCookie(ctx: Context): void {
   ctx.cookies.set(SESSION_COOKIE_NAME, '', {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax',
     secure: false,
     path: '/',
     maxAge: 0, // Expire immediately

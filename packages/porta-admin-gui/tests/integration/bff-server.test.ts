@@ -66,18 +66,18 @@ describe('BFF Server Integration', () => {
   });
 
   describe('session cookie security', () => {
-    it('session cookie uses HttpOnly, SameSite=Strict', () => {
+    it('session cookie uses HttpOnly, SameSite=Lax', () => {
       // After login, the Set-Cookie header must include:
       // HttpOnly (no JS access)
-      // SameSite=Strict (CSRF protection)
+      // SameSite=Lax (OIDC callback is a cross-site redirect GET)
       // Path=/ (available to all routes)
       const cookieAttrs = {
         httpOnly: true,
-        sameSite: 'Strict',
+        sameSite: 'Lax',
         path: '/',
       };
       expect(cookieAttrs.httpOnly).toBe(true);
-      expect(cookieAttrs.sameSite).toBe('Strict');
+      expect(cookieAttrs.sameSite).toBe('Lax');
     });
   });
 });

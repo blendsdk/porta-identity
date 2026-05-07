@@ -36,7 +36,7 @@ porta-gui --server https://porta.example.com
 **Key features of standalone mode:**
 - Uses the CLI's public OIDC client (Auth Code + PKCE) — no client secret
 - In-memory sessions (no Redis needed)
-- SameSite=Strict cookies (no CSRF tokens needed)
+- SameSite=Lax cookies (required for OIDC callback flow; no CSRF tokens needed)
 - Auto-opens browser on startup
 - Reads server URL from `~/.porta/credentials.json` if `porta login` was used
 
@@ -54,7 +54,7 @@ The embedded admin GUI runs as a service within the Porta Docker image, suitable
 │  (React SPA) │◀────│  (Koa, port 4002)│◀────│  (remote)     │
 └─────────────┘     └──────────────────┘     └───────────────┘
                      In-memory sessions
-                     SameSite=Strict cookies
+                     SameSite=Lax cookies
 ```
 
 ### Embedded Architecture
@@ -167,7 +167,7 @@ The Porta Docker image supports two service modes via `PORTA_SERVICE`:
 3. User authenticates (password, magic link, or 2FA depending on org config)
 4. Porta redirects back to `/auth/callback` with an authorization code
 5. BFF exchanges the code using PKCE verifier (no client secret)
-6. BFF stores the session in memory and sets a SameSite=Strict session cookie
+6. BFF stores the session in memory and sets a SameSite=Lax session cookie
 7. Subsequent API requests are proxied through the BFF with Bearer token injection
 
 ### Embedded Flow (Confidential Client)
@@ -190,7 +190,7 @@ Both modes implement multiple security layers:
 | Server-side Bearer injection | ✅ | ✅ |
 | Security headers (CSP, X-Frame, etc.) | ✅ | ✅ |
 | PKCE (S256) | ✅ | ✅ |
-| SameSite=Strict cookies | ✅ | — |
+| SameSite=Lax cookies | ✅ | — |
 | CSRF double-submit cookies | — | ✅ |
 | Redis sessions | — | ✅ |
 | Session timeouts | 1 hour | Configurable |

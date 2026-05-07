@@ -19,6 +19,12 @@ export interface StartServerOptions {
   server?: string;
   /** BFF listen port (default: 4002). */
   port?: number;
+  /**
+   * Public-facing port for OIDC redirect URIs (default: same as port).
+   * In dev mode, Vite runs on this port and proxies to the BFF.
+   * The OIDC callback goes to this port, not the BFF listen port.
+   */
+  publicPort?: number;
   /** Auto-open browser on startup (default: true). */
   open?: boolean;
   /** Skip TLS certificate verification for self-signed certs (default: false). */
@@ -31,6 +37,8 @@ export interface ResolvedConfig {
   serverUrl: string;
   /** BFF listen port. */
   port: number;
+  /** Public-facing port for OIDC redirect URIs (may differ from listen port in dev). */
+  publicPort: number;
   /** Whether to open the browser after startup. */
   open: boolean;
   /** Whether TLS verification is disabled. */
@@ -93,6 +101,11 @@ export function resolveConfig(options: StartServerOptions = {}): ResolvedConfig 
     options.port ??
     (process.env.PORTA_GUI_PORT ? parseInt(process.env.PORTA_GUI_PORT, 10) : DEFAULT_PORT);
 
+  // --- Public port resolution (for OIDC redirect URI) ---
+  // In dev mode, Vite runs on publicPort and proxies to BFF on port.
+  // In production, publicPort === port (BFF serves static files directly).
+  const publicPort = options.publicPort ?? port;
+
   // --- Boolean flags ---
   const open = options.open ?? true;
   const insecure = options.insecure ?? false;
@@ -100,6 +113,7 @@ export function resolveConfig(options: StartServerOptions = {}): ResolvedConfig 
   return {
     serverUrl: serverUrl.replace(/\/+$/, ''), // Strip trailing slashes
     port,
+    publicPort,
     open,
     insecure,
   };

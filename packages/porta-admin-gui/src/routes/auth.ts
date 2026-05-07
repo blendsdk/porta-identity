@@ -107,11 +107,15 @@ export function createAuthRoutes(deps: AuthRouteDeps): Router {
     }
 
     try {
-      // Exchange the authorization code for tokens
-      const currentUrl = new URL(ctx.href);
+      // Exchange the authorization code for tokens.
+      // When behind a proxy (e.g., Vite dev server), ctx.href reflects the
+      // internal BFF host/port, not the public-facing URL. We construct the
+      // callback URL from the registered redirect_uri + actual query params
+      // so it matches what openid-client expects.
+      const callbackUrl = new URL(`${oidcConfig.redirectUri}${ctx.search}`);
       const tokenSet = await oidcClient.authorizationCodeGrant(
         oidcConfig.config,
-        currentUrl,
+        callbackUrl,
         {
           pkceCodeVerifier: session.pkceCodeVerifier,
           expectedState: session.state,

@@ -35,20 +35,20 @@ describe('auth routes', () => {
   });
 
   describe('session cookie security', () => {
-    it('cookie attributes are SameSite=Strict, HttpOnly, Secure=false (localhost)', () => {
+    it('cookie attributes are SameSite=Lax, HttpOnly, Secure=false (localhost)', () => {
       // Session cookies:
-      // - SameSite=Strict (no CSRF needed)
+      // - SameSite=Lax (required for OIDC — callback is a cross-site redirect GET)
       // - HttpOnly (no JS access)
       // - Secure=false (localhost HTTP)
       // - Path=/
       const expectedAttrs = {
         httpOnly: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
         secure: false,
         path: '/',
       };
       expect(expectedAttrs.httpOnly).toBe(true);
-      expect(expectedAttrs.sameSite).toBe('strict');
+      expect(expectedAttrs.sameSite).toBe('lax');
       expect(expectedAttrs.secure).toBe(false);
     });
   });

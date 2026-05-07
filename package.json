@@ -62,7 +62,7 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "deps:check": "ncu",
-    "deps:update": "ncu -u && yarn install"
+    "deps:update": "ncu -u && ncu -u --cwd packages/porta-sdk && ncu -u --cwd packages/porta-cli && ncu -u --cwd packages/porta-admin-gui && yarn install"
   },
   "bin": {
     "porta": "./dist/cli/index.js"
