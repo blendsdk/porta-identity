@@ -27,7 +27,8 @@
     "dev:client": "vite",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/ tests/",
+    "lint": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts'",
+    "verify": "yarn lint && yarn build && yarn test",
     "clean": "rm -rf dist"
   },
   "engines": {

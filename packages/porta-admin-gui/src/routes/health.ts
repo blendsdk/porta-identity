@@ -26,7 +26,7 @@ export function createHealthRoutes(serverUrl: string): Router {
     const uptime = Math.floor((Date.now() - startTime) / 1000);
 
     // Check Porta server reachability (3s timeout)
-    let portaReachable = false;
+    let portaReachable: boolean;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);

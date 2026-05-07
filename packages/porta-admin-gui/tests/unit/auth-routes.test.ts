@@ -5,7 +5,7 @@
  * session cookie attributes.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('auth routes', () => {
   describe('GET /auth/me', () => {

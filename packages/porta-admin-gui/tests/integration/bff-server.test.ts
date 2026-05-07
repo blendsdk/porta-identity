@@ -13,7 +13,7 @@
  * discovery since no real Porta server is available.
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // NOTE: These tests require the BFF server to be buildable.
 // They will be enabled once the server module (src/server.ts) is complete.

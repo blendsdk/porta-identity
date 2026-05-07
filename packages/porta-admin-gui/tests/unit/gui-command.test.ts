@@ -5,8 +5,8 @@
  * option forwarding.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { guiCommand } from '@portaidentity/cli/commands/gui';
+import { describe, it, expect, vi } from 'vitest';
+import { guiCommand } from '@portaidentity/cli/dist/commands/gui.js';
 
 // We test the command definition, not the dynamic import
 describe('guiCommand', () => {
