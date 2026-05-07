@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- Porta Identity logo: shield with keyhole -->
+  <!-- Shield outline -->
+  <path d="M64 8 L112 32 L112 72 C112 96 90 116 64 124 C38 116 16 96 16 72 L16 32 Z"
+        fill="url(#shield-gradient)" stroke="#1a1a2e" stroke-width="2"/>
+  <!-- Keyhole circle -->
+  <circle cx="64" cy="56" r="16" fill="#1a1a2e"/>
+  <!-- Keyhole body -->
+  <path d="M56 64 L52 88 L76 88 L72 64 Z" fill="#1a1a2e"/>
+  <!-- Inner highlight -->
+  <circle cx="64" cy="56" r="8" fill="url(#key-gradient)"/>
+  <defs>
+    <linearGradient id="shield-gradient" x1="16" y1="8" x2="112" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#646cff"/>
+      <stop offset="100%" stop-color="#42b883"/>
+    </linearGradient>
+    <linearGradient id="key-gradient" x1="56" y1="48" x2="72" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#646cff"/>
+      <stop offset="100%" stop-color="#42b883"/>
+    </linearGradient>
+  </defs>
+</svg>

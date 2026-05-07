@@ -343,16 +343,14 @@ describe('CLI Init Command', () => {
   // Admin GUI client creation (Step 7b)
   // -------------------------------------------------------------------------
 
-  describe('admin GUI client creation', () => {
-    it('should create a confidential GUI client after the CLI client', async () => {
+  describe('admin client creation', () => {
+    it('should create a single public CLI client (shared by CLI and GUI)', async () => {
       await runInit(createArgv());
 
-      // createClient should be called twice — CLI first, then GUI
-      expect(createClient).toHaveBeenCalledTimes(2);
+      // createClient should be called once — the public CLI/GUI client
+      expect(createClient).toHaveBeenCalledTimes(1);
 
-      // First call: CLI public client
-      expect(createClient).toHaveBeenNthCalledWith(
-        1,
+      expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
           clientName: 'Porta Admin CLI',
           clientType: 'public',
@@ -360,56 +358,13 @@ describe('CLI Init Command', () => {
           requirePkce: true,
         }),
       );
-
-      // Second call: GUI confidential client
-      expect(createClient).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({
-          organizationId: 'org-super-admin-id',
-          applicationId: 'app-admin-id',
-          clientName: 'Porta Admin GUI',
-          clientType: 'confidential',
-          applicationType: 'web',
-          redirectUris: ['http://localhost:4002/auth/callback'],
-          postLogoutRedirectUris: ['http://localhost:4002'],
-          grantTypes: ['authorization_code', 'refresh_token'],
-          scope: 'openid profile email offline_access',
-          requirePkce: false,
-          tokenEndpointAuthMethod: 'client_secret_post',
-          loginMethods: ['magic_link'],
-        }),
-      );
     });
 
-    it('should generate a secret for the GUI client', async () => {
+    it('should not generate a secret for the public client', async () => {
       await runInit(createArgv());
 
-      // generateSecret should be called once with the GUI client's DB ID
-      expect(generateSecret).toHaveBeenCalledOnce();
-      expect(generateSecret).toHaveBeenCalledWith(
-        'client-gui-id',
-        { label: 'Initial secret (porta init)' },
-      );
-    });
-
-    it('should display a warning about saving the GUI client secret', async () => {
-      await runInit(createArgv());
-
-      // The warn() call includes a message about saving the secret
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining('Save this secret'),
-      );
-    });
-
-    it('should not generate a secret for the CLI public client', async () => {
-      await runInit(createArgv());
-
-      // generateSecret is called only for the GUI client, not the CLI client.
-      // Verify it was called with the GUI client ID, not the CLI client ID.
-      expect(generateSecret).not.toHaveBeenCalledWith(
-        'client-cli-id',
-        expect.anything(),
-      );
+      // Public clients have no secrets — generateSecret should not be called
+      expect(generateSecret).not.toHaveBeenCalled();
     });
   });
 

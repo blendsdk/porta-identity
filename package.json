@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "packages/porta-sdk",
-    "packages/porta-cli"
+    "packages/porta-cli",
+    "packages/porta-admin-gui"
   ],
   "type": "module",
   "engines": {
@@ -42,7 +43,10 @@
     "test:packages": "yarn test:sdk && yarn test:cli",
     "verify:sdk": "yarn workspace @portaidentity/sdk verify",
     "verify:cli": "yarn workspace @portaidentity/cli verify",
-    "verify": "yarn lint && yarn build && yarn test:all && yarn verify:sdk && yarn verify:cli",
+    "build:gui": "yarn workspace @portaidentity/admin-gui build",
+    "test:gui": "yarn workspace @portaidentity/admin-gui test",
+    "verify:gui": "yarn build:cli && yarn workspace @portaidentity/admin-gui verify",
+    "verify": "yarn lint && yarn build && yarn test:all && yarn verify:sdk && yarn verify:cli && yarn verify:gui",
     "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
     "migrate:rollback": "node-pg-migrate down --migrations-dir migrations --migration-file-language sql --count 1",
     "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language sql",
@@ -58,7 +62,7 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "deps:check": "ncu",
-    "deps:update": "ncu -u && yarn install"
+    "deps:update": "ncu -u && ncu -u --cwd packages/porta-sdk && ncu -u --cwd packages/porta-cli && ncu -u --cwd packages/porta-admin-gui && rm -rf node_modules yarn.lock && yarn install"
   },
   "bin": {
     "porta": "./dist/cli/index.js"
@@ -70,7 +74,7 @@
     "cli-table3": "0.6.5",
     "dotenv": "17.4.2",
     "handlebars": "4.7.9",
-    "i18next": "26.0.9",
+    "i18next": "26.0.10",
     "i18next-fs-backend": "2.6.5",
     "ioredis": "5.10.1",
     "jose": "6.2.3",
@@ -110,14 +114,14 @@
     "eslint": "10.3.0",
     "eslint-config-prettier": "10.1.8",
     "mermaid": "11.14.0",
-    "npm-check-updates": "22.1.0",
+    "npm-check-updates": "22.1.1",
     "pino-pretty": "13.1.3",
     "prettier": "3.8.3",
     "semantic-release": "25.0.3",
     "tsx": "4.21.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.2",
-    "vite": "8.0.10",
+    "vite": "8.0.11",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
     "vitest": "4.1.5"

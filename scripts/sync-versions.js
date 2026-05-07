@@ -9,8 +9,10 @@
  *   - package.json (root)
  *   - packages/porta-sdk/package.json
  *   - packages/porta-cli/package.json
+ *   - packages/porta-admin-gui/package.json
  *   - packages/porta-sdk/src/version.ts  (SDK_VERSION constant)
  *   - packages/porta-cli/src/commands/version.ts  (CLI_VERSION constant)
+ *   - packages/porta-admin-gui/src/version.ts  (GUI_VERSION constant)
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -36,6 +38,7 @@ const packageJsonPaths = [
   'package.json',
   'packages/porta-sdk/package.json',
   'packages/porta-cli/package.json',
+  'packages/porta-admin-gui/package.json',
 ];
 
 for (const relPath of packageJsonPaths) {
@@ -60,6 +63,11 @@ const versionFiles = [
     path: 'packages/porta-cli/src/commands/version.ts',
     pattern: /export const CLI_VERSION = '[^']+'/,
     replacement: `export const CLI_VERSION = '${version}'`,
+  },
+  {
+    path: 'packages/porta-admin-gui/src/version.ts',
+    pattern: /export const GUI_VERSION = '[^']+'/,
+    replacement: `export const GUI_VERSION = '${version}'`,
   },
 ];
 
