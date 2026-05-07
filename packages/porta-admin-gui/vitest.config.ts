@@ -1,13 +1,22 @@
+/**
+ * Vitest config for @portaidentity/admin-gui.
+ *
+ * Runs unit tests by default. Integration tests are excluded
+ * unless explicitly targeted (they require OIDC discovery).
+ */
+
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    globals: true,
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.ts'],
+    exclude: ['tests/integration/**'],
+    environment: 'node',
+    globals: false,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/client/**', 'src/index.ts'],
+      exclude: ['src/client/**'], // Client code tested separately
     },
   },
 });
