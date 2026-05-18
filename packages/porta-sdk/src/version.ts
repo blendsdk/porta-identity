@@ -5,4 +5,4 @@
  * allowing the server to identify SDK traffic for debugging
  * and compatibility tracking.
  */
-export const SDK_VERSION = '1.0.2';
+export const SDK_VERSION = '1.0.3';
