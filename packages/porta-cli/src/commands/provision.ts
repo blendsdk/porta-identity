@@ -656,7 +656,7 @@ export const provisionCommand: CommandModule<GlobalOptions, ProvisionOptions> = 
       // 5. Send via SDK imports.provision()
       const client = createClient(argv);
       const sdkManifest: ImportManifest = {
-        data: manifest as unknown as Record<string, unknown>,
+        manifest: manifest as unknown as Record<string, unknown>,
         mode: isDryRun ? undefined : (argv.mode as 'merge' | 'overwrite'),
         dryRun: isDryRun,
       };

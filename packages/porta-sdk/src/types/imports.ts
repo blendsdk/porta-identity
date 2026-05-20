@@ -7,8 +7,8 @@
 export type ImportMode = 'merge' | 'overwrite';
 
 export interface ImportManifest {
-  /** Raw provisioning data (YAML/JSON parsed) */
-  data: Record<string, unknown>;
+  /** Raw provisioning manifest (YAML/JSON parsed) */
+  manifest: Record<string, unknown>;
   /** Import mode: merge existing or overwrite */
   mode?: ImportMode;
   /** Dry run — validate without applying */

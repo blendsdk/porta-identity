@@ -177,7 +177,7 @@ describe('provision command handler', () => {
 
     expect(mockImports.provision).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
+        manifest: expect.objectContaining({
           version: '1',
           organizations: expect.arrayContaining([
             expect.objectContaining({ name: 'Acme Corp', slug: 'acme' }),
