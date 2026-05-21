@@ -163,10 +163,22 @@ describe('provision command handler', () => {
     ],
   };
 
+  /** Response shape matching server ImportResult exactly */
   const importResult = {
-    dryRun: false,
-    counts: { organizations: 1, applications: 1, clients: 1, roles: 1, permissions: 2, users: 1 },
+    mode: 'merge',
+    created: [
+      { type: 'organization', slug: 'acme', name: 'Acme Corp' },
+      { type: 'application', slug: 'portal', name: 'Portal' },
+      { type: 'client', slug: 'portal-spa', name: 'Portal SPA' },
+      { type: 'role', slug: 'admin', name: 'Admin' },
+      { type: 'permission', slug: 'read', name: 'Read' },
+      { type: 'permission', slug: 'write', name: 'Write' },
+      { type: 'user', slug: 'admin@acme.com', name: 'admin@acme.com' },
+    ],
+    updated: [],
+    skipped: [],
     errors: [],
+    credentials: [],
   };
 
   it('transforms and sends manifest via SDK', async () => {
@@ -177,7 +189,7 @@ describe('provision command handler', () => {
 
     expect(mockImports.provision).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
+        manifest: expect.objectContaining({
           version: '1',
           organizations: expect.arrayContaining([
             expect.objectContaining({ name: 'Acme Corp', slug: 'acme' }),

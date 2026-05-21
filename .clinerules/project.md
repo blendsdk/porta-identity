@@ -309,6 +309,7 @@ scripts/             # Helper shell/TS scripts (seed, reset, smoke, certs)
   setup-certs.sh     # mkcert certificate generation + /etc/hosts setup for porta.local
 tests/
   unit/              # Unit tests (no external services needed)
+    contracts/       # SDK↔Server contract tests (type + schema validation)
   integration/       # Integration tests (require Docker services)
   e2e/               # End-to-end tests
   pentest/           # Penetration test suites

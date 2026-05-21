@@ -66,6 +66,7 @@ import { findUserById } from '../../../../src/users/repository.js';
 async function runSubcommand(args: string[]) {
   const yargs = (await import('yargs')).default;
   const parser = yargs()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- yargs CommandModule generics
     .command(userTwoFaCommand as any)
     .fail(false)
     .exitProcess(false);

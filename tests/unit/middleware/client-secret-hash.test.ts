@@ -8,11 +8,18 @@ function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
 }
 
+/** Minimal Koa-like context shape for testing the client-secret-hash middleware. */
+interface MockKoaCtx {
+  headers: Record<string, string | undefined>;
+  req: { headers: Record<string, string | undefined> };
+  request: { body: Record<string, unknown> };
+}
+
 /** Create a mock Koa context */
 function createMockContext(overrides: {
   authorization?: string;
   body?: Record<string, unknown>;
-} = {}): { ctx: Record<string, unknown>; next: ReturnType<typeof vi.fn> } {
+} = {}): { ctx: MockKoaCtx; next: ReturnType<typeof vi.fn> } {
   const reqHeaders: Record<string, string | undefined> = {};
   if (overrides.authorization) {
     reqHeaders.authorization = overrides.authorization;
@@ -23,7 +30,7 @@ function createMockContext(overrides: {
   const body = overrides.body ?? {};
   const request = { body };
 
-  const ctx = { headers, req, request } as unknown as Record<string, unknown>;
+  const ctx: MockKoaCtx = { headers, req, request };
   const next = vi.fn().mockResolvedValue(undefined);
 
   return { ctx, next };
@@ -39,12 +46,12 @@ describe('client-secret-hash middleware', () => {
       const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
       const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       const expectedHash = sha256(secret);
       const expectedEncoded = Buffer.from(`${clientId}:${expectedHash}`).toString('base64');
-      expect((ctx as any).headers.authorization).toBe(`Basic ${expectedEncoded}`);
-      expect((ctx as any).req.headers.authorization).toBe(`Basic ${expectedEncoded}`);
+      expect(ctx.headers.authorization).toBe(`Basic ${expectedEncoded}`);
+      expect(ctx.req.headers.authorization).toBe(`Basic ${expectedEncoded}`);
       expect(next).toHaveBeenCalledOnce();
     });
 
@@ -54,10 +61,10 @@ describe('client-secret-hash middleware', () => {
       const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
       const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       const decoded = Buffer.from(
-        (ctx as any).headers.authorization.slice(6),
+        ctx.headers.authorization!.slice(6),
         'base64',
       ).toString('utf8');
       const colonIndex = decoded.indexOf(':');
@@ -70,9 +77,9 @@ describe('client-secret-hash middleware', () => {
       const original = `Basic ${encoded}`;
       const { ctx, next } = createMockContext({ authorization: original });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
-      expect((ctx as any).headers.authorization).toBe(original);
+      expect(ctx.headers.authorization).toBe(original);
       expect(next).toHaveBeenCalledOnce();
     });
 
@@ -82,10 +89,10 @@ describe('client-secret-hash middleware', () => {
       const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
       const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       const decoded = Buffer.from(
-        (ctx as any).headers.authorization.slice(6),
+        ctx.headers.authorization!.slice(6),
         'base64',
       ).toString('utf8');
       const colonIndex = decoded.indexOf(':');
@@ -99,10 +106,10 @@ describe('client-secret-hash middleware', () => {
       const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
       const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       const decoded = Buffer.from(
-        (ctx as any).headers.authorization.slice(6),
+        ctx.headers.authorization!.slice(6),
         'base64',
       ).toString('utf8');
       const colonIndex = decoded.indexOf(':');
@@ -114,7 +121,7 @@ describe('client-secret-hash middleware', () => {
       const { ctx, next } = createMockContext({ authorization: 'Basic not-valid-base64!!!' });
 
       // Should not throw — let oidc-provider handle the error
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
       expect(next).toHaveBeenCalledOnce();
     });
   });
@@ -124,18 +131,18 @@ describe('client-secret-hash middleware', () => {
       const original = 'Bearer some-token-value';
       const { ctx, next } = createMockContext({ authorization: original });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
-      expect((ctx as any).headers.authorization).toBe(original);
+      expect(ctx.headers.authorization).toBe(original);
       expect(next).toHaveBeenCalledOnce();
     });
 
     it('passes through requests without Authorization header', async () => {
       const { ctx, next } = createMockContext();
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
-      expect((ctx as any).headers.authorization).toBeUndefined();
+      expect(ctx.headers.authorization).toBeUndefined();
       expect(next).toHaveBeenCalledOnce();
     });
   });
@@ -146,7 +153,7 @@ describe('client-secret-hash middleware', () => {
       const body = { client_id: 'my-client', client_secret: secret, grant_type: 'authorization_code' };
       const { ctx, next } = createMockContext({ body });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(body.client_secret).toBe(sha256(secret));
       expect(body.client_id).toBe('my-client'); // unchanged
@@ -157,7 +164,7 @@ describe('client-secret-hash middleware', () => {
       const body = { client_id: 'my-client', grant_type: 'authorization_code' };
       const { ctx, next } = createMockContext({ body });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(body).toEqual({ client_id: 'my-client', grant_type: 'authorization_code' });
       expect(next).toHaveBeenCalledOnce();
@@ -167,7 +174,7 @@ describe('client-secret-hash middleware', () => {
       const body = { client_id: 'my-client', client_secret: '' };
       const { ctx, next } = createMockContext({ body });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(body.client_secret).toBe('');
       expect(next).toHaveBeenCalledOnce();
@@ -175,9 +182,9 @@ describe('client-secret-hash middleware', () => {
 
     it('does not modify body when client_secret is not a string', async () => {
       const body = { client_id: 'my-client', client_secret: 12345 };
-      const { ctx, next } = createMockContext({ body: body as any });
+      const { ctx, next } = createMockContext({ body: body as Record<string, unknown> });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(body.client_secret).toBe(12345); // unchanged
       expect(next).toHaveBeenCalledOnce();
@@ -195,11 +202,11 @@ describe('client-secret-hash middleware', () => {
         body,
       });
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       // Both should be hashed
       const decoded = Buffer.from(
-        (ctx as any).headers.authorization.slice(6),
+        ctx.headers.authorization!.slice(6),
         'base64',
       ).toString('utf8');
       expect(decoded.split(':')[1]).toBe(sha256(basicSecret));
@@ -210,7 +217,7 @@ describe('client-secret-hash middleware', () => {
 
   it('always calls next()', async () => {
     const { ctx, next } = createMockContext();
-    await middleware(ctx as any, next);
+    await middleware(ctx as never, next);
     expect(next).toHaveBeenCalledOnce();
   });
 

@@ -4,11 +4,18 @@
  * Subcommands:
  *   execute    Execute a bulk status operation on organizations or users
  *
+ * The server has two separate endpoints:
+ *   POST /api/admin/bulk/organizations/status
+ *   POST /api/admin/bulk/users/status
+ *
+ * The CLI routes to the correct SDK method based on --entity-type.
+ *
  * @module commands/bulk
  */
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
+import type { BulkOperationResult } from '@portaidentity/sdk';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, error as printError } from '../output.js';
@@ -22,6 +29,8 @@ interface BulkExecuteArgs extends GlobalOptions {
   'entity-type': string;
   action: string;
   ids: string;
+  reason?: string;
+  'organization-id'?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,13 +56,21 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('action', {
               type: 'string',
               describe: 'Status action',
-              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock'] as const,
+              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock', 'archive'] as const,
               demandOption: true,
             })
             .option('ids', {
               type: 'string',
               describe: 'Comma-separated entity IDs',
               demandOption: true,
+            })
+            .option('reason', {
+              type: 'string',
+              describe: 'Reason for the action (optional)',
+            })
+            .option('organization-id', {
+              type: 'string',
+              describe: 'Organization ID scope (required for user operations)',
             }),
         async (argv) => {
           try {
@@ -75,25 +92,48 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }
 
             const client = createClient(argv);
-            const result = await client.bulk.execute({
-              entityType: argv['entity-type'] as 'organizations' | 'users',
-              action: argv.action as 'suspend' | 'activate' | 'deactivate' | 'lock' | 'unlock',
-              ids,
-            });
+            let result: BulkOperationResult;
+
+            if (argv['entity-type'] === 'organizations') {
+              // Route to organization bulk endpoint
+              result = await client.bulk.organizationStatus({
+                ids,
+                action: argv.action as 'activate' | 'suspend' | 'archive',
+                reason: argv.reason,
+              });
+            } else {
+              // Route to user bulk endpoint — requires organizationId
+              if (!argv['organization-id']) {
+                printError('--organization-id is required for user bulk operations');
+                return;
+              }
+              result = await client.bulk.userStatus({
+                ids,
+                action: argv.action as 'activate' | 'deactivate' | 'suspend' | 'lock' | 'unlock',
+                organizationId: argv['organization-id'],
+                reason: argv.reason,
+              });
+            }
 
             if (argv.json) {
               printJson(result);
               return;
             }
 
-            success(`Bulk ${argv.action}: ${result.succeeded} succeeded, ${result.failed} failed`);
+            success(`Bulk ${argv.action}: ${result.succeeded} succeeded, ${result.failed} failed (${result.total} total)`);
 
-            if (result.errors.length > 0) {
+            // Show per-item failures from results array
+            const failures = result.results.filter((r) => !r.success);
+            if (failures.length > 0) {
               console.log();
-              printError(`${result.errors.length} error(s):`);
+              printError(`${failures.length} error(s):`);
               printTable(
-                ['ID', 'Error'],
-                result.errors.map((e) => [e.id, e.error]),
+                ['ID', 'Previous Status', 'Error'],
+                failures.map((r) => [
+                  r.id,
+                  r.previousStatus ?? '—',
+                  r.error ?? 'Unknown error',
+                ]),
               );
             }
           } catch (err) {

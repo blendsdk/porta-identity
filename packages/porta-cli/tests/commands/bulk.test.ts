@@ -1,5 +1,8 @@
 /**
  * Tests for the bulk command.
+ *
+ * The server has two separate endpoints for org and user bulk operations.
+ * The CLI routes to the correct SDK method based on --entity-type.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -9,7 +12,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockBulk = {
-  execute: vi.fn(),
+  organizationStatus: vi.fn(),
+  userStatus: vi.fn(),
 };
 
 vi.mock('../../src/client-factory.js', () => ({
@@ -40,14 +44,25 @@ import { printTable, printJson, success, warn, error as printError } from '../..
 import { confirm } from '../../src/prompt.js';
 
 // ---------------------------------------------------------------------------
-// Test data
+// Test data — matches server BulkOperationResult shape
 // ---------------------------------------------------------------------------
 
-const successResult = { succeeded: 3, failed: 0, errors: [] };
-const partialResult = {
-  succeeded: 2,
-  failed: 1,
-  errors: [{ id: 'uuid-3', error: 'Not found' }],
+const orgSuccessResult = {
+  total: 3, succeeded: 3, failed: 0,
+  results: [
+    { id: 'o1', success: true, previousStatus: 'active', newStatus: 'suspended' },
+    { id: 'o2', success: true, previousStatus: 'active', newStatus: 'suspended' },
+    { id: 'o3', success: true, previousStatus: 'active', newStatus: 'suspended' },
+  ],
+};
+
+const userPartialResult = {
+  total: 3, succeeded: 2, failed: 1,
+  results: [
+    { id: 'u1', success: true, previousStatus: 'active', newStatus: 'suspended' },
+    { id: 'u2', success: true, previousStatus: 'active', newStatus: 'suspended' },
+    { id: 'u3', success: false, error: 'User not found', previousStatus: undefined },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -93,90 +108,150 @@ describe('bulk command', () => {
     }
   }
 
-  describe('execute', () => {
-    it('executes bulk operation with confirmation', async () => {
+  describe('execute — organizations', () => {
+    it('calls organizationStatus with correct input', async () => {
       vi.mocked(confirm).mockResolvedValue(true);
-      mockBulk.execute.mockResolvedValue(successResult);
+      mockBulk.organizationStatus.mockResolvedValue(orgSuccessResult);
 
       await invokeSubcommand('execute', {
-        'entity-type': 'users',
+        'entity-type': 'organizations',
         action: 'suspend',
-        ids: 'uuid-1,uuid-2,uuid-3',
+        ids: 'o1,o2,o3',
+        force: true,
       });
 
-      expect(confirm).toHaveBeenCalled();
-      expect(mockBulk.execute).toHaveBeenCalledWith({
-        entityType: 'users',
+      expect(mockBulk.organizationStatus).toHaveBeenCalledWith({
+        ids: ['o1', 'o2', 'o3'],
         action: 'suspend',
-        ids: ['uuid-1', 'uuid-2', 'uuid-3'],
+        reason: undefined,
       });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('3 succeeded'));
     });
 
+    it('passes reason to organization operation', async () => {
+      vi.mocked(confirm).mockResolvedValue(true);
+      mockBulk.organizationStatus.mockResolvedValue(orgSuccessResult);
+
+      await invokeSubcommand('execute', {
+        'entity-type': 'organizations',
+        action: 'suspend',
+        ids: 'o1',
+        reason: 'Maintenance',
+        force: true,
+      });
+
+      expect(mockBulk.organizationStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: 'Maintenance' }),
+      );
+    });
+  });
+
+  describe('execute — users', () => {
+    it('calls userStatus with organizationId', async () => {
+      vi.mocked(confirm).mockResolvedValue(true);
+      mockBulk.userStatus.mockResolvedValue(userPartialResult);
+
+      await invokeSubcommand('execute', {
+        'entity-type': 'users',
+        action: 'suspend',
+        ids: 'u1,u2,u3',
+        'organization-id': 'org-id-123',
+        force: true,
+      });
+
+      expect(mockBulk.userStatus).toHaveBeenCalledWith({
+        ids: ['u1', 'u2', 'u3'],
+        action: 'suspend',
+        organizationId: 'org-id-123',
+        reason: undefined,
+      });
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('2 succeeded'));
+    });
+
+    it('shows errors from failed results', async () => {
+      vi.mocked(confirm).mockResolvedValue(true);
+      mockBulk.userStatus.mockResolvedValue(userPartialResult);
+
+      await invokeSubcommand('execute', {
+        'entity-type': 'users',
+        action: 'suspend',
+        ids: 'u1,u2,u3',
+        'organization-id': 'org-id',
+        force: true,
+      });
+
+      expect(printError).toHaveBeenCalled();
+      expect(printTable).toHaveBeenCalled();
+    });
+
+    it('errors when organization-id missing for users', async () => {
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await invokeSubcommand('execute', {
+        'entity-type': 'users',
+        action: 'suspend',
+        ids: 'u1',
+        force: true,
+      });
+
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining('--organization-id'));
+      expect(mockBulk.userStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('execute — common', () => {
     it('aborts when confirmation denied', async () => {
       vi.mocked(confirm).mockResolvedValue(false);
 
       await invokeSubcommand('execute', {
         'entity-type': 'users',
         action: 'suspend',
-        ids: 'uuid-1,uuid-2',
+        ids: 'u1,u2',
+        'organization-id': 'org-id',
       });
 
-      expect(mockBulk.execute).not.toHaveBeenCalled();
+      expect(mockBulk.userStatus).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith('Aborted');
     });
 
     it('skips confirmation with --force', async () => {
-      mockBulk.execute.mockResolvedValue(successResult);
+      mockBulk.organizationStatus.mockResolvedValue(orgSuccessResult);
 
       await invokeSubcommand('execute', {
         'entity-type': 'organizations',
         action: 'activate',
-        ids: 'uuid-1',
+        ids: 'o1',
         force: true,
       });
 
       expect(confirm).not.toHaveBeenCalled();
-      expect(mockBulk.execute).toHaveBeenCalled();
-    });
-
-    it('displays errors when partial failure', async () => {
-      vi.mocked(confirm).mockResolvedValue(true);
-      mockBulk.execute.mockResolvedValue(partialResult);
-
-      await invokeSubcommand('execute', {
-        'entity-type': 'users',
-        action: 'lock',
-        ids: 'uuid-1,uuid-2,uuid-3',
-      });
-
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('2 succeeded'));
-      expect(printError).toHaveBeenCalled();
-      expect(printTable).toHaveBeenCalled();
+      expect(mockBulk.organizationStatus).toHaveBeenCalled();
     });
 
     it('outputs JSON when --json', async () => {
       vi.mocked(confirm).mockResolvedValue(true);
-      mockBulk.execute.mockResolvedValue(successResult);
+      mockBulk.organizationStatus.mockResolvedValue(orgSuccessResult);
 
       await invokeSubcommand('execute', {
-        'entity-type': 'users',
+        'entity-type': 'organizations',
         action: 'suspend',
-        ids: 'uuid-1',
+        ids: 'o1',
         json: true,
+        force: true,
       });
 
-      expect(printJson).toHaveBeenCalledWith(successResult);
+      expect(printJson).toHaveBeenCalledWith(orgSuccessResult);
     });
 
     it('handles errors', async () => {
       vi.mocked(confirm).mockResolvedValue(true);
-      mockBulk.execute.mockRejectedValue(new Error('fail'));
+      mockBulk.organizationStatus.mockRejectedValue(new Error('fail'));
 
       await invokeSubcommand('execute', {
-        'entity-type': 'users',
+        'entity-type': 'organizations',
         action: 'suspend',
-        ids: 'uuid-1',
+        ids: 'o1',
+        force: true,
       });
 
       expect(handleError).toHaveBeenCalled();

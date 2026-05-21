@@ -22,13 +22,13 @@ import { bulkStatusChange } from '../lib/bulk-operations.js';
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-const bulkOrgStatusSchema = z.object({
+export const bulkOrgStatusSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(100),
   action: z.enum(['activate', 'suspend', 'archive']),
   reason: z.string().max(500).optional(),
 });
 
-const bulkUserStatusSchema = z.object({
+export const bulkUserStatusSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(100),
   action: z.enum(['activate', 'deactivate', 'suspend', 'lock', 'unlock']),
   reason: z.string().max(500).optional(),

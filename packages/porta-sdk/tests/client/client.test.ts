@@ -37,7 +37,7 @@ describe('createPortaClient', () => {
     expect(typeof client.config.list).toBe('function');
     expect(typeof client.keys.rotate).toBe('function');
     expect(typeof client.audit.list).toBe('function');
-    expect(typeof client.bulk.execute).toBe('function');
+    expect(typeof client.bulk.organizationStatus).toBe('function');
     expect(typeof client.imports.provision).toBe('function');
   });
 

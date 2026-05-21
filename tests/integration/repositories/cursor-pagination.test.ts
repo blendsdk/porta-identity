@@ -284,6 +284,7 @@ describe('Cursor Pagination (Integration)', () => {
       const suspUser = await createTestUser(org.id, { email: 'suspended@test.com' });
       // Change status to suspended via direct update
       const { updateUser } = await import('../../../src/users/repository.js');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial update for test setup
       await updateUser(suspUser.id, { status: 'suspended' } as any);
 
       const result = await listUsersCursor({

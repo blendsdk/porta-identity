@@ -58,7 +58,9 @@ export async function createOidcProvider(params: {
     interactionUrl: (ctx, interaction) => {
       // ctx here is the provider's internal Koa context, NOT the outer app's.
       // The org is passed via req._portaOrganization (set in server.ts).
-      const req = (ctx as any).req ?? (ctx as any).request?.req;
+      type PortaReq = { _portaOrganization?: { id: string } };
+      type InternalCtx = { req?: PortaReq; request?: { req?: PortaReq } };
+      const req = (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
       const org = req?._portaOrganization;
       if (org?.id && interaction?.uid) {
         getRedis()

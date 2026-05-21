@@ -178,6 +178,7 @@ export async function executeBrowserFlow(
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', state);
+  authUrl.searchParams.set('prompt', 'login');
 
   // ---------------------------------------------------------------
   // Step 6: Open browser or print URL + collect auth code

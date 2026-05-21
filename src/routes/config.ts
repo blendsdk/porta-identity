@@ -27,7 +27,7 @@ import { getPool } from '../lib/database.js';
 // ---------------------------------------------------------------------------
 
 /** Schema for updating a config value */
-const updateConfigSchema = z.object({
+export const updateConfigSchema = z.object({
   value: z.string().min(1, 'Value must not be empty'),
 });
 

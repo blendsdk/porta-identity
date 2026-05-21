@@ -185,7 +185,7 @@ describe('two-factor routes', () => {
       expect(route).toBeDefined();
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(renderPage).toHaveBeenCalledWith('two-factor-verify', expect.any(Object));
       expect(ctx.status).toBe(200);
@@ -200,7 +200,7 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(ctx.redirect).toHaveBeenCalled();
     });
@@ -216,11 +216,11 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(verifyOtp).toHaveBeenCalledWith('user-1', '123456');
       expect(recordLogin).toHaveBeenCalledWith('user-1');
-      expect((provider as any).interactionFinished).toHaveBeenCalled();
+      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).toHaveBeenCalled();
     });
 
     it('should render error when CSRF token is invalid', async () => {
@@ -233,13 +233,13 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       // Should render error page, not finish interaction
       expect(renderPage).toHaveBeenCalledWith('two-factor-verify', expect.objectContaining({
         flash: expect.objectContaining({ error: expect.any(String) }),
       }));
-      expect((provider as any).interactionFinished).not.toHaveBeenCalled();
+      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).not.toHaveBeenCalled();
     });
 
     it('should render error when rate limited', async () => {
@@ -252,7 +252,7 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(ctx.set).toHaveBeenCalledWith('Retry-After', '60');
     });
@@ -266,9 +266,9 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx({ code: '' });
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
-      expect((provider as any).interactionFinished).not.toHaveBeenCalled();
+      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).not.toHaveBeenCalled();
     });
 
     it('should use verifyTotp for TOTP method', async () => {
@@ -280,7 +280,7 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx({ codeType: 'totp' });
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(verifyTotp).toHaveBeenCalledWith('user-1', '123456');
     });
@@ -297,7 +297,7 @@ describe('two-factor routes', () => {
       expect(route).toBeDefined();
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1/two-factor');
     });
@@ -314,7 +314,7 @@ describe('two-factor routes', () => {
       expect(route).toBeDefined();
 
       const ctx = createMockCtx();
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(renderPage).toHaveBeenCalledWith('two-factor-setup', expect.any(Object));
     });
@@ -330,10 +330,10 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx({ setupMethod: 'totp', code: '123456' });
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456');
-      expect((provider as any).interactionFinished).toHaveBeenCalled();
+      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).toHaveBeenCalled();
     });
 
     it('should redirect with error when TOTP code is invalid', async () => {
@@ -346,7 +346,7 @@ describe('two-factor routes', () => {
       );
 
       const ctx = createMockCtx({ setupMethod: 'totp', code: '000000' });
-      await route!.stack[0](ctx as any, vi.fn());
+      await route!.stack[0](ctx as never, vi.fn());
 
       expect(ctx.redirect).toHaveBeenCalledWith(expect.stringContaining('error=invalid_code'));
     });

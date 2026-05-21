@@ -52,13 +52,21 @@ describe('domains/sessions', () => {
 
   // ── revokeForUser ───────────────────────────────────────────
   describe('revokeForUser', () => {
-    it('calls DELETE /users/:userId/sessions', async () => {
-      transport = mockTransport();
+    it('calls DELETE /users/:userId/sessions and returns revoked count', async () => {
+      transport = mockTransport({ body: { revoked: 5 } });
       const sessions = createSessionsDomain(transport);
-      await sessions.revokeForUser('u1');
+      const result = await sessions.revokeForUser('u1');
       expect(transport.request).toHaveBeenCalledWith({
         method: 'DELETE', path: '/users/u1/sessions',
       });
+      expect(result).toEqual({ revoked: 5 });
+    });
+
+    it('returns zero when no sessions to revoke', async () => {
+      transport = mockTransport({ body: { revoked: 0 } });
+      const sessions = createSessionsDomain(transport);
+      const result = await sessions.revokeForUser('u-no-sessions');
+      expect(result.revoked).toBe(0);
     });
   });
 });

@@ -199,22 +199,31 @@ describe('sessions command', () => {
   describe('revoke-user', () => {
     it('prompts and revokes all user sessions', async () => {
       vi.mocked(confirm).mockResolvedValue(true);
-      mockSessions.revokeForUser.mockResolvedValue(undefined);
+      mockSessions.revokeForUser.mockResolvedValue({ revoked: 3 });
 
       await invokeSubcommand('revoke-user', { _pos_: 'user-uuid-1' });
 
       expect(confirm).toHaveBeenCalled();
       expect(mockSessions.revokeForUser).toHaveBeenCalledWith('user-uuid-1');
-      expect(success).toHaveBeenCalled();
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('3 session(s)'));
     });
 
     it('skips confirmation with --force', async () => {
-      mockSessions.revokeForUser.mockResolvedValue(undefined);
+      mockSessions.revokeForUser.mockResolvedValue({ revoked: 1 });
 
       await invokeSubcommand('revoke-user', { _pos_: 'user-uuid-1', force: true });
 
       expect(confirm).not.toHaveBeenCalled();
       expect(mockSessions.revokeForUser).toHaveBeenCalled();
+    });
+
+    it('outputs JSON with revoked count', async () => {
+      vi.mocked(confirm).mockResolvedValue(true);
+      mockSessions.revokeForUser.mockResolvedValue({ revoked: 5 });
+
+      await invokeSubcommand('revoke-user', { _pos_: 'user-uuid-1', json: true });
+
+      expect(printJson).toHaveBeenCalledWith({ userId: 'user-uuid-1', revoked: 5 });
     });
   });
 });

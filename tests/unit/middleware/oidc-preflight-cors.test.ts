@@ -113,7 +113,7 @@ describe('oidcPreflightCors', () => {
       let nextCalled = false;
       const next: NextFn = async () => { nextCalled = true; };
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(nextCalled).toBe(true);
       expect(ctx._headers).toEqual({});
@@ -121,7 +121,7 @@ describe('oidcPreflightCors', () => {
 
     it('should not look up clients for non-CORS requests', async () => {
       const ctx = createMockCtx({ origin: '', body: { client_id: 'abc' } });
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
@@ -140,7 +140,7 @@ describe('oidcPreflightCors', () => {
       let nextCalled = false;
       const next: NextFn = async () => { nextCalled = true; };
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(nextCalled).toBe(false); // Short-circuited
       expect(ctx.status).toBe(204);
@@ -158,7 +158,7 @@ describe('oidcPreflightCors', () => {
         origin: 'https://spa.example.com',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx.status).toBe(204);
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://spa.example.com');
@@ -180,7 +180,7 @@ describe('oidcPreflightCors', () => {
       let nextCalled = false;
       const next: NextFn = async () => { nextCalled = true; };
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       expect(nextCalled).toBe(true);
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://psteniusubi.github.io');
@@ -194,7 +194,7 @@ describe('oidcPreflightCors', () => {
         path: '/acme/userinfo',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('http://localhost:8080');
     });
@@ -205,7 +205,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'test-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
@@ -225,7 +225,7 @@ describe('oidcPreflightCors', () => {
         orgSlug: 'acme',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://untrusted.example.com');
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
@@ -240,7 +240,7 @@ describe('oidcPreflightCors', () => {
         orgSlug: 'myorg',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://any.example.com');
     });
@@ -254,7 +254,7 @@ describe('oidcPreflightCors', () => {
         orgSlug: 'myorg',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://other.example.com');
     });
@@ -280,7 +280,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'my-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockGetClientByClientId).toHaveBeenCalledWith('my-client');
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://spa.example.com');
@@ -297,7 +297,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'my-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://spa.example.com');
     });
@@ -313,7 +313,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'my-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
@@ -326,7 +326,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'nonexistent' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
@@ -337,7 +337,7 @@ describe('oidcPreflightCors', () => {
         body: {},
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
@@ -349,7 +349,7 @@ describe('oidcPreflightCors', () => {
         body: undefined,
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
@@ -364,7 +364,7 @@ describe('oidcPreflightCors', () => {
       let nextCalled = false;
       const next: NextFn = async () => { nextCalled = true; };
 
-      await middleware(ctx as any, next);
+      await middleware(ctx as never, next);
 
       // Should still call next (request proceeds) but no CORS headers
       expect(nextCalled).toBe(true);
@@ -382,7 +382,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'dev-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://porta.local:3443');
     });
@@ -398,7 +398,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: 'native-client' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
@@ -409,7 +409,7 @@ describe('oidcPreflightCors', () => {
         body: { client_id: '' },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
@@ -417,10 +417,10 @@ describe('oidcPreflightCors', () => {
     it('should ignore non-string client_id', async () => {
       const ctx = createMockCtx({
         origin: 'https://spa.example.com',
-        body: { client_id: 123 as any },
+        body: { client_id: 123 as unknown },
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
     });
@@ -451,7 +451,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer opaque-token-abc123',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       // Should query oidc_payloads for the token
       expect(mockPoolQuery).toHaveBeenCalledWith(
@@ -477,7 +477,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer token-xyz',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBe('http://localhost:4000');
     });
@@ -494,7 +494,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer some-token',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       // Should use client_id from body, not look up Bearer token in DB
       expect(mockPoolQuery).not.toHaveBeenCalled();
@@ -512,7 +512,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer expired-token',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
@@ -529,7 +529,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer token-no-client',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
@@ -549,7 +549,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer valid-token',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
@@ -565,7 +565,7 @@ describe('oidcPreflightCors', () => {
       });
       let nextCalled = false;
 
-      await middleware(ctx as any, async () => { nextCalled = true; });
+      await middleware(ctx as never, async () => { nextCalled = true; });
 
       // Request proceeds but no CORS headers
       expect(nextCalled).toBe(true);
@@ -580,7 +580,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Basic dXNlcjpwYXNz',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockPoolQuery).not.toHaveBeenCalled();
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
@@ -594,7 +594,7 @@ describe('oidcPreflightCors', () => {
         authorization: '',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockPoolQuery).not.toHaveBeenCalled();
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
@@ -616,7 +616,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer access-token-for-revocation',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(mockPoolQuery).toHaveBeenCalledWith(
         expect.stringContaining('oidc_payloads'),
@@ -636,7 +636,7 @@ describe('oidcPreflightCors', () => {
         authorization: 'Bearer token-empty-client',
       });
 
-      await middleware(ctx as any, async () => {});
+      await middleware(ctx as never, async () => {});
 
       expect(ctx._headers['Access-Control-Allow-Origin']).toBeUndefined();
       expect(mockGetClientByClientId).not.toHaveBeenCalled();
