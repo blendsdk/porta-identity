@@ -84,4 +84,34 @@ for (const { path: relPath, pattern, replacement } of versionFiles) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 3. Update inter-package @portaidentity/* dependency versions
+// ---------------------------------------------------------------------------
+
+const workspacePackages = [
+  'packages/porta-cli/package.json',
+  'packages/porta-admin-gui/package.json',
+];
+
+for (const relPath of workspacePackages) {
+  const absPath = resolve(ROOT, relPath);
+  const pkg = JSON.parse(readFileSync(absPath, 'utf-8'));
+  let updated = false;
+
+  for (const depField of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    if (!pkg[depField]) continue;
+    for (const [name, currentVer] of Object.entries(pkg[depField])) {
+      if (name.startsWith('@portaidentity/') && currentVer !== version) {
+        pkg[depField][name] = version;
+        updated = true;
+        console.log(`  🔗 ${relPath}: ${name} ${currentVer} → ${version}`);
+      }
+    }
+  }
+
+  if (updated) {
+    writeFileSync(absPath, JSON.stringify(pkg, null, 2) + '\n');
+  }
+}
+
 console.log(`\n✅ All versions synced to ${version}`);

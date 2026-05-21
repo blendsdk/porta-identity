@@ -64,7 +64,7 @@
     "vitest": "^4.1.6"
   },
   "peerDependencies": {
-    "@portaidentity/sdk": ">=0.1.0"
+    "@portaidentity/sdk": "1.1.0"
   },
   "peerDependenciesMeta": {
     "@portaidentity/sdk": {
