@@ -11,7 +11,6 @@
 import { describe, it, expect } from 'vitest';
 import { importManifestSchema } from '../../../src/lib/data-import.js';
 import type {
-  ImportManifest,
   ImportResult,
   ImportEntityResult,
   ImportSkippedResult,

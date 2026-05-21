@@ -35,18 +35,18 @@ import { handleError } from '../../src/error-handler.js';
 import { printTable, printJson, success, warn } from '../../src/output.js';
 
 // ---------------------------------------------------------------------------
-// Test data
+// Test data — matches SDK AuditEntry type
 // ---------------------------------------------------------------------------
 
 const sampleEntry = {
   id: 'audit-uuid-1',
   eventType: 'user.login',
+  eventCategory: 'auth',
   actorId: 'user-uuid-1',
-  actorEmail: 'admin@example.com',
   organizationId: 'org-uuid-1',
-  resourceType: 'user',
-  resourceId: 'user-uuid-2',
-  details: { method: 'password' },
+  userId: 'user-uuid-2',
+  description: 'User logged in via password',
+  metadata: { method: 'password' },
   ipAddress: '192.168.1.1',
   createdAt: '2024-01-01T00:00:00Z',
 };
@@ -132,34 +132,32 @@ describe('audit command', () => {
       mockAudit.list.mockResolvedValue(paginatedResult);
 
       await invokeSubcommand('list', {
-        'event-type': 'user.login',
-        'org-id': 'org-uuid-1',
-        page: 2,
-        'page-size': 10,
+        event: 'user.login',
+        org: 'org-uuid-1',
+        user: 'user-uuid-1',
+        limit: 10,
       });
 
       expect(mockAudit.list).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'user.login',
-          organizationId: 'org-uuid-1',
-          page: 2,
-          pageSize: 10,
+          event: 'user.login',
+          org: 'org-uuid-1',
+          user: 'user-uuid-1',
+          limit: 10,
         }),
       );
     });
 
-    it('passes date range filters', async () => {
+    it('passes since filter', async () => {
       mockAudit.list.mockResolvedValue(paginatedResult);
 
       await invokeSubcommand('list', {
-        from: '2024-01-01',
-        to: '2024-12-31',
+        since: '2024-01-01',
       });
 
       expect(mockAudit.list).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: '2024-01-01',
-          to: '2024-12-31',
+          since: '2024-01-01',
         }),
       );
     });

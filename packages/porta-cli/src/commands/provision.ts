@@ -535,7 +535,7 @@ function transformToManifest(input: ProvisioningFile): FlatManifest {
  * Shows counts of created/updated/skipped entities, any errors,
  * and client credentials for confidential clients.
  */
-function displayResult(result: ImportResult, mode: string): void {
+function displayResult(result: ImportResult, _mode: string): void {
   const isDryRun = result.mode === 'dry-run';
   const label = isDryRun ? 'Dry-run preview' : 'Provisioning complete';
 

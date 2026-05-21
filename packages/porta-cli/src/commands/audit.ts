@@ -18,15 +18,11 @@ import { printTable, printJson, success, warn, formatDate, truncate } from '../o
 // ---------------------------------------------------------------------------
 
 interface AuditListArgs extends GlobalOptions {
-  'event-type'?: string;
-  'actor-id'?: string;
-  'org-id'?: string;
-  'resource-type'?: string;
-  'resource-id'?: string;
-  from?: string;
-  to?: string;
-  page?: number;
-  'page-size'?: number;
+  event?: string;
+  org?: string;
+  user?: string;
+  since?: string;
+  limit?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,55 +39,35 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'List audit log entries',
         (y) =>
           y
-            .option('event-type', {
+            .option('event', {
               type: 'string',
-              describe: 'Filter by event type',
+              describe: 'Filter by event type (e.g., "user.login")',
             })
-            .option('actor-id', {
-              type: 'string',
-              describe: 'Filter by actor ID',
-            })
-            .option('org-id', {
+            .option('org', {
               type: 'string',
               describe: 'Filter by organization ID',
             })
-            .option('resource-type', {
+            .option('user', {
               type: 'string',
-              describe: 'Filter by resource type',
+              describe: 'Filter by user ID',
             })
-            .option('resource-id', {
+            .option('since', {
               type: 'string',
-              describe: 'Filter by resource ID',
+              describe: 'Filter events after this date (ISO 8601)',
             })
-            .option('from', {
-              type: 'string',
-              describe: 'Filter from date (ISO 8601)',
-            })
-            .option('to', {
-              type: 'string',
-              describe: 'Filter to date (ISO 8601)',
-            })
-            .option('page', {
+            .option('limit', {
               type: 'number',
-              describe: 'Page number',
-            })
-            .option('page-size', {
-              type: 'number',
-              describe: 'Results per page',
+              describe: 'Maximum results (default: 50, max: 500)',
             }),
         async (argv) => {
           try {
             const client = createClient(argv);
             const result = await client.audit.list({
-              eventType: argv['event-type'],
-              actorId: argv['actor-id'],
-              organizationId: argv['org-id'],
-              resourceType: argv['resource-type'],
-              resourceId: argv['resource-id'],
-              from: argv.from,
-              to: argv.to,
-              page: argv.page,
-              pageSize: argv['page-size'],
+              event: argv.event,
+              org: argv.org,
+              user: argv.user,
+              since: argv.since,
+              limit: argv.limit,
             });
 
             if (argv.json) {
@@ -106,16 +82,16 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }
 
             printTable(
-              ['Event', 'Actor', 'Resource', 'IP', 'Date'],
+              ['Event', 'Actor', 'Description', 'IP', 'Date'],
               entries.map((e) => [
                 e.eventType,
-                e.actorEmail ?? truncate(e.actorId ?? '—', 12),
-                e.resourceType ? `${e.resourceType}:${truncate(e.resourceId ?? '', 12)}` : '—',
+                truncate(e.actorId ?? '—', 12),
+                truncate(e.description ?? '—', 40),
                 e.ipAddress ?? '—',
                 formatDate(e.createdAt),
               ]),
             );
-            success(`${entries.length} audit entries (page ${result.page ?? 1})`);
+            success(`${entries.length} audit entries`);
           } catch (err) {
             handleError(err, argv.verbose);
           }
