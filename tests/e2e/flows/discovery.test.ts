@@ -103,6 +103,18 @@ describe('OIDC Discovery (E2E)', () => {
     expect(firstKey.y).toBeDefined();
   });
 
+  // ── OAuth Authorization Server Discovery (RFC 8414 §2) ─────────
+
+  it('should have correct issuer in oauth-authorization-server endpoint', async () => {
+    // AR #2 + AR #4: Both discovery endpoints must return org-scoped issuer.
+    // RFC 8414 §2 applies to /.well-known/oauth-authorization-server as well
+    // as /.well-known/openid-configuration.
+    const resp = await fetch(`${baseUrl}/${orgSlug}/.well-known/oauth-authorization-server`);
+    expect(resp.ok).toBe(true);
+    const doc = await resp.json();
+    expect(doc.issuer).toBe(`${baseUrl}/${orgSlug}`);
+  });
+
   // ── Multi-Org Issuer Isolation ─────────────────────────────────
 
   it('should have different issuers for different organizations', async () => {

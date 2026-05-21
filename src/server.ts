@@ -491,6 +491,59 @@ export function createApp(oidcProvider?: Provider): Koa {
       //     are unaffected — browsers don't execute scripts in JSON responses
       ctx.set('Content-Security-Policy', HTML_CSP);
 
+      // --- Issuer fix: RFC 8414 §2 compliance ---
+      // The provider's static `issuer` property (from the constructor) doesn't
+      // include the org slug. For discovery endpoints, intercept the JSON response
+      // to patch the `issuer` field so it includes the org path segment.
+      // This runs at the server level (not inside the provider) because
+      // provider.use() middleware doesn't have ctx.oidc reliably initialized
+      // for all request types. See plans/oidc-issuer-fix/03-issuer-fix.md.
+      const strippedUrl = ctx.req.url ?? '';
+      const isDiscovery = strippedUrl.startsWith('/.well-known/openid-configuration')
+        || strippedUrl.startsWith('/.well-known/oauth-authorization-server');
+
+      if (isDiscovery) {
+        const orgIssuer = `${config.issuerBaseUrl}/${ctx.params.orgSlug}`;
+        const originalEnd = ctx.res.end;
+        const originalWrite = ctx.res.write;
+        const chunks: Buffer[] = [];
+
+        // Buffer response chunks instead of writing immediately
+        ctx.res.write = function (chunk: unknown) {
+          if (chunk != null) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+          }
+          return true;
+        } as typeof ctx.res.write;
+
+        // Intercept end() to patch issuer in the JSON body.
+        // Restore original methods immediately to prevent double-invocation:
+        // after the provider calls end(), Koa's internal response handler
+        // (handleResponse → respond) also calls res.end(). Without restoring,
+        // the intercepted end() fires twice, causing "write after end".
+        ctx.res.end = function (chunk: unknown) {
+          // Restore originals FIRST — prevents any subsequent call
+          // (from Koa's respond or error handler) from re-entering this function.
+          ctx.res.write = originalWrite;
+          ctx.res.end = originalEnd;
+
+          if (chunk != null) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+          }
+          const body = Buffer.concat(chunks);
+          try {
+            const json = JSON.parse(body.toString('utf-8'));
+            json.issuer = orgIssuer;
+            const patched = JSON.stringify(json);
+            ctx.res.setHeader('content-length', Buffer.byteLength(patched, 'utf-8'));
+            return originalEnd.call(ctx.res, patched, 'utf-8');
+          } catch {
+            // Not valid JSON — pass through unmodified
+            return originalEnd.call(ctx.res, body, 'utf-8');
+          }
+        } as typeof ctx.res.end;
+      }
+
       // Delegate to node-oidc-provider's Koa callback handler
       await oidcProvider.callback()(ctx.req, ctx.res);
     });

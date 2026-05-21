@@ -80,39 +80,5 @@ export async function createOidcProvider(params: {
   // provider trusts forwarded headers and handles URL rewriting correctly.
   provider.proxy = true;
 
-  // Override the issuer per-request to include the organization path segment.
-  //
-  // node-oidc-provider sets the discovery document's `issuer` field (and the
-  // `iss` claim in ID tokens) from `ctx.oidc.issuer`, which defaults to the
-  // constructor's first argument — just the base URL without any org slug.
-  //
-  // RFC 8414 §2 requires:
-  //   "The issuer value returned MUST be identical to the Issuer URL that
-  //    was used as the prefix to retrieve the metadata."
-  //
-  // Since Porta uses path-based multi-tenancy (/{orgSlug}/...), the issuer
-  // must be `{baseUrl}/{orgSlug}`. The org slug is available from the
-  // `originalUrl` property set by the OIDC router in server.ts before it
-  // strips the prefix for provider routing.
-  //
-  // This middleware runs inside the provider's internal Koa context where
-  // `ctx.oidc` is available. Each request gets its own OIDCContext instance,
-  // so the override is request-scoped and safe for concurrent requests.
-  provider.use(async (ctx, next) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const originalUrl = (ctx.req as any).originalUrl as string | undefined;
-    if (originalUrl) {
-      // Extract the first path segment as the org slug: /test1-dev/... → test1-dev
-      const match = originalUrl.match(/^\/([^/?]+)/);
-      if (match?.[1]) {
-        Object.defineProperty(ctx.oidc, 'issuer', {
-          value: `${config.issuerBaseUrl}/${match[1]}`,
-          configurable: true,
-        });
-      }
-    }
-    await next();
-  });
-
   return provider;
 }
