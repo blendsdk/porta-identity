@@ -166,7 +166,7 @@ test.describe('Confidential Client OIDC Flow', () => {
     expect(idClaims.exp).toBeTruthy();
     expect(idClaims.iat).toBeTruthy();
 
-    // The issuer should be the base URL (oidc-provider uses the configured issuer)
+    // The issuer should include the base URL with the org path segment (RFC 8414 §2)
     expect(idClaims.iss).toContain(testData.baseUrl);
 
     // Store the subject for later verification

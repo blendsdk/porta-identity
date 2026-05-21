@@ -45,31 +45,15 @@ console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
 // openid-client v6 discovery
 // ---------------------------------------------------------------------------
 
-/**
- * Custom fetch that rewrites root well-known to org-specific well-known.
- * Porta returns issuer=baseUrl (root), so we discover against the root URL
- * but redirect the actual HTTP request to /:orgSlug/.well-known/openid-configuration.
- */
-function createOrgDiscoveryFetch(baseUrl: string, orgSlug: string): typeof fetch {
-  const rootWellKnown = `${baseUrl}/.well-known/openid-configuration`;
-  const orgWellKnown = `${baseUrl}/${orgSlug}/.well-known/openid-configuration`;
-  return (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-    if (url === rootWellKnown) return fetch(orgWellKnown, init);
-    return fetch(input, init);
-  };
-}
-
 console.log(`[BFF] Discovering OIDC config from ${PORTA_BASE_URL}/${ORG_SLUG}/.well-known/openid-configuration`);
 
 const oidcConfig = await openidClient.discovery(
-  new URL(PORTA_BASE_URL),
+  new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
   config.bff.clientId,
   config.bff.clientSecret,
   openidClient.ClientSecretPost(config.bff.clientSecret),
   {
     execute: [openidClient.allowInsecureRequests],
-    [openidClient.customFetch]: createOrgDiscoveryFetch(PORTA_BASE_URL, ORG_SLUG),
   },
 );
 

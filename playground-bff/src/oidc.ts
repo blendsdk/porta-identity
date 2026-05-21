@@ -18,32 +18,6 @@ import type { OrgConfig, M2MConfig } from './config.js';
 const discoveredConfigs = new Map<string, oidc.Configuration>();
 
 /**
- * Create a custom fetch that rewrites the well-known discovery URL.
- *
- * Porta uses path-based multi-tenancy but its issuer is the root URL.
- * The discovery endpoint is at /:orgSlug/.well-known/openid-configuration
- * but the issuer in the response is https://porta.local:3443 (root).
- *
- * openid-client v6 compares the issuer in the response against the URL
- * passed to discovery(). To make this work, we discover against the root
- * URL (matching the issuer) but redirect the actual HTTP request to the
- * org-specific well-known endpoint.
- */
-function createOrgDiscoveryFetch(portaUrl: string, orgSlug: string): typeof fetch {
-  const rootWellKnown = `${portaUrl}/.well-known/openid-configuration`;
-  const orgWellKnown = `${portaUrl}/${orgSlug}/.well-known/openid-configuration`;
-
-  return (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    // Rewrite root well-known to org-specific well-known
-    if (url === rootWellKnown) {
-      return fetch(orgWellKnown, init);
-    }
-    return fetch(input, init);
-  };
-}
-
-/**
  * Discover and configure an openid-client Configuration for a specific org.
  * Caches the result so subsequent calls reuse the discovery response.
  *
@@ -61,16 +35,15 @@ export async function getOidcConfig(
     return discoveredConfigs.get(cacheKey)!;
   }
 
-  // Discover using root URL (matches issuer) with a custom fetch that
-  // redirects to the org-specific well-known endpoint.
+  // Discover using the org-scoped issuer URL. Porta returns the org-specific
+  // issuer (e.g. https://porta.local:3443/org-slug) per RFC 8414 §2.
   const config = await oidc.discovery(
-    new URL(portaUrl),
+    new URL(`${portaUrl}/${org.slug}`),
     org.clientId,
     org.clientSecret,
     oidc.ClientSecretPost(org.clientSecret),
     {
       execute: [oidc.allowInsecureRequests],
-      [oidc.customFetch]: createOrgDiscoveryFetch(portaUrl, org.slug),
     },
   );
 
@@ -223,13 +196,12 @@ export async function clientCredentialsGrant(
   let config = discoveredConfigs.get(cacheKey);
   if (!config) {
     config = await oidc.discovery(
-      new URL(portaUrl),
+      new URL(`${portaUrl}/${m2m.orgSlug}`),
       m2m.clientId,
       m2m.clientSecret,
       oidc.ClientSecretPost(m2m.clientSecret),
       {
         execute: [oidc.allowInsecureRequests],
-        [oidc.customFetch]: createOrgDiscoveryFetch(portaUrl, m2m.orgSlug),
       },
     );
     discoveredConfigs.set(cacheKey, config);
