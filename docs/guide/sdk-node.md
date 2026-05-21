@@ -136,13 +136,13 @@ console.log('Setup complete:', { orgId: org.id, appId: app.id, clientId: client.
 
 ```typescript
 // Suspend multiple users at once
-const result = await porta.bulk.execute({
-  entityType: 'users',
-  action: 'suspend',
+const result = await porta.bulk.userStatus({
   ids: ['user-1', 'user-2', 'user-3'],
+  action: 'suspend',
+  organizationId: 'org-uuid',
 });
 
-console.log(`Succeeded: ${result.succeeded}, Failed: ${result.failed}`);
+console.log(`Total: ${result.total}, Succeeded: ${result.succeeded}, Failed: ${result.failed}`);
 ```
 
 ### Data Export
@@ -166,7 +166,10 @@ import yaml from 'js-yaml';
 const manifest = yaml.load(readFileSync('provision.yaml', 'utf8'));
 const result = await porta.imports.provision(manifest);
 
-console.log(`Provisioned: ${result.created} created, ${result.updated} updated`);
+console.log(`Provisioned: ${result.created.length} created, ${result.updated.length} updated`);
+if (result.credentials.length > 0) {
+  console.log('New client credentials:', result.credentials);
+}
 ```
 
 ### Iterate All Records

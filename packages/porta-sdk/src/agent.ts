@@ -95,7 +95,8 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
 
   // Roles
   { name: 'roles.list', description: 'List roles for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<Role>' },
-  { name: 'roles.get', description: 'Get a role with permissions', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'RoleWithPermissions' },
+  { name: 'roles.get', description: 'Get a role by ID', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Role' },
+  { name: 'roles.listPermissions', description: 'List permissions assigned to a role', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Permission[]' },
   { name: 'roles.create', description: 'Create a role', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateRoleInput')], returns: 'Role' },
 
   // Permissions
@@ -122,7 +123,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'keys.rotate', description: 'Rotate signing keys', parameters: [], returns: 'SigningKey' },
 
   // Audit
-  { name: 'audit.list', description: 'List audit log entries', parameters: [...LIST_PARAMS, OPT_STR('eventType', 'Filter by event type'), OPT_STR('organizationId', 'Filter by org')], returns: 'PaginatedResponse<AuditEntry>' },
+  { name: 'audit.list', description: 'List audit log entries', parameters: [OPT_NUM('limit', 'Max results (default 50, max 500)'), OPT_STR('event', 'Filter by event_type'), OPT_STR('org', 'Filter by organization_id'), OPT_STR('user', 'Filter by user_id'), OPT_STR('since', 'Filter events after ISO 8601 date')], returns: '{ data: AuditEntry[], total: number }' },
 
   // Stats
   { name: 'stats.get', description: 'Get dashboard statistics', parameters: [], returns: 'DashboardStats' },
@@ -130,10 +131,11 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   // Sessions
   { name: 'sessions.list', description: 'List active sessions', parameters: [OPT_NUM('page', 'Page'), OPT_NUM('pageSize', 'Page size'), OPT_STR('userId', 'Filter by user')], returns: 'PaginatedResponse<AdminSession>' },
   { name: 'sessions.revoke', description: 'Revoke a session', parameters: [ID('sessionId', 'Session ID')], returns: 'void' },
-  { name: 'sessions.revokeForUser', description: 'Revoke all sessions for a user', parameters: [ID('userId', 'User ID')], returns: 'void' },
+  { name: 'sessions.revokeForUser', description: 'Revoke all sessions for a user', parameters: [ID('userId', 'User ID')], returns: 'RevokeUserSessionsResult' },
 
   // Bulk
-  { name: 'bulk.execute', description: 'Execute a bulk status operation', parameters: [OBJ('input', 'BulkOperationInput')], returns: 'BulkOperationResult' },
+  { name: 'bulk.organizationStatus', description: 'Bulk status change for organizations', parameters: [OBJ('input', 'BulkOrgStatusInput: { ids, action, reason? }')], returns: 'BulkOperationResult' },
+  { name: 'bulk.userStatus', description: 'Bulk status change for users', parameters: [OBJ('input', 'BulkUserStatusInput: { ids, action, reason?, organizationId }')], returns: 'BulkOperationResult' },
 
   // Two-Factor
   { name: 'twoFactor.getStatus', description: 'Get 2FA status for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'TwoFactorStatus' },

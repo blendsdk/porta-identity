@@ -108,15 +108,17 @@ export type {
 export type {
   AdminSession,
   SessionListParams,
+  RevokeUserSessionsResult,
 } from './sessions.js';
 
 // Bulk
 export type {
-  BulkEntityType,
-  BulkAction,
-  BulkOperationInput,
+  BulkOrgAction,
+  BulkUserAction,
+  BulkOrgStatusInput,
+  BulkUserStatusInput,
+  BulkItemResult,
   BulkOperationResult,
-  BulkItemError,
 } from './bulk.js';
 
 // Branding
@@ -139,8 +141,11 @@ export type {
 export type {
   ImportMode,
   ImportManifest,
+  ImportEntityResult,
+  ImportSkippedResult,
+  ImportErrorResult,
+  ImportClientCredentials,
   ImportResult,
-  ImportError,
 } from './imports.js';
 
 // User Roles

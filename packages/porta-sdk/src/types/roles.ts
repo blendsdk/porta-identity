@@ -4,6 +4,8 @@
  * @module types/roles
  */
 
+import type { Permission } from './permissions.js';
+
 export interface Role {
   id: string;
   applicationId: string;
@@ -27,7 +29,7 @@ export interface UpdateRoleInput {
   description?: string | null;
 }
 
-/** Role with its assigned permissions */
+/** Role with its assigned permissions (full Permission objects) */
 export interface RoleWithPermissions extends Role {
-  permissions: string[];
+  permissions: Permission[];
 }

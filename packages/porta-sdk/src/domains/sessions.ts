@@ -7,7 +7,7 @@
  */
 
 import type { HttpTransport } from '../transport/types.js';
-import type { AdminSession, SessionListParams, PaginatedResponse } from '../types/index.js';
+import type { AdminSession, SessionListParams, RevokeUserSessionsResult, PaginatedResponse } from '../types/index.js';
 import { listAll } from '../pagination/index.js';
 import { toQueryParams } from './helpers.js';
 
@@ -15,7 +15,7 @@ export interface SessionsDomain {
   list(params?: SessionListParams): Promise<PaginatedResponse<AdminSession>>;
   listAll(params?: Omit<SessionListParams, 'page'>): Promise<AdminSession[]>;
   revoke(sessionId: string): Promise<void>;
-  revokeForUser(userId: string): Promise<void>;
+  revokeForUser(userId: string): Promise<RevokeUserSessionsResult>;
 }
 
 export function createSessionsDomain(transport: HttpTransport): SessionsDomain {
@@ -32,7 +32,9 @@ export function createSessionsDomain(transport: HttpTransport): SessionsDomain {
     },
     async revokeForUser(userId) {
       // Special path: not under /sessions/ but /users/:userId/sessions
-      await transport.request({ method: 'DELETE', path: `/users/${userId}/sessions` });
+      // Server returns { revoked: number }
+      const res = await transport.request({ method: 'DELETE', path: `/users/${userId}/sessions` });
+      return res.body as RevokeUserSessionsResult;
     },
   };
 }

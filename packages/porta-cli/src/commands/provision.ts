@@ -531,40 +531,101 @@ function transformToManifest(input: ProvisioningFile): FlatManifest {
 
 /**
  * Display a summary of the import result.
+ *
+ * Shows counts of created/updated/skipped entities, any errors,
+ * and client credentials for confidential clients.
  */
 function displayResult(result: ImportResult, mode: string): void {
-  const label = mode === 'dry-run' ? 'Dry-run preview' : 'Provisioning complete';
+  const isDryRun = result.mode === 'dry-run';
+  const label = isDryRun ? 'Dry-run preview' : 'Provisioning complete';
 
-  if (result.dryRun) {
-    success(`${label} (dry-run mode)`);
-  } else {
-    success(`${label} (${mode} mode)`);
-  }
-
+  success(`${label} (${result.mode} mode)`);
   console.log();
 
-  // Display entity counts
-  const countEntries = Object.entries(result.counts);
-  if (countEntries.length > 0) {
+  // Summary counts
+  const summaryRows: string[][] = [];
+  if (result.created.length > 0) {
+    summaryRows.push(['Created', String(result.created.length)]);
+  }
+  if (result.updated.length > 0) {
+    summaryRows.push(['Updated', String(result.updated.length)]);
+  }
+  if (result.skipped.length > 0) {
+    summaryRows.push(['Skipped', String(result.skipped.length)]);
+  }
+  if (result.errors.length > 0) {
+    summaryRows.push(['Errors', String(result.errors.length)]);
+  }
+
+  if (summaryRows.length > 0) {
+    printTable(['Action', 'Count'], summaryRows);
+  }
+
+  // Created entities
+  if (result.created.length > 0) {
+    console.log();
+    console.log('  Created:');
     printTable(
-      ['Entity Type', 'Count'],
-      countEntries.map(([type, count]) => [
-        formatTypeName(type),
-        String(count),
+      ['Type', 'Slug', 'Name'],
+      result.created.map((e) => [formatTypeName(e.type), e.slug, e.name]),
+    );
+  }
+
+  // Updated entities
+  if (result.updated.length > 0) {
+    console.log();
+    console.log('  Updated:');
+    printTable(
+      ['Type', 'Slug', 'Name', 'Changes'],
+      result.updated.map((e) => [
+        formatTypeName(e.type),
+        e.slug,
+        e.name,
+        e.changes?.join(', ') ?? '',
       ]),
     );
   }
 
-  // Display errors
+  // Skipped entities
+  if (result.skipped.length > 0) {
+    console.log();
+    console.log('  Skipped:');
+    printTable(
+      ['Type', 'Slug', 'Reason'],
+      result.skipped.map((e) => [formatTypeName(e.type), e.slug, e.reason]),
+    );
+  }
+
+  // Errors
   if (result.errors.length > 0) {
     console.log();
     printError(`${result.errors.length} error(s):`);
     printTable(
-      ['Entity Type', 'Identifier', 'Error'],
-      result.errors.map((e) => [e.entityType, e.identifier, e.error]),
+      ['Type', 'Slug', 'Error'],
+      result.errors.map((e) => [formatTypeName(e.type), e.slug, e.error]),
     );
   } else {
     console.log(`  Errors: 0`);
+  }
+
+  // Client credentials — shown once, never stored
+  if (result.credentials.length > 0) {
+    console.log();
+    console.log('  Client Credentials:');
+    printTable(
+      ['Client', 'Client ID', 'Type', 'Secret', 'Label', 'Expires'],
+      result.credentials.map((c) => [
+        c.clientName,
+        c.clientId,
+        c.clientType,
+        c.secretPlaintext ?? '—',
+        c.secretLabel ?? '—',
+        c.secretExpiresAt ?? '—',
+      ]),
+    );
+    if (!isDryRun) {
+      warn('Save these credentials now — secrets cannot be retrieved later.');
+    }
   }
 }
 

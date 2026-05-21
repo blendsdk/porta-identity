@@ -154,14 +154,14 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }
 
             const client = createClient(argv);
-            await client.sessions.revokeForUser(argv['user-id']);
+            const result = await client.sessions.revokeForUser(argv['user-id']);
 
             if (argv.json) {
-              printJson({ revokedForUser: argv['user-id'] });
+              printJson({ userId: argv['user-id'], revoked: result.revoked });
               return;
             }
 
-            success(`Revoked all sessions for user ${truncate(argv['user-id'], 12)}`);
+            success(`Revoked ${result.revoked} session(s) for user ${truncate(argv['user-id'], 12)}`);
           } catch (err) {
             handleError(err, argv.verbose);
           }
