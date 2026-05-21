@@ -2163,11 +2163,6 @@
     "@pnpm/network.ca-file" "^1.0.1"
     config-chain "^1.1.11"
 
-"@portaidentity/sdk@1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@portaidentity/sdk/-/sdk-1.0.1.tgz#a6aeef1c12dfa13742f4aab4ea753e0745329439"
-  integrity sha512-4lJps5uR8jtyf6zcQqJVZcIP6gVD4+RuJX5TswO1R0Kjn8RU+E4rWcgrJ4HBkNzVrI63QeNL4qKQD1cAqer8ew==
-
 "@rolldown/binding-android-arm64@1.0.0-rc.18":
   version "1.0.0-rc.18"
   resolved "https://registry.yarnpkg.com/@rolldown/binding-android-arm64/-/binding-android-arm64-1.0.0-rc.18.tgz#3af8b2242086125934a85c1915b76e0a6a2054c1"
