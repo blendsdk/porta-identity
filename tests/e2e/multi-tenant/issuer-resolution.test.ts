@@ -31,8 +31,9 @@ describe('Issuer Resolution (E2E)', () => {
     const resp = await http.get(`/${orgSlug}/.well-known/openid-configuration`);
     expect(resp.status).toBe(200);
     const doc = resp.json as Record<string, unknown>;
-    // In oidc-provider 9.8.2+, issuer is the base URL (no org slug).
-    // Endpoint URLs contain the org slug, proving org-scoped routing.
+    // RFC 8414 §2: The issuer MUST include the org path segment.
+    expect(doc.issuer).toBe(`${baseUrl}/${orgSlug}`);
+    // Endpoint URLs also contain the org slug
     expect(doc.token_endpoint).toContain(orgSlug);
   });
 

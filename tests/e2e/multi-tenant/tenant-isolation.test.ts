@@ -77,8 +77,12 @@ describe('Tenant Isolation (E2E)', () => {
     const discoveryA = await oidcA.discovery();
     const discoveryB = await oidcB.discovery();
 
-    // In oidc-provider 9.8.2+, issuer is the same base URL for all orgs.
-    // Org isolation is enforced via org-slug-scoped endpoint URLs.
+    // RFC 8414 §2: Each org has a unique issuer including the org slug.
+    expect(discoveryA.issuer).toBe(`${baseUrl}/${orgASlug}`);
+    expect(discoveryB.issuer).toBe(`${baseUrl}/${orgBSlug}`);
+    expect(discoveryA.issuer).not.toBe(discoveryB.issuer);
+
+    // Endpoint URLs are also org-scoped
     expect(discoveryA.token_endpoint).not.toBe(discoveryB.token_endpoint);
     expect(discoveryA.token_endpoint).toContain(orgASlug);
     expect(discoveryB.token_endpoint).toContain(orgBSlug);

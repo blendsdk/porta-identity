@@ -46,14 +46,14 @@ describe('OIDC Discovery (E2E)', () => {
     expect(doc.jwks_uri).toBeDefined();
   });
 
-  it('should have issuer matching the org base URL', async () => {
+  it('should have issuer matching the org-scoped URL', async () => {
     const oidc = new OidcTestClient(baseUrl, orgSlug, 'unused');
     const doc = await oidc.discovery();
 
-    // In oidc-provider 9.8.2+, the issuer is the base URL (constructor value)
-    // without the mount path. Endpoint URLs DO include the org slug prefix.
-    expect(doc.issuer).toBe(baseUrl);
-    // Verify endpoints contain org slug (proving org-scoped routing works)
+    // RFC 8414 §2: The issuer MUST include the org path segment, matching
+    // the URL used to retrieve the discovery document (minus the well-known suffix).
+    expect(doc.issuer).toBe(`${baseUrl}/${orgSlug}`);
+    // Verify endpoints also contain org slug
     expect(doc.token_endpoint).toContain(`/${orgSlug}/`);
   });
 
@@ -117,8 +117,12 @@ describe('OIDC Discovery (E2E)', () => {
     const doc1 = await oidc1.discovery();
     const doc2 = await oidc2.discovery();
 
-    // In oidc-provider 9.8.2+, the issuer field is the same base URL for all orgs.
-    // Org isolation is enforced via org-slug-scoped endpoint URLs instead.
+    // RFC 8414 §2: Each org has a unique issuer that includes the org slug.
+    expect(doc1.issuer).toBe(`${baseUrl}/${orgSlug}`);
+    expect(doc2.issuer).toBe(`${baseUrl}/${org2.slug}`);
+    expect(doc1.issuer).not.toBe(doc2.issuer);
+
+    // Endpoint URLs are also org-scoped
     expect(doc1.token_endpoint).not.toBe(doc2.token_endpoint);
     expect(doc1.token_endpoint).toContain(orgSlug);
     expect(doc2.token_endpoint).toContain(org2.slug);
