@@ -1,6 +1,6 @@
 {
   "name": "porta",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Multi-tenant OIDC provider built on node-oidc-provider + Koa + TypeScript",
   "private": true,
   "workspaces": [
