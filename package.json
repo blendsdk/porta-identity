@@ -109,13 +109,13 @@
     "@types/koa": "3.0.2",
     "@types/koa-bodyparser": "4.3.13",
     "@types/koa__router": "12.0.5",
-    "@types/node": "25.8.0",
+    "@types/node": "25.9.1",
     "@types/nodemailer": "8.0.0",
     "@types/oidc-provider": "9.5.0",
     "@types/pg": "8.20.0",
     "@types/qrcode": "1.5.6",
     "@types/yargs": "17.0.35",
-    "eslint": "10.4.0",
+    "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "mermaid": "11.14.0",
     "npm-check-updates": "22.1.1",
@@ -127,7 +127,7 @@
     "vite": "8.0.11",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
-    "vitest": "4.1.6"
+    "vitest": "4.1.8"
   },
   "lint-staged": {
     "*.ts": [
