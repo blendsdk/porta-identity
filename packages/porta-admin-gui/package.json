@@ -35,32 +35,32 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@fluentui/react-components": "^9.73.8",
-    "@fluentui/react-icons": "^2.0.325",
-    "@koa/router": "15.5.0",
+    "@fluentui/react-components": "^9.74.1",
+    "@fluentui/react-icons": "^2.0.328",
+    "@koa/router": "15.6.0",
     "chalk": "^5.6.2",
-    "koa": "3.2.0",
+    "koa": "3.2.1",
     "koa-bodyparser": "4.4.1",
     "koa-mount": "^4.2.0",
     "koa-static": "^5.0.0",
     "open": "^11.0.0",
     "openid-client": "^6.8.4",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@types/koa": "3.0.2",
+    "@types/koa": "3.0.3",
     "@types/koa-bodyparser": "4.3.13",
     "@types/koa-mount": "^4.0.5",
     "@types/koa-static": "^4.0.4",
     "@types/koa__router": "12.0.5",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "concurrently": "^9.2.1",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.11",
+    "vite": "^8.0.16",
     "vitest": "^4.1.6"
   },
   "peerDependencies": {
