@@ -16,7 +16,7 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -45,121 +45,119 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
   command: 'claims',
   describe: 'Manage user custom claim values',
   builder: (yargs) => {
-    return yargs
-      // ── list ───────────────────────────────────────────────────────
-      .command<ClaimListArgs>(
-        'list <user-id>',
-        'List custom claim values for a user',
-        (y) =>
-          y
-            .positional('user-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'User UUID',
-            })
-            .option('org', {
-              type: 'string',
-              demandOption: true,
-              description: 'Organization UUID',
-            }),
-        async (argv) => {
-          try {
-            const sdkClient = createClient(argv);
-            const claims = await sdkClient.userClaims.list(argv.org, argv['user-id']);
+    return (
+      yargs
+        // ── list ───────────────────────────────────────────────────────
+        .command<ClaimListArgs>(
+          'list <user-id>',
+          'List custom claim values for a user',
+          (y) =>
+            y
+              .positional('user-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'User UUID',
+              })
+              .option('org', {
+                type: 'string',
+                demandOption: true,
+                description: 'Organization UUID',
+              }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              const claims = await sdkClient.userClaims.list(argv.org, argv['user-id']);
 
-            if (claims.length === 0) {
-              warn('No custom claims set');
-              return;
+              if (claims.length === 0) {
+                warn('No custom claims set');
+                return;
+              }
+
+              if (argv.json) {
+                printJson(claims);
+              } else {
+                printTable(
+                  ['Claim ID', 'Claim Name', 'Value'],
+                  claims.map((c) => [c.claimDefinitionId, c.claimName ?? '—', String(c.value)]),
+                );
+                info(`Total: ${claims.length} claims`);
+              }
+            } catch (err) {
+              handleError(err, argv.verbose);
             }
+          },
+        )
 
-            if (argv.json) {
-              printJson(claims);
-            } else {
-              printTable(
-                ['Claim ID', 'Claim Name', 'Value'],
-                claims.map((c) => [
-                  truncate(c.claimDefinitionId, 8),
-                  c.claimName ?? '—',
-                  String(c.value),
-                ]),
-              );
-              info(`Total: ${claims.length} claims`);
+        // ── set ────────────────────────────────────────────────────────
+        .command<ClaimSetArgs>(
+          'set <user-id>',
+          'Set a custom claim value for a user',
+          (y) =>
+            y
+              .positional('user-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'User UUID',
+              })
+              .option('org', {
+                type: 'string',
+                demandOption: true,
+                description: 'Organization UUID',
+              })
+              .option('claim', {
+                type: 'string',
+                demandOption: true,
+                description: 'Claim definition UUID',
+              })
+              .option('value', {
+                type: 'string',
+                demandOption: true,
+                description: 'Claim value',
+              }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              await sdkClient.userClaims.set(argv.org, argv['user-id'], argv.claim, argv.value);
+              success(`Claim ${argv.claim} set for user ${argv['user-id']}`);
+            } catch (err) {
+              handleError(err, argv.verbose);
             }
-          } catch (err) {
-            handleError(err, argv.verbose);
-          }
-        },
-      )
+          },
+        )
 
-      // ── set ────────────────────────────────────────────────────────
-      .command<ClaimSetArgs>(
-        'set <user-id>',
-        'Set a custom claim value for a user',
-        (y) =>
-          y
-            .positional('user-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'User UUID',
-            })
-            .option('org', {
-              type: 'string',
-              demandOption: true,
-              description: 'Organization UUID',
-            })
-            .option('claim', {
-              type: 'string',
-              demandOption: true,
-              description: 'Claim definition UUID',
-            })
-            .option('value', {
-              type: 'string',
-              demandOption: true,
-              description: 'Claim value',
-            }),
-        async (argv) => {
-          try {
-            const sdkClient = createClient(argv);
-            await sdkClient.userClaims.set(argv.org, argv['user-id'], argv.claim, argv.value);
-            success(`Claim ${argv.claim} set for user ${argv['user-id']}`);
-          } catch (err) {
-            handleError(err, argv.verbose);
-          }
-        },
-      )
-
-      // ── remove ─────────────────────────────────────────────────────
-      .command<ClaimRemoveArgs>(
-        'remove <user-id>',
-        'Remove a custom claim value from a user',
-        (y) =>
-          y
-            .positional('user-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'User UUID',
-            })
-            .option('org', {
-              type: 'string',
-              demandOption: true,
-              description: 'Organization UUID',
-            })
-            .option('claim', {
-              type: 'string',
-              demandOption: true,
-              description: 'Claim definition UUID to remove',
-            }),
-        async (argv) => {
-          try {
-            const sdkClient = createClient(argv);
-            await sdkClient.userClaims.remove(argv.org, argv['user-id'], argv.claim);
-            success(`Claim ${argv.claim} removed from user ${argv['user-id']}`);
-          } catch (err) {
-            handleError(err, argv.verbose);
-          }
-        },
-      )
-      .demandCommand(1, 'Specify a claims subcommand: list, set, remove');
+        // ── remove ─────────────────────────────────────────────────────
+        .command<ClaimRemoveArgs>(
+          'remove <user-id>',
+          'Remove a custom claim value from a user',
+          (y) =>
+            y
+              .positional('user-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'User UUID',
+              })
+              .option('org', {
+                type: 'string',
+                demandOption: true,
+                description: 'Organization UUID',
+              })
+              .option('claim', {
+                type: 'string',
+                demandOption: true,
+                description: 'Claim definition UUID to remove',
+              }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              await sdkClient.userClaims.remove(argv.org, argv['user-id'], argv.claim);
+              success(`Claim ${argv.claim} removed from user ${argv['user-id']}`);
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+        .demandCommand(1, 'Specify a claims subcommand: list, set, remove')
+    );
   },
   handler: () => {
     // No-op — subcommands handle execution

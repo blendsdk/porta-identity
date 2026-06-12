@@ -9,7 +9,7 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -52,7 +52,11 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Add a module to an application',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('name', { type: 'string', demandOption: true, description: 'Module name' })
             .option('slug', { type: 'string', description: 'Module slug' })
             .option('description', { type: 'string', description: 'Module description' }),
@@ -80,7 +84,11 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'list <app-id>',
         'List modules for an application',
         (y) =>
-          y.positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' }),
+          y.positional('app-id', {
+            type: 'string',
+            demandOption: true,
+            description: 'Application ID',
+          }),
         async (argv) => {
           try {
             const client = createClient(argv);
@@ -97,7 +105,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printTable(
                 ['ID', 'Name', 'Slug', 'Active', 'Created'],
                 modules.map((m) => [
-                  truncate(m.id, 8),
+                  m.id,
                   m.name,
                   m.slug,
                   String(m.isActive),
@@ -117,17 +125,29 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Update a module',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('module-id', { type: 'string', demandOption: true, description: 'Module ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            })
             .option('name', { type: 'string', description: 'New module name' })
             .option('description', { type: 'string', description: 'New description' }),
         async (argv) => {
           try {
             const client = createClient(argv);
-            const updated = await client.applications.updateModule(argv['app-id'], argv['module-id'], {
-              name: argv.name,
-              description: argv.description,
-            });
+            const updated = await client.applications.updateModule(
+              argv['app-id'],
+              argv['module-id'],
+              {
+                name: argv.name,
+                description: argv.description,
+              },
+            );
 
             if (argv.json) {
               printJson(updated);
@@ -145,8 +165,16 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Remove a module from an application',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('module-id', { type: 'string', demandOption: true, description: 'Module ID' }),
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);

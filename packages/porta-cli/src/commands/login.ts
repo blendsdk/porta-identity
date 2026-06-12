@@ -66,8 +66,7 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       })
       .option('client-id', {
         type: 'string',
-        describe:
-          'Override admin client ID (normally auto-discovered from server)',
+        describe: 'Override admin client ID (normally auto-discovered from server)',
       })
       .option('no-browser', {
         type: 'boolean',
@@ -92,9 +91,7 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       // Store credentials to disk
       saveCredentials(result);
 
-      success(
-        `Logged in as ${result.userInfo.email || result.userInfo.sub}`,
-      );
+      success(`Logged in as ${result.userInfo.email || result.userInfo.sub}`);
       process.exit(0);
     } catch (err) {
       handleError(err, argv.verbose);

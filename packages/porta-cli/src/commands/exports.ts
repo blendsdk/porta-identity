@@ -43,7 +43,15 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('entity-type', {
               type: 'string',
               describe: 'Entity type to export',
-              choices: ['organizations', 'applications', 'clients', 'users', 'roles', 'permissions', 'audit'] as const,
+              choices: [
+                'organizations',
+                'applications',
+                'clients',
+                'users',
+                'roles',
+                'permissions',
+                'audit',
+              ] as const,
               demandOption: true,
             })
             .option('format', {
@@ -69,16 +77,24 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           try {
             const client = createClient(argv);
             const response = await client.exports.download({
-              entityType: argv['entity-type'] as 'organizations' | 'applications' | 'clients' | 'users' | 'roles' | 'permissions' | 'audit',
+              entityType: argv['entity-type'] as
+                | 'organizations'
+                | 'applications'
+                | 'clients'
+                | 'users'
+                | 'roles'
+                | 'permissions'
+                | 'audit',
               format: argv.format as 'csv' | 'json',
               organizationId: argv['org-id'],
               applicationId: argv['app-id'],
             });
 
             // The SDK returns a TransportResponse with raw body
-            const content = typeof response.body === 'string'
-              ? response.body
-              : JSON.stringify(response.body, null, 2);
+            const content =
+              typeof response.body === 'string'
+                ? response.body
+                : JSON.stringify(response.body, null, 2);
 
             if (argv.output) {
               fs.writeFileSync(argv.output, content, 'utf-8');

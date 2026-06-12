@@ -39,8 +39,16 @@ export const statsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             printTable(
               ['Metric', 'Total', 'Active'],
               [
-                ['Organizations', String(stats.organizations.total), String(stats.organizations.active)],
-                ['Applications', String(stats.applications.total), String(stats.applications.active)],
+                [
+                  'Organizations',
+                  String(stats.organizations.total),
+                  String(stats.organizations.active),
+                ],
+                [
+                  'Applications',
+                  String(stats.applications.total),
+                  String(stats.applications.active),
+                ],
                 ['Clients', String(stats.clients.total), String(stats.clients.active)],
                 ['Users', String(stats.users.total), String(stats.users.active)],
                 ['Active Sessions', String(stats.activeSessionCount), '—'],

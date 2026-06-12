@@ -72,10 +72,18 @@ export function parseDuration(duration: string): Date {
   const date = new Date();
 
   switch (unit) {
-    case 'd': date.setDate(date.getDate() + amount); break;
-    case 'm': date.setMonth(date.getMonth() + amount); break;
-    case 'y': date.setFullYear(date.getFullYear() + amount); break;
-    case 'h': date.setHours(date.getHours() + amount); break;
+    case 'd':
+      date.setDate(date.getDate() + amount);
+      break;
+    case 'm':
+      date.setMonth(date.getMonth() + amount);
+      break;
+    case 'y':
+      date.setFullYear(date.getFullYear() + amount);
+      break;
+    case 'h':
+      date.setHours(date.getHours() + amount);
+      break;
   }
   return date;
 }
@@ -107,9 +115,7 @@ export function parseProvisioningFile(filePath: string): unknown {
   } else if (isStdin || ext === '') {
     return parseYaml(content);
   } else {
-    throw new Error(
-      `Unsupported file format: ${ext}. Use .yaml, .yml, or .json`,
-    );
+    throw new Error(`Unsupported file format: ${ext}. Use .yaml, .yml, or .json`);
   }
 }
 
@@ -356,7 +362,7 @@ function transformToManifest(input: ProvisioningFile): FlatManifest {
         if (user.password) {
           throw new Error(
             `User "${user.email}": password field requires "allow_passwords: true" at top level. ` +
-            'Password provisioning is for development/testing only.',
+              'Password provisioning is for development/testing only.',
           );
         }
       }

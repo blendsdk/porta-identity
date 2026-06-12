@@ -9,7 +9,7 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -52,7 +52,11 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         'Create a permission',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('name', { type: 'string', demandOption: true, description: 'Permission name' })
             .option('slug', { type: 'string', description: 'Permission slug' })
             .option('description', { type: 'string', description: 'Permission description' }),
@@ -91,7 +95,11 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         'List permissions for an application',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('page', { type: 'number', default: 1, description: 'Page number' })
             .option('page-size', { type: 'number', default: 20, description: 'Items per page' }),
         async (argv) => {
@@ -112,12 +120,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
             } else {
               printTable(
                 ['ID', 'Name', 'Slug', 'Created'],
-                result.data.map((p) => [
-                  truncate(p.id, 8),
-                  p.name,
-                  p.slug,
-                  formatDate(p.createdAt),
-                ]),
+                result.data.map((p) => [p.id, p.name, p.slug, formatDate(p.createdAt)]),
               );
               info(`Total: ${result.total} permissions`);
             }
@@ -132,8 +135,16 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         'Show permission details',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('permission-id', { type: 'string', demandOption: true, description: 'Permission ID' }),
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('permission-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);
@@ -165,8 +176,16 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         'Archive a permission',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('permission-id', { type: 'string', demandOption: true, description: 'Permission ID' }),
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('permission-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);

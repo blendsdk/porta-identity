@@ -11,7 +11,7 @@ import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, formatDate } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Arg types
@@ -85,8 +85,8 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               ['Event', 'Actor', 'Description', 'IP', 'Date'],
               entries.map((e) => [
                 e.eventType,
-                truncate(e.actorId ?? '—', 12),
-                truncate(e.description ?? '—', 40),
+                e.actorId ?? '—',
+                e.description ?? '—',
                 e.ipAddress ?? '—',
                 formatDate(e.createdAt),
               ]),

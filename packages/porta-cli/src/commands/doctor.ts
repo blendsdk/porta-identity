@@ -53,7 +53,11 @@ function checkNodeVersion(): CheckResult {
   if (major >= 22) {
     return { name: 'Node.js version', status: 'pass', message: `${version} (>= 22 required)` };
   }
-  return { name: 'Node.js version', status: 'fail', message: `${version} — Node.js >= 22.0.0 is required` };
+  return {
+    name: 'Node.js version',
+    status: 'fail',
+    message: `${version} — Node.js >= 22.0.0 is required`,
+  };
 }
 
 /**
@@ -133,7 +137,9 @@ async function checkServerHealth(serverUrl: string | undefined): Promise<CheckRe
 
   if (health.status === 'ok') {
     const services = health.services
-      ? Object.entries(health.services).map(([k, v]) => `${k}=${v}`).join(', ')
+      ? Object.entries(health.services)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ')
       : '';
     return {
       name: 'Server health',

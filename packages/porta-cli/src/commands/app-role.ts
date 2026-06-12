@@ -9,7 +9,7 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -65,7 +65,11 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Create a role',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('name', { type: 'string', demandOption: true, description: 'Role name' })
             .option('slug', { type: 'string', description: 'Role slug' })
             .option('description', { type: 'string', description: 'Role description' }),
@@ -104,7 +108,11 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'List roles for an application',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('page', { type: 'number', default: 1, description: 'Page number' })
             .option('page-size', { type: 'number', default: 20, description: 'Items per page' }),
         async (argv) => {
@@ -125,12 +133,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             } else {
               printTable(
                 ['ID', 'Name', 'Slug', 'Created'],
-                result.data.map((r) => [
-                  truncate(r.id, 8),
-                  r.name,
-                  r.slug,
-                  formatDate(r.createdAt),
-                ]),
+                result.data.map((r) => [r.id, r.name, r.slug, formatDate(r.createdAt)]),
               );
               info(`Total: ${result.total} roles`);
             }
@@ -145,7 +148,11 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Show role details',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' }),
         async (argv) => {
           try {
@@ -178,7 +185,11 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Update a role',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' })
             .option('name', { type: 'string', description: 'New role name' })
             .option('description', { type: 'string', description: 'New description' }),
@@ -206,7 +217,11 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Archive a role',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' }),
         async (argv) => {
           try {
@@ -224,13 +239,25 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Assign a permission to a role',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' })
-            .positional('permission-id', { type: 'string', demandOption: true, description: 'Permission ID' }),
+            .positional('permission-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.roles.assignPermission(argv['app-id'], argv['role-id'], argv['permission-id']);
+            await client.roles.assignPermission(
+              argv['app-id'],
+              argv['role-id'],
+              argv['permission-id'],
+            );
             success('Permission assigned to role');
           } catch (err) {
             handleError(err, argv.verbose);
@@ -243,20 +270,35 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Remove a permission from a role',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' })
-            .positional('permission-id', { type: 'string', demandOption: true, description: 'Permission ID' }),
+            .positional('permission-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.roles.removePermission(argv['app-id'], argv['role-id'], argv['permission-id']);
+            await client.roles.removePermission(
+              argv['app-id'],
+              argv['role-id'],
+              argv['permission-id'],
+            );
             success('Permission removed from role');
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a role subcommand: create, list, show, update, archive, assign-perm, remove-perm');
+      .demandCommand(
+        1,
+        'Specify a role subcommand: create, list, show, update, archive, assign-perm, remove-perm',
+      );
   },
   handler: () => {},
 };

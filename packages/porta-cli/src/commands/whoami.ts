@@ -46,9 +46,7 @@ export const whoamiCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     // Check if the access token has expired
     const expired = isTokenExpired(creds);
     if (expired) {
-      warn(
-        'Access token expired. Run "porta login" to re-authenticate.',
-      );
+      warn('Access token expired. Run "porta login" to re-authenticate.');
     }
 
     // Output format depends on --json flag

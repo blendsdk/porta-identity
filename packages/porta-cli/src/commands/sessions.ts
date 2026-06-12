@@ -84,8 +84,8 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             printTable(
               ['Session ID', 'User ID', 'IP', 'Last Activity', 'Expires'],
               sessions.map((s) => [
-                truncate(s.sessionId, 12),
-                truncate(s.userId, 12),
+                s.sessionId,
+                s.userId,
                 s.ipAddress ?? '—',
                 formatDate(s.lastActivityAt),
                 formatDate(s.expiresAt),
@@ -146,7 +146,9 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             if (!argv.force) {
-              const ok = await confirm(`Revoke all sessions for user ${truncate(argv['user-id'], 12)}?`);
+              const ok = await confirm(
+                `Revoke all sessions for user ${truncate(argv['user-id'], 12)}?`,
+              );
               if (!ok) {
                 warn('Aborted');
                 return;
@@ -161,7 +163,9 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            success(`Revoked ${result.revoked} session(s) for user ${truncate(argv['user-id'], 12)}`);
+            success(
+              `Revoked ${result.revoked} session(s) for user ${truncate(argv['user-id'], 12)}`,
+            );
           } catch (err) {
             handleError(err, argv.verbose);
           }

@@ -90,6 +90,20 @@ Server CLI commands support:
 | `--database-url` | Override `DATABASE_URL` |
 | `--redis-url` | Override `REDIS_URL` |
 
+## Output Formatting
+
+By default, list and show commands render results as formatted tables. **Table
+cells are never truncated** — full values, including complete UUIDs, are always
+printed so they can be copied directly into other commands (e.g. `porta client
+show <full-id>`).
+
+When a table is wider than the terminal, columns are sized to fit and long
+values **wrap onto multiple lines within their cell** rather than being clipped.
+When output is piped or redirected (no TTY), each value is printed on a single
+line for easy `grep`/`awk` processing. Use `--json` for fully machine-readable
+output.
+
+
 ## Command Reference
 
 ### Standalone CLI (`@portaidentity/cli`)

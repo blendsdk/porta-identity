@@ -6,7 +6,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { printTable, printJson, success, warn, error, info, formatDate, truncate } from '../src/output.js';
+import {
+  printTable,
+  printJson,
+  success,
+  warn,
+  error,
+  info,
+  formatDate,
+  truncate,
+} from '../src/output.js';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -26,7 +35,13 @@ describe('output', () => {
 
   describe('printTable', () => {
     it('prints a table to stdout', () => {
-      printTable(['Name', 'Status'], [['org-1', 'active'], ['org-2', 'suspended']]);
+      printTable(
+        ['Name', 'Status'],
+        [
+          ['org-1', 'active'],
+          ['org-2', 'suspended'],
+        ],
+      );
       expect(logSpy).toHaveBeenCalledOnce();
       const output = logSpy.mock.calls[0][0] as string;
       // cli-table3 output contains the data
@@ -39,6 +54,36 @@ describe('output', () => {
     it('handles empty rows', () => {
       printTable(['Name'], []);
       expect(logSpy).toHaveBeenCalledOnce();
+    });
+
+    it('never truncates full UUIDs, even in a narrow terminal', () => {
+      const originalColumns = process.stdout.columns;
+      // Simulate a narrow terminal that cannot fit the full content on one line.
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 40,
+        configurable: true,
+      });
+      try {
+        const uuid = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+        // The second column uses a non-hex label ("ZZZ") so that extracting
+        // hex glyphs from the rendered table yields only the ID cell content.
+        printTable(['ID', 'Name'], [[uuid, 'ZZZ']]);
+        const rawOutput = logSpy.mock.calls[0][0] as string;
+        // Strip ANSI color codes so only the rendered glyphs remain.
+        // eslint-disable-next-line no-control-regex
+        const output = rawOutput.replace(/\u001b\[[0-9;]*m/g, '');
+        // Reconstruct the ID column's hex characters across wrapped lines.
+        // Every hex digit of the UUID must survive (wrapped, never clipped).
+        const hexOnly = output.replace(/[^0-9a-f]/g, '');
+        expect(hexOnly).toContain(uuid.replace(/-/g, ''));
+        // No ellipsis truncation marker should appear.
+        expect(output).not.toContain('…');
+      } finally {
+        Object.defineProperty(process.stdout, 'columns', {
+          value: originalColumns,
+          configurable: true,
+        });
+      }
     });
   });
 

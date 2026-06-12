@@ -74,7 +74,10 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }),
         async (argv) => {
           try {
-            const ids = argv.ids.split(',').map((id) => id.trim()).filter(Boolean);
+            const ids = argv.ids
+              .split(',')
+              .map((id) => id.trim())
+              .filter(Boolean);
 
             if (ids.length === 0) {
               printError('No IDs provided');
@@ -82,9 +85,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }
 
             if (!argv.force) {
-              const ok = await confirm(
-                `${argv.action} ${ids.length} ${argv['entity-type']}?`,
-              );
+              const ok = await confirm(`${argv.action} ${ids.length} ${argv['entity-type']}?`);
               if (!ok) {
                 warn('Aborted');
                 return;
@@ -120,7 +121,9 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            success(`Bulk ${argv.action}: ${result.succeeded} succeeded, ${result.failed} failed (${result.total} total)`);
+            success(
+              `Bulk ${argv.action}: ${result.succeeded} succeeded, ${result.failed} failed (${result.total} total)`,
+            );
 
             // Show per-item failures from results array
             const failures = result.results.filter((r) => !r.success);
@@ -129,11 +132,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printError(`${failures.length} error(s):`);
               printTable(
                 ['ID', 'Previous Status', 'Error'],
-                failures.map((r) => [
-                  r.id,
-                  r.previousStatus ?? '—',
-                  r.error ?? 'Unknown error',
-                ]),
+                failures.map((r) => [r.id, r.previousStatus ?? '—', r.error ?? 'Unknown error']),
               );
             }
           } catch (err) {

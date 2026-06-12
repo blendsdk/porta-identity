@@ -10,7 +10,7 @@ import type { ClaimValueType } from '@portaidentity/sdk';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -54,7 +54,11 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Create a custom claim definition',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('name', { type: 'string', demandOption: true, description: 'Claim name' })
             .option('slug', { type: 'string', description: 'Claim slug' })
             .option('type', {
@@ -101,7 +105,11 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'List claim definitions for an application',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
             .option('page', { type: 'number', default: 1, description: 'Page number' })
             .option('page-size', { type: 'number', default: 20, description: 'Items per page' }),
         async (argv) => {
@@ -123,7 +131,7 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printTable(
                 ['ID', 'Name', 'Slug', 'Type', 'Created'],
                 result.data.map((c) => [
-                  truncate(c.id, 8),
+                  c.id,
                   c.name,
                   c.slug,
                   c.valueType,
@@ -143,8 +151,16 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Show claim definition details',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('claim-id', { type: 'string', demandOption: true, description: 'Claim definition ID' }),
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('claim-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Claim definition ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);
@@ -177,8 +193,16 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'Archive a claim definition',
         (y) =>
           y
-            .positional('app-id', { type: 'string', demandOption: true, description: 'Application ID' })
-            .positional('claim-id', { type: 'string', demandOption: true, description: 'Claim definition ID' }),
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('claim-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Claim definition ID',
+            }),
         async (argv) => {
           try {
             const client = createClient(argv);

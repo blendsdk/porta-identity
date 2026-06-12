@@ -54,7 +54,7 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             printTable(
               ['ID', 'KID', 'Algorithm', 'Status', 'Created', 'Rotated'],
               keys.map((k) => [
-                truncate(k.id, 12),
+                k.id,
                 k.kid,
                 k.algorithm,
                 k.isActive ? 'active' : 'retired',
@@ -99,7 +99,9 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             if (!argv.force) {
-              const ok = await confirm('Rotate signing keys? This will retire the current active key.');
+              const ok = await confirm(
+                'Rotate signing keys? This will retire the current active key.',
+              );
               if (!ok) {
                 warn('Aborted');
                 return;

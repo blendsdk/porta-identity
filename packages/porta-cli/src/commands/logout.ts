@@ -45,9 +45,7 @@ export const logoutCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     // Remove the credentials file
     clearCredentials();
 
-    success(
-      `Logged out${existing.userInfo.email ? ` (was: ${existing.userInfo.email})` : ''}`,
-    );
+    success(`Logged out${existing.userInfo.email ? ` (was: ${existing.userInfo.email})` : ''}`);
     process.exit(0);
   },
 };
