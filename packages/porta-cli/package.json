@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/cli",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Standalone CLI for the Porta Identity Platform",
   "type": "module",
   "bin": {
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@portaidentity/sdk": "1.2.1",
+    "@portaidentity/sdk": "1.3.0",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "jose": "^6.2.3",
