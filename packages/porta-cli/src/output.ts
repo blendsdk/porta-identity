@@ -15,103 +15,26 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
 
-/** Matches ANSI SGR escape sequences (e.g. chalk colors) for length measurement. */
-// eslint-disable-next-line no-control-regex
-const ANSI_PATTERN = /\u001b\[[0-9;]*m/g;
-
-
-/** Returns the visible length of a string, ignoring ANSI color codes. */
-function visibleLength(value: string): number {
-  return value.replace(ANSI_PATTERN, '').length;
-}
-
-/**
- * Computes per-column widths so that long cell values wrap within the table
- * instead of overflowing the terminal — without ever dropping characters.
- *
- * Returns `undefined` when the table's natural width already fits the terminal
- * (let cli-table3 auto-size to content). When the natural width exceeds the
- * terminal, column widths are allocated proportionally to their content so the
- * table box stays intact and `wordWrap` wraps the overflow.
- *
- * @param headers - Column header labels
- * @param rows - Row data
- * @param terminalWidth - Available terminal columns
- * @returns Array of cli-table3 column widths (content + padding), or undefined
- */
-function computeColumnWidths(
-  headers: string[],
-  rows: string[][],
-  terminalWidth: number,
-): number[] | undefined {
-  const numCols = headers.length;
-  if (numCols === 0) return undefined;
-
-  // Natural content width per column = widest visible value (header or cell).
-  const natural = headers.map((header, i) => {
-    let max = visibleLength(header);
-    for (const row of rows) {
-      max = Math.max(max, visibleLength(String(row[i] ?? '')));
-    }
-    return max;
-  });
-
-  // cli-table3 layout: each column adds 2 chars of padding; borders add numCols+1.
-  const paddingPerCol = 2;
-  const borders = numCols + 1;
-  const naturalTotal = natural.reduce((sum, w) => sum + w + paddingPerCol, 0) + borders;
-
-  // Already fits — let the table size itself to the full content.
-  if (naturalTotal <= terminalWidth) return undefined;
-
-  const minContent = 6;
-  const overhead = numCols * paddingPerCol + borders;
-  const available = terminalWidth - overhead;
-
-  // Terminal too narrow even for minimums — give every column the minimum.
-  if (available < numCols * minContent) {
-    return natural.map(() => minContent + paddingPerCol);
-  }
-
-  const naturalContentTotal = natural.reduce((a, b) => a + b, 0) || 1;
-  return natural.map((w) => {
-    const allocated = Math.max(minContent, Math.floor((w / naturalContentTotal) * available));
-    return allocated + paddingPerCol;
-  });
-}
-
 /**
  * Formats data as a table and prints to stdout.
  *
  * Creates a cli-table3 instance with bold headers and prints each row. Cell
- * values are NEVER truncated: when attached to a TTY whose width is too small
- * for the full content, columns are sized to the terminal and long values wrap
- * within their cell (preserving every character, including full UUIDs). When
- * output is piped (no TTY), values print on single lines for easy grep/scripting.
+ * values are NEVER truncated or wrapped: the table auto-sizes to its full
+ * content so values (including full UUIDs) always print intact and remain
+ * copy-pasteable. When the table is wider than the terminal it scrolls
+ * horizontally, the same as standard CLI tools (e.g. `docker ps`).
  *
  * @param headers - Column header labels (will be bold)
  * @param rows - Array of row data (each row is an array of cell strings)
  */
 export function printTable(headers: string[], rows: string[][]): void {
-  const options: Table.TableConstructorOptions = {
+  const table = new Table({
     head: headers.map((h) => chalk.bold(h)),
-  };
-
-  const terminalWidth = process.stdout.columns;
-  if (terminalWidth && terminalWidth > 0) {
-    const colWidths = computeColumnWidths(headers, rows, terminalWidth);
-    if (colWidths) {
-      options.colWidths = colWidths;
-      options.wordWrap = true;
-      // Wrap long unbroken tokens (e.g. UUIDs) by character, not word boundary.
-      options.wrapOnWordBoundary = false;
-    }
-  }
-
-  const table = new Table(options);
+  });
   rows.forEach((row) => table.push(row));
   console.log(table.toString());
 }
+
 
 /**
  * Prints data as formatted JSON to stdout.
