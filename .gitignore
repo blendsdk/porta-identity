@@ -10,7 +10,6 @@ test-results/
 playwright-report/
 
 # Internal planning & requirements (not for public repo)
-plans/
 requirements/
 
 # VitePress
@@ -26,5 +25,5 @@ playground/config.generated.js
 playground/node_modules/
 playground-bff/config.generated.json
 playground-bff/node_modules/
-plans
+plans/
 temp
