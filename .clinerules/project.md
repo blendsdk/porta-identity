@@ -1,6 +1,17 @@
 # Generated Project Configuration
 
 > **🔄 Updated by `analyze_project`** (incremental update)
+> **Scanned:** 2026-06-12
+> **Changes detected:**
+> - Re-analysis under latest `analyze_project` protocol
+> - Added roadmap directive to the mandatory CodeOps rules section (`get_rule("roadmap")`)
+> - Expanded Cross-References with newer generic rule files (requirements, retro_requirements, techdocs, upgrade_plan, grill_me, preflight, roadmap)
+> - Refreshed `plans/` subfolders (oidc-issuer-fix, oidc-tester, porta-sdk, sdk-contract-audit, standalone-cli)
+> - Updated requirements count to RD-01 through RD-30
+> - Preserved curated Toolchain/Commands/Structure/Special Rules detail (auto-detection regressed these to generic values)
+> - Previous scan: 2026-05-07
+
+> **🔄 Updated by `analyze_project`** (incremental update)
 > **Scanned:** 2026-05-07
 > **Changes detected:**
 > - Re-analysis after RD-30 (standalone admin GUI) completion — confirmed all sections up to date
@@ -27,6 +38,8 @@ using the codeops-mcp tools:**
 3. `get_rule("testing")` — Load testing workflows
 4. `get_rule("git-commands")` — Load git commit protocols
 
+**Roadmap directive:** If `plans/00-roadmap.md` exists, you MUST read it at the start of every task and update it at every lifecycle stage transition. See `get_rule("roadmap")`.
+
 These rules are **mandatory** and must be consulted before every task.
 **Do NOT skip this step. Do NOT proceed without reading these documents.**
 
@@ -51,6 +64,8 @@ These rules are **mandatory** and must be consulted before every task.
 - **Config Validation:** zod
 - **Dev Server:** tsx watch
 - **OIDC Engine:** node-oidc-provider 9.x
+- **Workspace:** Yarn workspaces monorepo (packages/porta-sdk, packages/porta-cli, packages/porta-admin-gui)
+- **Docs Site:** VitePress (+ vitepress-plugin-mermaid)
 
 **Manifest files found:** package.json, Makefile, tsconfig.json, docker/docker-compose.yml
 
@@ -106,6 +121,7 @@ clear && sleep 3 && yarn lint
 
 ```bash
 # Full verification — run this before any git commit
+# (lint + build + test:all + verify:sdk + verify:cli + verify:gui)
 clear && sleep 3 && yarn verify
 ```
 
@@ -129,9 +145,19 @@ clear && sleep 3 && yarn dev
 clear && sleep 3 && yarn dev:server
 ```
 
+### Docs
+
+```bash
+# VitePress docs dev server
+clear && sleep 3 && yarn docs:dev
+
+# Build the docs site
+clear && sleep 3 && yarn docs:build
+```
+
 ## Project Structure
 
-### Type: Single repository
+### Type: Yarn workspaces monorepo (server at root + packages/*)
 
 ### Directory Layout
 
@@ -358,13 +384,15 @@ packages/            # Yarn workspace packages
     tests/           # 352 tests across 29 files
 plans/               # Implementation plans (make_plan output)
   _archive/          # Archived completed plans (RD-01 through RD-12 + misc)
-  bff-playground/    # Active BFF playground plan
+  oidc-issuer-fix/   # OIDC issuer fix plan
+  oidc-tester/       # OIDC tester plan
   porta-sdk/         # SDK implementation plan (RD-25)
-  client-login-methods/ # Completed login-methods plan
-  erp-claims-playground/ # Active ERP claims playground plan
-  magic-link-cleanup/ # Active magic-link cleanup plan
-requirements/        # Requirements documents (RD-01 through RD-25+)
+  sdk-contract-audit/ # SDK↔Server contract audit plan
+  standalone-cli/    # Standalone CLI plan (RD-26/RD-29)
+requirements/        # Requirements documents (RD-01 through RD-30 + ambiguity registers)
 migrations/          # SQL migration files (001–020)
+docs/                # VitePress product documentation site
+  implementation-details/ # Technical architecture docs (techdocs subfolder)
 dist/                # TypeScript build output (gitignored)
 ```
 
@@ -413,7 +441,7 @@ dist/                # TypeScript build output (gitignored)
 - **Health check** — `GET /health` must check server + DB + Redis
 - **Config fail-fast** — missing/invalid env vars must cause immediate exit with clear error
 - **Logger before config** — logger uses process.env directly (no config dependency)
-- **17 Requirements Documents** — RD-01 through RD-17 in `requirements/` (RD-13 admin-auth CLI v2, RD-14 playground application, RD-15 playground infrastructure, RD-16 scope translation/UI polish, RD-17 setup documentation)
+- **30 Requirements Documents** — RD-01 through RD-30 in `requirements/` (recent: RD-25 porta-sdk, RD-26 provisioning enhancements, RD-27 https dev setup, RD-28 2fa admin API, RD-29 standalone CLI, RD-30 standalone admin GUI), plus ambiguity registers
 - **Hybrid OIDC adapters** — Redis for short-lived (Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest), PostgreSQL for long-lived (AccessToken, RefreshToken, Grant). Session `destroy()` cascades grant/token deletion across both stores for explicit logout; natural session expiry preserves tokens for refresh flows. Opportunistic `purgeExpired()` fire-and-forget cleanup on auth flow start.
 - **ES256 signing** — ECDSA P-256 for token signing, keys stored as PEM in DB
 - **Path-based multi-tenancy** — `/:orgSlug/*` prefix for all OIDC endpoints
@@ -444,6 +472,13 @@ The generic rule files that read this `project.md`:
 - **testing.md** — Uses test commands, test locations, test framework
 - **git-commands.md** — Uses commit scope, verify command
 - **agents.md** — Uses shell commands, verify command
+- **requirements.md** — Uses project type, tech stack, and conventions for requirements discovery
+- **retro_requirements.md** — Uses project type, tech stack for codebase analysis adaptation
+- **techdocs.md** — Uses project type, tech stack for documentation generation
+- **upgrade_plan.md** — Uses project context for upgrade compatibility checks
+- **grill_me.md** — Uses project context for deep disambiguation before planning or requirements
+- **preflight.md** — Uses project type, tech stack, and conventions for grounded quality audits
+- **roadmap.md** — Tracks RDs/plans across the feature-set lifecycle if a roadmap exists (make_roadmap)
 
 Project-specific rule files in `.clinerules/`:
 
