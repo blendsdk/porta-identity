@@ -41,9 +41,9 @@ if [ ! -f "$PROJECT_ROOT/test-harness/certs/server.crt" ]; then
     -newkey rsa:2048 \
     -keyout "$PROJECT_ROOT/test-harness/certs/server.key" \
     -out "$PROJECT_ROOT/test-harness/certs/server.crt" \
-    -subj "/CN=porta.local" \
-    -addext "subjectAltName=DNS:porta.local,DNS:app.local,DNS:localhost,IP:127.0.0.1" 2>/dev/null
-  echo "  Certificate generated (SANs: porta.local, app.local, localhost, 127.0.0.1)!"
+    -subj "/CN=porta.test" \
+    -addext "subjectAltName=DNS:porta.test,DNS:app.test,DNS:localhost,IP:127.0.0.1" 2>/dev/null
+  echo "  Certificate generated (SANs: porta.test, app.test, localhost, 127.0.0.1)!"
 fi
 
 # 4. Build and start Docker services
@@ -108,10 +108,11 @@ sleep 2
 echo ""
 echo "=== OIDC Test Harness: READY (cross-domain mode) ==="
 echo ""
-echo "  SPA:     https://app.local:4100"
-echo "  BFF:     http://app.local:4101"
+echo "  SPA:     https://app.test:4100"
+echo "  BFF:     http://app.test:4101"
 echo "  Porta:   https://porta.local:3443 (via nginx)"
 echo "  MailHog: http://localhost:8025"
+
 echo ""
 
 # CI mode: exit immediately (services run in background)

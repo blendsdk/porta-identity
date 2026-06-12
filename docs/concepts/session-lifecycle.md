@@ -102,11 +102,21 @@ Porta resolves this with two complementary, security-preserving safeguards:
    `promptLoginReset` middleware (`src/middleware/prompt-login-reset.ts`) runs
    on the **initial** org-scoped authorize endpoint (`GET`/`POST`
    `/{orgSlug}/auth`) before the provider. When the `prompt` parameter contains
-   the `login` value, it clears the `_session` + `_session.sig` cookie pair so
-   the provider mints a fresh session with no uid mismatch. Normal SSO /
-   session-reuse logins (no `prompt=login`) are completely unaffected. The stale
-   Redis `Session` record is left to expire naturally via its TTL. An audit
-   event `auth.prompt_login.session_reset` is recorded.
+   the `login` value, it performs **two** actions so the provider mints a fresh
+   session with no uid mismatch:
+   - **Strips** the `_session` + `_session.sig` pair from the **inbound request
+     header** (`ctx.req.headers.cookie`). This is the half that actually fixes
+     the bug: node-oidc-provider is invoked via
+     `provider.callback()(ctx.req, ctx.res)` and reads the session cookie from
+     the raw inbound request — not from the response — so the stale cookie must
+     be removed from the request *this* request, before `next()`.
+   - **Clears** the same pair on the **response** so the browser drops the stale
+     cookie for future requests too.
+
+   Normal SSO / session-reuse logins (no `prompt=login`) are completely
+   unaffected. The stale Redis `Session` record is left to expire naturally via
+   its TTL. An audit event `auth.prompt_login.session_reset` is recorded.
+
 
 2. **Graceful `SessionNotFound` recovery (safety net).** If a mismatch still
    reaches the provider's error handler, the custom `renderError` hook

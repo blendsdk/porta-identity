@@ -113,6 +113,53 @@ export function clearSessionCookies(
   ctx.cookies.set(`${sessionCookieName}.sig`, null, opts);
 }
 
+/**
+ * Strip the OIDC session cookie pair from the INBOUND request header.
+ *
+ * This is the critical half of the fix. node-oidc-provider is invoked via
+ * `provider.callback()(ctx.req, ctx.res)` and reads the session cookie from the
+ * raw inbound request (`ctx.req.headers.cookie`) — NOT from anything we write to
+ * the response. Clearing the response cookie (via `clearSessionCookies`) only
+ * tells the *browser* to drop the cookie on *future* requests; it does nothing
+ * for the current request the provider is about to process.
+ *
+ * To prevent the provider from seeing the stale `_session` during THIS request
+ * (and thus hitting the session-id-rotation `SessionNotFound`), we must remove
+ * the session cookie pair from `ctx.req.headers.cookie` before calling `next()`.
+ *
+ * Removes any cookie whose name is exactly `sessionCookieName` or begins with
+ * `${sessionCookieName}.` (covers `_session.sig`, `_session.legacy`,
+ * `_session.legacy.sig`). All other cookies are preserved unchanged.
+ *
+ * @param ctx - Koa context (its `ctx.req` is the same raw req the provider reads)
+ * @param sessionCookieName - The provider's session cookie name (e.g. `_session`)
+ */
+export function stripSessionCookiesFromRequest(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  sessionCookieName: string,
+): void {
+  const header: string | undefined = ctx.req?.headers?.cookie;
+  if (!header) return;
+
+  const prefix = `${sessionCookieName}.`;
+  const kept = header
+    .split(';')
+    .map((pair: string) => pair.trim())
+    .filter((pair: string) => {
+      if (!pair) return false;
+      const eq = pair.indexOf('=');
+      const name = (eq === -1 ? pair : pair.slice(0, eq)).trim();
+      return name !== sessionCookieName && !name.startsWith(prefix);
+    });
+
+  if (kept.length === 0) {
+    delete ctx.req.headers.cookie;
+  } else {
+    ctx.req.headers.cookie = kept.join('; ');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Middleware factory
 // ---------------------------------------------------------------------------
@@ -151,8 +198,16 @@ export function promptLoginReset(provider: Provider): Middleware {
       return next();
     }
 
-    // Force a clean slate: clear the (possibly stale) session cookie pair so the
-    // provider mints a fresh session and resume cannot hit a uid mismatch.
+    // Force a clean slate. TWO actions are required:
+    //
+    // 1. Strip the session cookie pair from the INBOUND request header so the
+    //    provider — invoked this same request via `provider.callback()(ctx.req,
+    //    ctx.res)`, which reads `ctx.req.headers.cookie` — does NOT see the
+    //    stale `_session` and cannot hit the session-id-rotation
+    //    `SessionNotFound`. This is the half that actually fixes the bug.
+    // 2. Clear the response cookie pair so the browser drops the stale cookie
+    //    for future requests too.
+    stripSessionCookiesFromRequest(ctx, sessionCookieName);
     clearSessionCookies(ctx, sessionCookieName);
 
     logger.info(

@@ -20,12 +20,12 @@
 // ⚠️ TEST HARNESS ONLY — trust self-signed cert for HTTPS calls to Porta via nginx
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+import Router from '@koa/router';
+import Koa from 'koa';
+import session from 'koa-session';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import Koa from 'koa';
-import Router from '@koa/router';
-import session from 'koa-session';
 import * as openidClient from 'openid-client';
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
 const PORT = 4101;
 const PORTA_BASE_URL: string = config.porta.baseUrl; // https://localhost:3443
-const ORG_SLUG: string = config.orgSlug;             // test-org
+const ORG_SLUG: string = config.orgSlug; // test-org
 
 console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
 
@@ -45,7 +45,9 @@ console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
 // openid-client v6 discovery
 // ---------------------------------------------------------------------------
 
-console.log(`[BFF] Discovering OIDC config from ${PORTA_BASE_URL}/${ORG_SLUG}/.well-known/openid-configuration`);
+console.log(
+  `[BFF] Discovering OIDC config from ${PORTA_BASE_URL}/${ORG_SLUG}/.well-known/openid-configuration`,
+);
 
 const oidcConfig = await openidClient.discovery(
   new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
@@ -66,12 +68,17 @@ console.log('[BFF] OIDC discovery complete');
 const app = new Koa();
 app.keys = ['test-harness-bff-session-key'];
 
-app.use(session({
-  key: 'bff.sess',
-  maxAge: 86400000, // 24h
-  httpOnly: true,
-  signed: true,
-}, app));
+app.use(
+  session(
+    {
+      key: 'bff.sess',
+      maxAge: 86400000, // 24h
+      httpOnly: true,
+      signed: true,
+    },
+    app,
+  ),
+);
 
 const router = new Router();
 
@@ -106,6 +113,7 @@ router.get('/login', async (ctx) => {
     scope: config.bff.scope,
     code_challenge,
     code_challenge_method: 'S256',
+    prompt: 'login',
     state,
     nonce,
   });
@@ -126,15 +134,11 @@ router.get('/callback', async (ctx) => {
       return;
     }
 
-    const tokens = await openidClient.authorizationCodeGrant(
-      oidcConfig,
-      ctx.request.URL,
-      {
-        pkceCodeVerifier: code_verifier,
-        expectedState,
-        expectedNonce,
-      },
-    );
+    const tokens = await openidClient.authorizationCodeGrant(oidcConfig, ctx.request.URL, {
+      pkceCodeVerifier: code_verifier,
+      expectedState,
+      expectedNonce,
+    });
 
     // Store tokens in session
     ctx.session!.tokens = {
@@ -169,10 +173,7 @@ router.get('/introspect', async (ctx) => {
   }
 
   try {
-    const result = await openidClient.tokenIntrospection(
-      oidcConfig,
-      tokens.access_token,
-    );
+    const result = await openidClient.tokenIntrospection(oidcConfig, tokens.access_token);
     console.log('[BFF] Introspection complete');
     ctx.body = renderResult('Introspection Result', result);
   } catch (err: unknown) {
@@ -214,10 +215,7 @@ router.get('/refresh', async (ctx) => {
   }
 
   try {
-    const newTokens = await openidClient.refreshTokenGrant(
-      oidcConfig,
-      tokens.refresh_token,
-    );
+    const newTokens = await openidClient.refreshTokenGrant(oidcConfig, tokens.refresh_token);
 
     const oldAccessToken = tokens.access_token;
 
@@ -285,7 +283,11 @@ const STYLES = `
 `;
 
 function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function renderLoggedOut(): string {
