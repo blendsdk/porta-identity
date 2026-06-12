@@ -60,6 +60,28 @@ porta login [--server <url>] [--no-browser] [--client-id <id>]
 5. Exchanges the code for access and refresh tokens
 6. Stores credentials at `~/.porta/credentials.json`
 
+The CLI requests the `offline_access` scope so the server issues a **refresh
+token**. The CLI uses this refresh token to silently obtain new access tokens as
+they expire (access tokens are short-lived — about 1 hour by default), so you do
+not have to run `porta login` again every hour.
+
+::: warning No refresh token issued
+If the server does **not** return a refresh token, the CLI prints a warning:
+
+```
+Warning: the server did not issue a refresh token. You'll need to run
+'porta login' again when the access token expires (~1h). Ensure the client
+allows the 'refresh_token' grant and the 'offline_access' scope.
+```
+
+This normally means the admin OIDC client is missing the `refresh_token` grant
+type or the `offline_access` scope. The client created by `porta init` is
+configured correctly; this warning is only expected for hand-edited or
+externally-provisioned clients. See
+[Session Lifecycle](/concepts/session-lifecycle) for how Porta upgrades an
+existing grant to include `offline_access`.
+:::
+
 **Mode:** HTTP
 
 **Options:**

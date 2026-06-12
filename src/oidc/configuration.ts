@@ -26,6 +26,7 @@ import { logger } from '../lib/logger.js';
 import { getUserById } from '../users/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
+import { clearSessionCookies } from '../middleware/prompt-login-reset.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -241,6 +242,54 @@ export async function postLogoutSuccessSourceHook(ctx: any): Promise<void> {
 }
 
 /**
+ * Detect a node-oidc-provider `SessionNotFound` error.
+ *
+ * `SessionNotFound` extends `InvalidRequest`, so its OIDC `error` code is
+ * `invalid_request`. We match on the original error's class name (most precise)
+ * and, defensively, on the characteristic `error_description` strings raised by
+ * the provider's resume action ("interaction session not found",
+ * "...session mismatch", "authorization request has expired").
+ *
+ * @param out - OIDC error details
+ * @param error - Original Error object thrown by the provider
+ * @returns true if this is a SessionNotFound error
+ */
+function isSessionNotFoundError(
+  out: { error: string; error_description?: string },
+  error: Error | undefined,
+): boolean {
+  if (error?.name === 'SessionNotFound') return true;
+
+  if (out.error !== 'invalid_request') return false;
+  const desc = (out.error_description ?? '').toLowerCase();
+  return (
+    desc.includes('interaction session not found') ||
+    desc.includes('session and authentication session mismatch') ||
+    desc.includes('authorization request has expired') ||
+    desc.includes('authorization session and cookie identifier mismatch')
+  );
+}
+
+/**
+ * Clear the provider's session cookie pair from within a provider ctx.
+ *
+ * Resolves the session cookie name from the provider (defaulting to
+ * `_session`) and delegates to the shared, signing-free `clearSessionCookies`
+ * helper so the middleware and this hook use one tested code path (PF-002).
+ *
+ * @param ctx - oidc-provider's enhanced Koa context
+ */
+function clearProviderSessionCookies(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+): void {
+  const cookieNameFn = ctx?.oidc?.provider?.cookieName;
+  const sessionCookieName =
+    typeof cookieNameFn === 'function' ? cookieNameFn.call(ctx.oidc.provider, 'session') : '_session';
+  clearSessionCookies(ctx, sessionCookieName);
+}
+
+/**
  * Custom renderError hook for node-oidc-provider.
  *
  * Replaces the provider's default bare HTML error page with Porta's styled
@@ -254,7 +303,7 @@ export async function postLogoutSuccessSourceHook(ctx: any): Promise<void> {
  *
  * @param ctx - oidc-provider's enhanced Koa context
  * @param out - OIDC error details (error code + optional description)
- * @param _error - Original Error object (unused — we use generic message)
+ * @param _error - Original Error object (used to detect SessionNotFound)
  */
 export async function renderErrorHook(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -271,6 +320,32 @@ export async function renderErrorHook(
     const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
     const t = getTranslationFunction(locale, org?.slug);
 
+    // ---------------------------------------------------------------------
+    // Graceful SessionNotFound recovery (Bug #1, AR-4).
+    //
+    // node-oidc-provider throws `SessionNotFound` during authorize/resume when
+    // the interaction's recorded session uid no longer matches the live session
+    // (e.g. a stale `_session` cookie carried into the flow), or when the
+    // interaction record is missing. Without recovery the user sees a terminal
+    // "Something went wrong" and must manually clear storage.
+    //
+    // Here we clear the stale `_session`/`_session.sig` cookie pair (signing-free)
+    // and show a recovery message that invites the user to start sign-in again.
+    // The next request then has no stale cookie, so a fresh session is minted.
+    //
+    // SECURITY: this only clears a provably-dead cookie and re-renders — it does
+    // NOT accept or revive any session. The provider's SessionNotFound guard
+    // still fully rejects the mismatched session.
+    // ---------------------------------------------------------------------
+    const isSessionNotFound = isSessionNotFoundError(out, _error);
+    if (isSessionNotFound) {
+      clearProviderSessionCookies(ctx);
+    }
+
+    const errorMessage = isSessionNotFound
+      ? t('errors.session_expired')
+      : t('errors.generic');
+
     // SECURITY: Never expose raw error_description to the user — it may
     // contain internal details. Use generic i18n message instead.
     // OIDC error codes (e.g., 'invalid_client') are safe standard strings.
@@ -280,7 +355,7 @@ export async function renderErrorHook(
       t,
       csrfToken: '',
       orgSlug: org?.slug ?? '',
-      errorMessage: t('errors.generic'),
+      errorMessage,
       errorCode: out.error,
     });
 
@@ -293,6 +368,68 @@ export async function renderErrorHook(
     ctx.set('Content-Security-Policy', HTML_CSP);
     ctx.body = '<!DOCTYPE html><html><body><h1>Error</h1><p>An error occurred.</p></body></html>';
   }
+}
+
+// ---------------------------------------------------------------------------
+// loadExistingGrant hook
+// ---------------------------------------------------------------------------
+
+/**
+ * Custom `loadExistingGrant` for node-oidc-provider.
+ *
+ * Mirrors the provider default (resolve the grant from the consent result or
+ * the session's grant id), then conditionally **upgrades** an existing grant to
+ * include `offline_access`.
+ *
+ * Why this exists (Bug #2): with `prompt=login` and a pre-existing Grant that
+ * lacks `offline_access`, the provider does not route through the consent
+ * interaction, so the consent handlers' `offline_access`-adding code never runs.
+ * The authorization code is then issued WITHOUT `offline_access` in its granted
+ * scopes, and `issueRefreshToken` returns false — so no refresh token is minted.
+ * This is exactly the CLI failure ("no refresh_token available" ~1h later).
+ *
+ * The upgrade is strictly gated (AR-6 / AR-7): only when the request asked for
+ * `offline_access`, the client allows the `refresh_token` grant, AND the grant
+ * does not already include `offline_access`. In every other case the grant is
+ * returned unchanged — identical to the provider default — so no other client
+ * or flow is affected.
+ *
+ * @param ctx - node-oidc-provider's enhanced Koa context
+ * @returns the existing Grant (possibly upgraded) or undefined
+ */
+export async function loadExistingGrant(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+): Promise<unknown | undefined> {
+  const grantId =
+    ctx.oidc.result?.consent?.grantId ||
+    ctx.oidc.session.grantIdFor(ctx.oidc.client.clientId);
+
+  if (!grantId) return undefined;
+
+  const grant = await ctx.oidc.provider.Grant.find(grantId);
+  if (!grant) return undefined;
+
+  // AR-6/AR-7: upgrade an existing grant to include offline_access when the
+  // request asked for it, the client allows refresh_token, and it's missing.
+  const requestedScopes = String(ctx.oidc.params?.scope ?? '')
+    .split(' ')
+    .filter(Boolean);
+  const wantsOffline = requestedScopes.includes('offline_access');
+  const clientAllowsRefresh =
+    typeof ctx.oidc.client?.grantTypeAllowed === 'function' &&
+    ctx.oidc.client.grantTypeAllowed('refresh_token');
+  const grantHasOffline = String(grant.getOIDCScope() ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .includes('offline_access');
+
+  if (wantsOffline && clientAllowsRefresh && !grantHasOffline) {
+    grant.addOIDCScope('offline_access');
+    await grant.save();
+  }
+
+  return grant;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,6 +455,10 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
 
     // Account finder — looks up users for ID token claims and userinfo
     findAccount,
+
+    // Custom grant loader — upgrades an existing grant to include
+    // offline_access when requested (Bug #2 fix). See loadExistingGrant above.
+    loadExistingGrant,
 
     // OIDC features
     features: {

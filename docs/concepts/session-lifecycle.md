@@ -72,6 +72,55 @@ This cleanup:
 
 This pattern is proven from Porta v4.
 
+## Forced Re-Login (`prompt=login`)
+
+OIDC relying parties — including the Porta CLI and Admin GUI — can request a
+**forced re-authentication** by sending `prompt=login` on the authorization
+request. This tells the provider to ignore any existing SSO session and make
+the user sign in again.
+
+### The stale-cookie problem
+
+A subtle edge case occurs when a `_session` cookie from a *previous* login
+survives in the browser into a new `prompt=login` flow. During the authorize
+resume step, node-oidc-provider rotates the session identifier, so the
+interaction's recorded session uid no longer matches the live session uid. The
+provider then throws `SessionNotFound`, which historically surfaced as a
+terminal **"Something went wrong"** page — the user had to manually clear
+browser storage to recover.
+
+> **Note:** The underlying Redis `Session` record is present during this
+> failure — this is a session-id rotation mismatch, **not** a Redis durability
+> problem. See [Three-Point Lifecycle Model](#three-point-lifecycle-model) for
+> how `Session` records expire.
+
+### Two-layer fix
+
+Porta resolves this with two complementary, security-preserving safeguards:
+
+1. **Proactive cookie reset (`prompt=login` middleware).** The
+   `promptLoginReset` middleware (`src/middleware/prompt-login-reset.ts`) runs
+   on the **initial** org-scoped authorize endpoint (`GET`/`POST`
+   `/{orgSlug}/auth`) before the provider. When the `prompt` parameter contains
+   the `login` value, it clears the `_session` + `_session.sig` cookie pair so
+   the provider mints a fresh session with no uid mismatch. Normal SSO /
+   session-reuse logins (no `prompt=login`) are completely unaffected. The stale
+   Redis `Session` record is left to expire naturally via its TTL. An audit
+   event `auth.prompt_login.session_reset` is recorded.
+
+2. **Graceful `SessionNotFound` recovery (safety net).** If a mismatch still
+   reaches the provider's error handler, the custom `renderError` hook
+   (`src/oidc/configuration.ts`) detects `SessionNotFound`, clears the stale
+   cookie pair, and renders a friendly **"Your session has expired. Please sign
+   in again."** message instead of the generic error. The next request then has
+   no stale cookie and starts a clean flow.
+
+**Security note:** Both layers only ever *clear* a provably-dead cookie and
+re-render. Neither accepts, revives, or trusts any session — the provider's
+`SessionNotFound` guard still fully rejects the mismatched session. Cookie
+clearing is signing-free (the outer Koa app does not configure `app.keys`), so
+it works regardless of cookie-signing configuration.
+
 ## Logout Page UX
 
 When a user triggers logout, they see a two-action page:
@@ -97,7 +146,8 @@ The BFF performs **token revocation** before redirecting to the end-session endp
 | `src/oidc/postgres-adapter.ts` | `revokeGrantsByIds()` and `purgeExpired()` functions |
 | `src/oidc/redis-adapter.ts` | `cleanupRedisGrants()` function |
 | `src/routes/interactions.ts` | Opportunistic `purgeExpired()` call on auth flow start |
-| `src/oidc/configuration.ts` | `logoutSource` hook for logout page rendering |
+| `src/oidc/configuration.ts` | `logoutSource` hook, `renderError` SessionNotFound recovery, `loadExistingGrant` offline_access upgrade |
+| `src/middleware/prompt-login-reset.ts` | `prompt=login` session-cookie reset middleware |
 | `templates/default/pages/logout.hbs` | Logout page template |
 
 ## Related Documentation

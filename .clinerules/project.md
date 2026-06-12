@@ -187,6 +187,7 @@ src/
     client-secret-hash.ts # SHA-256 pre-hash for OIDC client_secret_post
     oidc-cors.ts     # CORS handler for OIDC endpoints
     root-page.ts     # Neutral GET /, /robots.txt, /favicon.ico (no product leakage)
+    prompt-login-reset.ts # prompt=login session-cookie reset (clears stale _session before authorize)
   oidc/              # OIDC provider modules
     configuration.ts # Provider configuration builder (PKCE, scopes, claims, TTLs)
     provider.ts      # Provider factory (creates configured Provider instance)

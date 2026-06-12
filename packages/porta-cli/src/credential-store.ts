@@ -60,8 +60,14 @@ export interface StoredCredentials {
   clientId: string;
   /** Current access token (Bearer token for API calls) */
   accessToken: string;
-  /** Refresh token for obtaining new access tokens */
-  refreshToken: string;
+  /**
+   * Refresh token for obtaining new access tokens.
+   *
+   * Optional: absent when the server did not issue a refresh token (no
+   * `offline_access` granted). When missing, the CLI cannot silently renew
+   * the access token and `porta login` must be re-run after it expires.
+   */
+  refreshToken?: string;
   /** ID token containing user identity claims */
   idToken: string;
   /** Token expiry timestamp (ISO 8601) */

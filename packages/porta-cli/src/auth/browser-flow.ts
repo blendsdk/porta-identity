@@ -221,6 +221,23 @@ export async function executeBrowserFlow(
   });
 
   // ---------------------------------------------------------------
+  // Step 7.5: Warn if the server did not issue a refresh token.
+  //
+  // Without a refresh token, the CLI cannot silently renew the access
+  // token and will require `porta login` again once it expires (~1h).
+  // This usually means the client lacks the `refresh_token` grant or the
+  // request did not result in `offline_access` being granted. Login still
+  // succeeds (credentials are saved) — this is a caveat, not a failure. (AR-8)
+  // ---------------------------------------------------------------
+  if (!tokens.refresh_token) {
+    log(
+      "Warning: the server did not issue a refresh token. You'll need to run 'porta login' " +
+        'again when the access token expires (~1h). Ensure the client allows the ' +
+        "'refresh_token' grant and the 'offline_access' scope.",
+    );
+  }
+
+  // ---------------------------------------------------------------
   // Step 8: Decode the ID token to extract user identity
   // ---------------------------------------------------------------
   const claims = decodeJwt(tokens.id_token);

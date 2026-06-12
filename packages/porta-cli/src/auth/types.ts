@@ -41,8 +41,14 @@ export interface AdminMetadata {
 export interface TokenResponse {
   /** JWT access token for API authorization */
   access_token: string;
-  /** Refresh token for obtaining new access tokens */
-  refresh_token: string;
+  /**
+   * Refresh token for obtaining new access tokens.
+   *
+   * Optional: the server only issues a refresh token when the authorization
+   * request was granted `offline_access` and the client allows the
+   * `refresh_token` grant. When absent, the CLI warns at login (see AR-8).
+   */
+  refresh_token?: string;
   /** OIDC ID token containing user identity claims */
   id_token: string;
   /** Seconds until the access token expires */
@@ -68,8 +74,13 @@ export interface AuthFlowResult {
   clientId: string;
   /** JWT access token */
   accessToken: string;
-  /** Refresh token for renewing access */
-  refreshToken: string;
+  /**
+   * Refresh token for renewing access.
+   *
+   * Optional: absent when the server did not issue a refresh token (no
+   * `offline_access` granted). The SDK's CLI auth already tolerates this.
+   */
+  refreshToken?: string;
   /** OIDC ID token */
   idToken: string;
   /** ISO 8601 expiry timestamp for the access token */

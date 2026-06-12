@@ -36,6 +36,7 @@ import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
+import { promptLoginReset } from './middleware/prompt-login-reset.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
@@ -425,6 +426,13 @@ export function createApp(oidcProvider?: Provider): Koa {
   // This is the catch-all for OIDC protocol endpoints (auth, token, jwks, etc.)
   // MUST be last because /:orgSlug/* matches everything.
   if (oidcProvider) {
+    // prompt=login session reset (Bug #1) — mounted on the outer app BEFORE the
+    // OIDC router so it runs on a GET /{orgSlug}/auth request (with prompt=login)
+    // before node-oidc-provider processes it. Clears the stale `_session` cookie
+    // pair so the provider mints a fresh session and resume cannot hit a uid
+    // mismatch. No-op for any non-prompt=login request (normal SSO preserved).
+    app.use(promptLoginReset(oidcProvider));
+
     const oidcRouter = new Router({ prefix: '/:orgSlug' });
 
     // Tenant resolver validates the org slug and sets ctx.state.organization
