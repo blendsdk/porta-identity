@@ -18,17 +18,17 @@
  * @module auth/browser-flow
  */
 
-import { URL } from 'node:url';
 import { decodeJwt } from 'jose';
-import { generateCodeVerifier, generateCodeChallenge, generateState } from './pkce.js';
-import { fetchAdminMetadata } from './metadata.js';
+import { URL } from 'node:url';
+import { question } from '../prompt.js';
 import {
-  startCallbackServer,
-  parseCallbackUrl,
   MANUAL_REDIRECT_URI,
   isContainerized,
+  parseCallbackUrl,
+  startCallbackServer,
 } from './callback-server.js';
-import { question } from '../prompt.js';
+import { fetchAdminMetadata } from './metadata.js';
+import { generateCodeChallenge, generateCodeVerifier, generateState } from './pkce.js';
 import type { AuthFlowResult, TokenResponse } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -178,7 +178,7 @@ export async function executeBrowserFlow(
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', state);
-  authUrl.searchParams.set('prompt', 'login');
+  authUrl.searchParams.set('prompt', 'login consent');
 
   // ---------------------------------------------------------------
   // Step 6: Open browser or print URL + collect auth code
@@ -188,8 +188,8 @@ export async function executeBrowserFlow(
   if (manualMode) {
     log('Open this URL in your browser to log in:\n');
     log(`  ${authUrl.toString()}\n`);
-    log('After logging in, your browser will redirect to a page that won\'t load.');
-    log('Copy the full URL from your browser\'s address bar and paste it below.\n');
+    log("After logging in, your browser will redirect to a page that won't load.");
+    log("Copy the full URL from your browser's address bar and paste it below.\n");
 
     const pastedUrl = await question('Paste the callback URL: ');
     code = parseCallbackUrl(pastedUrl, state);
