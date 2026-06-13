@@ -5,16 +5,30 @@
  */
 
 import type { HttpTransport, TransportResponse } from '../transport/types.js';
-import type { BrandingAssets, UpdateOrganizationInput } from '../types/index.js';
+import type { BrandingAssets } from '../types/index.js';
 import { unwrapData } from './helpers.js';
+
+/**
+ * Input for `PUT /organizations/:id/branding` — mirrors the server
+ * `updateBrandingSchema` (src/routes/organizations.ts). These are the flat
+ * branding settings fields; `null` clears a field.
+ */
+export interface UpdateBrandingSettingsInput {
+  logoUrl?: string | null;
+  faviconUrl?: string | null;
+  primaryColor?: string | null;
+  companyName?: string | null;
+  customCss?: string | null;
+}
 
 export interface BrandingDomain {
   getSettings(orgId: string): Promise<BrandingAssets>;
-  updateSettings(orgId: string, input: Pick<UpdateOrganizationInput, 'brandingPrimaryColor' | 'brandingCompanyName' | 'brandingCustomCss'>): Promise<BrandingAssets>;
+  updateSettings(orgId: string, input: UpdateBrandingSettingsInput): Promise<BrandingAssets>;
   getAsset(orgId: string, assetType: 'logo' | 'favicon'): Promise<TransportResponse>;
   uploadAsset(orgId: string, assetType: 'logo' | 'favicon', data: Blob | Buffer): Promise<void>;
   deleteAsset(orgId: string, assetType: 'logo' | 'favicon'): Promise<void>;
 }
+
 
 export function createBrandingDomain(transport: HttpTransport): BrandingDomain {
   function base(orgId: string) { return `/organizations/${orgId}/branding`; }

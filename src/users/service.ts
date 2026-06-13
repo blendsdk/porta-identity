@@ -21,33 +21,33 @@
  *   - unlock: locked → active (clears reason and timestamp)
  */
 
-import type {
-  User,
-  CreateUserInput,
-  UpdateUserInput,
-  UserListOptions,
-  PaginatedResult,
-} from './types.js';
+import { writeAuditLog } from '../lib/audit-log.js';
+import type { CursorPaginatedResult } from '../lib/cursor.js';
+import { getSystemConfigNumber } from '../lib/system-config.js';
+import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
+import { UserNotFoundError, UserValidationError } from './errors.js';
+import { hashPassword, validatePassword, verifyPassword } from './password.js';
+import type { ListUsersCursorOptions, UpdateUserData } from './repository.js';
 import {
-  insertUser,
-  findUserById as repoFindById,
-  findUserByEmail as repoFindByEmail,
+  emailExists,
   getPasswordHash,
-  updateUser as repoUpdate,
+  incrementFailedLoginCount,
+  insertUser,
+  findUserByEmail as repoFindByEmail,
+  findUserById as repoFindById,
   listUsers as repoList,
   listUsersCursor as repoListCursor,
-  emailExists,
-  updateLoginStats,
-  incrementFailedLoginCount,
+  updateUser as repoUpdate,
   resetFailedLoginCount,
+  updateLoginStats,
 } from './repository.js';
-import type { UpdateUserData, ListUsersCursorOptions } from './repository.js';
-import type { CursorPaginatedResult } from '../lib/cursor.js';
-import { getCachedUserById, cacheUser, invalidateUserCache } from './cache.js';
-import { validatePassword, hashPassword, verifyPassword } from './password.js';
-import { writeAuditLog } from '../lib/audit-log.js';
-import { getSystemConfigNumber } from '../lib/system-config.js';
-import { UserNotFoundError, UserValidationError } from './errors.js';
+import type {
+  CreateUserInput,
+  PaginatedResult,
+  UpdateUserInput,
+  User,
+  UserListOptions,
+} from './types.js';
 
 // ---------------------------------------------------------------------------
 // Create
@@ -67,10 +67,7 @@ import { UserNotFoundError, UserValidationError } from './errors.js';
  * @returns Created user
  * @throws UserValidationError if email exists or password invalid
  */
-export async function createUser(
-  input: CreateUserInput,
-  actorId?: string,
-): Promise<User> {
+export async function createUser(input: CreateUserInput, actorId?: string): Promise<User> {
   // Check for duplicate email in the organization
   const exists = await emailExists(input.organizationId, input.email);
   if (exists) {
@@ -215,14 +212,16 @@ export async function updateUser(
   if (input.zoneinfo !== undefined) updateData.zoneinfo = input.zoneinfo;
   if (input.locale !== undefined) updateData.locale = input.locale;
   if (input.phoneNumber !== undefined) updateData.phoneNumber = input.phoneNumber;
-  if (input.phoneNumberVerified !== undefined) updateData.phoneNumberVerified = input.phoneNumberVerified;
+  if (input.phoneNumberVerified !== undefined)
+    updateData.phoneNumberVerified = input.phoneNumberVerified;
 
   // Flatten address fields from nested input
   if (input.address) {
     if (input.address.street !== undefined) updateData.addressStreet = input.address.street;
     if (input.address.locality !== undefined) updateData.addressLocality = input.address.locality;
     if (input.address.region !== undefined) updateData.addressRegion = input.address.region;
-    if (input.address.postalCode !== undefined) updateData.addressPostalCode = input.address.postalCode;
+    if (input.address.postalCode !== undefined)
+      updateData.addressPostalCode = input.address.postalCode;
     if (input.address.country !== undefined) updateData.addressCountry = input.address.country;
   }
 
@@ -359,11 +358,7 @@ export async function reactivateUser(id: string, actorId?: string): Promise<void
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently active
  */
-export async function suspendUser(
-  id: string,
-  reason?: string,
-  actorId?: string,
-): Promise<void> {
+export async function suspendUser(id: string, reason?: string, actorId?: string): Promise<void> {
   const user = await loadUserForStatusChange(id);
 
   if (user.status !== 'active') {
@@ -421,11 +416,7 @@ export async function unsuspendUser(id: string, actorId?: string): Promise<void>
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently active
  */
-export async function lockUser(
-  id: string,
-  reason: string,
-  actorId?: string,
-): Promise<void> {
+export async function lockUser(id: string, reason: string, actorId?: string): Promise<void> {
   const user = await loadUserForStatusChange(id);
 
   if (user.status !== 'active') {

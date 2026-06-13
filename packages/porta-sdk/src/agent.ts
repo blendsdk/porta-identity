@@ -90,8 +90,18 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'users.get', description: 'Get a user by ID', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: '{ data: User, etag: string | null }' },
   { name: 'users.create', description: 'Create a new user', parameters: [OBJ('input', 'CreateUserInput')], returns: 'User' },
   { name: 'users.invite', description: 'Invite a user', parameters: [OBJ('input', 'InviteUserInput')], returns: 'User' },
+  { name: 'users.invitePreview', description: 'Preview the invitation email without sending', parameters: [OBJ('input', 'InviteUserInput')], returns: 'InvitePreviewResult' },
   { name: 'users.suspend', description: 'Suspend a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.activate', description: 'Activate a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.unsuspend', description: 'Unsuspend a user (suspended → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.deactivate', description: 'Deactivate a user (active → inactive)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.reactivate', description: 'Reactivate a user (inactive → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.lock', description: 'Lock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.unlock', description: 'Unlock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.clearPassword', description: 'Clear a user password (make passwordless)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.verifyEmail', description: 'Mark a user email as verified', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.exportData', description: 'GDPR data export for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserExportData' },
+  { name: 'users.purge', description: 'GDPR data purge for a user (irreversible)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserPurgeResult' },
+
 
   // Roles
   { name: 'roles.list', description: 'List roles for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<Role>' },
@@ -126,7 +136,9 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'audit.list', description: 'List audit log entries', parameters: [OPT_NUM('limit', 'Max results (default 50, max 500)'), OPT_STR('event', 'Filter by event_type'), OPT_STR('org', 'Filter by organization_id'), OPT_STR('user', 'Filter by user_id'), OPT_STR('since', 'Filter events after ISO 8601 date')], returns: '{ data: AuditEntry[], total: number }' },
 
   // Stats
-  { name: 'stats.get', description: 'Get dashboard statistics', parameters: [], returns: 'DashboardStats' },
+  { name: 'stats.get', description: 'Get system-wide dashboard statistics', parameters: [], returns: 'DashboardStats' },
+  { name: 'stats.getOrganizationStats', description: 'Get per-organization dashboard statistics', parameters: [ID('orgId', 'Organization ID')], returns: 'OrgStats' },
+
 
   // Sessions
   { name: 'sessions.list', description: 'List active sessions', parameters: [OPT_NUM('page', 'Page'), OPT_NUM('pageSize', 'Page size'), OPT_STR('userId', 'Filter by user')], returns: 'PaginatedResponse<AdminSession>' },
@@ -140,6 +152,12 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   // Two-Factor
   { name: 'twoFactor.getStatus', description: 'Get 2FA status for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'TwoFactorStatus' },
   { name: 'twoFactor.disable', description: 'Disable 2FA for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'twoFactor.reset', description: 'Reset 2FA for a user (force re-enrollment)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'twoFactor.regenerateRecoveryCodes', description: 'Regenerate a user 2FA recovery codes', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'RegenerateRecoveryCodesResult' },
+  { name: 'twoFactor.getPolicy', description: 'Get the org 2FA policy', parameters: [ID('orgId', 'Organization ID')], returns: 'TwoFactorPolicyResult' },
+  { name: 'twoFactor.setPolicy', description: 'Set the org 2FA policy', parameters: [ID('orgId', 'Organization ID'), ID('policy', '2FA policy (optional|required_email|required_totp|required_any)')], returns: 'TwoFactorPolicyResult' },
+  { name: 'twoFactor.getSummary', description: 'Get the org 2FA enrollment summary', parameters: [ID('orgId', 'Organization ID')], returns: 'TwoFactorSummary' },
+
 
   // Imports
   { name: 'imports.provision', description: 'Import/provision data declaratively', parameters: [OBJ('manifest', 'ImportManifest')], returns: 'ImportResult' },

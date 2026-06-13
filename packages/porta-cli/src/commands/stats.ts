@@ -36,26 +36,58 @@ export const statsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
+            // Entity counts — StatusCounts always includes `total`; `active`
+            // may be absent if there are no active rows, so default to 0.
             printTable(
               ['Metric', 'Total', 'Active'],
               [
                 [
                   'Organizations',
                   String(stats.organizations.total),
-                  String(stats.organizations.active),
+                  String(stats.organizations.active ?? 0),
                 ],
                 [
                   'Applications',
                   String(stats.applications.total),
-                  String(stats.applications.active),
+                  String(stats.applications.active ?? 0),
                 ],
-                ['Clients', String(stats.clients.total), String(stats.clients.active)],
-                ['Users', String(stats.users.total), String(stats.users.active)],
-                ['Active Sessions', String(stats.activeSessionCount), '—'],
-                ['Audit Events', String(stats.auditEventCount), '—'],
+                ['Clients', String(stats.clients.total), String(stats.clients.active ?? 0)],
+                ['Users', String(stats.users.total), String(stats.users.active ?? 0)],
+              ],
+            );
+
+            // Login activity (successful / failed) across rolling windows.
+            printTable(
+              ['Window', 'Successful', 'Failed'],
+              [
+                [
+                  'Last 24h',
+                  String(stats.loginActivity.last24h.successful),
+                  String(stats.loginActivity.last24h.failed),
+                ],
+                [
+                  'Last 7d',
+                  String(stats.loginActivity.last7d.successful),
+                  String(stats.loginActivity.last7d.failed),
+                ],
+                [
+                  'Last 30d',
+                  String(stats.loginActivity.last30d.successful),
+                  String(stats.loginActivity.last30d.failed),
+                ],
+              ],
+            );
+
+            // System health.
+            printTable(
+              ['Service', 'Healthy'],
+              [
+                ['Database', stats.systemHealth.database ? 'Yes' : 'No'],
+                ['Redis', stats.systemHealth.redis ? 'Yes' : 'No'],
               ],
             );
             success('Dashboard statistics');
+
           } catch (err) {
             handleError(err, argv.verbose);
           }

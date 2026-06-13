@@ -54,6 +54,7 @@
     "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language sql",
     "migrate:create": "node-pg-migrate create --migrations-dir migrations --migration-file-language sql",
     "porta": "tsx src/cli/index.ts",
+    "cli": "tsx packages/porta-cli/src/index.ts --insecure",
     "playground": "bash scripts/run-playground.sh",
     "playground:stop": "bash scripts/run-playground-stop.sh",
     "playground:reset": "bash scripts/run-playground-reset.sh",

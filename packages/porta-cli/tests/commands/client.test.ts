@@ -474,11 +474,13 @@ describe('client command', () => {
 
   describe('history', () => {
     it('shows client change history in table format', async () => {
+      // Server HistoryEntry shape (src/lib/entity-history.ts).
       mockClients.getHistory.mockResolvedValue([
         {
-          action: 'created',
-          performedBy: 'admin-user',
-          changes: { name: 'My Web App' },
+          id: 'h1',
+          eventType: 'client.created',
+          actorId: 'admin-user',
+          metadata: { name: 'My Web App' },
           createdAt: '2024-01-01T00:00:00Z',
         },
       ]);
@@ -491,9 +493,10 @@ describe('client command', () => {
 
     it('shows history in JSON format', async () => {
       const history = [
-        { action: 'created', performedBy: 'admin', changes: null, createdAt: '2024-01-01T00:00:00Z' },
+        { id: 'h1', eventType: 'client.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' },
       ];
       mockClients.getHistory.mockResolvedValue(history);
+
 
       await invokeSubcommand('history', { _pos_: 'client-uuid-1234', json: true });
 

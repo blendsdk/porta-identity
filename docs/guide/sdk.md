@@ -29,11 +29,12 @@ const porta = createPortaClient({ transport });
 const orgs = await porta.organizations.list();
 console.log(orgs.data);
 
-// Create a user
+// Create a user (OIDC given/family name fields)
 const user = await porta.users.create({
   organizationId: 'org-id',
   email: 'alice@example.com',
-  name: 'Alice',
+  givenName: 'Alice',
+  familyName: 'Smith',
 });
 ```
 
@@ -94,14 +95,15 @@ const auth = createCliAuth({
 
 ## Domain Namespaces
 
-The `PortaClient` provides 19 domain namespaces:
+The `PortaClient` provides 20 domain namespaces:
 
 | Namespace | Description | Key Methods |
 |---|---|---|
 | `organizations` | Org CRUD, status lifecycle, destroy | `list`, `get`, `create`, `update`, `suspend`, `activate`, `archive`, `destroy` |
 | `applications` | App CRUD, modules | `list`, `get`, `create`, `update`, `archive`, `listModules`, `addModule` |
 | `clients` | Client CRUD, secrets | `list`, `get`, `create`, `update`, `revoke`, `generateSecret` |
-| `users` | User CRUD, invite, password, status | `list`, `get`, `create`, `invite`, `setPassword`, `suspend`, `activate` |
+| `users` | Org-scoped user CRUD, invite, password, status, GDPR | `list`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `suspend`, `unsuspend`, `deactivate`, `reactivate`, `lock`, `unlock`, `exportData`, `purge` |
+| `usersById` | Org-less user ops (Admin GUI SPA) | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory` |
 | `roles` | Application roles, permission mapping | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission` |
 | `permissions` | Application permissions | `list`, `get`, `create`, `archive` |
 | `userRoles` | User-role assignments | `list`, `assign`, `remove` |
@@ -110,13 +112,18 @@ The `PortaClient` provides 19 domain namespaces:
 | `config` | System configuration | `list`, `get`, `set` |
 | `keys` | Signing key management | `list`, `generate`, `rotate` |
 | `audit` | Audit log | `list`, `listAll` |
-| `stats` | Dashboard statistics | `get` |
+| `stats` | Dashboard statistics | `get`, `getOrganizationStats` |
 | `sessions` | Session management | `list`, `revoke`, `revokeForUser` |
 | `bulk` | Bulk status operations | `execute` |
 | `branding` | Org branding & assets | `getSettings`, `updateSettings`, `uploadAsset` |
 | `exports` | CSV/JSON data export | `download` |
-| `twoFactor` | 2FA admin management | `getStatus`, `disable`, `reset` |
+| `twoFactor` | 2FA admin management (user + org) | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary` |
 | `imports` | Declarative provisioning | `provision` |
+
+The `users` domain mirrors the org-scoped user routes; `usersById` mirrors the
+org-less standalone user routes used by the Admin GUI SPA. `stats.get()` returns
+the system-wide `StatsOverview` (`GET /stats/overview`), and
+`stats.getOrganizationStats(orgId)` returns per-org `OrgStats`.
 
 ## ETag / Optimistic Concurrency
 
@@ -178,7 +185,7 @@ The `@portaidentity/sdk/agent` entrypoint provides tool definitions compatible w
 import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 // Get all available tools for the AI model
-const tools = getToolDefinitions(); // 47 tool definitions
+const tools = getToolDefinitions();
 
 // Execute a tool from AI agent output
 const result = await executeTool(porta, 'organizations.list', { pageSize: 10 });
@@ -190,7 +197,7 @@ The SDK uses a layered architecture:
 
 1. **Transport layer** — HTTP abstraction (Node.js `http`/`https` or browser `fetch`)
 2. **Auth layer** — Pluggable authentication providers (token, client credentials, CLI)
-3. **Domain layer** — 19 domain namespaces mapping to Admin API endpoints
+3. **Domain layer** — 20 domain namespaces mapping to Admin API endpoints
 4. **Client factory** — Composes transport + domains into a single `PortaClient`
 5. **Agent layer** — Tool definitions + executor for AI integration
 

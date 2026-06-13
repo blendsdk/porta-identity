@@ -101,8 +101,15 @@ export type {
 // Stats
 export type {
   DashboardStats,
-  EntityCount,
+  StatsOverview,
+  OrgStats,
+  StatusCounts,
+  UserStatsCounts,
+  LoginActivity,
+  LoginActivityWindows,
+  SystemHealth,
 } from './stats.js';
+
 
 // Sessions
 export type {
@@ -132,10 +139,17 @@ export type {
 } from './exports.js';
 
 // Two-Factor
+// Note: `TwoFactorPolicy` is exported from ./organizations.js (canonical) to
+// avoid a duplicate re-export; ./two-factor.js declares an identical alias.
 export type {
   TwoFactorMethod,
   TwoFactorStatus,
+  TwoFactorPolicyResult,
+  TwoFactorSummary,
+  RegenerateRecoveryCodesResult,
 } from './two-factor.js';
+
+
 
 // Imports
 export type {

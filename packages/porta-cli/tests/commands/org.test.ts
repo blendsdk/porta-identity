@@ -352,14 +352,13 @@ describe('org command', () => {
 
   describe('history', () => {
     it('shows change history in table format', async () => {
+      // Server HistoryEntry shape (src/lib/entity-history.ts).
       const history = [
         {
           id: 'h1',
-          entityType: 'organization',
-          entityId: sampleOrg.id,
-          action: 'created',
-          changes: {},
-          performedBy: 'admin@example.com',
+          eventType: 'org.created',
+          actorId: 'admin@example.com',
+          metadata: null,
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
@@ -374,14 +373,13 @@ describe('org command', () => {
     it('shows history in JSON format', async () => {
       const history = [{
         id: 'h1',
-        entityType: 'organization',
-        entityId: sampleOrg.id,
-        action: 'updated',
-        changes: { name: { old: 'Old', new: 'New' } },
-        performedBy: null,
+        eventType: 'org.updated',
+        actorId: null,
+        metadata: { name: 'New' },
         createdAt: '2024-01-02T00:00:00Z',
       }];
       mockOrganizations.getHistory.mockResolvedValue(history);
+
 
       await invokeSubcommand('history', { _pos_: 'acme-corp', json: true });
 
@@ -401,8 +399,8 @@ describe('org command', () => {
     it('updates branding settings', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       mockBranding.updateSettings.mockResolvedValue({
-        brandingPrimaryColor: '#ff0000',
-        brandingCompanyName: 'Acme Updated',
+        primaryColor: '#ff0000',
+        companyName: 'Acme Updated',
       });
 
       await invokeSubcommand('branding', {
@@ -411,13 +409,15 @@ describe('org command', () => {
         'company-name': 'Acme Updated',
       });
 
+      // Server updateBrandingSchema uses flat primaryColor/companyName fields.
       expect(mockBranding.updateSettings).toHaveBeenCalledWith(
         sampleOrg.id,
         expect.objectContaining({
-          brandingPrimaryColor: '#ff0000',
-          brandingCompanyName: 'Acme Updated',
+          primaryColor: '#ff0000',
+          companyName: 'Acme Updated',
         }),
       );
+
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Branding updated'));
     });
   });

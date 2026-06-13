@@ -410,14 +410,15 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(history);
               } else {
                 printTable(
-                  ['Date', 'Action', 'Actor', 'Changes'],
+                  ['Date', 'Event', 'Actor', 'Metadata'],
                   history.map((h) => [
                     formatDate(h.createdAt),
-                    h.action,
-                    h.performedBy ?? '—',
-                    h.changes ? JSON.stringify(h.changes) : '—',
+                    h.eventType,
+                    h.actorId ?? '—',
+                    h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
+
               }
             } catch (err) {
               handleError(err, argv.verbose);

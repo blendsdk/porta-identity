@@ -68,20 +68,22 @@ export interface ETagResponse<T> {
 
 /**
  * Entity change history entry returned by `getHistory()` methods.
+ *
+ * Mirrors the server `HistoryEntry` (src/lib/entity-history.ts) — entries are
+ * audit-log rows projected to `{ id, eventType, actorId, metadata, createdAt }`.
+ * The server has no `entityType`/`entityId`/`action`/`changes`/`performedBy`
+ * fields; those were SDK drift (AR-18).
  */
 export interface HistoryEntry {
-  /** History entry ID */
+  /** History entry (audit-log) ID */
   id: string;
-  /** Entity type (e.g., 'organization', 'user') */
-  entityType: string;
-  /** Entity ID */
-  entityId: string;
-  /** Action performed (e.g., 'created', 'updated', 'status_changed') */
-  action: string;
-  /** Changes made (field → { old, new }) */
-  changes: Record<string, { old: unknown; new: unknown }>;
-  /** User who made the change */
-  performedBy: string | null;
+  /** Event type (e.g., 'user.login', 'org.updated') */
+  eventType: string;
+  /** ID of the actor who triggered the event, or null for system events */
+  actorId: string | null;
+  /** Arbitrary event metadata recorded with the audit entry */
+  metadata: Record<string, unknown> | null;
   /** ISO 8601 timestamp */
   createdAt: string;
 }
+

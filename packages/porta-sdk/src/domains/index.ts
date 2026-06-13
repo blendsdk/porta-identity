@@ -20,8 +20,9 @@ export { createClientsDomain } from './clients.js';
 export type { ClientsDomain } from './clients.js';
 
 // Users
-export { createUsersDomain } from './users.js';
-export type { UsersDomain } from './users.js';
+export { createUsersDomain, createStandaloneUsersDomain } from './users.js';
+export type { UsersDomain, StandaloneUsersDomain } from './users.js';
+
 
 // Roles
 export { createRolesDomain } from './roles.js';

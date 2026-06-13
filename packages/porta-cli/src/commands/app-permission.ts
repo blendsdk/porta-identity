@@ -161,8 +161,8 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
                   ['Slug', perm.slug],
                   ['Description', perm.description ?? '—'],
                   ['Created', formatDate(perm.createdAt)],
-                  ['Updated', formatDate(perm.updatedAt)],
                 ],
+
               );
             }
           } catch (err) {

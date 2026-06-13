@@ -373,8 +373,9 @@ packages/            # Yarn workspace packages
       transport/     # HTTP abstraction (BrowserTransport, NodeTransport)
       auth/          # Auth providers (TokenAuth, ClientCredentialsAuth, CliAuth)
       types/         # SDK-owned entity type definitions (19 domains)
-      domains/       # 19 domain API namespaces (organizations, users, etc.)
+      domains/       # 20 domain API namespaces (organizations, users, usersById, etc.)
       errors/        # Typed error hierarchy (PortaError → PortaHttpError → 7 classes)
+
       pagination/    # Pagination types and listAll helper
       agent/         # AI agent tool definitions + executeTool dispatcher
       client.ts      # createPortaClient() factory

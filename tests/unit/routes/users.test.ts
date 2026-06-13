@@ -6,6 +6,7 @@ import { UserNotFoundError, UserValidationError } from '../../../src/users/error
 vi.mock('../../../src/users/service.js', () => ({
   createUser: vi.fn(),
   getUserById: vi.fn(),
+  getUserByEmail: vi.fn(),
   listUsersByOrganization: vi.fn(),
   updateUser: vi.fn(),
   deactivateUser: vi.fn(),
@@ -18,6 +19,37 @@ vi.mock('../../../src/users/service.js', () => ({
   clearUserPassword: vi.fn(),
   markEmailVerified: vi.fn(),
 }));
+
+// Mocks for the invitation flow (POST /invite, POST /invite/preview).
+// The invite handler builds an absolute URL from config.issuerBaseUrl and
+// passes it to the email service — ST-1/ST-2 assert that URL shape.
+vi.mock('../../../src/auth/tokens.js', () => ({
+  generateToken: vi.fn().mockReturnValue({ plaintext: 'T', hash: 'hashed-T' }),
+}));
+
+vi.mock('../../../src/auth/token-repository.js', () => ({
+  insertInvitationToken: vi.fn().mockResolvedValue(undefined),
+  invalidateUserTokens: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../src/auth/email-service.js', () => ({
+  sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+  renderInvitationEmail: vi.fn().mockResolvedValue({ html: '<html></html>', text: 'text', subject: 'subject' }),
+}));
+
+vi.mock('../../../src/organizations/service.js', () => ({
+  getOrganizationById: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/audit-log.js', () => ({
+  writeAuditLog: vi.fn(),
+}));
+
+// Mock config so the invite URL uses a deterministic, trusted base URL.
+vi.mock('../../../src/config/index.js', () => ({
+  config: { issuerBaseUrl: 'https://auth.example.com' },
+}));
+
 
 // Mock super-admin middleware to always pass through
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
@@ -35,7 +67,10 @@ vi.mock('../../../src/lib/entity-history.js', () => ({
 }));
 
 import * as userService from '../../../src/users/service.js';
+import * as emailService from '../../../src/auth/email-service.js';
+import { getOrganizationById } from '../../../src/organizations/service.js';
 import { createUserRouter } from '../../../src/routes/users.js';
+
 
 /** Standard test user */
 function createTestUser(overrides: Partial<User> = {}): User {
@@ -93,8 +128,12 @@ function createMockCtx(overrides: {
     set status(v: number) { statusCode = v; },
     get body() { return responseBody; },
     set body(v: unknown) { responseBody = v; },
-    state: { organization: { isSuperAdmin: true } },
+    state: {
+      organization: { isSuperAdmin: true },
+      adminUser: { id: 'admin-uuid-1', givenName: 'Admin', familyName: 'User', email: 'admin@example.com' },
+    },
     throw: vi.fn((status: number, message: string) => {
+
       const err = new Error(message) as Error & { status: number };
       err.status = status;
       throw err;
@@ -403,10 +442,61 @@ describe('user routes', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Invitation URL (ST-1, ST-2)
+  //
+  // Source: 03-server-invite-url-fix.md — R1 / AR-3
+  // ST: ST-1, ST-2 from 07-testing-strategy.md
+  //
+  // The invite and preview URLs must be absolute — prefixed with the trusted
+  // config.issuerBaseUrl — so the email link includes the server origin.
+  // -------------------------------------------------------------------------
+
+  describe('Specification: Invitation URL', () => {
+    const mockOrg = {
+      id: 'org-uuid-1',
+      slug: 'acme',
+      defaultLocale: 'en',
+      brandingLogoUrl: null,
+      brandingPrimaryColor: '#3B82F6',
+      brandingCompanyName: 'Acme Corp',
+    };
+
+    it('should pass an absolute invite URL (config.issuerBaseUrl + /:slug/auth/accept-invite/:token) to the email service (ST-1)', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(mockOrg);
+      (userService.getUserByEmail as ReturnType<typeof vi.fn>).mockResolvedValue(createTestUser());
+
+      const router = createUserRouter();
+      const layer = findLayer(router, 'POST', '/invite');
+      const ctx = createMockCtx({ body: { email: 'invitee@example.com' } });
+
+      await exec(layer!, ctx);
+
+      // The 3rd positional argument to sendInvitationEmail is the invite URL.
+      const inviteUrl = (emailService.sendInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][2];
+      expect(inviteUrl).toBe('https://auth.example.com/acme/auth/accept-invite/T');
+    });
+
+    it('should render the preview email with an absolute preview URL (ST-2)', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(mockOrg);
+
+      const router = createUserRouter();
+      const layer = findLayer(router, 'POST', '/invite/preview');
+      const ctx = createMockCtx({ body: { email: 'invitee@example.com' } });
+
+      await exec(layer!, ctx);
+
+      // The 3rd positional argument to renderInvitationEmail is the preview URL.
+      const previewUrl = (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][2];
+      expect(previewUrl).toBe('https://auth.example.com/acme/auth/accept-invite/PREVIEW_TOKEN');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Router structure
   // -------------------------------------------------------------------------
 
   describe('router structure', () => {
+
     it('should have the correct prefix', () => {
       const router = createUserRouter();
       expect(router.opts.prefix).toBe(PREFIX);

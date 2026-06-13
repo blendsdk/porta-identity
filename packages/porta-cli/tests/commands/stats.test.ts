@@ -38,14 +38,21 @@ import { printTable, printJson, success } from '../../src/output.js';
 // Test data
 // ---------------------------------------------------------------------------
 
+// Server StatsOverview shape (src/lib/stats.ts).
 const sampleStats = {
   organizations: { total: 5, active: 4 },
   applications: { total: 10, active: 8 },
   clients: { total: 15, active: 12 },
-  users: { total: 100, active: 90 },
-  activeSessionCount: 25,
-  auditEventCount: 500,
+  users: { total: 100, active: 90, newLast7d: 3, newLast30d: 10, activeLast30d: 50 },
+  loginActivity: {
+    last24h: { successful: 20, failed: 2 },
+    last7d: { successful: 100, failed: 8 },
+    last30d: { successful: 400, failed: 30 },
+  },
+  systemHealth: { database: true, redis: true },
+  generatedAt: '2026-01-01T00:00:00Z',
 };
+
 
 // ---------------------------------------------------------------------------
 // Tests

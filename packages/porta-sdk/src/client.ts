@@ -10,7 +10,9 @@ import {
   createApplicationsDomain,
   createClientsDomain,
   createUsersDomain,
+  createStandaloneUsersDomain,
   createRolesDomain,
+
   createPermissionsDomain,
   createCustomClaimsDomain,
   createUserRolesDomain,
@@ -31,7 +33,9 @@ import type {
   ApplicationsDomain,
   ClientsDomain,
   UsersDomain,
+  StandaloneUsersDomain,
   RolesDomain,
+
   PermissionsDomain,
   CustomClaimsDomain,
   UserRolesDomain,
@@ -62,7 +66,10 @@ export interface PortaClient {
   applications: ApplicationsDomain;
   clients: ClientsDomain;
   users: UsersDomain;
+  /** Org-less user operations (Admin GUI SPA) — maps to /api/admin/users/:userId */
+  usersById: StandaloneUsersDomain;
   userRoles: UserRolesDomain;
+
   userClaims: UserClaimsDomain;
   roles: RolesDomain;
   permissions: PermissionsDomain;
@@ -109,7 +116,9 @@ export function createPortaClient(options: PortaClientOptions): PortaClient {
     applications: createApplicationsDomain(transport),
     clients: createClientsDomain(transport),
     users: createUsersDomain(transport),
+    usersById: createStandaloneUsersDomain(transport),
     userRoles: createUserRolesDomain(transport),
+
     userClaims: createUserClaimsDomain(transport),
     roles: createRolesDomain(transport),
     permissions: createPermissionsDomain(transport),

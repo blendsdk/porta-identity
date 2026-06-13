@@ -15,8 +15,10 @@ const mockUsers = {
   get: vi.fn(),
   update: vi.fn(),
   suspend: vi.fn(),
+  unsuspend: vi.fn(),
   reactivate: vi.fn(),
   lock: vi.fn(),
+
   unlock: vi.fn(),
   deactivate: vi.fn(),
   setPassword: vi.fn(),
@@ -75,7 +77,8 @@ const sampleUser = {
   id: 'user-uuid-1234',
   organizationId: 'org-uuid-1234',
   email: 'alice@example.com',
-  name: 'Alice Smith',
+  givenName: 'Alice',
+  familyName: 'Smith',
   status: 'active' as const,
   emailVerified: true,
   hasPassword: true,
@@ -85,6 +88,7 @@ const sampleUser = {
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z',
 };
+
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -162,13 +166,15 @@ describe('user command', () => {
       await invokeSubcommand('create', {
         org: 'org-uuid',
         email: 'alice@example.com',
-        name: 'Alice',
+        name: 'Alice Smith',
         password: 'Secret123!',
       });
 
+      // The CLI splits --name into OIDC given/family fields (server truth).
       expect(mockUsers.create).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Alice', password: 'Secret123!' }),
+        expect.objectContaining({ givenName: 'Alice', familyName: 'Smith', password: 'Secret123!' }),
       );
+
     });
 
     it('handles create errors', async () => {
@@ -302,20 +308,21 @@ describe('user command', () => {
   // =========================================================================
 
   describe('update', () => {
-    it('updates user name', async () => {
+    it('updates user name (split into given/family)', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
-      mockUsers.update.mockResolvedValue({ ...sampleUser, name: 'Alice Updated' });
+      mockUsers.update.mockResolvedValue({ ...sampleUser, givenName: 'Alice', familyName: 'Updated' });
 
       await invokeSubcommand('update', { org: 'org-uuid', _pos_: 'user-uuid-1234', name: 'Alice Updated' });
 
       expect(mockUsers.update).toHaveBeenCalledWith(
         'org-uuid',
         'user-uuid-1234',
-        expect.objectContaining({ name: 'Alice Updated' }),
+        expect.objectContaining({ givenName: 'Alice', familyName: 'Updated' }),
         'etag-1',
       );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('updated'));
     });
+
 
     it('outputs JSON on update', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
@@ -356,6 +363,15 @@ describe('user command', () => {
     });
   });
 
+  describe('unsuspend', () => {
+    it('unsuspends a user (ST-23)', async () => {
+      await invokeSubcommand('unsuspend', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
+
+      expect(mockUsers.unsuspend).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('unsuspended'));
+    });
+  });
+
   describe('reactivate', () => {
     it('reactivates a user', async () => {
       await invokeSubcommand('reactivate', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
@@ -364,6 +380,7 @@ describe('user command', () => {
       expect(success).toHaveBeenCalledWith(expect.stringContaining('reactivated'));
     });
   });
+
 
   describe('lock', () => {
     it('locks a user', async () => {
@@ -448,8 +465,9 @@ describe('user command', () => {
 
   describe('history', () => {
     it('shows user history in table format', async () => {
+      // Server HistoryEntry shape (src/lib/entity-history.ts).
       mockUsers.getHistory.mockResolvedValue([
-        { action: 'created', performedBy: 'admin', changes: null, createdAt: '2024-01-01T00:00:00Z' },
+        { id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' },
       ]);
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
@@ -459,8 +477,9 @@ describe('user command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [{ action: 'created', performedBy: 'admin', changes: null, createdAt: '2024-01-01T00:00:00Z' }];
+      const history = [{ id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' }];
       mockUsers.getHistory.mockResolvedValue(history);
+
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234', json: true });
 

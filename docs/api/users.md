@@ -139,38 +139,42 @@ Email changes are not supported through this endpoint to prevent authentication 
 
 ## Status Lifecycle
 
-Users have six possible statuses with controlled transitions:
+Users have four possible statuses (`UserStatus`): `active`, `inactive`,
+`suspended`, and `locked`. (Invitation is a token flow, not a status — a freshly
+invited user is created `active` and sets a password on accepting.)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> active: Create with password
-    [*] --> invited: Invite
-    invited --> active: Accept invitation
+    [*] --> active: Create / Invite
+    active --> inactive: Deactivate
+    inactive --> active: Reactivate
     active --> suspended: Suspend
-    suspended --> active: Activate
+    suspended --> active: Unsuspend
     active --> locked: Lock (security)
     locked --> active: Unlock
-    active --> archived: Archive
-    suspended --> archived: Archive
 ```
 
 ### Status Transition Endpoints
 
 ```http
+POST /api/admin/organizations/:orgId/users/:userId/deactivate
+POST /api/admin/organizations/:orgId/users/:userId/reactivate
 POST /api/admin/organizations/:orgId/users/:userId/suspend
-POST /api/admin/organizations/:orgId/users/:userId/activate
+POST /api/admin/organizations/:orgId/users/:userId/unsuspend
 POST /api/admin/organizations/:orgId/users/:userId/lock
 POST /api/admin/organizations/:orgId/users/:userId/unlock
-POST /api/admin/organizations/:orgId/users/:userId/archive
 ```
 
-Each returns `200 OK` with the updated user object.
+Each returns `204 No Content`. A `POST .../activate` alias for `reactivate`
+exists on the standalone (`/api/admin/users/:userId`) router for SPA compatibility.
+
 
 ## Set Password
 
 ```http
-POST /api/admin/organizations/:orgId/users/:userId/set-password
+POST /api/admin/organizations/:orgId/users/:userId/password
 ```
+
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

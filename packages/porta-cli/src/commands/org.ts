@@ -414,14 +414,15 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(history);
               } else {
                 printTable(
-                  ['Date', 'Action', 'Actor', 'Changes'],
+                  ['Date', 'Event', 'Actor', 'Metadata'],
                   history.map((h) => [
                     formatDate(h.createdAt),
-                    h.action,
-                    h.performedBy ?? '—',
-                    h.changes ? JSON.stringify(h.changes) : '—',
+                    h.eventType,
+                    h.actorId ?? '—',
+                    h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
+
               }
             } catch (err) {
               handleError(err, argv.verbose);
@@ -458,10 +459,11 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const { data: org } = await client.organizations.get(argv['id-or-slug']);
 
               const result = await client.branding.updateSettings(org.id, {
-                brandingPrimaryColor: argv['primary-color'],
-                brandingCompanyName: argv['company-name'],
-                brandingCustomCss: argv['custom-css'],
+                primaryColor: argv['primary-color'],
+                companyName: argv['company-name'],
+                customCss: argv['custom-css'],
               });
+
 
               if (argv.json) {
                 printJson(result);

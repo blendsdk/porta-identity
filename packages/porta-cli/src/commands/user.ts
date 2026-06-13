@@ -25,10 +25,42 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { formatDate, info, printJson, printTable, success, warn } from '../output.js';
 import { confirm } from '../prompt.js';
-import { userRolesCommand } from './user-role.js';
 import { userClaimsCommand } from './user-claim.js';
+import { userRolesCommand } from './user-role.js';
+
+// ---------------------------------------------------------------------------
+// Name helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Split a CLI display name into OIDC given/family parts.
+ *
+ * Uses the first-whitespace rule: everything before the first space is the
+ * given name, everything after is the family name. A single token maps to
+ * `givenName` only (the server treats a missing family name as none). Empty
+ * or whitespace-only input yields an empty object so no name fields are sent.
+ *
+ * @param name - The raw `--name` value from the CLI (optional)
+ * @returns `{ givenName?, familyName? }` suitable for spreading into SDK input
+ */
+export function splitName(name?: string): { givenName?: string; familyName?: string } {
+  if (!name) return {};
+  const trimmed = name.trim();
+  if (!trimmed) return {};
+  const idx = trimmed.indexOf(' ');
+  if (idx === -1) return { givenName: trimmed };
+  return { givenName: trimmed.slice(0, idx), familyName: trimmed.slice(idx + 1).trim() };
+}
+
+/**
+ * Derive a single display name from a user's OIDC given/family fields.
+ * Returns an em-dash when both are empty so tables stay aligned.
+ */
+function displayName(u: { givenName: string | null; familyName: string | null }): string {
+  return [u.givenName, u.familyName].filter(Boolean).join(' ') || '—';
+}
 
 // ---------------------------------------------------------------------------
 // Argument type extensions
@@ -117,7 +149,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const user = await sdkClient.users.create({
                 organizationId: argv.org,
                 email: argv.email,
-                name: argv.name,
+                ...splitName(argv.name),
                 password: argv.password,
               });
 
@@ -130,7 +162,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   [
                     ['ID', user.id],
                     ['Email', user.email],
-                    ['Name', user.name ?? '—'],
+                    ['Name', displayName(user)],
                     ['Status', user.status],
                     ['Created', formatDate(user.createdAt)],
                   ],
@@ -163,7 +195,8 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const user = await sdkClient.users.invite({
                 organizationId: argv.org,
                 email: argv.email,
-                name: argv.name,
+                // The server invite schema accepts `displayName` (not split fields).
+                ...(argv.name ? { displayName: argv.name } : {}),
               });
 
               if (argv.json) {
@@ -185,9 +218,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             withOrgOption(y)
               .option('status', {
                 type: 'string',
-                choices: ['active', 'invited', 'suspended', 'locked', 'deactivated'],
+                choices: ['active', 'inactive', 'suspended', 'locked'],
                 description: 'Filter by status',
               })
+
               .option('search', {
                 type: 'string',
                 description: 'Search by email or name',
@@ -209,13 +243,9 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 page: argv.page,
                 pageSize: argv['page-size'],
                 ...(argv.status && {
-                  status: argv.status as
-                    | 'active'
-                    | 'invited'
-                    | 'suspended'
-                    | 'locked'
-                    | 'deactivated',
+                  status: argv.status as 'active' | 'inactive' | 'suspended' | 'locked',
                 }),
+
                 ...(argv.search && { search: argv.search }),
               });
 
@@ -232,7 +262,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   result.data.map((u) => [
                     u.id,
                     u.email,
-                    u.name ?? '—',
+                    displayName(u),
                     u.status,
                     u.lastLoginAt ? formatDate(u.lastLoginAt) : '—',
                     formatDate(u.createdAt),
@@ -271,9 +301,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   [
                     ['ID', u.id],
                     ['Email', u.email],
-                    ['Name', u.name ?? '—'],
+                    ['Name', displayName(u)],
                     ['Status', u.status],
                     ['Email Verified', u.emailVerified ? 'Yes' : 'No'],
+
                     ['Has Password', u.hasPassword ? 'Yes' : 'No'],
                     ['Failed Logins', String(u.failedLoginCount)],
                     ['Last Login', u.lastLoginAt ? formatDate(u.lastLoginAt) : '—'],
@@ -318,8 +349,8 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 argv.org,
                 argv['user-id'],
                 {
-                  name: argv.name,
-                  email: argv.email,
+                  ...splitName(argv.name),
+                  ...(argv.email ? { email: argv.email } : {}),
                 },
                 etag ?? undefined,
               );
@@ -359,8 +390,31 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         .command<UserIdArgs>(
+          'unsuspend <user-id>',
+          'Unsuspend a user (suspended → active)',
+          (y) =>
+            withOrgOption(
+              y.positional('user-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'User UUID',
+              }),
+            ),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              await sdkClient.users.unsuspend(argv.org, argv['user-id']);
+              success(`User unsuspended: ${argv['user-id']}`);
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
+        .command<UserIdArgs>(
           'reactivate <user-id>',
-          'Reactivate a suspended user',
+          'Reactivate a deactivated user',
+
           (y) =>
             withOrgOption(
               y.positional('user-id', {
@@ -511,12 +565,12 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(history);
               } else {
                 printTable(
-                  ['Date', 'Action', 'Actor', 'Changes'],
+                  ['Date', 'Event', 'Actor', 'Metadata'],
                   history.map((h) => [
                     formatDate(h.createdAt),
-                    h.action,
-                    h.performedBy ?? '—',
-                    h.changes ? JSON.stringify(h.changes) : '—',
+                    h.eventType,
+                    h.actorId ?? '—',
+                    h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
               }
@@ -531,7 +585,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(userClaimsCommand)
         .demandCommand(
           1,
-          'Specify a user subcommand: create, invite, list, show, update, suspend, reactivate, lock, unlock, deactivate, set-password, history, roles, claims',
+          'Specify a user subcommand: create, invite, list, show, update, suspend, unsuspend, reactivate, lock, unlock, deactivate, set-password, history, roles, claims',
         )
     );
   },
