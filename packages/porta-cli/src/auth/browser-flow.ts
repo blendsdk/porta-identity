@@ -178,7 +178,16 @@ export async function executeBrowserFlow(
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', state);
+  // prompt MUST include `consent` for `offline_access` to survive.
+  //
+  // Per OIDC Core §3.1.2.1 and node-oidc-provider's check_scope, the provider
+  // strips `offline_access` from the request unless `prompt` contains `consent`
+  // — so without it no refresh_token is ever issued (the credentials file then
+  // lacks `refreshToken`). `login` is kept to force fresh credential entry on
+  // every `porta login`. Porta auto-consents first-party clients, so adding
+  // `consent` shows no extra UI to the admin.
   authUrl.searchParams.set('prompt', 'login consent');
+
 
   // ---------------------------------------------------------------
   // Step 6: Open browser or print URL + collect auth code

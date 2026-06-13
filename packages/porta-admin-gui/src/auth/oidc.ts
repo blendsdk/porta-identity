@@ -144,7 +144,16 @@ export function buildAuthorizationUrl(
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
     state,
+    // `consent` is REQUIRED for `offline_access` to survive.
+    //
+    // Per OIDC Core §3.1.2.1 and node-oidc-provider's check_scope, the provider
+    // strips `offline_access` from the request unless `prompt` contains
+    // `consent` — without it no refresh_token is issued and the BFF session
+    // cannot be silently renewed. Porta auto-consents first-party clients, so
+    // this adds no extra consent UI for the admin.
+    prompt: 'consent',
   });
+
 
   return authUrl.href;
 }

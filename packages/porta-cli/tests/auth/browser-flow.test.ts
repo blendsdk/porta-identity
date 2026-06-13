@@ -1,9 +1,12 @@
 /**
  * Tests for the OIDC browser flow orchestration.
  *
- * Verifies the authorization URL construction, including the `prompt=login`
- * parameter that forces fresh credential entry on every `porta login`.
+ * Verifies the authorization URL construction, including the
+ * `prompt=login consent` parameter. `login` forces fresh credential entry on
+ * every `porta login`; `consent` is required so node-oidc-provider does not
+ * strip `offline_access` (without it, no refresh_token is issued).
  */
+
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -117,10 +120,13 @@ describe('browser-flow', () => {
   }
 
   describe('authorization URL construction', () => {
-    it('includes prompt=login to force fresh credentials', async () => {
+    it('includes prompt=login consent to force fresh credentials and keep offline_access', async () => {
       const { url } = await runFlowCapturingUrl();
-      expect(url.searchParams.get('prompt')).toBe('login');
+      // `login` forces re-authentication; `consent` prevents the provider from
+      // stripping `offline_access` (which would suppress the refresh token).
+      expect(url.searchParams.get('prompt')).toBe('login consent');
     });
+
 
     it('includes all required OIDC parameters', async () => {
       const { url } = await runFlowCapturingUrl();

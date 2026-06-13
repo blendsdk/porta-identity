@@ -65,6 +65,14 @@ token**. The CLI uses this refresh token to silently obtain new access tokens as
 they expire (access tokens are short-lived — about 1 hour by default), so you do
 not have to run `porta login` again every hour.
 
+The authorization request uses `prompt=login consent`. The `login` value forces
+fresh credential entry on every `porta login`; the `consent` value is **required**
+for `offline_access` to be granted — per OIDC Core §3.1.2.1, the provider ignores
+`offline_access` unless the request's `prompt` contains `consent`. Because Porta
+auto-consents first-party clients, the `consent` value adds no extra screen for
+the admin.
+
+
 ::: warning No refresh token issued
 If the server does **not** return a refresh token, the CLI prints a warning:
 
