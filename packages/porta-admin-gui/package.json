@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/admin-gui",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Standalone Admin GUI for Porta Identity — React SPA + Koa BFF",
   "type": "module",
   "main": "dist/index.js",
@@ -67,7 +67,7 @@
     "@types/koa": "3.0.3"
   },
   "peerDependencies": {
-    "@portaidentity/sdk": "1.5.0"
+    "@portaidentity/sdk": "1.5.1"
   },
   "peerDependenciesMeta": {
     "@portaidentity/sdk": {
