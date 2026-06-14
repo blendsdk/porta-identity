@@ -331,13 +331,14 @@ describe('SDK↔Server contract: Domain Types', () => {
     expect(input.branding?.logoUrl).toBe('https://cdn.example.com/logo.png');
   });
 
-  it('InviteUserInput has displayName, not name (ST-14)', () => {
-    // Source: src/routes/users.ts inviteUserSchema — accepts displayName, not name.
+  it('InviteUserInput has givenName/familyName, not displayName (ST-14)', () => {
+    // Source: src/routes/users.ts inviteUserSchema — accepts givenName + familyName.
     const input: InviteUserInput = {
-      organizationId: 'org-1', email: 'b@c.com', displayName: 'Bob Builder',
+      organizationId: 'org-1', email: 'b@c.com', givenName: 'Bob', familyName: 'Builder',
     };
-    expect(Object.keys(input)).not.toContain('name');
-    expect(input.displayName).toBe('Bob Builder');
+    expect(Object.keys(input)).not.toContain('displayName');
+    expect(input.givenName).toBe('Bob');
+    expect(input.familyName).toBe('Builder');
   });
 });
 

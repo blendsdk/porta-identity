@@ -543,7 +543,8 @@ export function createUserRouter(): Router {
         user = await userService.createUser({
           organizationId: orgId,
           email: body.email,
-          givenName: body.displayName,
+          givenName: body.givenName,
+          familyName: body.familyName,
         });
         created = true;
       }
@@ -666,7 +667,8 @@ export function createUserRouter(): Router {
       const previewUser = {
         id: '00000000-0000-0000-0000-000000000000',
         email: body.email,
-        givenName: body.displayName ?? null,
+        givenName: body.givenName ?? null,
+        familyName: body.familyName ?? null,
       };
 
       // Render the invitation email (without sending)
@@ -706,7 +708,8 @@ export function createUserRouter(): Router {
 /** Schema for the enhanced invitation request */
 const inviteUserSchema = z.object({
   email: z.string().email(),
-  displayName: z.string().min(1).max(255).optional(),
+  givenName: z.string().min(1).max(255).optional(),
+  familyName: z.string().min(1).max(255).optional(),
   personalMessage: z.string().max(500).optional(),
   roles: z
     .array(
@@ -731,7 +734,8 @@ const inviteUserSchema = z.object({
 /** Schema for the invitation preview request */
 const invitePreviewSchema = z.object({
   email: z.string().email(),
-  displayName: z.string().min(1).max(255).optional(),
+  givenName: z.string().min(1).max(255).optional(),
+  familyName: z.string().min(1).max(255).optional(),
   personalMessage: z.string().max(500).optional(),
   locale: z.string().max(10).optional(),
 });

@@ -26,8 +26,8 @@ porta user create --org <id> --email alice@example.com \
 porta user invite --org <id> --email bob@example.com [--name "Bob Jones"]
 ```
 
-Sends an invitation email. The `--name` value is passed through as the
-server's `displayName` (it is **not** split into given/family fields).
+Sends an invitation email. The `--name` value is split into OIDC
+`givenName`/`familyName` on the first space (same behavior as `create`).
 
 ### `porta user list`
 

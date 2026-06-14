@@ -195,7 +195,7 @@ describe('domains/users', () => {
     it('invitePreview calls POST .../invite/preview and unwraps data', async () => {
       transport = mockTransport({ body: { data: { html: '<html></html>', subject: 'Invite' } } });
       const users = createUsersDomain(transport);
-      const input = { organizationId: 'org-1', email: 'b@c.com', displayName: 'Bob' };
+      const input = { organizationId: 'org-1', email: 'b@c.com', givenName: 'Bob' };
       const result = await users.invitePreview(input);
       expect(transport.request).toHaveBeenCalledWith({
         method: 'POST', path: '/organizations/org-1/users/invite/preview', body: input,

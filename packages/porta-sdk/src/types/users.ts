@@ -112,13 +112,15 @@ export interface UpdateUserInput {
 
 /**
  * Input for inviting a user — mirrors the server `inviteUserSchema`
- * (src/routes/users.ts). The server accepts `displayName` (not `name`),
- * plus an optional personal message, role/claim pre-assignments, and locale.
+ * (src/routes/users.ts). The server accepts `givenName` and `familyName`
+ * (OIDC standard claims), plus an optional personal message,
+ * role/claim pre-assignments, and locale.
  */
 export interface InviteUserInput {
   organizationId: string;
   email: string;
-  displayName?: string;
+  givenName?: string;
+  familyName?: string;
   personalMessage?: string;
   roles?: Array<{ applicationId: string; roleId: string }>;
   claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>;

@@ -45,7 +45,8 @@ Creates a user (if they don't exist) and sends an enhanced invitation email. Sup
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `email` | string | ✅ | Email address |
-| `displayName` | string | | Display name for the invitation email |
+| `givenName` | string | | First name (OIDC standard claim) |
+| `familyName` | string | | Last name (OIDC standard claim) |
 | `personalMessage` | string | | Personal message from the admin (max 500 chars, included in email) |
 | `roles` | array | | Roles to pre-assign on acceptance |
 | `roles[].applicationId` | uuid | ✅ | Application the role belongs to |
@@ -89,7 +90,8 @@ Renders the invitation email without sending it. Returns the HTML, plain text, a
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `email` | string | ✅ | Recipient email (for template personalization) |
-| `displayName` | string | | Display name |
+| `givenName` | string | | First name (OIDC standard claim) |
+| `familyName` | string | | Last name (OIDC standard claim) |
 | `personalMessage` | string | | Personal message to include |
 | `locale` | string | | Locale for rendering |
 

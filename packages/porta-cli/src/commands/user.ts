@@ -187,7 +187,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               })
               .option('name', {
                 type: 'string',
-                description: 'Invitee display name',
+                description: 'Invitee full name (auto-split into given/family)',
               }),
           async (argv) => {
             try {
@@ -195,8 +195,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const user = await sdkClient.users.invite({
                 organizationId: argv.org,
                 email: argv.email,
-                // The server invite schema accepts `displayName` (not split fields).
-                ...(argv.name ? { displayName: argv.name } : {}),
+                ...splitName(argv.name),
               });
 
               if (argv.json) {
