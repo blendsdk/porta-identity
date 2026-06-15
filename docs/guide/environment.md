@@ -17,7 +17,7 @@ See also: [Quick Start](./quickstart.md) for minimal setup, [Deployment Guide](.
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `DATABASE_URL` | — | **Yes** | PostgreSQL connection string. Example: `postgresql://porta:secret@localhost:5432/porta` |
-| `REDIS_URL` | — | **Yes** | Redis connection string. Example: `redis://localhost:6379` |
+| `REDIS_URL` | — | **Yes** | Redis connection string. Supports optional authentication: `redis://[user:password@]host:port[/db]`. Examples: `redis://localhost:6379`, `redis://:secret@redis:6379/0` |
 
 ## OIDC
 

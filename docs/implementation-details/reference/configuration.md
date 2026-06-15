@@ -36,9 +36,9 @@ Configuration is loaded via `src/config/index.ts`, which reads from `process.env
 |----------|------|---------|----------|-------------|
 | `REDIS_URL` | String (URL) | — | **Yes** | Redis connection string |
 
-**Format**: `redis://[password@]host:port[/db]`
+**Format**: `redis://[user:password@]host:port[/db]`
 
-**Example**: `redis://localhost:6379`
+**Examples**: `redis://localhost:6379`, `redis://:secret@redis:6379/0`
 
 ### OIDC
 
