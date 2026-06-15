@@ -23,9 +23,11 @@ if [ -n "$REDIS_URL" ]; then
   echo "⏳ Waiting for Redis..."
 
   # Extract host and port from REDIS_URL
-  # Supports: redis://host:port or redis://host:port/db
-  REDIS_HOST=$(echo "$REDIS_URL" | sed -n 's|redis://\([^:/]*\).*|\1|p')
-  REDIS_PORT=$(echo "$REDIS_URL" | sed -n 's|redis://[^:]*:\([0-9]*\).*|\1|p')
+  # Supports: redis://[:password@]host:port[/db] or redis://[user:password@]host:port[/db]
+  # First strip credentials (everything between redis:// and the last @)
+  REDIS_URL_CLEAN=$(echo "$REDIS_URL" | sed 's|redis://\([^@]*\)@|redis://|')
+  REDIS_HOST=$(echo "$REDIS_URL_CLEAN" | sed -n 's|redis://\([^:/]*\).*|\1|p')
+  REDIS_PORT=$(echo "$REDIS_URL_CLEAN" | sed -n 's|redis://[^:]*:\([0-9]*\).*|\1|p')
   REDIS_PORT="${REDIS_PORT:-6379}"
 
   elapsed=0
