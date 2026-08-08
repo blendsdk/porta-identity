@@ -8,8 +8,8 @@
  *   - 1 confidential client (for BFF, with client_secret_post)
  *   - 1 test user (active, with password)
  *
- * Uses Porta's service layer directly (same pattern as scripts/playground-seed.ts)
- * for correct hashing (Argon2id passwords, SHA-256+Argon2id secrets).
+ * Uses Porta's service layer directly for correct hashing (Argon2id passwords,
+ * SHA-256+Argon2id secrets).
  *
  * Idempotent: safe to re-run. Existing resources are found and reused.
  *

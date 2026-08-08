@@ -340,8 +340,8 @@ test('should contain no publishing, release, versioning, deprecation, deployment
   );
 });
 
-// Deferred playgrounds and the known provisioning-smoke defect remain outside the migration CI gate.
-test('should exclude deferred playground and provisioning-smoke commands from branch CI', () => {
+// Retired playgrounds and the known provisioning-smoke defect remain outside the migration CI gate.
+test('should exclude retired playground and provisioning-smoke commands from branch CI', () => {
   const commands = getRunSteps(readBuildAndTestWorkflow())
     .map(({ command }) => command)
     .join('\n');
@@ -349,7 +349,7 @@ test('should exclude deferred playground and provisioning-smoke commands from br
   assert.doesNotMatch(
     commands,
     /\bplayground(?:-bff|:|\/)|\byarn\s+playground\b/i,
-    `${workflowPath} must not add deferred playgrounds to verification`,
+    `${workflowPath} must not add retired playgrounds to verification`,
   );
   assert.doesNotMatch(
     commands,

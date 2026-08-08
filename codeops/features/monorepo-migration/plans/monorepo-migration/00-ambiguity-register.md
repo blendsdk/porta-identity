@@ -19,7 +19,7 @@ The user reviewed the proposed decisions and accepted all recommendations. There
 | AR-09 | Server executable | Publish the existing infrastructure CLI as `porta-server`; keep Docker's internal `porta` wrapper. Start the daemon with the package start script. Do not introduce a supported JavaScript import API. | ✅ Resolved |
 | AR-10 | Existing packages | Rename `packages/porta-sdk` to `packages/sdk` and `packages/porta-cli` to `packages/cli`; avoid speculative shared packages. | ✅ Resolved |
 | AR-11 | Admin GUI | Remove the admin GUI source, tests, workspace, build, and release configuration. Deprecate its existing npm package at release cutover with a discontinuation message. | ✅ Resolved |
-| AR-12 | Playground | Leave all playgrounds untouched and outside Yarn workspaces, Turbo tasks, and migration verification. They may remain temporarily nonfunctional. Selection and migration are deferred. | ✅ Resolved |
+| AR-12 | Playground | Remove both unsupported v5 playground applications and their playground-only tooling from the active tree. Preserve recovery guidance in unpublished techdocs; Git history remains the archive. Any future example is selected and rebuilt as separately verified work. | ✅ Resolved |
 | AR-13 | Public docs | Keep VitePress public docs for system administrators, users, public API, and SDK consumers, published to GitHub Pages. | ✅ Resolved |
 | AR-14 | Technical docs | Move developer and architecture material to top-level `techdocs/`; keep it as Markdown and exclude it from the public VitePress site. | ✅ Resolved |
 | AR-15 | Deployment | Keep `docker/` at the repository root and preserve existing image, Compose, entrypoint, migration, and runtime behavior. | ✅ Resolved |

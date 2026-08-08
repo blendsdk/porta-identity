@@ -40,7 +40,7 @@ Run commands from the repository root.
 - `packages/server/migrations/`: ordered PostgreSQL migration files; do not rewrite applied migrations.
 - `docs/`: public VitePress documentation for operators, users, API, SDK, and CLI consumers.
 - `techdocs/`: unpublished maintainer and architecture documentation.
-- `playground/` and `playground-bff/`: independent development playgrounds.
+- `techdocs/reference/retired-playgrounds.md`: recovery record for the unsupported v5 playground applications removed from the active tree.
 - `codeops/`: nested CodeOps policy, roadmap, requirements, plans, and execution evidence.
 
 ## Generated and sensitive files
@@ -50,6 +50,38 @@ Run commands from the repository root.
 - Release-derived version constants and changelogs must be changed through the repository's release tooling once that tooling exists; do not hand-edit them during ordinary feature work.
 
 The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. Publishing and deployment workflow repair is deferred to a separate post-migration plan.
+
+## Security invariants
+
+Porta is an identity provider, so security takes precedence over convenience, deadlines, refactoring
+simplicity, and performance. Refuse a requested implementation that would weaken these properties;
+explain the concrete risk and propose a secure alternative.
+
+- Preserve OIDC compliance, PKCE for public clients, login and consent integrity, and single-use,
+  time-limited, unpredictable magic-link and password-reset tokens.
+- Keep ES256 with ECDSA P-256 for token signing. Validate JWT signatures, issuers, audiences, and
+  expiry, and preserve refresh-token rotation.
+- Keep Argon2id for passwords and recovery codes, AES-256-GCM for two-factor secrets, encrypted
+  signing keys at rest, and cryptographically secure randomness. Never store secrets in plaintext.
+- Validate external API, CLI, and OIDC input with the established Zod schemas. Use parameterized SQL,
+  exact redirect-URI matching, and injection-safe slug validation.
+- Scope database access and cache keys to the resolved organization. Never permit cross-tenant data
+  access through APIs, CLI operations, OIDC endpoints, sessions, or caches.
+- Preserve authentication rate limits, failed-login tracking, account lockout, and throttling. Do not
+  introduce bypasses based on headers, paths, or parameter variation.
+- Keep admin authentication and RBAC middleware on protected routes. Authorization must verify both
+  role assignment and organization membership.
+- Preserve `Secure`, `HttpOnly`, and `SameSite` production cookies, session renewal at authentication,
+  session expiry, and CSRF protection on state-changing requests.
+- Enforce production HTTPS, restrictive authenticated CORS, CSP and other security headers, and
+  minimal public errors. Never log or return passwords, tokens, client secrets, keys, stack traces,
+  SQL errors, internal paths, infrastructure details, or product-version fingerprints.
+- Preserve two-factor enforcement, encrypted TOTP secrets, rate-limited email OTP delivery, and
+  single-use hashed recovery codes.
+- Treat `packages/server/tests/pentest/` as a security baseline. Do not delete, skip, or weaken its
+  assertions to make a change pass; new attack surfaces require corresponding security coverage.
+- Assess authentication, authorization, cryptography, tenant isolation, validation, rate limiting,
+  sessions, error handling, and information exposure before completing a security-relevant change.
 
 ## Active migration constraint
 

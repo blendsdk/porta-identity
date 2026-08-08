@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 22:53
-> **Progress**: 66/66 tasks (100%)
+> **Last Updated**: 2026-08-09 00:45
+> **Progress**: 74/74 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -22,8 +22,9 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 | 4 | Toolchain and dependency upgrade | 8 |
 | 5 | Branch CI and final parity | 8 |
 | 6 | Root command cleanup | 7 |
+| 7 | Playground and legacy-guidance retirement | 8 |
 
-**Total: 66 tasks across 6 phases**
+**Total: 74 tasks across 7 phases**
 
 > **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
 >
@@ -229,6 +230,35 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 - Focused re-review confirmed the major finding closed and found no remaining critical, major, or minor findings.
 - Final gate: frozen install, current NCU selections, zero-high production audit, 54 structure tests, server 3,348 tests, SDK 404 tests, CLI 355 tests, OIDC harness 6/6, VitePress build, and production Docker build passed.
 
+## Phase 7: Playground and Legacy-Guidance Retirement
+
+> **Phase baseline tree**: `65e0ca204a1b276010108a89484e2598ec8f9f14`
+> **Scope mode**: strict
+> **Expected modification set**: retired playground applications/tooling, repository contracts, active guidance and ignore rules, unpublished recovery documentation, this plan set, and roadmaps
+> **Lenses**: repository clarity · workspace isolation · recoverability · retained test-harness integrity · strict scope
+
+### Step 7.1: Remove unsupported playground applications from the active tree
+
+**Reference**: revised AR-12 and MR-06
+
+- [x] 7.1.1 Update the repository specification to require playground application and dedicated-tooling retirement — `repo-tests/monorepo/workspace-layout.spec.test.mjs` ✅ (completed: 2026-08-09 00:18)
+- [x] 7.1.2 Run the updated specification and record the expected red result — workspace-layout specification ✅ (completed: 2026-08-09 00:18; expected failure reported the retained `playground/` path)
+- [x] 7.1.3 Remove both playground applications and their dedicated scripts, clean active references, and add unpublished Git recovery guidance — whole repository ✅ (completed: 2026-08-09 00:20)
+- [x] 7.1.4 Run structure, full monorepo, OIDC harness, and public documentation verification — whole repository ✅ (completed: 2026-08-09 00:32; 54 structure tests, server 3,348 tests, SDK 404 tests, CLI 355 tests, VitePress build, and isolated-port OIDC harness 6/6 passed)
+- [x] 7.1.5 Extend the repository specification to require `AGENTS.md` as the sole active agent-policy source while preserving Porta security invariants — repository contract ✅ (completed: 2026-08-09 00:33)
+- [x] 7.1.6 Run the updated specification and record the expected red result — workspace-layout specification ✅ (completed: 2026-08-09 00:33; expected failure reported the retained `.clinerules/` path)
+- [x] 7.1.7 Distill Porta-specific security invariants into `AGENTS.md` and remove obsolete Cline guidance — active agent guidance ✅ (completed: 2026-08-09 00:34)
+- [x] 7.1.8 Retire obsolete root command wrappers and local generated artifacts, run final verification, confirm strict scope, update the roadmaps, and checkpoint the migration — whole repository ✅ (completed: 2026-08-09 00:45; `Makefile`, stale VS Code launcher, and ignored root outputs removed; 56 structure tests and full server/SDK/CLI verification passed)
+
+**Verify**: `yarn test:structure && yarn verify && yarn harness:test && yarn docs:build`
+
+### Phase 7 quality review
+
+- Strict scope inspection confirmed that production source, package manifests, publishing configuration, and `main` were untouched.
+- Security assessment confirmed that Porta-specific OIDC, cryptography, tenant-isolation, validation, session, authorization, and pentest invariants remain in the authoritative `AGENTS.md`; all 3,348 server tests, including the pentest baseline, passed.
+- Both unsupported playgrounds and their dedicated tooling remain recoverable through Git history, while the maintained OIDC harness passed 6/6 on isolated ports.
+- Public VitePress documentation built successfully, active references contain no retired launcher paths, and the final diff contains no added credentials or generated artifacts.
+
 ## Dependencies
 
 ```text
@@ -243,9 +273,11 @@ Phase 5 branch CI + final parity
     ↓
 Phase 6 root command cleanup
     ↓
+Phase 7 playground and legacy-guidance retirement
+    ↓
 Separate publishing/release cutover plan (not part of this execution)
 ```
 
 ## Success Criteria
 
-The migration is complete when all 66 tasks and AC-01–AC-06 pass and the branch is ready for the separate publishing-cutover follow-on. No task in this plan authorizes publication or a merge to production `main`.
+The migration is complete when all 74 tasks and AC-01–AC-06 pass and the branch is ready for the separate publishing-cutover follow-on. No task in this plan authorizes publication or a merge to production `main`.

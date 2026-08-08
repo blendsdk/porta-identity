@@ -24,8 +24,7 @@ porta/
 ├── docs/
 ├── techdocs/
 ├── repo-tests/monorepo/         # repository-contract specifications
-├── test-harness/                # retained OIDC black-box test infrastructure
-└── playground*/                 # preserved, excluded legacy playground material
+└── test-harness/                # retained OIDC black-box test infrastructure
 ```
 
 ### Root Manifest

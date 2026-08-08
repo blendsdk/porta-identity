@@ -247,15 +247,54 @@ test('should provide root-and-workspace dependency maintenance commands', () => 
   );
 });
 
-// Development playgrounds remain outside Yarn and Turbo orchestration during this migration.
-test('should exclude both deferred playgrounds from the workspace graph', () => {
-  const workspacePatterns = getWorkspacePatterns(readRepositoryJson('package.json'));
+// Unsupported playgrounds must stay recoverable through Git without remaining in the active tree.
+test('should retire the unsupported playground applications and their tooling', () => {
+  const retiredPaths = [
+    'playground',
+    'playground-bff',
+    'scripts/playground-bff-smoke.sh',
+    'scripts/playground-seed.ts',
+    'scripts/run-playground-reset.sh',
+    'scripts/run-playground-stop.sh',
+    'scripts/run-playground.sh',
+  ];
 
-  for (const playgroundPath of ['playground', 'playground-bff']) {
+  for (const retiredPath of retiredPaths) {
     assert.equal(
-      isWorkspaceDirectory(playgroundPath, workspacePatterns),
+      existsSync(resolve(repositoryRoot, retiredPath)),
       false,
-      `${playgroundPath} must not be selected by a root workspace pattern`,
+      `${retiredPath} must not remain in the active repository tree`,
+    );
+  }
+});
+
+// AGENTS.md is the single active agent-policy source and preserves Porta's security invariants.
+test('should replace obsolete Cline rules with Porta security guidance', () => {
+  const agentGuidance = readFileSync(resolve(repositoryRoot, 'AGENTS.md'), 'utf8');
+
+  assert.equal(
+    existsSync(resolve(repositoryRoot, '.clinerules')),
+    false,
+    '.clinerules must not remain beside the authoritative AGENTS.md guidance',
+  );
+  assert.match(agentGuidance, /^## Security invariants$/m);
+  assert.match(agentGuidance, /\bPKCE\b/);
+  assert.match(agentGuidance, /\bES256\b/);
+  assert.match(agentGuidance, /\bArgon2id\b/);
+  assert.match(agentGuidance, /\bAES-256-GCM\b/);
+  assert.match(agentGuidance, /parameterized SQL/i);
+  assert.match(agentGuidance, /tenant/i);
+  assert.match(agentGuidance, /\bCSRF\b/);
+  assert.match(agentGuidance, /pentest/i);
+});
+
+// Root commands are owned by package.json; stale wrappers must not advertise retired paths.
+test('should remove obsolete root command wrappers', () => {
+  for (const obsoletePath of ['Makefile', '.vscode/launch.json']) {
+    assert.equal(
+      existsSync(resolve(repositoryRoot, obsoletePath)),
+      false,
+      `${obsoletePath} must not duplicate or contradict the supported root Yarn commands`,
     );
   }
 });

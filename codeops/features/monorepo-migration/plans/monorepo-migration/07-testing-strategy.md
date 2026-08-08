@@ -18,7 +18,7 @@ The migration uses fast repository-contract tests before each structural compone
 | ST-03 | Search Phase-1 workspace and root build-script topology for admin GUI | no GUI source workspace or root GUI build/test/dev/verify workspace command exists; retained `porta gui` CLI surface and deferred publishing files are exempt | MR-05, AR-33, AR-34 |
 | ST-04 | Parse `turbo.json` | build outputs `dist/**`; stateful test/verify/dev tasks are uncached; no remote-cache configuration exists | MR-08 |
 | ST-05 | Read `deps:check` and `deps:update` scripts | both address root/workspaces and exclude `@portaidentity/*`; update reinstalls and runs `yarn verify` | MR-09 |
-| ST-06 | Evaluate workspace globs against preserved playground paths | no playground path is a workspace or Turbo package | MR-06 |
+| ST-06 | Inspect the active tree for retired playground paths | neither playground application nor its dedicated tooling remains | MR-06 |
 
 ### Server package and deployment
 

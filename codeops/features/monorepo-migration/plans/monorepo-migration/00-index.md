@@ -36,7 +36,7 @@ The work is sequenced around a structural-parity checkpoint. File moves and pack
 | Packages | `packages/server`, `packages/sdk`, `packages/cli` |
 | First release | Deferred follow-on after migration parity |
 | Explicit removal now | `packages/porta-admin-gui` workspace only; release-tool replacement is deferred |
-| Explicit deferrals | playground migration, TUI admin GUI, product changes |
+| Explicit deferrals | future example selection, TUI admin GUI, product changes |
 
 ## Related Files
 

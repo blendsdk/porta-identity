@@ -11,7 +11,7 @@ This component upgrades the approved toolchain after structural parity and makes
 
 After structural parity, run the approved ncu update across the root and active workspaces and select the latest stable TypeScript 7.x. “Latest” means every third-party dependency selected by the approved ncu command; an incompatibility that cannot be corrected without product behavior change is a blocker requiring user ruling, not a silent version exclusion.
 
-Resolve only compiler/dependency compatibility breakage required to restore the same behavior and tests. Any discovered product defect is logged and deferred. Regenerate the active root Yarn lockfile once. Deferred playground manifests and lockfiles remain untouched. (MR-09, MR-10, AR-12, AR-18, AR-31)
+Resolve only compiler/dependency compatibility breakage required to restore the same behavior and tests. Any discovered product defect is logged and deferred. Regenerate the active root Yarn lockfile once. (MR-09, MR-10, AR-12, AR-18, AR-31)
 
 ## Build and Test Workflow
 
