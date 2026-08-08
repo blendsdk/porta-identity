@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 20:11
-> **Progress**: 43/59 tasks (73%)
+> **Last Updated**: 2026-08-08 21:07
+> **Progress**: 51/59 tasks (86%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -150,18 +150,23 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 ## Phase 4: Toolchain and Dependency Upgrade
 
+> **Phase baseline tree**: `8365349e0b6924351f408e6f2eb1386be7ffe9fb`
+> **Scope mode**: strict
+> **Expected modification set**: `repo-tests/monorepo/toolchain.spec.test.mjs`, root and active-package manifests/config/source compatibility edits, `yarn.lock`, this execution plan, and the feature roadmap
+> **Lenses**: correctness · dependency compatibility · TypeScript migration · behavioral parity · supply-chain risk
+
 ### Step 4.1: Upgrade only after parity
 
 **Reference**: [Toolchain and CI §Dependency and TypeScript Upgrade](03-04-release-and-ci.md#dependency-and-typescript-upgrade) · ST-17 · MR-09–MR-10
 
-- [ ] 4.1.1 Confirm Phase 2 structural-parity evidence before any manifest update — `99-execution-plan.md`
-- [ ] 4.1.2 [spec-author] Write toolchain/dependency specification ST-17 — `repo-tests/monorepo/toolchain.spec.test.mjs`
-- [ ] 4.1.3 Run the toolchain specification and record the expected red result — toolchain specification
-- [ ] 4.1.4 Add approved workspace ncu scripts and update root tooling to latest selected releases — `package.json`
-- [ ] 4.1.5 Update server dependencies and TypeScript 7 compatibility — server manifest/config/source only as required
-- [ ] 4.1.6 Update SDK and CLI dependencies and TypeScript 7 compatibility — SDK/CLI manifests/config/source only as required
-- [ ] 4.1.7 Regenerate `yarn.lock`, run ST-17 to green, and confirm ncu reports no eligible updates — root lockfile
-- [ ] 4.1.8 Run full parity; stop on an incompatible latest dependency rather than silently pinning — all active packages/tests
+- [x] 4.1.1 Confirm Phase 2 structural-parity evidence before any manifest update — `99-execution-plan.md` ✅ (completed: 2026-08-08 20:22; parity evidence present and manifests unchanged)
+- [x] 4.1.2 [spec-author] Write toolchain/dependency specification ST-17 — `repo-tests/monorepo/toolchain.spec.test.mjs` ✅ (completed: 2026-08-08 20:25)
+- [x] 4.1.3 Run the toolchain specification and record the expected red result — toolchain specification ✅ (completed: 2026-08-08 20:26; expected red: TypeScript contract 1 failed, 3 passed)
+- [x] 4.1.4 Add approved workspace ncu scripts and update root tooling to latest selected releases — `package.json` ✅ (completed: 2026-08-08 20:26; root ncu selection reports current)
+- [x] 4.1.5 Update server dependencies and TypeScript 7 compatibility — server manifest/config/source only as required ✅ (completed: 2026-08-08 20:29; manifest selects latest dependencies and stable TypeScript 7.0.2)
+- [x] 4.1.6 Update SDK and CLI dependencies and TypeScript 7 compatibility — SDK/CLI manifests/config/source only as required ✅ (completed: 2026-08-08 20:31; both manifests select latest dependencies and stable TypeScript 7.0.2)
+- [x] 4.1.7 Regenerate `yarn.lock`, run ST-17 to green, and confirm ncu reports no eligible updates — root lockfile ✅ (completed: 2026-08-08 21:07; ST-17 passed 4/4, ncu reports all manifests current, frozen install passed, and the refreshed production graph audits at zero vulnerabilities)
+- [x] 4.1.8 Run full parity; stop on an incompatible latest dependency rather than silently pinning — all active packages/tests ✅ (completed: 2026-08-08 21:07; repeated 34 structure tests, server 3,348, SDK 404, CLI 355, all TypeScript 7 builds, and isolated-port harness 6/6 passed)
 
 **Verify**: `yarn deps:check && yarn verify && yarn harness:test`
 
