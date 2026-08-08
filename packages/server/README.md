@@ -11,9 +11,9 @@ the server and its CLI can be started from any working directory.
 Run these commands from the monorepo root:
 
 ```bash
-yarn build:server
-yarn test:server
-yarn verify:server
+yarn workspace @portaidentity/server build
+yarn workspace @portaidentity/server test
+yarn workspace @portaidentity/server verify
 yarn start
 yarn porta --help
 ```

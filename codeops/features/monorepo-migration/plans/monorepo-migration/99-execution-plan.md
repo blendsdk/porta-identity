@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 21:32
-> **Progress**: 59/59 tasks (100%)
+> **Last Updated**: 2026-08-08 22:53
+> **Progress**: 66/66 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -21,8 +21,9 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 | 3 | Documentation separation | 8 |
 | 4 | Toolchain and dependency upgrade | 8 |
 | 5 | Branch CI and final parity | 8 |
+| 6 | Root command cleanup | 7 |
 
-**Total: 59 tasks across 5 phases**
+**Total: 66 tasks across 6 phases**
 
 > **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
 >
@@ -199,6 +200,35 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 - The review confirmed read-only workflow permissions, disabled checkout credential persistence, frozen root installs, retained server/SDK/CLI/UI/OIDC/docs/Docker/audit gates, and the absence of publishing, deployment, versioning, tag, or `main` mutation behavior.
 - Final phase gate: 44 structure tests, server 3,348 tests, SDK 404 tests, CLI 355 tests, OIDC harness 6/6, VitePress build, production Docker non-root/health/CLI smoke, and the documented provisioning-smoke baseline reproduction all completed as specified.
 
+## Phase 6: Root Command Cleanup
+
+> **Phase baseline tree**: `bb2bb77d9219cf595d83ae99493f0b2fa94d0d26`
+> **Scope mode**: strict
+> **Expected modification set**: `package.json`, `repo-tests/monorepo/root-scripts.*.test.mjs`, direct active documentation consumers of removed aliases, this execution plan, and the feature roadmap
+> **Lenses**: correctness · monorepo ergonomics · command-consumer integrity · strict scope · final behavioral parity
+
+### Step 6.1: Reduce the root coordinator to supported monorepo commands
+
+**Reference**: accepted post-migration root-manifest cleanup; MR-01, MR-06, MR-15
+
+- [x] 6.1.1 [spec-author] Inventory root-script consumers and write the supported-command specification — `repo-tests/monorepo/root-scripts.spec.test.mjs` ✅ (completed: 2026-08-08 21:42; exact 37-command surface and direct-consumer contracts)
+- [x] 6.1.2 Run the root-script specification and record the expected red result — root-script specification ✅ (completed: 2026-08-08 21:43; expected red: 4 failed and 3 passed)
+- [x] 6.1.3 Remove redundant per-package aliases, unsafe port cleanup, deferred playground launchers, and the excluded provisioning-smoke alias; retain the minimal monorepo, server operations, docs, Docker, dependency, and harness surface — `package.json` ✅ (completed: 2026-08-08 21:46; root surface reduced from 54 to 37 commands)
+- [x] 6.1.4 Update direct active documentation consumers of removed aliases without editing deferred playground content — package README and technical development guidance ✅ (completed: 2026-08-08 21:46)
+- [x] 6.1.5 Run the root-script specification to green and add implementation diagnostics for dangling root-script invocations — `repo-tests/monorepo/root-scripts.impl.test.mjs` ✅ (completed: 2026-08-08 21:48; 7 specification and 3 implementation cases passed)
+- [x] 6.1.6 Run frozen install, dependency check, full verify, OIDC harness, public docs build, CI contracts, and production Docker build — whole repository ✅ (completed: 2026-08-08 22:02; 54 structure tests, server 3,348, SDK 404, CLI 355, harness 6/6, docs, Docker, frozen install, current dependencies, and zero-high audit passed; NCU refreshed pg 8.22.0 to 8.23.0)
+- [x] 6.1.7 Confirm strict scope, run the required phase reviews, complete the roadmap, and checkpoint the migration — whole repository ✅ (completed: 2026-08-08 22:53; initial documentation-consumer finding corrected with user approval; focused re-review found no remaining findings)
+
+**Verify**: `yarn install --frozen-lockfile && yarn deps:check && yarn verify && yarn harness:test && yarn docs:build` plus CI-contract tests and a production Docker build
+
+### Phase 6 quality review
+
+- Independent strict-scope/security review found no critical, major, or minor findings: no product, playground, publishing, deployment, `main`, secret, unsafe-shell, or generated-artifact drift entered the phase.
+- Independent correctness review initially found one major active-documentation gap: root source-build instructions still referenced retired root `dist/` paths. The user approved the recommended correction.
+- The remediation changed the root contributor and source-deployment instructions to supported monorepo commands and extended the immutable root-script contract to cover both root-execution contexts.
+- Focused re-review confirmed the major finding closed and found no remaining critical, major, or minor findings.
+- Final gate: frozen install, current NCU selections, zero-high production audit, 54 structure tests, server 3,348 tests, SDK 404 tests, CLI 355 tests, OIDC harness 6/6, VitePress build, and production Docker build passed.
+
 ## Dependencies
 
 ```text
@@ -211,9 +241,11 @@ Phase 4 toolchain/dependencies
     ↓
 Phase 5 branch CI + final parity
     ↓
+Phase 6 root command cleanup
+    ↓
 Separate publishing/release cutover plan (not part of this execution)
 ```
 
 ## Success Criteria
 
-The migration is complete when all 59 tasks and AC-01–AC-06 pass and the branch is ready for the separate publishing-cutover follow-on. No task in this plan authorizes publication or a merge to production `main`.
+The migration is complete when all 66 tasks and AC-01–AC-06 pass and the branch is ready for the separate publishing-cutover follow-on. No task in this plan authorizes publication or a merge to production `main`.

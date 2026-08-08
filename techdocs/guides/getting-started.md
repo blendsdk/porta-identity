@@ -183,11 +183,8 @@ xcode-select --install
 
 ### Port 3000 Already in Use
 
-The dev script automatically kills any process on port 3000 before starting. If that fails:
-
-```bash
-lsof -ti:3000 | xargs kill -9
-```
+The dev script does not stop an existing service on port 3000. Identify and stop the process that
+owns the port before starting Porta again.
 
 ### Database Connection Refused
 

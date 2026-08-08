@@ -175,10 +175,10 @@ yarn build
 ### Run
 
 ```bash
-NODE_ENV=production node dist/index.js
+NODE_ENV=production yarn start
 ```
 
-Requires `node_modules/` to be present alongside `dist/`.
+Requires the root `node_modules/` and the built `packages/server/dist/` directory.
 
 ## Production Checklist
 
