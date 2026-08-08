@@ -6,7 +6,7 @@
 
 - Porta is a Node.js 22+, TypeScript ESM identity platform built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
 - Yarn Classic 1.x and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
-- `main` is the integration and production branch and is strictly off limits during migration. All migration work runs on `monorepo-migrate` in the separate `v6` worktree.
+- `main` is the production branch and remains strictly off limits. `monorepo-migrate` is the verified migration checkpoint; conflict resolution for the pull request into `develop` runs on `monorepo-develop-integration` in the separate `v6` worktree.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
 
 ## Authoritative commands

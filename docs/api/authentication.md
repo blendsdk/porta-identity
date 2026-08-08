@@ -62,8 +62,7 @@ The easiest way to authenticate is through the Porta CLI:
 # Login — opens browser for OIDC authentication
 porta login
 
-# Login from Docker or headless environments (auto-detected or manual)
-docker exec -it porta-app porta login   # auto-detects container
+# Login from a headless environment
 porta login --no-browser                # manual paste-URL mode
 
 # Verify identity
@@ -73,13 +72,14 @@ porta whoami
 porta logout
 ```
 
-The CLI stores credentials at `~/.porta/credentials.json` with `0600` file permissions. It automatically refreshes expired access tokens using the stored refresh token. In Docker containers, the CLI auto-detects the environment and uses a manual mode where you open the auth URL in your host browser and paste the callback URL back — see [porta login](/cli/bootstrap#porta-login) for details.
+The CLI stores credentials at `~/.porta/credentials.json` with `0600` file permissions. It automatically refreshes expired access tokens using the stored refresh token. In headless environments, manual mode prints the auth URL so you can open it elsewhere and paste the callback URL back — see [porta login](/cli/bootstrap#porta-login) for details.
 
 ### Via OIDC Flow (Programmatic)
 
 For programmatic access, perform the standard OIDC Authorization Code + PKCE flow against the super-admin organization:
 
 1. Discover endpoints:
+
    ```
    GET /api/admin/metadata
    ```
@@ -87,6 +87,7 @@ For programmatic access, perform the standard OIDC Authorization Code + PKCE flo
 2. Generate PKCE `code_verifier` and `code_challenge` (S256)
 
 3. Redirect to authorization:
+
    ```
    GET /{super-admin-slug}/auth/authorize?
      response_type=code&

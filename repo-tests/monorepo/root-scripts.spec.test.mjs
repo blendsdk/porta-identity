@@ -233,6 +233,34 @@ test('should delegate operational commands to current monorepo paths', () => {
   }
 });
 
+// The container exposes only the server package CLI; administrative commands run from the standalone CLI.
+test('should keep Docker guidance within the server CLI command boundary', () => {
+  const dockerWrapper = readRepositoryFile('docker/porta.sh');
+  const invalidContainerAdminCommand =
+    /(?:docker exec[^\n]*porta|\.\/porta)\s+(?:login|org|provision)\b/i;
+
+  assert.doesNotMatch(
+    dockerWrapper,
+    /HOST_FILE|\/dev\/stdin|\b(?:login|org|provision)\b[^\n]*#.*(?:container|local file)/i,
+    'docker/porta.sh must not route standalone administrative commands through the server container',
+  );
+
+  for (const documentationPath of [
+    'docker/DOCKERHUB.md',
+    'docs/api/authentication.md',
+    'docs/cli/bootstrap.md',
+    'docs/cli/provisioning.md',
+    'docs/guide/quickstart.md',
+    'docs/guide/setup-alternatives.md',
+  ]) {
+    assert.doesNotMatch(
+      readRepositoryFile(documentationPath),
+      invalidContainerAdminCommand,
+      `${documentationPath} must use @portaidentity/cli for administrative commands`,
+    );
+  }
+});
+
 // Documentation and dependency maintenance retain their established root-level tool delegation.
 test('should delegate documentation and dependency maintenance commands from the root', () => {
   const scripts = readRootManifest().scripts ?? {};

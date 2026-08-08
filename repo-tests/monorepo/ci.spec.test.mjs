@@ -121,7 +121,7 @@ function assertFrozenInstallBeforeYarnCommands(workflow) {
   }
 }
 
-// Branch CI covers migration pushes and pull requests without requiring a production-branch action.
+// Branch CI covers migration pushes and pull requests into both integration targets.
 test('should run Build and Test for migration-branch pushes and pull requests', () => {
   const workflow = readBuildAndTestWorkflow();
   const triggers = workflow.on;
@@ -140,6 +140,10 @@ test('should run Build and Test for migration-branch pushes and pull requests', 
   assert.ok(
     includesBranch(triggers.pull_request.branches, 'main'),
     `${workflowPath} pull-request filter must include pull requests targeting main`,
+  );
+  assert.ok(
+    includesBranch(triggers.pull_request.branches, 'develop'),
+    `${workflowPath} pull-request filter must include pull requests targeting develop`,
   );
 });
 

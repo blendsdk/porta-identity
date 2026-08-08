@@ -16,16 +16,16 @@ porta init
 2. Creates the **admin application** with granular RBAC permissions and roles
 3. Creates a **PKCE-enabled public OIDC client** for CLI authentication
 4. Creates the **first admin user** (prompts for email and password)
-6. Assigns the `porta-admin` role to the first user
+5. Assigns the `porta-admin` role to the first user
 
 **Mode:** Direct DB (connects directly to PostgreSQL and Redis)
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description             |
+| ---------------- | ----------------------- |
 | `--database-url` | Override `DATABASE_URL` |
-| `--redis-url` | Override `REDIS_URL` |
+| `--redis-url`    | Override `REDIS_URL`    |
 
 **Example:**
 
@@ -72,7 +72,6 @@ for `offline_access` to be granted — per OIDC Core §3.1.2.1, the provider ign
 auto-consents first-party clients, the `consent` value adds no extra screen for
 the admin.
 
-
 ::: warning No refresh token issued
 If the server does **not** return a refresh token, the CLI prints a warning:
 
@@ -94,16 +93,15 @@ existing grant to include `offline_access`.
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
-| `--server` | Porta server URL (default: `https://porta.local:3443`) |
+| Flag           | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `--server`     | Porta server URL (default: `https://porta.local:3443`) |
 | `--no-browser` | Use manual mode — print URL instead of opening browser |
-| `--client-id` | Override the auto-discovered admin client ID |
+| `--client-id`  | Override the auto-discovered admin client ID           |
 
-::: tip Docker / Headless Environments
-When running inside a Docker container, `porta login` **automatically detects** the container environment (via `/.dockerenv`) and switches to manual mode. No need to pass `--no-browser` explicitly.
-
-You can also force manual mode in other containerized runtimes (Podman, Kubernetes) by setting the `PORTA_CONTAINER=1` environment variable.
+::: tip Headless Environments
+Use `--no-browser` when running the standalone CLI over SSH, in CI, or in another environment
+without a local browser.
 :::
 
 **Examples:**
@@ -114,10 +112,6 @@ porta login
 
 # Login to a remote server
 porta login --server https://auth.example.com
-
-# Login from inside Docker (auto-detected manual mode)
-docker exec -it porta-app porta login
-# → Prints URL, you open it in your host browser, paste callback URL back
 
 # Force manual mode (SSH, CI, headless servers)
 porta login --no-browser
