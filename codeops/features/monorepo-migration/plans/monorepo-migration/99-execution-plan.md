@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 16:45
-> **Progress**: 3/59 tasks (5%)
+> **Last Updated**: 2026-08-08 17:31
+> **Progress**: 15/59 tasks (25%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -47,20 +47,29 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 **Reference**: [Workspace Layout §Target Tree](03-01-workspace-layout.md#target-tree) · MR-01–MR-06
 
-- [ ] 1.2.1 Rename SDK and CLI directories with history — `packages/porta-sdk`, `packages/porta-cli` → `packages/sdk`, `packages/cli`
-- [ ] 1.2.2 Remove the approved admin-GUI source workspace/tests/assets while preserving non-blocking `porta gui` CLI code — `packages/porta-admin-gui`
-- [ ] 1.2.3 Create the server package shell and move TypeScript/ESLint/Vitest configurations — `packages/server/package.json`, server configs
-- [ ] 1.2.4 Move server source and the pre-existing behavioral test directories/files — `src/` → `packages/server/src/`, existing `tests/` → `packages/server/tests/`
-- [ ] 1.2.5 Move migrations, templates, and locales without content edits — root asset directories → `packages/server/`
-- [ ] 1.2.6 Convert root manifest to coordinator workspaces/engines and add the minimal Turbo pipeline — `package.json`, `turbo.json`
-- [ ] 1.2.7 Add stable root structure-test and active package command aliases — `package.json`
-- [ ] 1.2.8 Update renamed SDK/CLI manifests/config paths and exact SDK dependency edge — `packages/sdk`, `packages/cli`
-- [ ] 1.2.9 Reinstall with Yarn Classic and regenerate the active root lockfile — `yarn.lock`
-- [ ] 1.2.10 Run topology specifications to green — `repo-tests/monorepo/*.spec.test.mjs`
-- [ ] 1.2.11 Write workspace-policy implementation edge tests after green — `repo-tests/monorepo/workspace-layout.impl.test.mjs`
-- [ ] 1.2.12 Verify root workspace discovery, structure tests, and package builds — root and `packages/*`
+- [x] 1.2.1 Rename SDK and CLI directories with history — `packages/porta-sdk`, `packages/porta-cli` → `packages/sdk`, `packages/cli` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.2 Remove the approved admin-GUI source workspace/tests/assets while preserving non-blocking `porta gui` CLI code — `packages/porta-admin-gui` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.3 Create the server package shell and move TypeScript/ESLint/Vitest configurations — `packages/server/package.json`, server configs ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.4 Move server source and the pre-existing behavioral test directories/files — `src/` → `packages/server/src/`, existing `tests/` → `packages/server/tests/` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.5 Move migrations, templates, and locales without content edits — root asset directories → `packages/server/` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.6 Convert root manifest to coordinator workspaces/engines, fold harness dependencies into the root install, remove its nested manifest/lockfile, and add the minimal Turbo pipeline — `package.json`, `test-harness/package.json`, `test-harness/yarn.lock`, `turbo.json` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.7 Add stable root structure-test and active package command aliases — `package.json` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.8 Update renamed SDK/CLI manifests/config paths and exact SDK dependency edge — `packages/sdk`, `packages/cli` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.9 Reinstall with Yarn Classic and regenerate the active root lockfile — `yarn.lock` ✅ (completed: 2026-08-08 16:55)
+- [x] 1.2.10 Run topology specifications to green — `repo-tests/monorepo/*.spec.test.mjs` ✅ (completed: 2026-08-08 16:55; 8 passed)
+- [x] 1.2.11 Write workspace-policy implementation edge tests after green — `repo-tests/monorepo/workspace-layout.impl.test.mjs` ✅ (completed: 2026-08-08 16:55; 4 passed)
+- [x] 1.2.12 Verify root workspace discovery, structure tests, and package builds — root and `packages/*` ✅ (completed: 2026-08-08 17:31; frozen install, 14 structure tests, 3 package builds, server 3,344 tests, SDK 404 tests, and CLI 355 tests passed)
 
 **Verify**: `yarn test:structure && yarn build`
+
+> **Phase boundary:** root dependency ownership and the single-lockfile contract are active. The retained OIDC harness is not a Phase 1 verification target; its install consumers, Dockerfile, and moved source paths remain unavailable until tasks 2.2.10–2.2.12 complete in the structural-parity phase.
+
+### Phase 1 quality review
+
+- Independent implementation review: no critical findings; root CI aliases and repository-root operational execution were corrected before the final gate.
+- Independent strict-scope audit: no playground drift, secret additions, product behavior edits, or move-integrity loss; harness ownership bookkeeping and active guidance were corrected before the final gate.
+- Parent review corrected stale type-only SDK source imports in three relocated server contract tests; targeted lint and 35 contract tests passed.
+- Final gate: `yarn install --frozen-lockfile`, `yarn test:structure`, `yarn build`, `yarn test:unit`, and `yarn verify` passed.
 
 ## Phase 2: Server Package and Structural Parity
 
@@ -85,7 +94,7 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 - [ ] 2.2.7 Update root operational aliases and moved Playwright/Vitest paths — root/server configs
 - [ ] 2.2.8 Rewrite production Docker build stages for the server workspace and retained `/app` layout — `docker/Dockerfile`
 - [ ] 2.2.9 Update Docker/Compose runtime references only where moved paths require it — `docker/entrypoint.sh`, Compose files
-- [ ] 2.2.10 Fold retained OIDC harness dependencies into the root install and remove its secondary active manifest/lockfile — root manifest, `test-harness/package.json`, `test-harness/yarn.lock`
+- [ ] 2.2.10 Update retained OIDC harness dependency consumers to use the root install — harness scripts and SPA asset paths
 - [ ] 2.2.11 Remove obsolete admin-GUI harness stages and update server/SDK build paths — `test-harness/Dockerfile`
 - [ ] 2.2.12 Update harness seed/start paths and provisioning smoke imports — `test-harness/scripts/seed.ts`, harness scripts, `scripts/provision-smoke-test.ts`
 - [ ] 2.2.13 Run ST-09–ST-12 to green — runtime/server specification files

@@ -1,7 +1,7 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-08-08 16:05
+> **Last Updated**: 2026-08-08 17:31
 > **Features**: 0 / 0 done
 > **CodeOps Artifact Schema**: 1
 
@@ -11,11 +11,11 @@
 
 ## Features
 
-| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |
-|---------|---------|---------------|----------|--------|--------------|
-| monorepo-migration | [→](features/monorepo-migration/00-roadmap.md) | migration executing · publishing backlog | n/a | 🔄 | 2026-08-08 16:05 |
+| Feature            | Roadmap                                        | Stage Summary                         | Progress      | Status | Last Updated     |
+| ------------------ | ---------------------------------------------- | ------------------------------------- | ------------- | ------ | ---------------- |
+| monorepo-migration | [→](features/monorepo-migration/00-roadmap.md) | Phase 1 complete · publishing backlog | 15 / 59 (25%) | 🔄     | 2026-08-08 17:31 |
 
 ## Archived
 
 | Feature | Roadmap | Completed | Last Updated |
-|---------|---------|-----------|--------------|
+| ------- | ------- | --------- | ------------ |
