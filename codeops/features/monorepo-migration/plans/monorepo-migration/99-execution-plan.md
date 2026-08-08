@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 21:07
-> **Progress**: 51/59 tasks (86%)
+> **Last Updated**: 2026-08-08 21:32
+> **Progress**: 59/59 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -172,20 +172,32 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 ## Phase 5: Branch CI and Final Parity
 
+> **Phase baseline tree**: `ece5810bcd490672eb55bf5b82630954204b72ea`
+> **Scope mode**: strict
+> **Expected modification set**: `repo-tests/monorepo/ci.spec.test.mjs`, `repo-tests/monorepo/ci.impl.test.mjs`, `.github/workflows/build-and-test.yml`, final analysis guidance only if stale, this execution plan, and the feature roadmap
+> **Lenses**: correctness · CI coverage · no-publication boundary · security · final behavioral parity
+
 ### Step 5.1: Make migration commits build and test cleanly
 
 **Reference**: [Toolchain and CI §Build and Test Workflow](03-04-release-and-ci.md#build-and-test-workflow) · ST-18 · MR-11–MR-15 · AR-33
 
-- [ ] 5.1.1 [spec-author] Write branch build/test and no-publication specification ST-18 — `repo-tests/monorepo/ci.spec.test.mjs`
-- [ ] 5.1.2 Run the CI specification and record the expected red result — CI specification
-- [ ] 5.1.3 Update `Build and Test` jobs to root Turbo/workspace commands and retained suites, with no publishing steps — `.github/workflows/build-and-test.yml`
-- [ ] 5.1.4 Run ST-18 to green — CI specification
-- [ ] 5.1.5 Write CI-contract implementation diagnostics after green — `repo-tests/monorepo/ci.impl.test.mjs`
-- [ ] 5.1.6 Run frozen install, full verify, OIDC harness, and CI-contract tests; confirm the documented provisioning-smoke baseline exclusion — whole repository
-- [ ] 5.1.7 Build VitePress and smoke the production Docker image, including health and embedded `porta` CLI — `docs/`, `docker/`
-- [ ] 5.1.8 Confirm the diff contains no playground compatibility edits, product changes, publishing/release/version activity, npm deprecation, or `main` mutation; refresh CodeOps analysis and complete the plan — whole repository
+- [x] 5.1.1 [spec-author] Write branch build/test and no-publication specification ST-18 — `repo-tests/monorepo/ci.spec.test.mjs` ✅ (completed: 2026-08-08 21:15; seven static branch-CI contracts)
+- [x] 5.1.2 Run the CI specification and record the expected red result — CI specification ✅ (completed: 2026-08-08 21:17; expected red: 4 failed and 3 passed)
+- [x] 5.1.3 Update `Build and Test` jobs to root Turbo/workspace commands and retained suites, with no publishing steps — `.github/workflows/build-and-test.yml` ✅ (completed: 2026-08-08 21:20; six read-only build/test jobs validated as YAML)
+- [x] 5.1.4 Run ST-18 to green — CI specification ✅ (completed: 2026-08-08 21:21; 7/7 contracts passed)
+- [x] 5.1.5 Write CI-contract implementation diagnostics after green — `repo-tests/monorepo/ci.impl.test.mjs` ✅ (completed: 2026-08-08 21:23; 3 diagnostics and all 10 CI contract cases passed)
+- [x] 5.1.6 Run frozen install, full verify, OIDC harness, and CI-contract tests; confirm the documented provisioning-smoke baseline exclusion — whole repository ✅ (completed: 2026-08-08 21:29; frozen install, 44 structure tests, server 3,348, SDK 404, CLI 355, harness 6/6, and baseline missing-module failure reproduced)
+- [x] 5.1.7 Build VitePress and smoke the production Docker image, including health and embedded `porta` CLI — `docs/`, `docker/` ✅ (completed: 2026-08-08 21:31; docs built and production image passed non-root, health, and embedded CLI checks)
+- [x] 5.1.8 Confirm the diff contains no playground compatibility edits, product changes, publishing/release/version activity, npm deprecation, or `main` mutation; refresh CodeOps analysis and complete the plan — whole repository ✅ (completed: 2026-08-08 21:32; strict diff audit passed and managed project guidance refreshed)
 
 **Verify**: `yarn verify && yarn harness:test && yarn docs:build` plus production Docker smoke and reproduction of the documented provisioning-smoke baseline exclusion
+
+### Phase 5 quality review
+
+- The phase ran independent correctness and CI/security reviews against the complete diff and recorded verification evidence.
+- Both reviewers found no critical, major, or minor findings and declared the phase safe to commit.
+- The review confirmed read-only workflow permissions, disabled checkout credential persistence, frozen root installs, retained server/SDK/CLI/UI/OIDC/docs/Docker/audit gates, and the absence of publishing, deployment, versioning, tag, or `main` mutation behavior.
+- Final phase gate: 44 structure tests, server 3,348 tests, SDK 404 tests, CLI 355 tests, OIDC harness 6/6, VitePress build, production Docker non-root/health/CLI smoke, and the documented provisioning-smoke baseline reproduction all completed as specified.
 
 ## Dependencies
 
