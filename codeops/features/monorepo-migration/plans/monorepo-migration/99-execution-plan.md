@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 16:36
-> **Progress**: 2/59 tasks (3%)
+> **Last Updated**: 2026-08-08 16:45
+> **Progress**: 3/59 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -41,7 +41,7 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 - [x] 1.1.1 [spec-author] Write workspace-layout cases ST-01–ST-06 — `repo-tests/monorepo/workspace-layout.spec.test.mjs` ✅ (completed: 2026-08-08 16:15)
 - [x] 1.1.2 [spec-author] Write server-tree/package cases ST-07–ST-08 — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-08-08 16:36)
-- [ ] 1.1.3 Run the root Node specification files directly and record the expected red result — `node --test repo-tests/monorepo/*.spec.test.mjs`
+- [x] 1.1.3 Run the root Node specification files directly and record the expected red result — `node --test repo-tests/monorepo/*.spec.test.mjs` ✅ (completed: 2026-08-08 16:45; expected red: 7 failed, 1 passed)
 
 ### Step 1.2: Create the package topology
 
