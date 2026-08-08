@@ -16,11 +16,12 @@
  * globalSetup so --project flags work immediately.
  */
 import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 // Load .env so DATABASE_URL / REDIS_URL are available for deriving test URLs.
 // This runs at config-parse time, before any test code.
-dotenvConfig();
+dotenvConfig({ path: resolve(import.meta.dirname, '../../.env') });
 
 /**
  * Derive test database URL from DATABASE_URL in .env.

@@ -25,14 +25,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
 import { logger } from '../lib/logger.js';
+import { getTemplatesDirectory } from '../lib/runtime-paths.js';
 import type { LoginMethod } from '../clients/types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Base directory for templates, resolved relative to project root */
-const TEMPLATES_DIR = path.resolve(process.cwd(), 'templates');
+/** Absolute directory containing templates shipped with the server package. */
+const TEMPLATES_DIR = getTemplatesDirectory();
 
 /** Default template set name */
 const DEFAULT_SET = 'default';

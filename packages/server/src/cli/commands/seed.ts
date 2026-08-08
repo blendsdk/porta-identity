@@ -14,16 +14,16 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import type { CommandModule } from 'yargs';
+import { getSeedSqlPath } from '../../lib/runtime-paths.js';
 import type { GlobalOptions } from '../index.js';
 import { withBootstrap } from '../bootstrap.js';
 import { withErrorHandling } from '../error-handler.js';
 import { success, warn } from '../output.js';
 import { confirm } from '../prompt.js';
 
-/** Path to the seed SQL file relative to the project root */
-const SEED_FILE = join(process.cwd(), 'migrations', '011_seed.sql');
+/** Absolute path to the seed SQL file shipped with the server package. */
+const SEED_FILE = getSeedSqlPath();
 
 /**
  * Extract the "Up Migration" portion from the seed SQL file.

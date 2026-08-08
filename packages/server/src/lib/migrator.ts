@@ -1,8 +1,8 @@
-import { join } from 'node:path';
 import { runner } from 'node-pg-migrate';
 import type { RunnerOption } from 'node-pg-migrate';
 import { config } from '../config/index.js';
 import { logger } from './logger.js';
+import { getMigrationsDirectory } from './runtime-paths.js';
 
 /**
  * Run database migrations using node-pg-migrate's programmatic API.
@@ -20,8 +20,7 @@ export async function runMigrations(
   direction: 'up' | 'down' = 'up',
   count?: number
 ): Promise<void> {
-  // Resolve migrations directory relative to project root (cwd)
-  const migrationsDir = join(process.cwd(), 'migrations');
+  const migrationsDir = getMigrationsDirectory();
 
   const options: RunnerOption = {
     databaseUrl: config.databaseUrl,

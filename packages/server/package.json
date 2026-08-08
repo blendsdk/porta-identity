@@ -3,6 +3,7 @@
   "version": "1.6.2",
   "description": "Multi-tenant OIDC provider built on node-oidc-provider, Koa, and TypeScript",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "porta-server": "dist/cli/index.js"
   },

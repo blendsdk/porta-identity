@@ -8,7 +8,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "3443:3443"
+      - '3443:3443'
     volumes:
       - ./certs:/etc/nginx/certs:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgres://porta:harness_pr0d_s3cret@postgres:5432/porta
       REDIS_URL: redis://redis:6379
       ISSUER_BASE_URL: https://porta.local:3443
-      TRUST_PROXY: "true"
+      TRUST_PROXY: 'true'
       # ⚠️ TEST HARNESS ONLY — hardcoded secrets (per AR-4)
       COOKIE_KEYS: Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp
       SMTP_HOST: mailhog
@@ -40,14 +40,14 @@ services:
       SMTP_FROM: noreply@test-harness.local
       SIGNING_KEY_ENCRYPTION_KEY: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2
       TWO_FACTOR_ENCRYPTION_KEY: f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2
-      PORTA_AUTO_MIGRATE: "true"
+      PORTA_AUTO_MIGRATE: 'true'
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -63,9 +63,9 @@ services:
       POSTGRES_PASSWORD: harness_pr0d_s3cret
       POSTGRES_DB: porta
     ports:
-      - "5432:5432"
+      - '${HARNESS_POSTGRES_PORT:-5432}:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U porta -d porta"]
+      test: ['CMD-SHELL', 'pg_isready -U porta -d porta']
       interval: 3s
       timeout: 3s
       retries: 10
@@ -76,9 +76,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '${HARNESS_REDIS_PORT:-6379}:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 3s
       timeout: 3s
       retries: 10
@@ -89,8 +89,8 @@ services:
   mailhog:
     image: mailhog/mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - '${HARNESS_SMTP_PORT:-1025}:1025'
+      - '${HARNESS_MAILHOG_PORT:-8025}:8025'
     networks:
       - harness-network
 

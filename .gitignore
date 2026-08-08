@@ -8,6 +8,7 @@ coverage/
 scripts/tmp-*
 test-results/
 playwright-report/
+test-harness/.harness-pids
 
 # Internal planning & requirements (not for public repo)
 requirements/

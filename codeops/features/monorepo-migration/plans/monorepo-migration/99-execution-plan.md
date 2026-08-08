@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 17:31
-> **Progress**: 15/59 tasks (25%)
+> **Last Updated**: 2026-08-08 18:23
+> **Progress**: 35/59 tasks (59%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -73,37 +73,50 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 ## Phase 2: Server Package and Structural Parity
 
+> **Phase baseline tree**: `f5b576ef177dc3ecd24483902faad78177af26bf`
+> **Scope mode**: strict
+> **Expected modification set**: `packages/server` runtime-path source/tests/manifest/README, root operational aliases, production Docker files, retained `test-harness` Docker/Compose/scripts/tests, provisioning smoke imports, and this execution plan
+> **Lenses**: correctness · security · runtime compatibility · package contents · test parity
+
 ### Step 2.1: Specify installed runtime behavior
 
 **Reference**: [Server Runtime](03-02-server-runtime.md) · ST-09–ST-12 · MR-03–MR-05, MR-15
 
-- [ ] 2.1.1 [spec-author] Write unrelated-cwd asset/seed resolution ST-09 — `packages/server/tests/unit/lib/runtime-paths.spec.test.ts`
-- [ ] 2.1.2 Extend server specifications for output, Docker, suite/harness inventory ST-10–ST-12 — `repo-tests/monorepo/server-package.spec.test.mjs`
-- [ ] 2.1.3 Run runtime/server specifications and record the expected red result — targeted spec files
+- [x] 2.1.1 [spec-author] Write unrelated-cwd asset/seed resolution ST-09 — `packages/server/tests/unit/lib/runtime-paths.spec.test.ts` ✅ (completed: 2026-08-08 17:35)
+- [x] 2.1.2 Extend server specifications for output, Docker, suite/harness inventory ST-10–ST-12 — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-08-08 17:41)
+- [x] 2.1.3 Run runtime/server specifications and record the expected red result — targeted spec files ✅ (completed: 2026-08-08 17:42; runtime module missing; server package 4 failed, 4 passed)
 
 ### Step 2.2: Make the server and retained tests self-contained
 
 **Reference**: [Server Runtime §Runtime Asset Resolution](03-02-server-runtime.md#runtime-asset-resolution) · AR-08, AR-09, AR-15, AR-16, AR-34
 
-- [ ] 2.2.1 Add package-root/runtime-asset resolver — `packages/server/src/lib/runtime-paths.ts`
-- [ ] 2.2.2 Route database migration lookup through the resolver — `packages/server/src/lib/migrator.ts`
-- [ ] 2.2.3 Route seed SQL lookup through the resolver — `packages/server/src/cli/commands/seed.ts`
-- [ ] 2.2.4 Route locale initialization through the resolver — `packages/server/src/auth/i18n.ts`
-- [ ] 2.2.5 Route page and email template lookup through the resolver — template engine/renderers
-- [ ] 2.2.6 Update server scripts, files/bin metadata, and package README — `packages/server/package.json`, `packages/server/README.md`
-- [ ] 2.2.7 Update root operational aliases and moved Playwright/Vitest paths — root/server configs
-- [ ] 2.2.8 Rewrite production Docker build stages for the server workspace and retained `/app` layout — `docker/Dockerfile`
-- [ ] 2.2.9 Update Docker/Compose runtime references only where moved paths require it — `docker/entrypoint.sh`, Compose files
-- [ ] 2.2.10 Update retained OIDC harness dependency consumers to use the root install — harness scripts and SPA asset paths
-- [ ] 2.2.11 Remove obsolete admin-GUI harness stages and update server/SDK build paths — `test-harness/Dockerfile`
-- [ ] 2.2.12 Update harness seed/start paths and provisioning smoke imports — `test-harness/scripts/seed.ts`, harness scripts, `scripts/provision-smoke-test.ts`
-- [ ] 2.2.13 Run ST-09–ST-12 to green — runtime/server specification files
-- [ ] 2.2.14 Write runtime-path implementation edge tests after green — `packages/server/tests/unit/lib/runtime-paths.impl.test.ts`
-- [ ] 2.2.15 Run lint/typecheck/build and the existing unit suite from new paths — active packages
-- [ ] 2.2.16 Run integration, E2E, pentest, UI, SDK, CLI, OIDC harness, and provisioning-smoke suites — retained test systems
-- [ ] 2.2.17 Record structural-parity evidence and compare inventory to the baseline, excluding only removed GUI tests — `99-execution-plan.md`
+- [x] 2.2.1 Add package-root/runtime-asset resolver — `packages/server/src/lib/runtime-paths.ts` ✅ (completed: 2026-08-08 17:42; unrelated-cwd specification passed)
+- [x] 2.2.2 Route database migration lookup through the resolver — `packages/server/src/lib/migrator.ts` ✅ (completed: 2026-08-08 17:42)
+- [x] 2.2.3 Route seed SQL lookup through the resolver — `packages/server/src/cli/commands/seed.ts` ✅ (completed: 2026-08-08 17:42)
+- [x] 2.2.4 Route locale initialization through the resolver — `packages/server/src/auth/i18n.ts` ✅ (completed: 2026-08-08 17:42)
+- [x] 2.2.5 Route page and email template lookup through the resolver — template engine/renderers ✅ (completed: 2026-08-08 17:44; 44 targeted tests passed)
+- [x] 2.2.6 Update server scripts, files/bin metadata, and package README — `packages/server/package.json`, `packages/server/README.md` ✅ (completed: 2026-08-08 17:44; package contents and build-output specifications passed)
+- [x] 2.2.7 Update root operational aliases and moved Playwright/Vitest paths — root/server configs ✅ (completed: 2026-08-08 17:46; server typecheck passed)
+- [x] 2.2.8 Rewrite production Docker build stages for the server workspace and retained `/app` layout — `docker/Dockerfile` ✅ (completed: 2026-08-08 17:47; Docker build check passed)
+- [x] 2.2.9 Update Docker/Compose runtime references only where moved paths require it — `docker/entrypoint.sh`, Compose files ✅ (completed: 2026-08-08 17:47; no content update required because `/app` layout is retained)
+- [x] 2.2.10 Update retained OIDC harness dependency consumers to use the root install — harness scripts and SPA asset paths ✅ (completed: 2026-08-08 17:47)
+- [x] 2.2.11 Remove obsolete admin-GUI harness stages and update the server build paths — `test-harness/Dockerfile` ✅ (completed: 2026-08-08 17:48; Docker build check passed)
+- [x] 2.2.12 Update harness seed/start paths and provisioning smoke imports — `test-harness/scripts/seed.ts`, harness scripts, `scripts/provision-smoke-test.ts` ✅ (completed: 2026-08-08 17:49)
+- [x] 2.2.13 Run ST-09–ST-12 to green — runtime/server specification files ✅ (completed: 2026-08-08 17:49; runtime-path 1 passed and server-package 8 passed)
+- [x] 2.2.14 Write runtime-path implementation edge tests after green — `packages/server/tests/unit/lib/runtime-paths.impl.test.ts` ✅ (completed: 2026-08-08 17:50; 3 implementation cases passed)
+- [x] 2.2.15 Run lint/typecheck/build and the existing unit suite from new paths — active packages ✅ (completed: 2026-08-08 17:51; lint, typecheck, 3 builds, 143 unit files, and 2,721 unit tests passed)
+- [x] 2.2.16 Run integration, E2E, pentest, UI, SDK, CLI, and OIDC harness suites; audit provisioning smoke against its baseline — retained test systems ✅ (completed: 2026-08-08 18:23; integration 275, E2E 128, pentest 224, UI 134, SDK 404, CLI 355, and harness 6 passed; provisioning smoke reproduced its baseline missing-module failure and is an explicit parity-gate exclusion)
+- [x] 2.2.17 Record structural-parity evidence and compare inventory to the baseline, excluding only removed GUI tests — `99-execution-plan.md` ✅ (completed: 2026-08-08 18:12; 4,103 baseline non-GUI tests retained plus 4 runtime-path tests; 223 baseline behavioral files retained plus 2 runtime-path files; 75 removed GUI tests remain excluded)
 
-**Verify**: `yarn verify && yarn harness:test && yarn provision:smoke`
+### Phase 2 parity evidence
+
+- The retained unit/integration/E2E/pentest/SDK/CLI matrix increased from 4,103 to 4,107 tests only through the four new runtime-path assertions; no baseline test was removed.
+- Browser coverage remains 134 server UI tests and 6 OIDC harness flows. The harness now uses the root dependency graph, supports isolated host ports, and scopes cleanup to its own services.
+- Both Dockerfiles build the server workspace and include Yarn 1's hoisted and package-local production dependency directories. The production image runs as `porta`, exposes its health check, and passes an embedded CLI smoke test.
+- `scripts/provision-smoke-test.ts` was already non-runnable at the phase baseline because it imports a removed `src/cli/commands/provision.js` module. Its remaining source imports were relocated structurally; repairing the missing provisioning module is explicitly deferred because it would change product/module behavior.
+- **Baseline-parity exception:** the user's strict no-product-fix rule authorizes reproduction and documentation of this pre-existing provisioning-smoke failure instead of repair. It is not a green migration gate; a follow-on product task must restore it after structural parity.
+
+**Verify**: `yarn verify && yarn harness:test`; separately reproduce and record the known `yarn provision:smoke` baseline failure
 
 ## Phase 3: Documentation Separation
 
@@ -150,11 +163,11 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 - [ ] 5.1.3 Update `Build and Test` jobs to root Turbo/workspace commands and retained suites, with no publishing steps — `.github/workflows/build-and-test.yml`
 - [ ] 5.1.4 Run ST-18 to green — CI specification
 - [ ] 5.1.5 Write CI-contract implementation diagnostics after green — `repo-tests/monorepo/ci.impl.test.mjs`
-- [ ] 5.1.6 Run frozen install, full verify, OIDC harness, provisioning smoke, and CI-contract tests — whole repository
+- [ ] 5.1.6 Run frozen install, full verify, OIDC harness, and CI-contract tests; confirm the documented provisioning-smoke baseline exclusion — whole repository
 - [ ] 5.1.7 Build VitePress and smoke the production Docker image, including health and embedded `porta` CLI — `docs/`, `docker/`
 - [ ] 5.1.8 Confirm the diff contains no playground compatibility edits, product changes, publishing/release/version activity, npm deprecation, or `main` mutation; refresh CodeOps analysis and complete the plan — whole repository
 
-**Verify**: `yarn verify && yarn harness:test && yarn provision:smoke && yarn docs:build` plus production Docker smoke
+**Verify**: `yarn verify && yarn harness:test && yarn docs:build` plus production Docker smoke and reproduction of the documented provisioning-smoke baseline exclusion
 
 ## Dependencies
 

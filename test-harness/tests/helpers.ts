@@ -19,7 +19,8 @@ export const TEST_USER = {
   password: 'TestPassword123!',
 };
 
-export const MAILHOG_API = 'http://localhost:8025/api';
+/** MailHog API endpoint used by the browser harness. */
+export const MAILHOG_API = `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}/api`;
 
 // ── Porta Login Page Helpers ────────────────────────────
 
@@ -100,10 +101,9 @@ export async function handleConsentIfPresent(page: Page): Promise<void> {
  */
 export async function handleSignOutConfirmation(page: Page): Promise<void> {
   try {
-    const signOutBtn = await page.waitForSelector(
-      'button:has-text("Sign out")',
-      { timeout: 5_000 },
-    );
+    const signOutBtn = await page.waitForSelector('button:has-text("Sign out")', {
+      timeout: 5_000,
+    });
     if (signOutBtn) {
       await signOutBtn.click();
     }

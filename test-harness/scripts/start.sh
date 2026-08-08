@@ -10,6 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PID_FILE="$PROJECT_ROOT/test-harness/.harness-pids"
 CI_MODE=false
 
 # Parse --ci flag
@@ -24,13 +25,12 @@ if $CI_MODE; then echo "  (CI mode — will exit after setup)"; fi
 echo "--- Step 1: Clean stop ---"
 bash "$PROJECT_ROOT/test-harness/scripts/stop.sh"
 
-# 2. Install dependencies (if node_modules missing)
-if [ ! -d "$PROJECT_ROOT/test-harness/node_modules" ]; then
-  echo "--- Step 2: Installing test-harness dependencies ---"
-  cd "$PROJECT_ROOT/test-harness"
+# 2. Install the root dependency graph when needed
+if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
+  echo "--- Step 2: Installing monorepo dependencies ---"
+  cd "$PROJECT_ROOT"
   yarn install
   npx playwright install chromium
-  cd "$PROJECT_ROOT"
 fi
 
 # 3. Generate TLS certificate (if not already present)
@@ -84,9 +84,9 @@ echo "  Seed complete!"
 # 8. Copy SPA vendor libs from node_modules
 echo "--- Step 8: Copying SPA vendor libs ---"
 mkdir -p "$PROJECT_ROOT/test-harness/spa/lib"
-cp "$PROJECT_ROOT/test-harness/node_modules/oidc-client-ts/dist/esm/oidc-client-ts.js" \
+cp "$PROJECT_ROOT/node_modules/oidc-client-ts/dist/esm/oidc-client-ts.js" \
    "$PROJECT_ROOT/test-harness/spa/lib/oidc-client-ts.js"
-cp "$PROJECT_ROOT/test-harness/node_modules/jwt-decode/build/esm/index.js" \
+cp "$PROJECT_ROOT/node_modules/jwt-decode/build/esm/index.js" \
    "$PROJECT_ROOT/test-harness/spa/lib/jwt-decode.js"
 echo "  Libs copied!"
 
@@ -101,6 +101,7 @@ echo "--- Step 10: Starting BFF server on port 4101 ---"
 npx tsx test-harness/bff/server.ts &
 BFF_PID=$!
 echo "  BFF PID: $BFF_PID"
+printf '%s\n%s\n' "$SPA_PID" "$BFF_PID" > "$PID_FILE"
 
 # 11. Wait for SPA and BFF to be ready
 sleep 2
@@ -111,7 +112,7 @@ echo ""
 echo "  SPA:     https://app.test:4100"
 echo "  BFF:     http://app.test:4101"
 echo "  Porta:   https://porta.local:3443 (via nginx)"
-echo "  MailHog: http://localhost:8025"
+echo "  MailHog: http://localhost:${HARNESS_MAILHOG_PORT:-8025}"
 
 echo ""
 

@@ -29,13 +29,14 @@ import path from 'node:path';
 import Handlebars from 'handlebars';
 import { getSystemConfigString } from '../lib/system-config.js';
 import { logger } from '../lib/logger.js';
+import { getLocalesDirectory } from '../lib/runtime-paths.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Base directory for locale files, resolved relative to project root */
-const LOCALES_DIR = path.resolve(process.cwd(), 'locales');
+/** Absolute directory containing locale files shipped with the server package. */
+const LOCALES_DIR = getLocalesDirectory();
 
 /**
  * All translation namespaces loaded by default.

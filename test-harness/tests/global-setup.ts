@@ -8,7 +8,7 @@ export default async function globalSetup(): Promise<void> {
   try {
     // Flush all Redis rate limit keys to avoid accumulated limits from previous runs
     execSync(
-      'docker exec test-harness-redis-1 redis-cli --no-auth-warning EVAL "local keys = redis.call(\'KEYS\', \'ratelimit:*\'); for i, k in ipairs(keys) do redis.call(\'DEL\', k) end; return #keys" 0',
+      "docker exec test-harness-redis-1 redis-cli --no-auth-warning EVAL \"local keys = redis.call('KEYS', 'ratelimit:*'); for i, k in ipairs(keys) do redis.call('DEL', k) end; return #keys\" 0",
       { stdio: 'pipe', timeout: 5000 },
     );
     console.log('[global-setup] Rate limit keys flushed');
@@ -19,7 +19,8 @@ export default async function globalSetup(): Promise<void> {
 
   try {
     // Also clear MailHog to start with a clean inbox
-    await fetch('http://localhost:8025/api/v1/messages', { method: 'DELETE' });
+    const mailhogPort = process.env.HARNESS_MAILHOG_PORT ?? '8025';
+    await fetch(`http://localhost:${mailhogPort}/api/v1/messages`, { method: 'DELETE' });
     console.log('[global-setup] MailHog cleared');
   } catch {
     console.warn('[global-setup] Could not clear MailHog (non-fatal)');

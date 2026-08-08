@@ -24,9 +24,21 @@
 // 'fatal' is the quietest valid level (config schema doesn't allow 'silent').
 process.env.LOG_LEVEL = 'fatal';
 
-// Point at the test-harness Postgres (port-mapped to localhost)
-process.env.DATABASE_URL = 'postgres://porta:harness_pr0d_s3cret@localhost:5432/porta';
-process.env.REDIS_URL = 'redis://localhost:6379';
+// Point at the test-harness services while allowing concurrent local stacks.
+const postgresPort = process.env.HARNESS_POSTGRES_PORT ?? '5432';
+const redisPort = process.env.HARNESS_REDIS_PORT ?? '6379';
+const mailhogPort = process.env.HARNESS_MAILHOG_PORT ?? '8025';
+process.env.DATABASE_URL = `postgres://porta:harness_pr0d_s3cret@localhost:${postgresPort}/porta`;
+process.env.REDIS_URL = `redis://localhost:${redisPort}`;
+process.env.ISSUER_BASE_URL ??= 'https://porta.local:3443';
+process.env.COOKIE_KEYS ??= 'Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp';
+process.env.SMTP_HOST ??= 'localhost';
+process.env.SMTP_PORT ??= process.env.HARNESS_SMTP_PORT ?? '1025';
+process.env.SMTP_FROM ??= 'noreply@test-harness.local';
+process.env.SIGNING_KEY_ENCRYPTION_KEY ??=
+  'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2';
+process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
+  'f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -68,12 +80,17 @@ async function main() {
   console.log('   Creating minimal test data...\n');
 
   // Dynamic imports — ensures LOG_LEVEL=fatal is set before logger initializes
-  const { connectDatabase, disconnectDatabase } = await import('../../src/lib/database.js');
-  const { connectRedis, disconnectRedis } = await import('../../src/lib/redis.js');
-  const { createOrganization, getOrganizationBySlug, updateOrganization } = await import('../../src/organizations/index.js');
-  const { createApplication, getApplicationBySlug } = await import('../../src/applications/index.js');
-  const { createClient, listClientsByApplication, generateSecret } = await import('../../src/clients/index.js');
-  const { createUser, getUserByEmail, reactivateUser } = await import('../../src/users/index.js');
+  const { connectDatabase, disconnectDatabase } =
+    await import('../../packages/server/src/lib/database.js');
+  const { connectRedis, disconnectRedis } = await import('../../packages/server/src/lib/redis.js');
+  const { createOrganization, getOrganizationBySlug, updateOrganization } =
+    await import('../../packages/server/src/organizations/index.js');
+  const { createApplication, getApplicationBySlug } =
+    await import('../../packages/server/src/applications/index.js');
+  const { createClient, listClientsByApplication, generateSecret } =
+    await import('../../packages/server/src/clients/index.js');
+  const { createUser, getUserByEmail, reactivateUser } =
+    await import('../../packages/server/src/users/index.js');
 
   // Connect to infrastructure
   await connectDatabase();
@@ -226,7 +243,7 @@ async function main() {
         baseUrl: PORTA_BASE_URL,
       },
       mailhog: {
-        apiUrl: 'http://localhost:8025/api',
+        apiUrl: `http://localhost:${mailhogPort}/api`,
       },
     };
 
@@ -260,7 +277,6 @@ async function main() {
     console.log(`  Porta:        ${PORTA_BASE_URL}`);
     console.log(`  Issuer:       ${PORTA_BASE_URL}/${ORG_SLUG}`);
     console.log(SEP);
-
   } finally {
     await disconnectRedis();
     await disconnectDatabase();

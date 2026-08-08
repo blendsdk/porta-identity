@@ -3,8 +3,8 @@
 > **Feature-Set**: Monorepo Migration
 > **Status**: In Progress
 > **Created**: 2026-08-08
-> **Last Updated**: 2026-08-08 17:31
-> **Progress**: 15 / 59 tasks (25%)
+> **Last Updated**: 2026-08-08 18:23
+> **Progress**: 35 / 59 tasks (59%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,5 +15,5 @@
 
 | ID   | Title                             | RD  | Plan                                                       | Stage     | Status | Last Updated     | Depends-on / Blocker |
 | ---- | --------------------------------- | --- | ---------------------------------------------------------- | --------- | ------ | ---------------- | -------------------- |
-| T-01 | Migrate Porta to a monorepo       | —   | [monorepo-migration](plans/monorepo-migration/00-index.md) | Executing | 🔄     | 2026-08-08 17:31 | —                    |
+| T-01 | Migrate Porta to a monorepo       | —   | [monorepo-migration](plans/monorepo-migration/00-index.md) | Executing | 🔄     | 2026-08-08 18:23 | —                    |
 | T-02 | Publishing and production cutover | —   | —                                                          | Backlog   | ⬜     | 2026-08-08 16:01 | depends on T-01      |
