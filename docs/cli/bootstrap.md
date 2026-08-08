@@ -14,7 +14,7 @@ porta init
 
 1. Creates the **super-admin organization** (`porta-admin`)
 2. Creates the **admin application** with granular RBAC permissions and roles
-3. Creates a **PKCE-enabled public OIDC client** for the CLI and [Admin GUI](/guide/admin-gui)
+3. Creates a **PKCE-enabled public OIDC client** for CLI authentication
 4. Creates the **first admin user** (prompts for email and password)
 6. Assigns the `porta-admin` role to the first user
 

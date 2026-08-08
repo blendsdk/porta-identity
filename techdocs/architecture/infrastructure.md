@@ -56,28 +56,6 @@ graph LR
 | PostgreSQL | `postgres:16-alpine` | 5432 | With `init-test-db.sql` for test DB |
 | Redis | `redis:7-alpine` | 6379 | Ephemeral (appendonly off) |
 
-### Admin GUI
-
-The Admin GUI is a **standalone package** (`@portaidentity/admin-gui`) that runs outside the Docker image. It connects to the Porta server's Admin API over HTTP/HTTPS and authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions.
-
-```mermaid
-graph LR
-    subgraph "Admin GUI (Standalone)"
-        BFF[Koa BFF]
-        SPA[React SPA<br/>Vite-built static assets]
-    end
-
-    subgraph "Porta Server"
-        PORTA[Porta API<br/>Port 3000]
-    end
-
-    BROWSER[Admin Browser] --> BFF
-    BFF --> SPA
-    BFF -->|API Proxy + Bearer Token| PORTA
-```
-
-The Admin GUI is **not bundled in the Docker image**. It is installed and run separately via `npx @portaidentity/admin-gui` or `porta gui`. See the [Admin GUI product documentation](/guide/admin-gui) for details.
-
 ## Container Build
 
 ### Multi-Stage Dockerfile
@@ -237,7 +215,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — Application architecture
-- [Deployment Guide](/implementation-details/guides/deployment) — Step-by-step deployment instructions
-- [Configuration Reference](/implementation-details/reference/configuration) — Environment variables
-- [Integrations](/implementation-details/reference/integrations) — PostgreSQL, Redis, SMTP details
+- [System Overview](./system-overview.md) — Application architecture
+- [Deployment Guide](../guides/deployment.md) — Step-by-step deployment instructions
+- [Configuration Reference](../reference/configuration.md) — Environment variables
+- [Integrations](../reference/integrations.md) — PostgreSQL, Redis, SMTP details

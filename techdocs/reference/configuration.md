@@ -4,9 +4,9 @@
 
 ## Overview
 
-Porta's configuration is managed through environment variables, validated at startup using a **Zod schema** (`src/config/schema.ts`). If any required variable is missing or invalid, the process exits immediately with a clear error message (fail-fast principle).
+Porta's configuration is managed through environment variables, validated at startup using a **Zod schema** (`packages/server/src/config/schema.ts`). If any required variable is missing or invalid, the process exits immediately with a clear error message (fail-fast principle).
 
-Configuration is loaded via `src/config/index.ts`, which reads from `process.env` (with `.env` file support via dotenv in development).
+Configuration is loaded via `packages/server/src/config/index.ts`, which reads from `process.env` (with `.env` file support via dotenv in development).
 
 ## Environment Variables
 
@@ -106,18 +106,6 @@ These variables are used by the test suites (integration, e2e, pentest):
 | `TEST_SMTP_PORT` | Integer | — | For tests | Test SMTP port |
 | `TEST_MAILHOG_URL` | String (URL) | — | For tests | MailHog API URL for test assertions |
 
-### Admin GUI (Standalone)
-
-The Admin GUI (`@portaidentity/admin-gui`) is a standalone package that runs outside the Porta server process. It does **not** use the Porta server's environment variables. Instead, it resolves the Porta server URL from:
-
-1. CLI flag: `--server <url>`
-2. Environment variable: `PORTA_SERVER`
-3. Stored credentials: `~/.porta/credentials.json`
-
-The Admin GUI authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions. It requires no client secrets, Redis, or special environment variables.
-
-See the [Admin GUI product documentation](/guide/admin-gui) for usage details.
-
 ### Internal / Escape Hatch
 
 | Variable | Type | Default | Required | Description |
@@ -142,7 +130,7 @@ When `NODE_ENV=production`, Porta enforces additional validation rules via Zod's
 
 ## System Config (Runtime)
 
-In addition to environment variables, Porta reads runtime configuration from the `system_config` PostgreSQL table. These values are cached in-memory for 60 seconds (`src/lib/system-config.ts`).
+In addition to environment variables, Porta reads runtime configuration from the `system_config` PostgreSQL table. These values are cached in-memory for 60 seconds (`packages/server/src/lib/system-config.ts`).
 
 System config is managed via:
 - **CLI**: `porta config list/get/set`
@@ -221,7 +209,7 @@ graph LR
 
 ## Related Documentation
 
-- [Getting Started](/implementation-details/guides/getting-started) — Initial setup with environment configuration
-- [Deployment](/implementation-details/guides/deployment) — Production configuration checklist
-- [Security](/implementation-details/architecture/security) — Security implications of configuration
-- [Environment Variables Guide](/guide/environment) — Product documentation for operators
+- [Getting Started](../guides/getting-started.md) — Initial setup with environment configuration
+- [Deployment](../guides/deployment.md) — Production configuration checklist
+- [Security](../architecture/security.md) — Security implications of configuration
+- [Environment Variables Guide](../../docs/guide/environment.md) — Product documentation for operators

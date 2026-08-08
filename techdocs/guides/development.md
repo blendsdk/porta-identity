@@ -7,7 +7,7 @@
 ### File Naming
 
 - **Source files**: kebab-case — `error-handler.ts`, `request-logger.ts`, `token-repository.ts`
-- **Test files**: `<source-name>.test.ts` in the corresponding `tests/` subdirectory
+- **Test files**: `<source-name>.test.ts` in the corresponding `packages/server/tests/` subdirectory
 - **Migration files**: `NNN_description.sql` — numbered sequentially
 
 ### Naming Conventions
@@ -61,7 +61,7 @@ export class OrganizationService {
 Each domain module defines its own error classes:
 
 ```typescript
-// src/organizations/errors.ts
+// packages/server/src/organizations/errors.ts
 export class OrganizationNotFoundError extends Error {
   constructor(identifier: string) {
     super(`Organization not found: ${identifier}`);
@@ -77,7 +77,7 @@ export class OrganizationValidationError extends Error {
 }
 ```
 
-The global error handler (`src/middleware/error-handler.ts`) catches these and maps them to HTTP status codes.
+The global error handler (`packages/server/src/middleware/error-handler.ts`) catches these and maps them to HTTP status codes.
 
 ## Module Development Pattern
 
@@ -86,7 +86,7 @@ The global error handler (`src/middleware/error-handler.ts`) catches these and m
 When adding a new domain module, follow the established pattern:
 
 ```
-src/<module>/
+packages/server/src/<module>/
 ├── index.ts          # Barrel export — controls public API
 ├── types.ts          # Domain types, interfaces, DB row mapping
 ├── errors.ts         # Domain-specific error classes
@@ -122,7 +122,7 @@ graph TB
 Every module's `index.ts` controls what's accessible to other modules:
 
 ```typescript
-// src/organizations/index.ts
+// packages/server/src/organizations/index.ts
 export type {
   Organization,
   CreateOrganizationInput,
@@ -154,10 +154,10 @@ import { insertOrganization } from '../organizations/repository.js';
 
 ### Test Structure
 
-Tests mirror the source structure under `tests/`:
+Tests mirror the source structure under `packages/server/tests/`:
 
 ```
-tests/
+packages/server/tests/
 ├── unit/                    # Fast, no external deps
 │   ├── organizations/       # Module-specific tests
 │   │   ├── service.test.ts
@@ -219,23 +219,10 @@ Current coverage:
 | Suite | Tests | Files |
 |-------|-------|-------|
 | **Porta unit tests** | 3,100+ | 150+ |
-| **Admin GUI Vitest** | 145 | 16 |
-| **Admin GUI Playwright E2E** | 204 | 23 |
 | **Integration** | 9 suites | — |
 | **E2E** | 20+ files | — |
 | **Pentest** | 32+ files | 11 categories |
 | **UI (Playwright)** | 20+ specs | — |
-
-### Admin GUI Testing
-
-The Admin GUI (`packages/porta-admin-gui/`) has its own test suite:
-
-```bash
-# Run Admin GUI tests from root
-yarn workspace @portaidentity/admin-gui test
-```
-
-The standalone Admin GUI package includes 8 unit test files (~60 tests) and 1 integration test.
 
 ## Database Migrations
 
@@ -245,12 +232,12 @@ The standalone Admin GUI package includes 8 unit test files (~60 tests) and 1 in
 yarn migrate:create <description>
 ```
 
-This creates a new numbered SQL file in `migrations/`.
+This creates a new numbered SQL file in `packages/server/migrations/`.
 
 ### Migration Conventions
 
 ```sql
--- migrations/020_description.sql
+-- packages/server/migrations/020_description.sql
 
 -- Use IF NOT EXISTS for idempotency
 CREATE TABLE IF NOT EXISTS my_table (
@@ -326,52 +313,9 @@ This runs lint → build → test:all. All checks must pass.
 | Test | `test` | Silent | Test-specific `.env` |
 | Production | `production` | JSON structured | Environment variables |
 
-## Admin GUI Development
-
-The Admin GUI is a standalone package at `packages/porta-admin-gui/` (`@portaidentity/admin-gui`). It uses a Koa BFF + React/Vite SPA architecture with OIDC Authorization Code + PKCE (public client) and in-memory sessions.
-
-### Technology Stack
-
-| Concern | Technology |
-|---------|-----------|
-| **UI Framework** | React 19 |
-| **Component Library** | FluentUI v9 (`@fluentui/react-components`) |
-| **BFF Framework** | Koa 3.x |
-| **Auth** | OIDC Authorization Code + PKCE (public client, openid-client v6) |
-| **Sessions** | In-memory (no Redis) |
-| **Build Tool** | Vite |
-| **Test Runner** | Vitest |
-
-### Development Mode
-
-`yarn dev` from the project root starts both the Porta server and Admin GUI concurrently. To work on the Admin GUI alone:
-
-```bash
-yarn workspace @portaidentity/admin-gui dev
-```
-
-### Key Patterns
-
-- **7 foundational components** — ErrorBoundary, StatusBadge, ConfirmDialog, CopyButton, EmptyState, LoadingSkeleton, ToastProvider
-- **4 hooks** — useAuth, useTheme, useToast, useCopyToClipboard
-- **Typed API client** — With ETag support and Bearer token injection
-- **Security headers middleware** — CSP, X-Frame-Options, etc.
-- **API proxy middleware** — Proxies `/api/*` to Porta server with Bearer token injection
-- **SPA fallback middleware** — Serves the Vite-built SPA for client-side routing
-
-### BFF Architecture
-
-The BFF (`packages/porta-admin-gui/src/`) key files:
-
-- `server.ts` — Koa app factory with middleware stack
-- `auth/` — OIDC Auth Code + PKCE login flow, callback server, metadata
-- `session.ts` — In-memory session store (no Redis dependency)
-- `middleware/` — Security headers, error handler, API proxy, SPA fallback
-- `config.ts` — Server URL resolution (flag > env > credentials)
-
 ## Related Documentation
 
-- [Getting Started](/implementation-details/guides/getting-started) — Initial setup
-- [Deployment](/implementation-details/guides/deployment) — Production deployment
-- [Architecture Decisions](/implementation-details/decisions/) — Why things are the way they are
-- [Configuration Reference](/implementation-details/reference/configuration) — All environment variables
+- [Getting Started](../guides/getting-started.md) — Initial setup
+- [Deployment](../guides/deployment.md) — Production deployment
+- [Architecture Decisions](../decisions/index.md) — Why things are the way they are
+- [Configuration Reference](../reference/configuration.md) — All environment variables

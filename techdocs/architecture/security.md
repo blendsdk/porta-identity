@@ -213,7 +213,7 @@ Authentication endpoints are protected by sliding-window rate limiting:
 | 2FA verification | Configurable | Sliding window |
 | Email OTP | Configurable | Per-user cooldown |
 
-**Implementation** (`src/auth/rate-limiter.ts`):
+**Implementation** (`packages/server/src/auth/rate-limiter.ts`):
 - Redis `INCR` + `EXPIRE` for sliding window counters
 - Keys include IP address and/or email for targeted limiting
 - Rate limit headers returned in responses (X-RateLimit-*)
@@ -222,52 +222,9 @@ Authentication endpoints are protected by sliding-window rate limiting:
 
 The `failed_login_count` column on users tracks consecutive failed attempts. After a configurable threshold, the account is automatically locked (`status → locked`).
 
-## Admin GUI (BFF) Security
-
-The Admin GUI (`@portaidentity/admin-gui`) is a **standalone package** that uses a Backend-for-Frontend (BFF) pattern with OIDC Authorization Code + PKCE (public client). All security-sensitive operations remain server-side in the BFF process.
-
-### BFF Authentication Flow
-
-```mermaid
-sequenceDiagram
-    participant Browser
-    participant BFF as Admin GUI BFF
-    participant Porta as Porta Server
-
-    Browser->>BFF: GET /admin (unauthenticated)
-    BFF->>Browser: Redirect to BFF /auth/login
-    BFF->>Porta: OIDC Auth Code + PKCE flow (public client)
-    Porta->>Browser: Login page
-    Browser->>Porta: Complete login
-    Porta->>BFF: Authorization code callback
-    BFF->>Porta: Exchange code for tokens (with PKCE code_verifier)
-    BFF->>BFF: Store tokens in in-memory session
-    BFF->>Browser: Set session cookie (HttpOnly, SameSite=Lax)
-```
-
-**Key security properties:**
-
-| Property | Implementation |
-|----------|---------------|
-| **Token storage** | Access/refresh tokens stored server-side in BFF in-memory session — never exposed to browser |
-| **Session cookies** | `HttpOnly`, `SameSite=Lax` — immune to XSS token theft |
-| **PKCE public client** | Authorization Code + PKCE (S256) — no client secret needed |
-| **API proxy** | BFF injects Bearer token into API requests — SPA never sees admin tokens |
-| **Token refresh** | BFF handles automatic token refresh transparently |
-| **No Redis dependency** | Sessions stored in BFF process memory — lost on restart (users re-login) |
-
-### BFF Security Headers
-
-The BFF applies its own security headers appropriate for serving a React SPA:
-
-- `Content-Security-Policy` — Allows `self` for scripts/styles (Vite-built assets)
-- `X-Frame-Options: DENY` — Prevents clickjacking
-- `X-Content-Type-Options: nosniff` — Prevents MIME sniffing
-- `Referrer-Policy: strict-origin-when-cross-origin` — Limits referrer leakage
-
 ## Security Headers
 
-Applied to all responses via middleware in `src/middleware/security-headers.ts`:
+Applied to all responses via middleware in `packages/server/src/middleware/security-headers.ts`:
 
 | Header | Value | Purpose |
 |--------|-------|---------|
@@ -279,7 +236,7 @@ Applied to all responses via middleware in `src/middleware/security-headers.ts`:
 
 ### Root Page No-Leakage Policy
 
-`GET /`, `/robots.txt`, and `/favicon.ico` are served by `src/middleware/root-page.ts` with a neutral response that reveals no product identity:
+`GET /`, `/robots.txt`, and `/favicon.ico` are served by `packages/server/src/middleware/root-page.ts` with a neutral response that reveals no product identity:
 
 - No product name, version, or vendor information
 - `X-Robots-Tag: noindex, nofollow`
@@ -363,7 +320,7 @@ Audit writes are **fire-and-forget** — they do not block the main request flow
 
 ## Penetration Test Coverage
 
-The `tests/pentest/` directory contains 32+ test files across 11 categories covering:
+The `packages/server/tests/pentest/` directory contains 32+ test files across 11 categories covering:
 
 | Category | What's Tested |
 |----------|--------------|
@@ -379,7 +336,7 @@ The pentest suite serves as a **codified security baseline** — all tests must 
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — Architecture and middleware stack
-- [Data Model](/implementation-details/architecture/data-model) — Database schema including security tables
-- [API Design](/implementation-details/architecture/api-design) — Authentication and error handling conventions
-- [Configuration Reference](/implementation-details/reference/configuration) — Security-related environment variables
+- [System Overview](./system-overview.md) — Architecture and middleware stack
+- [Data Model](./data-model.md) — Database schema including security tables
+- [API Design](./api-design.md) — Authentication and error handling conventions
+- [Configuration Reference](../reference/configuration.md) — Security-related environment variables

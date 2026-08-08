@@ -52,18 +52,7 @@ Porta wraps node-oidc-provider and adds everything needed for a production multi
 
 ### Provider Configuration
 
-Porta creates a configured `Provider` instance by building a comprehensive configuration object. This is where the OIDC engine is customized:
-
-```
-src/oidc/
-├── configuration.ts      # Builds the Provider configuration
-├── provider.ts           # Creates the Provider instance
-├── adapter-factory.ts    # Routes models to Redis or PostgreSQL adapters
-├── postgres-adapter.ts   # PostgreSQL adapter for durable artifacts
-├── redis-adapter.ts      # Redis adapter for ephemeral artifacts
-├── account-finder.ts     # User lookup + claims builder
-└── client-finder.ts      # Client metadata lookup from DB
-```
+Porta creates a configured `Provider` instance with organization-aware storage, account lookup, client metadata, signing keys, and interaction policies.
 
 The configuration builder (`configuration.ts`) sets up:
 

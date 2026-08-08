@@ -1,10 +1,10 @@
-# SDK CLI Migration Guide
+# SDK CLI Migration Record
 
-This document describes the future migration strategy for replacing the CLI's `AdminHttpClient` with `@portaidentity/sdk`. This is a **reference document** — the migration has not yet been implemented.
+This historical document records the migration from the CLI's former `AdminHttpClient` to `@portaidentity/sdk`. The current CLI uses the SDK through `packages/cli/src/client-factory.ts`; the sequence below is retained for maintainers who need the original rationale.
 
-## Current Architecture
+## Former Architecture
 
-The CLI (`src/cli/`) uses a custom `AdminHttpClient` class for HTTP communication:
+The CLI previously used a custom `AdminHttpClient` class for HTTP communication:
 
 ```
 porta user list
@@ -19,15 +19,15 @@ Key components:
 - **`src/cli/token-store.ts`** — Reads `~/.porta/credentials.json` for Bearer tokens
 - **`src/cli/bootstrap.ts`** — `withHttpClient()` creates an `AdminHttpClient` instance for each command
 
-## Target Architecture
+## Implemented Architecture
 
-Replace `AdminHttpClient` with `@portaidentity/sdk`:
+The standalone CLI now creates an `@portaidentity/sdk` client through its package-local client factory:
 
 ```
 porta user list
-  → src/cli/commands/user.ts
-    → porta.users.list(orgId, params)
-      → NodeTransport + CliAuth
+  → packages/cli/src/commands/user.ts
+    → createClient() in packages/cli/src/client-factory.ts
+      → PortaClient + NodeTransport + CliAuth
         → Bearer token injection + auto-refresh
 ```
 
@@ -40,9 +40,9 @@ porta user list
 | **Error handling** | Manual HTTP status → error mapping | Typed error hierarchy (PortaValidationError, etc.) |
 | **Pagination** | Manual URL parameter building | Built-in `listAll()` auto-pagination |
 | **ETag support** | Manual header management | Built-in ETag/If-Match support |
-| **Maintenance** | CLI and GUI have separate HTTP clients | Single SDK used by CLI, GUI, and scripts |
+| **Maintenance** | CLI maintained a separate HTTP client | CLI and scripts share the supported SDK |
 
-## Migration Strategy
+## Historical Migration Strategy
 
 ### Phase 1: Parallel Setup
 
@@ -93,7 +93,7 @@ Once all commands are migrated:
 ### Before (AdminHttpClient)
 
 ```typescript
-// src/cli/commands/org.ts — list subcommand
+// packages/cli/src/commands/org.ts — list subcommand
 async function listOrgs(client: AdminHttpClient, args: ListArgs) {
   const params = new URLSearchParams();
   if (args.status) params.set('status', args.status);
@@ -131,12 +131,12 @@ async function listOrgs(porta: PortaClient, args: ListArgs) {
 - **Same exit codes** — Error mapping preserves existing exit code conventions
 - **`porta init` and `porta migrate`** — These use `withBootstrap()` (direct-DB), not HTTP — they are unaffected
 
-## Timeline
+## Status
 
-This migration is planned for a future release. It does not block any current work — the SDK and CLI currently operate independently.
+The migration is complete. This record does not authorize further CLI refactoring or product behavior changes.
 
 ## See Also
 
-- [SDK Overview](/guide/sdk) — SDK architecture and API reference
-- [SDK Node.js Usage](/guide/sdk-node) — Auth providers and Node.js setup
-- [CLI Overview](/cli/overview) — Current CLI documentation
+- [SDK Overview](../../docs/guide/sdk.md) — SDK architecture and API reference
+- [SDK Node.js Usage](../../docs/guide/sdk-node.md) — Auth providers and Node.js setup
+- [CLI Overview](../../docs/cli/overview.md) — Current CLI documentation

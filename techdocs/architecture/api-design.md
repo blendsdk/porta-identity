@@ -4,13 +4,11 @@
 
 ## Overview
 
-Porta exposes three distinct API surfaces:
+Porta exposes two distinct API surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
 2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
-3. **Admin GUI BFF** (`/api/*`, `/auth/*`) — Standalone backend-for-frontend (`@portaidentity/admin-gui`) that wraps the Admin API with session-based auth and security headers (see [Admin GUI architecture](/implementation-details/architecture/system-overview#admin-gui-module))
-
-This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider). For BFF details, see the [Security Architecture](/implementation-details/architecture/security#admin-gui-bff-security).
+This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
 
 ## REST Conventions
 
@@ -69,7 +67,7 @@ All admin endpoints follow a consistent RESTful pattern:
 
 ### Admin API Authentication
 
-All `/api/admin/*` routes (except the metadata endpoint) are protected by the `admin-auth` middleware (`src/middleware/admin-auth.ts`):
+All `/api/admin/*` routes (except the metadata endpoint) are protected by the `admin-auth` middleware (`packages/server/src/middleware/admin-auth.ts`):
 
 ```mermaid
 sequenceDiagram
@@ -283,7 +281,7 @@ Supported formats: CSV, JSON.
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — Architecture and middleware stack
-- [Data Model](/implementation-details/architecture/data-model) — Database schema
-- [Security](/implementation-details/architecture/security) — Authentication and authorization details
-- [Admin API Reference](/api/overview) — Product documentation for API consumers
+- [System Overview](./system-overview.md) — Architecture and middleware stack
+- [Data Model](./data-model.md) — Database schema
+- [Security](./security.md) — Authentication and authorization details
+- [Admin API Reference](../../docs/api/overview.md) — Product documentation for API consumers

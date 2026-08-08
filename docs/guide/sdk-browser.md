@@ -1,6 +1,6 @@
 # SDK Browser Usage
 
-This guide covers using `@portaidentity/sdk` in browser applications, such as the Porta Admin GUI or custom admin dashboards.
+This guide covers using `@portaidentity/sdk` in browser applications, such as custom administration dashboards.
 
 ## Architecture: BFF Pattern
 
@@ -56,7 +56,7 @@ The `BrowserTransport` automatically:
 2. Sends it as `X-CSRF-Token` header on every mutating request (POST, PUT, PATCH, DELETE)
 3. GET requests are sent without the CSRF header
 
-This matches the double-submit cookie pattern used by the Porta Admin GUI BFF.
+This implements the standard double-submit cookie pattern for a custom BFF.
 
 ### Cookie Configuration
 
@@ -173,4 +173,3 @@ useEffect(() => {
 - [SDK Overview](/guide/sdk) — Installation, quick start, full API reference
 - [SDK Node.js Usage](/guide/sdk-node) — Server-side automation
 - [SDK AI Agent Guide](/guide/sdk-agent) — AI integration
-- [Admin GUI](/guide/admin-gui) — Admin dashboard architecture

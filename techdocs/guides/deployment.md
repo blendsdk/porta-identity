@@ -223,28 +223,6 @@ Porta enforces production safety checks via Zod's `superRefine`:
 | Audit log | Retention policy configured |
 | Admin access | First admin user created via `porta init` |
 
-## Admin GUI
-
-The Admin GUI is a **standalone package** (`@portaidentity/admin-gui`) — it is **not** bundled in the Porta Docker image. It runs as a separate process that connects to the Porta server's Admin API.
-
-### Running the Admin GUI
-
-Install and run via npm:
-
-```bash
-npx @portaidentity/admin-gui --server https://auth.yourdomain.com
-```
-
-Or via the Porta CLI:
-
-```bash
-porta gui --server https://auth.yourdomain.com
-```
-
-The Admin GUI authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions. No client secrets, Redis, or special environment variables are needed.
-
-See the [Admin GUI product documentation](/guide/admin-gui) for full details.
-
 ## Upgrades
 
 ### Docker Compose Upgrade
@@ -308,7 +286,7 @@ Ship to your log aggregator (ELK, Datadog, CloudWatch, etc.) for analysis.
 
 ## Related Documentation
 
-- [Infrastructure](/implementation-details/architecture/infrastructure) — Docker architecture and CI/CD
-- [Configuration Reference](/implementation-details/reference/configuration) — All environment variables
-- [Security](/implementation-details/architecture/security) — Production security requirements
-- [Quick Start Guide](/guide/quickstart) — Product documentation for operators
+- [Infrastructure](../architecture/infrastructure.md) — Docker architecture and CI/CD
+- [Configuration Reference](../reference/configuration.md) — All environment variables
+- [Security](../architecture/security.md) — Production security requirements
+- [Quick Start Guide](../../docs/guide/quickstart.md) — Product documentation for operators

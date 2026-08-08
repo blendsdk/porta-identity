@@ -11,7 +11,7 @@ Porta uses a **hybrid OIDC adapter** that routes artifacts to different stores b
 | **Redis**  | Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest | Short-lived, high-throughput  |
 | **PostgreSQL** | AccessToken, RefreshToken, Grant                                                        | Long-lived, durable          |
 
-The `HybridAdapter` in `src/oidc/adapter-factory.ts` routes model operations to the appropriate adapter (`RedisAdapter` or `PostgresAdapter`).
+Porta's hybrid adapter routes model operations to the appropriate Redis or PostgreSQL adapter.
 
 ## Session → Token Link
 
@@ -65,7 +65,7 @@ DELETE FROM oidc_payloads WHERE expires_at IS NOT NULL AND expires_at < NOW()
 ```
 
 This cleanup:
-- Runs in `src/routes/interactions.ts` when a login interaction begins
+- Runs when a login interaction begins
 - Is non-blocking (fire-and-forget) — failures are logged but don't interrupt the auth flow
 - Is self-regulating — cleanup frequency scales with authentication activity
 - Requires no cron jobs or external schedulers
@@ -74,7 +74,7 @@ This pattern is proven from Porta v4.
 
 ## Forced Re-Login (`prompt=login`)
 
-OIDC relying parties — including the Porta CLI and Admin GUI — can request a
+OIDC relying parties — including the Porta CLI and other browser clients — can request a
 **forced re-authentication** by sending `prompt=login` on the authorization
 request. This tells the provider to ignore any existing SSO session and make
 the user sign in again.
@@ -98,9 +98,8 @@ browser storage to recover.
 
 Porta resolves this with two complementary, security-preserving safeguards:
 
-1. **Proactive cookie reset (`prompt=login` middleware).** The
-   `promptLoginReset` middleware (`src/middleware/prompt-login-reset.ts`) runs
-   on the **initial** org-scoped authorize endpoint (`GET`/`POST`
+1. **Proactive cookie reset (`prompt=login` middleware).** This safeguard runs
+   on the **initial** organization-scoped authorize endpoint (`GET`/`POST`
    `/{orgSlug}/auth`) before the provider. When the `prompt` parameter contains
    the `login` value, it performs **two** actions so the provider mints a fresh
    session with no uid mismatch:
@@ -119,8 +118,7 @@ Porta resolves this with two complementary, security-preserving safeguards:
 
 
 2. **Graceful `SessionNotFound` recovery (safety net).** If a mismatch still
-   reaches the provider's error handler, the custom `renderError` hook
-   (`src/oidc/configuration.ts`) detects `SessionNotFound`, clears the stale
+   reaches the provider's error handler, Porta detects `SessionNotFound`, clears the stale
    cookie pair, and renders a friendly **"Your session has expired. Please sign
    in again."** message instead of the generic error. The next request then has
    no stale cookie and starts a clean flow.
@@ -138,27 +136,7 @@ When a user triggers logout, they see a two-action page:
 - **Sign Out** — Confirms the logout, triggers session destruction with cascade delete
 - **Return to Application** — Cancels the logout, returns to the client's `post_logout_redirect_uri`
 
-The logout page is rendered by the `logoutSource` hook in `src/oidc/configuration.ts` using the `templates/default/pages/logout.hbs` template with i18n support.
-
-## Playground Logout Behavior
-
-### SPA Playground (`playground/`)
-The SPA saves the `id_token` before clearing OIDC storage, then passes it as `id_token_hint` to the end-session endpoint. This allows oidc-provider to identify the user and skip the confirmation page for a seamless logout experience.
-
-### BFF Playground (`playground-bff/`)
-The BFF performs **token revocation** before redirecting to the end-session endpoint — it sends revocation requests for both the access token and refresh token to the `/token/revocation` endpoint, then redirects the browser to `/session/end` for session cleanup.
-
-## Implementation Files
-
-| File | Purpose |
-|------|---------|
-| `src/oidc/adapter-factory.ts` | HybridAdapter with Session `destroy()` cascade override |
-| `src/oidc/postgres-adapter.ts` | `revokeGrantsByIds()` and `purgeExpired()` functions |
-| `src/oidc/redis-adapter.ts` | `cleanupRedisGrants()` function |
-| `src/routes/interactions.ts` | Opportunistic `purgeExpired()` call on auth flow start |
-| `src/oidc/configuration.ts` | `logoutSource` hook, `renderError` SessionNotFound recovery, `loadExistingGrant` offline_access upgrade |
-| `src/middleware/prompt-login-reset.ts` | `prompt=login` session-cookie reset middleware |
-| `templates/default/pages/logout.hbs` | Logout page template |
+Porta renders the logout page with localized templates.
 
 ## Related Documentation
 

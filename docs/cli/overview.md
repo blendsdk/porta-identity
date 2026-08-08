@@ -9,7 +9,7 @@ The Porta CLI has two components:
 | Component | Package | Purpose |
 |-----------|---------|---------|
 | **Standalone CLI** | `@portaidentity/cli` | Full admin tool — 20+ commands, installs via npm |
-| **Server CLI** | Built into `porta` server | Infrastructure-only — init, migrate, seed, health |
+| **Server CLI** | `@portaidentity/server` | Infrastructure-only — init, migrate, seed, health |
 
 The standalone CLI uses the **`@portaidentity/sdk`** under the hood, authenticating via OIDC (Auth Code + PKCE) to the Porta server's Admin API. The server CLI uses direct database access for bootstrapping operations.
 
@@ -123,7 +123,7 @@ output.
 | `porta audit` | View audit log entries |
 | `porta health` | Check server health (via API) |
 | `porta provision` | Declarative environment setup from YAML/JSON |
-| `porta gui` | Launch the standalone Admin GUI in your browser |
+| `porta gui` | Attempt to launch the optional browser GUI dependency, which may be unavailable |
 
 ### Server CLI (Infrastructure Only)
 
@@ -146,4 +146,4 @@ These commands are available inside the Porta Docker container or development en
 - [Users](./users.md) — `porta user` with status, password, roles, claims, 2FA
 - [Infrastructure](./infrastructure.md) — `porta migrate`, `porta seed`, `porta health`
 - [Provisioning](./provisioning.md) — `porta provision` declarative setup
-- [Admin GUI](/guide/admin-gui) — `porta gui` standalone admin web console
+- [`porta gui` compatibility](/guide/admin-gui) — Availability and fallback guidance

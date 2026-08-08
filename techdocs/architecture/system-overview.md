@@ -12,7 +12,6 @@ graph TB
         SPA[SPA / Browser]
         CLI[Porta CLI]
         M2M[Machine-to-Machine]
-        AGUI[Admin GUI Browser]
     end
 
     subgraph "Porta Server (Koa)"
@@ -21,11 +20,6 @@ graph TB
         OIDC[OIDC Provider<br/>/:orgSlug/.well-known/*]
         INT[Interaction Routes<br/>/:orgSlug/interaction/*]
         HEALTH[Health Check<br/>/health]
-    end
-
-    subgraph "Admin GUI (Standalone — @portaidentity/admin-gui)"
-        BFF[Koa BFF Server]
-        REACT[React SPA<br/>FluentUI v9]
     end
 
     subgraph "Data Stores"
@@ -40,9 +34,6 @@ graph TB
     SPA --> MW
     CLI --> MW
     M2M --> MW
-    AGUI --> BFF
-    BFF --> MW
-    REACT --> BFF
     MW --> ADMIN
     MW --> OIDC
     MW --> INT
@@ -70,30 +61,27 @@ graph TB
 | Config | zod | Environment validation with fail-fast semantics |
 | Signing | jose + crypto | ES256 (ECDSA P-256) token signing |
 | CLI | yargs | Admin command-line interface |
-| Admin GUI SPA | React 19 + FluentUI v9 | Browser-based admin dashboard (standalone package) |
-| Admin GUI BFF | Koa (standalone process) | Backend-for-frontend: OIDC auth (PKCE public client), in-memory sessions, API proxy |
-| Admin GUI Build | Vite | SPA bundler and dev server |
 
 ### Domain Modules
 
-Porta follows a **modular domain architecture** where each business domain is encapsulated in its own directory under `src/`:
+Porta follows a **modular domain architecture** where each business domain is encapsulated in its own directory under `packages/server/src/`:
 
 | Module | Directory | Responsibility |
 |--------|-----------|---------------|
-| Organizations | `src/organizations/` | Tenant management, status lifecycle, branding |
-| Applications | `src/applications/` | SaaS product definitions, module grouping |
-| Clients | `src/clients/` | OIDC client registration, secret management |
-| Users | `src/users/` | User accounts, passwords, status lifecycle |
-| Auth | `src/auth/` | Authentication workflows, magic links, email, templates |
-| RBAC | `src/rbac/` | Roles, permissions, user-role assignments |
-| Custom Claims | `src/custom-claims/` | Claim definitions, user claim values |
-| Two-Factor | `src/two-factor/` | TOTP, email OTP, recovery codes |
-| CLI | `src/cli/` | Admin CLI with dual-mode bootstrap |
+| Organizations | `packages/server/src/organizations/` | Tenant management, status lifecycle, branding |
+| Applications | `packages/server/src/applications/` | SaaS product definitions, module grouping |
+| Clients | `packages/server/src/clients/` | OIDC client registration, secret management |
+| Users | `packages/server/src/users/` | User accounts, passwords, status lifecycle |
+| Auth | `packages/server/src/auth/` | Authentication workflows, magic links, email, templates |
+| RBAC | `packages/server/src/rbac/` | Roles, permissions, user-role assignments |
+| Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values |
+| Two-Factor | `packages/server/src/two-factor/` | TOTP, email OTP, recovery codes |
+| CLI | `packages/server/src/cli/` | Admin CLI with dual-mode bootstrap |
 
 Each domain module follows a consistent internal structure:
 
 ```
-src/<module>/
+packages/server/src/<module>/
 ├── index.ts          # Barrel export (public API)
 ├── types.ts          # Domain types, interfaces, row mapping
 ├── errors.ts         # Domain-specific error classes
@@ -104,42 +92,13 @@ src/<module>/
 └── validators.ts     # Input validation (where applicable)
 ```
 
-### Admin GUI Module
-
-The Admin GUI is a **standalone package** at `packages/porta-admin-gui/` (`@portaidentity/admin-gui`). It is a Koa BFF + React/Vite SPA that authenticates as an OIDC public client using Authorization Code + PKCE. It uses in-memory sessions (no Redis dependency) with `SameSite=Lax` cookies.
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **React SPA** (`packages/porta-admin-gui/src/client/`) | React 19, FluentUI v9, React Router, React Query | Browser-based admin dashboard |
-| **Koa BFF** (`packages/porta-admin-gui/src/`) | Koa, in-memory sessions | OIDC auth (PKCE), API proxy with Bearer token injection |
-
-The SPA communicates exclusively through the BFF — it never talks to the Porta Admin API directly. The BFF handles Bearer token injection and OIDC token refresh.
-
-**Launching the Admin GUI:**
-
-- **Development**: `yarn dev` from root starts both the Porta server and Admin GUI (BFF + Vite SPA) concurrently
-- **Standalone**: `porta gui` (via `@portaidentity/cli`) or `npx @portaidentity/admin-gui`
-- Server URL resolution: CLI flag `--server` > `PORTA_SERVER` env var > `~/.porta/credentials.json`
-
-**SPA Architecture:**
-
-```
-packages/porta-admin-gui/src/client/
-├── api/             # Typed API client + React Query domain hook modules
-├── components/      # Reusable UI components (StatusBadge, ConfirmDialog, etc.)
-├── hooks/           # Hooks (useAuth, useTheme, useToast, useCopyToClipboard)
-├── layouts/         # AppShell layout
-├── pages/           # Route page components
-└── types.ts         # Shared client-side type definitions
-```
-
 ## Application Startup Sequence
 
-The application starts via `src/index.ts` in a strict 7-step sequence:
+The application starts via `packages/server/src/index.ts` in a strict 7-step sequence:
 
 ```mermaid
 sequenceDiagram
-    participant Main as src/index.ts
+    participant Main as packages/server/src/index.ts
     participant DB as PostgreSQL
     participant Redis as Redis
     participant Keys as Signing Keys
@@ -163,7 +122,7 @@ sequenceDiagram
 
 ## Middleware Stack
 
-The Koa middleware stack is assembled in `src/server.ts` in this precise order:
+The Koa middleware stack is assembled in `packages/server/src/server.ts` in this precise order:
 
 ```mermaid
 graph TB
@@ -212,7 +171,7 @@ https://auth.example.com/{orgSlug}/auth
 https://auth.example.com/{orgSlug}/token
 ```
 
-The tenant resolver middleware (`src/middleware/tenant-resolver.ts`) uses a **cache-first strategy**:
+The tenant resolver middleware (`packages/server/src/middleware/tenant-resolver.ts`) uses a **cache-first strategy**:
 
 1. Check Redis cache for org by slug
 2. On miss → query PostgreSQL
@@ -236,8 +195,7 @@ On `SIGTERM` or `SIGINT`:
 
 ## Related Documentation
 
-- [Data Model](/implementation-details/architecture/data-model) — Database schema and entity relationships
-- [API Design](/implementation-details/architecture/api-design) — REST conventions and endpoint structure
-- [Security](/implementation-details/architecture/security) — Authentication, crypto, and isolation
-- [Configuration Reference](/implementation-details/reference/configuration) — All environment variables
-- [Admin GUI Guide](/guide/admin-gui) — Product documentation for the Admin GUI
+- [Data Model](./data-model.md) — Database schema and entity relationships
+- [API Design](./api-design.md) — REST conventions and endpoint structure
+- [Security](./security.md) — Authentication, crypto, and isolation
+- [Configuration Reference](../reference/configuration.md) — All environment variables

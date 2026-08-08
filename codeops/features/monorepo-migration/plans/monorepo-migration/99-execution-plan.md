@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-08 18:23
-> **Progress**: 35/59 tasks (59%)
+> **Last Updated**: 2026-08-08 20:11
+> **Progress**: 43/59 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -120,20 +120,33 @@ Execute the structural migration on `monorepo-migrate`, prove behavioral parity,
 
 ## Phase 3: Documentation Separation
 
+> **Phase baseline tree**: `df55f0dd3387f865499900da3701310492e85ffd`
+> **Scope mode**: strict
+> **Expected modification set**: `repo-tests/monorepo/docs-boundary.*.test.mjs`, `docs/`, top-level `techdocs/`, this execution plan, and the feature roadmap
+> **Lenses**: correctness · documentation boundary · link integrity · migration compatibility
+
 ### Step 3.1: Specify and implement the audience boundary
 
 **Reference**: [Documentation Boundary](03-03-documentation.md) · ST-13–ST-16 · MR-07 · AR-34
 
-- [ ] 3.1.1 [spec-author] Write documentation-boundary cases ST-13–ST-16 — `repo-tests/monorepo/docs-boundary.spec.test.mjs`
-- [ ] 3.1.2 Run the documentation specification and record the expected red result — docs specification
-- [ ] 3.1.3 Move technical Markdown out of the VitePress source tree — `docs/implementation-details/` → `techdocs/`
-- [ ] 3.1.4 Remove technical-doc navigation/sidebar entries and fix public links — VitePress config, public Markdown
-- [ ] 3.1.5 Update public server/SDK/CLI package and monorepo path references without redesigning `porta gui` docs — affected public docs
-- [ ] 3.1.6 Convert moved technical-doc links/paths and remove claims that the deleted GUI workspace is current repository architecture — `techdocs/**/*.md`
-- [ ] 3.1.7 Run ST-13–ST-16 to green and build VitePress — docs specification and `docs/`
-- [ ] 3.1.8 Write technical-link traversal implementation tests and run docs verification — `repo-tests/monorepo/docs-boundary.impl.test.mjs`
+- [x] 3.1.1 [spec-author] Write documentation-boundary cases ST-13–ST-16 — `repo-tests/monorepo/docs-boundary.spec.test.mjs` ✅ (completed: 2026-08-08 18:44)
+- [x] 3.1.2 Run the documentation specification and record the expected red result — docs specification ✅ (completed: 2026-08-08 18:44; expected red: 4 failed, 1 passed)
+- [x] 3.1.3 Move technical Markdown out of the VitePress source tree — `docs/implementation-details/` → `techdocs/` ✅ (completed: 2026-08-08 18:45; 12 files preserved as exact renames)
+- [x] 3.1.4 Remove technical-doc navigation/sidebar entries and fix public links — VitePress config, public Markdown ✅ (completed: 2026-08-08 18:45; boundary specification passed)
+- [x] 3.1.5 Update public server/SDK/CLI package and monorepo path references without redesigning `porta gui` docs — affected public docs ✅ (completed: 2026-08-08 18:48; 2 targeted specification cases passed)
+- [x] 3.1.6 Convert moved technical-doc links/paths and remove claims that the deleted GUI workspace is current repository architecture — `techdocs/**/*.md` ✅ (completed: 2026-08-08 18:54; technical docs and local links verified)
+- [x] 3.1.7 Run ST-13–ST-16 to green and build VitePress — docs specification and `docs/` ✅ (completed: 2026-08-08 18:55; documentation specifications passed and VitePress built)
+- [x] 3.1.8 Write technical-link traversal implementation tests and run docs verification — `repo-tests/monorepo/docs-boundary.impl.test.mjs` ✅ (completed: 2026-08-08 18:58; 3 implementation cases, 30 structure tests, and VitePress build passed)
 
 **Verify**: `yarn test:structure && yarn docs:build`
+
+### Phase 3 quality review
+
+- The docs-only policy ran one independent correctness reviewer; security and performance auditors were intentionally skipped.
+- The initial review found three major boundary defects: a public maintainer migration plan, stale current-GUI claims, and a broken GUI-migration sidebar route. The user accepted the narrowed remediation batch.
+- The remediation moved the SDK/CLI migration record to technical docs, removed maintainer-only public content, confined GUI language to factual compatibility guidance, and added literal VitePress route validation.
+- The single focused re-review found no remaining critical or major findings and declared the phase safe to commit.
+- Final phase gate: 30 structure tests and the VitePress build passed.
 
 ## Phase 4: Toolchain and Dependency Upgrade
 

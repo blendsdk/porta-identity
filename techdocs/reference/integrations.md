@@ -8,8 +8,6 @@ Porta integrates with several external systems and libraries. This document desc
 
 **Core integrations**: PostgreSQL, Redis, SMTP, node-oidc-provider
 
-**Admin GUI integrations**: FluentUI v9, React Query, Vite (standalone package `@portaidentity/admin-gui`)
-
 ## PostgreSQL 16
 
 ### Purpose
@@ -33,7 +31,7 @@ Primary persistent data store for all Porta data:
 | Driver | `pg` (node-postgres) | Native PostgreSQL client |
 | Pool size | Default (pg default: 10) | Connection pool managed by `pg.Pool` |
 
-**Connection module**: `src/lib/database.ts`
+**Connection module**: `packages/server/src/lib/database.ts`
 
 ```typescript
 import { getPool } from '../lib/database.js';
@@ -79,15 +77,15 @@ await pool.query(
 
 ### Connection Lifecycle
 
-1. **Startup**: Pool created in `src/index.ts`, validated with `SELECT 1`
+1. **Startup**: Pool created in `packages/server/src/index.ts`, validated with `SELECT 1`
 2. **Runtime**: Queries use pool.query() (auto-acquire/release connections)
 3. **Health check**: `GET /health` runs `SELECT 1` to verify connectivity
 4. **Shutdown**: Pool closed gracefully on `SIGTERM`/`SIGINT`
 
 ### Migrations
 
-- **Tool**: `node-pg-migrate` (programmatic runner in `src/lib/migrator.ts`)
-- **Files**: 19 SQL migrations in `migrations/` directory
+- **Tool**: `node-pg-migrate` (programmatic runner in `packages/server/src/lib/migrator.ts`)
+- **Files**: 19 SQL migrations in `packages/server/migrations/`
 - **Auto-run**: Entrypoint script runs migrations on container start
 - **CLI**: `porta migrate up/down/status` for manual control
 
@@ -110,7 +108,7 @@ In-memory data store for performance-sensitive and ephemeral data:
 | Driver | `ioredis` | Full-featured Redis client |
 | Reconnection | Auto-reconnect | Built-in exponential backoff |
 
-**Connection module**: `src/lib/redis.ts`
+**Connection module**: `packages/server/src/lib/redis.ts`
 
 ```typescript
 import { getRedis } from '../lib/redis.js';
@@ -166,7 +164,7 @@ Redis data is **ephemeral** — no persistence configuration needed:
 
 ### Connection Lifecycle
 
-1. **Startup**: Client created in `src/index.ts`, validated with `ping`
+1. **Startup**: Client created in `packages/server/src/index.ts`, validated with `ping`
 2. **Runtime**: All Redis operations use the shared client
 3. **Health check**: `GET /health` runs `ping` to verify connectivity
 4. **Shutdown**: Client disconnected gracefully on `SIGTERM`/`SIGINT`
@@ -192,7 +190,7 @@ Email delivery for authentication workflows:
 | From | `SMTP_FROM` env var | Sender email address |
 | Driver | Nodemailer | Standard Node.js SMTP transport |
 
-**Module**: `src/auth/email-transport.ts` (transport abstraction), `src/auth/email-service.ts` (high-level API)
+**Module**: `packages/server/src/auth/email-transport.ts` (transport abstraction), `packages/server/src/auth/email-service.ts` (high-level API)
 
 ### Email Flow
 
@@ -205,13 +203,13 @@ graph LR
 ```
 
 1. **Service** triggers email (e.g., magic link requested)
-2. **Renderer** (`src/auth/email-renderer.ts`) renders Handlebars template with i18n
-3. **Transport** (`src/auth/email-transport.ts`) sends via Nodemailer
+2. **Renderer** (`packages/server/src/auth/email-renderer.ts`) renders Handlebars template with i18n
+3. **Transport** (`packages/server/src/auth/email-transport.ts`) sends via Nodemailer
 4. **SMTP server** delivers the email
 
 ### Templates
 
-Email templates live in `templates/default/` with locale-specific translations in `locales/default/{locale}/`.
+Email templates live in `packages/server/templates/default/` with locale-specific translations in `packages/server/locales/default/{locale}/`.
 
 ### Development
 
@@ -236,11 +234,11 @@ OpenID Connect protocol engine — handles all OIDC-compliant authentication flo
 ```mermaid
 graph TB
     subgraph "Porta"
-        CONFIG[Configuration Builder<br/>src/oidc/configuration.ts]
-        FACTORY[Provider Factory<br/>src/oidc/provider.ts]
-        ADAPT[Adapter Factory<br/>src/oidc/adapter-factory.ts]
-        CLIENT[Client Finder<br/>src/oidc/client-finder.ts]
-        ACCOUNT[Account Finder<br/>src/oidc/account-finder.ts]
+        CONFIG[Configuration Builder<br/>packages/server/src/oidc/configuration.ts]
+        FACTORY[Provider Factory<br/>packages/server/src/oidc/provider.ts]
+        ADAPT[Adapter Factory<br/>packages/server/src/oidc/adapter-factory.ts]
+        CLIENT[Client Finder<br/>packages/server/src/oidc/client-finder.ts]
+        ACCOUNT[Account Finder<br/>packages/server/src/oidc/account-finder.ts]
     end
 
     subgraph "node-oidc-provider"
@@ -256,7 +254,7 @@ graph TB
 
 ### Configuration
 
-The OIDC provider is configured in `src/oidc/configuration.ts`:
+The OIDC provider is configured in `packages/server/src/oidc/configuration.ts`:
 
 | Feature | Configuration |
 |---------|--------------|
@@ -271,23 +269,23 @@ The OIDC provider is configured in `src/oidc/configuration.ts`:
 
 ### Adapter Strategy
 
-The adapter factory (`src/oidc/adapter-factory.ts`) routes OIDC models to the appropriate storage backend:
+The adapter factory (`packages/server/src/oidc/adapter-factory.ts`) routes OIDC models to the appropriate storage backend:
 
 | Model | Adapter | Storage |
 |-------|---------|---------|
-| Session | Redis | `src/oidc/redis-adapter.ts` |
-| Interaction | Redis | `src/oidc/redis-adapter.ts` |
-| AuthorizationCode | Redis | `src/oidc/redis-adapter.ts` |
-| ReplayDetection | Redis | `src/oidc/redis-adapter.ts` |
-| ClientCredentials | Redis | `src/oidc/redis-adapter.ts` |
-| PushedAuthorizationRequest | Redis | `src/oidc/redis-adapter.ts` |
-| AccessToken | PostgreSQL | `src/oidc/postgres-adapter.ts` |
-| RefreshToken | PostgreSQL | `src/oidc/postgres-adapter.ts` |
-| Grant | PostgreSQL | `src/oidc/postgres-adapter.ts` |
+| Session | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| Interaction | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| AuthorizationCode | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| ReplayDetection | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| ClientCredentials | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| PushedAuthorizationRequest | Redis | `packages/server/src/oidc/redis-adapter.ts` |
+| AccessToken | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| RefreshToken | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| Grant | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
 
 ### Client Discovery
 
-`src/oidc/client-finder.ts` — Called by node-oidc-provider when it needs client metadata:
+`packages/server/src/oidc/client-finder.ts` — Called by node-oidc-provider when it needs client metadata:
 
 1. Query clients table by `client_id`
 2. Load active secrets for the client
@@ -296,7 +294,7 @@ The adapter factory (`src/oidc/adapter-factory.ts`) routes OIDC models to the ap
 
 ### Account Claims
 
-`src/oidc/account-finder.ts` — Called by node-oidc-provider when building ID tokens:
+`packages/server/src/oidc/account-finder.ts` — Called by node-oidc-provider when building ID tokens:
 
 1. Load user by ID from the users service
 2. Build standard OIDC claims (profile, email)
@@ -306,7 +304,7 @@ The adapter factory (`src/oidc/adapter-factory.ts`) routes OIDC models to the ap
 
 ### Interaction Handling
 
-Custom login and consent pages are implemented as Koa routes (`src/routes/interactions.ts`) that integrate with node-oidc-provider's interaction system:
+Custom login and consent pages are implemented as Koa routes (`packages/server/src/routes/interactions.ts`) that integrate with node-oidc-provider's interaction system:
 
 1. Provider redirects to `/interaction/:uid` for login/consent
 2. Custom Handlebars templates render the UI
@@ -316,84 +314,7 @@ Custom login and consent pages are implemented as Koa routes (`src/routes/intera
 
 ### Mounting
 
-The provider is mounted as Koa middleware under `/:orgSlug/*` prefix in `src/server.ts`, after the tenant resolver middleware sets the organization context.
-
-## FluentUI v9
-
-### Purpose
-
-Microsoft's enterprise-grade React component library, used for all Admin GUI UI components.
-
-### Key Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `@fluentui/react-components` | Core component library (Button, Input, Dialog, etc.) |
-| `@fluentui/react-icons` | Fluent icon set |
-| `@fluentui/react-datepicker-compat` | Date picker component |
-
-### Usage Pattern
-
-The Admin GUI wraps the entire SPA in a `FluentProvider` with theme support (light/dark):
-
-```tsx
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-
-<FluentProvider theme={webLightTheme}>
-  <App />
-</FluentProvider>
-```
-
-All UI components use FluentUI primitives — no custom CSS frameworks (Tailwind, Bootstrap, etc.).
-
-## React Query (TanStack Query v5)
-
-### Purpose
-
-Server state management for the Admin GUI SPA. Handles data fetching, caching, cache invalidation, optimistic updates, and background refetching.
-
-### Usage Pattern
-
-Each entity domain has its own React Query hook module in `packages/porta-admin-gui/src/client/api/`:
-
-```typescript
-// Example: useOrganizations hook module
-export function useOrganizations(params?: ListParams) {
-  return useQuery({
-    queryKey: ['organizations', params],
-    queryFn: () => api.get('/api/admin/organizations', { params }),
-  });
-}
-
-export function useCreateOrganization() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateOrgInput) => api.post('/api/admin/organizations', data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['organizations'] }),
-  });
-}
-```
-
-**13 hook modules** cover all entity domains: organizations, applications, clients, users, roles, permissions, claims, config, keys, audit, sessions, stats, and export.
-
-## Vite
-
-### Purpose
-
-Build tool and dev server for the Admin GUI React SPA.
-
-### Configuration
-
-Vite config (`packages/porta-admin-gui/vite.config.ts`):
-- **Dev proxy**: `/api` and `/auth` requests proxied to BFF
-- **Build output**: `packages/porta-admin-gui/dist/client/` — static assets served by the BFF in production
-- **React plugin**: `@vitejs/plugin-react` for JSX/TSX compilation
-
-## Playwright
-
-### Purpose
-
-E2E browser testing. The Admin GUI standalone package uses Vitest for unit tests (8 files, ~60 tests) and 1 integration test.
+The provider is mounted as Koa middleware under `/:orgSlug/*` prefix in `packages/server/src/server.ts`, after the tenant resolver middleware sets the organization context.
 
 ## Integration Summary
 
@@ -404,11 +325,6 @@ graph TB
         OIDC[node-oidc-provider]
         SERVICES[Domain Services]
         CLI_CMD[CLI Commands]
-    end
-
-    subgraph "Admin GUI (Standalone)"
-        BFF[Koa BFF — @portaidentity/admin-gui]
-        SPA[React SPA<br/>FluentUI v9 + React Query]
     end
 
     subgraph "PostgreSQL"
@@ -426,8 +342,6 @@ graph TB
         EMAIL[Email Delivery]
     end
 
-    SPA --> BFF
-    BFF --> KOA
     KOA --> OIDC
     KOA --> SERVICES
     SERVICES --> TABLES
@@ -440,7 +354,7 @@ graph TB
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — How integrations fit into the architecture
-- [Data Model](/implementation-details/architecture/data-model) — PostgreSQL schema details
-- [Configuration Reference](/implementation-details/reference/configuration) — Connection strings and settings
-- [Infrastructure](/implementation-details/architecture/infrastructure) — Docker setup for all services
+- [System Overview](../architecture/system-overview.md) — How integrations fit into the architecture
+- [Data Model](../architecture/data-model.md) — PostgreSQL schema details
+- [Configuration Reference](../reference/configuration.md) — Connection strings and settings
+- [Infrastructure](../architecture/infrastructure.md) — Docker setup for all services

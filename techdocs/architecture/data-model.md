@@ -4,7 +4,7 @@
 
 ## Overview
 
-Porta's data model is defined across 19 PostgreSQL migrations in `migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined across 19 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -360,7 +360,7 @@ These columns are added to the existing `auth_tokens` table (not a new table).
 
 ## Migration Strategy
 
-Migrations are managed programmatically via `src/lib/migrator.ts` using `node-pg-migrate`:
+Migrations are managed programmatically via `packages/server/src/lib/migrator.ts` using `node-pg-migrate`:
 
 - **Forward-only in production** — Migrations run automatically on startup
 - **CLI management** — `porta migrate up/down/status` for manual control
@@ -369,7 +369,7 @@ Migrations are managed programmatically via `src/lib/migrator.ts` using `node-pg
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — High-level architecture
-- [API Design](/implementation-details/architecture/api-design) — REST endpoint conventions
-- [Security](/implementation-details/architecture/security) — Data protection and isolation
-- [Configuration Reference](/implementation-details/reference/configuration) — Database connection settings
+- [System Overview](./system-overview.md) — High-level architecture
+- [API Design](./api-design.md) — REST endpoint conventions
+- [Security](./security.md) — Data protection and isolation
+- [Configuration Reference](../reference/configuration.md) — Database connection settings

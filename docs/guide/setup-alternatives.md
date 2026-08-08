@@ -169,10 +169,10 @@ This starts PostgreSQL 16, Redis 7, and MailHog using Docker Compose.
 yarn build
 
 # Run database migrations
-node dist/cli/index.js migrate up
+yarn porta migrate up
 
 # Bootstrap admin system (interactive)
-node dist/cli/index.js init
+yarn porta init
 ```
 
 **5. Start the development server**

@@ -56,7 +56,7 @@ ISSUER_BASE_URL=https://porta.local:3443
 COOKIE_KEYS=your-random-hex-string-here
 ```
 
-See the [Configuration Reference](/implementation-details/reference/configuration) for all environment variables.
+See the [Configuration Reference](../reference/configuration.md) for all environment variables.
 
 ### 4. Start Infrastructure Services
 
@@ -137,76 +137,25 @@ Verify your identity:
 yarn porta whoami
 ```
 
-## Admin GUI (Optional)
-
-The Admin GUI is a standalone package at `packages/porta-admin-gui/` (`@portaidentity/admin-gui`). It authenticates as an OIDC public client (Authorization Code + PKCE) with in-memory sessions — no separate configuration or client secrets needed.
-
-**Development mode** — `yarn dev` from the project root starts both the Porta server and Admin GUI concurrently:
-
-```bash
-yarn dev
-```
-
-The Admin GUI BFF + Vite SPA starts automatically alongside the Porta server.
-
-**Standalone mode** — Install and run independently via npm:
-
-```bash
-npx @portaidentity/admin-gui --server https://porta.local:3443
-```
-
-Or via the CLI:
-
-```bash
-porta gui --server https://porta.local:3443
-```
-
-Server URL is resolved from: CLI flag `--server` > `PORTA_SERVER` env var > `~/.porta/credentials.json`.
-
 ## Project Layout Quick Reference
 
 ```
-src/
-├── index.ts           # Entry point (startup sequence)
-├── server.ts          # Koa app factory (middleware + routes)
-├── config/            # Zod-validated environment config
-├── lib/               # Core infrastructure (DB, Redis, logger, keys)
-├── middleware/         # Koa middleware (auth, health, tenant resolver, security headers)
-├── oidc/              # OIDC provider configuration and adapters
-├── organizations/     # Tenant management module
-├── applications/      # Application management module
-├── clients/           # OIDC client management module
-├── users/             # User management module
-├── auth/              # Authentication workflows (magic link, email, templates)
-├── rbac/              # Roles, permissions, user-role assignments
-├── custom-claims/     # Custom claim definitions and values
-├── two-factor/        # 2FA (TOTP, email OTP, recovery codes)
-├── routes/            # API route handlers
-└── cli/               # CLI command implementations
 packages/
-├── porta-admin-gui/   # @portaidentity/admin-gui — Standalone Admin GUI (Koa BFF + React SPA)
-├── porta-cli/         # @portaidentity/cli — Standalone Admin CLI
-├── porta-sdk/         # @portaidentity/sdk — Universal TypeScript Admin API SDK
-tests/
-├── unit/              # Unit tests (no external services)
-├── integration/       # Integration tests (require Docker)
-├── e2e/               # End-to-end tests
-├── pentest/           # Security/penetration tests
-├── ui/                # Playwright UI tests
-├── fixtures/          # Test data
-└── helpers/           # Test utilities
-migrations/            # SQL migration files (001-019)
-templates/             # Handlebars templates for auth UI
-locales/               # i18n translation files
-docker/                # Docker Compose + Dockerfile
+├── server/             # @portaidentity/server: source, tests, migrations, templates, locales
+├── sdk/                # @portaidentity/sdk
+└── cli/                # @portaidentity/cli
+repo-tests/            # Repository-structure contracts
+test-harness/          # External OIDC browser harness
+docker/                # Docker Compose and production image
+docs/                  # Public VitePress documentation
+techdocs/              # Developer and architecture documentation
 ```
 
 ## Common Tasks
 
 | Task | Command |
 |------|---------|
-| Start Porta server + Admin GUI | `yarn dev` |
-| Start Porta server only | `yarn dev:server` |
+| Start Porta server | `yarn dev` |
 | Run all Porta tests | `yarn test:all` |
 | Run Porta unit tests only | `yarn test:unit` |
 | Run integration tests | `yarn test:integration` |
@@ -255,6 +204,6 @@ Same as above — verify Docker services. Redis runs on port 6379.
 
 ## Next Steps
 
-- [Development Workflow](/implementation-details/guides/development) — Coding patterns, testing, and module conventions
-- [System Overview](/implementation-details/architecture/system-overview) — Understand the architecture
-- [Data Model](/implementation-details/architecture/data-model) — Explore the database schema
+- [Development Workflow](../guides/development.md) — Coding patterns, testing, and module conventions
+- [System Overview](../architecture/system-overview.md) — Understand the architecture
+- [Data Model](../architecture/data-model.md) — Explore the database schema

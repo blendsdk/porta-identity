@@ -53,10 +53,6 @@ features:
     title: TypeScript SDK
     details: Universal SDK for browser, Node.js, and AI agents — 19 domain namespaces, typed errors, auto-pagination, and ETag concurrency.
     link: /guide/sdk
-  - icon: 🖥️
-    title: Admin GUI
-    details: Web-based administration console with React SPA and secure BFF — OIDC authentication, session management, and API proxying.
-    link: /guide/admin-gui
   - icon: 🔄
     title: Session Lifecycle & Cleanup
     details: Three-point lifecycle — explicit logout cascades tokens, natural expiry preserves refresh flows, opportunistic cleanup purges stale records.

@@ -22,7 +22,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure) | Accepted | — | Consistent module layout: types, repository, cache, service |
 | ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution) | Accepted | — | Per-client override with org-level default inheritance |
 | ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing) | Accepted | — | SHA-256 pre-hash + Argon2id for OIDC compatibility |
-| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff) | Accepted | 2026-04 | BFF pattern with PKCE public client for admin dashboard |
+| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff) | Superseded | 2026-04 | Historical design for the removed GUI workspace |
 
 ---
 
@@ -215,6 +215,8 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## ADR-013: Admin GUI: React SPA + Koa BFF
 
+**Status**: Superseded. This decision describes the former GUI workspace and remains only as architecture history. The current monorepo contains no Admin GUI package.
+
 **Context**: Porta needs a web-based admin dashboard for managing organizations, applications, clients, users, RBAC, and system configuration. The dashboard must be secure (handles admin tokens), integrate with Porta's OIDC auth, and provide a modern UI. Options considered: (a) server-rendered pages (Handlebars), (b) SPA calling Admin API directly from the browser, (c) SPA with a Backend-for-Frontend (BFF) proxy.
 
 **Decision**: Use a **React SPA** with **FluentUI v9** served through a **Koa BFF** (Backend-for-Frontend). The BFF handles OIDC authentication as a public client using Authorization Code + PKCE, stores tokens in in-memory server-side sessions (`SameSite=Lax`), and proxies API requests with Bearer token injection. The SPA never sees admin tokens.
@@ -232,7 +234,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 - ✅ PKCE public client auth — no client secret to manage or rotate
 - ✅ FluentUI v9 provides accessible, enterprise-grade components out of the box
 - ✅ React Query reduces boilerplate for data fetching and keeps UI in sync
-- ✅ Standalone package (`packages/porta-admin-gui/`) — installable via npm, launchable via `porta gui` or `npx`
+- ✅ The former implementation was independently installable and launchable
 - ✅ No Redis dependency — in-memory sessions simplify deployment
 - ⚠️ BFF adds a network hop between browser and Admin API
 - ⚠️ In-memory sessions are lost on BFF restart (users must re-login)
@@ -257,6 +259,6 @@ Decisions that warrant an ADR:
 
 ## Related Documentation
 
-- [System Overview](/implementation-details/architecture/system-overview) — Architecture resulting from these decisions
-- [Security](/implementation-details/architecture/security) — Security decisions in practice
-- [Data Model](/implementation-details/architecture/data-model) — Schema decisions in practice
+- [System Overview](../architecture/system-overview.md) — Architecture resulting from these decisions
+- [Security](../architecture/security.md) — Security decisions in practice
+- [Data Model](../architecture/data-model.md) — Schema decisions in practice
