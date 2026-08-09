@@ -49,6 +49,14 @@ Run commands from the repository root.
 - `.env` is local and must never be committed. Treat connection strings, signing keys, cookie keys, npm tokens, and release-provider keys as secrets.
 - Release-derived version constants and changelogs must be changed through the repository's release tooling once that tooling exists; do not hand-edit them during ordinary feature work.
 
+## CI-only loopback DNS
+
+- The public wildcard `*.ci.portaidentity.com` is reserved for test infrastructure and resolves arbitrary subdomains to IPv4 loopback `127.0.0.1`. It exposes no remote service: each client connects back to its own machine or CI runner.
+- Use descriptive, harness-specific names such as `porta-harness.ci.portaidentity.com` and `app-harness.ci.portaidentity.com`. Add a resolver preflight to tests that depend on these names so DNS drift fails quickly and clearly.
+- Never use this namespace in production configuration, published examples, real credentials, persistent cookies, or trust decisions. Keep test cookies host-only; do not set `Domain=.ci.portaidentity.com`.
+- Subdomains beneath `ci.portaidentity.com` are different origins but the same browser site. Tests that specifically require cross-site behavior must use different registrable domains instead.
+- Do not add an `AAAA` record unless every participating test service is intentionally bound to IPv6 loopback as well.
+
 The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. Publishing and deployment workflow repair is deferred to a separate post-migration plan.
 
 ## Security invariants
