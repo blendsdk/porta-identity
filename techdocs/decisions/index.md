@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-09
 
 ## Overview
 
@@ -8,21 +8,22 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## Decision Log
 
-| # | Decision | Status | Date | Summary |
-|---|----------|--------|------|---------|
-| ADR-001 | [Koa over Express](#adr-001-koa-over-express) | Accepted | — | Koa required for node-oidc-provider compatibility |
-| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy) | Accepted | — | Organization slug in URL path for OIDC issuer isolation |
-| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql) | Accepted | — | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
-| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing) | Accepted | — | ECDSA P-256 for all JWT signing, no algorithm negotiation |
-| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing) | Accepted | — | Argon2id over bcrypt/scrypt for memory-hard hashing |
-| ADR-006 | [Functional Code Style](#adr-006-functional-code-style) | Accepted | — | Standalone functions over classes for services |
-| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted | — | Zod schemas for fail-fast config and request validation |
-| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap) | Accepted | — | Direct-DB for init/migrate, HTTP for all other commands |
-| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api) | Accepted | — | Porta validates its own tokens for admin API access |
-| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure) | Accepted | — | Consistent module layout: types, repository, cache, service |
-| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution) | Accepted | — | Per-client override with org-level default inheritance |
-| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing) | Accepted | — | SHA-256 pre-hash + Argon2id for OIDC compatibility |
-| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff) | Superseded | 2026-04 | Historical design for the removed GUI workspace |
+| #       | Decision                                                                            | Status     | Date       | Summary                                                         |
+| ------- | ----------------------------------------------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------- |
+| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                       | Accepted   | —          | Koa required for node-oidc-provider compatibility               |
+| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                       | Accepted   | —          | Organization slug in URL path for OIDC issuer isolation         |
+| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)             | Accepted   | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
+| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                 | Accepted   | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
+| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)             | Accepted   | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
+| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted   | —          | Standalone functions over classes for services                  |
+| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted   | —          | Zod schemas for fail-fast config and request validation         |
+| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted   | —          | Direct-DB for init/migrate, HTTP for all other commands         |
+| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Accepted   | —          | Porta validates its own tokens for admin API access             |
+| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted   | —          | Consistent module layout: types, repository, cache, service     |
+| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted   | —          | Per-client override with org-level default inheritance          |
+| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted   | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
+| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff)             | Superseded | 2026-04    | Historical design for the removed GUI workspace                 |
+| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Proposed   | 2026-08-09 | Risk-sliced black-box evidence in the retained harness          |
 
 ---
 
@@ -33,6 +34,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use Koa 2.x as the HTTP framework.
 
 **Consequences**:
+
 - ✅ Native compatibility with node-oidc-provider (no adapter needed)
 - ✅ Clean async/await middleware pipeline
 - ✅ Lightweight core with explicit middleware composition
@@ -47,6 +49,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use path-based multi-tenancy with the organization slug as the first URL path segment: `/:orgSlug/.well-known/openid-configuration`.
 
 **Consequences**:
+
 - ✅ Simple deployment — single DNS record, single TLS certificate
 - ✅ Works behind any reverse proxy without wildcard DNS
 - ✅ Tenant isolation via URL parsing (no header trust required)
@@ -62,12 +65,13 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 **Decision**: Use a hybrid adapter strategy — Redis for short-lived artifacts, PostgreSQL for long-lived artifacts.
 
-| Storage | Artifacts | Rationale |
-|---------|-----------|-----------|
-| Redis | Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest | High throughput, short TTL, acceptable data loss |
-| PostgreSQL | AccessToken, RefreshToken, Grant | Durability required, survives Redis restart |
+| Storage    | Artifacts                                                                                               | Rationale                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Redis      | Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest | High throughput, short TTL, acceptable data loss |
+| PostgreSQL | AccessToken, RefreshToken, Grant                                                                        | Durability required, survives Redis restart      |
 
 **Consequences**:
+
 - ✅ Fast session lookups via Redis
 - ✅ Durable tokens survive cache eviction
 - ✅ Session `destroy()` cascades grant/token deletion across both stores
@@ -84,6 +88,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use ES256 (ECDSA P-256) exclusively for all token signing. No algorithm negotiation.
 
 **Consequences**:
+
 - ✅ Smaller keys and signatures than RSA (faster verification)
 - ✅ Well-supported across all JWT libraries
 - ✅ No algorithm confusion attacks (single algorithm enforced)
@@ -99,6 +104,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use Argon2id for all password hashing, compliant with NIST SP 800-63B.
 
 **Consequences**:
+
 - ✅ Memory-hard — resistant to GPU/ASIC attacks
 - ✅ OWASP recommended, NIST compliant
 - ✅ Configurable memory/time/parallelism parameters
@@ -114,6 +120,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use standalone exported functions for all service, repository, and utility code. No classes for business logic.
 
 **Consequences**:
+
 - ✅ Simpler to test (no instantiation, no mocking constructors)
 - ✅ Tree-shakeable imports
 - ✅ No dependency injection framework needed
@@ -129,6 +136,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use Zod for both configuration validation (fail-fast on startup) and API request validation.
 
 **Consequences**:
+
 - ✅ TypeScript-native with excellent type inference
 - ✅ Single library for both config and request validation
 - ✅ Fail-fast config validation prevents runtime errors
@@ -142,10 +150,12 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Context**: The CLI needs to work in two scenarios: (1) initial setup before any admin user exists, and (2) normal administration after setup.
 
 **Decision**: Implement dual-mode bootstrap:
+
 - `withBootstrap()` — Direct database access for `porta init`, `porta migrate`, `porta seed`
 - `withHttpClient()` — HTTP-based access (via OIDC auth) for all other commands
 
 **Consequences**:
+
 - ✅ `porta init` can bootstrap the admin infrastructure without a pre-existing admin account
 - ✅ Normal commands use the same auth flow as any other client (OIDC + PKCE)
 - ✅ CLI credentials stored securely at `~/.porta/credentials.json` (0600 permissions)
@@ -161,6 +171,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Porta authenticates its own admin API using tokens it issues to the super-admin organization. The admin-auth middleware validates ES256 JWTs against Porta's own signing keys.
 
 **Consequences**:
+
 - ✅ No external auth dependency
 - ✅ Single source of truth for admin identity
 - ✅ Leverages existing OIDC infrastructure (keys, token issuance, RBAC)
@@ -176,6 +187,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Each domain module follows a standard layout: `index.ts` (barrel), `types.ts`, `errors.ts`, `repository.ts`, `cache.ts`, `service.ts`, plus optional `slugs.ts` and `validators.ts`.
 
 **Consequences**:
+
 - ✅ Predictable file locations — developers know where to find things
 - ✅ Clear separation of concerns within each module
 - ✅ Barrel exports control the public API surface
@@ -191,6 +203,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Per-client `login_methods` override (NULL = inherit from org) + per-org `default_login_methods` (NOT NULL, DB DEFAULT `{password,magic_link}`). Resolution via `resolveLoginMethods(org, client)`.
 
 **Consequences**:
+
 - ✅ Org-level default covers most cases
 - ✅ Per-client override for special clients (e.g., passwordless-only SPA)
 - ✅ NULL semantics = "inherit" is intuitive
@@ -206,6 +219,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Store both a SHA-256 pre-hash (`secret_sha256`) for OIDC runtime comparison and a full Argon2id hash (`secret_hash`) for offline verification.
 
 **Consequences**:
+
 - ✅ Compatible with node-oidc-provider's SHA-256 comparison
 - ✅ Full Argon2id protection for stored secrets
 - ✅ SHA-256 pre-hash computed via middleware before reaching the provider
@@ -222,6 +236,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Decision**: Use a **React SPA** with **FluentUI v9** served through a **Koa BFF** (Backend-for-Frontend). The BFF handles OIDC authentication as a public client using Authorization Code + PKCE, stores tokens in in-memory server-side sessions (`SameSite=Lax`), and proxies API requests with Bearer token injection. The SPA never sees admin tokens.
 
 **Technology choices:**
+
 - **React 19** + **FluentUI v9** — Microsoft's enterprise design system, consistent component library
 - **React Query (TanStack Query)** — Server state management with caching, retry, and cache invalidation
 - **React Router** — Client-side routing with breadcrumb support
@@ -230,6 +245,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 - **In-memory session store** — No Redis dependency for the GUI; sessions stored in BFF process memory
 
 **Consequences:**
+
 - ✅ Admin tokens never reach the browser — immune to XSS token theft
 - ✅ PKCE public client auth — no client secret to manage or rotate
 - ✅ FluentUI v9 provides accessible, enterprise-grade components out of the box
@@ -242,6 +258,39 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ---
 
+## ADR-014: Independent Test Assurance
+
+**Status**: Proposed. This records approved design intent; implementation has not started.
+
+**Context**: Porta has broad automated test coverage, but most tests were written after the
+implementation and many isolate dependencies with mocks. Passing tests and line coverage show that
+code executed; they do not by themselves prove that expectations came from an independent contract
+or that critical assertions detect security regressions.
+
+**Decision**: Build assurance incrementally around bounded, externally observable claims. Expected
+behavior comes from approved contracts, Porta's security invariants, and applicable identity
+standards rather than production implementation details. Extend the existing Docker and Playwright
+harness as the only external assurance environment, add deterministic multi-tenant fixtures, and
+separate browser, protocol, security, and packed-client compatibility projects. Attribute coverage
+to the process that executed the code, and require reviewed critical claims to demonstrate fault
+sensitivity before they are called assured.
+
+Normal verification remains the fast development gate. Expensive fault campaigns and historical
+coverage ratchets stay in separate staged lanes until reproducibility and flake evidence justify
+promotion. Findings that require product changes are reproduced and routed to separately authorized
+work; the assurance program does not silently change product behavior.
+
+**Consequences**:
+
+- ✅ Critical claims gain a source, threat, exact black-box oracle, evidence, and explicit gaps.
+- ✅ The existing harness and fast unit suites remain useful; no competing test platform is added.
+- ✅ Coverage becomes attributable evidence instead of a proxy for correctness.
+- ✅ Curated faults expose assertions that pass without detecting the intended control failure.
+- ⚠️ Deterministic resets, process coverage, and live package tests add infrastructure complexity.
+- ⚠️ Assurance closes risk slices progressively and cannot prove the absolute absence of exploits.
+
+---
+
 ## Adding New ADRs
 
 When making a significant architecture decision, add an entry to this log with:
@@ -251,6 +300,7 @@ When making a significant architecture decision, add an entry to this log with:
 3. **Consequences** — What are the trade-offs?
 
 Decisions that warrant an ADR:
+
 - Technology choices (frameworks, libraries, databases)
 - Architectural patterns (how modules interact)
 - Security mechanisms (crypto algorithms, auth flows)
