@@ -9,66 +9,76 @@ Manage users, role assignments, custom claim values, and 2FA via the `porta user
 ### `porta user create`
 
 ```bash
-porta user create --org-id <id> --email alice@example.com \
-  [--given-name Alice] [--family-name Smith] [--password "secure-password"]
+porta user create --org <id> --email alice@example.com \
+  [--name "Alice Smith"] [--password "secure-password"]
 ```
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--org-id` | ✅ | Organization ID |
+| `--org` | ✅ | Organization ID |
 | `--email` | ✅ | Email address |
-| `--given-name` | | First name |
-| `--family-name` | | Last name |
-| `--nickname` | | Nickname |
-| `--password` | | Initial password |
-| `--phone-number` | | Phone number |
-| `--locale` | | User locale |
+| `--name` | | Display name. Split into OIDC `givenName`/`familyName` on the first space (e.g. `"Alice Smith"` → given `Alice`, family `Smith`; a single token sets only `givenName`). |
+| `--password` | | Initial password (omit for a passwordless user) |
 
 ### `porta user invite`
 
 ```bash
-porta user invite --org-id <id> --email bob@example.com \
-  [--given-name Bob] [--family-name Jones]
+porta user invite --org <id> --email bob@example.com [--name "Bob Jones"]
 ```
 
-Creates the user with `invited` status and sends an invitation email.
+Sends an invitation email. The `--name` value is split into OIDC
+`givenName`/`familyName` on the first space (same behavior as `create`).
 
 ### `porta user list`
 
 ```bash
-porta user list --org-id <id> [--status active] [--search "alice"] [--page 1]
+porta user list --org <id> [--status active|inactive|suspended|locked] \
+  [--search "alice"] [--page 1] [--page-size 20]
 ```
+
+The `--status` choices are `active`, `inactive`, `suspended`, and `locked`
+(matching the server `UserStatus`).
 
 ### `porta user show`
 
 ```bash
-porta user show --org-id <id> --user-id <id>
+porta user show --org <id> <user-id>
 ```
+
+The Name column is derived from the user's `givenName`/`familyName`
+(joined with a space; an em-dash when both are empty).
 
 ### `porta user update`
 
 ```bash
-porta user update --org-id <id> --user-id <id> \
-  [--given-name "Alice"] [--family-name "Johnson"] [--locale en]
+porta user update --org <id> <user-id> [--name "Alice Johnson"] [--email new@example.com]
 ```
+
+`--name` is split into `givenName`/`familyName` just like `create`.
 
 ---
 
 ## Status Management
 
 ```bash
-porta user suspend  --org-id <id> --user-id <id>
-porta user activate --org-id <id> --user-id <id>
-porta user lock     --org-id <id> --user-id <id>
-porta user unlock   --org-id <id> --user-id <id>
-porta user archive  --org-id <id> --user-id <id>
+porta user suspend     --org <id> <user-id>
+porta user unsuspend   --org <id> <user-id>   # suspended → active
+porta user deactivate  --org <id> <user-id>   # active → inactive
+porta user reactivate  --org <id> <user-id>   # inactive → active
+porta user lock        --org <id> <user-id>
+porta user unlock      --org <id> <user-id>
 ```
+
+The lifecycle statuses are `active`, `inactive`, `suspended`, and `locked`.
+`unsuspend` returns a suspended user to active; `reactivate` returns a
+deactivated (inactive) user to active.
 
 ### `porta user set-password`
 
 ```bash
-porta user set-password --org-id <id> --user-id <id> --password "new-password"
+porta user set-password --org <id> <user-id> --password "new-password"
 ```
+
 
 ---
 
@@ -125,31 +135,66 @@ porta user claims list --org-id <id> --user-id <id>
 
 ## Two-Factor Authentication
 
-Admin commands for managing a user's 2FA enrollment.
+Admin commands for managing a user's 2FA enrollment. By default, these commands use HTTP mode (authenticated via `porta login`). Use `--direct` to bypass HTTP and connect directly to the database (useful for emergency access when the server is down).
+
+**Permission required:** `admin:user:2fa` (for disable, reset, and recovery code operations)
 
 ### `porta user 2fa status`
 
 ```bash
+# HTTP mode (default — requires porta login)
 porta user 2fa status --org-id <id> --user-id <id>
+
+# Direct mode (connects directly to database)
+porta user 2fa status --user-id <id> --direct
 ```
 
-Shows whether 2FA is enabled, the method (TOTP/email), and enrollment date.
+Shows whether 2FA is enabled, the active method (`email` or `totp`), TOTP configuration status, and remaining recovery code count.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID (not needed in direct mode) |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection instead of HTTP |
+| `--json` | | Output as JSON |
 
 ### `porta user 2fa disable`
 
 ```bash
+# HTTP mode
 porta user 2fa disable --org-id <id> --user-id <id>
+
+# Direct mode
+porta user 2fa disable --user-id <id> --direct
 ```
 
-Force-disables 2FA for the user. Prompts for confirmation.
+Force-disables 2FA for the user. Prompts for confirmation (use `--force` to skip). Protected: cannot disable the super-admin user's 2FA.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection |
+| `--force` | | Skip confirmation prompt |
 
 ### `porta user 2fa reset`
 
 ```bash
+# HTTP mode
 porta user 2fa reset --org-id <id> --user-id <id>
+
+# Direct mode
+porta user 2fa reset --user-id <id> --direct
 ```
 
-Resets 2FA, forcing the user to re-enroll on next login. Prompts for confirmation.
+Resets 2FA by disabling and clearing all enrollment data, forcing the user to re-enroll on next login. Prompts for confirmation. Protected: cannot reset the super-admin user's 2FA.
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--org-id` | HTTP mode | Organization ID |
+| `--user-id` | ✅ | User ID |
+| `--direct` | | Use direct database connection |
+| `--force` | | Skip confirmation prompt |
 
 ---
 

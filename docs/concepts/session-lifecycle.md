@@ -11,7 +11,7 @@ Porta uses a **hybrid OIDC adapter** that routes artifacts to different stores b
 | **Redis**  | Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest | Short-lived, high-throughput  |
 | **PostgreSQL** | AccessToken, RefreshToken, Grant                                                        | Long-lived, durable          |
 
-The `HybridAdapter` in `src/oidc/adapter-factory.ts` routes model operations to the appropriate adapter (`RedisAdapter` or `PostgresAdapter`).
+Porta's hybrid adapter routes model operations to the appropriate Redis or PostgreSQL adapter.
 
 ## Session → Token Link
 
@@ -65,12 +65,69 @@ DELETE FROM oidc_payloads WHERE expires_at IS NOT NULL AND expires_at < NOW()
 ```
 
 This cleanup:
-- Runs in `src/routes/interactions.ts` when a login interaction begins
+- Runs when a login interaction begins
 - Is non-blocking (fire-and-forget) — failures are logged but don't interrupt the auth flow
 - Is self-regulating — cleanup frequency scales with authentication activity
 - Requires no cron jobs or external schedulers
 
 This pattern is proven from Porta v4.
+
+## Forced Re-Login (`prompt=login`)
+
+OIDC relying parties — including the Porta CLI and other browser clients — can request a
+**forced re-authentication** by sending `prompt=login` on the authorization
+request. This tells the provider to ignore any existing SSO session and make
+the user sign in again.
+
+### The stale-cookie problem
+
+A subtle edge case occurs when a `_session` cookie from a *previous* login
+survives in the browser into a new `prompt=login` flow. During the authorize
+resume step, node-oidc-provider rotates the session identifier, so the
+interaction's recorded session uid no longer matches the live session uid. The
+provider then throws `SessionNotFound`, which historically surfaced as a
+terminal **"Something went wrong"** page — the user had to manually clear
+browser storage to recover.
+
+> **Note:** The underlying Redis `Session` record is present during this
+> failure — this is a session-id rotation mismatch, **not** a Redis durability
+> problem. See [Three-Point Lifecycle Model](#three-point-lifecycle-model) for
+> how `Session` records expire.
+
+### Two-layer fix
+
+Porta resolves this with two complementary, security-preserving safeguards:
+
+1. **Proactive cookie reset (`prompt=login` middleware).** This safeguard runs
+   on the **initial** organization-scoped authorize endpoint (`GET`/`POST`
+   `/{orgSlug}/auth`) before the provider. When the `prompt` parameter contains
+   the `login` value, it performs **two** actions so the provider mints a fresh
+   session with no uid mismatch:
+   - **Strips** the `_session` + `_session.sig` pair from the **inbound request
+     header** (`ctx.req.headers.cookie`). This is the half that actually fixes
+     the bug: node-oidc-provider is invoked via
+     `provider.callback()(ctx.req, ctx.res)` and reads the session cookie from
+     the raw inbound request — not from the response — so the stale cookie must
+     be removed from the request *this* request, before `next()`.
+   - **Clears** the same pair on the **response** so the browser drops the stale
+     cookie for future requests too.
+
+   Normal SSO / session-reuse logins (no `prompt=login`) are completely
+   unaffected. The stale Redis `Session` record is left to expire naturally via
+   its TTL. An audit event `auth.prompt_login.session_reset` is recorded.
+
+
+2. **Graceful `SessionNotFound` recovery (safety net).** If a mismatch still
+   reaches the provider's error handler, Porta detects `SessionNotFound`, clears the stale
+   cookie pair, and renders a friendly **"Your session has expired. Please sign
+   in again."** message instead of the generic error. The next request then has
+   no stale cookie and starts a clean flow.
+
+**Security note:** Both layers only ever *clear* a provably-dead cookie and
+re-render. Neither accepts, revives, or trusts any session — the provider's
+`SessionNotFound` guard still fully rejects the mismatched session. Cookie
+clearing is signing-free (the outer Koa app does not configure `app.keys`), so
+it works regardless of cookie-signing configuration.
 
 ## Logout Page UX
 
@@ -79,26 +136,7 @@ When a user triggers logout, they see a two-action page:
 - **Sign Out** — Confirms the logout, triggers session destruction with cascade delete
 - **Return to Application** — Cancels the logout, returns to the client's `post_logout_redirect_uri`
 
-The logout page is rendered by the `logoutSource` hook in `src/oidc/configuration.ts` using the `templates/default/pages/logout.hbs` template with i18n support.
-
-## Playground Logout Behavior
-
-### SPA Playground (`playground/`)
-The SPA saves the `id_token` before clearing OIDC storage, then passes it as `id_token_hint` to the end-session endpoint. This allows oidc-provider to identify the user and skip the confirmation page for a seamless logout experience.
-
-### BFF Playground (`playground-bff/`)
-The BFF performs **token revocation** before redirecting to the end-session endpoint — it sends revocation requests for both the access token and refresh token to the `/token/revocation` endpoint, then redirects the browser to `/session/end` for session cleanup.
-
-## Implementation Files
-
-| File | Purpose |
-|------|---------|
-| `src/oidc/adapter-factory.ts` | HybridAdapter with Session `destroy()` cascade override |
-| `src/oidc/postgres-adapter.ts` | `revokeGrantsByIds()` and `purgeExpired()` functions |
-| `src/oidc/redis-adapter.ts` | `cleanupRedisGrants()` function |
-| `src/routes/interactions.ts` | Opportunistic `purgeExpired()` call on auth flow start |
-| `src/oidc/configuration.ts` | `logoutSource` hook for logout page rendering |
-| `templates/default/pages/logout.hbs` | Logout page template |
+Porta renders the logout page with localized templates.
 
 ## Related Documentation
 

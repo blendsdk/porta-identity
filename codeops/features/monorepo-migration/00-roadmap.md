@@ -1,0 +1,19 @@
+# Roadmap: Monorepo Migration
+
+> **Feature-Set**: Monorepo Migration
+> **Status**: Complete
+> **Created**: 2026-08-08
+> **Last Updated**: 2026-08-09 00:45
+> **Progress**: 74 / 74 tasks (100%)
+> **CodeOps Artifact Schema**: 1
+
+## Legend
+
+⬜ Backlog · ✏️ RD Drafted · 🔎 RD Preflighted · 📋 Plan Created · 🔬 Plan Preflighted · 🔄 Executing · ✅ Done · ⛔ Blocked · ⏸️ Deferred
+
+## Tracker
+
+| ID   | Title                             | RD  | Plan                                                       | Stage   | Status | Last Updated     | Depends-on / Blocker                          |
+| ---- | --------------------------------- | --- | ---------------------------------------------------------- | ------- | ------ | ---------------- | --------------------------------------------- |
+| T-01 | Migrate Porta to a monorepo       | —   | [monorepo-migration](plans/monorepo-migration/00-index.md) | Done    | ✅     | 2026-08-09 00:45 | Complete; publishing remains deferred to T-02 |
+| T-02 | Publishing and production cutover | —   | —                                                          | Backlog | ⬜     | 2026-08-08 16:01 | depends on T-01                               |

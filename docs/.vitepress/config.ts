@@ -23,10 +23,6 @@ export default withMermaid(
         { text: 'Admin API', link: '/api/overview' },
         { text: 'CLI', link: '/cli/overview' },
         { text: 'Database', link: '/database/schema' },
-        {
-          text: 'Implementation Details',
-          link: '/implementation-details/',
-        },
       ],
 
       // ── Sidebar (multi-sidebar keyed by path prefix) ────────
@@ -42,8 +38,15 @@ export default withMermaid(
           },
           {
             text: 'Customization',
+            items: [{ text: 'Custom UI Tutorial', link: '/guide/custom-ui' }],
+          },
+          {
+            text: 'Development',
             items: [
-              { text: 'Custom UI Tutorial', link: '/guide/custom-ui' },
+              { text: 'TypeScript SDK', link: '/guide/sdk' },
+              { text: 'SDK Browser Usage', link: '/guide/sdk-browser' },
+              { text: 'SDK Node.js Usage', link: '/guide/sdk-node' },
+              { text: 'SDK AI Agent Guide', link: '/guide/sdk-agent' },
             ],
           },
           {
@@ -134,83 +137,6 @@ export default withMermaid(
             ],
           },
         ],
-
-        // ── Implementation Details (techdocs) ───────────────────
-        '/implementation-details/': [
-          {
-            text: 'Overview',
-            items: [
-              {
-                text: 'Introduction',
-                link: '/implementation-details/',
-              },
-            ],
-          },
-          {
-            text: 'Architecture',
-            items: [
-              {
-                text: 'System Overview',
-                link: '/implementation-details/architecture/system-overview',
-              },
-              {
-                text: 'Data Model',
-                link: '/implementation-details/architecture/data-model',
-              },
-              {
-                text: 'API Design',
-                link: '/implementation-details/architecture/api-design',
-              },
-              {
-                text: 'Infrastructure',
-                link: '/implementation-details/architecture/infrastructure',
-              },
-              {
-                text: 'Security',
-                link: '/implementation-details/architecture/security',
-              },
-            ],
-          },
-          {
-            text: 'Architecture Decisions',
-            items: [
-              {
-                text: 'Decision Log',
-                link: '/implementation-details/decisions/',
-              },
-            ],
-          },
-          {
-            text: 'Developer Guides',
-            items: [
-              {
-                text: 'Getting Started',
-                link: '/implementation-details/guides/getting-started',
-              },
-              {
-                text: 'Development Workflow',
-                link: '/implementation-details/guides/development',
-              },
-              {
-                text: 'Deployment',
-                link: '/implementation-details/guides/deployment',
-              },
-            ],
-          },
-          {
-            text: 'Reference',
-            items: [
-              {
-                text: 'Configuration',
-                link: '/implementation-details/reference/configuration',
-              },
-              {
-                text: 'Integrations',
-                link: '/implementation-details/reference/integrations',
-              },
-            ],
-          },
-        ],
       },
 
       // ── Social links ────────────────────────────────────────
@@ -234,8 +160,7 @@ export default withMermaid(
 
       // ── Edit link ───────────────────────────────────────────
       editLink: {
-        pattern:
-          'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
+        pattern: 'https://github.com/blendsdk/porta-identity/edit/main/docs/:path',
         text: 'Edit this page on GitHub',
       },
     },

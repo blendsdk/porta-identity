@@ -17,7 +17,7 @@ See also: [Quick Start](./quickstart.md) for minimal setup, [Deployment Guide](.
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `DATABASE_URL` | — | **Yes** | PostgreSQL connection string. Example: `postgresql://porta:secret@localhost:5432/porta` |
-| `REDIS_URL` | — | **Yes** | Redis connection string. Example: `redis://localhost:6379` |
+| `REDIS_URL` | — | **Yes** | Redis connection string. Supports optional authentication: `redis://[user:password@]host:port[/db]`. Examples: `redis://localhost:6379`, `redis://:secret@redis:6379/0` |
 
 ## OIDC
 
@@ -161,27 +161,6 @@ These variables are used by the test suite and should not be set in production.
 |----------|---------|-------------|
 | `TEST_DATABASE_URL` | — | PostgreSQL connection string for the test database, keeping test data isolated from development data. |
 | `TEST_REDIS_URL` | — | Redis connection string (typically a different DB index) for test isolation. |
-
-## Docker Service Mode
-
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| `PORTA_SERVICE` | `server` | No | Which service to run: `server` (OIDC server) or `admin` (Admin GUI BFF). Used in Docker deployments. |
-
-## Admin GUI
-
-These variables are required when running the Admin GUI BFF (`PORTA_SERVICE=admin`). See [Admin GUI Guide](./admin-gui.md) for full setup instructions.
-
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| `PORTA_ADMIN_PORT` | `4002` | No | Port for the admin GUI BFF server. |
-| `PORTA_ADMIN_PORTA_URL` | — | **Yes** | URL of the Porta OIDC server (e.g., `http://localhost:3000`). |
-| `PORTA_ADMIN_CLIENT_ID` | — | **Yes** | OIDC client ID for the admin GUI (created by `porta init`). |
-| `PORTA_ADMIN_CLIENT_SECRET` | — | **Yes** | OIDC client secret for the admin GUI (created by `porta init`). |
-| `PORTA_ADMIN_SESSION_SECRET` | — | **Yes** | Secret for signing session cookies (min 32 characters). |
-| `PORTA_ADMIN_PUBLIC_URL` | `http://localhost:4002` | No | Public-facing URL of the admin GUI. |
-| `PORTA_ADMIN_ORG_SLUG` | Auto-detected | No | Organization slug for OIDC discovery. |
-| `PORTA_ADMIN_SESSION_TTL` | `3600` | No | Session duration in seconds. |
 
 ## Example `.env` Files
 

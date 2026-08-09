@@ -14,15 +14,11 @@ GET /api/admin/audit
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `page` | integer | Page number (default: 1) |
-| `pageSize` | integer | Items per page (default: 20) |
-| `action` | string | Filter by action type |
-| `entity_type` | string | Filter by entity type |
-| `entity_id` | uuid | Filter by entity ID |
-| `actor_id` | uuid | Filter by actor (who performed the action) |
-| `organization_id` | uuid | Filter by organization |
-| `from` | ISO 8601 | Start date/time |
-| `to` | ISO 8601 | End date/time |
+| `limit` | integer | Max results to return (default: 50, max: 500) |
+| `event` | string | Filter by `event_type` |
+| `org` | uuid | Filter by `organization_id` |
+| `user` | uuid | Filter by `user_id` |
+| `since` | ISO 8601 | Filter events after this date |
 
 **Response:** `200 OK`
 
@@ -31,25 +27,21 @@ GET /api/admin/audit
   "data": [
     {
       "id": "event-uuid",
-      "action": "organization.created",
-      "entityType": "organization",
-      "entityId": "org-uuid",
+      "eventType": "organization.created",
+      "eventCategory": "admin",
       "actorId": "user-uuid",
-      "actorEmail": "admin@example.com",
       "organizationId": "org-uuid",
+      "userId": "user-uuid",
+      "description": "Organization created",
       "metadata": {
         "name": "Acme Corp",
         "slug": "acme-corp"
       },
+      "ipAddress": "192.168.1.1",
       "createdAt": "2024-01-15T10:30:00.000Z"
     }
   ],
-  "pagination": {
-    "total": 156,
-    "page": 1,
-    "pageSize": 20,
-    "totalPages": 8
-  }
+  "total": 156
 }
 ```
 

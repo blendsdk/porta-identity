@@ -35,14 +35,14 @@ cp .env.docker .env.docker.local
 
 Edit `.env.docker.local` and **generate your secrets** (see [Quick Start → Step 2](./quickstart.md#step-2-generate-required-secrets)):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ISSUER_BASE_URL` | `http://localhost:3000` | Public URL of your Porta instance |
-| `COOKIE_KEYS` | — | Cookie signing key (**must generate**) |
-| `TWO_FACTOR_ENCRYPTION_KEY` | — | 2FA encryption key (**must generate**) |
-| `SIGNING_KEY_ENCRYPTION_KEY` | — | Signing key encryption (**must generate**) |
-| `PORTA_AUTO_MIGRATE` | `true` | Auto-run database migrations on startup |
-| `POSTGRES_PASSWORD` | `porta_secret` | PostgreSQL password |
+| Variable                     | Default                    | Description                                |
+| ---------------------------- | -------------------------- | ------------------------------------------ |
+| `ISSUER_BASE_URL`            | `https://porta.local:3443` | Public URL of your Porta instance          |
+| `COOKIE_KEYS`                | —                          | Cookie signing key (**must generate**)     |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | —                          | 2FA encryption key (**must generate**)     |
+| `SIGNING_KEY_ENCRYPTION_KEY` | —                          | Signing key encryption (**must generate**) |
+| `PORTA_AUTO_MIGRATE`         | `true`                     | Auto-run database migrations on startup    |
+| `POSTGRES_PASSWORD`          | `porta_secret`             | PostgreSQL password                        |
 
 **3. Start all services**
 
@@ -51,22 +51,25 @@ docker compose -f docker/docker-compose.prod.yml up -d
 ```
 
 This starts:
+
 - **porta** — The Porta OIDC provider (port 3000)
 - **postgres** — PostgreSQL 16 database
 - **redis** — Redis 7 cache
 
 ::: tip Email Testing
 To enable the MailHog email testing UI, start with the `dev` profile:
+
 ```bash
 docker compose -f docker/docker-compose.prod.yml --profile dev up -d
 ```
+
 Then open [http://localhost:8025](http://localhost:8025) for the MailHog inbox.
 :::
 
 **4. Wait for health checks**
 
 ```bash
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 ```
 
 You should see a JSON response with `"status": "ok"`.
@@ -92,25 +95,18 @@ docker exec porta-app porta init \
 **6. Authenticate the CLI**
 
 ```bash
-docker exec -it porta-app porta login
+npm install -g @portaidentity/cli
+porta login --server https://porta.local:3443
 ```
 
-The CLI auto-detects the Docker container and uses manual mode — it prints an auth URL for you to open in your host browser, then you paste the callback URL back. See [porta login](../cli/bootstrap.md#porta-login) for details.
+The standalone CLI opens your browser for OIDC authentication. See [porta login](../cli/bootstrap.md#porta-login) for details.
 
 **7. Set up your environment**
 
 Use [declarative provisioning](../cli/provisioning.md) to create organizations, applications, and clients.
 
-Using the [CLI wrapper](./quickstart.md#step-8-install-the-cli-wrapper):
-
 ```bash
-./porta provision -f setup.yaml
-```
-
-Or without the wrapper:
-
-```bash
-docker exec porta-app porta provision -f /dev/stdin < setup.yaml
+porta provision -f setup.yaml
 ```
 
 ### Stopping
@@ -169,10 +165,10 @@ This starts PostgreSQL 16, Redis 7, and MailHog using Docker Compose.
 yarn build
 
 # Run database migrations
-node dist/cli/index.js migrate up
+yarn porta migrate up
 
 # Bootstrap admin system (interactive)
-node dist/cli/index.js init
+yarn porta init
 ```
 
 **5. Start the development server**
@@ -181,7 +177,7 @@ node dist/cli/index.js init
 yarn dev
 ```
 
-The server starts with hot-reload via `tsx watch` on [http://localhost:3000](http://localhost:3000).
+The server starts with hot-reload via `tsx watch` on [https://porta.local:3443](https://porta.local:3443).
 
 **6. Run tests**
 

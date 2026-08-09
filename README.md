@@ -109,7 +109,7 @@ git clone https://github.com/blendsdk/porta-identity.git && cd porta-identity
 yarn install
 cp .env.example .env
 yarn docker:up        # Start PostgreSQL, Redis, MailHog
-yarn build && node dist/cli/index.js migrate up && node dist/cli/index.js init
+yarn build && yarn porta migrate up && yarn porta init
 yarn dev              # Start dev server with hot-reload
 yarn verify           # Run lint + build + tests before committing
 ```

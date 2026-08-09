@@ -19,10 +19,8 @@ dist/
 # Tests
 tests/
 
-# Documentation & playgrounds
+# Documentation
 docs/
-playground/
-playground-bff/
 
 # Planning & requirements (internal)
 plans/

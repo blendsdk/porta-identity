@@ -14,19 +14,18 @@ porta init
 
 1. Creates the **super-admin organization** (`porta-admin`)
 2. Creates the **admin application** with granular RBAC permissions and roles
-3. Creates a **PKCE-enabled public OIDC client** for the CLI
-4. Creates a **confidential OIDC client** for the [Admin GUI](/guide/admin-gui) (with client secret)
-5. Creates the **first admin user** (prompts for email and password)
-6. Assigns the `porta-admin` role to the first user
+3. Creates a **PKCE-enabled public OIDC client** for CLI authentication
+4. Creates the **first admin user** (prompts for email and password)
+5. Assigns the `porta-admin` role to the first user
 
 **Mode:** Direct DB (connects directly to PostgreSQL and Redis)
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description             |
+| ---------------- | ----------------------- |
 | `--database-url` | Override `DATABASE_URL` |
-| `--redis-url` | Override `REDIS_URL` |
+| `--redis-url`    | Override `REDIS_URL`    |
 
 **Example:**
 
@@ -61,20 +60,48 @@ porta login [--server <url>] [--no-browser] [--client-id <id>]
 5. Exchanges the code for access and refresh tokens
 6. Stores credentials at `~/.porta/credentials.json`
 
+The CLI requests the `offline_access` scope so the server issues a **refresh
+token**. The CLI uses this refresh token to silently obtain new access tokens as
+they expire (access tokens are short-lived — about 1 hour by default), so you do
+not have to run `porta login` again every hour.
+
+The authorization request uses `prompt=login consent`. The `login` value forces
+fresh credential entry on every `porta login`; the `consent` value is **required**
+for `offline_access` to be granted — per OIDC Core §3.1.2.1, the provider ignores
+`offline_access` unless the request's `prompt` contains `consent`. Because Porta
+auto-consents first-party clients, the `consent` value adds no extra screen for
+the admin.
+
+::: warning No refresh token issued
+If the server does **not** return a refresh token, the CLI prints a warning:
+
+```
+Warning: the server did not issue a refresh token. You'll need to run
+'porta login' again when the access token expires (~1h). Ensure the client
+allows the 'refresh_token' grant and the 'offline_access' scope.
+```
+
+This normally means the admin OIDC client is missing the `refresh_token` grant
+type or the `offline_access` scope. The client created by `porta init` is
+configured correctly; this warning is only expected for hand-edited or
+externally-provisioned clients. See
+[Session Lifecycle](/concepts/session-lifecycle) for how Porta upgrades an
+existing grant to include `offline_access`.
+:::
+
 **Mode:** HTTP
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
-| `--server` | Porta server URL (default: `http://localhost:3000`) |
+| Flag           | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `--server`     | Porta server URL (default: `https://porta.local:3443`) |
 | `--no-browser` | Use manual mode — print URL instead of opening browser |
-| `--client-id` | Override the auto-discovered admin client ID |
+| `--client-id`  | Override the auto-discovered admin client ID           |
 
-::: tip Docker / Headless Environments
-When running inside a Docker container, `porta login` **automatically detects** the container environment (via `/.dockerenv`) and switches to manual mode. No need to pass `--no-browser` explicitly.
-
-You can also force manual mode in other containerized runtimes (Podman, Kubernetes) by setting the `PORTA_CONTAINER=1` environment variable.
+::: tip Headless Environments
+Use `--no-browser` when running the standalone CLI over SSH, in CI, or in another environment
+without a local browser.
 :::
 
 **Examples:**
@@ -85,10 +112,6 @@ porta login
 
 # Login to a remote server
 porta login --server https://auth.example.com
-
-# Login from inside Docker (auto-detected manual mode)
-docker exec -it porta-app porta login
-# → Prints URL, you open it in your host browser, paste callback URL back
 
 # Force manual mode (SSH, CI, headless servers)
 porta login --no-browser
@@ -101,7 +124,7 @@ $ porta login --no-browser
 
 Open this URL in your browser to log in:
 
-  http://localhost:3000/porta-admin/auth?response_type=code&client_id=...
+  https://porta.local:3443/porta-admin/auth?response_type=code&client_id=...
 
 After logging in, your browser will redirect to a page that won't load.
 Copy the full URL from your browser's address bar and paste it below.
@@ -145,7 +168,7 @@ porta whoami
 │ Email     │ admin@example.com                    │
 │ Org       │ porta-admin                          │
 │ Roles     │ porta-admin                          │
-│ Server    │ http://localhost:3000                 │
+│ Server    │ https://porta.local:3443              │
 └───────────┴──────────────────────────────────────┘
 ```
 

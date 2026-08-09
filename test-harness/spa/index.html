@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OIDC Test Harness — SPA</title>
+  <style>
+    body { font-family: monospace; max-width: 800px; margin: 2em auto; padding: 0 1em; }
+    h1 { margin-bottom: 0.5em; }
+    button { font-size: 1.2em; padding: 0.5em 2em; margin: 0.5em; cursor: pointer; min-height: 44px; }
+    pre { background: #f0f0f0; padding: 1em; overflow: auto; max-height: 300px; border: 1px solid #ccc; }
+    label { font-weight: bold; display: block; margin-top: 1em; }
+    [data-testid="error"] { background: #d32f2f; color: white; padding: 1em; margin: 1em 0; border-radius: 4px; }
+    [data-testid="status"] { font-size: 1.5em; font-weight: bold; margin: 1em 0; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.5em; margin: 1em 0; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "oidc-client-ts": "/lib/oidc-client-ts.js",
+      "jwt-decode": "/lib/jwt-decode.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <h1>OIDC Test Harness — SPA</h1>
+
+  <!-- Status -->
+  <div data-testid="status">NOT LOGGED IN</div>
+  <div data-testid="user-email" style="display:none"></div>
+
+  <!-- Buttons -->
+  <div class="btn-row">
+    <button data-testid="login-btn" style="display:none">LOGIN</button>
+    <button data-testid="introspect-btn" style="display:none">INTROSPECT</button>
+    <button data-testid="userinfo-btn" style="display:none">USERINFO</button>
+    <button data-testid="refresh-btn" style="display:none">REFRESH</button>
+    <button data-testid="logout-btn" style="display:none">LOGOUT</button>
+  </div>
+
+  <!-- Result displays -->
+  <label data-testid="access-token-label" style="display:none">Access Token:</label>
+  <pre data-testid="access-token" style="display:none"></pre>
+
+  <label data-testid="id-token-claims-label" style="display:none">ID Token Claims:</label>
+  <pre data-testid="id-token-claims" style="display:none"></pre>
+
+  <label data-testid="introspection-result-label" style="display:none">Introspection Result:</label>
+  <pre data-testid="introspection-result" style="display:none"></pre>
+
+  <label data-testid="userinfo-result-label" style="display:none">UserInfo Result:</label>
+  <pre data-testid="userinfo-result" style="display:none"></pre>
+
+  <label data-testid="refresh-result-label" style="display:none">Refresh Result:</label>
+  <pre data-testid="refresh-result" style="display:none"></pre>
+
+  <!-- Error display -->
+  <div data-testid="error" style="display:none"></div>
+
+  <script type="module">
+    import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+
+    const $ = (sel) => document.querySelector(sel);
+    const $testid = (id) => $(`[data-testid="${id}"]`);
+
+    function show(id, text) {
+      const el = $testid(id);
+      el.textContent = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+      el.style.display = '';
+      // Also show the label if it exists
+      const label = $testid(id + '-label');
+      if (label) label.style.display = '';
+    }
+
+    function hide(id) {
+      const el = $testid(id);
+      el.style.display = 'none';
+      const label = $testid(id + '-label');
+      if (label) label.style.display = 'none';
+    }
+
+    function showError(msg) {
+      console.error('[SPA Error]', msg);
+      show('error', String(msg));
+    }
+
+    function clearError() {
+      hide('error');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Config
+    // ---------------------------------------------------------------------------
+
+    let config;
+    try {
+      const resp = await fetch('/config.json');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      config = await resp.json();
+      console.log('[SPA] Config loaded:', config.spa.clientId);
+    } catch (err) {
+      showError('Config not loaded — run seed first. Error: ' + err.message);
+      throw err;
+    }
+
+    // ---------------------------------------------------------------------------
+    // UserManager
+    // ---------------------------------------------------------------------------
+
+    // Multi-tenancy issuer mismatch: Porta returns issuer="https://localhost:3443"
+    // (base URL) but discovery lives at /:orgSlug/.well-known/openid-configuration.
+    // Set authority to base URL (matches returned issuer) and metadataUrl to org endpoint.
+    const userManager = new UserManager({
+      authority: config.porta.baseUrl,
+      metadataUrl: `${config.porta.baseUrl}/${config.orgSlug}/.well-known/openid-configuration`,
+      client_id: config.spa.clientId,
+      redirect_uri: config.spa.redirectUri,
+      post_logout_redirect_uri: config.spa.postLogoutRedirectUri,
+      scope: config.spa.scope,
+      response_type: 'code',
+      userStore: new WebStorageStateStore({ store: window.localStorage }),
+      automaticSilentRenew: false,
+      // Use refresh_token grant for signinSilent() instead of iframe (avoids self-signed cert issues)
+      useRefreshTokens: true,
+    });
+
+    // ---------------------------------------------------------------------------
+    // UI State
+    // ---------------------------------------------------------------------------
+
+    function showLoggedIn(user) {
+      clearError();
+      $testid('status').textContent = 'LOGGED IN';
+      const email = user.profile?.email || user.profile?.sub || 'unknown';
+      show('user-email', `User: ${email}`);
+
+      // Show action buttons, hide login
+      $testid('login-btn').style.display = 'none';
+      $testid('introspect-btn').style.display = '';
+      $testid('userinfo-btn').style.display = '';
+      $testid('refresh-btn').style.display = '';
+      $testid('logout-btn').style.display = '';
+
+      // Show tokens
+      show('access-token', user.access_token);
+      show('id-token-claims', user.profile);
+    }
+
+    function showLoggedOut() {
+      $testid('status').textContent = 'NOT LOGGED IN';
+      hide('user-email');
+
+      // Show login, hide others
+      $testid('login-btn').style.display = '';
+      $testid('introspect-btn').style.display = 'none';
+      $testid('userinfo-btn').style.display = 'none';
+      $testid('refresh-btn').style.display = 'none';
+      $testid('logout-btn').style.display = 'none';
+
+      hide('access-token');
+      hide('id-token-claims');
+      hide('introspection-result');
+      hide('userinfo-result');
+      hide('refresh-result');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Check current state
+    // ---------------------------------------------------------------------------
+
+    try {
+      const user = await userManager.getUser();
+      if (user && !user.expired) {
+        showLoggedIn(user);
+      } else {
+        showLoggedOut();
+      }
+    } catch (err) {
+      showError('Failed to check login state: ' + err.message);
+      showLoggedOut();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Button Handlers
+    // ---------------------------------------------------------------------------
+
+    // LOGIN
+    $testid('login-btn').onclick = () => {
+      clearError();
+      console.log('[SPA] Starting login redirect...');
+      userManager.signinRedirect().catch(err => showError('Login failed: ' + err.message));
+    };
+
+    // LOGOUT
+    $testid('logout-btn').onclick = () => {
+      clearError();
+      console.log('[SPA] Starting logout redirect...');
+      userManager.signoutRedirect().catch(err => showError('Logout failed: ' + err.message));
+    };
+
+    // INTROSPECT — public client sends only client_id (no secret)
+    $testid('introspect-btn').onclick = async () => {
+      clearError();
+      try {
+        const user = await userManager.getUser();
+        const issuer = `${config.porta.baseUrl}/${config.orgSlug}`;
+        console.log('[SPA] Introspecting token at:', `${issuer}/token/introspection`);
+        const resp = await fetch(`${issuer}/token/introspection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            token: user.access_token,
+            client_id: config.spa.clientId,
+            token_type_hint: 'access_token',
+          }),
+        });
+        console.log('[SPA] Introspection response:', resp.status);
+        const data = await resp.json();
+        show('introspection-result', data);
+      } catch (err) {
+        show('introspection-result', { error: err.message });
+        showError('Introspection failed: ' + err.message);
+      }
+    };
+
+    // USERINFO
+    $testid('userinfo-btn').onclick = async () => {
+      clearError();
+      try {
+        const user = await userManager.getUser();
+        const userinfoUrl = `${config.porta.baseUrl}/${config.orgSlug}/me`;
+        console.log('[SPA] Fetching userinfo at:', userinfoUrl);
+        const resp = await fetch(userinfoUrl, {
+          headers: { Authorization: `Bearer ${user.access_token}` },
+        });
+        console.log('[SPA] Userinfo response:', resp.status);
+        const data = await resp.json();
+        show('userinfo-result', data);
+      } catch (err) {
+        show('userinfo-result', { error: err.message });
+        showError('UserInfo failed: ' + err.message);
+      }
+    };
+
+    // REFRESH
+    $testid('refresh-btn').onclick = async () => {
+      clearError();
+      try {
+        console.log('[SPA] Refreshing token...');
+        const newUser = await userManager.signinSilent();
+        console.log('[SPA] Token refreshed, new expires_at:', newUser.expires_at);
+        show('refresh-result', {
+          new_access_token: newUser.access_token,
+          expires_at: newUser.expires_at,
+        });
+        // Update displayed access token
+        show('access-token', newUser.access_token);
+      } catch (err) {
+        show('refresh-result', { error: err.message });
+        showError('Refresh failed: ' + err.message);
+      }
+    };
+  </script>
+</body>
+</html>

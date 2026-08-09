@@ -27,7 +27,7 @@ services:
     container_name: porta-app
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - '${PORT:-3000}:3000'
     env_file:
       - .env
     environment:
@@ -39,7 +39,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -57,7 +57,7 @@ services:
     volumes:
       - porta_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U porta"]
+      test: ['CMD-SHELL', 'pg_isready -U porta']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -68,7 +68,7 @@ services:
     container_name: porta-redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -141,7 +141,7 @@ curl http://localhost:3000/health
 You should see:
 
 ```json
-{"status":"ok","checks":{"database":"ok","redis":"ok"}}
+{ "status": "ok", "checks": { "database": "ok", "redis": "ok" } }
 ```
 
 ### 5. Bootstrap the admin system
@@ -151,10 +151,10 @@ docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
+
 - The super-admin organization
 - The admin application with RBAC permissions
-- A PKCE public client for CLI authentication
-- A confidential client for the Admin GUI (with client secret)
+- A PKCE public client for CLI and Admin GUI authentication
 - Your first admin user (you'll be prompted for email, name, and password)
 
 Or run it non-interactively:
@@ -167,27 +167,36 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-> **💡 CLI Wrapper Script**
-> For a cleaner experience, install the CLI wrapper:
+> **💡 Standalone CLI**
+> For full admin management, install the standalone CLI on your workstation:
+>
+> ```bash
+> npm install -g @portaidentity/cli
+> porta login --server https://porta.local:3443
+> porta org list
+> ```
+>
+> **Docker wrapper** (infrastructure commands only):
+>
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
 >   -o porta && chmod +x porta
 > ```
+>
 > Then run commands directly:
+>
 > ```bash
 > ./porta init
-> ./porta login
-> ./porta org list
-> ./porta provision -f setup.yaml
+> ./porta migrate status
 > ```
 
 ### 6. Authenticate the CLI
 
 ```bash
-docker exec -it porta-app porta login
+porta login --server https://porta.local:3443
 ```
 
-The CLI automatically detects the Docker container and uses **manual mode** — it prints an authorization URL for you to open in your host browser. After logging in, paste the callback URL from your browser's address bar back into the terminal.
+The standalone CLI opens your browser for OIDC authentication.
 
 ### 7. You're done! 🎉
 
@@ -197,42 +206,26 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | `production` | Runtime mode |
-| `PORT` | `3000` | HTTP server port |
-| `HOST` | `0.0.0.0` | HTTP listen address |
-| `DATABASE_URL` | — | PostgreSQL connection string (set in compose) |
-| `REDIS_URL` | — | Redis connection string (set in compose) |
-| `ISSUER_BASE_URL` | — | **Required.** Public URL of your Porta instance |
-| `COOKIE_KEYS` | — | **Required.** Cookie signing key (≥32 random chars) |
-| `TWO_FACTOR_ENCRYPTION_KEY` | — | **Required.** AES-256-GCM key for TOTP secrets (64 hex chars) |
-| `SIGNING_KEY_ENCRYPTION_KEY` | — | **Required.** AES-256-GCM key for signing key encryption at rest (64 hex chars) |
-| `TRUST_PROXY` | `false` | Set `true` behind a TLS-terminating reverse proxy |
-| `SMTP_HOST` | — | SMTP relay hostname |
-| `SMTP_PORT` | `587` | SMTP port |
-| `SMTP_USER` | — | SMTP username |
-| `SMTP_PASS` | — | SMTP password |
-| `SMTP_FROM` | — | Sender email address |
-| `LOG_LEVEL` | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
-| `PORTA_AUTO_MIGRATE` | `false` | Auto-run DB migrations on startup |
-| `PORTA_WAIT_TIMEOUT` | `60` | Seconds to wait for DB/Redis at startup |
-| `PORTA_SERVICE` | `server` | Service mode: `server` (OIDC) or `admin` (Admin GUI) |
-
-### Admin GUI Environment Variables
-
-> **Note:** The Admin GUI web interface is currently a placeholder. The BFF server is fully functional with OIDC authentication. The full admin dashboard is under development. Use the Porta CLI for full administration capabilities.
-
-When running the Admin GUI (`PORTA_SERVICE=admin`), these additional variables apply:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORTA_ADMIN_PORT` | `4002` | Admin GUI BFF listen port |
-| `PORTA_ADMIN_PORTA_URL` | — | **Required.** URL of the Porta OIDC server |
-| `PORTA_ADMIN_CLIENT_ID` | — | **Required.** OIDC client ID (from `porta init`) |
-| `PORTA_ADMIN_CLIENT_SECRET` | — | **Required.** OIDC client secret (from `porta init`) |
-| `PORTA_ADMIN_SESSION_SECRET` | — | **Required.** Session cookie signing secret (≥32 chars) |
-| `PORTA_ADMIN_PUBLIC_URL` | `http://localhost:4002` | Public-facing URL of the admin GUI |
+| Variable                     | Default      | Description                                                                     |
+| ---------------------------- | ------------ | ------------------------------------------------------------------------------- |
+| `NODE_ENV`                   | `production` | Runtime mode                                                                    |
+| `PORT`                       | `3000`       | HTTP server port                                                                |
+| `HOST`                       | `0.0.0.0`    | HTTP listen address                                                             |
+| `DATABASE_URL`               | —            | PostgreSQL connection string (set in compose)                                   |
+| `REDIS_URL`                  | —            | Redis connection string (set in compose)                                        |
+| `ISSUER_BASE_URL`            | —            | **Required.** Public URL of your Porta instance                                 |
+| `COOKIE_KEYS`                | —            | **Required.** Cookie signing key (≥32 random chars)                             |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | —            | **Required.** AES-256-GCM key for TOTP secrets (64 hex chars)                   |
+| `SIGNING_KEY_ENCRYPTION_KEY` | —            | **Required.** AES-256-GCM key for signing key encryption at rest (64 hex chars) |
+| `TRUST_PROXY`                | `false`      | Set `true` behind a TLS-terminating reverse proxy                               |
+| `SMTP_HOST`                  | —            | SMTP relay hostname                                                             |
+| `SMTP_PORT`                  | `587`        | SMTP port                                                                       |
+| `SMTP_USER`                  | —            | SMTP username                                                                   |
+| `SMTP_PASS`                  | —            | SMTP password                                                                   |
+| `SMTP_FROM`                  | —            | Sender email address                                                            |
+| `LOG_LEVEL`                  | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)                                |
+| `PORTA_AUTO_MIGRATE`         | `false`      | Auto-run DB migrations on startup                                               |
+| `PORTA_WAIT_TIMEOUT`         | `60`         | Seconds to wait for DB/Redis at startup                                         |
 
 ### Generating Production Secrets
 
@@ -273,7 +266,7 @@ Porta's login pages, consent screens, password reset forms, and all emails are f
 Set logo, colors, and company name without touching any files:
 
 ```bash
-docker exec porta-app porta org branding <org-id> \
+porta org branding <org-id> \
   --logo-url "https://cdn.example.com/logo.png" \
   --primary-color "#E11D48" \
   --company-name "Acme Corp"
@@ -292,6 +285,7 @@ services:
 ```
 
 Copy the default templates as a starting point:
+
 ```bash
 docker cp porta-app:/app/templates/default/. my-templates/
 ```
@@ -319,12 +313,12 @@ See the [full Custom UI Tutorial](https://blendsdk.github.io/porta-identity/guid
 
 ## Documentation & Links
 
-| | |
-|---|---|
-| 📖 [Full Documentation](https://blendsdk.github.io/porta-identity/) | Guides, API reference, CLI docs |
-| 💻 [GitHub Repository](https://github.com/blendsdk/porta-identity) | Source code and issue tracker |
-| 🚀 [Quick Start Guide](https://blendsdk.github.io/porta-identity/guide/quickstart) | Detailed setup instructions |
-| 📋 [Admin API Reference](https://blendsdk.github.io/porta-identity/api/overview) | REST API for admin operations |
-| 💻 [CLI Reference](https://blendsdk.github.io/porta-identity/cli/overview) | Command-line admin tool |
-| 🏗️ [Architecture](https://blendsdk.github.io/porta-identity/guide/architecture) | Design and architecture overview |
-| 🚢 [Deployment Guide](https://blendsdk.github.io/porta-identity/guide/deployment) | Production deployment guidance |
+|                                                                                    |                                  |
+| ---------------------------------------------------------------------------------- | -------------------------------- |
+| 📖 [Full Documentation](https://blendsdk.github.io/porta-identity/)                | Guides, API reference, CLI docs  |
+| 💻 [GitHub Repository](https://github.com/blendsdk/porta-identity)                 | Source code and issue tracker    |
+| 🚀 [Quick Start Guide](https://blendsdk.github.io/porta-identity/guide/quickstart) | Detailed setup instructions      |
+| 📋 [Admin API Reference](https://blendsdk.github.io/porta-identity/api/overview)   | REST API for admin operations    |
+| 💻 [CLI Reference](https://blendsdk.github.io/porta-identity/cli/overview)         | Command-line admin tool          |
+| 🏗️ [Architecture](https://blendsdk.github.io/porta-identity/guide/architecture)    | Design and architecture overview |
+| 🚢 [Deployment Guide](https://blendsdk.github.io/porta-identity/guide/deployment)  | Production deployment guidance   |

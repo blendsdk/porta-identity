@@ -240,7 +240,7 @@ porta org update <org-id> --login-methods magic_link
 
 **Via Admin API:**
 ```bash
-curl -X PUT http://localhost:3000/api/admin/organizations/<org-id> \
+curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id> \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "defaultLoginMethods": ["password", "magic_link"] }'
@@ -279,13 +279,13 @@ porta client update <client-id> --clear-login-methods
 **Via Admin API:**
 ```bash
 # Set override
-curl -X PUT http://localhost:3000/api/admin/clients/<client-id>/login-methods \
+curl -X PUT https://porta.local:3443/api/admin/clients/<client-id>/login-methods \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "loginMethods": ["password"] }'
 
 # Clear override (inherit from org)
-curl -X DELETE http://localhost:3000/api/admin/clients/<client-id>/login-methods \
+curl -X DELETE https://porta.local:3443/api/admin/clients/<client-id>/login-methods \
   -H "Authorization: Bearer $TOKEN"
 ```
 

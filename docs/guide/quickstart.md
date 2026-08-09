@@ -41,10 +41,10 @@ echo "SIGNING_KEY_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').random
 
 **Save the output** — you'll paste these into your `.env` file in Step 4.
 
-| Secret | Purpose | Format |
-|--------|---------|--------|
-| `COOKIE_KEYS` | Signs OIDC session cookies | Base64 string, ≥32 chars |
-| `TWO_FACTOR_ENCRYPTION_KEY` | Encrypts TOTP authenticator secrets at rest | 64 hex characters (32 bytes) |
+| Secret                       | Purpose                                         | Format                       |
+| ---------------------------- | ----------------------------------------------- | ---------------------------- |
+| `COOKIE_KEYS`                | Signs OIDC session cookies                      | Base64 string, ≥32 chars     |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | Encrypts TOTP authenticator secrets at rest     | 64 hex characters (32 bytes) |
 | `SIGNING_KEY_ENCRYPTION_KEY` | Encrypts ES256 signing key private keys at rest | 64 hex characters (32 bytes) |
 
 ---
@@ -59,13 +59,13 @@ Magic links, user invitations, password resets, and email-based 2FA all send ema
 
 **For production**, configure a real SMTP server:
 
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `SMTP_HOST` | `smtp.sendgrid.net` | SMTP server hostname |
-| `SMTP_PORT` | `587` | SMTP port (587 for STARTTLS, 465 for SSL) |
-| `SMTP_USER` | `apikey` | SMTP username |
-| `SMTP_PASS` | `SG.xxxxx` | SMTP password or API key |
-| `SMTP_FROM` | `noreply@yourdomain.com` | Sender email address |
+| Variable    | Example                  | Description                               |
+| ----------- | ------------------------ | ----------------------------------------- |
+| `SMTP_HOST` | `smtp.sendgrid.net`      | SMTP server hostname                      |
+| `SMTP_PORT` | `587`                    | SMTP port (587 for STARTTLS, 465 for SSL) |
+| `SMTP_USER` | `apikey`                 | SMTP username                             |
+| `SMTP_PASS` | `SG.xxxxx`               | SMTP password or API key                  |
+| `SMTP_FROM` | `noreply@yourdomain.com` | Sender email address                      |
 
 Popular options: [SendGrid](https://sendgrid.com/), [Amazon SES](https://aws.amazon.com/ses/), [Postmark](https://postmarkapp.com/), [Mailgun](https://www.mailgun.com/), or any SMTP-compatible service.
 
@@ -83,7 +83,7 @@ services:
     container_name: porta-app
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - '${PORT:-3000}:3000'
     env_file:
       - .env
     environment:
@@ -95,7 +95,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -113,7 +113,7 @@ services:
     volumes:
       - porta_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U porta"]
+      test: ['CMD-SHELL', 'pg_isready -U porta']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -124,7 +124,7 @@ services:
     container_name: porta-redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -134,8 +134,8 @@ services:
     image: mailhog/mailhog
     container_name: porta-mailhog
     ports:
-      - "8025:8025"   # Web UI
-      - "1025:1025"   # SMTP
+      - '8025:8025' # Web UI
+      - '1025:1025' # SMTP
     profiles:
       - dev
 
@@ -164,7 +164,7 @@ HOST=0.0.0.0
 POSTGRES_PASSWORD=porta_secret
 
 # ── OIDC ──────────────────────────────────────
-ISSUER_BASE_URL=http://localhost:3000
+ISSUER_BASE_URL=https://porta.local:3443
 
 # ── Secrets (paste values from Step 2) ────────
 COOKIE_KEYS=<paste-your-cookie-key-here>
@@ -205,7 +205,7 @@ docker compose up -d
 Wait a few seconds for PostgreSQL and Redis to become healthy, then verify:
 
 ```bash
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 ```
 
 You should see `{"status":"ok","database":"ok","redis":"ok"}`.
@@ -219,10 +219,10 @@ docker exec -it porta-app porta init
 ```
 
 This interactive command creates:
+
 - The **super-admin organization** (`porta-admin`)
 - The **admin application** with 42 RBAC permissions
 - A **PKCE client** for CLI authentication
-- A **confidential client** for the Admin GUI
 - Your **first admin user** (you'll be prompted for email, name, and password)
 
 You can also run it non-interactively:
@@ -235,38 +235,40 @@ docker exec porta-app porta init \
   --password 'YourSecurePassword123!'
 ```
 
-Then authenticate the CLI:
-
-```bash
-docker exec -it porta-app porta login
-```
-
-The CLI prints an authorization URL — open it in your browser, log in, then paste the callback URL back into the terminal.
-
 ---
 
-## Step 8: Install the CLI Wrapper
+## Step 8: Install the Standalone CLI
 
-Download the `porta` wrapper script for a cleaner command-line experience:
+The Porta Docker image includes infrastructure commands only (`init`, `migrate`, `seed`, `health`). For full admin management, install the **standalone CLI** on your workstation:
+
+```bash
+npm install -g @portaidentity/cli
+```
+
+Then authenticate against your Porta server:
+
+```bash
+porta login --server https://porta.local:3443
+```
+
+The CLI opens your browser for OIDC authentication. After logging in, you can manage everything:
+
+```bash
+porta whoami           # Check current identity
+porta org list         # List organizations
+porta version          # Show CLI/SDK/server versions
+```
+
+::: tip Docker wrapper (infrastructure only)
+For init/migrate commands inside the container, you can also download the wrapper script:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker/porta.sh \
   -o porta && chmod +x porta
-```
-
-This script forwards commands to the Porta container, with automatic host file detection for provisioning. Now you can run:
-
-```bash
 ./porta init
-./porta login
-./porta org list
+./porta migrate status
 ```
 
-::: info Without the wrapper
-All commands also work with `docker exec`:
-```bash
-docker exec -it porta-app porta init
-```
 :::
 
 ---
@@ -278,7 +280,7 @@ Now that Porta is running, use **declarative provisioning** to create your organ
 **1. Create a `setup.yaml` file:**
 
 ```yaml
-version: "1.0"
+version: '1.0'
 
 organizations:
   - name: My Company
@@ -290,6 +292,7 @@ organizations:
 
         clients:
           - client_name: Web App
+            client_type: confidential
             application_type: web
             grant_types:
               - authorization_code
@@ -323,23 +326,24 @@ organizations:
 **2. Preview what will be created:**
 
 ```bash
-./porta provision -f setup.yaml --dry-run
+porta provision -f setup.yaml --dry-run
 ```
 
 **3. Apply the configuration:**
 
 ```bash
-./porta provision -f setup.yaml
+porta provision -f setup.yaml
 ```
-
-::: info Without the wrapper
-```bash
-docker exec porta-app porta provision -f /dev/stdin < setup.yaml
-```
-:::
 
 ::: tip More examples
-See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `examples/provision-enterprise.yaml` in the repository, or read the full [Provisioning Guide](../cli/provisioning.md).
+The repository includes ready-to-use provisioning files at different complexity levels:
+
+- **`examples/provision-simple.yaml`** — Single org, one app, public + confidential client, basic RBAC
+- **`examples/provision-multi-org.yaml`** — Multi-tenant SaaS with two isolated organizations
+- **`examples/provision-enterprise.yaml`** — Enterprise setup with multiple apps, custom claims, and system config
+- **`examples/provision-full.yaml`** — **Complete feature showcase**: users with passwords, application modules, branding, 2FA policy, secret config, role/claim assignments
+
+Read the full [Provisioning Guide](../cli/provisioning.md) for the complete file format reference.
 :::
 
 ---
@@ -348,16 +352,16 @@ See `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`, and `
 
 ```bash
 # Check health
-curl http://localhost:3000/health
+curl https://porta.local:3443/health
 
-# List organizations
-docker exec porta-app porta org list
+# List organizations with the standalone CLI
+porta org list
 
 # Open MailHog to see test emails (if using dev profile)
 # http://localhost:8025
 ```
 
-Open [http://localhost:3000/health](http://localhost:3000/health) in your browser to confirm the server, database, and Redis are all connected.
+Open [https://porta.local:3443/health](https://porta.local:3443/health) in your browser to confirm the server, database, and Redis are all connected.
 
 ---
 
@@ -382,6 +386,7 @@ docker compose logs porta
 ```
 
 **Common causes:**
+
 - Missing or placeholder secrets — check your `.env` (see [Step 2](#step-2-generate-required-secrets))
 - PostgreSQL not ready yet — the entrypoint waits up to 60 seconds
 - Port 3000 already in use — change `PORT` in your `.env` file
