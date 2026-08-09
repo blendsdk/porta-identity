@@ -4,7 +4,7 @@
  * Serves the SPA directory over HTTPS using the test harness self-signed cert.
  * Required because Crypto.subtle (used by oidc-client-ts for PKCE S256) is only
  * available in secure contexts (HTTPS or localhost). When testing cross-domain
- * (app.test ≠ localhost), the SPA must be served over HTTPS.
+ * (the application host differs from localhost), the SPA must be served over HTTPS.
  *
  * Replaces sirv for cross-domain testing.
  */
@@ -80,6 +80,6 @@ const server = createServer(
 );
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[SPA-HTTPS] Server running at https://app.test:${PORT}`);
+  console.log(`[SPA-HTTPS] Server running at https://app-harness.ci.portaidentity.com:${PORT}`);
   console.log(`[SPA-HTTPS] Serving files from ${SPA_DIR}`);
 });

@@ -13,8 +13,6 @@
  *   GET /userinfo   — UserInfo (server-side call to Porta)
  *   GET /refresh    — Token refresh (server-side call to Porta)
  *   GET /logout     — RP-initiated logout (clear session + redirect to Porta)
- *
- * See: plans/oidc-test-harness/05-bff-harness.md
  */
 
 // ⚠️ TEST HARNESS ONLY — trust self-signed cert for HTTPS calls to Porta via nginx
@@ -36,7 +34,7 @@ const configPath = resolve(import.meta.dirname!, '../config.generated.json');
 const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
 const PORT = 4101;
-const PORTA_BASE_URL: string = config.porta.baseUrl; // https://localhost:3443
+const PORTA_BASE_URL: string = config.porta.baseUrl;
 const ORG_SLUG: string = config.orgSlug; // test-org
 
 console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
@@ -263,7 +261,7 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[BFF] Server running at http://app.test:${PORT}`);
+  console.log(`[BFF] Server running at http://app-harness.ci.portaidentity.com:${PORT}`);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 # ⚠️ TEST HARNESS ONLY — Do NOT use in production!
 # Secrets are hardcoded for reproducible local testing.
 # All data is ephemeral (no persistent volumes).
-# See: plans/oidc-test-harness/03-docker-infrastructure.md
 
 services:
   # TLS-terminating reverse proxy — Porta is ONLY accessible through nginx
@@ -31,9 +30,9 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://porta:harness_pr0d_s3cret@postgres:5432/porta
       REDIS_URL: redis://redis:6379
-      ISSUER_BASE_URL: https://porta.local:3443
+      ISSUER_BASE_URL: https://porta-harness.ci.portaidentity.com:3443
       TRUST_PROXY: 'true'
-      # ⚠️ TEST HARNESS ONLY — hardcoded secrets (per AR-4)
+      # ⚠️ TEST HARNESS ONLY — hardcoded secrets for ephemeral local services
       COOKIE_KEYS: Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp
       SMTP_HOST: mailhog
       SMTP_PORT: 1025

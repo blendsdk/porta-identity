@@ -16,8 +16,6 @@
  * Outputs:
  *   - test-harness/config.generated.json — consumed by BFF and Playwright tests
  *   - test-harness/spa/config.json — consumed by the SPA (served by sirv)
- *
- * See: plans/oidc-test-harness/03-docker-infrastructure.md
  */
 
 // Suppress pino logs BEFORE any module loads the logger.
@@ -30,7 +28,7 @@ const redisPort = process.env.HARNESS_REDIS_PORT ?? '6379';
 const mailhogPort = process.env.HARNESS_MAILHOG_PORT ?? '8025';
 process.env.DATABASE_URL = `postgres://porta:harness_pr0d_s3cret@localhost:${postgresPort}/porta`;
 process.env.REDIS_URL = `redis://localhost:${redisPort}`;
-process.env.ISSUER_BASE_URL ??= 'https://porta.local:3443';
+process.env.ISSUER_BASE_URL ??= 'https://porta-harness.ci.portaidentity.com:3443';
 process.env.COOKIE_KEYS ??= 'Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp';
 process.env.SMTP_HOST ??= 'localhost';
 process.env.SMTP_PORT ??= process.env.HARNESS_SMTP_PORT ?? '1025';
@@ -55,12 +53,12 @@ const ORG_SLUG = 'test-org';
 const APP_NAME = 'Test App';
 
 const SPA_CLIENT_NAME = 'Test SPA';
-const SPA_REDIRECT_URI = 'https://app.test:4100/callback.html';
-const SPA_POST_LOGOUT_URI = 'https://app.test:4100/';
+const SPA_REDIRECT_URI = 'https://app-harness.ci.portaidentity.com:4100/callback.html';
+const SPA_POST_LOGOUT_URI = 'https://app-harness.ci.portaidentity.com:4100/';
 
 const BFF_CLIENT_NAME = 'Test BFF';
-const BFF_REDIRECT_URI = 'http://app.test:4101/callback';
-const BFF_POST_LOGOUT_URI = 'http://app.test:4101/';
+const BFF_REDIRECT_URI = 'http://app-harness.ci.portaidentity.com:4101/callback';
+const BFF_POST_LOGOUT_URI = 'http://app-harness.ci.portaidentity.com:4101/';
 
 const SHARED_SCOPE = 'openid profile email offline_access';
 
@@ -69,7 +67,7 @@ const TEST_USER_PASSWORD = 'TestPassword123!';
 const TEST_USER_GIVEN_NAME = 'Test';
 const TEST_USER_FAMILY_NAME = 'User';
 
-const PORTA_BASE_URL = 'https://porta.local:3443';
+const PORTA_BASE_URL = 'https://porta-harness.ci.portaidentity.com:3443';
 
 // ---------------------------------------------------------------------------
 // Main
@@ -153,8 +151,8 @@ async function main() {
         postLogoutRedirectUris: [SPA_POST_LOGOUT_URI],
         grantTypes: ['authorization_code', 'refresh_token'],
         scope: SHARED_SCOPE,
-        // Explicitly set allowed_origins for production CORS (per AR-5)
-        allowedOrigins: ['https://app.test:4100'],
+        // The browser SPA needs an exact origin allowlist when Porta applies production CORS.
+        allowedOrigins: ['https://app-harness.ci.portaidentity.com:4100'],
       });
       spaClient = result.client;
       console.log(`  ✅ Client "${SPA_CLIENT_NAME}" created: ${spaClient.clientId}`);

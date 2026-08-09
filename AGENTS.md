@@ -16,7 +16,7 @@ Run commands from the repository root.
 | Purpose             | Command                          | Validation                                                                                                                       |
 | ------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Install             | `yarn install --frozen-lockfile` | Passed on 2026-08-08 in the migration worktree                                                                                   |
-| Full verification   | `yarn verify`                    | Passed on 2026-08-08: 44 structure tests, 224 server files / 3,348 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests |
+| Full verification   | `yarn verify`                    | Passed on 2026-08-09: 60 structure tests, 224 server files / 3,348 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests |
 | Structure tests     | `yarn test:structure`            | Node repository-contract tests; no services required                                                                             |
 | Unit tests          | `yarn test:unit`                 | Runs the server unit project                                                                                                     |
 | Integration tests   | `yarn test:integration`          | Requires PostgreSQL, Redis, and MailHog                                                                                          |

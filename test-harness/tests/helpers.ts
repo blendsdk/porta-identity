@@ -7,7 +7,6 @@
  *   - Consent page handling
  *   - JSON result assertion
  *
- * See: plans/oidc-test-harness/07-testing-strategy.md
  */
 
 import { Page, expect } from '@playwright/test';
@@ -164,11 +163,13 @@ export function extractMagicLink(emailBody: string): string {
   decoded = decoded.replace(/&amp;/g, '&');
 
   // Magic link emails typically contain a URL like:
-  // https://porta.local:3443/test-org/interaction/{uid}/magic-link/verify?token={token}
+  // https://porta-harness.ci.portaidentity.com:3443/test-org/interaction/{uid}/magic-link/verify?token={token}
   const urlMatch = decoded.match(/https?:\/\/[^\s"<>]+magic[^\s"<>]*/i);
   if (!urlMatch) {
-    // Fallback: find any porta.local:3443 or localhost:3443 URL (Porta via nginx TLS proxy)
-    const fallbackMatch = decoded.match(/https?:\/\/(?:porta\.test|localhost):3443[^\s"<>]+/i);
+    // Fallback: find a Porta URL served through the harness TLS proxy.
+    const fallbackMatch = decoded.match(
+      /https?:\/\/porta-harness\.ci\.portaidentity\.com:3443[^\s"<>]+/i,
+    );
     if (!fallbackMatch) {
       throw new Error('Could not find magic link URL in email body');
     }
