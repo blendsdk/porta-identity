@@ -31,23 +31,24 @@ separately authorized fix.
 | [Risk Slices](03-04-risk-slices.md)                   | P0/P1 functional and security audit order                  |
 | [Compatibility and CI](03-05-compatibility-and-ci.md) | Packed SDK/CLI journeys and release-safe lanes             |
 | [Testing Strategy](07-testing-strategy.md)            | Independent specification cases and verification           |
+| [Exact Traceability](08-traceability-matrix.md)       | Per-Must requirement, case, task, and claim mapping        |
 | [Execution Plan](99-execution-plan.md)                | Ordered specification-first task checklist                 |
 
 ## Phase Summary
 
-| #   | Phase                                | Primary result                                                 |
-| --- | ------------------------------------ | -------------------------------------------------------------- |
-| 1   | Claim and evidence foundation        | Validated claim catalog that starts with zero assured claims   |
-| 2   | Fail-fast harness lifecycle          | Deterministic reset and cleanup with no silent continuation    |
-| 3   | Multi-tenant fixtures and projects   | Two-tenant actor matrix and five owned Playwright projects     |
-| 4   | Attributed server coverage           | Reproducible, provenance-bound black-box coverage baseline     |
-| 5   | Tenant isolation and RBAC            | First P0 risk slice with cross-tenant negative evidence        |
-| 6   | OIDC, JWT, PKCE, and token lifecycle | Protocol risk slice and replay/rotation evidence               |
-| 7   | Human authentication                 | Sessions, recovery, magic links, 2FA, and rate-limit evidence  |
-| 8   | P1 validation and exposure           | Injection, CORS/CSP/CSRF, errors, bulk/import/export review    |
-| 9   | Curated faults and mutation pilot    | Detection proof for every closed critical claim                |
-| 10  | Packed SDK/CLI compatibility         | Live evidence from publishable artifacts, not workspace source |
-| 11  | Reliability and CI adoption          | Measured flake/runtime, ratchets, docs, and staged gates       |
+| #   | Phase                               | Primary result                                                 |
+| --- | ----------------------------------- | -------------------------------------------------------------- |
+| 1   | Claim and evidence foundation       | Validated claim catalog that starts with zero assured claims   |
+| 2   | Fail-fast harness lifecycle         | Deterministic reset and cleanup with no silent continuation    |
+| 3   | Multi-tenant fixtures and projects  | Two-tenant actor matrix and five owned Playwright projects     |
+| 4   | Attributed server coverage          | Reproducible, provenance-bound black-box coverage baseline     |
+| 5   | Fault and packed-client foundations | Sensitivity and publishable-client tooling before slices       |
+| 6   | Tenant/admin authorization          | Real tenant and super-admin authority matrices                 |
+| 7   | OIDC and token lifecycle            | ID-token, opaque-token, replay, and protocol evidence          |
+| 8   | Human authentication                | Sessions, recovery, invitations, 2FA, timing, and rate limits  |
+| 9   | P1 validation and admin data        | Full injection/exposure plus audit/key/session/config surfaces |
+| 10  | Mutation and reliability            | Bounded pilot, signal taxonomy, and 100-run evidence           |
+| 11  | Roll-up and promotion proposal      | Traceability/docs and non-enforcing CI proposal                |
 
 ## Non-Negotiable Boundaries
 

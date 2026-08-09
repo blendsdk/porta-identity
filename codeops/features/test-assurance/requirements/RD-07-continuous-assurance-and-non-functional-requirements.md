@@ -21,15 +21,19 @@ silently changing publication or risk-acceptance policy (AR #2, AR #14, AR #21, 
 
 - [ ] **R7.1 (M)** `yarn verify` shall remain the authoritative fast workspace verification command
       and shall not invoke harness, curated-fault, or mutation campaigns (AR #21).
-- [ ] **R7.2 (M)** Black-box assurance shall extend the existing harness CI job; curated faults and
-      mutation shall remain explicit on-demand commands until separately promoted.
+- [ ] **R7.2 (M)** This feature shall preserve the existing harness CI-job boundary and produce
+      verified, non-enforcing integration instructions for its stable black-box projects. Editing
+      the read-only workflow, adding those projects to CI, or scheduling/promoting curated faults or
+      mutation requires a separately authorized policy/workflow task.
 - [ ] **R7.3 (M)** New or changed behavior shall use specification-first ordering: specification
       test, red phase, implementation, green phase, implementation tests, full verification.
 - [ ] **R7.4 (M)** Existing behavior whose specification starts green shall use RD-06 sensitivity
       evidence rather than corrupting the oracle to force red.
 - [ ] **R7.5 (M)** A check may be proposed for required CI only after 100 consecutive representative
-      runs show less than 1% infrastructure/test flake, its p50 and p95 runtime are recorded, and
-      its failure ownership and recovery procedure are documented.
+      completed runs show zero infrastructure/test flakes, its p50 and p95 runtime are recorded,
+      and its failure ownership and recovery procedure are documented. An invalid, cancelled, or
+      incomplete run restarts the consecutive-run sequence; retries are recorded and do not erase a
+      flake. At a population of 100, “less than 1%” means zero flakes.
 - [ ] **R7.6 (M)** Promotion to a new blocking release/merge gate requires separate user approval;
       this feature may prepare evidence but cannot grant that policy change (AR #14, AR #21).
 - [ ] **R7.7 (M)** Assurance reports shall distinguish product failure, test failure, fixture/setup
@@ -42,6 +46,9 @@ silently changing publication or risk-acceptance policy (AR #2, AR #14, AR #21, 
       fixtures or baseline metadata are intentionally versioned (AR #22).
 - [ ] **R7.10 (M)** All assurance commands shall be repeatable from the repository root, non-
       interactive in CI, safe for concurrent worktrees, and clean up owned resources after signals.
+      Each command contract shall name its root alias, selectors, prerequisites, success and distinct
+      product/test/setup/coverage/fault/cleanup exit classes, artifact paths, timeout, SIGINT/SIGTERM
+      behavior, and bounded recovery output.
 - [ ] **R7.11 (M)** Changes to authentication mechanisms, tenant resolution, crypto algorithms,
       client types, admin surfaces, compatibility policy, or normative standards shall mark affected
       claims stale and reopen their owning risk slice.
@@ -73,7 +80,8 @@ silently changing publication or risk-acceptance policy (AR #2, AR #14, AR #21, 
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
 | `yarn verify`       | Existing required behavior unchanged   | Structure, active packages, lint, typecheck, build, server/SDK/CLI tests |
 | `yarn test:ui`      | Existing separate lane                 | Chromium Porta UI behavior                                               |
-| `yarn harness:test` | Existing separate lane, extended       | SPA/BFF/protocol/security/compatibility black-box assurance              |
+| `yarn harness:test` | Existing separate lane, unchanged      | Retained SPA/BFF black-box journeys only                                 |
+| Assurance harness   | Local/on-demand                        | Protocol/security/compatibility pending separate CI authority            |
 | Coverage            | Observation-only until RD-03 stability | Attributed execution evidence                                            |
 | Curated faults      | Explicit on demand                     | P0/P1 sensitivity proof                                                  |
 | Automated mutation  | Explicit pilot                         | Targeted internal mutation after curated reliability                     |
@@ -139,12 +147,13 @@ scope decision (AR #20).
 
 1. [ ] Root `yarn verify` invokes none of the harness, coverage, curated-fault, or mutation commands
        and passes after the assurance foundation is installed.
-2. [ ] The existing harness job executes all configured harness projects and preserves its current
-       independent CI-job boundary.
+2. [ ] The existing harness job remains unchanged and independent; a concrete proposal describes
+       how stable projects could be integrated only by a separately authorized workflow task.
 3. [ ] Curated-fault and mutation commands cannot become required checks through this feature's
        implementation alone; promotion requires a separately recorded user policy decision.
 4. [ ] Before any promotion proposal, 100 representative runs are recorded, fewer than one run is
-       flaky for infrastructure/test reasons, and p50/p95 runtime and recovery ownership are present.
+       flaky for infrastructure/test reasons, and p50/p95 runtime and recovery ownership are present;
+       the evidence is 100 consecutive completed runs with zero flakes and no hidden retry.
 5. [ ] Forced product, assertion, setup, incomplete-coverage, invalid-fault, and cleanup failures
        produce distinguishable report classifications.
 6. [ ] SIGINT/SIGTERM during each assurance command either removes all owned resources or reports

@@ -9,12 +9,14 @@
 2. Set `NODE_V8_COVERAGE` only for the Porta container and mount an ignored raw-output directory.
 3. Execute a fixed-seed harness project/risk slice.
 4. Gracefully terminate the Node process so V8 flushes coverage before container removal.
-5. Validate all raw records refer to the expected runtime and compiled `/app/dist` files.
+5. Validate process/build provenance and classify every script as eligible `/app/dist` first-party
+   output, declared Node/internal runtime, declared dependency, or unexpected local path.
 6. Merge process records with `@bcoe/v8-coverage`.
 7. Convert ranges through exact direct dependencies `@bcoe/v8-coverage@1.0.2`,
    `ast-v8-to-istanbul@1.0.5`, and `acorn@8.18.0`, plus the matching emitted source maps and
    sources.
-8. Reject paths outside the server package or without matching build provenance.
+8. Record all exclusions/unmapped inputs and reject only unexpected or unprovenanced local
+   application paths; require matching maps for every eligible first-party file.
 9. Emit exact covered/total statements, branches, functions, and lines plus HTML/JSON summaries.
 
 The first spike uses one known module with positive and unexecuted branches and manually samples
@@ -37,12 +39,14 @@ against an incomplete baseline.
 
 ## Curated Fault Catalog
 
-Each fault has an ID, rationale, target revision/range/hash, patch, affected claim, named sentinels,
-expected failure signature, timeout, and cleanup rule. Initial classes cover:
+Each fault has an ID, rationale, target revision/range/hash, patch, explicit
+claim–sentinel–expected-signature tuples, timeout, and cleanup rule. A shared fault closes multiple
+claims only when each tuple runs independently and is killed. Initial classes cover:
 
 - remove tenant predicate or tenant cache scope;
 - bypass organization-membership or role checks;
-- relax exact redirect URI, PKCE, JWT algorithm/issuer/audience/expiry checks;
+- relax exact redirect URI or PKCE; emit an invalid ID-token profile/signature; or accept a wrong
+  token type/opaque lookup at an actual Porta consumer;
 - accept reused authorization, refresh, recovery, reset, magic-link, or OTP artifacts;
 - weaken CSRF/cookie/rate-limit enforcement;
 - expose stack, SQL, token, key, path, or version details.
@@ -62,6 +66,7 @@ do not add a broad or unstable gate.
 
 ## Verification
 
-ST-19 through ST-29 precede the pipeline and fault runner. The coverage spike, each fault class, and
-any mutation pilot run in explicit assurance commands; `yarn verify` remains the per-task repository
-gate.
+ST-19–ST-27 precede the coverage pipeline; ST-64–ST-68 precede the fault runner. The runner
+foundation is delivered before the first risk slice, each slice executes its applicable fault
+tuples beside its sentinels, and the later mutation phase owns only the automated pilot and
+aggregate roll-up. `yarn verify` remains the per-task repository gate.

@@ -28,9 +28,12 @@ requirement text.
 4. The harness proves fatal cleanup/reset behavior, deterministic multi-tenant state, and exact
    project ownership before any risk slice is closed.
 5. Server-process coverage is reproducible and source-mapped before any ratchet blocks a lane.
-6. P0 slices close in order: tenant/RBAC, protocol/token, then human authentication. P1 follows.
-7. Packed SDK and CLI artifacts interoperate with the live server from an isolated consumer.
+6. Fault-runner and packed-client foundations exist before P0 slices; P0 closes in order:
+   tenant/admin, protocol/token, then human authentication. P1 follows.
+7. Packed SDK and CLI artifacts interoperate with the live server from an isolated consumer and
+   execute inside every owning risk slice where that public boundary is supported.
 8. Generated evidence contains no raw secrets, credentials, tokens, cookies, or personal data.
 9. Confirmed product defects remain separately routed and block only their affected claims/slices.
-10. Final verification includes `yarn verify`, the retained harness, artifact validation, and all
-    promoted assurance commands; no external scanner or publishing action is required.
+10. Final verification uses the exact root aliases defined in the testing strategy plus unchanged
+    `yarn verify`, UI, and retained harness lanes. The plan produces no CI promotion, external
+    scanner, publishing, deployment, or policy change.

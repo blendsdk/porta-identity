@@ -38,7 +38,9 @@ harness and tests packed/compiled public artifacts rather than workspace source 
 - [ ] **R4.7 (L)** The packed CLI shall execute health, login, identity, read, structured-output,
       authorization-error, and a reversible write lifecycle against the harness server.
 - [ ] **R4.8 (M)** Browser-assisted CLI login shall use an isolated temporary credential location;
-      credentials shall be removed on success and failure.
+      every CLI subprocess shall receive a newly created temporary `HOME` with restrictive
+      permissions; credentials shall be removed after success, failure, timeout, SIGINT, and
+      SIGTERM, and a pre/post fingerprint shall prove the caller's real credential path unchanged.
 - [ ] **R4.9 (M)** SDK/CLI effects shall be independently verified through raw HTTP or fixture state,
       not solely by the client under test.
 - [ ] **R4.10 (M)** The mandatory compatibility gate is current server × current packed SDK/CLI;
@@ -80,6 +82,9 @@ entry, server image digest, and source commit. Mutable registry tags such as `la
 
 Each packed-client run shall use a newly created temporary consumer directory and credential store.
 It shall not resolve workspace packages through symlinks, undeclared hoisting, or source aliases.
+The generated consumer manifest shall install both local SDK and CLI archives as explicit `file:`
+dependencies in a clean dependency/cache context. Before a CLI journey begins, the harness shall
+prove that the CLI-resolved SDK path and content digest belong to the locally packed SDK archive.
 
 ## Integration Points
 
@@ -128,3 +133,8 @@ It shall not resolve workspace packages through symlinks, undeclared hoisting, o
        publish artifacts, or modify registry state.
 8. [ ] The compatibility documentation explicitly states that only current server × current clients
        is assured by this feature.
+9. [ ] Every packed CLI subprocess uses an isolated temporary `HOME`; the caller's real
+       `~/.porta/credentials.json` fingerprint is unchanged after success, failure, timeout,
+       SIGINT, and SIGTERM.
+10. [ ] The CLI's resolved `@portaidentity/sdk` path and content digest match the locally packed SDK
+        archive rather than a registry or workspace copy.

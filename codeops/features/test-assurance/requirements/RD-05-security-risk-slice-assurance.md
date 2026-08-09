@@ -26,9 +26,13 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 - [ ] **R5.2 (L)** Every slice shall define actors, assets, entry points, trust boundaries, abuse
       cases, expected rejection, prohibited side effects, required logs without sensitive data, and
       recovery behavior.
-- [ ] **R5.3 (L)** Tenant/admin claims shall cover read and write isolation, cache separation,
-      issuer separation, organization membership, role assignment, permission checks, IDOR, stale
-      role/session state, and super-admin exceptions.
+- [ ] **R5.3 (L)** Tenant/admin claims shall use two explicit authority matrices: ordinary-tenant
+      principals for OIDC/session/token/tenant-data isolation, and super-admin-organization control-
+      plane actors with distinct permissions targeting alpha/bravo resources. Claims shall cover
+      read/write isolation, cache and issuer separation, organization membership, permission checks,
+      IDOR, stale role/session state, and super-admin exceptions. Every negative route probe shall
+      include an authorized control proving the target handler/resource boundary is reachable before
+      tenant, identifier, or permission is varied.
 - [ ] **R5.4 (L)** OIDC authorization claims shall cover exact redirect matching, public-client PKCE
       S256 enforcement, code-to-client/redirect binding, authorization-code single use, state
       round-trip responsibility, nonce propagation, consent integrity, and client authentication.
@@ -37,10 +41,16 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       attacker `jku`/`x5u`/embedded JWK, refresh rotation, and replay rejection.
 - [ ] **R5.6 (L)** Human-authentication claims shall cover password success/failure, enumeration
       resistance, failed-login tracking, lockout, rate limits, session renewal, expiry, logout,
-      cookie attributes, CSRF, and login-method enforcement.
+      cookie attributes, CSRF, and login-method enforcement. Before enumeration timing is measured,
+      product/security authority shall approve the hypothesis, material effect-size bound, sample-
+      size/power rule, clock/environment controls, and noise/invalid-run rule; otherwise the timing
+      claim remains blocked rather than deriving a threshold from observed Porta behavior.
 - [ ] **R5.7 (L)** Magic-link, reset, invitation, email OTP, TOTP, and recovery-code claims shall
       cover unpredictability, intended recipient/tenant, configured expiry boundary, single use,
-      replay, concurrent duplicate consumption, throttling, and absence of secret/token exposure.
+      replay, concurrent duplicate consumption, throttling, and absence of secret/token exposure
+      outside the allowlisted synthetic delivery/verification channel. Delivered values must be
+      absent from wrong mailboxes, responses, redirects, logs, audit events, traces, reports,
+      referrers, and browser history, and must be redacted from retained evidence.
 - [ ] **R5.8 (L)** Injection/exposure claims shall cover SQL, header/CRLF, XSS/template, prototype,
       command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversized input,
       restrictive CORS/CSP, minimal errors, and version/infrastructure leakage where reachable.
@@ -85,6 +95,11 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 | Human auth/recovery | Browser, HTTP, MailHog                   | Enumeration, fixation, CSRF, token replay/expiry, concurrent consumption, 2FA/recovery bypass                          |
 | Injection/exposure  | Raw HTTP and browser                     | SQL/XSS/header/template/prototype/path/host/method/oversize, CORS/CSP and error leakage                                |
 | Admin data          | Raw HTTP, packed clients, fixture state  | Cross-tenant export/import/bulk, secret export, partial failure, unauthorized configuration/key/session action         |
+
+Applications and application roles are global in the current Porta data model. Tenant ownership in
+this matrix applies to users, clients, sessions, tokens, and other organization-keyed data. All
+administrative API actors belong to the super-admin organization; their role/permission set and the
+alpha/bravo target resource are varied independently.
 
 ### Exact Rejection Evidence
 
@@ -136,7 +151,10 @@ server process. Tests shall not assume synchronized clocks beyond configured tol
        tenant bypass attempt, and a forbidden-side-effect assertion where applicable.
 2. [ ] Tenant A credentials cannot read or mutate a tenant B user, client, application, role,
        permission, session, configuration, key, import/export, or audit resource in the mapped P0/P1
-       surface; every attempt receives the contract-defined rejection and leaves B unchanged.
+       surface where that resource is tenant-scoped; global application/role operations use
+       super-admin control-plane permission checks instead of fictional tenant ownership. Every
+       denial is paired with an authorized control that reaches the intended route and leaves the
+       target unchanged when authority is removed or the tenant target is substituted.
 3. [ ] Public-client authorization rejects missing/plain/wrong PKCE and any non-exact redirect URI;
        a valid S256 flow completes and a used authorization code cannot be exchanged again.
 4. [ ] ID-token evidence verifies ES256 signature from the advertised trusted JWKS, exact issuer,
@@ -155,3 +173,9 @@ server process. Tests shall not assume synchronized clocks beyond configured tol
 9. [ ] All existing server pentest files still collect and pass after each completed slice.
 10. [ ] A verified invariant violation creates a blocked claim and separate defect record; the slice
         cannot report `assured` until separately authorized remediation and regression verification.
+11. [ ] Each slice's executable profile records its actor/action/resource/result matrix, asset,
+        entry point, trust boundary, abuse case, rejection, prohibited side effect, privacy-safe
+        audit/log expectation, and recovery expectation; schema validation rejects omissions.
+12. [ ] Replay-sensitive controls exercise read-during-consumption, failure immediately before and
+        after durable commit, timeout with unknown outcome followed by retry, and replay after a fresh
+        Porta process, using harness/disposable-build barriers rather than production test hooks.

@@ -5,13 +5,13 @@
 
 ## Playwright Projects
 
-| Project         | Directory/pattern                  | Boundary                                      |
-| --------------- | ---------------------------------- | --------------------------------------------- |
-| `spa`           | existing `tests/spa-*.spec.ts`     | Browser public-client journeys                |
-| `bff`           | existing `tests/bff-*.spec.ts`     | Browser confidential/BFF journeys             |
-| `protocol`      | `tests/protocol/**/*.spec.ts`      | Raw HTTP/OIDC/JOSE contract probes            |
-| `security`      | `tests/security/**/*.spec.ts`      | Adversarial and prohibited-side-effect probes |
-| `compatibility` | `tests/compatibility/**/*.spec.ts` | Packed SDK and CLI consumer behavior          |
+| Project         | Directory/pattern                       | Boundary                                      |
+| --------------- | --------------------------------------- | --------------------------------------------- |
+| `spa`           | existing `tests/spa-*.spec.ts`          | Retained browser public-client journeys       |
+| `bff`           | existing `tests/bff-*.spec.ts`          | Retained browser confidential/BFF journeys    |
+| `protocol`      | `tests/protocol/**/*.spec.test.ts`      | Raw HTTP/OIDC/JOSE contract probes            |
+| `security`      | `tests/security/**/*.spec.test.ts`      | Adversarial and prohibited-side-effect probes |
+| `compatibility` | `tests/compatibility/**/*.spec.test.ts` | Packed SDK and CLI consumer behavior          |
 
 A collection specification proves each file belongs to exactly one project. Workers stay at one
 until reliability promotion; project boundaries improve ownership, not immediate parallelism.
@@ -21,28 +21,36 @@ until reliability promotion; project boundaries improve ownership, not immediate
 `test-harness/fixtures/` owns typed environment, manifest, reset, health, and scenario helpers.
 Scripts call these modules rather than embedding opaque shell strings.
 
-| Boundary           | Operation                                                                                                | Postcondition                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Job                | Unique validated Compose project and ports; build/start/migrate/seed                                     | Exact revision healthy; manifest verified         |
-| Risk slice/project | Restore known PostgreSQL baseline, flush dedicated Redis, clear mail, restart Porta when cache-sensitive | Expected row/key/message counts and health probe  |
-| Scenario           | Unique prefix, fresh contexts/cookies/credentials/tokens                                                 | No predecessor resources or authentication state  |
-| Shutdown           | Gracefully stop Porta, collect evidence, stop owned clients/services, remove owned resources             | No recorded process/container/volume/port remains |
+| Boundary           | Operation                                                                                             | Postcondition                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Job                | Atomically lease port block; persist owner; generate endpoint manifest; build/start/migrate/seed      | Exact revision healthy; owner/endpoints verified  |
+| Risk slice/project | Quiesce; stop Porta; recreate DB; migrate/bootstrap/seed; reset Redis/mail; restart clients and Porta | Migration/fixture digests, counts, public health  |
+| Scenario           | Unique prefix, fresh contexts/cookies/credentials/tokens                                              | No predecessor resources or authentication state  |
+| Shutdown           | Gracefully stop Porta, collect evidence, stop owned clients/services, remove owned resources          | No recorded process/container/volume/port remains |
 
-Reset, health, DNS, migration, seeding, or cleanup failure exits non-zero. Unknown timeout state
-forces a complete project recreation before retry. Cleanup targets resolved project identifiers,
-never broad directories, globs, or unrelated containers.
+Once durable reset mutation begins, any failure, signal, cancellation, or unknown outcome marks the
+stack poisoned and forces complete owned-project recreation before retry. The endpoint manifest is
+the only source for Compose, nginx, seed, SPA, BFF, Playwright, health checks, and evidence. Cleanup
+is fenced by the recorded run UUID, PID/worktree identity, Compose project, and container IDs; stale
+leases are reclaimed only after the owner process and Compose project are proven absent.
 
 ## Fixture Manifest
 
 The seed creates a fresh baseline instead of discovering and reusing arbitrary prior objects.
 
-- Ordinary tenants `alpha` and `bravo`, plus the bootstrapped super-admin tenant.
-- Separate applications, public clients, confidential clients, allowed/invalid redirects, origins,
-  scopes, and secrets per ordinary tenant.
-- Super-admin, organization-admin, limited-role, and unprivileged actors.
+- Ordinary organizations `alpha` and `bravo`, plus the bootstrapped super-admin organization.
+- Global applications and roles with explicit associations; disjoint public/confidential clients,
+  users, sessions, tokens, tenant data, redirects, origins, scopes, and secrets for alpha/bravo.
+- Administrative super-admin-organization actors with full, limited, and unprivileged permission
+  sets; ordinary-tenant principals for OIDC/session/token isolation.
 - Active, locked, suspended, 2FA-enabled, recovery-enabled, and enumeration-control identities as
   required by a slice.
 - Synthetic boundary values only; no developer or production-derived data.
+
+The endpoint/certificate manifest also owns an HTTPS attacker origin at a loopback IP site (for
+example `https://127.0.0.1:<leased-port>` with an IP SAN). It is a different browser site from
+`*.ci.portaidentity.com`, requires no public DNS, and exists only to distinguish cross-origin from
+cross-site cookie and CSRF behavior.
 
 The generated manifest exposes identifiers through a typed fixture but never writes or logs raw
 passwords, client secrets, tokens, cookies, TOTP seeds, or recovery codes into result artifacts.
@@ -52,11 +60,12 @@ specification assertion use public HTTP, browser, protocol, email, packed SDK, o
 ## Recovery and Concurrency
 
 - Duplicate setup is either idempotent for the same run identity or rejected exactly.
-- Interrupted reset is repeatable; durable DB changes complete transactionally.
+- Interruption before durable mutation may retry; after mutation the stack is poisoned and rebuilt.
 - Redis and MailHog are harness-dedicated; absence fails preflight.
 - Run/scenario identifiers use strict allowlists and cannot reach a shell or filesystem unchecked.
-- A 100-run fixed representative set executes in deterministic shuffled orders. Promotion requires
-  fewer than one flaky failure per 100 completed runs and recorded p50/p95 runtime.
+- A 100-run fixed representative set executes in deterministic shuffled orders. Promotion evidence
+  requires 100 consecutive completed runs with zero flakes and recorded p50/p95 runtime; an invalid
+  or incomplete run restarts the sequence and every retry remains visible.
 
 ## Verification
 

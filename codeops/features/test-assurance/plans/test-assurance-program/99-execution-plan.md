@@ -3,231 +3,415 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
 > **Last Updated**: 2026-08-09
-> **Progress**: 0/76 tasks (0%)
+> **Progress**: 0/92 tasks (0%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
 
 Execute top-to-bottom. Mark the active task `[~]` with a timestamp, mark `[x]` only after its
-verification passes, and mark blockers `[!]` with a concrete reason. Resume the first `[~]`, else
-the first `[ ]`. Update this file immediately after each task.
+verification contract succeeds, and mark blockers `[!]` with a concrete reason. Resume the first
+`[~]`, otherwise the first `[ ]`. Update this file immediately after each task.
 
-Every phase follows specification-first order: author independent specs, observe genuine red (or
-record legacy green and obtain controlled-fault red), implement, reach green, add implementation
-tests, then run full verification. Existing product behavior, tests, and security invariants are not
-weakened. Product defects are reproduced and routed outside this plan.
+For a RED task, success means the isolated target exits non-zero with the exact registered
+assertion/signature while every previously required lane and `yarn verify` stays green. Syntax,
+collection, setup, timeout, cleanup, or unrelated failures never count as RED. A new red spec stays
+outside required collection until its owning green task, but the red evidence is committed with the
+task. Existing behavior that starts green uses its exact curated-fault tuple for sensitivity proof.
+
+Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, every task runs the
+alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
+preserve the oracle, block only affected claims, and are routed to separately authorized work. This
+plan never edits production behavior or the read-only CI workflow.
 
 ## Phase Overview
 
-| Phase | Title                                        | Tasks |
-| ----- | -------------------------------------------- | ----: |
-| 1     | Claim and evidence foundation                |     7 |
-| 2     | Fail-fast harness lifecycle                  |     7 |
-| 3     | Multi-tenant fixtures and project ownership  |     8 |
-| 4     | Attributed server-process coverage           |     8 |
-| 5     | Tenant isolation and RBAC slice              |     7 |
-| 6     | OIDC, JWT, PKCE, and token slice             |     7 |
-| 7     | Human authentication slice                   |     7 |
-| 8     | P1 validation and exposure slice             |     7 |
-| 9     | Curated faults and mutation pilot            |     8 |
-| 10    | Packed SDK/CLI compatibility                 |     6 |
-| 11    | Reliability, ratchets, CI, and documentation |     4 |
+| Phase | Title                                               | Tasks |
+| ----: | --------------------------------------------------- | ----: |
+|     1 | Claim, command, and traceability foundation         |     8 |
+|     2 | Fenced lifecycle and poisoned-stack reset           |     8 |
+|     3 | Real actor fixtures, projects, and runtime profiles |     8 |
+|     4 | Attributed server-process coverage                  |     8 |
+|     5 | Fault runner and packed-client foundations          |    11 |
+|     6 | Tenant isolation and administrative authorization   |     8 |
+|     7 | OIDC, ID-token, and token lifecycle                 |     8 |
+|     8 | Human authentication and recovery                   |     9 |
+|     9 | P1 validation, exposure, and administrative data    |    10 |
+|    10 | Mutation pilot and reliability qualification        |     8 |
+|    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 76 tasks across 11 release-safe phases.**
+**Total: 92 tasks across 11 release-safe phases.**
 
-## Phase 1: Claim and Evidence Foundation
+## Targeted Verification Bindings
 
-> **Scope**: `test-harness/assurance/`, root assurance aliases, repository contract tests
-> **References**: [Assurance Model](03-01-assurance-model.md), ST-01–ST-08, RD-01
+These selectors are registered suite IDs under the grammar in
+[07-testing-strategy.md](07-testing-strategy.md). A task may run additional checks named in its
+text, but it cannot substitute another command for this binding.
 
-- [ ] 1.1 [spec-author] Write claim/state/redaction specifications ST-01–ST-08 in `test-harness/assurance/tests/assurance.spec.test.ts`.
-- [ ] 1.2 Run the new specification file and record red for missing schema/validator/renderer without changing expectations.
-- [ ] 1.3 Implement typed Zod schemas and safe path/reference resolution in `test-harness/assurance/schema.ts` and `scripts/validate-assurance.ts`.
-- [ ] 1.4 Implement redaction and deterministic JSON/Markdown result rendering in `scripts/redact-evidence.ts` and `scripts/render-summary.ts`.
-- [ ] 1.5 Add a sanitized sample claim, schema documentation, ignored result directory, and root validation/report aliases.
-- [ ] 1.6 Run ST-01–ST-08 to green; add `assurance.impl.test.ts` for diagnostics, canonical paths, state-transition edges, and renderer determinism.
-- [ ] 1.7 Run `yarn verify`; inspect generated sample evidence for canaries and confirm repository status contains no generated artifact.
+| Tasks     | Required targeted command before `yarn verify`                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.1       | Bootstrap: `yarn test:structure`                                                                                                                             |
+| 1.2       | Bootstrap RED: `yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts`; exact registered missing-foundation assertion must be the only failure |
+| 1.3–1.4   | Bootstrap: `yarn test:structure` plus the task's explicit static command-schema check                                                                        |
+| 1.5–1.6   | `yarn assurance:test --select assurance-foundation`                                                                                                          |
+| 1.7       | `yarn assurance:test --select assurance-governance`                                                                                                          |
+| 1.8       | `yarn assurance:validate` and `yarn assurance:report --run <task-run-uuid>`                                                                                  |
+| 2.1–2.2   | `yarn assurance:validate`                                                                                                                                    |
+| 2.3       | `yarn assurance:red --case ST-09 --signature lifecycle-current-failure`                                                                                      |
+| 2.4–2.7   | `yarn assurance:test --select lifecycle`                                                                                                                     |
+| 2.8       | `yarn assurance:test --select lifecycle-all`                                                                                                                 |
+| 3.1–3.2   | `yarn assurance:validate`                                                                                                                                    |
+| 3.3       | `yarn assurance:red --case ST-13 --signature fixture-current-failure`                                                                                        |
+| 3.4–3.5   | `yarn assurance:test --select fixture-ontology`                                                                                                              |
+| 3.6       | `yarn assurance:test --select project-collection`                                                                                                            |
+| 3.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 3.8       | `yarn assurance:test --select fixtures-all`                                                                                                                  |
+| 4.1       | `yarn assurance:validate`                                                                                                                                    |
+| 4.2       | `yarn assurance:red --case ST-19 --signature coverage-current-failure`                                                                                       |
+| 4.3–4.6   | `yarn assurance:test --select coverage-pipeline`                                                                                                             |
+| 4.7       | `yarn assurance:test --select coverage-all`                                                                                                                  |
+| 4.8       | `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline`                                                                  |
+| 5.1       | `yarn assurance:validate`                                                                                                                                    |
+| 5.2       | `yarn assurance:red --case ST-64 --signature fault-runner-missing`                                                                                           |
+| 5.3–5.4   | `yarn assurance:test --select fault-runner`                                                                                                                  |
+| 5.5       | `yarn assurance:validate`                                                                                                                                    |
+| 5.6       | `yarn assurance:red --case ST-69 --signature packed-consumer-missing`                                                                                        |
+| 5.7–5.9   | `yarn assurance:test --select packed-consumer`                                                                                                               |
+| 5.10      | `yarn assurance:test --select fault-packed-foundations`                                                                                                      |
+| 5.11      | `yarn assurance:fault --fault foundation-smoke --claim CLAIM-R6-01 --sentinel ST-64` and `yarn assurance:compat --select compatibility`                      |
+| 6.1       | `yarn assurance:validate`                                                                                                                                    |
+| 6.2–6.3   | `yarn assurance:test --select tenant-admin-specs`                                                                                                            |
+| 6.4       | `yarn assurance:baseline --case ST-28`                                                                                                                       |
+| 6.5–6.6   | `yarn assurance:harness --project security --profile operational`                                                                                            |
+| 6.7       | `yarn assurance:fault --fault tenant-admin-slice --claim CLAIM-R5-03 --sentinel ST-29`                                                                       |
+| 6.8       | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
+| 7.1       | `yarn assurance:validate`                                                                                                                                    |
+| 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
+| 7.4       | `yarn assurance:baseline --case ST-33`                                                                                                                       |
+| 7.5–7.6   | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.7       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
+| 7.8       | `yarn assurance:test --select protocol-all`                                                                                                                  |
+| 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
+| 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
+| 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
+| 8.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 8.8       | `yarn assurance:fault --fault human-auth-slice --claim CLAIM-R5-06 --sentinel ST-42`                                                                         |
+| 8.9       | `yarn assurance:test --select human-auth-all`                                                                                                                |
+| 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
+| 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
+| 9.5       | `yarn assurance:baseline --case ST-52`                                                                                                                       |
+| 9.6–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.9       | `yarn assurance:fault --fault p1-slice --claim CLAIM-R5-08 --sentinel ST-52`                                                                                 |
+| 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
+| 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
+| 10.2      | `yarn assurance:test --select mutation-pilot`                                                                                                                |
+| 10.3–10.4 | `yarn assurance:test --select command-outcome-matrix`                                                                                                        |
+| 10.5–10.6 | `yarn assurance:stability --command harness --seed-set representative-v1`                                                                                    |
+| 10.7      | `yarn assurance:test --select ratchet-staleness`                                                                                                             |
+| 10.8      | `yarn assurance:test --select continuous-assurance-all` and `yarn assurance:all`                                                                             |
+| 11.1–11.2 | `yarn assurance:validate` and `yarn assurance:report --run <task-run-uuid>`                                                                                  |
+| 11.3–11.4 | `yarn assurance:test --select ST-79`                                                                                                                         |
+| 11.5      | `yarn assurance:all`                                                                                                                                         |
+| 11.6      | `yarn assurance:report --run <final-run-uuid>`                                                                                                               |
 
-**Verify**: `yarn verify`
+## Phase 1: Claim, Command, and Traceability Foundation
 
-**Phase gate**: definitions validate, zero imported inventory claims are assured, and evidence cannot
-persist known secret canaries.
+> **Scope**: root package/config/structure contracts and `test-harness/assurance/`
+> **References**: [Assurance Model](03-01-assurance-model.md), ST-01–ST-08, RD-01/RD-07
 
-## Phase 2: Fail-Fast Harness Lifecycle
+- [ ] 1.1 [spec-author] Add repository-structure and harness-internal specification cases for root
+      dependency ownership, `tsx --test` collection, Playwright non-overlap, typecheck/lint scope,
+      command contracts, claim/slice schemas, traceability, state transitions, and redaction.
+      Verify with `yarn test:structure` and `yarn verify`; new internal specs remain uncollected.
+- [ ] 1.2 Run the isolated specs through the provisional Node/tsx command and record only the exact
+      expected missing-foundation signatures using
+      `yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts`; prove `yarn verify`
+      remains green.
+- [ ] 1.3 Add direct root development dependencies used by harness tooling, including Zod; add the
+      harness TypeScript/ESLint/static boundary without a harness package manifest or root Vitest.
+      Verify dependency/structure contracts with `yarn test:structure` and `yarn verify`; the
+      missing implementation signature remains the only internal-spec failure.
+- [ ] 1.4 Implement and document exact root aliases: `assurance:test`, `assurance:red`,
+      `assurance:baseline`, `assurance:validate`, `assurance:harness`, `assurance:coverage`, `assurance:fault`,
+      `assurance:compat`, `assurance:report`, `assurance:stability`, and `assurance:all`, including
+      selectors, prerequisites, timeouts, exit taxonomy, artifacts, and signal/recovery behavior.
+      Verify the frozen command schema with `yarn test:structure` and `yarn verify` before invoking
+      an alias that depends on later implementation.
+- [ ] 1.5 Implement typed claim/result/gap/fault/slice-profile schemas and the machine-checked
+      requirement→case→task→claim graph; reject incomplete actor/action/resource/result, trust,
+      log, recovery, source, or provenance fields.
+- [ ] 1.6 Implement canonical path/reference validation, RED signature registration, deterministic
+      JSON/Markdown rendering, and pre-write redaction with adversarial canaries.
+- [ ] 1.7 Run ST-01–ST-08 green; add `*.impl.test.ts` cases for diagnostics, transitions,
+      collection boundaries, path safety, command taxonomy, and renderer determinism.
+- [ ] 1.8 Run `yarn assurance:validate`, `yarn assurance:test`, repository structure checks, and
+      `yarn verify`; inspect sanitized examples and Git status for generated residue.
 
-> **Scope**: `test-harness/fixtures/`, global setup, start/stop/test scripts, Compose identity
-> **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-09–ST-12, RD-02
+**Phase gate:** every future command is executable from root, every Must edge is mechanically
+representable, zero imported inventory claims are assured, and secret canaries cannot persist.
 
-- [ ] 2.1 [spec-author] Write lifecycle specifications ST-09–ST-12 using isolated fake command/HTTP/process boundaries.
-- [ ] 2.2 Force Redis, MailHog, health, and cleanup failures; record current false continuation/ownership red results.
-- [ ] 2.3 Add strict typed run identity/environment parsing and a lifecycle controller with explicit owned-resource records.
-- [ ] 2.4 Replace non-fatal global cleanup with fatal reset preconditions and verified postconditions; retain safe final cleanup on test failure.
-- [ ] 2.5 Make start/stop/test scripts use unique validated Compose project/port identities and graceful Porta shutdown before removal.
-- [ ] 2.6 Run ST-09–ST-12 to green; add lifecycle implementation cases for timeouts, interrupted reset, unknown state, and cross-run ownership.
-- [ ] 2.7 Run changed-script syntax/lint, `docker compose config`, one success/failure cleanup smoke, and `yarn verify`.
+## Phase 2: Fenced Lifecycle and Poisoned-Stack Reset
 
-**Verify**: `yarn verify`
+> **Scope**: harness lifecycle/fixture controller, scripts, Compose ownership, endpoint manifest
+> **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-09–ST-12/ST-18A/ST-18B
 
-**Phase gate**: no required prerequisite or cleanup failure can produce a passing harness result.
+- [ ] 2.1 [spec-author] Write lifecycle specs for failure taxonomy, atomic port-block leasing,
+      endpoint-manifest propagation, ownership fencing, stale-lease recovery, and cleanup.
+- [ ] 2.2 [spec-author] Write reset-state specs for quiesce/stop, DB recreation, exact migration and
+      deterministic seed, Redis/mail reset, restart/public verification, and every interruption edge.
+- [ ] 2.3 Record exact RED signatures for current non-fatal reset, fixed endpoints, cross-cleanup,
+      and partial reset behavior while existing required lanes remain green.
+- [ ] 2.4 Implement validated run UUID/PID/worktree/Compose identity, an atomic complete port-block
+      lease with bounded collision retry, and one endpoint manifest consumed by all components.
+- [ ] 2.5 Fence every Compose/start/stop/cleanup action with the persisted owner and recorded
+      container/process/volume/path identity; reclaim stale leases only after owner and Compose absence.
+- [ ] 2.6 Implement the reset state machine: block traffic, stop Porta, recreate DB, migrate/
+      bootstrap/seed, reset Redis/MailHog, restart clients/Porta, and verify fixture/migration digests.
+- [ ] 2.7 Make post-mutation failure/signal/timeout poison the run and force full owned-stack
+      recreation; add implementation tests for every durable boundary and recovery report.
+- [ ] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax,
+      `docker compose -f test-harness/docker-compose.yml config`, and `yarn verify`.
 
-## Phase 3: Multi-Tenant Fixtures and Project Ownership
+**Phase gate:** no prerequisite/reset/cleanup failure can pass, and no run can bind or clean another
+worktree's endpoints or resources.
 
-> **Scope**: seed/manifest modules, Playwright fixtures/config, harness test directories
-> **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-13–ST-18, RD-02
+## Phase 3: Real Actor Fixtures, Projects, and Runtime Profiles
 
-- [ ] 3.1 [spec-author] Write fixture-manifest/isolation specs ST-13–ST-16 before changing the seed.
-- [ ] 3.2 [spec-author] Write Playwright collection and no-production-control specs ST-17–ST-18.
-- [ ] 3.3 Run ST-13–ST-18 and record red for single-tenant reuse, overlapping/missing projects, and internal expectation risk.
-- [ ] 3.4 Split seeding into typed arrangement modules and create fresh `alpha`, `bravo`, super-admin, role, lifecycle, client, and invalid-client fixtures.
-- [ ] 3.5 Remove secret console output; generate a redacted public manifest and protected runtime credentials with post-seed public verification.
-- [ ] 3.6 Add `protocol`, `security`, and `compatibility` projects/directories and shared typed fixtures while retaining `spa`/`bff` behavior.
-- [ ] 3.7 Run ST-13–ST-18 to green; add seed/reset implementation tests for transactions, idempotent same-run setup, and invalid namespaces.
-- [ ] 3.8 Run the retained six harness journeys twice in reversed/shuffled order, verify residue postconditions, then run `yarn verify`.
+> **Scope**: seed/manifest, Playwright config/fixtures, operational and production-security profiles
+> **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-13–ST-18, RD-02/RD-05
 
-**Verify**: `yarn verify`
+- [ ] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
+      clients, sessions/tokens/data; global applications/roles; super-admin-org administrative actors.
+- [ ] 3.2 [spec-author] Write project collection, public postcondition, secret separation, and no-
+      production-control specs, plus exact `operational` and `production-security` profile specs.
+- [ ] 3.3 Record exact RED signatures for current shared/single-tenant state, collection gaps, secret
+      output, and absent production-security profile while required lanes remain green.
+- [ ] 3.4 Split deterministic seeding into typed arrangement modules and create disjoint ordinary
+      principals/clients/data plus full/limited/unprivileged super-admin control-plane actors.
+- [ ] 3.5 Generate a redacted public fixture manifest and protected runtime credentials; verify every
+      required fixture through public boundaries after startup.
+- [ ] 3.6 Add directory-scoped protocol/security/compatibility Playwright projects without changing
+      the six retained SPA/BFF file names or double collection. Keep `yarn harness:test` explicitly
+      filtered to SPA/BFF; new projects are reachable only through `yarn assurance:harness`.
+- [ ] 3.7 Add operational and production-security Compose profiles; bind claim metadata to one and
+      require production mode/TLS/cookies/errors/headers for environment-sensitive claims.
+- [ ] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue
+      checks, harness implementation tests, and `yarn verify`.
 
-**Phase gate**: five projects collect files exactly once and two disjoint tenants support an
-unambiguous cross-tenant probe without leaked state.
+**Phase gate:** fixtures match Porta's real authority/data model, five projects collect exactly
+once, and environment-dependent claims cannot use development evidence.
 
 ## Phase 4: Attributed Server-Process Coverage
 
-> **Scope**: harness Docker/Compose, coverage converter/tests/scripts, exact direct dev dependencies
+> **Scope**: harness container capture, converter, source maps, direct conversion dependencies
 > **References**: [Coverage and Faults](03-03-coverage-and-faults.md), ST-19–ST-27, RD-03
 
-- [ ] 4.1 [spec-author] Write raw-record, provenance, graceful-flush, mapping, reproducibility, and policy specs ST-19–ST-27.
-- [ ] 4.2 Run the specifications and record red for absent process capture/conversion; retain the known-module expected mapping fixture.
-- [ ] 4.3 Promote `@bcoe/v8-coverage@1.0.2`, `ast-v8-to-istanbul@1.0.5`, and `acorn@8.18.0` to direct development dependencies and update the frozen lockfile.
-- [ ] 4.4 Add ignored raw/report paths, Porta-only `NODE_V8_COVERAGE`, read/write mount ownership, and clean shutdown collection.
-- [ ] 4.5 Implement record validation/merge and TypeScript source-map conversion with build/image/lock/fixture provenance.
-- [ ] 4.6 Execute the known-module spike; manually audit mapped executed/unexecuted lines and stop the plan if material attribution is wrong.
-- [ ] 4.7 Run ST-19–ST-27 to green; add implementation tests for path normalization, duplicate processes, malformed maps, and partial output.
-- [ ] 4.8 Run two clean fixed-seed captures, prove identical exact counts, publish observation-only summary, and run `yarn verify`.
+- [ ] 4.1 [spec-author] Write raw-envelope, classification, provenance, flush, mapping,
+      reproducibility, exclusion, and observation-policy specs ST-19–ST-27.
+- [ ] 4.2 Record exact RED signatures for absent capture/conversion while keeping the known-module
+      mapping fixture and required lanes green.
+- [ ] 4.3 Add exact direct conversion dependencies and frozen-lock changes after validating Node 22/
+      TypeScript ESM compatibility; abort the phase if the mapping spike cannot be made trustworthy.
+- [ ] 4.4 Add Porta-only `NODE_V8_COVERAGE`, ignored raw/report paths, mounted ownership, and clean
+      shutdown collection bound to revision/image/lock/fixture identity.
+- [ ] 4.5 Classify every raw script as eligible first-party, declared Node/internal, declared
+      dependency, or unexpected local; record exclusions/unmapped and reject unexpected local paths.
+- [ ] 4.6 Merge process records and source-map only eligible compiled server output; manually audit
+      known executed/unexecuted lines and stop if material attribution is wrong.
+- [ ] 4.7 Run ST-19–ST-27 green and add implementation cases for duplicate processes, path
+      normalization, malformed maps, dependency scripts, partial output, and missing maps.
+- [ ] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
+      observation-only summary, and run `yarn verify`.
 
-**Verify**: `yarn verify`
+**Phase gate:** server-process coverage is reproducible, provenance-bound, fully classified, and
+separate from Vitest; no ratchet or CI policy changes.
 
-**Phase gate**: reproducible server-process coverage is provenance-bound and remains separate from
-Vitest coverage; no historical threshold blocks development.
+## Phase 5: Fault Runner and Packed-Client Foundations
 
-## Phase 5: Tenant Isolation and RBAC Slice
+> **Scope**: fault metadata/runner and isolated SDK/CLI consumer lifecycle
+> **References**: ST-64–ST-69/ST-72–ST-73, RD-04/RD-06
 
-> **Scope**: tenant/RBAC claims and `tests/security/tenant-rbac/*.spec.ts`
-> **References**: [Risk Slices](03-04-risk-slices.md), ST-28–ST-30, RD-05
+- [ ] 5.1 [spec-author] Write fault validation/classification/signature/timeout/cleanup specs with
+      explicit claim–sentinel–expected-signature tuples.
+- [ ] 5.2 Record exact RED for the absent fault catalog/runner and commit the signature evidence;
+      required existing lanes remain green.
+- [ ] 5.3 Implement target-hash checks, disposable worktree/build execution, sanitized evidence,
+      signals, and unconditional cleanup.
+- [ ] 5.4 Prove one fault shared by multiple claims kills each tuple independently; a build/setup/
+      timeout/unrelated failure remains invalid and a survivor blocks only mapped claims.
+- [ ] 5.5 [spec-author] Write pack/install/provenance/credential-isolation specs for local SDK and CLI
+      archives before consumer tooling exists.
+- [ ] 5.6 Record exact RED for absent pack/install/consumer tooling and commit the signature evidence;
+      required existing lanes remain green.
+- [ ] 5.7 Implement deterministic build/pack identities and an ignored clean consumer whose manifest
+      declares both archives as explicit `file:` dependencies.
+- [ ] 5.8 Assert the CLI-resolved SDK path/content digest matches the local SDK archive and reject
+      registry/workspace/symlink/source resolution before any live journey.
+- [ ] 5.9 Spawn every CLI subprocess with a restrictive temporary `HOME`; fingerprint the caller's
+      real credential path and clean on success/failure/timeout/SIGINT/SIGTERM.
+- [ ] 5.10 Run ST-64–ST-69/ST-72–ST-73 green and add implementation cases for patch validation,
+      signals, archive identity, dependency resolution, permissions, and cleanup.
+- [ ] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
+      credentials unchanged, inspect redaction/residue, and run `yarn verify`.
 
-- [ ] 5.1 [spec-author] Catalog tenant/RBAC surfaces and write reviewed P0 claim definitions with explicit gaps and standards/contracts.
-- [ ] 5.2 [spec-author] Write ST-28–ST-30 for cross-tenant ID/slug/list/write, membership-plus-role, path/header/session/cache variants, and prohibited side effects.
-- [ ] 5.3 Run the specs; record natural red failures or legacy green per claim without altering the oracle.
-- [ ] 5.4 Review existing E2E/pentest cases against exact-assertion rules; select only qualifying sentinels and keep all other tests unchanged.
-- [ ] 5.5 Add missing black-box probes/independent state checks and reach green; route any confirmed product defect separately and block its claim.
-- [ ] 5.6 Add harness implementation tests for actor/resource matrix generation and cross-tenant state comparison.
-- [ ] 5.7 Run tenant/RBAC project, capture attributed coverage/evidence, run the phase's curated-fault precheck, and run `yarn verify`.
+**Phase gate:** every slice can execute real sensitivity tuples and packed public clients without
+waiting for a later phase or touching developer credentials.
 
-**Verify**: `yarn verify`
+## Phase 6: Tenant Isolation and Administrative Authorization
 
-**Phase gate**: claims remain incomplete until Phase 9 kills their designated faults; no tenant
-boundary failure is accepted as risk.
+> **Scope**: tenant/admin slice profiles, claims, sentinels, applicable packed-client journeys
+> **References**: ST-28–ST-32/ST-63, RD-04/RD-05
 
-## Phase 6: OIDC, JWT, PKCE, and Token Lifecycle Slice
+- [ ] 6.1 [spec-author] Catalog tenant/OIDC and control-plane admin surfaces into separate typed
+      actor/action/resource/result and threat/log/recovery profiles.
+- [ ] 6.2 [spec-author] Write ST-28–ST-32: authorized handler controls, then vary target ID/slug/org,
+      permissions, issuer/cache context, and super-admin exceptions with independent non-mutation.
+- [ ] 6.3 Add stale-state cases that warm caches then remove roles, deactivate/suspend actors, and
+      revoke sessions through supported APIs; retry with existing/fresh clients and after a fresh
+      Porta process. Record organization reassignment/removal as not-applicable or a named gap.
+- [ ] 6.4 Record natural RED or legacy green claim by claim without altering the oracle; select only
+      existing exact E2E/pentest sentinels.
+- [ ] 6.5 Add missing raw/packed SDK/CLI probes and reach green; unsupported immediate-revocation
+      contracts remain named blocked gaps and product defects route separately.
+- [ ] 6.6 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
+      tests after the black-box specs are green.
+- [ ] 6.7 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
+      tuples; require each mapped sentinel signature to kill its tuple.
+- [ ] 6.8 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
+      log/recovery checks, all pentests, and `yarn verify`.
 
-> **Scope**: protocol claims and `tests/protocol/**/*.spec.ts`
-> **References**: [Risk Slices](03-04-risk-slices.md), ST-31–ST-34, RD-04/RD-05
+**Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim
+has current green plus its own killed tuple.
 
-- [ ] 6.1 [spec-author] Write version-qualified claims for redirects, PKCE, nonce/state, ES256/JWT validation, codes, refresh rotation, UserInfo, consent, and logout.
-- [ ] 6.2 [spec-author] Implement raw HTTP and independent JOSE/client cases ST-31–ST-34, including concurrent replay and prohibited side effects.
-- [ ] 6.3 Run the specs and record natural red or legacy green claim-by-claim.
-- [ ] 6.4 Review existing OIDC E2E/pentest cases; reject broad statuses, conditional exits, and implementation-derived expected values as sentinels.
-- [ ] 6.5 Add missing black-box probes and make exact specs green; reproduce/route product defects without source fixes.
-- [ ] 6.6 Add protocol-fixture implementation tests for independent decoding, concurrency barriers, and response normalization.
-- [ ] 6.7 Run protocol project, capture attributed evidence, run designated curated-fault prechecks, and run `yarn verify`.
+## Phase 7: OIDC, ID-Token, and Token Lifecycle
 
-**Verify**: `yarn verify`
+> **Scope**: protocol claims, independent JOSE/HTTP client, distributed replay orchestration
+> **References**: ST-33–ST-41/ST-50–ST-51/ST-63, RD-04/RD-05
 
-**Phase gate**: every P0 protocol claim has exact positive/negative and replay evidence, pending only
-its Phase 9 fault kill where applicable.
+- [ ] 7.1 [spec-author] Define versioned slice profiles/claims for redirect/PKCE, code binding,
+      state/nonce/consent/client authentication, ID tokens, opaque-token separation, rotation/replay.
+- [ ] 7.2 [spec-author] Write exact ST-33–ST-41 raw HTTP and independent ID-token/JWKS cases,
+      including unknown `kid`, attacker JOSE key-location headers, and concurrent issuer separation.
+- [ ] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
+      before/after-commit failure, timeout unknown outcome/retry, and fresh-process replay.
+- [ ] 7.4 Record natural RED or legacy green claim by claim; audit OIDC E2E/pentest cases and reject
+      broad statuses, conditional exits, and implementation-derived expectations as sentinels.
+- [ ] 7.5 Add missing black-box probes and applicable packed-client journeys; validate issued ID
+      tokens independently and never parse opaque access tokens as JWTs.
+- [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with
+      acknowledgements, correlation IDs, bounded waits, and durable-state observation; no product hook.
+- [ ] 7.7 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
+      type, rotation, and replay fault tuples; block survivors or defects.
+- [ ] 7.8 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
+      and `yarn verify`.
 
-## Phase 7: Human Authentication Slice
+**Phase gate:** every protocol/token claim has exact positive, negative, distributed replay, and
+fault-sensitivity evidence at a real consuming boundary.
 
-> **Scope**: session/recovery/2FA claims and security/browser protocol tests
-> **References**: [Risk Slices](03-04-risk-slices.md), ST-35–ST-40, RD-05
+## Phase 8: Human Authentication and Recovery
 
-- [ ] 7.1 [spec-author] Define claims for enumeration, lockout, rate limits, magic/reset tokens, sessions, cookies/CSRF, OTP/TOTP, and recovery codes.
-- [ ] 7.2 [spec-author] Write ST-35–ST-40 including expired/reused artifacts, equivalent rate-limit inputs, renewal/revocation, and concurrent consumption.
-- [ ] 7.3 Run the specs and record natural red or legacy green without weakening exact external semantics.
-- [ ] 7.4 Review/select existing E2E/pentest/UI sentinels; require fatal email prerequisites and independent cookie/state checks.
-- [ ] 7.5 Add missing black-box cases and reach green; block and route any confirmed invariant violation.
-- [ ] 7.6 Add harness implementation tests for mail polling boundaries, concurrency synchronization, clock windows, and secret-free diagnostics.
-- [ ] 7.7 Run affected browser/security projects with fresh state, capture coverage/evidence, run fault prechecks, and run `yarn verify`.
+> **Scope**: browser/HTTP/MailHog auth, recovery, session, 2FA, and timing claims
+> **References**: ST-42–ST-51/ST-63, RD-05
 
-**Verify**: `yarn verify`
+- [ ] 8.1 [security-authority gate] Before timing measurements, approve the enumeration hypothesis,
+      material effect-size bound, sample-size/power rule, clock/environment controls, and noise/
+      invalid-run rule. If no defensible independent bound is approved, block only the timing claim.
+- [ ] 8.2 [spec-author] Define profiles/claims for enumeration, login-method enforcement, lockout/
+      limits, sessions/cookies/CSRF, magic/reset/invitation/email-OTP/TOTP/recovery artifacts.
+- [ ] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
+      single/concurrent use, exposure, session renewal/revocation, and exact non-mutation.
+- [ ] 8.4 Add repeated enumeration samples using the approved pre-measurement statistical contract
+      and equivalent limit-key variants; one sample or a post-observation threshold cannot pass.
+- [ ] 8.5 Reuse ST-50–ST-51 barriers for every replay-sensitive recovery artifact at before/after
+      commit, timeout/retry, and fresh-process boundaries.
+- [ ] 8.6 Record natural RED or legacy green; audit/select exact E2E/pentest/UI sentinels and require
+      fatal email prerequisites plus independent cookie/state observations.
+- [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
+      mail polling, barrier, clock-window,
+      distribution, and secret-free diagnostic implementation tests afterward.
+- [ ] 8.8 Add/execute enumeration, login-method, session, CSRF/cookie, rate-limit, recovery, 2FA,
+      single-use, and exposure fault tuples; route defects and block survivors.
+- [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/
+      recovery evidence, all pentests, and `yarn verify`.
 
-**Phase gate**: authentication/recovery tests prove exact failure and non-mutation semantics and are
-ready for fault-kill completion.
+**Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound under
+concurrency and restart, and production controls are proven only in production-security mode.
 
-## Phase 8: P1 Validation and Exposure Slice
+## Phase 9: P1 Validation, Exposure, and Administrative Data
 
-> **Scope**: validation/exposure claims and `tests/security/validation-exposure/*.spec.ts`
-> **References**: [Risk Slices](03-04-risk-slices.md), ST-41–ST-44, RD-04/RD-05
+> **Scope**: raw attack probes, production profile, admin data, bulk/import/export oracle gate
+> **References**: ST-52–ST-63, RD-04/RD-05
 
-- [ ] 8.1 [spec-author] Define applicable claims for input/injection, CORS/CSP/HTTPS/cookies, minimal errors, and bulk/import/export.
-- [ ] 8.2 [spec-author] Write ST-41–ST-44 with encoded variants, tenant-B non-mutation, and safe dependency-error cases.
-- [ ] 8.3 Run specs and record natural red or legacy green per claim.
-- [ ] 8.4 Review existing pentest/integration cases; classify broad smoke assertions and prerequisite skips as corroboration only.
-- [ ] 8.5 Add missing exact probes and reach green; route product defects separately.
-- [ ] 8.6 Add harness implementation tests for payload generation bounds, header normalization, and redacted error comparison.
-- [ ] 8.7 Run the security project, capture evidence/coverage, run fault prechecks, and run `yarn verify`.
+- [ ] 9.1 [product-authority gate] Resolve and record approved bulk/import/export contracts for
+      duplicate/collision, provenance/version, rollback, partial outcomes, and export sensitivity.
+      Until decided, ST-62 and only its claims remain blocked; never infer the oracle from code.
+- [ ] 9.2 [spec-author] Write ST-52–ST-56 raw cases for SQL, CRLF/header, XSS/template, prototype,
+      command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversize, and exposure.
+- [ ] 9.3 [spec-author] Write ST-57–ST-61 for pagination isolation, audit read/cleanup/integrity/
+      redaction, key lifecycle, session administration/cascade, and configuration authorization.
+- [ ] 9.4 [spec-author] Once 9.1 has authority, write ST-62 exact bulk/import/export matrices; otherwise
+      preserve their blocked claims and continue independent P1 work.
+- [ ] 9.5 Record natural RED or legacy green; audit/select existing pentest/integration sentinels
+      and classify broad smoke/conditional-prerequisite cases as corroboration only.
+- [ ] 9.6 Add missing raw/browser/packed-client probes, authorized handler controls, independent
+      non-mutation/cardinality checks, and exact audit/log/recovery observations.
+- [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
+      test trusted/untrusted proxy profiles without production config changes.
+- [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
+      lifecycle, and redacted-error implementation tests after specs are green.
+- [ ] 9.9 Add/execute applicable injection, proxy, validation, exposure, admin authorization,
+      audit/key/session/config and approved workflow fault tuples; block survivors/defects.
+- [ ] 9.10 Run P1 projects/profiles, applicable packed clients, coverage, all pentests, evidence/
+      redaction/recovery checks, and `yarn verify`.
 
-**Verify**: `yarn verify`
+**Phase gate:** every named P1 surface is assured, blocked by a named product-authority/defect gap,
+or incomplete with explicit evidence; nothing is silently treated as safe.
 
-**Phase gate**: every reviewed P1 surface is assured-ready, incomplete with named gaps, or blocked by
-a separately routed defect; nothing is silently treated as safe.
+## Phase 10: Mutation Pilot and Reliability Qualification
 
-## Phase 9: Curated Faults and Mutation Pilot
+> **Scope**: bounded mutation, command matrix, 100-run evidence, observation baselines
+> **References**: ST-64–ST-78, RD-03/RD-06/RD-07
 
-> **Scope**: fault metadata/patches/runner/results and optional bounded mutation configuration
-> **References**: [Coverage and Faults](03-03-coverage-and-faults.md), ST-45–ST-49, RD-06
+- [ ] 10.1 Run the full curated catalog against a clean baseline; verify every claim tuple,
+      survivor/invalid classification, primary-tree immutability, cleanup, and redaction.
+- [ ] 10.2 Evaluate one bounded TypeScript ESM mutation pilot on approved small modules; retain a
+      no-go result without weakening curated faults if compatibility/runtime criteria fail.
+- [ ] 10.3 [spec-author] Add a table-driven command×outcome matrix for product, test, setup,
+      coverage, fault, cleanup, timeout, SIGINT, and SIGTERM across every documented alias.
+- [ ] 10.4 Force every matrix cell and prove exact exit class, bounded recovery output, and
+      ownership-safe cleanup; ambiguous or leaked outcomes block command qualification.
+- [ ] 10.5 Define one fixed representative seed set per promotion candidate and run 100 consecutive
+      completed executions with zero infrastructure/test flakes; invalid/incomplete resets count to zero.
+- [ ] 10.6 Record every retry as a flake plus p50/p95, timeout headroom, invalid-run rate, failure
+      owner, and recovery; remediate harness-only flakes and restart the sequence.
+- [ ] 10.7 Implement and verify local/on-demand exact no-regression ratchets and eligible per-slice
+      floors ST-27A, then commit observation baselines and staleness triggers. Do not wire any
+      ratchet into CI, release, or merge policy.
+- [ ] 10.8 Run ST-64–ST-78, `yarn assurance:all`, generated-artifact/redaction/recovery checks, and
+      `yarn verify`.
 
-- [ ] 9.1 [spec-author] Write fault validation, result-classification, expected-signature, timeout, and cleanup specs ST-45–ST-49.
-- [ ] 9.2 Run specs and record red for absent catalog/runner.
-- [ ] 9.3 Implement validated fault metadata, target-hash checks, disposable-worktree/build execution, sanitized evidence, and unconditional owned cleanup.
-- [ ] 9.4 Add reviewed tenant-scope and RBAC bypass faults; require designated Phase 5 sentinels to kill each.
-- [ ] 9.5 Add redirect/PKCE/JWT/replay faults; require designated Phase 6 sentinels to kill each.
-- [ ] 9.6 Add CSRF/cookie/rate-limit/recovery/exposure faults; require designated Phase 7/8 sentinels to kill each.
-- [ ] 9.7 Run ST-45–ST-49 to green; evaluate the bounded automated-mutation pilot and record go/no-go against explicit compatibility/runtime criteria.
-- [ ] 9.8 Execute the clean baseline and full curated catalog; keep survivors incomplete, verify no residue/secrets, close eligible claims, and run `yarn verify`.
+**Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
+evidence; this evidence grants no promotion authority.
 
-**Verify**: `yarn verify`
+## Phase 11: Roll-up, Documentation, and Promotion Proposal
 
-**Phase gate**: every closed critical claim has a killed representative fault; build/setup failures
-and survivors never count as assurance.
+> **Scope**: traceability roll-up, inventory/ADR, sanitized summaries, non-enforcing CI proposal
+> **References**: ST-77–ST-79, RD-01–RD-07
 
-## Phase 10: Packed SDK and CLI Compatibility
+- [ ] 11.1 Validate the complete requirement→case→task→claim graph and report Must/Should/out-of-
+      scope counts, assured/incomplete/blocked/stale claims, defects, gaps, and applicable fault tuples.
+- [ ] 11.2 Update the current test inventory and ADR-014 with delivered commands, profiles,
+      attribution limits, evidence categories, and truthful blocked/named gaps.
+- [ ] 11.3 Produce a concrete non-enforcing proposal for extending the existing harness CI job and
+      any future ratchet/fault scheduling; identify the read-only workflow and require separate
+      explicit user/policy authorization before adoption.
+- [ ] 11.4 Run ST-79 and structure contracts proving `yarn verify` unchanged and no workflow,
+      publishing, deployment, release, or merge-policy file changed.
+- [ ] 11.5 Run final `yarn assurance:all`, `yarn verify`, `yarn test:ui`, and `yarn harness:test`;
+      inspect coverage, fault, compatibility, redaction, retention, signals, and cleanup artifacts.
+- [ ] 11.6 Record the final claim/slice status honestly; never claim certification or absence of
+      exploits, and leave every product defect or unresolved contract in its separate blocked route.
 
-> **Scope**: isolated consumer templates/scripts and compatibility Playwright project
-> **References**: [Compatibility and CI](03-05-compatibility-and-ci.md), ST-50–ST-53, RD-04
-
-- [ ] 10.1 [spec-author] Write packed-resolution and live SDK/CLI specifications ST-50–ST-53 before adding consumer tooling.
-- [ ] 10.2 Run specs and record red for absent tarballs/isolated consumer/live journeys.
-- [ ] 10.3 Implement deterministic build/pack/identity/integrity/install lifecycle in an ignored non-workspace consumer directory.
-- [ ] 10.4 Add live Node SDK, browser export where feasible, and packed CLI positive/negative journeys against harness fixtures.
-- [ ] 10.5 Run ST-50–ST-53 to green; add implementation tests for package identity, dependency resolution, cleanup, and sanitized command capture.
-- [ ] 10.6 Run the compatibility project from a clean pack/install, capture evidence, verify no source/symlink loading, and run `yarn verify`.
-
-**Verify**: `yarn verify`
-
-**Phase gate**: publishable SDK exports and CLI bin interoperate with the live Porta image outside
-the workspace; mock-only suites remain intact.
-
-## Phase 11: Reliability, Ratchets, CI, and Documentation
-
-> **Scope**: assurance command policy, structure/CI contracts, sanitized summaries, inventory/ADR
-> **References**: [Compatibility and CI](03-05-compatibility-and-ci.md), ST-54–ST-57, RD-03/RD-07
-
-- [ ] 11.1 [spec-author] Write stability, staleness, artifact hygiene, root-command, and CI-lane specs ST-54–ST-57; record red before promotion changes.
-- [ ] 11.2 Run 100 representative shuffled executions, record completed-run flake rate and p50/p95, remediate harness-only flakes, and rerun until the <1% gate passes or leave promotion blocked.
-- [ ] 11.3 Commit exact reproducible coverage baselines/no-regression policy, add only reliability-qualified harness/fault CI wiring, and keep `yarn verify` unchanged.
-- [ ] 11.4 Run ST-54–ST-57 and all implementation tests; update the test inventory and ADR-014 status truthfully; run final `yarn verify`, `yarn test:ui`, `yarn harness:test`, coverage reproduction, curated faults, packed compatibility, redaction, and cleanup gates.
-
-**Verify**: `yarn verify`
-
-**Final gate**: all Must criteria are traced and verified, every closed critical claim has current
-green and killed-fault evidence, residual gaps are named, ordinary development remains usable, and
-no product fix, scanner, publish, deployment, or certification claim entered this program.
+**Final gate:** every Must is mechanically traced and verified or explicitly blocked by named
+external authority/defect evidence, every closed critical claim has current green and its own
+killed-fault tuple, ordinary development/publishing remains usable, and this plan made no product,
+workflow-policy, publishing, deployment, scanner, or certification change.

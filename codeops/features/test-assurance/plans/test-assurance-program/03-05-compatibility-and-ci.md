@@ -8,7 +8,10 @@
 `test-harness/consumers/` contains source templates only. A run builds the active packages, creates
 SDK and CLI tarballs with the existing package manager, verifies package identity/content, and
 installs them with production dependencies into an ignored temporary directory outside the Yarn
-workspace. Tests never import `packages/*/src` or resolve workspace symlinks.
+workspace. The generated consumer manifest declares both archives as explicit local `file:`
+dependencies in a clean install/cache context and proves the CLI-resolved SDK path/content digest
+matches the packed SDK. Tests never import `packages/*/src`, registry substitutes, or workspace
+symlinks.
 
 The compatibility project covers a minimal high-value matrix:
 
@@ -20,25 +23,30 @@ The compatibility project covers a minimal high-value matrix:
 | Negative compatibility | wrong tenant/role/credential/endpoint produces the exact public error without secret leakage                                                             |
 
 Evidence binds package names, versions, tarball integrity hashes, Node version, server image digest,
-and fixture identity. Existing mock-based SDK/CLI suites remain unchanged and fast.
+and fixture identity. Every CLI subprocess uses a restrictive temporary `HOME`; success, failure,
+timeout, SIGINT, and SIGTERM clean it, while a pre/post fingerprint proves the caller's real Porta
+credential file unchanged. Existing mock-based SDK/CLI suites remain unchanged and fast.
 
 ## Command and Lane Model
 
-| Lane                | Initial policy                                                                                        | Promotion rule                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `yarn verify`       | Unchanged mandatory workspace gate                                                                    | Never absorbs Docker/browser/fault campaigns                      |
-| `yarn harness:test` | Existing required black-box lane; gains stable protocol/security/compatibility projects progressively | A project joins only when deterministic and within agreed runtime |
-| Coverage            | Observation command/artifact                                                                          | No-regression after reproducibility                               |
-| Curated faults      | Explicit on-demand command                                                                            | Scheduled/PR-targeted only after runtime and <1% flake evidence   |
-| Automated mutation  | Pilot/on-demand only                                                                                  | Separate approval after useful survivor rate and bounded runtime  |
+| Lane                     | Initial policy                                                                            | Promotion rule                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `yarn verify`            | Unchanged mandatory workspace gate                                                        | Never absorbs Docker/browser/fault campaigns                         |
+| `yarn harness:test`      | Existing required black-box lane; remains explicitly limited to retained SPA/BFF journeys | Project addition requires separate workflow/policy authority         |
+| `yarn assurance:harness` | Local/on-demand protocol/security/compatibility projects                                  | Proposal only after qualification; no adoption here                  |
+| Coverage                 | Observation command/artifact                                                              | No-regression after reproducibility                                  |
+| Curated faults           | Explicit on-demand command                                                                | Proposal only after 100-run evidence; adoption separately authorized |
+| Automated mutation       | Pilot/on-demand only                                                                      | Separate approval after useful survivor rate and bounded runtime     |
 
-The read-only branch workflow is not edited during initial infrastructure phases. CI contract tests
-are authored before any later workflow change. The harness remains publish-independent and uses no
-release credentials.
+The read-only branch workflow is not edited by this plan. CI contract tests and a concrete,
+non-enforcing workflow proposal are produced for a separately authorized policy/integration task.
+No scheduled, PR-targeted, blocking, release, or merge-gate promotion occurs here. The harness
+remains publish-independent and uses no release credentials.
 
 ## Reliability and Retention
 
-- Representative stability set: 100 completed fixed-input shuffled runs; flake rate <1%.
+- Representative stability set: 100 consecutive completed fixed-input shuffled runs with zero
+  infrastructure/test flakes; invalid/incomplete runs restart the sequence and retries remain flakes.
 - Record p50 and p95 per project/fault; timeout budgets come from observed p95 plus documented headroom.
 - Retry is diagnostic only; a retry-pass is a flake, not a clean pass.
 - Sanitized summaries and machine-readable manifests follow the repository/CI retention policy;

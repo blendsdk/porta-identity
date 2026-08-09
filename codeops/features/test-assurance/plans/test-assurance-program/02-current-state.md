@@ -30,8 +30,8 @@ The complete inventory and methodology live in
 | Harness server runs outside Vitest     | `test-harness/docker-compose.yml:20-55` starts compiled Porta in Docker                               | Phase 4 process-owned V8 capture                                  |
 | Source maps are available              | `packages/server/tsconfig.json:7-17` emits `dist` maps                                                | Remap only against the matching build                             |
 | Maps exist but capture does not        | `test-harness/Dockerfile:37-43` copies compiled output, including maps; Compose has no coverage mount | Add explicit evidence mount and graceful stop                     |
-| Live package surface is untested       | `packages/sdk/package.json:6-25`; `packages/cli/package.json:6-10` target `dist`                      | Phase 10 installs packed tarballs outside workspaces              |
-| CI lanes already separate              | `.github/workflows/build-and-test.yml:18-190` has verify, UI, harness, docs, Docker, audit jobs       | Extend harness; add on-demand fault lane only after reliability   |
+| Live package surface is untested       | `packages/sdk/package.json:6-25`; `packages/cli/package.json:6-10` target `dist`                      | Phase 5 establishes packed consumers; owning slices run journeys  |
+| CI lanes already separate              | `.github/workflows/build-and-test.yml:18-190` has verify, UI, harness, docs, Docker, audit jobs       | Keep workflow untouched; produce separately authorized proposal   |
 
 ## Constraints and Risks
 
@@ -44,4 +44,4 @@ The complete inventory and methodology live in
 | Assurance blocks daily work     | Preserve `yarn verify`; stage expensive lanes and ratchets                               |
 | Security detail or secrets leak | Synthetic fixtures, redaction tests, ignored generated evidence, restricted CI retention |
 | Product bug gets normalized     | Block claim, preserve expected contract, route separate fix                              |
-| Harness becomes a catch-all     | Five named projects, directory ownership, typed shared fixtures, no second runner        |
+| Harness becomes a catch-all     | Playwright external plus root Node/tsx internal checks; no new harness/package/framework |

@@ -32,7 +32,10 @@ baselines, and introduces staged no-regression ratchets only after measurement i
 - [ ] **R3.5 (M)** Merge only reports built from identical source and compatible instrumentation;
       reject stale, foreign, or ambiguously mapped inputs.
 - [ ] **R3.6 (M)** Every report shall include exact covered/total statement, branch, function, and
-      line counts, exclusions, unmapped ranges, deferred processes, and collection failures.
+      line counts, exclusions, unmapped ranges, deferred processes, and collection failures. Raw
+      Node records shall be classified as eligible first-party build output, declared Node/internal
+      runtime, declared dependency, or unexpected local path; only eligible files contribute to
+      Porta attribution, and no input record may disappear without a recorded classification.
 - [ ] **R3.7 (M)** Establish a reproducible observation-only baseline before any new coverage gate;
       the existing 80/75 thresholds shall not become blocking while attribution is incomplete.
 - [ ] **R3.8 (M)** After baseline acceptance, enforce exact no-regression counts and changed-surface
@@ -124,6 +127,8 @@ producing a baseline (AR #14).
 4. [ ] Two clean runs at one revision have identical total statement, branch, function, and line
        counts and identical normalized source-file sets.
 5. [ ] The report lists every excluded source glob and every process not included in the metric.
+       Expected Node/internal and dependency scripts are recorded exclusions; an unexpected local
+       application path fails provenance validation.
 6. [ ] The baseline phase changes no existing CI pass/fail result.
 7. [ ] After ratchet implementation, reducing one covered branch without changing totals fails the
        ratchet even when the displayed rounded percentage is unchanged.

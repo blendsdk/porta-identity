@@ -21,8 +21,9 @@ scores as the initial objective (AR #15, AR #16).
 ### Must Have
 
 - [ ] **R6.1 (L)** Define a versioned curated-fault manifest containing stable fault ID, affected
-      claim/control, target revision constraints, patch artifact, expected sentinel failures, build
-      command, execution command, and cleanup verification.
+      claim/control, target revision constraints, patch artifact, explicit claim–sentinel–expected-
+      signature tuples, build command, execution command, and cleanup verification. One fault may
+      support multiple claims only when every tuple is independently executed and killed.
 - [ ] **R6.2 (L)** Apply faults only to a disposable temporary worktree or Docker build context; no
       bypass flag, dormant mutation, or fault-selection code may enter production source (AR #15).
 - [ ] **R6.3 (M)** A fault is killed only when at least one designated exact assertion fails for the
@@ -30,9 +31,10 @@ scores as the initial objective (AR #15, AR #16).
       is an invalid run, not a kill.
 - [ ] **R6.4 (L)** Initial P0 faults shall represent: missing tenant scope on one read and one write;
       removed admin authentication/membership/RBAC; relaxed redirect matching; missing/wrong PKCE
-      acceptance; JWT algorithm/issuer/audience/expiry acceptance; authorization-code, refresh,
-      magic-link or reset replay; weakened CSRF/cookies; disabled rate limit/lockout; and sensitive
-      error disclosure.
+      acceptance; invalid emitted ID-token profile/signing (`alg`, key/`kid`, issuer, audience,
+      subject, nonce, expiry/not-before) and wrong-token-type/opaque-lookup acceptance at actual
+      consumers; authorization-code, refresh, magic-link or reset replay; weakened CSRF/cookies;
+      disabled rate limit/lockout; and sensitive error disclosure.
 - [ ] **R6.5 (M)** Every P0 risk slice shall kill its applicable curated faults before it can become
       `assured` (AR #25).
 - [ ] **R6.6 (M)** Legacy specification tests that are naturally green before test implementation
@@ -124,11 +126,13 @@ interaction fault. Patch target mismatches fail closed.
 
 ## Acceptance Criteria
 
-1. [ ] The curated manifest validates stable IDs, unique claim mappings, target preconditions,
-       patch existence, designated tests, and cleanup instructions.
-2. [ ] At least one representative fault from tenant scope, RBAC, redirect/PKCE, JWT validation,
-       replay, CSRF/cookies, rate limiting, and disclosure builds successfully and is killed by its
-       designated black-box sentinel for the intended reason.
+1. [ ] The curated manifest validates stable IDs, explicit claim–sentinel–expected-signature tuples,
+       target preconditions, patch existence, designated tests, and cleanup instructions; a shared
+       fault cannot close a claim whose own tuple was not independently killed.
+2. [ ] At least one representative fault from tenant scope, RBAC, redirect/PKCE, ID-token emission/
+       signing, wrong-token-type/opaque-token consumption, replay, CSRF/cookies, rate limiting, and
+       disclosure builds successfully and is killed by its designated black-box sentinel for the
+       intended reason; no JWT access-token consumer is assumed.
 3. [ ] A deliberately broken build, startup, fixture, and unrelated-test case is reported `invalid`,
        never `killed`.
 4. [ ] A sentinel that passes under its governing fault produces a survivor, blocks the claim, and
