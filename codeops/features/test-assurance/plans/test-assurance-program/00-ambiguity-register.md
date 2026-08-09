@@ -1,6 +1,6 @@
 # Ambiguity Register: Porta Test Assurance Program
 
-> **Status**: ✅ GATE PASSED — all 28 items resolved
+> **Status**: ✅ GATE PASSED — all 29 items resolved
 > **Created**: 2026-08-09
 > **Root Invocation ID**: `AD-TA-20260809-1421`
 > **Auto-Design Policy**: 1
@@ -43,6 +43,7 @@ Porta product contract.
 | 26  | Packed clients   | When are packed artifacts introduced?            | Pack/install/provenance foundation follows coverage and applicable packed journeys run inside each owning slice                                                                                                  | User           | ✅     |
 | 27  | Reliability math | What does 100-run `<1%` mean?                    | 100 consecutive completed runs with zero flakes; invalid/incomplete runs restart the sequence and retries stay visible                                                                                           | User           | ✅     |
 | 28  | CI authority     | What may this plan change?                       | Observation baselines and a concrete non-enforcing workflow proposal only; adoption requires a separate authorized policy/workflow task                                                                          | User           | ✅     |
+| 29  | Command model    | Where is the exact command contract defined?     | A root-owned `test-harness/assurance/commands.ts` module is the single typed source for aliases, selectors, prerequisites, timeouts, artifacts, exit precedence, signals, cleanup, and `assurance:all` composition | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -119,3 +120,25 @@ flake/runtime evidence.
 
 **Gate result**: zero unresolved scope, security, data, concurrency, integration, error-handling,
 verification, or rollout decisions remain.
+
+## Runtime Decisions
+
+### AR-29 — Machine-readable command contract
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal architecture for an
+already-approved command surface; it changes no product behavior, acceptance criterion, CI policy,
+or scope. **Objective**: keep root aliases, validation, reporting, and tests synchronized with the
+frozen command contract. **Decision**: export the versioned command definitions and exit precedence
+from `test-harness/assurance/commands.ts`; package scripts remain thin entry points. **Evidence**:
+the testing strategy requires exact, mechanically validated selectors, prerequisites, timeouts,
+artifacts, signals, cleanup, and outcomes for eleven aliases, while the target structure already
+uses TypeScript/Zod for root-owned assurance definitions. **Rejected alternatives**: embedding the
+table only in the CLI dispatcher makes validation and reporting depend on command control flow;
+keeping it only in README text cannot provide machine-checked completeness and would duplicate the
+test oracle. **Strongest counterargument**: a public internal module adds one file and must remain
+versioned as the command surface evolves. **Confidence**: High — the boundary is small, reversible,
+and specification-tested. **Hardening**: forced reframing found no safer simpler source of truth;
+independent challenge was not required because this is reversible internal plumbing inside the
+approved design. **Policy version**: 1. **Root invocation ID**: `AD-TA-EXEC-20260810-P1`.
+**Reopen triggers**: command definitions move to a generated schema, aliases cease sharing one
+dispatcher, or another consumer requires a language-neutral contract.

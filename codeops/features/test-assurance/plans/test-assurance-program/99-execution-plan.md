@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-09
-> **Progress**: 0/92 tasks (0%)
+> **Last Updated**: 2026-08-10 01:00
+> **Progress**: 1/92 tasks (1%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -117,8 +117,13 @@ text, but it cannot substitute another command for this binding.
 
 > **Scope**: root package/config/structure contracts and `test-harness/assurance/`
 > **References**: [Assurance Model](03-01-assurance-model.md), ST-01–ST-08, RD-01/RD-07
+> **Phase baseline tree**: `1f13810104601b76056e795049e76e68e9415488`
+> **Expected modification set**: `package.json`, `yarn.lock`, root lint/typecheck configuration,
+> `repo-tests/monorepo/`, `test-harness/assurance/`, this execution plan, and the test-assurance
+> feature roadmap and ambiguity register
+> **Scope mode**: strict — claim/command/traceability foundation only; no product or CI changes
 
-- [ ] 1.1 [spec-author] Add repository-structure and harness-internal specification cases for root
+- [x] 1.1 [spec-author] Add repository-structure and harness-internal specification cases for root ✅ (completed: 2026-08-10 01:00)
       dependency ownership, `tsx --test` collection, Playwright non-overlap, typecheck/lint scope,
       command contracts, claim/slice schemas, traceability, state transitions, and redaction.
       Verify with `yarn test:structure` and `yarn verify`; new internal specs remain uncollected.
