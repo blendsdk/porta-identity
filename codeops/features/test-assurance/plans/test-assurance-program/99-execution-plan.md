@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 01:00
-> **Progress**: 1/92 tasks (1%)
+> **Last Updated**: 2026-08-10 13:13
+> **Progress**: 2/92 tasks (2%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -127,10 +127,17 @@ text, but it cannot substitute another command for this binding.
       dependency ownership, `tsx --test` collection, Playwright non-overlap, typecheck/lint scope,
       command contracts, claim/slice schemas, traceability, state transitions, and redaction.
       Verify with `yarn test:structure` and `yarn verify`; new internal specs remain uncollected.
-- [ ] 1.2 Run the isolated specs through the provisional Node/tsx command and record only the exact
+- [x] 1.2 Run the isolated specs through the provisional Node/tsx command and record only the exact ✅ (completed: 2026-08-10 13:13)
       expected missing-foundation signatures using
       `yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts`; prove `yarn verify`
       remains green.
+      - RED evidence: exit 1; one failing case, `assurance foundation is available for contract
+        verification`; registered signature `assurance-foundation-missing` matched exact marker
+        `ASSURANCE_FOUNDATION_MISSING`; zero passing cases; no setup/unrelated failure.
+      - Verification blocker: two full `yarn verify` runs failed only in the existing timing-attack
+        pentest on different comparisons; isolated attempts then failed another comparison and
+        passed 5/5 unchanged. Five remaining stale Vitest workers exited cleanly after exact-PID
+        SIGTERM with user confirmation that no legitimate JSVision tests were running.
 - [ ] 1.3 Add direct root development dependencies used by harness tooling, including Zod; add the
       harness TypeScript/ESLint/static boundary without a harness package manifest or root Vitest.
       Verify dependency/structure contracts with `yarn test:structure` and `yarn verify`; the
