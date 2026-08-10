@@ -3,16 +3,27 @@ const redactedValue = '[REDACTED]';
 
 /** Key fragments whose values must never enter retained evidence. */
 const sensitiveKeyFragments = [
+  'address',
   'authorization',
   'clientsecret',
   'connectionstring',
   'cookie',
+  'displayname',
+  'email',
+  'firstname',
+  'fullname',
+  'lastname',
+  'mailingaddress',
+  'name',
   'password',
+  'phone',
+  'postaladdress',
   'privatekey',
   'recoverycode',
   'signingkey',
   'token',
   'totp',
+  'userid',
 ] as const;
 
 /** Patterns that identify secret-bearing content even when its containing key looks harmless. */
@@ -21,6 +32,16 @@ const sensitiveValuePatterns = [
   /\bBearer\s+[^\s,;]+/giu,
   /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu,
   /\b(?:postgres(?:ql)?|redis):\/\/[^\s/@:]+:[^\s/@]+@/giu,
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu,
+  /\b(?:email|phone|name|address)\s*[:=]\s*[^,;\n]+/giu,
+] as const;
+
+/** Residual patterns that make an already-rendered artifact unsafe to persist. */
+const residualSensitivePatterns = [
+  /\b(?:TOKEN|PASSWORD|COOKIE|CLIENT-SECRET)-CANARY-[A-Za-z0-9-]+\b/giu,
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu,
+  /\b(?:email|phone|name|address)\s*[:=]\s*(?!\[REDACTED\])[^,;\n]+/giu,
+  /\bBearer\s+(?!\[REDACTED\])[^\s,;]+/giu,
 ] as const;
 
 /** Query parameters whose values must be removed while retaining the parameter name. */
@@ -84,4 +105,16 @@ function redactUnknown(value: unknown, ancestors: WeakSet<object>): unknown {
 /** Recursively removes sensitive fields and values before evidence is rendered or persisted. */
 export function redactEvidence(value: unknown): unknown {
   return redactUnknown(value, new WeakSet<object>());
+}
+
+/** Refuses persistence when a rendered artifact still contains secret or personal-data patterns. */
+export function assertEvidenceSanitized(rendered: string): void {
+  if (
+    residualSensitivePatterns.some((pattern) => {
+      pattern.lastIndex = 0;
+      return pattern.test(rendered);
+    })
+  ) {
+    throw new Error('rendered assurance evidence contains residual sensitive or personal data');
+  }
 }

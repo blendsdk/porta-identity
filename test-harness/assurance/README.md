@@ -52,3 +52,9 @@ Exit `50` is valid only after a clean baseline and a validated disposable fault 
 build, startup, health, fixture, or dependency failure is exit `30`. Commands that own resources
 must either clean them after success, failure, timeout, SIGINT, and SIGTERM or print their exact
 owned identifiers and a bounded recovery command.
+
+Passing validation evidence is emitted only from a clean committed worktree. Its manifest binds the
+commit, Git tree, assurance-tool content, dependency lock, definitions, and reviewed test inventory.
+Claim transitions accept only canonical inventory and owned-run manifests loaded by the validator;
+caller-constructed context objects are rejected. Evidence is redacted and post-scanned for secrets
+and personal data before any JSON or Markdown is persisted.

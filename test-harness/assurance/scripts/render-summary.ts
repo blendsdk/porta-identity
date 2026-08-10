@@ -1,4 +1,4 @@
-import { redactEvidence } from './redact-evidence.js';
+import { assertEvidenceSanitized, redactEvidence } from './redact-evidence.js';
 
 /** Recursively sorts record keys while retaining array order and primitive values. */
 function sortForRendering(value: unknown): unknown {
@@ -19,10 +19,14 @@ function escapeHtml(value: string): string {
 
 /** Renders stable redacted JSON for an assurance result. */
 export function renderJson(value: unknown): string {
-  return `${JSON.stringify(sortForRendering(redactEvidence(value)), null, 2)}\n`;
+  const rendered = `${JSON.stringify(sortForRendering(redactEvidence(value)), null, 2)}\n`;
+  assertEvidenceSanitized(rendered);
+  return rendered;
 }
 
 /** Renders a stable redacted Markdown assurance summary. */
 export function renderSummary(value: unknown): string {
-  return `# Assurance summary\n\n<pre>${escapeHtml(renderJson(value))}</pre>\n`;
+  const rendered = `# Assurance summary\n\n<pre>${escapeHtml(renderJson(value))}</pre>\n`;
+  assertEvidenceSanitized(rendered);
+  return rendered;
 }

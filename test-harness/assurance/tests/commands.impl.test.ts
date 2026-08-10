@@ -11,6 +11,7 @@ import {
   exitTaxonomy,
   rootAliasForAction,
 } from '../commands.js';
+import { runManagedChild } from '../scripts/managed-child.js';
 
 /** Repository-relative shared dispatcher used by root assurance aliases. */
 const runner = 'test-harness/assurance/scripts/run-command.ts';
@@ -65,7 +66,7 @@ test('should keep internal Node collection disjoint from Playwright journeys', (
   const playwright = readFileSync('test-harness/playwright.config.ts', 'utf8');
   const internalTests = [
     'assurance.spec.test.ts',
-    'assurance-foundation.spec.test.ts',
+    'assurance-foundation.impl.test.ts',
     'commands.impl.test.ts',
     'evidence.impl.test.ts',
     'governance.impl.test.ts',
@@ -80,4 +81,37 @@ test('should keep internal Node collection disjoint from Playwright journeys', (
   }
   assert.match(playwright, /testDir:\s*['"]\.\/tests['"]/u);
   assert.doesNotMatch(playwright, /assurance\/tests|\.impl\.test\.ts/u);
+});
+
+test('should kill a timeout-resistant child group after the bounded grace period', async () => {
+  const outcome = await runManagedChild(
+    process.execPath,
+    ['-e', "process.on('SIGTERM',()=>{}); setInterval(()=>{},1000)"],
+    {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+      timeoutMilliseconds: 50,
+      terminationGraceMilliseconds: 50,
+      cleanup: () => undefined,
+    },
+  );
+
+  assert.equal(outcome.timedOut, true);
+  assert.equal(outcome.signal, 'SIGKILL');
+  assert.equal(outcome.cleanupFailed, false);
+});
+
+test('should retain cleanup failure as the highest-precedence managed-child outcome', async () => {
+  const outcome = await runManagedChild(process.execPath, ['-e', ''], {
+    cwd: process.cwd(),
+    stdio: 'ignore',
+    timeoutMilliseconds: 1_000,
+    terminationGraceMilliseconds: 50,
+    cleanup: () => {
+      throw new Error('owned cleanup failed');
+    },
+  });
+
+  assert.equal(outcome.code, 0);
+  assert.equal(outcome.cleanupFailed, true);
 });

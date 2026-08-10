@@ -45,7 +45,7 @@ const sentinelSchema = z.object({
 });
 
 /** One command result referenced by claim evidence. */
-const evidenceResultSchema = z.object({
+export const evidenceResultSchema = z.object({
   command: nonEmptyTextSchema,
   status: z.enum(['passed', 'failed', 'invalid', 'incomplete']),
 });
@@ -114,6 +114,7 @@ export const resultSchema = z
     buildIdentity: nonEmptyTextSchema,
     fixtureIdentity: nonEmptyTextSchema,
     redactedLog: z.string(),
+    metrics: z.record(z.string(), z.number().int().nonnegative()).optional(),
   })
   .superRefine((result, context) => {
     if (Date.parse(result.completedAt) < Date.parse(result.startedAt)) {
@@ -124,6 +125,72 @@ export const resultSchema = z
       });
     }
   });
+
+/** Validates the exact count summary emitted by foundation definition validation. */
+export const foundationValidationResultSchema = resultSchema.safeExtend({
+  metrics: z.object({
+    requirementCount: z.number().int().nonnegative(),
+    caseCount: z.number().int().nonnegative(),
+    taskCount: z.number().int().nonnegative(),
+    claimCount: z.number().int().nonnegative(),
+    redSignatureCount: z.number().int().nonnegative(),
+    commandContractVersion: z.number().int().positive(),
+  }),
+});
+
+/** Validates the immutable source-tree artifact used by a foundation run. */
+const sourceTreeArtifactSchema = z.object({
+  kind: z.literal('source-tree'),
+  digest: nonEmptyTextSchema,
+});
+
+/** Validates a complete owned-run manifest before it can authorize assurance evidence. */
+export const foundationManifestSchema = z.object({
+  runId: z.uuid(),
+  status: z.enum(['passed', 'failed', 'invalid', 'incomplete']),
+  command: nonEmptyTextSchema,
+  startedAt: timestampSchema,
+  completedAt: timestampSchema,
+  buildIdentity: nonEmptyTextSchema,
+  treeIdentity: nonEmptyTextSchema,
+  fixtureIdentity: nonEmptyTextSchema,
+  executionArtifact: sourceTreeArtifactSchema,
+  dependencyLockDigest: nonEmptyTextSchema,
+  assuranceToolDigest: nonEmptyTextSchema,
+  definitionDigests: z.object({
+    traceability: nonEmptyTextSchema,
+    redSignatures: nonEmptyTextSchema,
+    testInventory: nonEmptyTextSchema,
+  }),
+  toolVersions: z.object({
+    node: nonEmptyTextSchema,
+    commandContract: z.number().int().positive(),
+  }),
+  results: z.array(evidenceResultSchema).min(1),
+  killedFaultIds: z.array(manifestIdSchema),
+  artifacts: z.array(nonEmptyTextSchema).min(1),
+  accessPolicy: nonEmptyTextSchema,
+  retentionPolicy: nonEmptyTextSchema,
+});
+
+/** One reviewed case in the canonical test inventory. */
+const inventoriedCaseSchema = z.object({
+  name: nonEmptyTextSchema,
+  trusted: z.boolean(),
+});
+
+/** One canonical test path and its exact reviewed cases. */
+export const inventoriedTestSchema = z.object({
+  path: nonEmptyTextSchema,
+  runner: z.enum(['node', 'playwright']),
+  cases: z.array(inventoriedCaseSchema).min(1),
+});
+
+/** Versioned authoritative inventory used to resolve claim sentinels. */
+export const testInventorySchema = z.object({
+  version: z.literal(1),
+  tests: z.array(inventoriedTestSchema).min(1),
+});
 
 /** Validates curated-fault identity, execution, and cleanup provenance. */
 export const faultSchema = z.object({
@@ -165,6 +232,7 @@ export const sliceProfileSchema = z.object({
 /** One exact requirement-to-case-to-task-to-claim mapping. */
 export const traceabilityMappingSchema = z.object({
   requirement: z.string().regex(/^R[1-7]\.[0-9]+$/),
+  sourceClause: z.string().regex(/^RD-0[1-7]#R[1-7]\.[0-9]+$/),
   cases: z.array(specificationIdSchema).min(1),
   tasks: z.array(z.string().regex(/^(?:[1-9]|1[01])\.[1-9][0-9]*$/)).min(1),
   claim: claimIdSchema,
@@ -180,11 +248,28 @@ export const traceabilitySchema = z.object({
   mappings: z.array(traceabilityMappingSchema).min(1),
 });
 
+/** One authoritative Must requirement and its versioned source clause. */
+const authoritativeRequirementSchema = z.object({
+  id: z.string().regex(/^R[1-7]\.[0-9]+$/),
+  sourceClause: z.string().regex(/^RD-0[1-7]#R[1-7]\.[0-9]+$/),
+});
+
+/** Independent node/source inventory used to prove traceability completeness. */
+export const traceabilityAuthoritySchema = z.object({
+  version: z.literal(1),
+  requirements: z.array(authoritativeRequirementSchema).min(1),
+  cases: z.array(specificationIdSchema).min(1),
+  tasks: z.array(z.string().regex(/^(?:[1-9]|1[01])\.[1-9][0-9]*$/)).min(1),
+  claims: z.array(claimIdSchema).min(1),
+});
+
 /** One exact, non-regex failure marker accepted as RED evidence. */
 export const redSignatureSchema = z.object({
   id: manifestIdSchema,
   caseId: specificationIdSchema,
-  expectedExit: z.number().int().min(1).max(255),
+  observedChildExit: z.number().int().min(1).max(255),
+  normalizedFailureExit: z.number().int().min(1).max(255),
+  command: nonEmptyTextSchema,
   marker: nonEmptyTextSchema,
 });
 

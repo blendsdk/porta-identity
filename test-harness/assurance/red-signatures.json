@@ -4,7 +4,9 @@
     {
       "id": "assurance-foundation-missing",
       "caseId": "ST-01",
-      "expectedExit": 21,
+      "observedChildExit": 1,
+      "normalizedFailureExit": 21,
+      "command": "yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts",
       "marker": "ASSURANCE_FOUNDATION_MISSING"
     }
   ]

@@ -5,6 +5,7 @@ import test from 'node:test';
 import { claimSchema, traceabilitySchema } from '../schema.js';
 import {
   matchRedSignature,
+  loadTraceabilityAuthority,
   transitionClaim,
   validateCatalog,
   validateRedSignatureRegistry,
@@ -23,24 +24,24 @@ test('should name invalid claim fields without discarding the original value', (
   assert.equal(invalidClaim.id, completeClaim.id);
 });
 
-test('should reject invalid assured transitions before returning a changed claim', () => {
+test('should reject caller-fabricated transition contexts before inspecting evidence', () => {
   const missingFaultKill = structuredClone(completeClaim);
   missingFaultKill.evidence.killedFaultIds = [];
 
   assert.throws(
     () => transitionClaim(missingFaultKill, 'assured', { knownTests }),
-    /assured.*killed fault|killed fault.*assured/i,
+    /authoritative assurance validation context/i,
   );
   assert.equal(missingFaultKill.status, 'incomplete');
 });
 
-test('should reject catalog runner mismatches with the referenced test path', () => {
+test('should reject caller-fabricated catalog contexts even when their tests look valid', () => {
   const mismatchedClaim = structuredClone(completeClaim);
   mismatchedClaim.sentinels[0].runner = 'playwright';
 
   assert.throws(
     () => validateCatalog([mismatchedClaim], { knownTests }),
-    /runner mismatch.*protocol\.spec\.test\.ts/i,
+    /authoritative assurance validation context/i,
   );
 });
 
@@ -52,7 +53,7 @@ test('should reject traceability node lists that drift from exact mappings', () 
   driftedGraph.tasks.push('11.99');
 
   assert.throws(
-    () => validateTraceability(driftedGraph, []),
+    () => validateTraceability(driftedGraph, loadTraceabilityAuthority(process.cwd())),
     /task list does not match exact mappings/i,
   );
 });
@@ -64,14 +65,16 @@ test('should require unique RED signatures and exact case, exit, and marker matc
       {
         id: 'foundation-red',
         caseId: 'ST-01',
-        expectedExit: 21,
+        observedChildExit: 1,
+        normalizedFailureExit: 21,
+        command: 'yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts',
         marker: 'EXACT_FAILURE_MARKER',
       },
     ],
   };
 
   assert.equal(
-    matchRedSignature(registry, 'ST-01', 'foundation-red', 21, 'EXACT_FAILURE_MARKER'),
+    matchRedSignature(registry, 'ST-01', 'foundation-red', 1, 'EXACT_FAILURE_MARKER'),
     true,
   );
   assert.throws(
@@ -85,5 +88,9 @@ test('should require unique RED signatures and exact case, exit, and marker matc
         signatures: [...registry.signatures, registry.signatures[0]],
       }),
     /duplicate.*foundation-red/i,
+  );
+  assert.throws(
+    () => matchRedSignature(registry, 'ST-01', 'foundation-red', 21, 'EXACT_FAILURE_MARKER'),
+    /child exit mismatch/i,
   );
 });

@@ -1,5 +1,4 @@
 import process from 'node:process';
-import { spawnSync } from 'node:child_process';
 
 import {
   assuranceCommandActions,
@@ -12,9 +11,11 @@ import {
 } from '../commands.js';
 import {
   AssuranceCleanupError,
+  AssuranceSetupError,
   renderFoundationReport,
   runFoundationValidation,
 } from './foundation-artifacts.js';
+import { runManagedChild } from './managed-child.js';
 
 /** Exit code used when a command's owning phase has not installed its handler yet. */
 const setupFailureExit = 30;
@@ -27,7 +28,8 @@ const timeoutExit = 70;
 
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
-  'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.spec.test.ts'],
+  'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
+  'assurance-signal-probe': ['test-harness/assurance/tests/signal-probe.impl.fixture.ts'],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -72,13 +74,8 @@ function reportUnavailable(action: (typeof assuranceCommandActions)[number]): vo
   process.exitCode = setupFailureExit;
 }
 
-/** Returns whether a child-process error carries one exact platform error code. */
-function errorHasCode(error: Error, expectedCode: string): boolean {
-  return 'code' in error && error.code === expectedCode;
-}
-
 /** Executes one registered internal Node test suite without passing input through a shell. */
-function runInternalTests(options: readonly string[]): void {
+async function runInternalTests(options: readonly string[]): Promise<void> {
   const normalizedOptions = options.length === 0 ? ['--select', 'assurance-governance'] : options;
   if (normalizedOptions.length !== 2 || normalizedOptions[0] !== '--select') {
     process.stderr.write(
@@ -95,28 +92,41 @@ function runInternalTests(options: readonly string[]): void {
     return;
   }
 
-  const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', ...selectedTests], {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    timeout: 120_000,
-    killSignal: 'SIGTERM',
-  });
+  const result = await runManagedChild(
+    process.execPath,
+    ['--import', 'tsx', '--test', ...selectedTests],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'inherit',
+      timeoutMilliseconds: 120_000,
+      terminationGraceMilliseconds: 2_000,
+      cleanup: () => undefined,
+    },
+  );
 
-  if (result.error !== undefined) {
-    process.stderr.write(`ASSURANCE_TEST_RUNNER_ERROR: ${result.error.message}\n`);
-    process.exitCode = errorHasCode(result.error, 'ETIMEDOUT') ? timeoutExit : setupFailureExit;
+  if (result.cleanupFailed) {
+    process.exitCode = 60;
     return;
   }
-  if (result.signal === 'SIGINT') {
+  if (result.forwardedSignal === 'SIGINT') {
     process.exitCode = 130;
     return;
   }
-  if (result.signal === 'SIGTERM') {
+  if (result.forwardedSignal === 'SIGTERM') {
     process.exitCode = 143;
     return;
   }
+  if (result.timedOut) {
+    process.exitCode = timeoutExit;
+    return;
+  }
+  if (result.setupFailed) {
+    process.exitCode = setupFailureExit;
+    return;
+  }
 
-  process.exitCode = result.status === 0 ? 0 : testFailureExit;
+  process.exitCode = result.code === 0 ? 0 : testFailureExit;
 }
 
 /** Returns a minimal diagnostic message without serializing an exception or stack. */
@@ -142,6 +152,11 @@ function runValidationCommand(options: readonly string[]): void {
       process.exitCode = 60;
       return;
     }
+    if (error instanceof AssuranceSetupError) {
+      process.stderr.write(`ASSURANCE_SETUP_FAILED: ${errorMessage(error)}\n`);
+      process.exitCode = setupFailureExit;
+      return;
+    }
     process.stderr.write(`ASSURANCE_VALIDATION_FAILED: ${errorMessage(error)}\n`);
     process.exitCode = testFailureExit;
   }
@@ -164,7 +179,7 @@ function runReportCommand(options: readonly string[]): void {
 }
 
 /** Runs the root dispatcher without interpreting untrusted input as code or shell syntax. */
-function main(arguments_: readonly string[]): void {
+async function main(arguments_: readonly string[]): Promise<void> {
   const [action, ...options] = arguments_;
 
   if (action === '--describe-all' && options.length === 0) {
@@ -183,7 +198,7 @@ function main(arguments_: readonly string[]): void {
     return;
   }
   if (action === 'test') {
-    runInternalTests(options);
+    await runInternalTests(options);
     return;
   }
   if (action === 'validate') {
@@ -198,4 +213,4 @@ function main(arguments_: readonly string[]): void {
   reportUnavailable(action);
 }
 
-main(process.argv.slice(2));
+await main(process.argv.slice(2));

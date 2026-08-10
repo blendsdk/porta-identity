@@ -1,7 +1,14 @@
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
-import { claimSchema, redSignatureRegistrySchema, traceabilitySchema } from '../schema.js';
+import {
+  claimSchema,
+  foundationManifestSchema,
+  redSignatureRegistrySchema,
+  testInventorySchema,
+  traceabilityAuthoritySchema,
+  traceabilitySchema,
+} from '../schema.js';
 
 /** Public options for resolving an allowlisted repository reference. */
 export interface RepositoryReferenceOptions {
@@ -15,10 +22,31 @@ export interface RepositoryReferenceOptions {
 interface KnownTest {
   /** Canonical repository-relative test path. */
   path: string;
-  /** Exact collected case names. */
-  cases: readonly string[];
+  /** Exact reviewed cases and their independent trust decisions. */
+  cases: readonly { name: string; trusted: boolean }[];
   /** Sole runner that owns the file. */
   runner: string;
+}
+
+/** Module-private identity set that prevents plain caller objects from authorizing transitions. */
+const loadedValidationContexts = new WeakSet<object>();
+
+/** Canonically loaded evidence and inventory used for claim validation. */
+export interface AssuranceValidationContext {
+  /** Reviewed test inventory loaded from its canonical repository path. */
+  readonly knownTests: readonly KnownTest[];
+  /** Validated owned-run manifest used as authoritative provenance. */
+  readonly manifest: ReturnType<typeof foundationManifestSchema.parse>;
+  /** Canonical repository root used to resolve sentinel paths. */
+  readonly repositoryRoot: string;
+}
+
+/** Canonical repository-relative files used to construct an assurance validation context. */
+export interface AssuranceValidationContextPaths {
+  /** Reviewed test inventory beneath `test-harness/assurance`. */
+  inventory: string;
+  /** Owned run manifest beneath `test-harness/.assurance-results`. */
+  manifest: string;
 }
 
 /** Returns whether an unknown value is a plain property record. */
@@ -26,22 +54,74 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Extracts only structurally valid known-test records from an untrusted context. */
-function readKnownTests(context: unknown): KnownTest[] {
-  if (!isRecord(context) || !Array.isArray(context.knownTests)) return [];
+/** Reads one JSON document while retaining its canonical path in parse failures. */
+function readJson(path: string): unknown {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new Error(`invalid assurance JSON: ${path}`, { cause: error });
+  }
+}
 
-  return context.knownTests.flatMap((candidate) => {
-    if (
-      !isRecord(candidate) ||
-      typeof candidate.path !== 'string' ||
-      typeof candidate.runner !== 'string' ||
-      !Array.isArray(candidate.cases) ||
-      !candidate.cases.every((caseName) => typeof caseName === 'string')
-    ) {
-      return [];
-    }
-    return [{ path: candidate.path, cases: candidate.cases, runner: candidate.runner }];
+/** Loads reviewed tests and an owned-run manifest through canonical repository boundaries. */
+export function loadAssuranceValidationContext(
+  repositoryRoot: string,
+  paths: AssuranceValidationContextPaths,
+): AssuranceValidationContext {
+  const canonicalRoot = realpathSync(repositoryRoot);
+  const inventoryPath = validateRepositoryReference(paths.inventory, {
+    repositoryRoot: canonicalRoot,
+    allowedRoot: 'test-harness/assurance',
   });
+  const manifestPath = validateRepositoryReference(paths.manifest, {
+    repositoryRoot: canonicalRoot,
+    allowedRoot: 'test-harness/.assurance-results',
+  });
+  const inventory = testInventorySchema.parse(readJson(resolve(canonicalRoot, inventoryPath)));
+  requireUnique(
+    inventory.tests.map((entry) => entry.path),
+    'test inventory path',
+  );
+  for (const entry of inventory.tests) {
+    validateRepositoryReference(entry.path, {
+      repositoryRoot: canonicalRoot,
+      allowedRoot: 'test-harness/assurance',
+    });
+    requireUnique(
+      entry.cases.map((caseRecord) => caseRecord.name),
+      `test inventory case for ${entry.path}`,
+    );
+  }
+  const manifest = foundationManifestSchema.parse(readJson(resolve(canonicalRoot, manifestPath)));
+  const manifestRunDirectory = manifestPath.split('/').at(-2);
+  if (manifestRunDirectory !== manifest.runId || manifest.status !== 'passed') {
+    throw new Error('owned-run manifest identity or status is not authoritative');
+  }
+  const context: AssuranceValidationContext = {
+    knownTests: inventory.tests,
+    manifest,
+    repositoryRoot: canonicalRoot,
+  };
+  loadedValidationContexts.add(context);
+  return context;
+}
+
+/** Requires the branded result of the canonical inventory/manifest loader. */
+function requireValidationContext(context: unknown): AssuranceValidationContext {
+  if (!isRecord(context) || !loadedValidationContexts.has(context)) {
+    throw new Error('authoritative assurance validation context is required');
+  }
+  return {
+    knownTests: testInventorySchema.parse({ version: 1, tests: context.knownTests }).tests,
+    manifest: foundationManifestSchema.parse(context.manifest),
+    repositoryRoot: zodString(context.repositoryRoot, 'validation repository root'),
+  };
+}
+
+/** Narrows one required string without trusting a caller-owned object shape. */
+function zodString(value: unknown, label: string): string {
+  if (typeof value !== 'string' || value.length === 0) throw new Error(`${label} is required`);
+  return value;
 }
 
 /** Rejects duplicate strings and names the first duplicated value. */
@@ -74,48 +154,99 @@ function requireExactNodeList(
 
 /** Validates a claim catalog and preserves its original records. */
 export function validateCatalog<T>(claims: readonly T[], context: unknown): T[] {
-  const parsedClaims = claims.map((claim) => claimSchema.parse(claim));
+  const parsedClaims = claims.map((claim) => {
+    try {
+      return claimSchema.parse(claim);
+    } catch (error) {
+      if (isRecord(claim) && claim.status === 'assured') {
+        throw new Error('cannot validate an invalid assured claim', { cause: error });
+      }
+      throw error;
+    }
+  });
   requireUnique(
     parsedClaims.map((claim) => claim.id),
     'claim identifier',
   );
 
-  const knownTests = readKnownTests(context);
-  if (knownTests.length > 0) {
-    for (const claim of parsedClaims) {
-      for (const sentinel of claim.sentinels) {
-        const knownTest = knownTests.find((candidate) => candidate.path === sentinel.test);
-        if (knownTest === undefined) {
-          throw new Error(`unknown sentinel test: ${sentinel.test}`);
-        }
-        if (!knownTest.cases.includes(sentinel.case)) {
-          throw new Error(`unknown sentinel case: ${sentinel.case}`);
-        }
-        if (knownTest.runner !== sentinel.runner) {
-          throw new Error(`runner mismatch for sentinel: ${sentinel.test}`);
-        }
+  const authoritativeContext = requireValidationContext(context);
+  for (const claim of parsedClaims) {
+    for (const sentinel of claim.sentinels) {
+      const canonicalTest = validateRepositoryReference(sentinel.test, {
+        repositoryRoot: authoritativeContext.repositoryRoot,
+        allowedRoot: 'test-harness/assurance',
+      });
+      const knownTest = authoritativeContext.knownTests.find(
+        (candidate) => candidate.path === canonicalTest,
+      );
+      if (knownTest === undefined) {
+        throw new Error(`unknown sentinel test: ${sentinel.test}`);
+      }
+      const knownCase = knownTest.cases.find((caseRecord) => caseRecord.name === sentinel.case);
+      if (knownCase === undefined) {
+        throw new Error(`unknown sentinel case: ${sentinel.case}`);
+      }
+      if (knownTest.runner !== sentinel.runner) {
+        throw new Error(`runner mismatch for sentinel: ${sentinel.test}`);
+      }
+      if (sentinel.trusted !== true || knownCase.trusted !== true) {
+        throw new Error(`sentinel is not reviewed and trusted: ${sentinel.case}`);
       }
     }
+    validateClaimState(claim, authoritativeContext);
   }
 
   return [...claims];
 }
 
 /** Requires the evidence needed before a claim may enter the assured state. */
-function requireAssuredEvidence(claim: Record<string, unknown>): void {
+function requireAssuredEvidence(
+  claim: Record<string, unknown>,
+  context: AssuranceValidationContext,
+): void {
   if (!Array.isArray(claim.gaps) || claim.gaps.length > 0) {
     throw new Error('cannot enter assured state while named gaps exist');
   }
   if (!isRecord(claim.evidence) || claim.evidence.current !== true) {
     throw new Error('cannot enter assured state with stale or missing evidence');
   }
+  if (claim.evidence.buildIdentity !== context.manifest.buildIdentity) {
+    throw new Error('cannot enter assured state with mismatched build provenance');
+  }
+  if (claim.evidence.fixtureIdentity !== context.manifest.fixtureIdentity) {
+    throw new Error('cannot enter assured state with mismatched fixture provenance');
+  }
   const results = claim.evidence.results;
   if (
     !Array.isArray(results) ||
     results.length === 0 ||
-    results.some((result) => !isRecord(result) || result.status !== 'passed')
+    results.some(
+      (result) =>
+        !isRecord(result) ||
+        result.status !== 'passed' ||
+        typeof result.command !== 'string' ||
+        !context.manifest.results.some(
+          (authoritativeResult) =>
+            authoritativeResult.command === result.command &&
+            authoritativeResult.status === result.status,
+        ),
+    )
   ) {
     throw new Error('cannot enter assured state without green verification results');
+  }
+  const commands = claim.evidence.commands;
+  if (
+    !Array.isArray(commands) ||
+    commands.length === 0 ||
+    !commands.every(
+      (command) =>
+        typeof command === 'string' &&
+        context.manifest.results.some(
+          (result) => result.command === command && result.status === 'passed',
+        ),
+    )
+  ) {
+    throw new Error('cannot enter assured state without authoritative command provenance');
   }
   const faultIds = claim.evidence.faultIds;
   const killedFaultIds = claim.evidence.killedFaultIds;
@@ -124,10 +255,21 @@ function requireAssuredEvidence(claim: Record<string, unknown>): void {
     faultIds.length === 0 ||
     !Array.isArray(killedFaultIds) ||
     killedFaultIds.length === 0 ||
-    !faultIds.every((faultId) => killedFaultIds.includes(faultId))
+    !faultIds.every(
+      (faultId) =>
+        killedFaultIds.includes(faultId) && context.manifest.killedFaultIds.includes(faultId),
+    )
   ) {
     throw new Error('cannot enter assured state without killed fault evidence');
   }
+}
+
+/** Applies status-dependent invariants to loaded and transitioned claim records alike. */
+function validateClaimState(
+  claim: ReturnType<typeof claimSchema.parse>,
+  context: AssuranceValidationContext,
+): void {
+  if (claim.status === 'assured') requireAssuredEvidence(claim, context);
 }
 
 /** Applies one validated claim-state transition. */
@@ -136,11 +278,6 @@ export function transitionClaim<T extends object>(
   nextStatus: string,
   context: unknown,
 ): T & { status: string } {
-  if (nextStatus === 'assured') {
-    if (!isRecord(claim)) throw new Error('cannot enter assured state with an invalid claim');
-    requireAssuredEvidence(claim);
-  }
-
   const transitioned = { ...claim, status: nextStatus };
   validateCatalog([transitioned], context);
   return transitioned;
@@ -259,22 +396,25 @@ function readStringArray(graph: Record<string, unknown>, property: string): stri
 }
 
 /** Validates a compact directed graph used by focused specification cases. */
-function validateDirectedTraceability(
-  graph: Record<string, unknown>,
-  knownClaimIds: ReadonlySet<string>,
-): void {
+export function validateDirectedTraceability<T>(graph: T, knownClaims: readonly unknown[]): T {
+  if (!isRecord(graph)) throw new Error('traceability graph must be an object');
+  const knownClaimIds = new Set(
+    knownClaims.flatMap((claim) =>
+      isRecord(claim) && typeof claim.id === 'string' ? [claim.id] : [],
+    ),
+  );
   const requirements = readStringArray(graph, 'requirements');
   const cases = readStringArray(graph, 'cases');
   const tasks = readStringArray(graph, 'tasks');
-  const claims = readStringArray(graph, 'claims');
-  for (const [label, nodes] of Object.entries({ requirements, cases, tasks, claims })) {
+  const claimNodes = readStringArray(graph, 'claims');
+  for (const [label, nodes] of Object.entries({ requirements, cases, tasks, claims: claimNodes })) {
     requireUnique(nodes, `traceability ${label}`);
   }
-  for (const claimId of claims) {
+  for (const claimId of claimNodes) {
     if (!knownClaimIds.has(claimId)) throw new Error(`unknown traceability claim: ${claimId}`);
   }
 
-  const nodes = new Set([...requirements, ...cases, ...tasks, ...claims]);
+  const nodes = new Set([...requirements, ...cases, ...tasks, ...claimNodes]);
   if (!Array.isArray(graph.edges)) throw new Error('traceability edges must be an array');
   for (const edge of graph.edges) {
     if (!isRecord(edge) || typeof edge.from !== 'string' || typeof edge.to !== 'string') {
@@ -283,53 +423,110 @@ function validateDirectedTraceability(
     if (!nodes.has(edge.from)) throw new Error(`unknown traceability node: ${edge.from}`);
     if (!nodes.has(edge.to)) throw new Error(`unknown traceability node: ${edge.to}`);
   }
+  return graph;
 }
 
-/** Validates requirement, case, task, and claim graph references. */
-export function validateTraceability<T>(traceability: T, claims: readonly unknown[]): T {
-  if (!isRecord(traceability)) throw new Error('traceability graph must be an object');
-  const knownClaimIds = new Set(
-    claims.flatMap((claim) => (isRecord(claim) && typeof claim.id === 'string' ? [claim.id] : [])),
-  );
-
-  if ('mappings' in traceability) {
-    const parsed = traceabilitySchema.parse(traceability);
-    requireUnique(parsed.requirements, 'traceability requirement');
-    requireUnique(parsed.cases, 'traceability case');
-    requireUnique(parsed.tasks, 'traceability task');
-    requireUnique(parsed.claims, 'traceability claim');
-    requireUnique(
-      parsed.mappings.map((mapping) => mapping.requirement),
-      'traceability mapping requirement',
-    );
-    requireUnique(
-      parsed.mappings.map((mapping) => mapping.claim),
-      'traceability mapping claim',
-    );
-    requireExactNodeList(
-      parsed.requirements,
-      parsed.mappings.map((mapping) => mapping.requirement),
-      'requirement',
-    );
-    requireExactNodeList(
-      parsed.cases,
-      uniqueInOrder(parsed.mappings.flatMap((mapping) => mapping.cases)),
-      'case',
-    );
-    requireExactNodeList(
-      parsed.tasks,
-      uniqueInOrder(parsed.mappings.flatMap((mapping) => mapping.tasks)),
-      'task',
-    );
-    requireExactNodeList(
-      parsed.claims,
-      parsed.mappings.map((mapping) => mapping.claim),
-      'claim',
-    );
-    return traceability;
+/** Reads exact Must identifiers from the authoritative requirement section of every RD. */
+function readMustRequirements(repositoryRoot: string): string[] {
+  const requirements: string[] = [];
+  for (let document = 1; document <= 7; document += 1) {
+    const matches = readFileSync(
+      resolve(
+        repositoryRoot,
+        `codeops/features/test-assurance/requirements/RD-0${document}-${
+          [
+            'assurance-governance-and-traceability',
+            'harness-foundation-and-fixtures',
+            'coverage-attribution-and-ratchets',
+            'functional-contracts-and-compatibility',
+            'security-risk-slice-assurance',
+            'fault-sensitivity-and-mutation',
+            'continuous-assurance-and-non-functional-requirements',
+          ][document - 1]
+        }.md`,
+      ),
+      'utf8',
+    )
+      .split('### Must Have')[1]
+      ?.split('### Should Have')[0]
+      ?.matchAll(/\*\*(R[1-7]\.[0-9]+) \([LMS]\)\*\*/gu);
+    if (matches === undefined) throw new Error(`missing Must section in RD-0${document}`);
+    requirements.push(...[...matches].map((match) => match[1]!));
   }
+  return requirements;
+}
 
-  validateDirectedTraceability(traceability, knownClaimIds);
+/** Loads independent traceability nodes and proves their Must inventory against the RDs. */
+export function loadTraceabilityAuthority(
+  repositoryRoot: string,
+): ReturnType<typeof traceabilityAuthoritySchema.parse> {
+  const canonicalRoot = realpathSync(repositoryRoot);
+  const authority = traceabilityAuthoritySchema.parse(
+    readJson(resolve(canonicalRoot, 'test-harness/assurance/traceability-nodes.json')),
+  );
+  requireUnique(
+    authority.requirements.map((entry) => entry.id),
+    'authoritative requirement',
+  );
+  requireUnique(authority.cases, 'authoritative case');
+  requireUnique(authority.tasks, 'authoritative task');
+  requireUnique(authority.claims, 'authoritative claim');
+  requireExactNodeList(
+    authority.requirements.map((entry) => entry.id),
+    readMustRequirements(canonicalRoot),
+    'authoritative Must requirement',
+  );
+  return authority;
+}
+
+/** Validates exact mappings against an independent node and source-clause inventory. */
+export function validateTraceability<T>(traceability: T, authorityInput: unknown): T {
+  const parsed = traceabilitySchema.parse(traceability);
+  const authority = traceabilityAuthoritySchema.parse(authorityInput);
+  requireUnique(
+    parsed.mappings.map((mapping) => mapping.requirement),
+    'traceability mapping requirement',
+  );
+  requireUnique(
+    parsed.mappings.map((mapping) => mapping.claim),
+    'traceability mapping claim',
+  );
+  requireExactNodeList(
+    parsed.requirements,
+    parsed.mappings.map((mapping) => mapping.requirement),
+    'requirement',
+  );
+  requireExactNodeList(
+    parsed.cases,
+    uniqueInOrder(parsed.mappings.flatMap((mapping) => mapping.cases)),
+    'case',
+  );
+  requireExactNodeList(
+    parsed.tasks,
+    uniqueInOrder(parsed.mappings.flatMap((mapping) => mapping.tasks)),
+    'task',
+  );
+  requireExactNodeList(
+    parsed.claims,
+    parsed.mappings.map((mapping) => mapping.claim),
+    'claim',
+  );
+  requireExactNodeList(
+    parsed.requirements,
+    authority.requirements.map((entry) => entry.id),
+    'authority requirement',
+  );
+  requireExactNodeList(parsed.cases, authority.cases, 'authority case');
+  requireExactNodeList(parsed.tasks, authority.tasks, 'authority task');
+  requireExactNodeList(parsed.claims, authority.claims, 'authority claim');
+  for (const mapping of parsed.mappings) {
+    const authoritativeRequirement = authority.requirements.find(
+      (entry) => entry.id === mapping.requirement,
+    );
+    if (authoritativeRequirement?.sourceClause !== mapping.sourceClause) {
+      throw new Error(`traceability source clause mismatch: ${mapping.requirement}`);
+    }
+  }
   return traceability;
 }
 
@@ -355,8 +552,8 @@ export function matchRedSignature(
   const signature = parsed.signatures.find((candidate) => candidate.id === signatureId);
   if (signature === undefined) throw new Error(`unregistered RED signature: ${signatureId}`);
   if (signature.caseId !== caseId) throw new Error(`RED signature case mismatch: ${caseId}`);
-  if (signature.expectedExit !== exitCode)
-    throw new Error(`RED signature exit mismatch: ${exitCode}`);
+  if (signature.observedChildExit !== exitCode)
+    throw new Error(`RED signature child exit mismatch: ${exitCode}`);
   if (!output.includes(signature.marker))
     throw new Error(`RED signature marker missing: ${signature.marker}`);
   return true;
