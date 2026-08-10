@@ -1,6 +1,6 @@
 # Ambiguity Register: Porta Test Assurance Program
 
-> **Status**: ✅ GATE PASSED — all 30 items resolved
+> **Status**: ✅ GATE PASSED — all 31 items resolved
 > **Created**: 2026-08-09
 > **Root Invocation ID**: `AD-TA-20260809-1421`
 > **Auto-Design Policy**: 1
@@ -45,6 +45,7 @@ Porta product contract.
 | 28  | CI authority     | What may this plan change?                       | Observation baselines and a concrete non-enforcing workflow proposal only; adoption requires a separate authorized policy/workflow task                                                                          | User           | ✅     |
 | 29  | Command model    | Where is the exact command contract defined?     | A root-owned `test-harness/assurance/commands.ts` module is the single typed source for aliases, selectors, prerequisites, timeouts, artifacts, exit precedence, signals, cleanup, and `assurance:all` composition | AI (runtime)   | ✅     |
 | 30  | Static boundary  | How are RED specs checked before runtime modules exist? | A dedicated root-owned assurance TypeScript/ESLint project checks specs against declaration-only planned interfaces; runtime `.ts` files remain absent until their implementation tasks | AI (runtime)   | ✅     |
+| 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -165,3 +166,24 @@ reversible tooling boundary. **Policy version**: 1. **Root invocation ID**:
 `AD-TA-EXEC-20260810-P1`. **Reopen triggers**: legacy harness typing becomes clean and enters the
 required lane, or runtime modules cannot implement the declared boundary without changing the
 independent specification.
+
+### AR-31 — Fail-closed alias bootstrap
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: reversible command-dispatch
+mechanism inside the approved frozen alias surface; it changes no product behavior, acceptance
+criterion, CI lane, or external policy. **Objective**: make every root alias discoverable and
+machine-checkable now without manufacturing successful assurance evidence before later phases
+install their handlers. **Decision**: route all aliases through one allowlisted dispatcher; exact
+`--help` and machine-readable contract inspection succeed without side effects, while normal
+execution without an installed handler exits as `setup-failure` with a stable marker. **Evidence**:
+Phase 1 owns the full command schema, but lifecycle, coverage, faults, packed clients, and campaign
+handlers are explicitly delivered by later phases. **Rejected alternatives**: placeholder success
+would create false evidence; missing scripts would leave the frozen root contract unverifiable;
+eagerly implementing later handlers would violate task ordering and phase scope. **Strongest
+counterargument**: callers cannot yet complete a real campaign through most aliases. **Confidence**:
+High — failure is explicit, deterministic, and replaced only by each handler's owning task.
+**Hardening**: forced reframing found fail-closed registration to be the only option preserving
+both honest evidence and phase ordering; independent challenge was unnecessary for this local,
+reversible bootstrap. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260810-P1`. **Reopen triggers**: a later handler cannot retain the shared dispatcher
+or an alias can produce evidence before its prerequisites and implementation are installed.

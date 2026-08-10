@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 13:32
-> **Progress**: 3/92 tasks (3%)
+> **Last Updated**: 2026-08-10 13:59
+> **Progress**: 4/92 tasks (4%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -142,7 +142,7 @@ text, but it cannot substitute another command for this binding.
       harness TypeScript/ESLint/static boundary without a harness package manifest or root Vitest.
       Verify dependency/structure contracts with `yarn test:structure` and `yarn verify`; the
       missing implementation signature remains the only internal-spec failure.
-- [ ] 1.4 Implement and document exact root aliases: `assurance:test`, `assurance:red`,
+- [x] 1.4 Implement and document exact root aliases: `assurance:test`, `assurance:red`, ✅ (completed: 2026-08-10 13:59)
       `assurance:baseline`, `assurance:validate`, `assurance:harness`, `assurance:coverage`, `assurance:fault`,
       `assurance:compat`, `assurance:report`, `assurance:stability`, and `assurance:all`, including
       selectors, prerequisites, timeouts, exit taxonomy, artifacts, and signal/recovery behavior.
