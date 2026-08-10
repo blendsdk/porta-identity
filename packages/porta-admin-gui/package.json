@@ -61,7 +61,7 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.10"
   },
   "resolutions": {
     "@types/koa": "3.0.3"
