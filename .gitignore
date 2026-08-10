@@ -9,6 +9,7 @@ scripts/tmp-*
 test-results/
 playwright-report/
 test-harness/.harness-pids
+test-harness/.assurance-results/
 
 # Internal planning & requirements (not for public repo)
 requirements/

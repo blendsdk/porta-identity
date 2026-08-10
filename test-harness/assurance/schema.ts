@@ -179,3 +179,17 @@ export const traceabilitySchema = z.object({
   claims: z.array(claimIdSchema).min(1),
   mappings: z.array(traceabilityMappingSchema).min(1),
 });
+
+/** One exact, non-regex failure marker accepted as RED evidence. */
+export const redSignatureSchema = z.object({
+  id: manifestIdSchema,
+  caseId: specificationIdSchema,
+  expectedExit: z.number().int().min(1).max(255),
+  marker: nonEmptyTextSchema,
+});
+
+/** Versioned registry of exact RED signatures. */
+export const redSignatureRegistrySchema = z.object({
+  version: z.literal(1),
+  signatures: z.array(redSignatureSchema).min(1),
+});

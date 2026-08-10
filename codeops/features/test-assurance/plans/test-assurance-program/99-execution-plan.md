@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 14:15
-> **Progress**: 5/92 tasks (5%)
+> **Last Updated**: 2026-08-10 14:41
+> **Progress**: 6/92 tasks (7%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -151,7 +151,7 @@ text, but it cannot substitute another command for this binding.
 - [x] 1.5 Implement typed claim/result/gap/fault/slice-profile schemas and the machine-checked ✅ (completed: 2026-08-10 14:15)
       requirement→case→task→claim graph; reject incomplete actor/action/resource/result, trust,
       log, recovery, source, or provenance fields.
-- [ ] 1.6 Implement canonical path/reference validation, RED signature registration, deterministic
+- [x] 1.6 Implement canonical path/reference validation, RED signature registration, deterministic ✅ (completed: 2026-08-10 14:41)
       JSON/Markdown rendering, and pre-write redaction with adversarial canaries.
 - [ ] 1.7 Run ST-01–ST-08 green; add `*.impl.test.ts` cases for diagnostics, transitions,
       collection boundaries, path safety, command taxonomy, and renderer determinism.

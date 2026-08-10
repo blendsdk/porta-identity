@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "signatures": [
+    {
+      "id": "assurance-foundation-missing",
+      "caseId": "ST-01",
+      "expectedExit": 21,
+      "marker": "ASSURANCE_FOUNDATION_MISSING"
+    }
+  ]
+}
