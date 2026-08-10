@@ -15,9 +15,9 @@
     "dev": "tsx watch packages/server/src/index.ts",
     "start": "node packages/server/dist/index.js",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
-    "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix",
+    "typecheck": "node_modules/@typescript/native/bin/tsc --project test-harness/tsconfig.assurance.json --noEmit && turbo run typecheck",
+    "lint": "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' && turbo run lint",
+    "lint:fix": "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' --fix && turbo run lint:fix",
     "test": "turbo run test",
     "test:all": "yarn workspace @portaidentity/server test:all && yarn workspace @portaidentity/sdk test && yarn workspace @portaidentity/cli test",
     "test:unit": "yarn workspace @portaidentity/server test:unit",
@@ -51,13 +51,18 @@
     "deps:update": "ncu -u --root --workspaces -x \"@portaidentity/*\" && rm -rf node_modules yarn.lock && yarn install && yarn verify"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@koa/router": "^15.7.0",
     "@playwright/test": "1.62.1",
     "@types/koa": "^3.0.3",
     "@types/koa-session": "^6.4.5",
     "@types/koa-static": "^4.0.4",
     "@types/koa__router": "^12.0.5",
+    "@types/node": "26.2.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "dotenv": "17.4.2",
+    "eslint": "10.8.1",
+    "eslint-config-prettier": "10.1.8",
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
     "koa-static": "^5.0.0",
@@ -69,8 +74,10 @@
     "sirv-cli": "^3.0.1",
     "tsx": "4.23.11",
     "turbo": "^2.10.9",
+    "typescript-eslint": "8.66.0",
     "vitepress": "1.6.4",
-    "vitepress-plugin-mermaid": "2.0.17"
+    "vitepress-plugin-mermaid": "2.0.17",
+    "zod": "4.4.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

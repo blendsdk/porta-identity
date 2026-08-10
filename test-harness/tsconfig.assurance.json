@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["assurance/**/*.ts"],
+  "exclude": ["node_modules", ".assurance-results"]
+}

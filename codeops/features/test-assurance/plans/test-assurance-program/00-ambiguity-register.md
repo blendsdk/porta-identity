@@ -1,6 +1,6 @@
 # Ambiguity Register: Porta Test Assurance Program
 
-> **Status**: ✅ GATE PASSED — all 29 items resolved
+> **Status**: ✅ GATE PASSED — all 30 items resolved
 > **Created**: 2026-08-09
 > **Root Invocation ID**: `AD-TA-20260809-1421`
 > **Auto-Design Policy**: 1
@@ -44,6 +44,7 @@ Porta product contract.
 | 27  | Reliability math | What does 100-run `<1%` mean?                    | 100 consecutive completed runs with zero flakes; invalid/incomplete runs restart the sequence and retries stay visible                                                                                           | User           | ✅     |
 | 28  | CI authority     | What may this plan change?                       | Observation baselines and a concrete non-enforcing workflow proposal only; adoption requires a separate authorized policy/workflow task                                                                          | User           | ✅     |
 | 29  | Command model    | Where is the exact command contract defined?     | A root-owned `test-harness/assurance/commands.ts` module is the single typed source for aliases, selectors, prerequisites, timeouts, artifacts, exit precedence, signals, cleanup, and `assurance:all` composition | AI (runtime)   | ✅     |
+| 30  | Static boundary  | How are RED specs checked before runtime modules exist? | A dedicated root-owned assurance TypeScript/ESLint project checks specs against declaration-only planned interfaces; runtime `.ts` files remain absent until their implementation tasks | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -142,3 +143,25 @@ independent challenge was not required because this is reversible internal plumb
 approved design. **Policy version**: 1. **Root invocation ID**: `AD-TA-EXEC-20260810-P1`.
 **Reopen triggers**: command definitions move to a generated schema, aliases cease sharing one
 dispatcher, or another consumer requires a language-neutral contract.
+
+### AR-30 — Assurance-only static project during RED
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: reversible test-tooling design
+inside the approved root-owned harness boundary; no product, CI, or acceptance behavior changes.
+**Objective**: typecheck and lint the isolated specification tests while their runtime modules are
+intentionally absent, without pulling unrelated dormant SPA/BFF typing defects into this phase.
+**Decision**: use `test-harness/tsconfig.assurance.json` and the root harness ESLint configuration
+for `test-harness/assurance/**/*.ts`; declaration-only files describe the already-specified public
+interfaces until the matching runtime TypeScript files replace them. **Evidence**: the existing
+`test-harness/tsconfig.json` covers legacy BFF/browser files that currently fail TypeScript 7 for
+unrelated arithmetic, unknown-data, and NodeNext-extension issues, while the execution phase is
+strictly scoped to `test-harness/assurance/`. **Rejected alternatives**: fixing legacy harness
+typing expands scope; excluding the RED specs defeats the static boundary; creating runtime stubs
+would make the missing-foundation oracle dishonest. **Strongest counterargument**: declarations
+can drift from later implementations. **Confidence**: High — Task 1.7 typechecks declarations and
+implementations together, making drift a hard error. **Hardening**: the design preserves both the
+RED runtime absence and static completeness; no independent challenge was needed for this local,
+reversible tooling boundary. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260810-P1`. **Reopen triggers**: legacy harness typing becomes clean and enters the
+required lane, or runtime modules cannot implement the declared boundary without changing the
+independent specification.

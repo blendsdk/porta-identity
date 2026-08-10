@@ -119,6 +119,7 @@ export function registerGovernanceCases(
         assert.match(String(error), /vacuous|untrusted|exact assertion/i);
         continue;
       }
+      assert.ok(assessment, 'a non-throwing sentinel assessment must return a result');
       assert.equal(assessment.trusted, false);
     }
   });

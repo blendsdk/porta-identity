@@ -11,6 +11,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["scripts/**/*", "bff/**/*", "tests/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["scripts/**/*.ts", "bff/**/*.ts", "tests/**/*.ts", "assurance/**/*.ts"],
+  "exclude": ["node_modules", ".assurance-results"]
 }

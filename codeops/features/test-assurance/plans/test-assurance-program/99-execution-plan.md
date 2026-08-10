@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 13:13
-> **Progress**: 2/92 tasks (2%)
+> **Last Updated**: 2026-08-10 13:32
+> **Progress**: 3/92 tasks (3%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -138,7 +138,7 @@ text, but it cannot substitute another command for this binding.
         pentest on different comparisons; isolated attempts then failed another comparison and
         passed 5/5 unchanged. Five remaining stale Vitest workers exited cleanly after exact-PID
         SIGTERM with user confirmation that no legitimate JSVision tests were running.
-- [ ] 1.3 Add direct root development dependencies used by harness tooling, including Zod; add the
+- [x] 1.3 Add direct root development dependencies used by harness tooling, including Zod; add the ✅ (completed: 2026-08-10 13:32)
       harness TypeScript/ESLint/static boundary without a harness package manifest or root Vitest.
       Verify dependency/structure contracts with `yarn test:structure` and `yarn verify`; the
       missing implementation signature remains the only internal-spec failure.

@@ -142,13 +142,28 @@ test('should start development and production server entry points directly', () 
   );
 });
 
-// Aggregate tasks remain thin Turbo entry points and verification keeps structure checks first.
-test('should delegate aggregate build, typecheck, lint, test, and verify tasks to Turbo', () => {
+// Package tasks remain Turbo-owned while root static checks also cover the non-workspace harness.
+test('should delegate package tasks to Turbo and statically check the retained harness', () => {
   const scripts = readRootManifest().scripts ?? {};
 
-  for (const turboTask of ['build', 'typecheck', 'lint', 'lint:fix', 'test']) {
+  for (const turboTask of ['build', 'test']) {
     assertScriptEquals(scripts, turboTask, `turbo run ${turboTask}`);
   }
+  assertScriptEquals(
+    scripts,
+    'typecheck',
+    'node_modules/@typescript/native/bin/tsc --project test-harness/tsconfig.assurance.json --noEmit && turbo run typecheck',
+  );
+  assertScriptEquals(
+    scripts,
+    'lint',
+    "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' && turbo run lint",
+  );
+  assertScriptEquals(
+    scripts,
+    'lint:fix',
+    "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' --fix && turbo run lint:fix",
+  );
   assertScriptEquals(scripts, 'test:structure', 'node --test repo-tests/monorepo/*.test.mjs');
   assertScriptEquals(scripts, 'verify', 'yarn test:structure && turbo run verify');
   assertScriptEquals(scripts, 'format', 'prettier --write .');
