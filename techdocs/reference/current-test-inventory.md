@@ -1,17 +1,20 @@
 # Current Test Inventory
 
-> **Snapshot date**: 2026-08-09
+> **Snapshot date**: 2026-08-10
 > **Scope**: All test projects executed by the branch CI workflow
 > **Purpose**: Describe what the current suite exercises before any test-trust audit or rewrite
 
 ## Executive Summary
 
-Porta has **325 configured test files containing 4,307 currently collected test cases**. The often
+Porta has **328 branch-CI test files containing 4,315 currently collected test cases**. The often
 quoted “3K+” figure covers only the server's Vitest projects. The complete branch-CI surface also
-contains SDK, CLI, browser, external OIDC harness, and repository-structure tests.
+contains SDK, CLI, browser, external OIDC harness, and repository-structure tests. Six additional
+root-owned assurance-internal files contain 53 cases and run through `yarn assurance:test`; they
+remain outside the required branch lane until separately authorized.
 
 The repository contains a substantial test investment: **74,916 lines of test code** compared with
-**47,784 lines of TypeScript production source** across the server, SDK, and CLI. Most cases are
+**47,784 lines of TypeScript production source** across the server, SDK, and CLI. The branch-CI
+files account for 75,161 lines of test code; assurance-internal tests add another 1,629 lines. Most cases are
 isolated unit tests. Real PostgreSQL, Redis, MailHog, HTTP server, browser, and external-client
 layers are also present.
 
@@ -30,8 +33,8 @@ test has an independent or sufficiently strict oracle.
 | SDK unit              |      31 |       404 |      5,875 | SDK behavior with mock transports                         | Yes, through `yarn verify`  |
 | CLI unit              |      29 |       355 |      6,032 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
 | External OIDC harness |       6 |         6 |        203 | Dockerized SPA and BFF clients using Porta over HTTP/TLS  | Yes, separate `harness` job |
-| Repository structure  |      11 |        60 |      2,599 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
-| **Total**             | **325** | **4,307** | **74,916** | —                                                         | **Yes**                     |
+| Repository structure  |      14 |        68 |      2,844 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
+| **Total**             | **328** | **4,315** | **75,161** | —                                                         | **Yes**                     |
 
 Case counts were collected through Vitest's runtime collector, Playwright's `--list` mode, and a
 fresh `yarn test:structure` run. Parameterized server tests explain the difference between 3,239
@@ -39,14 +42,15 @@ static declarations and 3,348 runtime-collected server cases.
 
 ## Execution Topology
 
-| Command or job      | What it executes                                                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`       | 60 structure tests, all 3,348 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
-| `yarn test:ui`      | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
-| `yarn harness:test` | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
-| CI `verify` job     | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
-| CI `ui` job         | Builds packages and runs the Playwright UI suite                                                                      |
-| CI `harness` job    | Runs the independently packaged OIDC harness                                                                          |
+| Command or job                                      | What it executes                                                                                                      |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `yarn verify`                                       | 68 structure tests, all 3,348 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
+| `yarn assurance:test --select assurance-governance` | 53 root-owned foundation specification and implementation cases; intentionally separate from branch CI                |
+| `yarn test:ui`                                      | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
+| `yarn harness:test`                                 | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
+| CI `verify` job                                     | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
+| CI `ui` job                                         | Builds packages and runs the Playwright UI suite                                                                      |
+| CI `harness` job                                    | Runs the independently packaged OIDC harness                                                                          |
 
 The branch workflow therefore executes every suite in this inventory. UI and harness coverage are
 not part of the local `yarn verify` command; they are separate CI jobs.
@@ -193,7 +197,8 @@ of the published integration boundary than server-internal helpers do.
 
 ## Repository-Structure Tests
 
-The **60 structure tests** protect the migration result rather than Porta's product behavior. They
+The **68 structure tests** protect the migration result and assurance boundary rather than Porta's
+product behavior. They
 cover:
 
 - workspace membership, package boundaries, and dependency topology;
@@ -204,6 +209,19 @@ cover:
 - CI loopback DNS and TLS certificate configuration;
 - TypeScript version alignment and dependency-maintenance commands;
 - removal of retired playgrounds, obsolete wrappers, and obsolete guidance.
+
+## Assurance Foundation
+
+The root-owned assurance suite adds immutable requirement-derived specifications and separate
+implementation diagnostics without creating another workspace or test framework. Its current 53
+cases validate typed claim/evidence records, exact traceability, canonical path and inventory
+ownership, command/exit contracts, clean committed-source provenance, secret and personal-data
+redaction, deterministic reports, and bounded descendant cleanup after signals or timeouts.
+
+Passing these foundation cases does not make a Porta behavior claim assured. A claim can transition
+to `assured` only when its canonical sentinels and exact owned result/fault artifacts match a clean
+committed tree and it has no named gaps. Black-box behavioral evidence is delivered by later
+assurance phases.
 
 ## Cross-Layer Product Coverage
 

@@ -235,3 +235,26 @@ root causes; the single re-review must confirm the correction diff. **Policy ver
 invocation ID**: `AD-TA-EXEC-20260810-P1-QG`. **Reopen triggers**: validation context becomes
 caller-constructible, source-tree cleanliness is relaxed, a specification changes after this
 checkpoint, or a command introduces a child outside managed process-group ownership.
+
+### AR-34 — Residual correction after the single Phase 1 re-review
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: mandatory technical fixes for
+open and newly identified Major findings in the single permitted re-review; no finding is waived,
+dismissed, or moved outside the approved Phase 1 scope. **Objective**: ensure a caller cannot mutate
+loaded authority, fabricate a manifest, synchronize a wrong trace source, or leave a resistant
+descendant after the direct child exits. **Decision**: return an opaque frozen validation token
+backed by a module-private snapshot; re-derive commit/tree/tool/definition identities and exact
+result/fault summaries before branding a manifest; derive `RD-0N#RN.X` from the requirement ID;
+and keep bounded TERM/KILL escalation active until the whole process group is absent, treating a
+survivor as cleanup failure. **Rejected alternatives**: freezing caller-visible nested objects
+still exposes authority for replacement; trusting manifest summaries repeats the original
+caller-assertion defect; comparing two mutable trace files cannot ground either; cancelling group
+escalation on direct-child close leaks descendants. **Strongest counterargument**: provenance
+recomputation makes valid fixture setup and assurance loading more expensive. The cost is bounded
+and occurs at an explicit assurance boundary where false attribution is materially worse.
+**Confidence**: High. **Hardening**: the independent re-review supplied concrete exploits for the
+mutable-context and descendant cases; final corrections are covered by focused adversarial tests
+and full verification. A third review is forbidden by the quality profile. **Policy version**: 1.
+**Root invocation ID**: `AD-TA-EXEC-20260810-P1-QG-RR`. **Reopen triggers**: an authority snapshot
+becomes caller-visible, manifest summaries are accepted without exact artifacts/current-tree
+checks, source clauses cease to be derived, or group-absence verification is removed.

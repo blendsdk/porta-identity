@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-08-09
+> **Last Updated**: 2026-08-10
 
 ## Overview
 
@@ -260,7 +260,8 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## ADR-014: Independent Test Assurance
 
-**Status**: Proposed. This records approved design intent; implementation has not started.
+**Status**: Proposed. The governance foundation is implemented; the full assurance program remains
+in progress, so this decision is not yet promoted to Accepted.
 
 **Context**: Porta has broad automated test coverage, but most tests were written after the
 implementation and many isolate dependencies with mocks. Passing tests and line coverage show that
@@ -279,6 +280,12 @@ Normal verification remains the fast development gate. Expensive fault campaigns
 coverage ratchets stay in separate staged lanes until reproducibility and flake evidence justify
 promotion. Findings that require product changes are reproduced and routed to separately authorized
 work; the assurance program does not silently change product behavior.
+
+The implemented foundation now provides root-owned typed claim/evidence schemas, exact
+requirement-to-case-to-task-to-claim validation, immutable specification boundaries, canonical
+test inventory, clean-tree provenance, sanitized owner-only evidence, and managed child-process
+cleanup. Later phases still own lifecycle fencing, black-box risk slices, attributable runtime
+coverage, curated faults, packed clients, and reliability qualification.
 
 **Consequences**:
 
