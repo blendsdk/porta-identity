@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 13:59
-> **Progress**: 4/92 tasks (4%)
+> **Last Updated**: 2026-08-10 14:15
+> **Progress**: 5/92 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -148,7 +148,7 @@ text, but it cannot substitute another command for this binding.
       selectors, prerequisites, timeouts, exit taxonomy, artifacts, and signal/recovery behavior.
       Verify the frozen command schema with `yarn test:structure` and `yarn verify` before invoking
       an alias that depends on later implementation.
-- [ ] 1.5 Implement typed claim/result/gap/fault/slice-profile schemas and the machine-checked
+- [x] 1.5 Implement typed claim/result/gap/fault/slice-profile schemas and the machine-checked ✅ (completed: 2026-08-10 14:15)
       requirement→case→task→claim graph; reject incomplete actor/action/resource/result, trust,
       log, recovery, source, or provenance fields.
 - [ ] 1.6 Implement canonical path/reference validation, RED signature registration, deterministic

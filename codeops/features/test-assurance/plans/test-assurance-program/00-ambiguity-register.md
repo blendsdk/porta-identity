@@ -1,6 +1,6 @@
 # Ambiguity Register: Porta Test Assurance Program
 
-> **Status**: ✅ GATE PASSED — all 31 items resolved
+> **Status**: ✅ GATE PASSED — all 32 items resolved
 > **Created**: 2026-08-09
 > **Root Invocation ID**: `AD-TA-20260809-1421`
 > **Auto-Design Policy**: 1
@@ -46,6 +46,7 @@ Porta product contract.
 | 29  | Command model    | Where is the exact command contract defined?     | A root-owned `test-harness/assurance/commands.ts` module is the single typed source for aliases, selectors, prerequisites, timeouts, artifacts, exit precedence, signals, cleanup, and `assurance:all` composition | AI (runtime)   | ✅     |
 | 30  | Static boundary  | How are RED specs checked before runtime modules exist? | A dedicated root-owned assurance TypeScript/ESLint project checks specs against declaration-only planned interfaces; runtime `.ts` files remain absent until their implementation tasks | AI (runtime)   | ✅     |
 | 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
+| 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -187,3 +188,26 @@ both honest evidence and phase ordering; independent challenge was unnecessary f
 reversible bootstrap. **Policy version**: 1. **Root invocation ID**:
 `AD-TA-EXEC-20260810-P1`. **Reopen triggers**: a later handler cannot retain the shared dispatcher
 or an alias can produce evidence before its prerequisites and implementation are installed.
+
+### AR-32 — Progressive foundation collection
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal test-collection and
+sequencing mechanism within the approved immutable specification suite; it changes no oracle,
+product behavior, acceptance criterion, or phase scope. **Objective**: let Tasks 1.5 and 1.6 each
+run the required `assurance-foundation` selector after their own implementation while preserving
+the already-recorded global RED evidence. **Decision**: use one permanent suite wrapper that first
+registers the pre-authored schema cases, then adds the pre-authored evidence/path cases when their
+owning runtime modules exist. The wrapper contains collection only and no expected behavior.
+**Evidence**: the original RED loader intentionally waits for every foundation file, while the
+execution contract requires the same targeted selector to pass after each sequential component
+task. **Rejected alternatives**: committing both implementations atomically would violate the
+per-task checkpoint contract; conditional test skipping would create vacuous evidence; writing new
+implementation-derived assertions would violate the immutable-oracle rule. **Strongest
+counterargument**: the umbrella selector's collected case count grows once during foundation
+assembly. **Confidence**: High — every collected assertion existed before implementation and the
+final governance suite re-collects the complete immutable loader. **Hardening**: forced reframing
+found collection-only composition to be the sole option that preserves RED provenance, task
+verification, and oracle immutability; independent challenge was unnecessary for this reversible
+test-runner mechanism. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260810-P1`. **Reopen triggers**: a wrapper introduces expected values, skips a
+registered case, or the final complete loader does not collect the same case implementations.
