@@ -211,3 +211,27 @@ verification, and oracle immutability; independent challenge was unnecessary for
 test-runner mechanism. **Policy version**: 1. **Root invocation ID**:
 `AD-TA-EXEC-20260810-P1`. **Reopen triggers**: a wrapper introduces expected values, skips a
 registered case, or the final complete loader does not collect the same case implementations.
+
+### AR-33 — Phase 1 quality-gate correction boundary
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: in-scope technical corrections
+required by the independent phase reviewers; no product, workflow, policy, or acceptance decision
+changes. **Objective**: prevent foundation tooling from manufacturing assurance through mutable
+oracles, caller-asserted evidence, incomplete traceability, dirty source, retained personal data,
+or orphaned child processes. **Decision**: separate requirement-derived root specifications from
+implementation diagnostics; use a canonical reviewed test inventory and owned-run manifest loaded
+through module-private context identity; validate mappings against an independent Must/node/source
+inventory; record raw and normalized RED exits separately; require a clean committed worktree and
+content digests before passing evidence; redact and scan personal data before persistence; and run
+children in signal-forwarding process groups with bounded termination. **Rejected alternatives**:
+waiving post-implementation spec edits, accepting optional inventory context, trusting `current:
+true`, treating the graph's derived nodes as its own completeness proof, attributing dirty runs to
+HEAD, retaining PII for diagnostics, or allowing the dispatcher to exit before descendants.
+**Strongest counterargument**: clean-tree evidence cannot be generated before the correcting commit.
+This is intentional: code verification runs before commit, while attributable ignored evidence is
+generated from the clean committed revision immediately afterward. **Confidence**: High.
+**Hardening**: independent correctness and security reviewers converged on the same false-assurance
+root causes; the single re-review must confirm the correction diff. **Policy version**: 1. **Root
+invocation ID**: `AD-TA-EXEC-20260810-P1-QG`. **Reopen triggers**: validation context becomes
+caller-constructible, source-tree cleanliness is relaxed, a specification changes after this
+checkpoint, or a command introduces a child outside managed process-group ownership.

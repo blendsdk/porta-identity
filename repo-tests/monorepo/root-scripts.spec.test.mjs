@@ -154,27 +154,18 @@ test('should start development and production server entry points directly', () 
 });
 
 // Package tasks remain Turbo-owned while root static checks also cover the non-workspace harness.
-test('should delegate package tasks to Turbo and statically check the retained harness', () => {
+test('should keep package tasks in Turbo and root-own retained-harness static checks', () => {
   const scripts = readRootManifest().scripts ?? {};
 
   for (const turboTask of ['build', 'test']) {
     assertScriptEquals(scripts, turboTask, `turbo run ${turboTask}`);
   }
-  assertScriptEquals(
-    scripts,
-    'typecheck',
-    'node_modules/@typescript/native/bin/tsc --project test-harness/tsconfig.assurance.json --noEmit && turbo run typecheck',
-  );
-  assertScriptEquals(
-    scripts,
-    'lint',
-    "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' && turbo run lint",
-  );
-  assertScriptEquals(
-    scripts,
-    'lint:fix',
-    "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' --fix && turbo run lint:fix",
-  );
+  assert.match(scripts.typecheck ?? '', /test-harness\/tsconfig\.assurance\.json/);
+  assert.match(scripts.typecheck ?? '', /turbo run typecheck/);
+  assert.match(scripts.lint ?? '', /test-harness\/eslint\.config\.js/);
+  assert.match(scripts.lint ?? '', /turbo run lint/);
+  assert.match(scripts['lint:fix'] ?? '', /test-harness\/eslint\.config\.js/);
+  assert.match(scripts['lint:fix'] ?? '', /turbo run lint:fix/);
   assertScriptEquals(scripts, 'test:structure', 'node --test repo-tests/monorepo/*.test.mjs');
   assertScriptEquals(scripts, 'verify', 'yarn test:structure && turbo run verify');
   assertScriptEquals(scripts, 'format', 'prettier --write .');

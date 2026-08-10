@@ -58,7 +58,7 @@ export const completeClaim = {
   evidence: {
     buildIdentity: 'commit:0123456789abcdef',
     fixtureIdentity: 'fixture:alpha-v1',
-    commands: ['yarn assurance:test'],
+    commands: ['yarn verify'],
     results: [{ command: 'yarn verify', status: 'passed' }],
     faultIds: ['protocol-client-binding'],
     killedFaultIds: ['protocol-client-binding'],
@@ -76,10 +76,10 @@ export const completeClaim = {
 export const knownTests = [
   {
     path: 'test-harness/assurance/tests/protocol.spec.test.ts',
-    cases: [
-      'rejects cross-client authorization-code redemption',
-      'redeems an authorization code for its initiating client',
-    ],
     runner: 'node',
+    cases: [
+      { name: 'rejects cross-client authorization-code redemption', trusted: true },
+      { name: 'redeems an authorization code for its initiating client', trusted: true },
+    ],
   },
 ];

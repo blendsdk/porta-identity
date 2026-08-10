@@ -10,6 +10,6 @@ import { registerSchemaCases } from './schema-cases.js';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
-// The foundation selector composes pre-authored case registrars without defining expectations.
+// This implementation wrapper composes immutable cases without defining expectations.
 registerSchemaCases(schema);
 registerEvidenceAndCommandCases({ commands, rendering, redaction, validation }, repositoryRoot);

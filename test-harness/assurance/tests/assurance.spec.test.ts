@@ -36,6 +36,7 @@ if (missingFoundationFiles.length === 0) {
     schemaCases,
     governance,
     evidence,
+    signals,
   ] = await Promise.all([
     import('../schema.js'),
     import('../commands.js'),
@@ -46,6 +47,7 @@ if (missingFoundationFiles.length === 0) {
     import('./schema-cases.js'),
     import('./governance-cases.js'),
     import('./evidence-and-command-cases.js'),
+    import('./dispatcher-signals.spec.test.js'),
   ]);
 
   boundaries.registerFoundationBoundaryCases(repositoryRoot);
@@ -55,4 +57,5 @@ if (missingFoundationFiles.length === 0) {
     { commands, rendering, redaction, validation },
     repositoryRoot,
   );
+  void signals;
 }

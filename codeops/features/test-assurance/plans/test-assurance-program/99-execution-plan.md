@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 15:18
+> **Last Updated**: 2026-08-10 15:45
 > **Progress**: 8/92 tasks (9%)
 > **CodeOps Artifact Schema**: 1
 
@@ -160,6 +160,11 @@ text, but it cannot substitute another command for this binding.
 
 **Phase gate:** every future command is executable from root, every Must edge is mechanically
 representable, zero imported inventory claims are assured, and secret canaries cannot persist.
+
+**Quality gate:** Tasks 1.1–1.8 are implemented, committed, and pushed. The first independent review
+found RV-001–RV-006 and SA-001–SA-004. All findings are being corrected under AR-33; Phase 2 remains
+blocked until unchanged full verification and the single independent re-review pass. See
+[Phase 1 Quality Review](09-phase-1-quality-review.md).
 
 ## Phase 2: Fenced Lifecycle and Poisoned-Stack Reset
 

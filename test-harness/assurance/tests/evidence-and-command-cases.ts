@@ -42,6 +42,56 @@ export function registerEvidenceAndCommandCases(
     }
   });
 
+  test('redacts structured and embedded personal data while preserving synthetic correlation IDs', () => {
+    const evidence = {
+      email: 'alice.personal@example.test',
+      fullName: 'Alice Personal Canary',
+      phone: '+31 6 1234 5678',
+      address: 'Personal Street 42, 1234 AB Amsterdam',
+      userId: 'real-user-42',
+      correlationId: 'synthetic-run-7fb70d',
+      log: 'email=embedded.person@example.test phone=+31-612345678 name=Embedded Person',
+    };
+    const sanitized = redaction.redactEvidence(evidence);
+    const outputs = [
+      JSON.stringify(sanitized),
+      rendering.renderJson(evidence),
+      rendering.renderSummary(evidence),
+    ];
+
+    for (const output of outputs) {
+      for (const personalValue of [
+        'alice.personal@example.test',
+        'Alice Personal Canary',
+        '+31 6 1234 5678',
+        'Personal Street 42',
+        'real-user-42',
+        'embedded.person@example.test',
+        '+31-612345678',
+        'Embedded Person',
+      ]) {
+        assert.doesNotMatch(
+          output,
+          new RegExp(personalValue.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')),
+        );
+      }
+      assert.match(output, /synthetic-run-7fb70d/);
+    }
+  });
+
+  test('rejects a rendered artifact when a residual secret or personal-data canary survives', () => {
+    for (const residual of [
+      'TOKEN-CANARY-RESIDUAL',
+      'residual.person@example.test',
+      'phone=+31-612345678',
+    ]) {
+      assert.throws(
+        () => redaction.assertEvidenceSanitized(residual),
+        /sensitive|personal|canary/i,
+      );
+    }
+  });
+
   test('rejects unsafe repository references before resolving registered tests or artifacts', () => {
     const sandbox = mkdtempSync(resolve(tmpdir(), 'porta-assurance-paths-'));
     const allowedRoot = resolve(sandbox, 'test-harness/assurance');

@@ -46,6 +46,54 @@ export function registerSchemaCases(schema: SchemaModule): void {
     assert.deepEqual(schema.faultSchema.parse(fault), fault);
   });
 
+  test('accepts schema-complete foundation results and manifests with immutable provenance', () => {
+    const result = {
+      id: 'foundation-validation',
+      command: 'yarn assurance:validate',
+      status: 'passed',
+      startedAt: '2026-08-10T09:59:00.000Z',
+      completedAt: '2026-08-10T10:00:00.000Z',
+      buildIdentity: 'commit:0123456789abcdef',
+      fixtureIdentity: 'not-applicable:definition-validation',
+      redactedLog: 'validated assurance foundation definitions',
+      metrics: {
+        requirementCount: 79,
+        caseCount: 97,
+        taskCount: 92,
+        claimCount: 79,
+        redSignatureCount: 1,
+        commandContractVersion: 1,
+      },
+    };
+    const manifest = {
+      runId: '00000000-0000-4000-8000-000000000001',
+      status: 'passed',
+      command: 'yarn assurance:validate',
+      startedAt: result.startedAt,
+      completedAt: result.completedAt,
+      buildIdentity: result.buildIdentity,
+      treeIdentity: 'tree:fedcba9876543210',
+      fixtureIdentity: result.fixtureIdentity,
+      executionArtifact: { kind: 'source-tree', digest: 'sha256:0123456789abcdef' },
+      dependencyLockDigest: 'sha256:0123456789abcdef',
+      assuranceToolDigest: 'sha256:fedcba9876543210',
+      definitionDigests: {
+        traceability: 'sha256:0123456789abcdef',
+        redSignatures: 'sha256:0123456789abcdef',
+        testInventory: 'sha256:0123456789abcdef',
+      },
+      toolVersions: { node: 'v22.0.0', commandContract: 1 },
+      results: [{ command: result.command, status: result.status }],
+      killedFaultIds: [],
+      artifacts: ['validation/result.json'],
+      accessPolicy: 'restricted synthetic evidence',
+      retentionPolicy: 'disposable',
+    };
+
+    assert.deepEqual(schema.foundationValidationResultSchema.parse(result), result);
+    assert.deepEqual(schema.foundationManifestSchema.parse(manifest), manifest);
+  });
+
   test('requires complete typed slice actors, actions, resources, results, and boundaries', () => {
     assert.deepEqual(schema.sliceProfileSchema.parse(completeSliceProfile), completeSliceProfile);
 

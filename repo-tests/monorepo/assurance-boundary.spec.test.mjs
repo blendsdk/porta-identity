@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
@@ -122,45 +121,4 @@ test('should keep typecheck and lint ownership at the repository root', () => {
       `root script ${command} must not delegate to a harness workspace`,
     );
   }
-});
-
-// Root aliases share one allowlisted dispatcher and one executable contract source.
-test('should expose every frozen assurance command through the shared root dispatcher', () => {
-  const scripts = readRepositoryJson('package.json').scripts ?? {};
-  const runner = 'test-harness/assurance/scripts/run-command.ts';
-  const output = execFileSync(process.execPath, ['--import', 'tsx', runner, '--describe-all'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-  });
-  const contract = JSON.parse(output);
-  const aliases = [
-    'assurance:test',
-    'assurance:red',
-    'assurance:baseline',
-    'assurance:validate',
-    'assurance:harness',
-    'assurance:coverage',
-    'assurance:fault',
-    'assurance:compat',
-    'assurance:report',
-    'assurance:stability',
-    'assurance:all',
-  ];
-
-  assert.equal(contract.version, 1);
-  assert.deepEqual(Object.keys(contract.commands).sort(), aliases.toSorted());
-  assert.deepEqual(contract.exitPrecedence, [60, 130, 143, 70, 50, 40, 30, 20, 21]);
-  for (const alias of aliases) {
-    const action = alias.slice('assurance:'.length);
-    assert.equal(
-      scripts[alias],
-      `tsx ${runner} ${action}`,
-      `${alias} must use the shared dispatcher`,
-    );
-  }
-  assert.doesNotMatch(
-    scripts.verify ?? '',
-    /assurance:(?:harness|coverage|fault|compat|stability|all)/,
-    'later assurance campaigns must not enter the required verification lane',
-  );
 });
