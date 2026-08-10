@@ -10,6 +10,9 @@ Generated output belongs below the ignored
 Every alias routes through one allowlisted TypeScript dispatcher. Until a command's owning phase
 installs its handler, a normal invocation fails closed with exit `30` (`setup-failure`). Use
 `--help` to inspect a registered alias without starting services or creating artifacts.
+Running `assurance:test` without a selector executes the complete registered governance suite.
+`assurance:validate` prints its generated run UUID, which can be passed unchanged to
+`assurance:report --run <run-uuid>`.
 
 | Alias                 | Selector                                                                                               |                                                    Timeout | Artifact subdirectory               |
 | --------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------: | ----------------------------------- |

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 15:04
-> **Progress**: 7/92 tasks (8%)
+> **Last Updated**: 2026-08-10 15:18
+> **Progress**: 8/92 tasks (9%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -155,7 +155,7 @@ text, but it cannot substitute another command for this binding.
       JSON/Markdown rendering, and pre-write redaction with adversarial canaries.
 - [x] 1.7 Run ST-01–ST-08 green; add `*.impl.test.ts` cases for diagnostics, transitions, ✅ (completed: 2026-08-10 15:04)
       collection boundaries, path safety, command taxonomy, and renderer determinism.
-- [ ] 1.8 Run `yarn assurance:validate`, `yarn assurance:test`, repository structure checks, and
+- [x] 1.8 Run `yarn assurance:validate`, `yarn assurance:test`, repository structure checks, and ✅ (completed: 2026-08-10 15:18)
       `yarn verify`; inspect sanitized examples and Git status for generated residue.
 
 **Phase gate:** every future command is executable from root, every Must edge is mechanically
