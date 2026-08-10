@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@portaidentity/sdk": "1.6.2",
-    "chalk": "^5.6.2",
+    "chalk": "^6.0.0",
     "cli-table3": "^0.6.5",
     "jose": "^6.2.3",
     "open": "^11.0.0",
