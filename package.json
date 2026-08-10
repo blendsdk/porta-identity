@@ -98,7 +98,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "concurrently": "9.2.1",
+    "concurrently": "10.0.4",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.60.0",
     "@semantic-release/commit-analyzer": "13.0.1",
