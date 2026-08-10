@@ -65,8 +65,15 @@ function redactUnknown(value: unknown, ancestors: WeakSet<object>): unknown {
     if (!isPlainRecord(value)) return '[REDACTED:UNSUPPORTED_OBJECT]';
 
     const sanitized: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value)) {
-      sanitized[key] = isSensitiveKey(key) ? redactedValue : redactUnknown(entry, ancestors);
+    for (const key of Object.keys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !('value' in descriptor)) {
+        sanitized[key] = '[REDACTED:ACCESSOR]';
+        continue;
+      }
+      sanitized[key] = isSensitiveKey(key)
+        ? redactedValue
+        : redactUnknown(descriptor.value, ancestors);
     }
     return sanitized;
   } finally {

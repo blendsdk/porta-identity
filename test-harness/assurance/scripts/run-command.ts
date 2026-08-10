@@ -20,9 +20,15 @@ const testFailureExit = 21;
 /** Exit code used when a bounded child process exceeds the command contract. */
 const timeoutExit = 70;
 
-/** Initial selector-to-specification mapping installed by the foundation phase. */
-const internalTestSuites: Readonly<Record<string, string>> = {
-  'assurance-foundation': 'test-harness/assurance/tests/assurance-foundation.spec.test.ts',
+/** Registered selector-to-specification mappings for internal Node suites. */
+const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
+  'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.spec.test.ts'],
+  'assurance-governance': [
+    'test-harness/assurance/tests/assurance.spec.test.ts',
+    'test-harness/assurance/tests/commands.impl.test.ts',
+    'test-harness/assurance/tests/evidence.impl.test.ts',
+    'test-harness/assurance/tests/governance.impl.test.ts',
+  ],
 };
 
 /** Serializes the complete frozen command contract for repository checks and operators. */
@@ -76,14 +82,14 @@ function runInternalTests(options: readonly string[]): void {
     return;
   }
 
-  const selectedTest = internalTestSuites[options[1] ?? ''];
-  if (selectedTest === undefined) {
+  const selectedTests = internalTestSuites[options[1] ?? ''];
+  if (selectedTests === undefined) {
     process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${options[1] ?? ''}\n`);
     process.exitCode = setupFailureExit;
     return;
   }
 
-  const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', selectedTest], {
+  const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', ...selectedTests], {
     cwd: process.cwd(),
     stdio: 'inherit',
     timeout: 120_000,

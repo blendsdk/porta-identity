@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 14:41
-> **Progress**: 6/92 tasks (7%)
+> **Last Updated**: 2026-08-10 15:04
+> **Progress**: 7/92 tasks (8%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -153,7 +153,7 @@ text, but it cannot substitute another command for this binding.
       log, recovery, source, or provenance fields.
 - [x] 1.6 Implement canonical path/reference validation, RED signature registration, deterministic ✅ (completed: 2026-08-10 14:41)
       JSON/Markdown rendering, and pre-write redaction with adversarial canaries.
-- [ ] 1.7 Run ST-01–ST-08 green; add `*.impl.test.ts` cases for diagnostics, transitions,
+- [x] 1.7 Run ST-01–ST-08 green; add `*.impl.test.ts` cases for diagnostics, transitions, ✅ (completed: 2026-08-10 15:04)
       collection boundaries, path safety, command taxonomy, and renderer determinism.
 - [ ] 1.8 Run `yarn assurance:validate`, `yarn assurance:test`, repository structure checks, and
       `yarn verify`; inspect sanitized examples and Git status for generated residue.
