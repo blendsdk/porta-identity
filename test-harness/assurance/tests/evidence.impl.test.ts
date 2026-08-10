@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
-import { inspectFoundationProvenance } from '../scripts/foundation-artifacts.js';
+import { inspectFoundationProvenance } from '../scripts/source-provenance.js';
 import { redactEvidence } from '../scripts/redact-evidence.js';
 import { renderJson, renderSummary } from '../scripts/render-summary.js';
 import { validateRepositoryReference } from '../scripts/validate-assurance.js';

@@ -1,14 +1,17 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
+import { commandContractVersion } from '../commands.js';
 import {
   claimSchema,
   foundationManifestSchema,
   redSignatureRegistrySchema,
+  resultSchema,
   testInventorySchema,
   traceabilityAuthoritySchema,
   traceabilitySchema,
 } from '../schema.js';
+import { digestRepositoryFile, inspectFoundationProvenance } from './source-provenance.js';
 
 /** Public options for resolving an allowlisted repository reference. */
 export interface RepositoryReferenceOptions {
@@ -28,11 +31,17 @@ interface KnownTest {
   runner: string;
 }
 
-/** Module-private identity set that prevents plain caller objects from authorizing transitions. */
-const loadedValidationContexts = new WeakSet<object>();
+/** Validated authority retained only inside this module and keyed by an opaque caller token. */
+const loadedValidationContexts = new WeakMap<object, InternalValidationContext>();
 
 /** Canonically loaded evidence and inventory used for claim validation. */
 export interface AssuranceValidationContext {
+  /** Prevents callers from relying on or mutating the module-private authority snapshot. */
+  readonly opaqueAssuranceContext?: never;
+}
+
+/** Immutable-by-construction authority never returned to the caller. */
+interface InternalValidationContext {
   /** Reviewed test inventory loaded from its canonical repository path. */
   readonly knownTests: readonly KnownTest[];
   /** Validated owned-run manifest used as authoritative provenance. */
@@ -63,6 +72,81 @@ function readJson(path: string): unknown {
   }
 }
 
+/** Requires two ordered JSON-safe values to be structurally identical. */
+function requireExactJson(actual: unknown, expected: unknown, label: string): void {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${label} does not match owned artifacts`);
+  }
+}
+
+/** Recomputes all source and result evidence before a manifest can authorize a claim. */
+function validateOwnedManifest(
+  repositoryRoot: string,
+  manifestPath: string,
+  manifest: ReturnType<typeof foundationManifestSchema.parse>,
+): void {
+  const expectedManifestPath = `test-harness/.assurance-results/${manifest.runId}/manifest.json`;
+  if (manifestPath !== expectedManifestPath || manifest.status !== 'passed') {
+    throw new Error('owned-run manifest identity, path, or status is not authoritative');
+  }
+
+  const provenance = inspectFoundationProvenance(repositoryRoot);
+  if (
+    manifest.buildIdentity !== provenance.commitIdentity ||
+    manifest.treeIdentity !== provenance.treeIdentity ||
+    manifest.assuranceToolDigest !== provenance.assuranceToolDigest ||
+    manifest.executionArtifact.digest !== provenance.assuranceToolDigest
+  ) {
+    throw new Error('owned-run manifest source provenance does not match the current tree');
+  }
+  if (
+    manifest.dependencyLockDigest !== digestRepositoryFile(resolve(repositoryRoot, 'yarn.lock')) ||
+    manifest.definitionDigests.traceability !==
+      digestRepositoryFile(resolve(repositoryRoot, 'test-harness/assurance/traceability.json')) ||
+    manifest.definitionDigests.redSignatures !==
+      digestRepositoryFile(resolve(repositoryRoot, 'test-harness/assurance/red-signatures.json')) ||
+    manifest.definitionDigests.testInventory !==
+      digestRepositoryFile(resolve(repositoryRoot, 'test-harness/assurance/test-inventory.json')) ||
+    manifest.toolVersions.node !== process.version ||
+    manifest.toolVersions.commandContract !== commandContractVersion
+  ) {
+    throw new Error('owned-run manifest definitions or tool provenance do not match');
+  }
+
+  const results: ReturnType<typeof resultSchema.parse>[] = [];
+  for (const artifact of manifest.artifacts) {
+    const artifactPath = validateRepositoryReference(
+      `test-harness/.assurance-results/${manifest.runId}/${artifact}`,
+      { repositoryRoot, allowedRoot: `test-harness/.assurance-results/${manifest.runId}` },
+    );
+    const absoluteArtifactPath = resolve(repositoryRoot, artifactPath);
+    if (!lstatSync(absoluteArtifactPath).isFile()) {
+      throw new Error(`owned-run artifact is not a regular file: ${artifact}`);
+    }
+    const parsed = resultSchema.safeParse(readJson(absoluteArtifactPath));
+    if (parsed.success) results.push(parsed.data);
+  }
+  if (results.length === 0) throw new Error('owned-run manifest has no validated result artifact');
+  for (const result of results) {
+    if (
+      result.buildIdentity !== manifest.buildIdentity ||
+      result.fixtureIdentity !== manifest.fixtureIdentity
+    ) {
+      throw new Error('owned result provenance does not match its manifest');
+    }
+  }
+  requireExactJson(
+    manifest.results,
+    results.map(({ command, status }) => ({ command, status })),
+    'manifest result summary',
+  );
+  requireExactJson(
+    manifest.killedFaultIds,
+    [...new Set(results.flatMap((result) => result.killedFaultIds ?? []))],
+    'manifest fault-kill summary',
+  );
+}
+
 /** Loads reviewed tests and an owned-run manifest through canonical repository boundaries. */
 export function loadAssuranceValidationContext(
   repositoryRoot: string,
@@ -73,6 +157,9 @@ export function loadAssuranceValidationContext(
     repositoryRoot: canonicalRoot,
     allowedRoot: 'test-harness/assurance',
   });
+  if (inventoryPath !== 'test-harness/assurance/test-inventory.json') {
+    throw new Error('assurance inventory must use its canonical repository path');
+  }
   const manifestPath = validateRepositoryReference(paths.manifest, {
     repositoryRoot: canonicalRoot,
     allowedRoot: 'test-harness/.assurance-results',
@@ -93,35 +180,27 @@ export function loadAssuranceValidationContext(
     );
   }
   const manifest = foundationManifestSchema.parse(readJson(resolve(canonicalRoot, manifestPath)));
-  const manifestRunDirectory = manifestPath.split('/').at(-2);
-  if (manifestRunDirectory !== manifest.runId || manifest.status !== 'passed') {
-    throw new Error('owned-run manifest identity or status is not authoritative');
-  }
-  const context: AssuranceValidationContext = {
+  validateOwnedManifest(canonicalRoot, manifestPath, manifest);
+  const authority: InternalValidationContext = {
     knownTests: inventory.tests,
     manifest,
     repositoryRoot: canonicalRoot,
   };
-  loadedValidationContexts.add(context);
-  return context;
+  const token = Object.freeze({}) as AssuranceValidationContext;
+  loadedValidationContexts.set(token, authority);
+  return token;
 }
 
 /** Requires the branded result of the canonical inventory/manifest loader. */
-function requireValidationContext(context: unknown): AssuranceValidationContext {
-  if (!isRecord(context) || !loadedValidationContexts.has(context)) {
+function requireValidationContext(context: unknown): InternalValidationContext {
+  if (!isRecord(context)) {
     throw new Error('authoritative assurance validation context is required');
   }
-  return {
-    knownTests: testInventorySchema.parse({ version: 1, tests: context.knownTests }).tests,
-    manifest: foundationManifestSchema.parse(context.manifest),
-    repositoryRoot: zodString(context.repositoryRoot, 'validation repository root'),
-  };
-}
-
-/** Narrows one required string without trusting a caller-owned object shape. */
-function zodString(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.length === 0) throw new Error(`${label} is required`);
-  return value;
+  const authority = loadedValidationContexts.get(context);
+  if (authority === undefined) {
+    throw new Error('authoritative assurance validation context is required');
+  }
+  return authority;
 }
 
 /** Rejects duplicate strings and names the first duplicated value. */
@@ -202,7 +281,7 @@ export function validateCatalog<T>(claims: readonly T[], context: unknown): T[] 
 /** Requires the evidence needed before a claim may enter the assured state. */
 function requireAssuredEvidence(
   claim: Record<string, unknown>,
-  context: AssuranceValidationContext,
+  context: InternalValidationContext,
 ): void {
   if (!Array.isArray(claim.gaps) || claim.gaps.length > 0) {
     throw new Error('cannot enter assured state while named gaps exist');
@@ -267,7 +346,7 @@ function requireAssuredEvidence(
 /** Applies status-dependent invariants to loaded and transitioned claim records alike. */
 function validateClaimState(
   claim: ReturnType<typeof claimSchema.parse>,
-  context: AssuranceValidationContext,
+  context: InternalValidationContext,
 ): void {
   if (claim.status === 'assured') requireAssuredEvidence(claim, context);
 }
@@ -456,6 +535,13 @@ function readMustRequirements(repositoryRoot: string): string[] {
   return requirements;
 }
 
+/** Derives the only valid source-clause label for one requirement identifier. */
+function sourceClauseForRequirement(requirement: string): string {
+  const document = requirement.match(/^R([1-7])\.[0-9]+$/u)?.[1];
+  if (document === undefined) throw new Error(`invalid requirement identifier: ${requirement}`);
+  return `RD-0${document}#${requirement}`;
+}
+
 /** Loads independent traceability nodes and proves their Must inventory against the RDs. */
 export function loadTraceabilityAuthority(
   repositoryRoot: string,
@@ -476,6 +562,11 @@ export function loadTraceabilityAuthority(
     readMustRequirements(canonicalRoot),
     'authoritative Must requirement',
   );
+  for (const requirement of authority.requirements) {
+    if (requirement.sourceClause !== sourceClauseForRequirement(requirement.id)) {
+      throw new Error(`authoritative source clause mismatch: ${requirement.id}`);
+    }
+  }
   return authority;
 }
 

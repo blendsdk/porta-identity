@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
+import { commandContractVersion } from '../commands.js';
+import { digestRepositoryFile, inspectFoundationProvenance } from '../scripts/source-provenance.js';
 import { completeClaim, knownTests } from './assurance-fixtures.js';
 
 type ValidationModule = typeof import('../scripts/validate-assurance.js');
@@ -21,6 +24,7 @@ export function registerGovernanceCases(
     } = {},
   ): {
     context: ReturnType<ValidationModule['loadAssuranceValidationContext']>;
+    claim: typeof completeClaim;
     cleanup: () => void;
   } {
     const sandbox = mkdtempSync(resolve(tmpdir(), 'porta-assurance-context-'));
@@ -32,6 +36,11 @@ export function registerGovernanceCases(
     );
     mkdirSync(testDirectory, { recursive: true });
     mkdirSync(runDirectory, { recursive: true });
+    writeFileSync(resolve(sandbox, '.gitignore'), 'test-harness/.assurance-results/\n');
+    writeFileSync(resolve(sandbox, 'package.json'), '{}\n');
+    writeFileSync(resolve(sandbox, 'yarn.lock'), '# fixture lock\n');
+    writeFileSync(resolve(sandbox, 'test-harness/eslint.config.js'), 'export default [];\n');
+    writeFileSync(resolve(sandbox, 'test-harness/tsconfig.assurance.json'), '{}\n');
     writeFileSync(
       resolve(testDirectory, 'protocol.spec.test.ts'),
       '// immutable sentinel fixture\n',
@@ -40,29 +49,56 @@ export function registerGovernanceCases(
       resolve(inventoryDirectory, 'test-inventory.json'),
       JSON.stringify(overrides.inventory ?? { version: 1, tests: knownTests }),
     );
+    writeFileSync(resolve(inventoryDirectory, 'traceability.json'), '{"fixture":true}\n');
+    writeFileSync(resolve(inventoryDirectory, 'red-signatures.json'), '{"fixture":true}\n');
+    execFileSync('git', ['init', '-q'], { cwd: sandbox });
+    execFileSync('git', ['config', 'user.email', 'assurance@example.test'], { cwd: sandbox });
+    execFileSync('git', ['config', 'user.name', 'Assurance Test'], { cwd: sandbox });
+    execFileSync('git', ['add', '.'], { cwd: sandbox });
+    execFileSync('git', ['commit', '-qm', 'test fixture'], { cwd: sandbox });
+
+    const provenance = inspectFoundationProvenance(sandbox);
+    const claim = structuredClone(completeClaim);
+    claim.evidence.buildIdentity = provenance.commitIdentity;
+    const startedAt = '2026-08-10T09:59:00.000Z';
+    const completedAt = '2026-08-10T10:00:00.000Z';
+    writeFileSync(
+      resolve(runDirectory, 'result.json'),
+      JSON.stringify({
+        id: 'fixture-result',
+        command: 'yarn verify',
+        status: 'passed',
+        startedAt,
+        completedAt,
+        buildIdentity: provenance.commitIdentity,
+        fixtureIdentity: claim.evidence.fixtureIdentity,
+        redactedLog: 'synthetic fixture result',
+        killedFaultIds: claim.evidence.killedFaultIds,
+      }),
+    );
     writeFileSync(
       resolve(runDirectory, 'manifest.json'),
       JSON.stringify({
         runId: '00000000-0000-4000-8000-000000000001',
         status: 'passed',
         command: 'yarn assurance:test',
-        startedAt: '2026-08-10T09:59:00.000Z',
-        completedAt: '2026-08-10T10:00:00.000Z',
-        buildIdentity: completeClaim.evidence.buildIdentity,
-        treeIdentity: 'tree:0123456789abcdef',
-        fixtureIdentity: completeClaim.evidence.fixtureIdentity,
-        executionArtifact: { kind: 'source-tree', digest: 'sha256:0123456789abcdef' },
-        dependencyLockDigest: 'sha256:0123456789abcdef',
-        assuranceToolDigest: 'sha256:0123456789abcdef',
+        startedAt,
+        completedAt,
+        buildIdentity: provenance.commitIdentity,
+        treeIdentity: provenance.treeIdentity,
+        fixtureIdentity: claim.evidence.fixtureIdentity,
+        executionArtifact: { kind: 'source-tree', digest: provenance.assuranceToolDigest },
+        dependencyLockDigest: digestRepositoryFile(resolve(sandbox, 'yarn.lock')),
+        assuranceToolDigest: provenance.assuranceToolDigest,
         definitionDigests: {
-          traceability: 'sha256:0123456789abcdef',
-          redSignatures: 'sha256:0123456789abcdef',
-          testInventory: 'sha256:0123456789abcdef',
+          traceability: digestRepositoryFile(resolve(inventoryDirectory, 'traceability.json')),
+          redSignatures: digestRepositoryFile(resolve(inventoryDirectory, 'red-signatures.json')),
+          testInventory: digestRepositoryFile(resolve(inventoryDirectory, 'test-inventory.json')),
         },
-        toolVersions: { node: 'v22.0.0', commandContract: 1 },
-        results: completeClaim.evidence.results,
-        killedFaultIds: completeClaim.evidence.killedFaultIds,
-        artifacts: ['validation/result.json'],
+        toolVersions: { node: process.version, commandContract: commandContractVersion },
+        results: claim.evidence.results,
+        killedFaultIds: claim.evidence.killedFaultIds,
+        artifacts: ['result.json'],
         accessPolicy: 'restricted synthetic evidence',
         retentionPolicy: 'disposable',
         ...overrides.manifest,
@@ -74,6 +110,7 @@ export function registerGovernanceCases(
         manifest:
           'test-harness/.assurance-results/00000000-0000-4000-8000-000000000001/manifest.json',
       }),
+      claim,
       cleanup: () => rmSync(sandbox, { recursive: true, force: true }),
     };
   }
@@ -83,10 +120,7 @@ export function registerGovernanceCases(
     try {
       assert.throws(
         () =>
-          validation.validateCatalog(
-            [completeClaim, structuredClone(completeClaim)],
-            loaded.context,
-          ),
+          validation.validateCatalog([loaded.claim, structuredClone(loaded.claim)], loaded.context),
         /duplicate[^\n]*CLAIM-R1-01|CLAIM-R1-01[^\n]*duplicate/i,
       );
     } finally {
@@ -95,11 +129,12 @@ export function registerGovernanceCases(
   });
 
   test('rejects a critical claim without a negative sentinel', () => {
-    const claim = structuredClone(completeClaim);
-    claim.sentinels = claim.sentinels.filter((sentinel) => sentinel.classification !== 'negative');
-
     const loaded = createContext();
     try {
+      const claim = structuredClone(loaded.claim);
+      claim.sentinels = claim.sentinels.filter(
+        (sentinel) => sentinel.classification !== 'negative',
+      );
       assert.throws(
         () => validation.validateCatalog([claim], loaded.context),
         /critical[^\n]*negative sentinel|negative sentinel[^\n]*critical/i,
@@ -110,10 +145,10 @@ export function registerGovernanceCases(
   });
 
   test('rejects and identifies an unresolved test or case reference', () => {
-    const claim = structuredClone(completeClaim);
-    claim.sentinels[0].case = 'missing exact sentinel case';
     const loaded = createContext();
     try {
+      const claim = structuredClone(loaded.claim);
+      claim.sentinels[0].case = 'missing exact sentinel case';
       assert.throws(
         () => validation.validateCatalog([claim], loaded.context),
         /missing exact sentinel case/,
@@ -124,8 +159,9 @@ export function registerGovernanceCases(
   });
 
   test('requires every assurance precondition before entering assured state', () => {
+    const loaded = createContext();
     const invalidClaims = [
-      Object.assign(structuredClone(completeClaim), {
+      Object.assign(structuredClone(loaded.claim), {
         gaps: [
           {
             id: 'protocol-retry-behavior',
@@ -134,21 +170,20 @@ export function registerGovernanceCases(
           },
         ],
       }),
-      Object.assign(structuredClone(completeClaim), {
-        evidence: { ...completeClaim.evidence, current: false },
+      Object.assign(structuredClone(loaded.claim), {
+        evidence: { ...loaded.claim.evidence, current: false },
       }),
-      Object.assign(structuredClone(completeClaim), {
+      Object.assign(structuredClone(loaded.claim), {
         evidence: {
-          ...completeClaim.evidence,
+          ...loaded.claim.evidence,
           results: [{ command: 'yarn verify', status: 'failed' }],
         },
       }),
-      Object.assign(structuredClone(completeClaim), {
-        evidence: { ...completeClaim.evidence, killedFaultIds: [] },
+      Object.assign(structuredClone(loaded.claim), {
+        evidence: { ...loaded.claim.evidence, killedFaultIds: [] },
       }),
     ];
 
-    const loaded = createContext();
     try {
       for (const claim of invalidClaims) {
         assert.throws(
@@ -188,7 +223,7 @@ export function registerGovernanceCases(
           claim.evidence.killedFaultIds = [];
         },
       ]) {
-        const claim = structuredClone(completeClaim);
+        const claim = structuredClone(loaded.claim);
         claim.status = 'assured';
         mutation(claim);
         assert.throws(() => validation.validateCatalog([claim], loaded.context), /assured/i);
@@ -218,7 +253,7 @@ export function registerGovernanceCases(
     const untrusted = createContext({ inventory: untrustedInventory });
     try {
       assert.throws(
-        () => validation.transitionClaim(completeClaim, 'assured', untrusted.context),
+        () => validation.transitionClaim(untrusted.claim, 'assured', untrusted.context),
         /trusted|reviewed/i,
       );
     } finally {
@@ -232,7 +267,7 @@ export function registerGovernanceCases(
       { killedFaultIds: ['attacker-fault'] },
     ]) {
       const loaded = createContext();
-      const claim = structuredClone(completeClaim);
+      const claim = structuredClone(loaded.claim);
       Object.assign(claim.evidence, evidence);
       try {
         assert.throws(
@@ -249,7 +284,7 @@ export function registerGovernanceCases(
     const loaded = createContext();
     try {
       assert.equal(
-        validation.transitionClaim(completeClaim, 'assured', loaded.context).status,
+        validation.transitionClaim(loaded.claim, 'assured', loaded.context).status,
         'assured',
       );
     } finally {

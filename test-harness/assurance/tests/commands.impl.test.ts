@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import process from 'node:process';
 import test from 'node:test';
 
@@ -99,6 +101,44 @@ test('should kill a timeout-resistant child group after the bounded grace period
   assert.equal(outcome.timedOut, true);
   assert.equal(outcome.signal, 'SIGKILL');
   assert.equal(outcome.cleanupFailed, false);
+});
+
+test('should kill a resistant grandchild after its direct parent exits on timeout', async () => {
+  const sandbox = mkdtempSync(resolve(tmpdir(), 'porta-assurance-descendant-'));
+  const pidPath = resolve(sandbox, 'grandchild.pid');
+  let descendantPid: number | undefined;
+  try {
+    const parentProgram = [
+      "const {spawn}=require('node:child_process')",
+      "const {writeFileSync}=require('node:fs')",
+      "const child=spawn(process.execPath,['-e',\"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)\"],{stdio:'ignore'})",
+      'writeFileSync(process.argv[1],String(child.pid))',
+      "process.on('SIGTERM',()=>process.exit(0))",
+      'setInterval(()=>{},1000)',
+    ].join(';');
+    const outcome = await runManagedChild(process.execPath, ['-e', parentProgram, pidPath], {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+      timeoutMilliseconds: 100,
+      terminationGraceMilliseconds: 100,
+      cleanup: () => undefined,
+    });
+    const observedDescendantPid = Number.parseInt(readFileSync(pidPath, 'utf8'), 10);
+    descendantPid = observedDescendantPid;
+
+    assert.equal(outcome.timedOut, true);
+    assert.equal(outcome.cleanupFailed, false);
+    assert.throws(() => process.kill(observedDescendantPid, 0), { code: 'ESRCH' });
+  } finally {
+    if (descendantPid !== undefined) {
+      try {
+        process.kill(descendantPid, 'SIGKILL');
+      } catch {
+        // The assertion already records cleanup behavior; this fallback must remain best-effort.
+      }
+    }
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test('should retain cleanup failure as the highest-precedence managed-child outcome', async () => {

@@ -42,6 +42,23 @@ function signalProcessGroup(pid: number | undefined, signal: NodeJS.Signals): vo
   }
 }
 
+/** Returns whether any process remains in the isolated child process group. */
+function processGroupExists(pid: number | undefined): boolean {
+  if (pid === undefined) return false;
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ESRCH') return false;
+    throw error;
+  }
+}
+
+/** Waits for a bounded interval without blocking signal delivery. */
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+}
+
 /** Runs a child in an isolated process group and always resolves after cleanup. */
 export async function runManagedChild(
   command: string,
@@ -59,11 +76,24 @@ export async function runManagedChild(
   let timedOut = false;
   let setupFailed = false;
   let cleanupFailed = false;
-  let terminationTimer: NodeJS.Timeout | undefined;
+  let terminationPromise: Promise<boolean> | undefined;
+
+  const terminateGroup = (signal: 'SIGINT' | 'SIGTERM'): Promise<boolean> => {
+    if (terminationPromise !== undefined) return terminationPromise;
+    signalProcessGroup(child.pid, signal);
+    terminationPromise = (async () => {
+      await delay(options.terminationGraceMilliseconds);
+      if (processGroupExists(child.pid)) signalProcessGroup(child.pid, 'SIGKILL');
+      const killDeadline = Date.now() + Math.max(100, options.terminationGraceMilliseconds);
+      while (processGroupExists(child.pid) && Date.now() < killDeadline) await delay(10);
+      return !processGroupExists(child.pid);
+    })();
+    return terminationPromise;
+  };
 
   const forward = (signal: 'SIGINT' | 'SIGTERM'): void => {
     forwardedSignal ??= signal;
-    signalProcessGroup(child.pid, signal);
+    void terminateGroup(signal);
   };
   const onSigint = (): void => forward('SIGINT');
   const onSigterm = (): void => forward('SIGTERM');
@@ -72,11 +102,7 @@ export async function runManagedChild(
 
   const timeout = setTimeout(() => {
     timedOut = true;
-    signalProcessGroup(child.pid, 'SIGTERM');
-    terminationTimer = setTimeout(
-      () => signalProcessGroup(child.pid, 'SIGKILL'),
-      options.terminationGraceMilliseconds,
-    );
+    void terminateGroup('SIGTERM');
   }, options.timeoutMilliseconds);
 
   try {
@@ -88,6 +114,11 @@ export async function runManagedChild(
         child.once('close', (code, signal) => resolveClose({ code, signal }));
       },
     );
+    if (terminationPromise !== undefined) {
+      if (!(await terminationPromise)) cleanupFailed = true;
+    } else if (processGroupExists(child.pid)) {
+      if (!(await terminateGroup('SIGTERM'))) cleanupFailed = true;
+    }
     try {
       await options.cleanup();
     } catch {
@@ -96,7 +127,6 @@ export async function runManagedChild(
     return { ...result, forwardedSignal, timedOut, setupFailed, cleanupFailed };
   } finally {
     clearTimeout(timeout);
-    if (terminationTimer !== undefined) clearTimeout(terminationTimer);
     process.off('SIGINT', onSigint);
     process.off('SIGTERM', onSigterm);
   }

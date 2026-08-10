@@ -114,6 +114,8 @@ export const resultSchema = z
     buildIdentity: nonEmptyTextSchema,
     fixtureIdentity: nonEmptyTextSchema,
     redactedLog: z.string(),
+    /** Fault kills observed by this exact result artifact, when the command executes faults. */
+    killedFaultIds: z.array(manifestIdSchema).optional(),
     metrics: z.record(z.string(), z.number().int().nonnegative()).optional(),
   })
   .superRefine((result, context) => {

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import test from 'node:test';
 
 import { claimSchema, traceabilitySchema } from '../schema.js';
@@ -56,6 +58,46 @@ test('should reject traceability node lists that drift from exact mappings', () 
     () => validateTraceability(driftedGraph, loadTraceabilityAuthority(process.cwd())),
     /task list does not match exact mappings/i,
   );
+});
+
+test('should reject an authority source clause that names a different requirement document', () => {
+  const sandbox = mkdtempSync(resolve(tmpdir(), 'porta-assurance-authority-'));
+  try {
+    const requirementsDirectory = resolve(sandbox, 'codeops/features/test-assurance/requirements');
+    const assuranceDirectory = resolve(sandbox, 'test-harness/assurance');
+    mkdirSync(requirementsDirectory, { recursive: true });
+    mkdirSync(assuranceDirectory, { recursive: true });
+    const requirementNames = [
+      'assurance-governance-and-traceability',
+      'harness-foundation-and-fixtures',
+      'coverage-attribution-and-ratchets',
+      'functional-contracts-and-compatibility',
+      'security-risk-slice-assurance',
+      'fault-sensitivity-and-mutation',
+      'continuous-assurance-and-non-functional-requirements',
+    ];
+    for (const [index, name] of requirementNames.entries()) {
+      const requirement = index === 0 ? '**R1.1 (M)** fixture\n' : '';
+      writeFileSync(
+        resolve(requirementsDirectory, `RD-0${index + 1}-${name}.md`),
+        `### Must Have\n${requirement}### Should Have\n`,
+      );
+    }
+    writeFileSync(
+      resolve(assuranceDirectory, 'traceability-nodes.json'),
+      JSON.stringify({
+        version: 1,
+        requirements: [{ id: 'R1.1', sourceClause: 'RD-07#R7.12' }],
+        cases: ['ST-01'],
+        tasks: ['1.1'],
+        claims: ['CLAIM-R1-01'],
+      }),
+    );
+
+    assert.throws(() => loadTraceabilityAuthority(sandbox), /source clause mismatch/i);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
 });
 
 test('should require unique RED signatures and exact case, exit, and marker matches', () => {
