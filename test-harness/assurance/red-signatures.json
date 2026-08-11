@@ -16,6 +16,14 @@
       "normalizedFailureExit": 21,
       "command": "yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts",
       "marker": "LIFECYCLE_CURRENT_SURFACE_GAPS: reset-failures-nonfatal,fixed-endpoints,cleanup-unfenced,poison-state-absent"
+    },
+    {
+      "id": "fixture-current-failure",
+      "caseId": "ST-13",
+      "observedChildExit": 1,
+      "normalizedFailureExit": 21,
+      "command": "yarn tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts",
+      "marker": "FIXTURE_CURRENT_SURFACE_GAPS: shared-single-tenant,project-collection-incomplete,secret-output-present,production-security-profile-absent"
     }
   ]
 }

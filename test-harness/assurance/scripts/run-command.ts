@@ -46,6 +46,15 @@ const redCommands: Readonly<
       'test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
     ],
   },
+  'fixture-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    ],
+  },
 };
 
 /** Complete lifecycle suite shared by progressive and final Phase 2 selectors. */
