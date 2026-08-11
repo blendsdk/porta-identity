@@ -8,7 +8,9 @@
     "fixtures/**/*.ts",
     "scripts/lifecycle.ts",
     "scripts/managed-client-bootstrap.ts",
-    "tests/global-setup.ts"
+    "scripts/seed.ts",
+    "tests/global-setup.ts",
+    "tests/helpers.ts"
   ],
   "exclude": ["node_modules", ".assurance-results"]
 }

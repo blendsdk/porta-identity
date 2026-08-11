@@ -10,13 +10,20 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { z } from 'zod';
 
 // ── Config ──────────────────────────────────────────────
 
-export const TEST_USER = {
-  email: 'testuser@test.org',
-  password: 'TestPassword123!',
-};
+const runtimeConfig = z
+  .object({ user: z.object({ email: z.string().email(), password: z.string().min(1) }) })
+  .parse(
+    JSON.parse(readFileSync(resolve(import.meta.dirname, '../config.generated.json'), 'utf8')),
+  );
+
+/** Retained browser principal loaded from the ignored protected runtime configuration. */
+export const TEST_USER = runtimeConfig.user;
 
 /** MailHog API endpoint used by the browser harness. */
 export const MAILHOG_API = `${process.env.HARNESS_MAILHOG_URL ?? `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}`}/api`;
@@ -135,7 +142,16 @@ export async function waitForEmail(
     const resp = await fetch(
       `${MAILHOG_API}/v2/search?kind=to&query=${encodeURIComponent(recipientEmail)}`,
     );
-    const data = await resp.json();
+    const data = z
+      .object({
+        items: z.array(
+          z.object({
+            Content: z.object({ Body: z.string().optional() }).optional(),
+            Raw: z.object({ Data: z.string().optional() }).optional(),
+          }),
+        ),
+      })
+      .parse(await resp.json());
 
     if (data.items && data.items.length > 0) {
       const latestEmail = data.items[data.items.length - 1];

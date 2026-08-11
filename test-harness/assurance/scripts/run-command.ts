@@ -81,6 +81,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-signal-probe': ['test-harness/assurance/tests/signal-probe.impl.fixture.ts'],
   lifecycle: lifecycleTestFiles,
   'lifecycle-all': lifecycleTestFiles,
+  'fixture-ontology': ['test-harness/assurance/tests/fixture-ontology.spec.test.ts'],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',

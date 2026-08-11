@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 12:00
-> **Progress**: 19/92 tasks (20%)
+> **Last Updated**: 2026-08-11 12:39
+> **Progress**: 20/92 tasks (21%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -244,8 +244,9 @@ worktree's endpoints or resources.
 - [x] 3.3 Record exact RED signatures for current shared/single-tenant state, collection gaps, secret
       output, and absent production-security profile while required lanes remain green.
       ✅ (completed: 2026-08-11 11:22)
-- [ ] 3.4 Split deterministic seeding into typed arrangement modules and create disjoint ordinary
+- [x] 3.4 Split deterministic seeding into typed arrangement modules and create disjoint ordinary
       principals/clients/data plus full/limited/unprivileged super-admin control-plane actors.
+      ✅ (completed: 2026-08-11 12:39)
 - [ ] 3.5 Generate a redacted public fixture manifest and protected runtime credentials; verify every
       required fixture through public boundaries after startup.
 - [ ] 3.6 Add directory-scoped protocol/security/compatibility Playwright projects without changing

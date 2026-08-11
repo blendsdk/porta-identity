@@ -1,8 +1,8 @@
 /**
- * Declaration-only contract for deterministic assurance fixtures and collection metadata.
+ * Runtime-neutral contract for deterministic assurance fixtures and collection metadata.
  *
- * The runtime module is intentionally absent until the fixture implementation phase. Immutable
- * specification tests import this contract without importing Porta production logic.
+ * Fixture code imports this contract without importing Porta production logic, keeping arrangement
+ * metadata separate from public-boundary assertions.
  */
 
 /** Stable organization identities required by the fixture ontology. */
@@ -302,6 +302,3 @@ export interface FixtureAssuranceSurface {
     profileId: 'operational' | 'production-security',
   ): Promise<readonly PublicPostconditionResult[]>;
 }
-
-/** Loads deterministic fixture, project, profile, and public-verification metadata. */
-export function loadFixtureAssuranceSurface(): Promise<FixtureAssuranceSurface>;
