@@ -3,6 +3,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["assurance/**/*.ts"],
+  "include": ["assurance/**/*.ts", "fixtures/**/*.ts"],
   "exclude": ["node_modules", ".assurance-results"]
 }

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 02:51
-> **Progress**: 11/92 tasks (12%)
+> **Last Updated**: 2026-08-11 03:27
+> **Progress**: 12/92 tasks (13%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -191,8 +191,13 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
         `lifecycle-current-failure` matched the exact ordered marker for non-fatal reset, fixed
         endpoints, unfenced cleanup, and absent poison state; zero passing cases and no setup,
         collection, timeout, cleanup, or unrelated failure.
-- [ ] 2.4 Implement validated run UUID/PID/worktree/Compose identity, an atomic complete port-block
+- [x] 2.4 Implement validated run UUID/PID/worktree/Compose identity, an atomic complete port-block ✅ (completed: 2026-08-11 03:27)
       lease with bounded collision retry, and one endpoint manifest consumed by all components.
+      - Verification note: the first post-structure full run exposed an unrelated pre-existing
+        probabilistic unit-test defect where replacing an auth tag's final byte with `ff` made no
+        change because the random tag already ended in `ff`. The unchanged isolated file then
+        passed 16/16 and the unchanged final `yarn verify` passed 3,348/3,348; no out-of-scope test
+        or product file was modified.
 - [ ] 2.5 Fence every Compose/start/stop/cleanup action with the persisted owner and recorded
       container/process/volume/path identity; reclaim stale leases only after owner and Compose absence.
 - [ ] 2.6 Implement the reset state machine: block traffic, stop Porta, recreate DB, migrate/

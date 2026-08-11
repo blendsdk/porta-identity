@@ -340,3 +340,33 @@ persistence; the implementation adopts all four constraints. **Policy version**:
 invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: the future runtime becomes
 available before RED is recorded, the bridge enters claim evidence, output is persisted or
 unbounded, or signature execution becomes data-driven from a command string.
+
+### AR-38 — Atomic lease storage and progressive lifecycle collection
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal concurrency,
+persistence, and test-collection mechanisms implementing the approved lifecycle contract; no
+product behavior, topology, acceptance criterion, or scope changes. **Objective**: coordinate
+complete endpoint blocks across worktrees, preserve crash evidence, and verify each sequential
+implementation task without collecting specifications whose owning implementation is deliberately
+later. **Decision**: use an owner-only shared temporary lease root whose `block-<base-port>`
+directory is acquired by atomic `mkdir`; persist an owner UUID directory and fsynced schema-
+validated lease record containing PID start fingerprint, canonical worktree, Compose identity,
+planned container/bind-volume identities, owned paths, and the immutable endpoint manifest.
+Malformed/incomplete records are never absence and move only to an exact quarantine path. A
+loopback bind probe detects external occupation before acquisition but does not claim to reserve
+ports against arbitrary processes. The `lifecycle` selector progressively collects the already-
+committed immutable groups: leasing in Task 2.4, cleanup/outcomes/compatibility in Task 2.5, then
+reset groups in Task 2.6; Task 2.8 re-collects the complete suite. **Evidence**: one selector is
+bound to Tasks 2.4–2.7, while their approved implementation responsibilities are sequential and
+the specification files were frozen before RED. **Rejected alternatives**: one monolithic Task
+2.4 implementation would advance sibling tasks; conditional skips create vacuous green; random
+uncoordinated ports race across worktrees; holding listener sockets across Docker startup is not
+portable and cannot reserve Docker's bind transaction. **Strongest counterargument**: the
+collected case count grows between tasks. No expectation changes and every group is permanently
+included once its owner exists; the final suite proves complete collection. **Confidence**: High.
+**Hardening**: the earlier independent concurrency challenge required atomic lease coordination,
+PID-reuse resistance, Compose identity, malformed-state quarantine, and explicit external-port
+limits; this design incorporates each condition. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260811-P2`. **Reopen triggers**: a supported host lacks a reliable process-start
+identity, Docker binding contradicts the preflight assumption, lease durability fails under crash
+tests, or a progressive selector omits a group after its owning task.

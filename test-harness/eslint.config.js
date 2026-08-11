@@ -14,10 +14,10 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
   {
-    files: ['assurance/**/*.ts'],
+    files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.json',
+        project: './tsconfig.assurance.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -26,7 +26,13 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
     },
   },

@@ -1,11 +1,14 @@
+import { LifecycleControllerImplementation } from './lifecycle-controller.js';
+
 /**
- * Declaration-only contract for the harness lifecycle boundary.
+ * Typed contract for the harness lifecycle boundary.
  *
- * The runtime module is intentionally absent while the specification suite is being authored.
- * A later implementation must satisfy these declarations without changing the specification.
+ * Public operations expose validated requests and opaque ownership handles. Capability adapters
+ * keep operating-system and Docker effects replaceable so policy can be tested deterministically.
  */
 
-declare const ownedRunBrand: unique symbol;
+/** Runtime brand preventing callers from fabricating an owned lifecycle capability. */
+export const ownedRunBrand: unique symbol = Symbol('owned-run');
 
 /** Stable classifications emitted by every lifecycle operation. */
 export type LifecycleClassification =
@@ -405,7 +408,11 @@ export interface LifecycleController {
 }
 
 /** Creates a lifecycle controller from explicit capability adapters. */
-export function createLifecycleController(dependencies: LifecycleDependencies): LifecycleController;
+export function createLifecycleController(
+  dependencies: LifecycleDependencies,
+): LifecycleController {
+  return new LifecycleControllerImplementation(dependencies);
+}
 
 /** Signals understood by the thin compatibility command. */
 export type LifecycleSignal = 'SIGINT' | 'SIGTERM';
@@ -423,7 +430,41 @@ export interface CompatibilityCommandRequest {
 }
 
 /** Executes the compatibility boundary while preserving lifecycle exit semantics. */
-export function runCompatibilityCommand(
+export async function runCompatibilityCommand(
   request: CompatibilityCommandRequest,
   children: ChildExecutionAdapter,
-): Promise<LifecycleOutcome>;
+): Promise<LifecycleOutcome> {
+  const exitCode = await children.spawn({
+    command: process.execPath,
+    args: ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', request.action, ...request.args],
+    environment: request.environment,
+    shell: false,
+  });
+  const finalExitCode =
+    exitCode === 0 && request.signal === 'SIGINT'
+      ? 130
+      : exitCode === 0 && request.signal === 'SIGTERM'
+        ? 143
+        : exitCode;
+  const normalizedExitCode = isLifecycleExitCode(finalExitCode) ? finalExitCode : 30;
+  return {
+    exitCode: normalizedExitCode,
+    classification: classificationForExit(normalizedExitCode),
+    primaryExitCode: isLifecycleExitCode(exitCode) ? exitCode : 30,
+    recoveryIdentifiers: [],
+  };
+}
+
+/** Returns whether a numeric child result belongs to the stable lifecycle taxonomy. */
+function isLifecycleExitCode(value: number): value is LifecycleExitCode {
+  return [0, 30, 60, 70, 130, 143].includes(value);
+}
+
+/** Maps a stable lifecycle exit to its public classification. */
+function classificationForExit(exitCode: LifecycleExitCode): LifecycleClassification {
+  if (exitCode === 0) return 'success';
+  if (exitCode === 30) return 'setup-failure';
+  if (exitCode === 60) return 'cleanup-failure';
+  if (exitCode === 70) return 'timeout';
+  return 'interrupted';
+}
