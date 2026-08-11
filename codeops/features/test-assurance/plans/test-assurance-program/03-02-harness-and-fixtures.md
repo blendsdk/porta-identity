@@ -21,6 +21,17 @@ until reliability promotion; project boundaries improve ownership, not immediate
 `test-harness/fixtures/` owns typed environment, manifest, reset, health, and scenario helpers.
 Scripts call these modules rather than embedding opaque shell strings.
 
+The lifecycle boundary is layered. `createLifecycleController(dependencies)` returns a controller
+whose `start(request)`, `reset(ownedRun)`, and `stop(ownedRun)` operations accept validated input or
+an opaque owned-run handle. Recovery after owner death uses a validated run/worktree lookup to
+reload the durable lease in a fresh process; callers never supply resource identities to delete.
+Capability-specific dependencies own the
+durable lease store, process-identity probe, Compose inspection/execution, shell-free child
+execution, endpoint availability, deadlines, and public postcondition checks. Specification tests
+exercise this typed controller deterministically; a narrow spawned CLI contract proves real atomic
+filesystem leasing, signal delivery, durable poison state, and argument/environment propagation.
+The retained shell scripts are compatibility callers of that CLI.
+
 | Boundary           | Operation                                                                                             | Postcondition                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | Job                | Atomically lease port block; persist owner; generate endpoint manifest; build/start/migrate/seed      | Exact revision healthy; owner/endpoints verified  |

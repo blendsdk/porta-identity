@@ -258,3 +258,57 @@ and full verification. A third review is forbidden by the quality profile. **Pol
 **Root invocation ID**: `AD-TA-EXEC-20260810-P1-QG-RR`. **Reopen triggers**: an authority snapshot
 becomes caller-visible, manifest summaries are accepted without exact artifacts/current-tree
 checks, source clauses cease to be derived, or group-absence verification is removed.
+
+### AR-35 — Layered lifecycle controller and spawned operating-system contracts
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal testability and
+architecture for the already-approved fenced lifecycle/reset behavior; it changes no product
+behavior, security policy, acceptance criterion, CI lane, or feature scope. **Objective**: make
+every ownership, reset-order, poison, and recovery rule deterministic to specification-test while
+still proving the operating-system boundaries that adapters cannot simulate faithfully.
+**Decision**: specification-test a typed controller created by
+`createLifecycleController(dependencies)`, with `start(request)`, `reset(ownedRun)`, and
+`stop(ownedRun)` operations plus recovery from a validated run UUID/canonical-worktree lookup in a
+fresh process. Ordinary destructive operations accept only an opaque owned-run handle; recovery
+reloads the durable lease internally and never accepts caller-supplied resource identities. Add narrow spawned CLI contracts for
+atomic filesystem leasing, persisted crash/poison state, signal delivery, and shell-free
+argument/environment propagation; keep the retained shell scripts as compatibility callers.
+Persist a process-start fingerprint with every PID, label and identity-check Compose resources,
+durably write the resetting/poison marker before the first mutation, and quarantine malformed
+leases rather than treating unreadable ownership as absence. **Evidence**: the current start path
+hard-codes endpoints and the default Compose identity, the stop path performs an unfenced
+project-wide `down -v`, and the plan requires typed modules instead of shell-embedded lifecycle
+logic. **Rejected alternatives**: controller-only tests cannot prove filesystem atomicity, crash
+state, or real signals; CLI-only tests make durable-boundary failure coverage slow and opaque;
+shell/PATH fakes test incidental shell behavior and weaken typed validation. **Strongest
+counterargument**: the layered boundary costs more and can duplicate adapter coverage; spawned
+cases are therefore limited to boundaries whose semantics depend on the real OS, while final
+two-worktree/Compose smokes prove integration. **Confidence**: High. **Hardening**: an independent
+challenger selected the layered design and warned that leases coordinate harness runs but cannot
+prevent arbitrary external binders, which must instead fail endpoint preflight. **Policy version**:
+1. **Root invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: the retained scripts
+cannot remain thin callers, a required boundary cannot be observed through the typed controller or
+spawned CLI, or real Compose behavior contradicts the injected adapter contract.
+
+### AR-36 — Pre-commit verification for specification-author tasks
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: execution sequencing for two
+test-only tasks inside the frozen verification policy; it changes no oracle, product behavior,
+acceptance criterion, or evidence provenance rule. **Objective**: preserve the verified-before-
+commit gate without manufacturing attributed evidence from an uncommitted source tree.
+**Decision**: Tasks 2.1–2.2 use `yarn test:structure` as their targeted pre-commit binding and rely
+on unchanged `yarn verify` for TypeScript/ESLint verification. Their isolated runtime specs remain
+outside required collection until Task 2.3 records RED. Attributed `assurance:validate` evidence is
+run only from a clean committed tree at the owning roll-up checkpoint. **Evidence**: Phase 1's
+security correction intentionally makes `assurance:validate` exit setup-failure 30 on every dirty
+tree, so requiring it before committing a changed task is circular. **Rejected alternatives**:
+allowing dirty evidence reopens the provenance vulnerability; committing before verification
+violates the execution contract; temporarily hiding changes validates the wrong source.
+**Strongest counterargument**: structure verification alone does not execute the new runtime
+oracles. That is intentional until the separately required exact RED task, while full verification
+still statically checks the authored TypeScript. **Confidence**: High. **Hardening**: forced
+reframing found no other path that preserves both clean-tree provenance and the pre-commit gate;
+independent review is reserved for the complete phase diff. **Policy version**: 1. **Root
+invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: validation gains a sound
+non-persisting dirty-tree mode, the commit gate changes, or the specification files enter required
+runtime collection before Task 2.3.

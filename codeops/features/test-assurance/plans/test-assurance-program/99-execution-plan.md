@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-10 16:23
-> **Progress**: 8/92 tasks (9%)
+> **Last Updated**: 2026-08-11 01:55
+> **Progress**: 9/92 tasks (10%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -55,7 +55,7 @@ text, but it cannot substitute another command for this binding.
 | 1.5–1.6   | `yarn assurance:test --select assurance-foundation`                                                                                                          |
 | 1.7       | `yarn assurance:test --select assurance-governance`                                                                                                          |
 | 1.8       | `yarn assurance:validate` and `yarn assurance:report --run <task-run-uuid>`                                                                                  |
-| 2.1–2.2   | `yarn assurance:validate`                                                                                                                                    |
+| 2.1–2.2   | `yarn test:structure`; the new isolated specs remain statically checked but outside required runtime collection until Task 2.3 records RED                  |
 | 2.3       | `yarn assurance:red --case ST-09 --signature lifecycle-current-failure`                                                                                      |
 | 2.4–2.7   | `yarn assurance:test --select lifecycle`                                                                                                                     |
 | 2.8       | `yarn assurance:test --select lifecycle-all`                                                                                                                 |
@@ -172,8 +172,15 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
 
 > **Scope**: harness lifecycle/fixture controller, scripts, Compose ownership, endpoint manifest
 > **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-09–ST-12/ST-18A/ST-18B
+> **Phase baseline tree**: `57b278e9dc5b1ae50df6c0a9cdf87199a0c657a5`
+> **Expected modification set**: `test-harness/assurance/`, `test-harness/fixtures/`,
+> `test-harness/scripts/`, `test-harness/docker-compose.yml`, harness runtime configuration,
+> repository structure contracts, this execution plan, and the test-assurance roadmaps/ambiguity
+> register when a lifecycle decision or status transition requires them
+> **Scope mode**: strict — harness lifecycle/reset only; no product, CI, fixture-ontology, or
+> coverage implementation
 
-- [ ] 2.1 [spec-author] Write lifecycle specs for failure taxonomy, atomic port-block leasing,
+- [x] 2.1 [spec-author] Write lifecycle specs for failure taxonomy, atomic port-block leasing, ✅ (completed: 2026-08-11 01:55)
       endpoint-manifest propagation, ownership fencing, stale-lease recovery, and cleanup.
 - [ ] 2.2 [spec-author] Write reset-state specs for quiesce/stop, DB recreation, exact migration and
       deterministic seed, Redis/mail reset, restart/public verification, and every interruption edge.
