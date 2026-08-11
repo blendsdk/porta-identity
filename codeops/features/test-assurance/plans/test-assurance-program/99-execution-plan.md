@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 23:29
-> **Progress**: 30/92 tasks (33%)
+> **Last Updated**: 2026-08-11 23:51
+> **Progress**: 31/92 tasks (34%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -344,8 +344,9 @@ development evidence, and organization-prefixed user operations enforce tenant o
 - [x] 4.6 Merge process records and source-map only eligible compiled server output; manually audit
       known executed/unexecuted lines and stop if material attribution is wrong. ✅ (completed:
       2026-08-11 23:29)
-- [ ] 4.7 Run ST-19–ST-27 green and add implementation cases for duplicate processes, path
-      normalization, malformed maps, dependency scripts, partial output, and missing maps.
+- [x] 4.7 Run ST-19–ST-27 green and add implementation cases for duplicate processes, path
+      normalization, malformed maps, dependency scripts, partial output, and missing maps. ✅
+      (completed: 2026-08-11 23:51)
 - [ ] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
       observation-only summary, and run `yarn verify`.
 

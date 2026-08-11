@@ -111,6 +111,16 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-classification.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
   ],
+  'coverage-all': [
+    'test-harness/assurance/tests/coverage-envelope-and-provenance.spec.test.ts',
+    'test-harness/assurance/tests/coverage-mapping-and-reproducibility.spec.test.ts',
+    'test-harness/assurance/tests/coverage-observation-policy.spec.test.ts',
+    'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
+    'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion-hardening.impl.test.ts',
+  ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
