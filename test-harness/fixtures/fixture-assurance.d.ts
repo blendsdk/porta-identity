@@ -58,6 +58,8 @@ export interface FixtureClient {
   readonly grantTypes: readonly string[];
   /** Exact scope allowlist. */
   readonly scopes: readonly string[];
+  /** Tenant-specific scopes whose ownership must not overlap another tenant. */
+  readonly tenantScopes: readonly string[];
   /** Protected client-secret reference for confidential clients. */
   readonly clientSecretCredentialRef?: string;
 }
@@ -120,6 +122,8 @@ export interface AdministrativeActor {
   readonly id: string;
   /** Administrative organization identity. */
   readonly organizationId: 'super-admin';
+  /** Administrative controls authenticate as active users. */
+  readonly state: 'active';
   /** Distinct permission set exercised by the actor. */
   readonly permissionSet: AdministrativePermissionSet;
   /** Exact global administrative role, using the reserved Porta role namespace. */
@@ -142,8 +146,12 @@ export interface SuperAdminFixture {
 export interface GlobalApplicationFixture {
   /** Stable global application identifier. */
   readonly id: string;
+  /** Whether the application is exercised through clients, roles, or both. */
+  readonly purpose: 'oidc' | 'rbac' | 'mixed';
   /** Tenant-owned clients explicitly exercised by the application. */
   readonly clientIds: readonly string[];
+  /** Global roles explicitly owned by the application. */
+  readonly roleIds: readonly string[];
 }
 
 /** Global role associated with one application and explicit fixture users or actors. */
@@ -152,6 +160,8 @@ export interface GlobalRoleFixture {
   readonly id: string;
   /** Global application that owns the role definition. */
   readonly applicationId: string;
+  /** Fixture purpose that distinguishes ordinary roles from admin controls. */
+  readonly permissionProfile: AdministrativePermissionSet | 'ordinary';
   /** Ordinary users and administrative actors assigned through the user-role relationship. */
   readonly assignedUserIds: readonly string[];
   /** Explicit synthetic permissions granted by the role. */
