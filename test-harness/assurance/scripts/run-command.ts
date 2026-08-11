@@ -85,6 +85,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
     'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
   ],
+  'project-collection': ['test-harness/assurance/tests/assurance-project-collection.spec.test.ts'],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -108,17 +109,18 @@ function managedChildExit(
 
 /** Runs one shell-free lifecycle action used by an internal live-boundary suite. */
 async function runLifecycleAction(
-  action: 'start' | 'stop',
+  action: 'start' | 'stop' | 'project',
+  project?: string,
 ): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
+  const actionOptions =
+    action === 'start'
+      ? ['--ci']
+      : action === 'project' && project !== undefined
+        ? ['--name', project]
+        : [];
   return runManagedChild(
     process.execPath,
-    [
-      '--import',
-      'tsx',
-      'test-harness/scripts/lifecycle.ts',
-      action,
-      ...(action === 'start' ? ['--ci'] : []),
-    ],
+    ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', action, ...actionOptions],
     {
       cwd: process.cwd(),
       env: process.env,
@@ -128,6 +130,43 @@ async function runLifecycleAction(
       cleanup: () => undefined,
     },
   );
+}
+
+/** Executes one allowlisted Playwright project against an owned operational stack. */
+async function runHarnessCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 4 || options[0] !== '--project' || options[2] !== '--profile') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --project <project> --profile <profile>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const project = options[1] ?? '';
+  const profile = options[3] ?? '';
+  if (!['spa', 'bff', 'protocol', 'security', 'compatibility'].includes(project)) {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${project}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (profile !== 'operational') {
+    process.stderr.write(`ASSURANCE_PROFILE_UNAVAILABLE: ${profile}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const startResult = await runLifecycleAction('start');
+  const startExit = managedChildExit(startResult, setupFailureExit);
+  if (startExit !== 0) {
+    process.exitCode = startExit;
+    return;
+  }
+  const projectResult = await runLifecycleAction('project', project);
+  const stopResult = await runLifecycleAction('stop');
+  if (managedChildExit(stopResult, 60) !== 0) {
+    process.exitCode = 60;
+    return;
+  }
+  process.exitCode = managedChildExit(projectResult, 20);
 }
 
 /** Serializes the complete frozen command contract for repository checks and operators. */
@@ -379,6 +418,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'red') {
     await runRedCommand(options);
+    return;
+  }
+  if (action === 'harness') {
+    await runHarnessCommand(options);
     return;
   }
   if (action === 'validate') {

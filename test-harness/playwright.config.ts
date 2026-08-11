@@ -31,6 +31,18 @@ export default defineConfig({
       testMatch: /bff-.*\.spec\.ts/,
       use: { baseURL: bffUrl },
     },
+    {
+      name: 'protocol',
+      testMatch: /protocol\/.+\.spec\.test\.ts/,
+    },
+    {
+      name: 'security',
+      testMatch: /security\/.+\.spec\.test\.ts/,
+    },
+    {
+      name: 'compatibility',
+      testMatch: /compatibility\/.+\.spec\.test\.ts/,
+    },
   ],
   // No webServer — harness must be started separately via start.sh
 });

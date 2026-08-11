@@ -54,7 +54,46 @@ async function observeTenantResource(
   };
 }
 
-const projects: readonly AssuranceProjectDefinition[] = [];
+const projects: readonly AssuranceProjectDefinition[] = [
+  {
+    id: 'spa',
+    pattern: 'tests/spa-*.spec.ts',
+    workers: 1,
+    files: [
+      'tests/spa-magic-link.spec.ts',
+      'tests/spa-password.spec.ts',
+      'tests/spa-refresh-logout.spec.ts',
+    ],
+  },
+  {
+    id: 'bff',
+    pattern: 'tests/bff-*.spec.ts',
+    workers: 1,
+    files: [
+      'tests/bff-magic-link.spec.ts',
+      'tests/bff-password.spec.ts',
+      'tests/bff-refresh-logout.spec.ts',
+    ],
+  },
+  {
+    id: 'protocol',
+    pattern: 'tests/protocol/**/*.spec.test.ts',
+    workers: 1,
+    files: ['tests/protocol/discovery.spec.test.ts'],
+  },
+  {
+    id: 'security',
+    pattern: 'tests/security/**/*.spec.test.ts',
+    workers: 1,
+    files: ['tests/security/public-boundary.spec.test.ts'],
+  },
+  {
+    id: 'compatibility',
+    pattern: 'tests/compatibility/**/*.spec.test.ts',
+    workers: 1,
+    files: ['tests/compatibility/retained-clients.spec.test.ts'],
+  },
+];
 const profiles: readonly AssuranceRuntimeProfile[] = [];
 
 /** Reads exact public endpoints after verifying fixture and endpoint run identity. */

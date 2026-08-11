@@ -3,7 +3,7 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
 > **Last Updated**: 2026-08-11 12:41
-> **Progress**: 21/92 tasks (22%)
+> **Progress**: 22/92 tasks (23%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -256,9 +256,15 @@ worktree's endpoints or resources.
         355 tests. Raw passwords, client secrets, session cookies, tokens, TOTP secrets, and recovery
         codes remain only in the owner-only protected file; the redacted manifest contains their
         opaque references and independently checked fixture provenance.
-- [ ] 3.6 Add directory-scoped protocol/security/compatibility Playwright projects without changing
+- [x] 3.6 Add directory-scoped protocol/security/compatibility Playwright projects without changing
       the six retained SPA/BFF file names or double collection. Keep `yarn harness:test` explicitly
       filtered to SPA/BFF; new projects are reachable only through `yarn assurance:harness`.
+      ✅ (completed: 2026-08-11 13:16)
+      - Verification note: the collection oracle passed 2/2 with exactly five one-worker projects
+        and nine singly owned files. Protocol, security, and compatibility each passed through the
+        operational `assurance:harness` root command; retained `harness:test` still collected only
+        its original six SPA/BFF journeys, all green. `yarn verify` passed the complete 3,348-test
+        server matrix and all structure/SDK/CLI lanes.
 - [ ] 3.7 Add operational and production-security Compose profiles; bind claim metadata to one and
       require production mode/TLS/cookies/errors/headers for environment-sensitive claims.
 - [ ] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue

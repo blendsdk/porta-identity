@@ -29,7 +29,16 @@ import {
 } from '../fixtures/lifecycle-runtime.js';
 import { lifecycleSocketDirectory, lifecycleSocketPath } from '../fixtures/lifecycle-validation.js';
 
-const actionSchema = z.enum(['start', 'supervise', 'prepare', 'reset', 'recover', 'stop', 'test']);
+const actionSchema = z.enum([
+  'start',
+  'supervise',
+  'prepare',
+  'reset',
+  'recover',
+  'stop',
+  'test',
+  'project',
+]);
 const activeRunSchema = z.object({
   runId: z.uuid(),
   worktreePath: z.string().min(1),
@@ -379,6 +388,28 @@ async function runRetainedTests(options: readonly string[]): Promise<LifecycleEx
   });
 }
 
+/** Executes one allowlisted assurance project with the active endpoint manifest. */
+async function runAssuranceProject(options: readonly string[]): Promise<LifecycleExitCode> {
+  if (options.length !== 2 || options[0] !== '--name') return 30;
+  const project = z.enum(['spa', 'bff', 'protocol', 'security', 'compatibility']).parse(options[1]);
+  const root = worktreePath();
+  const active = readActiveRun(root);
+  return new Promise((resolveExit, rejectExit) => {
+    const child = spawn(
+      resolve(root, 'node_modules/.bin/playwright'),
+      ['test', '--project', project],
+      {
+        cwd: resolve(root, 'test-harness'),
+        env: environmentForManifest(active.manifest),
+        shell: false,
+        stdio: 'inherit',
+      },
+    );
+    child.once('error', rejectExit);
+    child.once('exit', (code) => resolveExit(code === 0 ? 0 : 30));
+  });
+}
+
 /** Writes active discovery through an owner-only atomic replacement. */
 function writeActiveRun(root: string, active: ActiveRun): void {
   const path = activeRunPath(root);
@@ -449,6 +480,7 @@ async function main(arguments_: readonly string[]): Promise<void> {
       }
     }
   } else if (action === 'test') exitCode = await runRetainedTests(options);
+  else if (action === 'project') exitCode = await runAssuranceProject(options);
   else {
     if (options.length !== 4 || options[0] !== '--run-id' || options[2] !== '--base-port') {
       exitCode = 30;
