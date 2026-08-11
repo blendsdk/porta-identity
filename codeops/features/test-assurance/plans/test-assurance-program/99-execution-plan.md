@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 04:11
-> **Progress**: 14/92 tasks (15%)
+> **Last Updated**: 2026-08-11 04:30
+> **Progress**: 15/92 tasks (16%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -202,7 +202,7 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
       container/process/volume/path identity; reclaim stale leases only after owner and Compose absence.
 - [x] 2.6 Implement the reset state machine: block traffic, stop Porta, recreate DB, migrate/ ✅ (completed: 2026-08-11 04:11)
       bootstrap/seed, reset Redis/MailHog, restart clients/Porta, and verify fixture/migration digests.
-- [ ] 2.7 Make post-mutation failure/signal/timeout poison the run and force full owned-stack
+- [x] 2.7 Make post-mutation failure/signal/timeout poison the run and force full owned-stack ✅ (completed: 2026-08-11 04:30)
       recreation; add implementation tests for every durable boundary and recovery report.
 - [ ] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax,
       `docker compose -f test-harness/docker-compose.yml config`, and `yarn verify`.

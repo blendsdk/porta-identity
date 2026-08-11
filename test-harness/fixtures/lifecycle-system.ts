@@ -1,9 +1,11 @@
 import { createServer } from 'node:net';
+import { randomUUID } from 'node:crypto';
 import {
   chmodSync,
   closeSync,
   existsSync,
   fsyncSync,
+  linkSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -22,6 +24,7 @@ import type {
   EndpointAvailabilityAdapter,
   EndpointManifest,
   EndpointName,
+  DurableResetState,
   LeaseRecord,
   LeaseStateAdapter,
   LifecycleRecoveryLookup,
@@ -29,13 +32,19 @@ import type {
   Presence,
   ProcessIdentity,
   ProcessProbeAdapter,
+  ResetStateAdapter,
 } from './lifecycle-planned.js';
 
+/** Complete endpoint set used by loopback availability checks. */
 const endpointNames = ['porta', 'app', 'bff', 'postgres', 'redis', 'mailhog'] as const;
+
+/** Runtime validator for process identities crossing the durable lease boundary. */
 const processIdentitySchema = z.object({
   pid: z.number().int().positive(),
   startedAtFingerprint: z.string().min(1),
 });
+
+/** Runtime validator for the immutable endpoint manifest stored in a lease. */
 const manifestSchema = z.object({
   runId: z.uuid(),
   scenarioId: z.string().regex(/^[a-z][a-z0-9-]{0,62}$/u),
@@ -60,6 +69,8 @@ const manifestSchema = z.object({
   }),
   certificatePath: z.string().min(1),
 });
+
+/** Runtime validator for every field that authorizes later cleanup or ownership transfer. */
 const leaseRecordSchema = z.object({
   runId: z.uuid(),
   ownerProcess: processIdentitySchema,
@@ -71,6 +82,9 @@ const leaseRecordSchema = z.object({
   certificatePath: z.string().min(1),
   manifest: manifestSchema,
 });
+
+/** Closed durable reset-state vocabulary. */
+const durableResetStateSchema = z.enum(['ready', 'resetting-poisoned']);
 
 /** Filesystem-backed lease store shared by concurrent repository worktrees. */
 export class FileLeaseStateAdapter implements LeaseStateAdapter {
@@ -121,6 +135,37 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
     }
   }
 
+  /** Atomically changes only process ownership when the complete prior lease still matches. */
+  public async transferOwner(
+    expected: LeaseRecord,
+    newOwner: ProcessIdentity,
+  ): Promise<LeaseRecord | 'mismatch'> {
+    processIdentitySchema.parse(newOwner);
+    const ownerDirectories = this.ownerDirectories(expected.runId);
+    if (ownerDirectories.length !== 1) return 'mismatch';
+    const ownerDirectory = ownerDirectories[0] ?? '';
+    const claim = this.acquireTakeoverClaim(ownerDirectory, newOwner);
+    if (claim === undefined) return 'mismatch';
+
+    try {
+      const leasePath = resolve(ownerDirectory, 'lease.json');
+      const persisted = leaseRecordSchema.parse(JSON.parse(readFileSync(leasePath, 'utf8')));
+      if (stableJson(persisted) !== stableJson(expected)) return 'mismatch';
+      const replacement = freezeLeaseRecord(
+        leaseRecordSchema.parse({ ...persisted, ownerProcess: newOwner }),
+      );
+      const replacementPath = resolve(ownerDirectory, `.lease-replacement-${randomUUID()}.json`);
+      writeDurableJson(replacementPath, replacement);
+      renameSync(replacementPath, leasePath);
+      syncDirectory(ownerDirectory);
+      return replacement;
+    } finally {
+      unlinkIfPresent(claim.claimPath);
+      unlinkIfPresent(claim.candidatePath);
+      syncDirectory(ownerDirectory);
+    }
+  }
+
   /** Releases only the lease whose complete persisted identity still matches. */
   public async release(record: LeaseRecord): Promise<void> {
     const ownerDirectories = this.ownerDirectories(record.runId);
@@ -160,6 +205,57 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
       .filter((entry) => entry.isDirectory() && /^block-\d{4,5}$/u.test(entry.name))
       .map((entry) => resolve(this.root, entry.name, ownerName))
       .filter((path) => existsSync(path));
+  }
+
+  /**
+   * Acquires one complete, atomically linked takeover claim.
+   *
+   * The candidate file is fully durable before `link` publishes it as the shared claim, so a
+   * competing process never observes a partially written claimant identity. A dead claimant may
+   * be removed; a live or unreadable claimant always blocks takeover.
+   */
+  protected acquireTakeoverClaim(
+    ownerDirectory: string,
+    newOwner: ProcessIdentity,
+  ): { readonly claimPath: string; readonly candidatePath: string } | undefined {
+    const claimPath = resolve(ownerDirectory, 'takeover.claim');
+    const candidatePath = resolve(ownerDirectory, `.takeover-candidate-${randomUUID()}.json`);
+    writeDurableJson(candidatePath, newOwner);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        linkSync(candidatePath, claimPath);
+        syncDirectory(ownerDirectory);
+        this.removeOrphanedTakeoverFiles(ownerDirectory, candidatePath);
+        return { claimPath, candidatePath };
+      } catch (error) {
+        if (!hasErrorCode(error, 'EEXIST')) {
+          unlinkIfPresent(candidatePath);
+          throw error;
+        }
+        const claimant = readClaimant(claimPath);
+        if (claimant === undefined || processPresence(claimant) !== 'absent') {
+          unlinkIfPresent(candidatePath);
+          return undefined;
+        }
+        unlinkSync(claimPath);
+        syncDirectory(ownerDirectory);
+      }
+    }
+    unlinkIfPresent(candidatePath);
+    return undefined;
+  }
+
+  /** Removes only abandoned, allowlisted takeover temporaries after exclusive claim ownership. */
+  protected removeOrphanedTakeoverFiles(ownerDirectory: string, currentCandidate: string): void {
+    for (const entry of readdirSync(ownerDirectory, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const path = resolve(ownerDirectory, entry.name);
+      if (path === currentCandidate) continue;
+      if (/^\.(?:takeover-candidate|lease-replacement)-[0-9a-f-]+\.json$/u.test(entry.name)) {
+        unlinkSync(path);
+      }
+    }
   }
 }
 
@@ -216,6 +312,43 @@ export class EndpointManifestFileAdapter implements ManifestConsumerAdapter {
   }
 }
 
+/** Filesystem-backed poison state whose pending transitions become visible only after flush. */
+export class FileResetStateAdapter implements ResetStateAdapter {
+  /** Pending transitions scoped to the current lifecycle supervisor process. */
+  protected readonly pending = new Map<string, DurableResetState>();
+
+  /** Stages one exact state transition without claiming it is durable yet. */
+  public async persist(record: LeaseRecord, state: DurableResetState): Promise<void> {
+    durableResetStateSchema.parse(state);
+    this.pending.set(record.runId, state);
+  }
+
+  /** Atomically replaces and flushes the state file plus its owning directory. */
+  public async flush(record: LeaseRecord): Promise<void> {
+    const state = this.pending.get(record.runId);
+    if (state === undefined) throw new Error('reset state has no pending transition');
+    const statePath = resetStatePath(record);
+    mkdirSync(dirname(statePath), { recursive: true, mode: 0o700 });
+    const replacementPath = resolve(dirname(statePath), `.reset-state-${randomUUID()}.json`);
+    writeDurableJson(replacementPath, { runId: record.runId, state });
+    renameSync(replacementPath, statePath);
+    syncDirectory(dirname(statePath));
+    this.pending.delete(record.runId);
+  }
+
+  /** Reads only the committed state file; pending process memory never counts as durability. */
+  public async read(record: LeaseRecord): Promise<DurableResetState | 'unreadable'> {
+    try {
+      const parsed = z
+        .object({ runId: z.uuid(), state: durableResetStateSchema })
+        .parse(JSON.parse(readFileSync(resetStatePath(record), 'utf8')));
+      return parsed.runId === record.runId ? parsed.state : 'unreadable';
+    } catch {
+      return 'unreadable';
+    }
+  }
+}
+
 /** Converts a validated persisted record into deeply immutable lifecycle identity. */
 function freezeLeaseRecord(record: z.infer<typeof leaseRecordSchema>): LeaseRecord {
   return Object.freeze({
@@ -230,6 +363,16 @@ function freezeLeaseRecord(record: z.infer<typeof leaseRecordSchema>): LeaseReco
       urls: Object.freeze(record.manifest.urls),
     }),
   });
+}
+
+/** Returns the canonical poison-state path already covered by the lease's owned runtime path. */
+function resetStatePath(record: LeaseRecord): string {
+  return resolve(
+    record.worktreePath,
+    'test-harness/.assurance-runtime',
+    record.runId,
+    'reset-state.json',
+  );
 }
 
 /** Returns a deterministic JSON representation used only for exact identity comparison. */
@@ -256,11 +399,45 @@ function writeDurableText(path: string, value: string): void {
   } finally {
     closeSync(file);
   }
-  const directory = openSync(dirname(path), 'r');
+  syncDirectory(dirname(path));
+}
+
+/** Flushes directory metadata after a file create, rename, or removal. */
+function syncDirectory(path: string): void {
+  const directory = openSync(path, 'r');
   try {
     fsyncSync(directory);
   } finally {
     closeSync(directory);
+  }
+}
+
+/** Reads one complete claimant identity, treating malformed state as unsafe. */
+function readClaimant(path: string): ProcessIdentity | undefined {
+  try {
+    return processIdentitySchema.parse(JSON.parse(readFileSync(path, 'utf8')));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Checks one exact process identity synchronously for takeover fencing. */
+function processPresence(identity: ProcessIdentity): Presence {
+  try {
+    return readProcessStartFingerprint(identity.pid) === identity.startedAtFingerprint
+      ? 'present'
+      : 'absent';
+  } catch (error) {
+    return hasErrorCode(error, 'ENOENT') ? 'absent' : 'unreadable';
+  }
+}
+
+/** Removes an owned temporary file when it still exists. */
+function unlinkIfPresent(path: string): void {
+  try {
+    unlinkSync(path);
+  } catch (error) {
+    if (!hasErrorCode(error, 'ENOENT')) throw error;
   }
 }
 

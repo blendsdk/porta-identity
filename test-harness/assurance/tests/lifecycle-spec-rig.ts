@@ -84,10 +84,16 @@ export function createLifecycleSpecRig(
       if (controls.leaseReadOverride !== undefined) return controls.leaseReadOverride;
       return (
         acquiredRecords.find(
-          (record) =>
-            record.runId === lookup.runId && record.worktreePath === lookup.worktreePath,
+          (record) => record.runId === lookup.runId && record.worktreePath === lookup.worktreePath,
         ) ?? 'missing'
       );
+    },
+    async transferOwner(expected, newOwner) {
+      const index = acquiredRecords.findIndex((record) => record === expected);
+      if (index < 0) return 'mismatch';
+      const transferred = Object.freeze({ ...expected, ownerProcess: Object.freeze(newOwner) });
+      acquiredRecords[index] = transferred;
+      return transferred;
     },
     async release(record) {
       controls.releasedRecords.push(record);
@@ -182,10 +188,7 @@ function recordConsumerManifest(
 }
 
 /** Creates a named manifest consumer with observable calls. */
-function createConsumer(
-  controls: LifecycleRigControls,
-  name: string,
-): ManifestConsumerAdapter {
+function createConsumer(controls: LifecycleRigControls, name: string): ManifestConsumerAdapter {
   return {
     async apply(manifest) {
       recordConsumerManifest(controls, name, manifest);

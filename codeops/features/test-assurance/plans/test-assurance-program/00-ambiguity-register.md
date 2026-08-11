@@ -372,3 +372,32 @@ limits; this design incorporates each condition. **Policy version**: 1. **Root i
 `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: a supported host lacks a reliable process-start
 identity, Docker binding contradicts the preflight assumption, lease durability fails under crash
 tests, or a progressive selector omits a group after its owning task.
+
+### AR-39 — Atomic ownership transfer after poisoned recovery
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal recovery,
+concurrency, persistence, and capability mechanisms within the already approved poisoned-stack
+contract; no product behavior, topology, acceptance criterion, or scope change. **Objective**:
+ensure a stack rebuilt by a fresh process is exclusively manageable and can never remain owned by
+the dead process. **Decision**: a poisoned recovery first proves the recorded owner and Compose
+project absent, then uses a durable lease-store compare-and-swap to transfer only `ownerProcess`;
+every resource identity remains exact. It rechecks Compose absence after takeover, recreates the
+complete stack, and returns a new opaque `OwnedRun` on success and on every post-takeover failure.
+The recovery command holding that capability must be a long-lived lifecycle supervisor; a
+short-lived command may not report successful adoption. The filesystem CAS publishes a fully
+written claim atomically, rejects live/unreadable claimants, permits a proven-dead claimant to be
+reclaimed, replaces the exact lease with file and directory durability, and never restores the old
+owner after takeover. Ready stale cleanup retains its existing release behavior. **Evidence**:
+`recover()` previously returned only a plain outcome and `LeaseStateAdapter` had no ownership
+transfer, so a successful fresh-process rebuild retained a dead PID and no valid cleanup
+capability. **Rejected alternatives**: release after rebuild leaves a live collision-prone stack;
+dead-owner reuse makes exact fencing reject later cleanup; overwrite without CAS permits duplicate
+destructive recovery; returning a serializable record permits fabricated deletion authority;
+automatic stop defeats reusable recovery. **Strongest counterargument**: the compatible optional
+recovery capability and CAS add state-machine complexity. That complexity is required because the
+previous successful outcome was operationally unusable. **Confidence**: High. **Hardening**:
+independent concurrency challenger required the CAS, post-takeover probe, capability on every
+post-takeover outcome, and long-lived supervisor invariant; all are adopted. **Policy version**:
+1. **Root invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: the runtime cannot keep
+the recovery supervisor alive, the filesystem cannot provide atomic link/rename and directory
+durability, or crash tests show two successful owners or malformed committed lease state.

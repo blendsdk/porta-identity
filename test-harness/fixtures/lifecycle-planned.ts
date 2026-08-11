@@ -168,6 +168,14 @@ export interface LifecycleStartResult {
   readonly ownedRun?: OwnedRun;
 }
 
+/** Result of stale recovery, including new ownership when a poisoned stack is rebuilt. */
+export interface LifecycleRecoveryResult extends LifecycleOutcome {
+  /** Opaque capability transferred to the recovery supervisor after an atomic takeover. */
+  readonly ownedRun?: OwnedRun;
+  /** Non-secret reset evidence when poisoned recovery attempted full recreation. */
+  readonly report?: ResetReport;
+}
+
 /** Atomically persisted lease-state operations. */
 export interface LeaseStateAdapter {
   /** Atomically acquires the complete candidate block or reports a collision. */
@@ -176,6 +184,11 @@ export interface LeaseStateAdapter {
   read(
     lookup: LifecycleRecoveryLookup,
   ): Promise<LeaseRecord | 'missing' | 'malformed' | 'incomplete'>;
+  /** Atomically transfers only process ownership when the complete prior record still matches. */
+  transferOwner(
+    expected: LeaseRecord,
+    newOwner: ProcessIdentity,
+  ): Promise<LeaseRecord | 'mismatch'>;
   /** Releases exactly the supplied, identity-matched lease. */
   release(record: LeaseRecord): Promise<void>;
   /** Moves an unsafe record aside for explicit operator inspection. */
@@ -404,7 +417,7 @@ export interface LifecycleController {
   /** Cleans exactly the resources still owned by the supplied capability. */
   stop(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
   /** Reclaims persisted ownership only after lookup validation and two independent absence proofs. */
-  recover(lookup: LifecycleRecoveryLookup): Promise<LifecycleOutcome>;
+  recover(lookup: LifecycleRecoveryLookup): Promise<LifecycleRecoveryResult>;
 }
 
 /** Creates a lifecycle controller from explicit capability adapters. */

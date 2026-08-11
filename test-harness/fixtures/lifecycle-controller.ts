@@ -10,6 +10,7 @@ import {
   type LifecycleExitCode,
   type LifecycleOutcome,
   type LifecycleRecoveryLookup,
+  type LifecycleRecoveryResult,
   type LifecycleResetOutcome,
   type LifecycleStartRequest,
   type LifecycleStartResult,
@@ -100,7 +101,7 @@ export class LifecycleControllerImplementation implements LifecycleController {
   }
 
   /** Reclaims a persisted lease only after both independent ownership probes prove absence. */
-  public async recover(lookup: LifecycleRecoveryLookup): Promise<LifecycleOutcome> {
+  public async recover(lookup: LifecycleRecoveryLookup): Promise<LifecycleRecoveryResult> {
     try {
       validateRecoveryLookup(lookup);
     } catch {
@@ -131,8 +132,7 @@ export class LifecycleControllerImplementation implements LifecycleController {
       if (reset !== undefined) {
         const resetState = await reset.state.read(persisted);
         if (resetState === 'resetting-poisoned') {
-          const resetOutcome = await this.executeReset(persisted, reset);
-          return lifecyclePart(resetOutcome);
+          return this.recreatePoisonedRun(persisted, reset);
         }
         if (resetState === 'unreadable') return cleanupFailure(persisted);
       }
@@ -191,10 +191,11 @@ export class LifecycleControllerImplementation implements LifecycleController {
           return this.abortAcquiredStart(record, prerequisite);
         }
       }
-      const ownedRun: OwnedRun = { [ownedRunBrand]: true, manifest };
-      const frozenOwnedRun = Object.freeze(ownedRun);
-      this.ownedRecords.set(frozenOwnedRun, record);
-      return { outcome: outcome(0), ownedRun: frozenOwnedRun };
+      if (this.dependencies.reset !== undefined) {
+        await this.dependencies.reset.state.persist(record, 'ready');
+        await this.dependencies.reset.state.flush(record);
+      }
+      return { outcome: outcome(0), ownedRun: this.createOwnedRun(record) };
     } catch {
       return this.abortAcquiredStart(record);
     }
@@ -302,6 +303,14 @@ export class LifecycleControllerImplementation implements LifecycleController {
       await this.runResetStep(currentStep, () => reset.traffic.resume(record));
       return { ...outcome(0), report: freezeResetReport(report) };
     } catch (error) {
+      if (!(await this.restorePoisonAfterFailure(record, reset, currentStep))) {
+        return {
+          ...outcome(60),
+          prerequisite: prerequisiteForResetStep(currentStep),
+          recoveryIdentifiers: safeIds(record),
+          report: freezeResetReport(report),
+        };
+      }
       return {
         ...resetFailureOutcome(error, currentStep),
         prerequisite: prerequisiteForResetStep(currentStep),
@@ -310,9 +319,68 @@ export class LifecycleControllerImplementation implements LifecycleController {
     }
   }
 
+  /**
+   * Atomically adopts and rebuilds a poisoned run for a replacement lifecycle supervisor.
+   *
+   * The second Compose probe closes the race between the initial absence proof and lease takeover.
+   * Once takeover succeeds, every returned outcome carries the new capability so the replacement
+   * supervisor can clean the run even when recreation fails.
+   */
+  protected async recreatePoisonedRun(
+    staleRecord: LeaseRecord,
+    reset: ResetDependencies,
+  ): Promise<LifecycleRecoveryResult> {
+    const newOwner = await this.dependencies.processes.currentIdentity();
+    const transferred = await this.dependencies.leases.transferOwner(staleRecord, newOwner);
+    if (transferred === 'mismatch') return cleanupFailure(staleRecord);
+
+    const ownedRun = this.createOwnedRun(transferred);
+    try {
+      const secondInspection = await this.dependencies.compose.inspect(transferred.composeProject);
+      if (secondInspection.presence !== 'absent') {
+        return recoveryFailure(transferred, ownedRun);
+      }
+      await this.dependencies.compose.start(transferred.manifest);
+      const resetOutcome = await this.executeReset(transferred, reset);
+      const commonOutcome = lifecyclePart(resetOutcome);
+      return {
+        ...commonOutcome,
+        recoveryIdentifiers:
+          commonOutcome.exitCode === 0 ? [] : Object.freeze([...safeIds(transferred)]),
+        ownedRun,
+        report: resetOutcome.report,
+      };
+    } catch {
+      return recoveryFailure(transferred, ownedRun);
+    }
+  }
+
   /** Applies the configured deadline to one named reset capability boundary. */
   protected runResetStep<T>(step: ResetStepName, work: () => Promise<T>): Promise<T> {
     return this.dependencies.deadlines.run(`reset:${step}`, work);
+  }
+
+  /**
+   * Restores traffic fencing and durable poison when finalization partially succeeded.
+   *
+   * A failure after `clear-poison` or while resuming traffic can otherwise expose a reset whose
+   * final state is unknown. Recovery actions are direct and bounded by their adapters; failure to
+   * restore either fence is classified as cleanup failure by the caller.
+   */
+  protected async restorePoisonAfterFailure(
+    record: LeaseRecord,
+    reset: ResetDependencies,
+    step: ResetStepName,
+  ): Promise<boolean> {
+    if (!postMutationSteps.has(step)) return true;
+    try {
+      if (step === 'resume-traffic') await reset.traffic.quiesce(record);
+      await reset.state.persist(record, 'resetting-poisoned');
+      await reset.state.flush(record);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -334,6 +402,13 @@ export class LifecycleControllerImplementation implements LifecycleController {
       }
     }
     return { ...outcome(0), report: emptyResetReport(record.runId) };
+  }
+
+  /** Creates and registers the only opaque capability accepted by later destructive operations. */
+  protected createOwnedRun(record: LeaseRecord): OwnedRun {
+    const ownedRun = Object.freeze({ [ownedRunBrand]: true as const, manifest: record.manifest });
+    this.ownedRecords.set(ownedRun, record);
+    return ownedRun;
   }
 }
 
@@ -357,6 +432,24 @@ type ResetStepName =
   | 'clear-poison'
   | 'flush-ready'
   | 'resume-traffic';
+
+/** Steps at or after the first durable mutation, including all reuse-finalization boundaries. */
+const postMutationSteps = new Set<ResetStepName>([
+  'db-recreate',
+  'migration',
+  'bootstrap',
+  'seed',
+  'redis',
+  'mailhog',
+  'restart-clients',
+  'restart-porta',
+  'digest-count-checks',
+  'public-health',
+  'verify-traffic-blocked',
+  'clear-poison',
+  'flush-ready',
+  'resume-traffic',
+]);
 
 /** Mutable private report shape used while the ordered reset gathers non-secret facts. */
 interface MutableResetReport {
@@ -474,6 +567,11 @@ function lifecyclePart(resetOutcome: LifecycleResetOutcome): LifecycleOutcome {
     prerequisite: resetOutcome.prerequisite,
     recoveryIdentifiers: resetOutcome.recoveryIdentifiers,
   };
+}
+
+/** Returns a post-takeover failure together with the capability needed for exact cleanup. */
+function recoveryFailure(record: LeaseRecord, ownedRun: OwnedRun): LifecycleRecoveryResult {
+  return { ...cleanupFailure(record), recoveryIdentifiers: safeIds(record), ownedRun };
 }
 
 /** Returns the narrow durable lookup derived only from an already-issued ownership record. */

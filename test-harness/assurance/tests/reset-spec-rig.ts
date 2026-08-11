@@ -147,6 +147,13 @@ export function createResetSpecRig(
       if (controls.leaseReadOverride !== undefined) return controls.leaseReadOverride;
       return findLease(sharedState, lookup) ?? 'missing';
     },
+    async transferOwner(expected, newOwner) {
+      const index = sharedState.leases.findIndex((record) => record === expected);
+      if (index < 0) return 'mismatch';
+      const transferred = Object.freeze({ ...expected, ownerProcess: Object.freeze(newOwner) });
+      sharedState.leases[index] = transferred;
+      return transferred;
+    },
     async release(_record) {},
     async quarantine(lookup) {
       return [`lease:${lookup.runId}`];
