@@ -41,6 +41,8 @@ export interface CoverageWorkspace {
   readonly compiledDirectory: string;
   /** Machine-readable capture manifest path. */
   readonly manifestPath: string;
+  /** Deterministic JSON and HTML report directory. */
+  readonly reportDirectory: string;
 }
 
 /** Non-secret identity of the active owned Porta container. */
@@ -128,6 +130,7 @@ export function createCoverageWorkspace(
     rawDirectory,
     compiledDirectory,
     manifestPath: resolve(root, 'capture-manifest.json'),
+    reportDirectory: resolve(root, 'report'),
   });
 }
 

@@ -14,6 +14,7 @@ import {
 import { redSignatureRegistrySchema } from '../schema.js';
 import {
   coverageEnvironment,
+  convertCapturedCoverage,
   createCoverageWorkspace,
   gracefullyFlushPorta,
   inspectPortaContainer,
@@ -108,6 +109,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     'test-harness/assurance/tests/coverage-capture.impl.test.ts',
     'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
@@ -272,6 +274,13 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
             profile,
           });
           if (manifest.flushStatus !== 'complete') return 40;
+          const conversion = await convertCapturedCoverage(
+            process.cwd(),
+            workspace,
+            manifest,
+            interruption.signal,
+          );
+          if (!conversion.accepted) return 40;
           return interruptedExit ?? projectExit;
         } catch {
           return interruptedExit ?? 40;
@@ -281,7 +290,9 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
     );
     process.exitCode = result;
     if (result === 0) {
-      process.stdout.write(`ASSURANCE_COVERAGE_CAPTURE=${workspace.manifestPath}\n`);
+      process.stdout.write(
+        `ASSURANCE_COVERAGE_CAPTURE=${workspace.manifestPath}\nASSURANCE_COVERAGE_REPORT=${workspace.reportDirectory}\n`,
+      );
     }
   } finally {
     process.off('SIGINT', onSigint);

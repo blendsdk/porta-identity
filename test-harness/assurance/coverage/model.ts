@@ -56,6 +56,14 @@ export interface RawCoverageEnvelope {
   readonly flushStatus: 'complete' | 'incomplete' | 'invalid';
   /** Every script from every captured Porta process. */
   readonly scripts: readonly RawCoverageScript[];
+  /** Original process boundaries retained for duplicate-process merging. */
+  readonly processes?: readonly RawCoverageProcess[];
+}
+
+/** One complete V8 process record retained before cross-process merging. */
+export interface RawCoverageProcess {
+  /** Scripts emitted by one attributed Porta process. */
+  readonly scripts: readonly RawCoverageScript[];
 }
 
 /** Classification result for one raw script. */
@@ -80,4 +88,55 @@ export interface CoverageClassificationResult {
   readonly rejected: boolean;
   /** Stable primary rejection reason. */
   readonly rejectionReason?: 'unexpected-local-script' | 'missing-provenance' | 'incomplete-flush';
+}
+
+/** Exact covered and total counts for every reported metric. */
+export interface ExactCoverageCounts {
+  /** Covered and total statement counts. */
+  readonly statements: Readonly<{ covered: number; total: number }>;
+  /** Covered and total branch counts. */
+  readonly branches: Readonly<{ covered: number; total: number }>;
+  /** Covered and total function counts. */
+  readonly functions: Readonly<{ covered: number; total: number }>;
+  /** Covered and total source-line counts. */
+  readonly lines: Readonly<{ covered: number; total: number }>;
+}
+
+/** One accepted, source-mapped coverage artifact. */
+export interface ConvertedCoverageArtifact {
+  /** Merger used before source-map conversion. */
+  readonly merger: '@bcoe/v8-coverage';
+  /** Stable repository-relative TypeScript source paths. */
+  readonly normalizedPaths: readonly string[];
+  /** Aggregate exact counts. */
+  readonly totals: ExactCoverageCounts;
+  /** Exact counts by source file. */
+  readonly files: Readonly<Record<string, ExactCoverageCounts>>;
+  /** Covered source lines by file. */
+  readonly coveredLines: Readonly<Record<string, readonly number[]>>;
+  /** Uncovered source lines by file. */
+  readonly uncoveredLines: Readonly<Record<string, readonly number[]>>;
+  /** Every deliberately excluded runtime or dependency script. */
+  readonly exclusions: readonly Readonly<{ url: string; reason: string }>[];
+  /** Every eligible script that could not be mapped. */
+  readonly unmapped: readonly Readonly<{ url: string; reason: string }>[];
+  /** Whether the machine-readable report was written. */
+  readonly jsonProduced: boolean;
+  /** Whether the human-readable report was written. */
+  readonly htmlProduced: boolean;
+}
+
+/** Result of provenance validation, merging, and source-map conversion. */
+export interface CoverageConversionResult {
+  /** Whether the resulting evidence is acceptable. */
+  readonly accepted: boolean;
+  /** Converted artifact when accepted. */
+  readonly artifact?: ConvertedCoverageArtifact;
+  /** Declared exclusions preserved on both success and failure. */
+  readonly exclusions: readonly Readonly<{ url: string; reason: string }>[];
+  /** Eligible inputs that could not be mapped. */
+  readonly unmapped: readonly Readonly<{ url: string; reason: string }>[];
+  /** Stable rejection reason. */
+  readonly rejectionReason?:
+    'revision-mismatch' | 'source-map-mismatch' | 'image-mismatch' | 'unmapped-eligible-input';
 }

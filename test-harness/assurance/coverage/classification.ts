@@ -70,24 +70,27 @@ export function loadAndClassifyCoverageCapture(manifestPath: string): LoadedCove
     sourceMapDigest: manifest.compiledOutputDigest,
     processIdentity: manifest.processIdentity,
   });
-  const scripts = manifest.rawFiles.flatMap((identity) => {
+  const processes = manifest.rawFiles.map((identity) => {
     const path = resolve(rawDirectory, identity.name);
     if (statSync(path).size !== identity.bytes || digestCoverageFile(path) !== identity.digest) {
       throw new Error(`raw coverage identity mismatch: ${identity.name}`);
     }
     const processCoverage = rawProcessSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
-    return processCoverage.result.map((script) => ({
+    const scripts = processCoverage.result.map((script) => ({
       scriptId: script.scriptId,
       url: script.url,
       provenance,
       ranges: script.functions.flatMap((functionCoverage) => functionCoverage.ranges),
       functions: script.functions,
     }));
+    return Object.freeze({ scripts: Object.freeze(scripts) });
   });
+  const scripts = processes.flatMap((processCoverage) => processCoverage.scripts);
   const envelope: RawCoverageEnvelope = Object.freeze({
     seed: manifest.seed,
     flushStatus: manifest.flushStatus,
     scripts: Object.freeze(scripts),
+    processes: Object.freeze(processes),
   });
   return Object.freeze({ envelope, classification: classifyCoverageEnvelope(envelope) });
 }
