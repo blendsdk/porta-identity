@@ -55,6 +55,15 @@ const redCommands: Readonly<
       'test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
     ],
   },
+  'coverage-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    ],
+  },
 };
 
 /** Complete lifecycle suite shared by progressive and final lifecycle selectors. */

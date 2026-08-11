@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 21:24
-> **Progress**: 25/92 tasks (27%)
+> **Last Updated**: 2026-08-11 21:44
+> **Progress**: 26/92 tasks (28%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -330,8 +330,8 @@ development evidence, and organization-prefixed user operations enforce tenant o
 - [x] 4.1 [spec-author] Write raw-envelope, classification, provenance, flush, mapping,
       reproducibility, exclusion, and observation-policy specs ST-19–ST-27. ✅ (completed:
       2026-08-11 21:24)
-- [ ] 4.2 Record exact RED signatures for absent capture/conversion while keeping the known-module
-      mapping fixture and required lanes green.
+- [x] 4.2 Record exact RED signatures for absent capture/conversion while keeping the known-module
+      mapping fixture and required lanes green. ✅ (completed: 2026-08-11 21:44)
 - [ ] 4.3 Add exact direct conversion dependencies and frozen-lock changes after validating Node 22/
       TypeScript ESM compatibility; abort the phase if the mapping spike cannot be made trustworthy.
 - [ ] 4.4 Add Porta-only `NODE_V8_COVERAGE`, ignored raw/report paths, mounted ownership, and clean

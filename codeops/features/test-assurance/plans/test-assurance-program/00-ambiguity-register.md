@@ -51,6 +51,7 @@ Porta product contract.
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
 | 46  | Coverage spec verification | How can Task 4.1 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime coverage specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed coverage checkpoints | AI (runtime)   | ✅     |
+| 47  | Coverage RED bridge | How can RED prove absent capture/conversion without accepting missing-module setup failure? | Use one exact current-surface assertion for the complete capture, mount, converter, and handler gap set; require the known mapping fixture to exist and keep immutable runtime specs outside collection | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -614,3 +615,30 @@ independent challenge is unnecessary for this reversible internal checkpoint. **
 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: validation gains a sound
 non-persisting dirty-tree mode, the commit gate changes, or the specifications enter required
 runtime collection before Task 4.2.
+
+### AR-47 — Transitional server-process coverage RED evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: bounded test-execution design
+inside the approved RED checkpoint; it changes no coverage oracle, product behavior, acceptance
+criterion, or scope. **Objective**: prove the known missing server-process capture and conversion
+surface for the intended reason, never through module-load or setup failure. **Decision**: retain
+the three coverage specification files as immutable runtime oracles and add one narrow current-
+surface specification that reports the exact ordered absence of Porta-scoped V8 capture, its raw
+mount, the converter entry point, and the registered coverage handler. The bridge first requires
+the independent mapping fixture to exist. The existing bounded RED wrapper accepts only one raw
+exit 1, zero passing cases, exactly one failing case, and one literal marker occurrence for
+ST-19. Partial/stale diagnosis, collection failure, timeout, cleanup failure, or unrelated output
+cannot count. **Evidence**: the converter is declaration-only at this checkpoint and the command
+handler intentionally fails closed as unavailable, while the execution contract prohibits using
+missing-module failure as RED. **Rejected alternatives**: executing the declaration-only specs
+would produce setup noise; a temporary fake converter would shape the oracle around disposable
+implementation; accepting the unavailable-handler exit would not prove the missing capture
+surface. **Strongest counterargument**: a static bridge can be satisfied cosmetically. It proves
+only the required pre-implementation RED baseline; the real raw-envelope, mapping, provenance,
+reproducibility, and live capture specs remain the green authority. **Confidence**: High — the
+same exact-marker pattern already proved lifecycle and fixture RED states without weakening their
+runtime oracles. **Hardening**: forced reframing retained the smallest exact-set bridge and rejected
+all setup-failure-based alternatives; independent challenge is deferred to the full Phase 4
+review. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen
+triggers**: any coverage capability exists before RED is recorded, the bridge enters claim
+evidence, or signature execution becomes data-driven from the registry command string.
