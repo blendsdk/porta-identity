@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 01:55
-> **Progress**: 9/92 tasks (10%)
+> **Last Updated**: 2026-08-11 02:24
+> **Progress**: 10/92 tasks (11%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -182,7 +182,7 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
 
 - [x] 2.1 [spec-author] Write lifecycle specs for failure taxonomy, atomic port-block leasing, ✅ (completed: 2026-08-11 01:55)
       endpoint-manifest propagation, ownership fencing, stale-lease recovery, and cleanup.
-- [ ] 2.2 [spec-author] Write reset-state specs for quiesce/stop, DB recreation, exact migration and
+- [x] 2.2 [spec-author] Write reset-state specs for quiesce/stop, DB recreation, exact migration and ✅ (completed: 2026-08-11 02:24)
       deterministic seed, Redis/mail reset, restart/public verification, and every interruption edge.
 - [ ] 2.3 Record exact RED signatures for current non-fatal reset, fixed endpoints, cross-cleanup,
       and partial reset behavior while existing required lanes remain green.

@@ -9,11 +9,7 @@ declare const ownedRunBrand: unique symbol;
 
 /** Stable classifications emitted by every lifecycle operation. */
 export type LifecycleClassification =
-  | 'success'
-  | 'setup-failure'
-  | 'cleanup-failure'
-  | 'timeout'
-  | 'interrupted';
+  'success' | 'setup-failure' | 'cleanup-failure' | 'timeout' | 'interrupted';
 
 /** Exit codes reserved by the lifecycle contract. */
 export type LifecycleExitCode = 0 | 30 | 60 | 70 | 130 | 143;
@@ -135,6 +131,32 @@ export interface LifecycleOutcome {
   readonly recoveryIdentifiers: readonly string[];
 }
 
+/** Exact, non-secret facts emitted by a completed or failed reset. */
+export interface ResetReport {
+  /** Synthetic run identifier safe for diagnostics. */
+  readonly runId: string;
+  /** Exact migration revision requested by the reset. */
+  readonly migrationRevision: string;
+  /** Observed migration digest, when verification ran. */
+  readonly migrationDigest?: string;
+  /** Observed deterministic fixture digest, when verification ran. */
+  readonly fixtureDigest?: string;
+  /** Exact synthetic fixture counts by entity name. */
+  readonly fixtureCounts: Readonly<Record<string, number>>;
+  /** Number of harness-dedicated Redis keys removed. */
+  readonly redisKeysRemoved: number;
+  /** Number of MailHog messages removed. */
+  readonly mailMessagesRemoved: number;
+  /** Safe resource identifiers relevant to recovery. */
+  readonly identifiers: readonly string[];
+}
+
+/** Lifecycle outcome returned by a capability-gated reset. */
+export interface LifecycleResetOutcome extends LifecycleOutcome {
+  /** Non-secret reset observations retained even when cleanup or recovery is required. */
+  readonly report: ResetReport;
+}
+
 /** Result of starting a run; ownership exists only after complete setup succeeds. */
 export interface LifecycleStartResult {
   /** Lifecycle outcome. */
@@ -225,6 +247,115 @@ export interface DeadlineAdapter {
   run<T>(operation: string, work: () => Promise<T>): Promise<T>;
 }
 
+/** Traffic-admission boundary that keeps tests away from a mutating stack. */
+export interface TrafficAdmissionAdapter {
+  /** Blocks new test traffic and waits for admitted work to quiesce. */
+  quiesce(record: LeaseRecord): Promise<void>;
+  /** Confirms no test traffic was admitted while reset was in progress. */
+  verifyBlocked(record: LeaseRecord): Promise<void>;
+  /** Reopens test traffic only after poison is cleared following final verification. */
+  resume(record: LeaseRecord): Promise<void>;
+}
+
+/** Porta and client runtime operations used during an ordered reset. */
+export interface ResetRuntimeAdapter {
+  /** Stops Porta before any backing store is changed. */
+  stopPorta(record: LeaseRecord): Promise<void>;
+  /** Restarts harness clients after backing stores and fixtures are ready. */
+  restartClients(record: LeaseRecord): Promise<void>;
+  /** Restarts Porta only after backing stores and fixtures are ready. */
+  restartPorta(record: LeaseRecord): Promise<void>;
+}
+
+/** Durable states that fence interrupted or failed resets. */
+export type DurableResetState = 'ready' | 'resetting-poisoned';
+
+/** Durable poison state used to prevent unsafe in-place retry. */
+export interface ResetStateAdapter {
+  /** Persists a state transition for the exact owned run. */
+  persist(record: LeaseRecord, state: DurableResetState): Promise<void>;
+  /** Flushes the state transition before destructive work may begin. */
+  flush(record: LeaseRecord): Promise<void>;
+  /** Reads the durable state for admission and recovery decisions. */
+  read(record: LeaseRecord): Promise<DurableResetState | 'unreadable'>;
+}
+
+/** Expected database and fixture identity supplied independently of production logic. */
+export interface ResetExpectations {
+  /** Exact migration revision that must be applied. */
+  readonly migrationRevision: string;
+  /** Exact digest of the expected migration set. */
+  readonly migrationDigest: string;
+  /** Exact digest of deterministic synthetic fixtures. */
+  readonly fixtureDigest: string;
+  /** Exact deterministic synthetic entity counts. */
+  readonly fixtureCounts: Readonly<Record<string, number>>;
+}
+
+/** Observed database identity after reset operations finish. */
+export interface ResetDatabaseObservation {
+  /** Applied migration revision. */
+  readonly migrationRevision: string;
+  /** Digest of the applied migration set. */
+  readonly migrationDigest: string;
+  /** Digest of the installed deterministic fixtures. */
+  readonly fixtureDigest: string;
+  /** Observed synthetic entity counts. */
+  readonly fixtureCounts: Readonly<Record<string, number>>;
+}
+
+/** PostgreSQL recreation, exact migration, bootstrap, seed, and verification boundary. */
+export interface ResetDatabaseAdapter {
+  /** Drops and recreates the harness-owned database. */
+  recreate(record: LeaseRecord): Promise<readonly string[]>;
+  /** Applies exactly the supplied migration revision. */
+  migrate(record: LeaseRecord, revision: string): Promise<void>;
+  /** Installs bootstrap records required by deterministic fixtures. */
+  bootstrap(record: LeaseRecord): Promise<void>;
+  /** Installs deterministic synthetic fixture data. */
+  seed(record: LeaseRecord, expectations: ResetExpectations): Promise<void>;
+  /** Reads migration and fixture identity without deriving the expected values. */
+  observe(record: LeaseRecord): Promise<ResetDatabaseObservation>;
+}
+
+/** Harness-dedicated Redis reset boundary. */
+export interface ResetRedisAdapter {
+  /** Flushes only the Redis allocation owned by the harness run. */
+  flush(record: LeaseRecord): Promise<number>;
+}
+
+/** MailHog reset boundary. */
+export interface ResetMailAdapter {
+  /** Removes all messages from the harness-owned MailHog allocation. */
+  clear(record: LeaseRecord): Promise<number>;
+}
+
+/** Public checks that gate reuse of a reset stack. */
+export interface ResetPublicVerificationAdapter {
+  /** Verifies public health and reset postconditions using the immutable endpoint manifest. */
+  verify(record: LeaseRecord): Promise<void>;
+}
+
+/** Capability bundle required only when the controller performs reset or poisoned recovery. */
+export interface ResetDependencies {
+  /** Independent expected migration and fixture identity. */
+  readonly expectations: ResetExpectations;
+  /** Traffic quiescence and admission fencing. */
+  readonly traffic: TrafficAdmissionAdapter;
+  /** Porta and client runtime lifecycle. */
+  readonly runtime: ResetRuntimeAdapter;
+  /** Durable reset/poison state. */
+  readonly state: ResetStateAdapter;
+  /** PostgreSQL recreation and deterministic data installation. */
+  readonly database: ResetDatabaseAdapter;
+  /** Harness-dedicated Redis reset. */
+  readonly redis: ResetRedisAdapter;
+  /** MailHog message reset. */
+  readonly mail: ResetMailAdapter;
+  /** Final public health and postcondition checks. */
+  readonly publicVerification: ResetPublicVerificationAdapter;
+}
+
 /** Injectable lifecycle capabilities used by the controller. */
 export interface LifecycleDependencies {
   /** Durable atomic lease state. */
@@ -257,6 +388,8 @@ export interface LifecycleDependencies {
   readonly prerequisites: PrerequisiteAdapter;
   /** Bounded-operation deadline enforcement. */
   readonly deadlines: DeadlineAdapter;
+  /** Reset-only capabilities; callers that never reset may omit this bundle. */
+  readonly reset?: ResetDependencies;
 }
 
 /** Public lifecycle operations. */
@@ -264,7 +397,7 @@ export interface LifecycleController {
   /** Validates input, acquires a complete block, and creates an ephemeral stack. */
   start(request: LifecycleStartRequest): Promise<LifecycleStartResult>;
   /** Resets mutable services before a dependent scenario executes. */
-  reset(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
+  reset(ownedRun: OwnedRun): Promise<LifecycleResetOutcome>;
   /** Cleans exactly the resources still owned by the supplied capability. */
   stop(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
   /** Reclaims persisted ownership only after lookup validation and two independent absence proofs. */
