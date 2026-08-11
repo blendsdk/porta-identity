@@ -95,6 +95,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
   ],
   'project-collection': ['test-harness/assurance/tests/assurance-project-collection.spec.test.ts'],
+  'coverage-pipeline': ['test-harness/assurance/tests/coverage-dependencies.impl.test.ts'],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',

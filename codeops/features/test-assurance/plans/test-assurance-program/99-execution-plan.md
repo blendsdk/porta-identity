@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 21:44
-> **Progress**: 26/92 tasks (28%)
+> **Last Updated**: 2026-08-11 22:02
+> **Progress**: 27/92 tasks (29%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -332,8 +332,9 @@ development evidence, and organization-prefixed user operations enforce tenant o
       2026-08-11 21:24)
 - [x] 4.2 Record exact RED signatures for absent capture/conversion while keeping the known-module
       mapping fixture and required lanes green. ✅ (completed: 2026-08-11 21:44)
-- [ ] 4.3 Add exact direct conversion dependencies and frozen-lock changes after validating Node 22/
-      TypeScript ESM compatibility; abort the phase if the mapping spike cannot be made trustworthy.
+- [x] 4.3 Add exact direct conversion dependencies and frozen-lock changes after validating Node
+      22/TypeScript ESM compatibility; abort the phase if the mapping spike cannot be made
+      trustworthy. ✅ (completed: 2026-08-11 22:02)
 - [ ] 4.4 Add Porta-only `NODE_V8_COVERAGE`, ignored raw/report paths, mounted ownership, and clean
       shutdown collection bound to revision/image/lock/fixture identity.
 - [ ] 4.5 Classify every raw script as eligible first-party, declared Node/internal, declared
