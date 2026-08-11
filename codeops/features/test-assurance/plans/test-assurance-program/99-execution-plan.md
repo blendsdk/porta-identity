@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 01:10
-> **Progress**: 31/92 tasks (34%)
+> **Last Updated**: 2026-08-12 01:22
+> **Progress**: 32/92 tasks (35%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -352,8 +352,12 @@ development evidence, and organization-prefixed user operations enforce tenant o
       Porta and after live source maps exposed the converter's open-ended column sentinel. Earlier
       completions were 2026-08-11 23:51, 2026-08-12 00:29, 2026-08-12 00:44, and 2026-08-12
       00:58. ✅ (completed: 2026-08-12 01:10)
-- [ ] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
-      observation-only summary, and run `yarn verify`.
+- [x] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
+      observation-only summary, and run `yarn verify`. Captures
+      `3af36c26-579a-4118-88b9-bcc4821452a7` and `de3b07e5-0be5-40a8-8ea8-1199793f3350`
+      produced the same 148-path observation digest
+      `sha256:e2fd112835a9551180e84c5a996fedf767716684895361fa0b5b3d3f16a3f79a` with blocking
+      disabled. ✅ (completed: 2026-08-12 01:22)
 
 **Phase gate:** server-process coverage is reproducible, provenance-bound, fully classified, and
 separate from Vitest; no ratchet or CI policy changes.
