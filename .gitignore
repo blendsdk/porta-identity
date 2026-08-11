@@ -3,7 +3,8 @@ dist/
 .env
 .env.docker.local
 *.log
-coverage/
+/coverage/
+/packages/*/coverage/
 .DS_Store
 scripts/tmp-*
 test-results/

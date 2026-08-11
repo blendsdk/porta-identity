@@ -13,6 +13,14 @@ import {
 } from '../commands.js';
 import { redSignatureRegistrySchema } from '../schema.js';
 import {
+  coverageEnvironment,
+  createCoverageWorkspace,
+  gracefullyFlushPorta,
+  inspectPortaContainer,
+  readActiveCoverageRun,
+  writeCaptureManifest,
+} from '../coverage/index.js';
+import {
   AssuranceCleanupError,
   AssuranceSetupError,
   renderFoundationReport,
@@ -95,7 +103,11 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
   ],
   'project-collection': ['test-harness/assurance/tests/assurance-project-collection.spec.test.ts'],
-  'coverage-pipeline': ['test-harness/assurance/tests/coverage-dependencies.impl.test.ts'],
+  'coverage-pipeline': [
+    'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
+    'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+  ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -135,6 +147,7 @@ async function runLifecycleAction(
   action: 'start' | 'stop' | 'project',
   project?: string,
   profile?: string,
+  environment: NodeJS.ProcessEnv = process.env,
 ): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
   const actionOptions =
     action === 'start'
@@ -147,7 +160,7 @@ async function runLifecycleAction(
     ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', action, ...actionOptions],
     {
       cwd: process.cwd(),
-      env: process.env,
+      env: environment,
       stdio: 'inherit',
       timeoutMilliseconds:
         action === 'start' ? 900_000 : action === 'project' ? 1_800_000 : 120_000,
@@ -158,17 +171,21 @@ async function runLifecycleAction(
 }
 
 /** Stops or recovers any durable run left by an interrupted or failed start attempt. */
-async function cleanupHarnessStack(): Promise<number> {
-  const stop = await runLifecycleAction('stop');
+async function cleanupHarnessStack(environment: NodeJS.ProcessEnv = process.env): Promise<number> {
+  const stop = await runLifecycleAction('stop', undefined, undefined, environment);
   return managedChildExit(stop, 60) === 0 ? 0 : 60;
 }
 
 /** Owns one profile stack across a callback and always applies cleanup-failure precedence. */
-async function withHarnessStack(profile: string, work: () => Promise<number>): Promise<number> {
-  const start = await runLifecycleAction('start', undefined, profile);
+async function withHarnessStack(
+  profile: string,
+  work: () => Promise<number>,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<number> {
+  const start = await runLifecycleAction('start', undefined, profile, environment);
   const startExit = managedChildExit(start, setupFailureExit);
   if (startExit !== 0) {
-    const cleanupExit = await cleanupHarnessStack();
+    const cleanupExit = await cleanupHarnessStack(environment);
     return cleanupExit === 0 ? startExit : cleanupExit;
   }
   let primaryExit: number;
@@ -177,10 +194,98 @@ async function withHarnessStack(profile: string, work: () => Promise<number>): P
   } catch {
     primaryExit = setupFailureExit;
   } finally {
-    const cleanupExit = await cleanupHarnessStack();
+    const cleanupExit = await cleanupHarnessStack(environment);
     if (cleanupExit !== 0) primaryExit = cleanupExit;
   }
   return primaryExit;
+}
+
+/** Captures one fixed-seed harness project from the owned Dockerized Porta process. */
+async function runCoverageCommand(options: readonly string[]): Promise<void> {
+  if (
+    options.length !== 6 ||
+    options[0] !== '--project' ||
+    options[2] !== '--profile' ||
+    options[4] !== '--seed'
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --project <project> --profile <profile> --seed <seed>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const project = options[1];
+  const profile = options[3];
+  const seed = options[5];
+  if (project !== 'protocol' && project !== 'security') {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${project ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (profile !== 'operational' && profile !== 'production-security') {
+    process.stderr.write(`ASSURANCE_PROFILE_UNREGISTERED: ${profile ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (seed !== 'coverage-baseline') {
+    process.stderr.write(`ASSURANCE_SEED_UNREGISTERED: ${seed ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const workspace = createCoverageWorkspace(process.cwd(), project, profile);
+  const environment = coverageEnvironment(workspace);
+  const interruption = new AbortController();
+  let interruptedExit: 130 | 143 | undefined;
+  const interrupt = (exitCode: 130 | 143): void => {
+    interruptedExit ??= exitCode;
+    interruption.abort();
+  };
+  const onSigint = (): void => interrupt(130);
+  const onSigterm = (): void => interrupt(143);
+  process.on('SIGINT', onSigint);
+  process.on('SIGTERM', onSigterm);
+  try {
+    const result = await withHarnessStack(
+      profile,
+      async () => {
+        try {
+          const activeRun = readActiveCoverageRun(process.cwd());
+          const container = await inspectPortaContainer(
+            process.cwd(),
+            workspace,
+            activeRun,
+            interruption.signal,
+          );
+          const projectResult = await runLifecycleAction(
+            'project',
+            project,
+            undefined,
+            environment,
+          );
+          const projectExit = managedChildExit(projectResult, testFailureExit);
+          await gracefullyFlushPorta(process.cwd(), container);
+          const manifest = await writeCaptureManifest(process.cwd(), workspace, container, {
+            seed,
+            project,
+            profile,
+          });
+          if (manifest.flushStatus !== 'complete') return 40;
+          return interruptedExit ?? projectExit;
+        } catch {
+          return interruptedExit ?? 40;
+        }
+      },
+      environment,
+    );
+    process.exitCode = result;
+    if (result === 0) {
+      process.stdout.write(`ASSURANCE_COVERAGE_CAPTURE=${workspace.manifestPath}\n`);
+    }
+  } finally {
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
+  }
 }
 
 /** Executes one allowlisted Playwright project against an owned operational stack. */
@@ -508,6 +613,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'harness') {
     await runHarnessCommand(options);
+    return;
+  }
+  if (action === 'coverage') {
+    await runCoverageCommand(options);
     return;
   }
   if (action === 'validate') {

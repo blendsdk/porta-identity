@@ -52,6 +52,7 @@ Porta product contract.
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
 | 46  | Coverage spec verification | How can Task 4.1 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime coverage specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed coverage checkpoints | AI (runtime)   | ✅     |
 | 47  | Coverage RED bridge | How can RED prove absent capture/conversion without accepting missing-module setup failure? | Use one exact current-surface assertion for the complete capture, mount, converter, and handler gap set; require the known mapping fixture to exist and keep immutable runtime specs outside collection | AI (runtime)   | ✅     |
+| 48  | Coverage mount ownership | How can one Compose topology enable a host-retained V8 mount without instrumenting other services or ordinary runs? | Give only Porta an empty-by-default NODE_V8_COVERAGE value and a run-owned bind target; the coverage command supplies an allowlisted canonical result path and activates `/app/.v8-coverage` | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -642,3 +643,34 @@ all setup-failure-based alternatives; independent challenge is deferred to the f
 review. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen
 triggers**: any coverage capability exists before RED is recorded, the bridge enters claim
 evidence, or signature execution becomes data-driven from the registry command string.
+
+### AR-48 — Porta-only run-owned coverage mount
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal capture, filesystem,
+and cleanup design inside the approved coverage policy; it changes no product behavior, runtime
+security policy, acceptance criterion, or scope. **Objective**: retain raw V8 output on the host
+while keeping instrumentation absent from every non-Porta service and inactive during ordinary
+harness runs. **Decision**: the base Compose service gives only Porta a
+`NODE_V8_COVERAGE` value that is empty by default and mounts one lifecycle-run-owned directory at
+`/app/.v8-coverage`. Ordinary runs use an ignored runtime-directory target and produce no V8
+output. `assurance:coverage` creates a UUID-owned ignored result directory, validates that its
+canonical absolute path remains below `test-harness/.assurance-results`, makes only the handoff
+directory writable to the non-root container, and supplies the non-empty Node path. The command
+discovers the exact label-bound Porta container, snapshots its compiled output, sends SIGTERM,
+waits for exit/flush, validates raw JSON, and writes revision/image/lock/fixture/process
+provenance before fenced lifecycle cleanup. **Evidence**: the retained Compose adapter already
+passes a manifest-derived environment and cleans exact bind-owning container/network identities;
+an optional override file would make the committed RED bridge inspect the wrong topology, while a
+named volume would require a second extraction boundary before host conversion. **Rejected
+alternatives**: instrumenting every ordinary run creates unrequested overhead and residue;
+instrumenting another service corrupts server attribution; a named volume obscures host artifact
+ownership; caller-selected arbitrary bind paths create write/traversal risk. **Strongest
+counterargument**: ordinary runs still mount an empty directory. It is lifecycle-owned and ignored,
+Node receives an empty coverage setting, and exact cleanup removes its run directory, so the small
+mount cost avoids a second Compose topology without collecting data. **Confidence**: High — the
+path, service, signal, and provenance boundaries are directly testable. **Hardening**: forced
+reframing favored one manifest-owned topology over override and volume extraction alternatives;
+the full Phase 4 security/correctness review remains the independent challenge. **Policy
+version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: Node treats an
+empty variable as active coverage, Compose changes bind interpolation semantics, the container UID
+cannot write/read the handoff, or graceful SIGTERM does not produce complete raw records.

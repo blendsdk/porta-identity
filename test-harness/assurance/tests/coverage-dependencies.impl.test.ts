@@ -14,8 +14,13 @@ const expectedVersions = {
 /** Reads one package manifest as a validated JSON record. */
 function readPackageManifest(path: string): Readonly<Record<string, unknown>> {
   const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
-  assert.ok(parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed));
+  assert.ok(isRecord(parsed));
   return parsed;
+}
+
+/** Narrows an untrusted JSON value to an object with string keys. */
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 test('should declare exact direct coverage conversion dependency versions', () => {
