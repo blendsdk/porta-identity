@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 00:44
+> **Last Updated**: 2026-08-12 00:58
 > **Progress**: 31/92 tasks (34%)
 > **CodeOps Artifact Schema**: 1
 
@@ -348,8 +348,9 @@ development evidence, and organization-prefixed user operations enforce tenant o
       normalization, malformed maps, dependency scripts, partial output, missing maps, and the
       exact stopped-container raw-output handoff. Reopened after the clean capture exposed
       container-UID-only raw files and again after named-volume discovery exposed a stale
-      authority comparison; earlier completions were 2026-08-11 23:51 and 2026-08-12 00:29. ✅
-      (completed: 2026-08-12 00:44)
+      authority comparison, and once more after the named-volume mountpoint proved non-writable by
+      Porta. Earlier completions were 2026-08-11 23:51, 2026-08-12 00:29, and 2026-08-12 00:44.
+      ✅ (completed: 2026-08-12 00:58)
 - [ ] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
       observation-only summary, and run `yarn verify`.
 

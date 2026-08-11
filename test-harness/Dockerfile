@@ -45,7 +45,10 @@ COPY docker/entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x ./entrypoint.sh \
     && printf '#!/bin/sh\nexec node /app/dist/cli/index.js "$@"\n' > /usr/local/bin/porta \
-    && chmod +x /usr/local/bin/porta
+    && chmod +x /usr/local/bin/porta \
+    && mkdir -p /app/.v8-coverage \
+    && chown porta:porta /app/.v8-coverage \
+    && chmod 0700 /app/.v8-coverage
 
 USER porta
 EXPOSE 3000

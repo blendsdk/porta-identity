@@ -103,12 +103,17 @@ test('should allow only a canonical assurance-result directory as the coverage b
 
 test('should configure NODE_V8_COVERAGE only on the Porta service', () => {
   const compose = readFileSync(resolve(import.meta.dirname, '../../docker-compose.yml'), 'utf8');
+  const dockerfile = readFileSync(resolve(import.meta.dirname, '../../Dockerfile'), 'utf8');
   assert.equal(compose.match(/^\s+NODE_V8_COVERAGE:/gmu)?.length, 1);
   assert.match(
     compose,
     /\n {2}porta:\n[\s\S]*?NODE_V8_COVERAGE:[\s\S]*?coverage-raw:\/app\/\.v8-coverage[\s\S]*?\n {2}postgres:/u,
   );
   assert.match(compose, /\nvolumes:\n {2}coverage-raw:\n {4}labels:/u);
+  assert.match(
+    dockerfile,
+    /mkdir -p \/app\/\.v8-coverage[\s\S]*?chown porta:porta \/app\/\.v8-coverage[\s\S]*?chmod 0700 \/app\/\.v8-coverage[\s\S]*?USER porta/u,
+  );
 });
 
 test('should promote only host-owned validated raw files from the exact stopped container', async () => {

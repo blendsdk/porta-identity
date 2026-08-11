@@ -732,3 +732,28 @@ model. **Hardening**: the independent challenger required exact lifecycle owners
 preserves that requirement instead of bypassing it. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: volumes gain mutable ownership fields, discovery is
 no longer label-bound, or resource finalization permits nonempty replacement.
+
+### AR-51 — Non-root named-volume initialization
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test-image filesystem ownership
+inside the approved non-root coverage capture mechanism; it changes no production image, product
+behavior, acceptance criterion, or policy. **Objective**: let the existing non-root Porta process
+write V8 output into its exact named volume without granting world write access. **Decision**: in
+the harness Dockerfile only, create `/app/.v8-coverage` before `USER porta` with owner/group
+`porta:porta` and mode `0700`. Keep the Compose volume mount and Docker-mediated host extraction;
+add a structure assertion that the owner-only initialization precedes the non-root user boundary.
+Reopen Task 4.7 before clean evidence. **Evidence**: a live clean run had
+`NODE_V8_COVERAGE=/app/.v8-coverage`, UID/GID `100:101`, and a named-volume mount root owned by
+`root:root` with mode `0755`; graceful zero-exit shutdown therefore produced no files. A separate
+Docker copy probe proved default `docker cp` creates host-user-owned mode-`0600` files correctly.
+**Rejected alternatives**: mode `0777` recreates the insecure bind inbox; running Porta as root
+violates the project security boundary; entrypoint-time privilege changes are impossible after
+the image switches to the non-root user and would mix capture concerns into product startup.
+**Strongest counterargument**: image-directory ownership relies on Docker's named-volume initial
+copy behavior. That is the standard local-volume initialization path and is directly verified by
+the clean live capture; any engine that disables copy will fire the no-output gate rather than
+produce false evidence. **Confidence**: High. **Hardening**: the selected correction preserves the
+challenger's owner-only staging and non-root requirements with the smallest harness-only change.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: the
+runtime UID changes, Compose enables `volume-nocopy`, or a supported container engine initializes
+the mountpoint with different ownership semantics.
