@@ -9,13 +9,27 @@ import {
   type CoverageClassificationResult,
   type CoverageConversionResult,
   type CoverageProvenance,
+  type CoverageRuntimeDependencyInventory,
   type CoverageScriptClassification,
   type ConvertedCoverageArtifact,
   type ExactCoverageCounts,
   type RawCoverageEnvelope,
   type RawCoverageScript,
 } from '../coverage/index.js';
-import { captureCoverageSpike } from './coverage-spike-rig.js';
+import { captureCoverageSpike, spikeProvenance } from './coverage-spike-rig.js';
+
+const knownRuntimeDependencyInventory: CoverageRuntimeDependencyInventory = Object.freeze({
+  revision: spikeProvenance.revision,
+  imageDigest: spikeProvenance.imageDigest,
+  dependencies: Object.freeze([
+    Object.freeze({
+      name: 'koa',
+      version: '2.16.3',
+      rootPath: '/app/node_modules/koa',
+      integrity: 'sha512-proven-runtime-package',
+    }),
+  ]),
+});
 
 export type {
   ClassifiedCoverageScript,
@@ -137,7 +151,10 @@ export function createCoverageAttributionContract(): CoverageAttributionContract
       }),
     captureKnownRun: async (termination: 'graceful' | 'forced') =>
       knownClassificationEnvelope(termination),
-    classify: async (envelope: RawCoverageEnvelope) => classifyCoverageEnvelope(envelope),
+    classify: async (envelope: RawCoverageEnvelope) =>
+      classifyCoverageEnvelope(envelope, {
+        runtimeDependencyInventory: knownRuntimeDependencyInventory,
+      }),
     convert: async (
       envelope: RawCoverageEnvelope,
       oracle: ManualMappingOracle,
@@ -195,7 +212,9 @@ async function convertKnownEnvelope(
   oracle: ManualMappingOracle,
   expectedProvenance: CoverageProvenance,
 ): Promise<CoverageConversionResult> {
-  const classification = classifyCoverageEnvelope(envelope);
+  const classification = classifyCoverageEnvelope(envelope, {
+    runtimeDependencyInventory: knownRuntimeDependencyInventory,
+  });
   const exclusions = classification.scripts
     .filter((script) => !script.eligible)
     .map((script) => Object.freeze({ url: script.url, reason: script.reason }));
@@ -205,7 +224,10 @@ async function convertKnownEnvelope(
       accepted: false,
       exclusions: Object.freeze(exclusions),
       unmapped: Object.freeze([]),
-      rejectionReason: 'unmapped-eligible-input',
+      deferredScripts: classification.deferredScripts,
+      deferredProcesses: classification.deferredProcesses,
+      collectionFailures: classification.collectionFailures,
+      rejectionReason: classification.rejectionReason ?? 'unmapped-eligible-input',
     });
   }
   const provenanceFailure = envelope.scripts
@@ -229,6 +251,9 @@ async function convertKnownEnvelope(
       accepted: false,
       exclusions: Object.freeze(exclusions),
       unmapped: Object.freeze([]),
+      deferredScripts: classification.deferredScripts,
+      deferredProcesses: classification.deferredProcesses,
+      collectionFailures: classification.collectionFailures,
       rejectionReason,
     });
   }
@@ -244,6 +269,9 @@ async function convertKnownEnvelope(
           Object.freeze({ url: script.url, reason: 'no declared known-spike source map' }),
         ),
       ),
+      deferredScripts: classification.deferredScripts,
+      deferredProcesses: classification.deferredProcesses,
+      collectionFailures: classification.collectionFailures,
       rejectionReason: 'unmapped-eligible-input',
     });
   }
@@ -259,11 +287,22 @@ async function convertKnownEnvelope(
           reason: 'manual mapping oracle mismatch',
         }),
       ]),
+      deferredScripts: classification.deferredScripts,
+      deferredProcesses: classification.deferredProcesses,
+      collectionFailures: classification.collectionFailures,
       rejectionReason: 'unmapped-eligible-input',
     });
   }
   const artifact = Object.freeze({ ...result.artifact, exclusions: Object.freeze(exclusions) });
-  return Object.freeze({ accepted: true, artifact, exclusions: artifact.exclusions, unmapped: [] });
+  return Object.freeze({
+    accepted: true,
+    artifact,
+    exclusions: artifact.exclusions,
+    unmapped: [],
+    deferredScripts: classification.deferredScripts,
+    deferredProcesses: classification.deferredProcesses,
+    collectionFailures: classification.collectionFailures,
+  });
 }
 
 /** Captures and converts the real committed source-map spike in one temporary report directory. */

@@ -1,9 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   realpathSync,
   renameSync,
@@ -16,6 +19,57 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import { z } from 'zod';
 
 import { RuntimeCommandRunner } from '../../fixtures/lifecycle-runtime.js';
+import { FileLeaseStateAdapter } from '../../fixtures/lifecycle-system.js';
+import type { LeaseRecord } from '../../fixtures/lifecycle.js';
+import type { CoverageRuntimeDependencyInventory } from './model.js';
+
+const provenanceRevisionEnvironment = 'HARNESS_COVERAGE_REVISION';
+const provenanceLockEnvironment = 'HARNESS_COVERAGE_LOCK_DIGEST';
+const provenanceSourceEnvironment = 'HARNESS_COVERAGE_SOURCE_TREE_DIGEST';
+
+/** Bounded script evaluated only inside the exact lease-authorized Porta container. */
+const runtimeDependencyInventoryScript = String.raw`
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { posix } from 'node:path';
+const dependencies = [];
+const visitPackage = (root) => {
+  const manifestPath = posix.join(root, 'package.json');
+  if (!existsSync(manifestPath)) return;
+  const bytes = readFileSync(manifestPath);
+  const manifest = JSON.parse(bytes.toString('utf8'));
+  if (typeof manifest.name !== 'string' || typeof manifest.version !== 'string') return;
+  dependencies.push({
+    name: manifest.name,
+    version: manifest.version,
+    rootPath: root,
+    integrity: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
+  });
+  const nested = posix.join(root, 'node_modules');
+  if (existsSync(nested)) visitModules(nested);
+};
+const visitModules = (root) => {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === '.bin') continue;
+    const child = posix.join(root, entry.name);
+    if (entry.name.startsWith('@')) {
+      for (const scoped of readdirSync(child, { withFileTypes: true })) {
+        if (scoped.isDirectory()) visitPackage(posix.join(child, scoped.name));
+      }
+    } else visitPackage(child);
+  }
+};
+visitModules('/app/node_modules');
+dependencies.sort((left, right) => left.rootPath.localeCompare(right.rootPath));
+process.stdout.write(JSON.stringify(dependencies));
+`;
+
+const runtimeDependencySchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1),
+  rootPath: z.string().regex(/^\/app\/node_modules\//u),
+  integrity: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
+});
 
 const activeRunSchema = z.object({
   runId: z.uuid(),
@@ -58,6 +112,8 @@ export type CoverageProfile = 'operational' | 'production-security';
 
 /** Harness-owned paths for one ignored coverage run. */
 export interface CoverageWorkspace {
+  /** Canonical repository whose clean source state owns this run. */
+  readonly repositoryRoot: string;
   /** Synthetic evidence run identifier. */
   readonly runId: string;
   /** Root directory for this coverage run. */
@@ -84,6 +140,23 @@ export interface PortaContainerIdentity {
   readonly lifecycleRunId: string;
   /** Compose project that owns the container. */
   readonly composeProject: string;
+  /** Exact clean revision supplied to the image build. */
+  readonly revision: string;
+  /** Exact dependency lock supplied to the image build. */
+  readonly dependencyLockDigest: string;
+  /** Exact clean tracked source tree supplied to the image build. */
+  readonly sourceTreeDigest: string;
+  /** Public fixture identity observed before the covered requests. */
+  readonly fixtureDigest: string;
+  /** Runtime packages enumerated inside this exact container image. */
+  readonly runtimeDependencyInventory: CoverageRuntimeDependencyInventory;
+}
+
+/** Complete active lifecycle authority used to select one destructive capture target. */
+export interface ActiveCoverageRun {
+  readonly runId: string;
+  readonly composeProject: string;
+  readonly lease: LeaseRecord;
 }
 
 /** One raw V8 file retained after graceful process termination. */
@@ -102,6 +175,8 @@ export interface CoverageCaptureManifest {
   readonly version: 1;
   /** Synthetic evidence run identifier. */
   readonly runId: string;
+  /** Durable lifecycle run that produced the covered process. */
+  readonly lifecycleRunId: string;
   /** Fixed harness seed. */
   readonly seed: string;
   /** Harness project that produced the requests. */
@@ -114,6 +189,8 @@ export interface CoverageCaptureManifest {
   readonly imageDigest: string;
   /** Root dependency lock identity. */
   readonly dependencyLockDigest: string;
+  /** Exact clean tracked source tree supplied to the attributed image build. */
+  readonly sourceTreeDigest: string;
   /** Generated public fixture identity. */
   readonly fixtureDigest: string;
   /** Exact digest of compiled JavaScript and source maps copied from the image. */
@@ -124,6 +201,10 @@ export interface CoverageCaptureManifest {
   readonly processIdentity: string;
   /** Fixed build operation used by the owned lifecycle. */
   readonly buildCommand: string;
+  /** Exact normalized Compose arguments used by the owned lifecycle. */
+  readonly buildArguments: readonly string[];
+  /** Image-bound runtime packages eligible for dependency exclusion. */
+  readonly runtimeDependencyInventory: CoverageRuntimeDependencyInventory;
   /** Whether graceful termination produced complete parseable raw records. */
   readonly flushStatus: 'complete' | 'incomplete';
   /** Every retained raw V8 file. */
@@ -151,6 +232,7 @@ export function createCoverageWorkspace(
   mkdirSync(compiledDirectory, { recursive: true, mode: 0o700 });
   return Object.freeze({
     runId,
+    repositoryRoot: canonicalRoot,
     root,
     rawDirectory,
     compiledDirectory,
@@ -160,10 +242,10 @@ export function createCoverageWorkspace(
 }
 
 /** Returns the single active lifecycle and verifies it belongs to the current worktree. */
-export function readActiveCoverageRun(repositoryRoot: string): {
-  readonly runId: string;
-  readonly composeProject: string;
-} {
+export function readActiveCoverageRun(
+  repositoryRoot: string,
+  leases = new FileLeaseStateAdapter(),
+): ActiveCoverageRun {
   const canonicalRoot = realpathSync(repositoryRoot);
   const activePath = resolve(canonicalRoot, 'test-harness/.assurance-runtime/active-run.json');
   const active = activeRunSchema.parse(JSON.parse(readFileSync(activePath, 'utf8')));
@@ -173,17 +255,29 @@ export function readActiveCoverageRun(repositoryRoot: string): {
   ) {
     throw new Error('active lifecycle identity does not belong to this worktree');
   }
-  return { runId: active.runId, composeProject: active.manifest.composeProject };
+  const lease = leases.readSync({ runId: active.runId, worktreePath: canonicalRoot });
+  if (
+    typeof lease === 'string' ||
+    lease.runId !== active.runId ||
+    lease.composeProject !== active.manifest.composeProject ||
+    realpathSync(lease.worktreePath) !== canonicalRoot ||
+    lease.manifest.runId !== active.runId ||
+    lease.manifest.composeProject !== active.manifest.composeProject
+  ) {
+    throw new Error('active lifecycle does not have complete durable lease authority');
+  }
+  return { runId: active.runId, composeProject: active.manifest.composeProject, lease };
 }
 
 /** Discovers the exact Porta container and snapshots the compiled build before termination. */
 export async function inspectPortaContainer(
   repositoryRoot: string,
   workspace: CoverageWorkspace,
-  activeRun: Readonly<{ runId: string; composeProject: string }>,
+  activeRun: ActiveCoverageRun,
   signal?: AbortSignal,
+  runner: CoverageCommandRunner = new RuntimeCommandRunner(),
+  leases = new FileLeaseStateAdapter(),
 ): Promise<PortaContainerIdentity> {
-  const runner = new RuntimeCommandRunner();
   const environment = currentEnvironment();
   const listed = await runner.checked(
     'docker',
@@ -209,15 +303,39 @@ export async function inspectPortaContainer(
     [
       'inspect',
       '--format',
-      '{{.Image}}|{{index .Config.Labels "io.porta.assurance.run-id"}}',
+      '{{.Image}}|{{index .Config.Labels "io.porta.assurance.run-id"}}|{{index .Config.Labels "io.porta.assurance.worktree"}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}|{{index .Config.Labels "io.porta.assurance.coverage-revision"}}|{{index .Config.Labels "io.porta.assurance.coverage-lock-digest"}}|{{index .Config.Labels "io.porta.assurance.coverage-source-tree-digest"}}',
       containerId,
     ],
     { cwd: repositoryRoot, environment, signal },
   );
-  const [imageDigest, runId, extra] = inspected.stdout.trim().split('|');
+  const [
+    imageDigest,
+    runId,
+    worktreePath,
+    composeProject,
+    service,
+    revision,
+    dependencyLockDigest,
+    sourceTreeDigest,
+    extra,
+  ] = inspected.stdout.trim().split('|');
+  const currentProvenance = readCleanSourceProvenance(repositoryRoot);
+  const persistedLease = leases.readSync({
+    runId: activeRun.runId,
+    worktreePath: realpathSync(repositoryRoot),
+  });
   if (
     extra !== undefined ||
     runId !== activeRun.runId ||
+    worktreePath !== realpathSync(repositoryRoot) ||
+    composeProject !== activeRun.composeProject ||
+    service !== 'porta' ||
+    revision !== currentProvenance.revision ||
+    dependencyLockDigest !== currentProvenance.dependencyLockDigest ||
+    sourceTreeDigest !== currentProvenance.sourceTreeDigest ||
+    typeof persistedLease === 'string' ||
+    JSON.stringify(persistedLease) !== JSON.stringify(activeRun.lease) ||
+    !persistedLease.containerIds.includes(containerId ?? '') ||
     !/^sha256:[0-9a-f]{64}$/u.test(imageDigest ?? '')
   ) {
     throw new Error('Porta container provenance does not match the active lifecycle');
@@ -227,10 +345,25 @@ export async function inspectPortaContainer(
     environment,
     signal,
   });
+  const inventoryOutput = await runner.checked(
+    'docker',
+    ['exec', containerId, 'node', '--input-type=module', '-e', runtimeDependencyInventoryScript],
+    { cwd: repositoryRoot, environment, signal, timeoutMilliseconds: 30_000 },
+  );
+  const dependencies = z
+    .array(runtimeDependencySchema)
+    .min(1)
+    .parse(JSON.parse(inventoryOutput.stdout));
   await runner.checked(
     'docker',
     ['cp', `${containerId}:/app/dist/.`, workspace.compiledDirectory],
     { cwd: repositoryRoot, environment, signal },
+  );
+  const fixturePath = resolve(
+    repositoryRoot,
+    'test-harness/.assurance-runtime',
+    activeRun.runId,
+    'fixture-public.json',
   );
   return {
     containerId,
@@ -238,6 +371,15 @@ export async function inspectPortaContainer(
     nodeVersion: node.stdout.trim(),
     lifecycleRunId: activeRun.runId,
     composeProject: activeRun.composeProject,
+    revision: revision ?? '',
+    dependencyLockDigest: dependencyLockDigest ?? '',
+    sourceTreeDigest: sourceTreeDigest ?? '',
+    fixtureDigest: digestCoverageFile(fixturePath),
+    runtimeDependencyInventory: Object.freeze({
+      revision: revision ?? '',
+      imageDigest: imageDigest ?? '',
+      dependencies: Object.freeze(dependencies.map((dependency) => Object.freeze(dependency))),
+    }),
   };
 }
 
@@ -246,17 +388,19 @@ export async function gracefullyFlushPorta(
   repositoryRoot: string,
   container: PortaContainerIdentity,
   signal?: AbortSignal,
+  runner: CoverageCommandRunner = new RuntimeCommandRunner(),
 ): Promise<void> {
-  const runner = new RuntimeCommandRunner();
   await runner.checked('docker', ['kill', '--signal=SIGTERM', '--', container.containerId], {
     cwd: repositoryRoot,
     environment: currentEnvironment(),
     signal,
+    timeoutMilliseconds: 30_000,
   });
   const waited = await runner.checked('docker', ['wait', container.containerId], {
     cwd: repositoryRoot,
     environment: currentEnvironment(),
     signal,
+    timeoutMilliseconds: 30_000,
   });
   if (waited.stdout.trim() !== '0') {
     throw new Error('Porta did not exit cleanly after graceful termination');
@@ -269,7 +413,12 @@ export async function gracefullyFlushPorta(
       '{{.State.Status}}|{{.State.OOMKilled}}|{{.State.ExitCode}}',
       container.containerId,
     ],
-    { cwd: repositoryRoot, environment: currentEnvironment(), signal },
+    {
+      cwd: repositoryRoot,
+      environment: currentEnvironment(),
+      signal,
+      timeoutMilliseconds: 30_000,
+    },
   );
   if (state.stdout.trim() !== 'exited|false|0') {
     throw new Error('Porta final state does not prove a graceful coverage flush');
@@ -321,33 +470,51 @@ export async function writeCaptureManifest(
 ): Promise<CoverageCaptureManifest> {
   const rawFiles = readRawCoverageFiles(workspace.rawDirectory);
   chmodSync(workspace.rawDirectory, 0o700);
-  const runner = new RuntimeCommandRunner();
-  const revision = (
-    await runner.checked('git', ['rev-parse', 'HEAD^{commit}'], {
-      cwd: repositoryRoot,
-      environment: currentEnvironment(),
-    })
-  ).stdout.trim();
+  const provenance = readCleanSourceProvenance(repositoryRoot);
   const fixturePath = resolve(
     repositoryRoot,
     'test-harness/.assurance-runtime',
     container.lifecycleRunId,
     'fixture-public.json',
   );
+  const fixtureDigest = digestCoverageFile(fixturePath);
+  if (
+    provenance.revision !== container.revision ||
+    provenance.dependencyLockDigest !== container.dependencyLockDigest ||
+    provenance.sourceTreeDigest !== container.sourceTreeDigest ||
+    fixtureDigest !== container.fixtureDigest
+  ) {
+    throw new Error('coverage build inputs changed after the attributed image was started');
+  }
   const manifest: CoverageCaptureManifest = {
     version: 1,
     runId: workspace.runId,
+    lifecycleRunId: container.lifecycleRunId,
     seed: options.seed,
     project: options.project,
     profile: options.profile,
-    revision,
+    revision: provenance.revision,
     imageDigest: container.imageDigest,
-    dependencyLockDigest: digestCoverageFile(resolve(repositoryRoot, 'yarn.lock')),
-    fixtureDigest: digestCoverageFile(fixturePath),
+    dependencyLockDigest: provenance.dependencyLockDigest,
+    sourceTreeDigest: provenance.sourceTreeDigest,
+    fixtureDigest,
     compiledOutputDigest: digestCoverageDirectory(workspace.compiledDirectory),
     nodeVersion: container.nodeVersion,
     processIdentity: `container:${container.containerId}`,
-    buildCommand: 'docker compose up -d --build',
+    buildCommand: 'docker compose',
+    buildArguments: Object.freeze([
+      '-p',
+      container.composeProject,
+      '-f',
+      'test-harness/docker-compose.yml',
+      ...(options.profile === 'production-security'
+        ? ['-f', 'test-harness/docker-compose.production-security.yml']
+        : []),
+      'up',
+      '-d',
+      '--build',
+    ]),
+    runtimeDependencyInventory: container.runtimeDependencyInventory,
     flushStatus: rawFiles.length === 0 ? 'incomplete' : 'complete',
     rawFiles,
   };
@@ -361,7 +528,75 @@ export async function writeCaptureManifest(
 /** Returns the environment overrides that enable V8 coverage only for the Porta service. */
 export function coverageEnvironment(workspace: CoverageWorkspace): NodeJS.ProcessEnv {
   validateOwnedPath(workspace.root, workspace.rawDirectory);
-  return { ...process.env, HARNESS_COVERAGE_RESULT_DIR: workspace.root };
+  const provenance = readCleanSourceProvenance(workspace.repositoryRoot);
+  return {
+    ...process.env,
+    HARNESS_COVERAGE_RESULT_DIR: workspace.root,
+    [provenanceRevisionEnvironment]: provenance.revision,
+    [provenanceLockEnvironment]: provenance.dependencyLockDigest,
+    [provenanceSourceEnvironment]: provenance.sourceTreeDigest,
+  };
+}
+
+/** Returns exact clean inputs used to authorize an attributed Docker build. */
+export function readCleanSourceProvenance(repositoryRoot: string): Readonly<{
+  revision: string;
+  dependencyLockDigest: string;
+  sourceTreeDigest: string;
+}> {
+  const canonicalRoot = realpathSync(repositoryRoot);
+  const status = runGit(canonicalRoot, ['status', '--porcelain=v1', '--untracked-files=all', '-z']);
+  if (status.length !== 0) {
+    throw new Error('coverage attribution requires a clean source tree');
+  }
+  const revision = runGit(canonicalRoot, ['rev-parse', 'HEAD^{commit}']).toString('utf8').trim();
+  if (!/^[0-9a-f]{40}$/u.test(revision)) throw new Error('coverage revision is malformed');
+  return Object.freeze({
+    revision,
+    dependencyLockDigest: digestCoverageFile(resolve(canonicalRoot, 'yarn.lock')),
+    sourceTreeDigest: digestTrackedSourceTree(canonicalRoot),
+  });
+}
+
+/** Hashes tracked paths and contents without following committed symbolic links. */
+function digestTrackedSourceTree(repositoryRoot: string): string {
+  const listed = runGit(repositoryRoot, ['ls-files', '-z']);
+  const paths = listed
+    .toString('utf8')
+    .split('\0')
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right));
+  const digest = createHash('sha256');
+  for (const trackedPath of paths) {
+    const path = resolve(repositoryRoot, trackedPath);
+    const relation = relative(repositoryRoot, path);
+    if (relation.startsWith('..') || isAbsolute(relation)) {
+      throw new Error('tracked source path escapes the repository');
+    }
+    const status = lstatSync(path);
+    digest.update(trackedPath);
+    digest.update('\0');
+    if (status.isFile()) digest.update(readFileSync(path));
+    else if (status.isSymbolicLink()) digest.update(`symlink:${readlinkSync(path)}`);
+    else throw new Error('tracked source contains an unsupported path type');
+    digest.update('\0');
+  }
+  return `sha256:${digest.digest('hex')}`;
+}
+
+/** Executes a fixed Git query without a shell or inherited diagnostic output. */
+function runGit(repositoryRoot: string, args: readonly string[]): Buffer {
+  try {
+    return execFileSync('git', args, {
+      cwd: repositoryRoot,
+      encoding: 'buffer',
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: 30_000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    throw new Error('coverage source provenance could not be established');
+  }
 }
 
 /** Parses and identifies every regular raw V8 JSON file in stable order. */

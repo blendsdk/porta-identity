@@ -26,6 +26,10 @@ services:
     build:
       context: ..
       dockerfile: test-harness/Dockerfile
+      args:
+        HARNESS_COVERAGE_REVISION: '${HARNESS_COVERAGE_REVISION:-disabled}'
+        HARNESS_COVERAGE_LOCK_DIGEST: '${HARNESS_COVERAGE_LOCK_DIGEST:-disabled}'
+        HARNESS_COVERAGE_SOURCE_TREE_DIGEST: '${HARNESS_COVERAGE_SOURCE_TREE_DIGEST:-disabled}'
     # No port mapping — only accessible through nginx
     environment:
       NODE_ENV: development

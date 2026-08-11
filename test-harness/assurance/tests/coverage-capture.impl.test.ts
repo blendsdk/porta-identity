@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -16,16 +17,29 @@ import {
   createCoverageWorkspace,
   coverageEnvironment,
   extractRawCoverage,
+  gracefullyFlushPorta,
+  inspectPortaContainer,
 } from '../coverage/index.js';
-import type { PortaContainerIdentity } from '../coverage/index.js';
-import type { EndpointManifest } from '../../fixtures/lifecycle.js';
+import type { ActiveCoverageRun, PortaContainerIdentity } from '../coverage/index.js';
+import type { EndpointManifest, LeaseRecord } from '../../fixtures/lifecycle.js';
 import { environmentForManifest } from '../../fixtures/lifecycle-runtime.js';
+import { FileLeaseStateAdapter } from '../../fixtures/lifecycle-system.js';
 
 /** Runs one case in an isolated temporary repository and removes it afterwards. */
 function withTemporaryRepository(run: (root: string) => void): void {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-capture-'));
   try {
     mkdirSync(resolve(root, 'test-harness/.assurance-results'), { recursive: true });
+    writeFileSync(
+      resolve(root, '.gitignore'),
+      'test-harness/.assurance-results/\ntest-harness/.assurance-runtime/\n',
+    );
+    writeFileSync(resolve(root, 'yarn.lock'), '# fixture lock\n');
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 'coverage@test.invalid'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'Coverage Test'], { cwd: root });
+    execFileSync('git', ['add', '.gitignore', 'yarn.lock'], { cwd: root });
+    execFileSync('git', ['commit', '--quiet', '-m', 'test fixture'], { cwd: root });
     run(root);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -61,6 +75,22 @@ function portaContainer(): PortaContainerIdentity {
     nodeVersion: 'v22.23.1',
     lifecycleRunId: '00000000-0000-4000-8000-000000000001',
     composeProject: 'porta-assurance-coverage',
+    revision: 'c'.repeat(40),
+    dependencyLockDigest: `sha256:${'d'.repeat(64)}`,
+    sourceTreeDigest: `sha256:${'e'.repeat(64)}`,
+    fixtureDigest: `sha256:${'f'.repeat(64)}`,
+    runtimeDependencyInventory: {
+      revision: 'c'.repeat(40),
+      imageDigest: `sha256:${'b'.repeat(64)}`,
+      dependencies: [
+        {
+          name: 'koa',
+          version: '3.2.1',
+          rootPath: '/app/node_modules/koa',
+          integrity: `sha256:${'1'.repeat(64)}`,
+        },
+      ],
+    },
   };
 }
 
@@ -74,7 +104,19 @@ test('should create one ignored run-owned raw and compiled workspace', () => {
     assert.equal(workspace.compiledDirectory, resolve(workspace.root, 'compiled'));
     assert.equal(existsSync(workspace.rawDirectory), false);
     assert.equal(statSync(workspace.compiledDirectory).mode & 0o777, 0o700);
-    assert.equal(coverageEnvironment(workspace).HARNESS_COVERAGE_RESULT_DIR, workspace.root);
+    const environment = coverageEnvironment(workspace);
+    assert.equal(environment.HARNESS_COVERAGE_RESULT_DIR, workspace.root);
+    assert.match(environment.HARNESS_COVERAGE_REVISION ?? '', /^[0-9a-f]{40}$/u);
+    assert.match(environment.HARNESS_COVERAGE_LOCK_DIGEST ?? '', /^sha256:[0-9a-f]{64}$/u);
+    assert.match(environment.HARNESS_COVERAGE_SOURCE_TREE_DIGEST ?? '', /^sha256:[0-9a-f]{64}$/u);
+  });
+});
+
+test('should reject coverage build attribution when tracked inputs are dirty', () => {
+  withTemporaryRepository((root) => {
+    const workspace = createCoverageWorkspace(root, 'protocol', 'operational');
+    writeFileSync(resolve(root, 'yarn.lock'), '# changed lock\n');
+    assert.throws(() => coverageEnvironment(workspace), /requires a clean source tree/u);
   });
 });
 
@@ -114,6 +156,88 @@ test('should configure NODE_V8_COVERAGE only on the Porta service', () => {
     dockerfile,
     /mkdir -p \/app\/\.v8-coverage[\s\S]*?chown porta:porta \/app\/\.v8-coverage[\s\S]*?chmod 0700 \/app\/\.v8-coverage[\s\S]*?USER porta/u,
   );
+  assert.match(dockerfile, /LABEL io\.porta\.assurance\.coverage-revision=/u);
+  assert.match(dockerfile, /io\.porta\.assurance\.coverage-lock-digest=/u);
+  assert.match(dockerfile, /io\.porta\.assurance\.coverage-source-tree-digest=/u);
+  assert.match(compose, /HARNESS_COVERAGE_REVISION: '\$\{HARNESS_COVERAGE_REVISION:-disabled\}'/u);
+  assert.match(
+    compose,
+    /HARNESS_COVERAGE_SOURCE_TREE_DIGEST: '\$\{HARNESS_COVERAGE_SOURCE_TREE_DIGEST:-disabled\}'/u,
+  );
+});
+
+test('should reject a selected Porta container absent from the unchanged durable lease', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-lease-'));
+  const leaseRoot = mkdtempSync(resolve(tmpdir(), 'porta-coverage-leases-'));
+  try {
+    mkdirSync(resolve(root, 'test-harness/.assurance-results'), { recursive: true });
+    writeFileSync(
+      resolve(root, '.gitignore'),
+      'test-harness/.assurance-results/\ntest-harness/.assurance-runtime/\n',
+    );
+    writeFileSync(resolve(root, 'yarn.lock'), '# fixture lock\n');
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 'coverage@test.invalid'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'Coverage Test'], { cwd: root });
+    execFileSync('git', ['add', '.gitignore', 'yarn.lock'], { cwd: root });
+    execFileSync('git', ['commit', '--quiet', '-m', 'test fixture'], { cwd: root });
+    const workspace = createCoverageWorkspace(root, 'protocol', 'operational');
+    const provenance = coverageEnvironment(workspace);
+    const manifest = endpointManifest(root);
+    const leasedContainer = 'a'.repeat(64);
+    const selectedContainer = 'b'.repeat(64);
+    const lease: LeaseRecord = {
+      runId: manifest.runId,
+      startupIntentId: '00000000-0000-4000-8000-000000000002',
+      ownerProcess: { pid: process.pid, startedAtFingerprint: 'fixture-owner' },
+      worktreePath: root,
+      composeProject: manifest.composeProject,
+      containerIds: [leasedContainer],
+      networkIds: [],
+      hostProcesses: [],
+      volumeNames: [],
+      ownedPaths: [],
+      certificatePath: manifest.certificatePath,
+      manifest,
+    };
+    const leases = new FileLeaseStateAdapter(leaseRoot);
+    assert.equal(await leases.tryAcquire(lease), 'acquired');
+    const activeRun: ActiveCoverageRun = {
+      runId: lease.runId,
+      composeProject: lease.composeProject,
+      lease,
+    };
+    const runner = {
+      checked: async (_command: string, args: readonly string[]) => {
+        if (args[0] === 'ps') return { exitCode: 0, stdout: `${selectedContainer}\n`, stderr: '' };
+        if (args[0] === 'inspect') {
+          return {
+            exitCode: 0,
+            stdout: [
+              `sha256:${'c'.repeat(64)}`,
+              lease.runId,
+              root,
+              lease.composeProject,
+              'porta',
+              provenance.HARNESS_COVERAGE_REVISION,
+              provenance.HARNESS_COVERAGE_LOCK_DIGEST,
+              provenance.HARNESS_COVERAGE_SOURCE_TREE_DIGEST,
+            ].join('|'),
+            stderr: '',
+          };
+        }
+        throw new Error('unexpected command after authorization failure');
+      },
+    };
+
+    await assert.rejects(
+      inspectPortaContainer(root, workspace, activeRun, undefined, runner, leases),
+      /provenance does not match the active lifecycle/u,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(leaseRoot, { recursive: true, force: true });
+  }
 });
 
 test('should promote only host-owned validated raw files from the exact stopped container', async () => {
@@ -155,6 +279,29 @@ test('should promote only host-owned validated raw files from the exact stopped 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+for (const testCase of [
+  { name: 'nonzero wait', wait: '2', state: 'exited|false|2', accepted: false },
+  { name: 'OOM termination', wait: '0', state: 'exited|true|0', accepted: false },
+  { name: 'forced termination', wait: '0', state: 'exited|false|137', accepted: false },
+  { name: 'graceful zero exit', wait: '0', state: 'exited|false|0', accepted: true },
+] as const) {
+  test(`should ${testCase.accepted ? 'accept' : 'reject'} ${testCase.name} at the real flush boundary`, async () => {
+    let call = 0;
+    const runner = {
+      checked: async () => {
+        call += 1;
+        if (call === 1) return { exitCode: 0, stdout: '', stderr: '' };
+        if (call === 2) return { exitCode: 0, stdout: testCase.wait, stderr: '' };
+        return { exitCode: 0, stdout: testCase.state, stderr: '' };
+      },
+    };
+
+    const execution = gracefullyFlushPorta(process.cwd(), portaContainer(), undefined, runner);
+    if (testCase.accepted) await execution;
+    else await assert.rejects(execution, /did not exit cleanly|does not prove/u);
+  });
+}
 
 test('should remove staged output when Docker returns an unexpected raw entry', async () => {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-extraction-'));

@@ -29,6 +29,14 @@ RUN yarn install --production --frozen-lockfile
 
 FROM node:22-alpine AS runtime
 
+ARG HARNESS_COVERAGE_REVISION=disabled
+ARG HARNESS_COVERAGE_LOCK_DIGEST=disabled
+ARG HARNESS_COVERAGE_SOURCE_TREE_DIGEST=disabled
+
+LABEL io.porta.assurance.coverage-revision="${HARNESS_COVERAGE_REVISION}" \
+      io.porta.assurance.coverage-lock-digest="${HARNESS_COVERAGE_LOCK_DIGEST}" \
+      io.porta.assurance.coverage-source-tree-digest="${HARNESS_COVERAGE_SOURCE_TREE_DIGEST}"
+
 RUN apk add --no-cache curl tini
 RUN addgroup -S porta && adduser -S porta -G porta
 

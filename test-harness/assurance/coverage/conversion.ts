@@ -9,14 +9,22 @@ import { z } from 'zod';
 
 import type { Profiler } from 'node:inspector';
 import { RuntimeCommandRunner } from '../../fixtures/lifecycle-runtime.js';
-import { digestCoverageDirectory } from './capture.js';
+import {
+  digestCoverageDirectory,
+  digestCoverageFile,
+  readCleanSourceProvenance,
+} from './capture.js';
 import { loadAndClassifyCoverageCapture } from './classification.js';
 import type { CoverageCaptureManifest, CoverageWorkspace } from './capture.js';
 import type {
   CoverageClassificationResult,
+  CoverageCollectionFailure,
   CoverageConversionResult,
   CoverageObservationSummary,
   CoverageProvenance,
+  CoverageRuntimeDependencyInventory,
+  DeferredCoverageProcess,
+  DeferredCoverageScript,
   ConvertedCoverageArtifact,
   ExactCoverageCounts,
   RawCoverageEnvelope,
@@ -73,6 +81,8 @@ export interface CoverageConversionContext {
   readonly expectedProvenance: CoverageProvenance;
   /** Virtual compiled root represented by V8 script URLs. */
   readonly virtualCompiledRoot: string;
+  /** Image-bound runtime inventory required before dependency scripts may be excluded. */
+  readonly runtimeDependencyInventory?: CoverageRuntimeDependencyInventory;
 }
 
 /** Converts one freshly captured live Porta run after rechecking mutable local provenance. */
@@ -81,6 +91,7 @@ export async function convertCapturedCoverage(
   workspace: CoverageWorkspace,
   manifest: CoverageCaptureManifest,
   signal?: AbortSignal,
+  runtimeDependencyInventory?: CoverageRuntimeDependencyInventory,
 ): Promise<CoverageConversionResult> {
   const runner = new RuntimeCommandRunner();
   const revision = (
@@ -92,11 +103,29 @@ export async function convertCapturedCoverage(
   ).stdout.trim();
   if (revision !== manifest.revision)
     throw new Error('coverage source revision changed after capture');
+  const provenance = readCleanSourceProvenance(repositoryRoot);
+  if (
+    provenance.dependencyLockDigest !== manifest.dependencyLockDigest ||
+    provenance.sourceTreeDigest !== manifest.sourceTreeDigest ||
+    digestCoverageFile(
+      resolve(
+        repositoryRoot,
+        'test-harness/.assurance-runtime',
+        manifest.lifecycleRunId,
+        'fixture-public.json',
+      ),
+    ) !== manifest.fixtureDigest
+  ) {
+    throw new Error('coverage build inputs changed before conversion');
+  }
   if (digestCoverageDirectory(workspace.compiledDirectory) !== manifest.compiledOutputDigest) {
     throw new Error('coverage compiled snapshot changed after capture');
   }
-  const loaded = loadAndClassifyCoverageCapture(workspace.manifestPath);
-  return convertCoverageEnvelope(loaded.envelope, loaded.classification, {
+  const inventory = runtimeDependencyInventory ?? manifest.runtimeDependencyInventory;
+  const loaded = loadAndClassifyCoverageCapture(workspace.manifestPath, {
+    runtimeDependencyInventory: inventory,
+  });
+  const result = await convertCoverageEnvelope(loaded.envelope, loaded.classification, {
     compiledDirectory: workspace.compiledDirectory,
     sourcePackageRoot: resolve(repositoryRoot, 'packages/server'),
     normalizedPathRoot: repositoryRoot,
@@ -108,7 +137,17 @@ export async function convertCapturedCoverage(
       processIdentity: manifest.processIdentity,
     },
     virtualCompiledRoot: '/app/dist',
+    runtimeDependencyInventory: inventory,
   });
+  const after = readCleanSourceProvenance(repositoryRoot);
+  if (
+    after.revision !== provenance.revision ||
+    after.dependencyLockDigest !== provenance.dependencyLockDigest ||
+    after.sourceTreeDigest !== provenance.sourceTreeDigest
+  ) {
+    throw new Error('coverage source tree changed during conversion');
+  }
+  return result;
 }
 
 interface IstanbulPosition {
@@ -134,27 +173,42 @@ export async function convertCoverageEnvelope(
   classification: CoverageClassificationResult,
   context: CoverageConversionContext,
 ): Promise<CoverageConversionResult> {
-  const exclusions = classification.scripts
-    .filter((script) => !script.eligible)
-    .map((script) => Object.freeze({ url: script.url, reason: script.reason }));
+  const exclusions = classification.exclusions;
   if (classification.rejected) {
-    return rejectedConversion(exclusions, [], 'unmapped-eligible-input');
+    return rejectedConversion(
+      diagnosticsForClassification(classification),
+      classification.rejectionReason ?? 'unmapped-eligible-input',
+    );
   }
   const provenanceFailure = compareProvenance(envelope, context.expectedProvenance);
   if (provenanceFailure !== undefined) {
-    return rejectedConversion(exclusions, [], provenanceFailure);
+    return rejectedConversion(
+      {
+        ...diagnosticsForClassification(classification),
+        collectionFailures: [
+          ...classification.collectionFailures,
+          Object.freeze({ stage: 'conversion' as const, reason: provenanceFailure }),
+        ],
+      },
+      provenanceFailure,
+    );
   }
 
   const eligibleUrls = new Set(
     classification.scripts.filter((script) => script.eligible).map((script) => script.url),
   );
   const processRecords = processRecordsForEnvelope(envelope);
-  const merged = mergeProcessCovs(processRecords.map(toProfilerProcess));
+  const eligibleProcessRecords = processRecords
+    .map((processRecord) => ({
+      scripts: processRecord.scripts.filter((script) => eligibleUrls.has(script.url)),
+    }))
+    .filter((processRecord) => processRecord.scripts.length > 0);
+  const merged = mergeProcessCovs(eligibleProcessRecords.map(toProfilerProcess));
   const mergedByUrl = new Map(merged.result.map((script) => [script.url, script]));
   const files: Record<string, ExactCoverageCounts> = {};
   const coveredLines: Record<string, readonly number[]> = {};
   const uncoveredLines: Record<string, readonly number[]> = {};
-  const unmapped: Array<Readonly<{ url: string; reason: string }>> = [];
+  const unmapped = [...classification.unmapped];
 
   for (const url of [...eligibleUrls].sort((left, right) => left.localeCompare(right))) {
     const script = mergedByUrl.get(url);
@@ -179,7 +233,17 @@ export async function convertCoverageEnvelope(
     }
   }
   if (unmapped.length > 0 || Object.keys(files).length === 0) {
-    return rejectedConversion(exclusions, unmapped, 'unmapped-eligible-input');
+    return rejectedConversion(
+      {
+        ...diagnosticsForClassification(classification),
+        unmapped,
+        collectionFailures: [
+          ...classification.collectionFailures,
+          Object.freeze({ stage: 'conversion' as const, reason: 'unmapped-eligible-input' }),
+        ],
+      },
+      'unmapped-eligible-input',
+    );
   }
 
   const normalizedPaths = Object.keys(files).sort((left, right) => left.localeCompare(right));
@@ -192,6 +256,9 @@ export async function convertCoverageEnvelope(
     uncoveredLines: Object.freeze(uncoveredLines),
     exclusions: Object.freeze(exclusions),
     unmapped: Object.freeze(unmapped),
+    deferredScripts: classification.deferredScripts,
+    deferredProcesses: classification.deferredProcesses,
+    collectionFailures: classification.collectionFailures,
     jsonProduced: true,
     htmlProduced: true,
   });
@@ -201,6 +268,9 @@ export async function convertCoverageEnvelope(
     artifact,
     exclusions: artifact.exclusions,
     unmapped: artifact.unmapped,
+    deferredScripts: classification.deferredScripts,
+    deferredProcesses: classification.deferredProcesses,
+    collectionFailures: classification.collectionFailures,
   });
 }
 
@@ -456,15 +526,39 @@ function safeMappingReason(error: unknown): string {
 }
 
 /** Constructs one rejected result while preserving exclusions and unmapped inputs. */
+interface CoverageConversionDiagnostics {
+  readonly exclusions: CoverageConversionResult['exclusions'];
+  readonly unmapped: CoverageConversionResult['unmapped'];
+  readonly deferredScripts: readonly DeferredCoverageScript[];
+  readonly deferredProcesses: readonly DeferredCoverageProcess[];
+  readonly collectionFailures: readonly CoverageCollectionFailure[];
+}
+
+/** Copies classification diagnostics into the conversion result without dropping evidence. */
+function diagnosticsForClassification(
+  classification: CoverageClassificationResult,
+): CoverageConversionDiagnostics {
+  return {
+    exclusions: classification.exclusions,
+    unmapped: classification.unmapped,
+    deferredScripts: classification.deferredScripts,
+    deferredProcesses: classification.deferredProcesses,
+    collectionFailures: classification.collectionFailures,
+  };
+}
+
+/** Constructs one rejected result while preserving every accumulated diagnostic. */
 function rejectedConversion(
-  exclusions: readonly Readonly<{ url: string; reason: string }>[],
-  unmapped: readonly Readonly<{ url: string; reason: string }>[],
+  diagnostics: CoverageConversionDiagnostics,
   rejectionReason: NonNullable<CoverageConversionResult['rejectionReason']>,
 ): CoverageConversionResult {
   return Object.freeze({
     accepted: false,
-    exclusions: Object.freeze([...exclusions]),
-    unmapped: Object.freeze([...unmapped]),
+    exclusions: Object.freeze([...diagnostics.exclusions]),
+    unmapped: Object.freeze([...diagnostics.unmapped]),
+    deferredScripts: Object.freeze([...diagnostics.deferredScripts]),
+    deferredProcesses: Object.freeze([...diagnostics.deferredProcesses]),
+    collectionFailures: Object.freeze([...diagnostics.collectionFailures]),
     rejectionReason,
   });
 }

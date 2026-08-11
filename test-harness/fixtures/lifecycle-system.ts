@@ -141,6 +141,13 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
   public async read(
     lookup: LifecycleRecoveryLookup,
   ): Promise<LeaseRecord | 'missing' | 'malformed' | 'incomplete'> {
+    return this.readSync(lookup);
+  }
+
+  /** Synchronously reads one persisted lease for non-async evidence boundaries. */
+  public readSync(
+    lookup: LifecycleRecoveryLookup,
+  ): LeaseRecord | 'missing' | 'malformed' | 'incomplete' {
     const ownerDirectories = this.ownerDirectories(lookup.runId);
     if (ownerDirectories.length === 0) return 'missing';
     if (ownerDirectories.length !== 1) return 'incomplete';

@@ -362,6 +362,10 @@ development evidence, and organization-prefixed user operations enforce tenant o
 **Phase gate:** server-process coverage is reproducible, provenance-bound, fully classified, and
 separate from Vitest; no ratchet or CI policy changes.
 
+The mandatory phase-end review and its correction evidence are recorded in the
+[Phase 4 Quality Review](12-phase-4-quality-review.md). The phase gate remains open until that
+review is closed.
+
 ## Phase 5: Fault Runner and Packed-Client Foundations
 
 > **Scope**: fault metadata/runner and isolated SDK/CLI consumer lifecycle

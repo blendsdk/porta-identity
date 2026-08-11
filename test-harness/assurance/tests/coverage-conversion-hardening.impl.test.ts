@@ -7,15 +7,31 @@ import test from 'node:test';
 import {
   classifyCoverageEnvelope,
   convertCoverageEnvelope,
+  type CoverageClassificationContext,
   type CoverageConversionResult,
+  type CoverageRuntimeDependencyInventory,
   type RawCoverageEnvelope,
 } from '../coverage/index.js';
 import { captureCoverageSpike, spikeProvenance } from './coverage-spike-rig.js';
+
+const runtimeDependencyInventory: CoverageRuntimeDependencyInventory = {
+  revision: spikeProvenance.revision,
+  imageDigest: spikeProvenance.imageDigest,
+  dependencies: [
+    {
+      name: 'koa',
+      version: '2.16.3',
+      rootPath: '/app/node_modules/koa',
+      integrity: 'sha512-proven-runtime-package',
+    },
+  ],
+};
 
 /** Converts one envelope against a disposable copy of the committed compiled/source fixture. */
 async function withDisposableFixture(
   envelope: RawCoverageEnvelope,
   mutate: (fixtureRoot: string) => void = () => undefined,
+  classificationContext: CoverageClassificationContext = {},
 ): Promise<CoverageConversionResult> {
   const temporaryRoot = mkdtempSync(resolve(tmpdir(), 'porta-coverage-hardening-'));
   const fixtureRoot = resolve(temporaryRoot, 'coverage-spike');
@@ -24,14 +40,18 @@ async function withDisposableFixture(
       recursive: true,
     });
     mutate(fixtureRoot);
-    return await convertCoverageEnvelope(envelope, classifyCoverageEnvelope(envelope), {
-      compiledDirectory: resolve(fixtureRoot, 'compiled'),
-      sourcePackageRoot: fixtureRoot,
-      normalizedPathRoot: fixtureRoot,
-      reportDirectory: resolve(temporaryRoot, 'report'),
-      expectedProvenance: spikeProvenance,
-      virtualCompiledRoot: '/app/dist',
-    });
+    return await convertCoverageEnvelope(
+      envelope,
+      classifyCoverageEnvelope(envelope, classificationContext),
+      {
+        compiledDirectory: resolve(fixtureRoot, 'compiled'),
+        sourcePackageRoot: fixtureRoot,
+        normalizedPathRoot: fixtureRoot,
+        reportDirectory: resolve(temporaryRoot, 'report'),
+        expectedProvenance: spikeProvenance,
+        virtualCompiledRoot: '/app/dist',
+      },
+    );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -76,10 +96,14 @@ test('should retain dependency scripts as explicit non-contributing exclusions',
     provenance: spikeProvenance,
     ranges: [{ startOffset: 0, endOffset: 20, count: 1 }],
   };
-  const result = await withDisposableFixture({
-    ...envelope,
-    scripts: [...envelope.scripts, dependency],
-  });
+  const result = await withDisposableFixture(
+    {
+      ...envelope,
+      scripts: [...envelope.scripts, dependency],
+    },
+    undefined,
+    { runtimeDependencyInventory },
+  );
 
   assert.equal(result.accepted, true);
   assert.deepEqual(
@@ -104,6 +128,11 @@ test('should reject a malformed source map as an unmapped eligible input', async
   assert.equal(result.accepted, false);
   assert.equal(result.rejectionReason, 'unmapped-eligible-input');
   assert.equal(result.unmapped.length, 1);
+  assert.deepEqual(result.deferredScripts, []);
+  assert.deepEqual(result.deferredProcesses, []);
+  assert.deepEqual(result.collectionFailures, [
+    { stage: 'conversion', reason: 'unmapped-eligible-input' },
+  ]);
 });
 
 test('should reject a missing source map as an unmapped eligible input', async () => {
@@ -114,4 +143,55 @@ test('should reject a missing source map as an unmapped eligible input', async (
   assert.equal(result.accepted, false);
   assert.equal(result.rejectionReason, 'unmapped-eligible-input');
   assert.equal(result.unmapped.length, 1);
+});
+
+test('should preserve pathless and empty-process deferrals without misclassifying them', async () => {
+  const envelope = captureCoverageSpike();
+  const pathless = {
+    url: '',
+    provenance: spikeProvenance,
+    ranges: [{ startOffset: 0, endOffset: 20, count: 1 }],
+  };
+  const result = await withDisposableFixture({
+    ...envelope,
+    scripts: [...envelope.scripts, pathless],
+    processes: [...(envelope.processes ?? []), { scripts: [] }, { scripts: [pathless] }],
+  });
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.rejectionReason, undefined);
+  assert.deepEqual(result.deferredScripts, [{ url: '', reason: 'pathless-script' }]);
+  assert.deepEqual(result.deferredProcesses, [{ reason: 'empty-process-record' }]);
+  assert.deepEqual(result.unmapped, []);
+  assert.deepEqual(result.collectionFailures, []);
+  assert.deepEqual(result.artifact?.deferredScripts, [{ url: '', reason: 'pathless-script' }]);
+  assert.deepEqual(result.artifact?.deferredProcesses, [{ reason: 'empty-process-record' }]);
+});
+
+test('should retain proven exclusions when a different dependency remains unproven', async () => {
+  const envelope = captureCoverageSpike();
+  const proven = {
+    url: 'file:///app/node_modules/koa/lib/application.js',
+    provenance: spikeProvenance,
+    ranges: [{ startOffset: 0, endOffset: 20, count: 1 }],
+  };
+  const unproven = {
+    url: 'file:///app/node_modules/unlisted/index.js',
+    provenance: spikeProvenance,
+    ranges: [{ startOffset: 0, endOffset: 20, count: 1 }],
+  };
+  const result = await withDisposableFixture(
+    { ...envelope, scripts: [...envelope.scripts, proven, unproven] },
+    undefined,
+    { runtimeDependencyInventory },
+  );
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.rejectionReason, 'unexpected-local-script');
+  assert.deepEqual(result.exclusions, [
+    { url: proven.url, reason: 'proven installed runtime dependency script' },
+  ]);
+  assert.deepEqual(result.deferredScripts, [
+    { url: unproven.url, reason: 'dependency-not-proven' },
+  ]);
 });

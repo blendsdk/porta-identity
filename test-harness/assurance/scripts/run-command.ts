@@ -14,15 +14,20 @@ import {
 import { redSignatureRegistrySchema } from '../schema.js';
 import {
   coverageEnvironment,
-  convertCapturedCoverage,
   createCoverageWorkspace,
   extractRawCoverage,
   gracefullyFlushPorta,
   inspectPortaContainer,
   readActiveCoverageRun,
   writeCaptureManifest,
-  writeCoverageObservationSummary,
 } from '../coverage/index.js';
+import {
+  removeCoverageObservation,
+  runManagedCoverageConversion,
+  withOwnedHarnessStack,
+  writeCoverageFailureArtifact,
+  type CoverageFailureStage,
+} from './coverage-orchestration.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -110,6 +115,8 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
     'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-flush-container.impl.test.ts',
+    'test-harness/assurance/tests/coverage-orchestration.impl.test.ts',
     'test-harness/assurance/tests/coverage-classification.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
   ],
@@ -119,6 +126,8 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-observation-policy.spec.test.ts',
     'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
     'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-flush-container.impl.test.ts',
+    'test-harness/assurance/tests/coverage-orchestration.impl.test.ts',
     'test-harness/assurance/tests/coverage-classification.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion-hardening.impl.test.ts',
@@ -197,22 +206,14 @@ async function withHarnessStack(
   work: () => Promise<number>,
   environment: NodeJS.ProcessEnv = process.env,
 ): Promise<number> {
-  const start = await runLifecycleAction('start', undefined, profile, environment);
-  const startExit = managedChildExit(start, setupFailureExit);
-  if (startExit !== 0) {
-    const cleanupExit = await cleanupHarnessStack(environment);
-    return cleanupExit === 0 ? startExit : cleanupExit;
-  }
-  let primaryExit: number;
-  try {
-    primaryExit = await work();
-  } catch {
-    primaryExit = setupFailureExit;
-  } finally {
-    const cleanupExit = await cleanupHarnessStack(environment);
-    if (cleanupExit !== 0) primaryExit = cleanupExit;
-  }
-  return primaryExit;
+  return withOwnedHarnessStack(
+    async () => {
+      const start = await runLifecycleAction('start', undefined, profile, environment);
+      return managedChildExit(start, setupFailureExit);
+    },
+    () => cleanupHarnessStack(environment),
+    work,
+  );
 }
 
 /** Captures one fixed-seed harness project from the owned Dockerized Porta process. */
@@ -260,11 +261,12 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
   const onSigterm = (): void => interrupt(143);
   process.on('SIGINT', onSigint);
   process.on('SIGTERM', onSigterm);
+  let terminalStage: CoverageFailureStage = 'startup';
   try {
     const result = await withHarnessStack(
       profile,
       async () => {
-        let stage = 'active-run';
+        let stage: CoverageFailureStage = 'active-run';
         try {
           const activeRun = readActiveCoverageRun(process.cwd());
           stage = 'container-inspect';
@@ -284,9 +286,14 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
           const projectExit = managedChildExit(projectResult, testFailureExit);
           stage = 'graceful-stop';
           await gracefullyFlushPorta(process.cwd(), container);
+          if (projectExit !== 0 || interruptedExit !== undefined) {
+            terminalStage = 'project';
+            return interruptedExit ?? projectExit;
+          }
           stage = 'raw-extract';
           await extractRawCoverage(process.cwd(), workspace, container, interruption.signal);
           stage = 'raw-validate';
+          terminalStage = stage;
           const manifest = await writeCaptureManifest(process.cwd(), workspace, container, {
             seed,
             project,
@@ -294,21 +301,19 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
           });
           if (manifest.flushStatus !== 'complete') return 40;
           stage = 'conversion';
-          const conversion = await convertCapturedCoverage(
-            process.cwd(),
-            workspace,
-            manifest,
-            interruption.signal,
-          );
-          if (!conversion.accepted || conversion.artifact === undefined) {
-            process.stderr.write('ASSURANCE_COVERAGE_FAILED: stage=conversion\n');
-            return 40;
+          terminalStage = stage;
+          if (interruptedExit !== undefined) return interruptedExit;
+          const conversion = await runManagedCoverageConversion(process.cwd(), workspace);
+          const conversionExit = managedChildExit(conversion, 40);
+          if (conversionExit !== 0) {
+            terminalStage = stage;
+            return interruptedExit ?? conversionExit;
           }
           stage = 'observation';
-          writeCoverageObservationSummary(workspace, conversion.artifact);
-          return interruptedExit ?? projectExit;
+          terminalStage = stage;
+          return interruptedExit ?? 0;
         } catch {
-          process.stderr.write(`ASSURANCE_COVERAGE_FAILED: stage=${stage}\n`);
+          terminalStage = stage;
           return interruptedExit ?? 40;
         }
       },
@@ -319,6 +324,19 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
       process.stdout.write(
         `ASSURANCE_COVERAGE_CAPTURE=${workspace.manifestPath}\nASSURANCE_COVERAGE_REPORT=${workspace.reportDirectory}\n`,
       );
+    } else {
+      removeCoverageObservation(workspace);
+      const stage: CoverageFailureStage = result === 60 ? 'cleanup' : terminalStage;
+      const classification = exitTaxonomy[result as keyof typeof exitTaxonomy] ?? 'unknown-failure';
+      writeCoverageFailureArtifact(workspace, {
+        stage,
+        exitCode: result,
+        classification,
+        project,
+        profile,
+        seed,
+      });
+      process.stderr.write(`ASSURANCE_COVERAGE_FAILED: stage=${stage}\n`);
     }
   } finally {
     process.off('SIGINT', onSigint);

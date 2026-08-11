@@ -758,6 +758,42 @@ challenger's owner-only staging and non-root requirements with the smallest harn
 runtime UID changes, Compose enables `volume-nocopy`, or a supported container engine initializes
 the mountpoint with different ownership semantics.
 
+### AR-53 — Coverage evidence fail-closed correction
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: necessary security,
+concurrency, provenance, and evidence-integrity corrections inside the approved attributed
+coverage scope; they change no product behavior, coverage threshold, CI policy, or release gate.
+**Objective**: ensure an accepted observation proves exactly which clean source and owned process
+ran, while every ambiguous, failed, or interrupted collection remains visibly ineligible.
+**Decision**: bind the clean revision, dependency lock, and server source-tree digest into the
+immutable harness image and revalidate them before conversion; authorize inspection and SIGTERM
+only against the exact Porta container ID persisted in the durable lifecycle lease and its full
+ownership labels. A failed or competing startup never invokes unscoped cleanup. Conversion runs
+as a separately managed child with a fixed deadline and TERM-to-KILL escalation while lifecycle
+ownership stays in the parent. Only a completely successful project, graceful flush, extraction,
+classification, mapping, and non-interrupted conversion emits an observation summary; every other
+outcome emits a distinct sanitized failure record. Runtime dependencies must match an inventory
+generated inside the attributed image. Pathless scripts are explicit deferred inputs rather than
+assumed Node internals, and exact exclusions, unmapped inputs, deferred records, and collection
+failures survive rejection. The graceful-flush implementation receives direct outcome tests and
+a bounded disposable-container forced-termination smoke. **Evidence**: the independent phase
+review found that host metadata was sampled after execution, container selection was not compared
+with the lease, a losing concurrent command could stop the winner, conversion ignored parent
+cancellation, failed projects still wrote baseline-shaped summaries, path prefixes stood in for
+dependency proof, and the forced-termination specification used only a synthetic envelope.
+**Rejected alternatives**: trusting the current Git `HEAD`, Compose project labels, or filesystem
+prefixes does not bind executed bytes; retaining in-process conversion cannot guarantee prompt
+signal cleanup; writing an observation with a failure flag keeps a dangerous baseline-shaped
+artifact; treating blank URLs as declared internals invents provenance. **Strongest
+counterargument**: image labels and a managed converter add build and process machinery. The
+additional identities are small, deterministic, independently inspectable, and necessary because
+this evidence is intended to support later security claims. **Confidence**: High. **Hardening**:
+independent correctness and security reviewers converged on the same provenance and fail-closed
+boundaries; both correction sets are adopted without waiver. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: Docker label/build semantics
+change, conversion cannot be terminated with absence proof, dependency inventory is not bound to
+the selected image, or any failed command can leave a baseline-eligible observation.
+
 ### AR-52 — Open-ended Istanbul mapping columns
 
 **Authority**: AI — delegated by `--auto-design`. **Eligibility**: converter validation detail
