@@ -10,8 +10,10 @@ import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { arrangeFixtureBaseline } from '../fixtures/seed-arrangement.js';
+import { writeFixtureRuntimeFiles } from '../fixtures/fixture-runtime-files.js';
 
 process.env.LOG_LEVEL = 'fatal';
+let fixtureSetupStage = 'connect';
 const postgresPort = process.env.HARNESS_POSTGRES_PORT ?? '5432';
 const redisPort = process.env.HARNESS_REDIS_PORT ?? '6379';
 const mailhogPort = process.env.HARNESS_MAILHOG_PORT ?? '8025';
@@ -50,9 +52,17 @@ async function main(): Promise<void> {
       process.env.HARNESS_APP_URL ?? 'https://app-harness.ci.portaidentity.com:4100';
     const bffBaseUrl =
       process.env.HARNESS_BFF_URL ?? 'http://app-harness.ci.portaidentity.com:4101';
+    fixtureSetupStage = 'arrange-baseline';
     const runtime = await arrangeFixtureBaseline({ appBaseUrl, bffBaseUrl });
     const sharedScope = 'openid profile email offline_access';
-    const privateConfig = {
+    const runId = process.env.HARNESS_RUN_ID;
+    const endpointManifestPath = process.env.PORTA_ENDPOINT_MANIFEST;
+    if (runId === undefined || endpointManifestPath === undefined) {
+      throw new Error('active run identity and endpoint manifest are required');
+    }
+    fixtureSetupStage = 'persist-runtime-files';
+    writeFixtureRuntimeFiles(runId, endpointManifestPath, runtime);
+    const publicConfig = {
       orgSlug: runtime.retained.organizationSlug,
       spa: {
         clientId: runtime.retained.publicClientId,
@@ -62,14 +72,14 @@ async function main(): Promise<void> {
       },
       bff: {
         clientId: runtime.retained.confidentialClientId,
-        clientSecret: runtime.retained.confidentialClientSecret,
+        clientSecretCredentialRef: 'credential:alpha:client-secret:confidential',
         redirectUri: `${bffBaseUrl}/callback`,
         postLogoutRedirectUri: `${bffBaseUrl}/`,
         scope: sharedScope,
       },
       user: {
         email: runtime.retained.userEmail,
-        password: runtime.retained.userPassword,
+        passwordCredentialRef: 'credential:alpha:password:active',
       },
       porta: {
         issuer: `${portaBaseUrl}/${runtime.retained.organizationSlug}`,
@@ -77,14 +87,15 @@ async function main(): Promise<void> {
       },
       mailhog: { apiUrl: `http://localhost:${mailhogPort}/api` },
     };
-    writeRuntimeJson(resolve(harnessRoot, 'config.generated.json'), privateConfig);
+    fixtureSetupStage = 'persist-public-config';
+    writeRuntimeJson(resolve(harnessRoot, 'config.generated.json'), publicConfig);
 
     const spaDirectory = resolve(harnessRoot, 'spa');
     mkdirSync(spaDirectory, { recursive: true, mode: 0o700 });
     writeRuntimeJson(resolve(spaDirectory, 'config.json'), {
-      orgSlug: privateConfig.orgSlug,
-      spa: privateConfig.spa,
-      porta: privateConfig.porta,
+      orgSlug: publicConfig.orgSlug,
+      spa: publicConfig.spa,
+      porta: publicConfig.porta,
     });
 
     process.stdout.write(
@@ -97,7 +108,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : 'unknown fixture arrangement failure';
-  process.stderr.write(`HARNESS_FIXTURE_SETUP_FAILED: ${message}\n`);
+  void error;
+  process.stderr.write(`HARNESS_FIXTURE_SETUP_FAILED: stage=${fixtureSetupStage}\n`);
   process.exitCode = 1;
 });

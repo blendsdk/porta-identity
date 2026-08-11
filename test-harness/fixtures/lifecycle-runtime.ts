@@ -55,6 +55,18 @@ export function environmentForManifest(
       manifest.runId,
       'endpoint-manifest.json',
     ),
+    HARNESS_FIXTURE_MANIFEST: resolve(
+      manifest.worktreePath,
+      'test-harness/.assurance-runtime',
+      manifest.runId,
+      'fixture-public.json',
+    ),
+    HARNESS_FIXTURE_CREDENTIALS: resolve(
+      manifest.worktreePath,
+      'test-harness/.assurance-runtime',
+      manifest.runId,
+      'fixture-credentials.json',
+    ),
   });
 }
 

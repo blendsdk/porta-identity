@@ -25,13 +25,35 @@ import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as openidClient from 'openid-client';
+import { z } from 'zod';
+
+import { readProtectedRuntimeCredential } from '../fixtures/fixture-runtime-files.js';
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 const configPath = resolve(import.meta.dirname!, '../config.generated.json');
-const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+const config = z
+  .object({
+    orgSlug: z.string().min(1),
+    bff: z.object({
+      clientId: z.string().min(1),
+      clientSecretCredentialRef: z.string().startsWith('credential:'),
+      redirectUri: z.string().url(),
+      postLogoutRedirectUri: z.string().url(),
+      scope: z.string().min(1),
+    }),
+    porta: z.object({ baseUrl: z.string().url() }),
+  })
+  .passthrough()
+  .parse(JSON.parse(readFileSync(configPath, 'utf-8')));
+const credentialPath = process.env.HARNESS_FIXTURE_CREDENTIALS;
+if (credentialPath === undefined) throw new Error('HARNESS_FIXTURE_CREDENTIALS is required');
+const clientSecret = readProtectedRuntimeCredential(
+  credentialPath,
+  config.bff.clientSecretCredentialRef,
+);
 
 const PORT = Number.parseInt(process.env.HARNESS_BFF_PORT ?? '4101', 10);
 if (!Number.isSafeInteger(PORT) || PORT < 1024 || PORT > 65_535) {
@@ -53,8 +75,8 @@ console.log(
 const oidcConfig = await openidClient.discovery(
   new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
   config.bff.clientId,
-  config.bff.clientSecret,
-  openidClient.ClientSecretPost(config.bff.clientSecret),
+  clientSecret,
+  openidClient.ClientSecretPost(clientSecret),
   {
     execute: [openidClient.allowInsecureRequests],
   },

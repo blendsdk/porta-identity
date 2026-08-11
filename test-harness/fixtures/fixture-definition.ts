@@ -83,7 +83,9 @@ function client(
     grantTypes: ['authorization_code', 'refresh_token'],
     scopes: [...fixtureProtocolScopes],
     clientSecretCredentialRef:
-      kind === 'confidential' ? `credential:${tenant}:client-secret:${suffix}` : undefined,
+      kind === 'confidential' && validity === 'valid'
+        ? `credential:${tenant}:client-secret:${suffix}`
+        : undefined,
   };
 }
 

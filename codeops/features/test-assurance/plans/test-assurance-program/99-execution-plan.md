@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 12:39
-> **Progress**: 20/92 tasks (21%)
+> **Last Updated**: 2026-08-11 12:41
+> **Progress**: 21/92 tasks (22%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -247,8 +247,15 @@ worktree's endpoints or resources.
 - [x] 3.4 Split deterministic seeding into typed arrangement modules and create disjoint ordinary
       principals/clients/data plus full/limited/unprivileged super-admin control-plane actors.
       ✅ (completed: 2026-08-11 12:39)
-- [ ] 3.5 Generate a redacted public fixture manifest and protected runtime credentials; verify every
+- [x] 3.5 Generate a redacted public fixture manifest and protected runtime credentials; verify every
       required fixture through public boundaries after startup.
+      ✅ (completed: 2026-08-11 13:03)
+      - Verification note: the exact fixture selector passed 8/8 ontology/runtime cases against a
+        freshly owned stack, the retained SPA/BFF suite passed 6/6, and `yarn verify` passed 68
+        structure cases, 224 server files / 3,348 tests, 31 SDK files / 404 tests, and 29 CLI files /
+        355 tests. Raw passwords, client secrets, session cookies, tokens, TOTP secrets, and recovery
+        codes remain only in the owner-only protected file; the redacted manifest contains their
+        opaque references and independently checked fixture provenance.
 - [ ] 3.6 Add directory-scoped protocol/security/compatibility Playwright projects without changing
       the six retained SPA/BFF file names or double collection. Keep `yarn harness:test` explicitly
       filtered to SPA/BFF; new projects are reachable only through `yarn assurance:harness`.

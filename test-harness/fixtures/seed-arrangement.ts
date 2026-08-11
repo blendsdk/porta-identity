@@ -300,11 +300,10 @@ export async function arrangeFixtureBaseline(
     );
     credentials.set(`credential:${fixture.id}:cookie:baseline`, sessionValue);
     credentials.set(`credential:${fixture.id}:token:baseline`, tokenValue);
-    entities.push(
-      { alias: `${fixture.id}-session-baseline`, id: sessionValue },
-      { alias: `${fixture.id}-token-baseline`, id: tokenValue },
-      { alias: `${fixture.id}-resource-primary`, id: activeUser.id },
-    );
+    // Session and token identifiers are bearer credentials, so only their protected references
+    // appear in the public fixture definition. The public entity index keeps the non-secret
+    // resource association and never serializes those raw values.
+    entities.push({ alias: `${fixture.id}-resource-primary`, id: activeUser.id });
   }
 
   const superAdminOrganization = await findSuperAdminOrganization();

@@ -81,7 +81,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-signal-probe': ['test-harness/assurance/tests/signal-probe.impl.fixture.ts'],
   lifecycle: lifecycleTestFiles,
   'lifecycle-all': lifecycleTestFiles,
-  'fixture-ontology': ['test-harness/assurance/tests/fixture-ontology.spec.test.ts'],
+  'fixture-ontology': [
+    'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+    'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
+  ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -89,6 +92,43 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/governance.impl.test.ts',
   ],
 };
+
+/** Converts one managed child outcome to the stable assurance exit taxonomy. */
+function managedChildExit(
+  result: Awaited<ReturnType<typeof runManagedChild>>,
+  nonzeroExit: number,
+): number {
+  if (result.cleanupFailed) return 60;
+  if (result.forwardedSignal === 'SIGINT') return 130;
+  if (result.forwardedSignal === 'SIGTERM') return 143;
+  if (result.timedOut) return timeoutExit;
+  if (result.setupFailed) return setupFailureExit;
+  return result.code === 0 ? 0 : nonzeroExit;
+}
+
+/** Runs one shell-free lifecycle action used by an internal live-boundary suite. */
+async function runLifecycleAction(
+  action: 'start' | 'stop',
+): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
+  return runManagedChild(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      'test-harness/scripts/lifecycle.ts',
+      action,
+      ...(action === 'start' ? ['--ci'] : []),
+    ],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'inherit',
+      timeoutMilliseconds: action === 'start' ? 900_000 : 120_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
 
 /** Serializes the complete frozen command contract for repository checks and operators. */
 function describeAllContracts(): string {
@@ -137,11 +177,22 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
     return;
   }
 
-  const selectedTests = internalTestSuites[normalizedOptions[1] ?? ''];
+  const selector = normalizedOptions[1] ?? '';
+  const selectedTests = internalTestSuites[selector];
   if (selectedTests === undefined) {
-    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${normalizedOptions[1] ?? ''}\n`);
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${selector}\n`);
     process.exitCode = setupFailureExit;
     return;
+  }
+
+  const ownsFixtureStack = selector === 'fixture-ontology';
+  if (ownsFixtureStack) {
+    const startResult = await runLifecycleAction('start');
+    const startExit = managedChildExit(startResult, setupFailureExit);
+    if (startExit !== 0) {
+      process.exitCode = startExit;
+      return;
+    }
   }
 
   const result = await runManagedChild(
@@ -157,28 +208,16 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
     },
   );
 
-  if (result.cleanupFailed) {
-    process.exitCode = 60;
-    return;
-  }
-  if (result.forwardedSignal === 'SIGINT') {
-    process.exitCode = 130;
-    return;
-  }
-  if (result.forwardedSignal === 'SIGTERM') {
-    process.exitCode = 143;
-    return;
-  }
-  if (result.timedOut) {
-    process.exitCode = timeoutExit;
-    return;
-  }
-  if (result.setupFailed) {
-    process.exitCode = setupFailureExit;
-    return;
+  if (ownsFixtureStack) {
+    const stopResult = await runLifecycleAction('stop');
+    const stopExit = managedChildExit(stopResult, 60);
+    if (stopExit !== 0) {
+      process.exitCode = 60;
+      return;
+    }
   }
 
-  process.exitCode = result.code === 0 ? 0 : testFailureExit;
+  process.exitCode = managedChildExit(result, testFailureExit);
 }
 
 /** Runs one allowlisted RED child and accepts only its exact registered assertion failure. */

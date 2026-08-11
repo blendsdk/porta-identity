@@ -14,16 +14,31 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
+import { readProtectedRuntimeCredential } from '../fixtures/fixture-runtime-files.js';
+
 // ── Config ──────────────────────────────────────────────
 
 const runtimeConfig = z
-  .object({ user: z.object({ email: z.string().email(), password: z.string().min(1) }) })
+  .object({
+    user: z.object({
+      email: z.string().email(),
+      passwordCredentialRef: z.string().startsWith('credential:'),
+    }),
+  })
   .parse(
     JSON.parse(readFileSync(resolve(import.meta.dirname, '../config.generated.json'), 'utf8')),
   );
+const credentialPath = process.env.HARNESS_FIXTURE_CREDENTIALS;
+if (credentialPath === undefined) throw new Error('HARNESS_FIXTURE_CREDENTIALS is required');
 
 /** Retained browser principal loaded from the ignored protected runtime configuration. */
-export const TEST_USER = runtimeConfig.user;
+export const TEST_USER = {
+  email: runtimeConfig.user.email,
+  password: readProtectedRuntimeCredential(
+    credentialPath,
+    runtimeConfig.user.passwordCredentialRef,
+  ),
+};
 
 /** MailHog API endpoint used by the browser harness. */
 export const MAILHOG_API = `${process.env.HARNESS_MAILHOG_URL ?? `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}`}/api`;

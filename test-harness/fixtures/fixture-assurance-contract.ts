@@ -68,7 +68,7 @@ export interface FixtureClient {
   readonly grantTypes: readonly string[];
   /** Exact scope allowlist. */
   readonly scopes: readonly string[];
-  /** Protected client-secret reference for confidential clients. */
+  /** Protected secret reference for a persisted valid confidential client. */
   readonly clientSecretCredentialRef?: string;
 }
 

@@ -21,6 +21,10 @@ export class RuntimeCommandRunner {
   ): Promise<CommandResult> {
     const result = await this.run(command, args, options);
     if (result.exitCode !== 0) {
+      const stableFixtureFailure = result.stderr.match(
+        /(?:^|\n)(HARNESS_FIXTURE_SETUP_FAILED: stage=[a-z-]+)(?:\r?\n|$)/u,
+      )?.[1];
+      if (stableFixtureFailure !== undefined) process.stderr.write(`${stableFixtureFailure}\n`);
       process.stderr.write(
         `HARNESS_RUNTIME_COMMAND_FAILED: command=${command} exit=${result.exitCode}\n`,
       );
