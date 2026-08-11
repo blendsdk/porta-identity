@@ -15,6 +15,8 @@ import {
   type LifecycleStartResult,
   type OwnedRun,
   type PrerequisiteName,
+  type ResetDependencies,
+  type ResetReport,
 } from './lifecycle-planned.js';
 import {
   createEndpointManifest,
@@ -70,9 +72,19 @@ export class LifecycleControllerImplementation implements LifecycleController {
     return { outcome: outcome(30) };
   }
 
-  /** Returns setup failure until the reset state machine is installed by its owning task. */
+  /** Resets every mutable dependency in one quiesced, durably poisoned transaction boundary. */
   public async reset(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
-    return { ...outcome(30), report: emptyResetReport(ownedRun.manifest.runId) };
+    const record = this.ownedRecords.get(ownedRun);
+    const reset = this.dependencies.reset;
+    if (record === undefined) {
+      return { ...outcome(30), report: emptyResetReport(ownedRun.manifest.runId) };
+    }
+    if (reset === undefined) return this.executePrerequisiteReset(record);
+    const state = await reset.state.read(record);
+    if (state !== 'ready') {
+      return { ...outcome(60), report: emptyResetReport(record.runId) };
+    }
+    return this.executeReset(record, reset);
   }
 
   /** Stops and releases only the exact lease represented by a controller-issued capability. */
@@ -114,6 +126,15 @@ export class LifecycleControllerImplementation implements LifecycleController {
       ]);
       if (ownerPresence !== 'absent' || composeInspection.presence !== 'absent') {
         return cleanupFailure(persisted);
+      }
+      const reset = this.dependencies.reset;
+      if (reset !== undefined) {
+        const resetState = await reset.state.read(persisted);
+        if (resetState === 'resetting-poisoned') {
+          const resetOutcome = await this.executeReset(persisted, reset);
+          return lifecyclePart(resetOutcome);
+        }
+        if (resetState === 'unreadable') return cleanupFailure(persisted);
       }
       await this.dependencies.compose.stop(persisted);
       await this.dependencies.leases.release(persisted);
@@ -217,6 +238,242 @@ export class LifecycleControllerImplementation implements LifecycleController {
       return false;
     }
   }
+
+  /** Executes the fixed reset sequence and never exposes an adapter exception in evidence. */
+  protected async executeReset(
+    record: LeaseRecord,
+    reset: ResetDependencies,
+  ): Promise<LifecycleResetOutcome> {
+    const report = mutableResetReport(record, reset);
+    let currentStep: ResetStepName = 'quiesce';
+
+    try {
+      await this.runResetStep(currentStep, () => reset.traffic.quiesce(record));
+      currentStep = 'stop-porta';
+      await this.runResetStep(currentStep, () => reset.runtime.stopPorta(record));
+      currentStep = 'persist-poison';
+      await this.runResetStep(currentStep, () => reset.state.persist(record, 'resetting-poisoned'));
+      currentStep = 'flush-poison';
+      await this.runResetStep(currentStep, () => reset.state.flush(record));
+      currentStep = 'db-recreate';
+      report.identifiers.push(
+        ...(await this.runResetStep(currentStep, () => reset.database.recreate(record))),
+      );
+      currentStep = 'migration';
+      await this.runResetStep(currentStep, () =>
+        reset.database.migrate(record, reset.expectations.migrationRevision),
+      );
+      currentStep = 'bootstrap';
+      await this.runResetStep(currentStep, () => reset.database.bootstrap(record));
+      currentStep = 'seed';
+      await this.runResetStep(currentStep, () => reset.database.seed(record, reset.expectations));
+      currentStep = 'redis';
+      report.redisKeysRemoved = await this.runResetStep(currentStep, () =>
+        reset.redis.flush(record),
+      );
+      currentStep = 'mailhog';
+      report.mailMessagesRemoved = await this.runResetStep(currentStep, () =>
+        reset.mail.clear(record),
+      );
+      currentStep = 'restart-clients';
+      await this.runResetStep(currentStep, () => reset.runtime.restartClients(record));
+      currentStep = 'restart-porta';
+      await this.runResetStep(currentStep, () => reset.runtime.restartPorta(record));
+      currentStep = 'digest-count-checks';
+      const observation = await this.runResetStep(currentStep, () =>
+        reset.database.observe(record),
+      );
+      report.migrationDigest = observation.migrationDigest;
+      report.fixtureDigest = observation.fixtureDigest;
+      report.fixtureCounts = observation.fixtureCounts;
+      const mismatch = verificationMismatch(observation, reset);
+      if (mismatch !== undefined) {
+        return { ...outcome(30), prerequisite: mismatch, report: freezeResetReport(report) };
+      }
+      currentStep = 'public-health';
+      await this.runResetStep(currentStep, () => reset.publicVerification.verify(record));
+      currentStep = 'verify-traffic-blocked';
+      await this.runResetStep(currentStep, () => reset.traffic.verifyBlocked(record));
+      currentStep = 'clear-poison';
+      await this.runResetStep(currentStep, () => reset.state.persist(record, 'ready'));
+      currentStep = 'flush-ready';
+      await this.runResetStep(currentStep, () => reset.state.flush(record));
+      currentStep = 'resume-traffic';
+      await this.runResetStep(currentStep, () => reset.traffic.resume(record));
+      return { ...outcome(0), report: freezeResetReport(report) };
+    } catch (error) {
+      return {
+        ...resetFailureOutcome(error, currentStep),
+        prerequisite: prerequisiteForResetStep(currentStep),
+        report: freezeResetReport(report),
+      };
+    }
+  }
+
+  /** Applies the configured deadline to one named reset capability boundary. */
+  protected runResetStep<T>(step: ResetStepName, work: () => Promise<T>): Promise<T> {
+    return this.dependencies.deadlines.run(`reset:${step}`, work);
+  }
+
+  /**
+   * Preserves fatal Redis and MailHog prerequisites for lightweight lifecycle consumers.
+   *
+   * Full reset users supply the reset capability bundle. Consumers that only need prerequisite
+   * enforcement still receive the stable failure taxonomy instead of a vacuous success.
+   */
+  protected async executePrerequisiteReset(record: LeaseRecord): Promise<LifecycleResetOutcome> {
+    for (const prerequisite of ['redis-reset', 'mailhog-reset'] as const) {
+      try {
+        await this.dependencies.prerequisites.run(prerequisite, record.manifest);
+      } catch {
+        return {
+          ...outcome(30),
+          prerequisite,
+          report: emptyResetReport(record.runId),
+        };
+      }
+    }
+    return { ...outcome(0), report: emptyResetReport(record.runId) };
+  }
+}
+
+/** Internal reset step names retained only while translating failures to stable outcomes. */
+type ResetStepName =
+  | 'quiesce'
+  | 'stop-porta'
+  | 'persist-poison'
+  | 'flush-poison'
+  | 'db-recreate'
+  | 'migration'
+  | 'bootstrap'
+  | 'seed'
+  | 'redis'
+  | 'mailhog'
+  | 'restart-clients'
+  | 'restart-porta'
+  | 'digest-count-checks'
+  | 'public-health'
+  | 'verify-traffic-blocked'
+  | 'clear-poison'
+  | 'flush-ready'
+  | 'resume-traffic';
+
+/** Mutable private report shape used while the ordered reset gathers non-secret facts. */
+interface MutableResetReport {
+  runId: string;
+  migrationRevision: string;
+  migrationDigest?: string;
+  fixtureDigest?: string;
+  fixtureCounts: Readonly<Record<string, number>>;
+  redisKeysRemoved: number;
+  mailMessagesRemoved: number;
+  identifiers: string[];
+}
+
+/** Creates a report using independent expectations rather than observed production values. */
+function mutableResetReport(record: LeaseRecord, reset: ResetDependencies): MutableResetReport {
+  return {
+    runId: record.runId,
+    migrationRevision: reset.expectations.migrationRevision,
+    fixtureCounts: Object.freeze({}),
+    redisKeysRemoved: 0,
+    mailMessagesRemoved: 0,
+    identifiers: [],
+  };
+}
+
+/** Converts accumulated reset facts into immutable public evidence. */
+function freezeResetReport(report: MutableResetReport): ResetReport {
+  return Object.freeze({
+    ...report,
+    fixtureCounts: Object.freeze({ ...report.fixtureCounts }),
+    identifiers: Object.freeze([...report.identifiers]),
+  });
+}
+
+/** Returns the exact verification prerequisite violated by an observation, when any. */
+function verificationMismatch(
+  observation: Awaited<ReturnType<ResetDependencies['database']['observe']>>,
+  reset: ResetDependencies,
+): PrerequisiteName | undefined {
+  if (
+    observation.migrationRevision !== reset.expectations.migrationRevision ||
+    observation.migrationDigest !== reset.expectations.migrationDigest
+  ) {
+    return 'migration';
+  }
+  if (
+    observation.fixtureDigest !== reset.expectations.fixtureDigest ||
+    !sameCounts(observation.fixtureCounts, reset.expectations.fixtureCounts)
+  ) {
+    return 'fixture-verification';
+  }
+  return undefined;
+}
+
+/** Compares exact synthetic entity counts without accepting missing or extra entities. */
+function sameCounts(
+  observed: Readonly<Record<string, number>>,
+  expected: Readonly<Record<string, number>>,
+): boolean {
+  const observedNames = Object.keys(observed).sort();
+  const expectedNames = Object.keys(expected).sort();
+  return (
+    sameStrings(observedNames, expectedNames) &&
+    expectedNames.every((name) => observed[name] === expected[name])
+  );
+}
+
+/** Maps a reset interruption to the stable lifecycle taxonomy without retaining its message. */
+function resetFailureOutcome(error: unknown, step: ResetStepName): LifecycleOutcome {
+  const kind = interruptionKind(error);
+  if ((step === 'persist-poison' || step === 'flush-poison') && kind === 'failure') {
+    return outcome(60);
+  }
+  if (kind === 'SIGINT') return outcome(130);
+  if (kind === 'SIGTERM') return outcome(143);
+  if (kind === 'cancellation' || kind === 'timeout') return outcome(70);
+  if (kind === 'unknown') return outcome(60);
+  return outcome(30);
+}
+
+/** Reads only the allowlisted interruption discriminator from an unknown adapter error. */
+function interruptionKind(
+  error: unknown,
+): 'failure' | 'SIGINT' | 'SIGTERM' | 'cancellation' | 'timeout' | 'unknown' {
+  if (!(error instanceof Error) || !('kind' in error)) return 'failure';
+  const kind = error.kind;
+  if (
+    kind === 'SIGINT' ||
+    kind === 'SIGTERM' ||
+    kind === 'cancellation' ||
+    kind === 'timeout' ||
+    kind === 'unknown'
+  ) {
+    return kind;
+  }
+  return 'failure';
+}
+
+/** Names the prerequisite whose boundary failed, when the contract defines one. */
+function prerequisiteForResetStep(step: ResetStepName): PrerequisiteName | undefined {
+  if (step === 'migration') return 'migration';
+  if (step === 'seed') return 'seed';
+  if (step === 'redis') return 'redis-reset';
+  if (step === 'mailhog') return 'mailhog-reset';
+  if (step === 'public-health') return 'health';
+  return undefined;
+}
+
+/** Removes reset-only evidence fields when recovery returns the common lifecycle result. */
+function lifecyclePart(resetOutcome: LifecycleResetOutcome): LifecycleOutcome {
+  return {
+    exitCode: resetOutcome.exitCode,
+    classification: resetOutcome.classification,
+    primaryExitCode: resetOutcome.primaryExitCode,
+    prerequisite: resetOutcome.prerequisite,
+    recoveryIdentifiers: resetOutcome.recoveryIdentifiers,
+  };
 }
 
 /** Returns the narrow durable lookup derived only from an already-issued ownership record. */

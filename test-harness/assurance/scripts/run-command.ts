@@ -56,6 +56,11 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/lifecycle-leasing.spec.test.ts',
     'test-harness/assurance/tests/lifecycle-cleanup.spec.test.ts',
     'test-harness/assurance/tests/lifecycle-compatibility.spec.test.ts',
+    'test-harness/assurance/tests/lifecycle-outcomes.spec.test.ts',
+    'test-harness/assurance/tests/reset-success.spec.test.ts',
+    'test-harness/assurance/tests/reset-interruptions.spec.test.ts',
+    'test-harness/assurance/tests/reset-recovery.spec.test.ts',
+    'test-harness/assurance/tests/reset-verification.spec.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
