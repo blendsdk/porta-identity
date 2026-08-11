@@ -41,7 +41,7 @@ export const commandContractVersion = 1;
 export const commandContracts: Readonly<Record<string, AssuranceCommandContract>> = {
   'assurance:test': {
     selectorGrammar: '--select <registered-suite|ST-ID|internal-test-path>',
-    timeout: '120s',
+    timeout: '120s; fixture-ontology=900s; fixtures-all=900s-per-child',
     artifactSubdirectory: 'test/',
     prerequisites: [
       'frozen root install',

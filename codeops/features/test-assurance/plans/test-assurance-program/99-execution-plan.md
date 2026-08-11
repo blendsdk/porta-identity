@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 12:41
-> **Progress**: 23/92 tasks (25%)
+> **Last Updated**: 2026-08-11 14:12
+> **Progress**: 24/92 tasks (26%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -276,8 +276,19 @@ worktree's endpoints or resources.
         request without a client identifier reflected `https://attacker.invalid`. Phase 3 does not
         authorize a product fix or an invented CORS oracle; the later injection/exposure slice must
         resolve the contract and retain an exact sentinel if the behavior is prohibited.
-- [ ] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue
+- [x] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue
       checks, harness implementation tests, and `yarn verify`.
+      ✅ (completed: 2026-08-11 14:12)
+      - Auto-design correction: the measured live fixture rollup exceeds the generic 120-second
+        internal-test bound, so the frozen command contract assigns `fixture-ontology` a 900-second
+        bound and each `fixtures-all` child a 900-second bound. All other internal selectors retain
+        the 120-second default.
+      - Verification note: `fixtures-all` passed in 182 seconds with both deterministic orderings,
+        all five projects, both runtime profiles, retained journeys repeated, exact live reset and
+        public postconditions, and owned cleanup. The 259-case lifecycle suite, 53-case governance
+        suite, assurance TypeScript/ESLint/format checks, both Compose configurations, and `yarn
+        verify` all passed; the latter covered 68 structure tests, 224 server files / 3,348 tests,
+        31 SDK files / 404 tests, and the complete CLI lane.
 
 **Phase gate:** fixtures match Porta's real authority/data model, five projects collect exactly
 once, and environment-dependent claims cannot use development evidence.

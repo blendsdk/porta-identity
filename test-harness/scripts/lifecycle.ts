@@ -335,8 +335,14 @@ async function sendControl(action: ControlAction): Promise<LifecycleExitCode> {
               z.literal(130),
               z.literal(143),
             ]),
+            prerequisite: z.string().min(1).optional(),
           })
           .parse(JSON.parse(response.trim()));
+        if (outcome.exitCode !== 0) {
+          process.stderr.write(
+            `HARNESS_CONTROL_FAILED: action=${action} exit=${outcome.exitCode} prerequisite=${outcome.prerequisite ?? 'runtime'}\n`,
+          );
+        }
         resolveExit(outcome.exitCode);
       } catch (error) {
         rejectExit(error);
@@ -404,6 +410,13 @@ async function runAssuranceProject(options: readonly string[]): Promise<Lifecycl
   const project = z.enum(['spa', 'bff', 'protocol', 'security', 'compatibility']).parse(options[1]);
   const root = worktreePath();
   const active = readActiveRun(root);
+  if (
+    existsSync(
+      resolve(root, 'test-harness/.assurance-runtime', active.runId, 'traffic-blocked.json'),
+    )
+  ) {
+    return 30;
+  }
   return new Promise((resolveExit, rejectExit) => {
     const child = spawn(
       resolve(root, 'node_modules/.bin/playwright'),

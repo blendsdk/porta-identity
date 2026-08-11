@@ -68,21 +68,16 @@ console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
 // openid-client v6 discovery
 // ---------------------------------------------------------------------------
 
-console.log(
-  `[BFF] Discovering OIDC config from ${PORTA_BASE_URL}/${ORG_SLUG}/.well-known/openid-configuration`,
-);
-
-const oidcConfig = await openidClient.discovery(
-  new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
-  config.bff.clientId,
-  clientSecret,
-  openidClient.ClientSecretPost(clientSecret),
-  {
-    execute: [openidClient.allowInsecureRequests],
-  },
-);
-
-console.log('[BFF] OIDC discovery complete');
+/** Discovers the current reset-scoped client only when a protocol operation needs it. */
+function discoverOidcClient(): ReturnType<typeof openidClient.discovery> {
+  return openidClient.discovery(
+    new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
+    config.bff.clientId,
+    clientSecret,
+    openidClient.ClientSecretPost(clientSecret),
+    { execute: [openidClient.allowInsecureRequests] },
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Koa App
@@ -121,6 +116,7 @@ router.get('/', async (ctx) => {
 
 // GET /login — Start OIDC auth flow
 router.get('/login', async (ctx) => {
+  const oidcConfig = await discoverOidcClient();
   const code_verifier = openidClient.randomPKCECodeVerifier();
   const code_challenge = await openidClient.calculatePKCECodeChallenge(code_verifier);
   const state = crypto.randomUUID();
@@ -148,6 +144,7 @@ router.get('/login', async (ctx) => {
 // GET /callback — Handle OIDC callback
 router.get('/callback', async (ctx) => {
   try {
+    const oidcConfig = await discoverOidcClient();
     const code_verifier = ctx.session?.code_verifier;
     const expectedState = ctx.session?.state;
     const expectedNonce = ctx.session?.nonce;
@@ -196,6 +193,7 @@ router.get('/introspect', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const result = await openidClient.tokenIntrospection(oidcConfig, tokens.access_token);
     console.log('[BFF] Introspection complete');
     ctx.body = renderResult('Introspection Result', result);
@@ -215,6 +213,7 @@ router.get('/userinfo', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const result = await openidClient.fetchUserInfo(
       oidcConfig,
       tokens.access_token,
@@ -238,6 +237,7 @@ router.get('/refresh', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const newTokens = await openidClient.refreshTokenGrant(oidcConfig, tokens.refresh_token);
 
     const oldAccessToken = tokens.access_token;
@@ -266,6 +266,7 @@ router.get('/refresh', async (ctx) => {
 
 // GET /logout — RP-initiated logout
 router.get('/logout', async (ctx) => {
+  const oidcConfig = await discoverOidcClient();
   const idToken = ctx.session?.tokens?.id_token;
   ctx.session = null;
 

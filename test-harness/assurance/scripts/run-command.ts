@@ -94,6 +94,15 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
+/** Complete fixture specification and implementation files used by the Phase 3 rollup. */
+const fixtureRollupFiles = [
+  'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+  'test-harness/assurance/tests/assurance-project-collection.spec.test.ts',
+  'test-harness/assurance/tests/fixture-isolation-and-repeatability.spec.test.ts',
+  'test-harness/assurance/tests/assurance-source-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
+] as const;
+
 /** Converts one managed child outcome to the stable assurance exit taxonomy. */
 function managedChildExit(
   result: Awaited<ReturnType<typeof runManagedChild>>,
@@ -170,6 +179,96 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
   process.exitCode = managedChildExit(projectResult, 20);
 }
 
+/** Runs a bounded internal Node suite with an optional exact test-name selector. */
+function runNodeSuite(
+  files: readonly string[],
+  testNamePattern?: string,
+): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
+  return runManagedChild(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      '--test',
+      '--test-concurrency=1',
+      ...(testNamePattern === undefined ? [] : [`--test-name-pattern=${testNamePattern}`]),
+      ...files,
+    ],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'inherit',
+      timeoutMilliseconds: 900_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
+
+/** Runs all fixture cases across separately owned operational and production-security stacks. */
+async function runFixtureRollup(): Promise<void> {
+  const operationalStart = await runLifecycleAction('start', undefined, 'operational');
+  const operationalStartExit = managedChildExit(operationalStart, setupFailureExit);
+  if (operationalStartExit !== 0) {
+    process.exitCode = operationalStartExit;
+    return;
+  }
+  const operational = await runNodeSuite(fixtureRollupFiles);
+  const operationalProfiles =
+    managedChildExit(operational, testFailureExit) === 0
+      ? await runNodeSuite(
+          ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+          'separate every runtime credential|expose only the exact operational|operational profile',
+        )
+      : undefined;
+  const operationalStop = await runLifecycleAction('stop');
+  if (managedChildExit(operationalStop, 60) !== 0) {
+    process.exitCode = 60;
+    return;
+  }
+  const operationalExit = managedChildExit(operational, testFailureExit);
+  if (operationalExit !== 0) {
+    process.exitCode = operationalExit;
+    return;
+  }
+  if (operationalProfiles === undefined) {
+    process.exitCode = testFailureExit;
+    return;
+  }
+  const operationalProfileExit = managedChildExit(operationalProfiles, testFailureExit);
+  if (operationalProfileExit !== 0) {
+    process.exitCode = operationalProfileExit;
+    return;
+  }
+
+  const productionStart = await runLifecycleAction('start', undefined, 'production-security');
+  const productionStartExit = managedChildExit(productionStart, setupFailureExit);
+  if (productionStartExit !== 0) {
+    process.exitCode = productionStartExit;
+    return;
+  }
+  const productionProfile = await runNodeSuite(
+    ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+    '^should verify every public postcondition for the production-security profile$',
+  );
+  const productionProject =
+    managedChildExit(productionProfile, testFailureExit) === 0
+      ? await runLifecycleAction('project', 'security')
+      : undefined;
+  const productionStop = await runLifecycleAction('stop');
+  if (managedChildExit(productionStop, 60) !== 0) {
+    process.exitCode = 60;
+    return;
+  }
+  const profileExit = managedChildExit(productionProfile, testFailureExit);
+  process.exitCode =
+    profileExit !== 0
+      ? profileExit
+      : productionProject === undefined
+        ? testFailureExit
+        : managedChildExit(productionProject, 20);
+}
+
 /** Serializes the complete frozen command contract for repository checks and operators. */
 function describeAllContracts(): string {
   return JSON.stringify({
@@ -218,6 +317,10 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
   }
 
   const selector = normalizedOptions[1] ?? '';
+  if (selector === 'fixtures-all') {
+    await runFixtureRollup();
+    return;
+  }
   const selectedTests = internalTestSuites[selector];
   if (selectedTests === undefined) {
     process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${selector}\n`);

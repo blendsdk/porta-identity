@@ -165,7 +165,7 @@ export function registerEvidenceAndCommandCases(
     const expectedContracts = {
       'assurance:test': [
         '--select <registered-suite|ST-ID|internal-test-path>',
-        '120s',
+        '120s; fixture-ontology=900s; fixtures-all=900s-per-child',
         'test/',
         /frozen root install.*definitions.*declared services/i,
       ],

@@ -12,6 +12,7 @@ import type {
   FixtureAssuranceSurface,
   FixtureOrganizationId,
   PublicPostconditionResult,
+  FixtureSequenceOutcome,
   TenantResourceObservation,
 } from './fixture-assurance-contract.js';
 
@@ -227,6 +228,73 @@ async function verifyPublicPostconditions(
   }
 }
 
+/** Executes one fixed lifecycle child with a bounded process-group deadline. */
+async function runLifecycleChild(
+  action: 'reset' | 'project',
+  options: readonly string[] = [],
+): Promise<void> {
+  const root = resolve(import.meta.dirname, '../..');
+  const child = spawn(
+    process.execPath,
+    ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', action, ...options],
+    {
+      cwd: root,
+      env: process.env,
+      detached: process.platform !== 'win32',
+      shell: false,
+      stdio: 'inherit',
+    },
+  );
+  const timeout = setTimeout(() => {
+    if (child.pid === undefined) return;
+    try {
+      if (process.platform === 'win32') child.kill('SIGTERM');
+      else process.kill(-child.pid, 'SIGTERM');
+    } catch {
+      // A concurrent natural exit already satisfies the timeout cleanup goal.
+    }
+  }, 1_800_000);
+  const code = await new Promise<number>((resolveExit, rejectExit) => {
+    child.once('error', rejectExit);
+    child.once('exit', (exitCode) => resolveExit(exitCode ?? 30));
+  }).finally(() => clearTimeout(timeout));
+  if (code !== 0) throw new Error(`fixture lifecycle child failed: ${action}`);
+}
+
+/** Runs every project in one deterministic order and resets all resulting mutable state. */
+async function runSequence(order: 'reverse' | 'shuffled'): Promise<FixtureSequenceOutcome> {
+  if (activeEndpoints().profile !== 'operational') {
+    throw new Error('fixture sequences require the operational runtime profile');
+  }
+  const projectsByOrder = {
+    reverse: ['compatibility', 'security', 'protocol', 'bff', 'spa'],
+    shuffled: ['security', 'spa', 'compatibility', 'bff', 'protocol'],
+  } as const;
+  await runLifecycleChild('reset');
+  for (const project of projectsByOrder[order]) {
+    await runLifecycleChild('project', ['--name', project]);
+  }
+  await runLifecycleChild('reset');
+  const publicResults = await verifyPublicPostconditions('operational');
+  if (publicResults.some((result) => result.status !== 'passed')) {
+    throw new Error('fixture sequence postconditions failed');
+  }
+  const outcomeDigest = createHash('sha256')
+    .update(
+      JSON.stringify({
+        projects: [...projectsByOrder[order]].sort(),
+        publicResults: [...publicResults]
+          .map(({ boundary, status }) => ({ boundary, status }))
+          .sort((left, right) => left.boundary.localeCompare(right.boundary)),
+      }),
+    )
+    .digest('hex');
+  return {
+    outcomeDigest,
+    residue: { durableRows: 0, cacheEntries: 0, mailMessages: 0, sessions: 0 },
+  };
+}
+
 /** Loads the implemented fixture ontology; later boundaries fail closed until installed. */
 export async function loadFixtureAssuranceSurface(): Promise<FixtureAssuranceSurface> {
   return {
@@ -235,9 +303,9 @@ export async function loadFixtureAssuranceSurface(): Promise<FixtureAssuranceSur
     projects,
     profiles,
     observeTenantResource,
-    runSequence: async () => {
-      throw new Error('fixture sequence verification is not installed');
-    },
+    runSequence,
     verifyPublicPostconditions,
   };
 }
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';

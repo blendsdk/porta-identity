@@ -1,4 +1,4 @@
-import { pathToFileURL } from 'node:url';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -22,10 +22,6 @@ const environment = z
     HARNESS_WORKTREE: z.string().min(1),
   })
   .parse(process.env);
-
-// Losing the owning IPC channel is an immediate fail-closed shutdown. Durable registration lets
-// stale cleanup distinguish this absence from an unrelated process that later reuses the PID.
-process.once('disconnect', () => process.exit(30));
 
 /** Registers this paused process before any client module can bind or serve an endpoint. */
 async function registerPausedProcess(): Promise<void> {
@@ -53,19 +49,65 @@ async function registerPausedProcess(): Promise<void> {
   if (finalized === 'mismatch') throw new Error('client bootstrap ownership changed');
 }
 
-/** Waits in a non-serving state until the owner confirms durable registration was observed. */
-function waitForRelease(): Promise<void> {
-  const keepAlive = setInterval(() => undefined, 60_000);
-  return new Promise((resolveRelease) => {
-    process.on('message', (message: unknown) => {
-      if (message !== 'release') return;
-      clearInterval(keepAlive);
-      resolveRelease();
-    });
-  });
+/** Starts one service child beneath the stable, durably registered bootstrap identity. */
+function startService(): ChildProcess {
+  return spawn(
+    process.execPath,
+    ['--import', 'tsx', resolve(environment.HARNESS_WORKTREE, clientModules[role])],
+    {
+      cwd: environment.HARNESS_WORKTREE,
+      env: process.env,
+      shell: false,
+      stdio: 'inherit',
+    },
+  );
 }
 
 await registerPausedProcess();
 process.send?.('registered');
-await waitForRelease();
-await import(pathToFileURL(resolve(environment.HARNESS_WORKTREE, clientModules[role])).href);
+
+let service: ChildProcess | undefined;
+let operation: Promise<void> = Promise.resolve();
+let expectedExit = false;
+
+/** Stops the current service child and waits until its resources are released. */
+async function stopService(): Promise<void> {
+  const current = service;
+  if (current === undefined) return;
+  expectedExit = true;
+  if (current.exitCode === null && current.signalCode === null) current.kill('SIGTERM');
+  await new Promise<void>((resolveExit) => {
+    if (current.exitCode !== null || current.signalCode !== null) resolveExit();
+    else current.once('exit', () => resolveExit());
+  });
+  service = undefined;
+  expectedExit = false;
+}
+
+/** Launches a new child and fails closed if it exits outside an owned restart. */
+function launchService(): void {
+  const child = startService();
+  service = child;
+  child.once('error', () => process.exit(30));
+  child.once('exit', () => {
+    if (!expectedExit) process.exit(30);
+  });
+}
+
+process.on('message', (message: unknown) => {
+  if (message === 'release' && service === undefined) {
+    launchService();
+    return;
+  }
+  if (message !== 'restart') return;
+  operation = operation.then(async () => {
+    await stopService();
+    launchService();
+    process.send?.('restarted');
+  });
+});
+
+// Losing the owning IPC channel terminates the service child before the stable bootstrap exits.
+process.once('disconnect', () => {
+  void stopService().finally(() => process.exit(30));
+});

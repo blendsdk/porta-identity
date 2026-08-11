@@ -28,6 +28,7 @@ import {
   RuntimeTimeoutError,
   signalChildProcessGroup,
 } from './lifecycle-runtime-command.js';
+import { createRuntimeResetDependencies } from './lifecycle-runtime-reset.js';
 export { RuntimeCommandRunner } from './lifecycle-runtime-command.js';
 
 /** Stable runtime environment derived only from one validated endpoint manifest. */
@@ -76,7 +77,7 @@ export function environmentForManifest(
 /** Manages SPA/BFF children under the lifetime of one supervisor process. */
 class HarnessClientManager {
   /** Active host processes started for the current run. */
-  protected children: ChildProcess[] = [];
+  protected children: Array<{ readonly role: 'spa' | 'bff'; readonly process: ChildProcess }> = [];
 
   /** Starts both clients once and directs output to an owned runtime log. */
   public async start(manifest: EndpointManifest, signal?: AbortSignal): Promise<void> {
@@ -102,7 +103,7 @@ class HarnessClientManager {
           },
         );
         if (child.pid === undefined) throw new Error(`${role} process has no identity`);
-        this.children.push(child);
+        this.children.push({ role, process: child });
         await waitForBootstrapRegistration(child, signal);
         if (signal?.aborted === true) throw new RuntimeTimeoutError();
         child.send?.('release');
@@ -110,6 +111,18 @@ class HarnessClientManager {
     } finally {
       closeSync(log);
     }
+    await Promise.all([
+      waitForUrl(manifest.urls.app, signal),
+      waitForUrl(manifest.urls.bff, signal),
+    ]);
+  }
+
+  /** Restarts both service children while preserving their registered bootstrap identities. */
+  public async restart(manifest: EndpointManifest, signal?: AbortSignal): Promise<void> {
+    if (this.children.length !== 2) throw new Error('harness clients are not fully registered');
+    await Promise.all(
+      this.children.map(({ process: child }) => requestClientRestart(child, signal)),
+    );
     await Promise.all([
       waitForUrl(manifest.urls.app, signal),
       waitForUrl(manifest.urls.bff, signal),
@@ -124,11 +137,11 @@ class HarnessClientManager {
       if (presence === 'unreadable') throw new Error('host process ownership is unreadable');
       if (presence === 'present') signalProcessIdentity(identity, 'SIGTERM');
     }
-    for (const child of children) {
+    for (const { process: child } of children) {
       signalChildProcessGroup(child, 'SIGTERM');
     }
     await Promise.all([
-      ...children.map(waitForChildExit),
+      ...children.map(({ process: child }) => waitForChildExit(child)),
       ...record.hostProcesses.map(waitForProcessIdentityExit),
     ]);
   }
@@ -580,6 +593,7 @@ export function createRuntimeDependencies(
     evidence: manifestFile,
     prerequisites: new RuntimePrerequisiteAdapter(runner, clients),
     deadlines,
+    reset: createRuntimeResetDependencies(worktreePath, runner, clients),
   };
 }
 
@@ -690,6 +704,35 @@ function waitForBootstrapRegistration(child: ChildProcess, signal?: AbortSignal)
     child.once('exit', onExit);
     signal?.addEventListener('abort', onAbort, { once: true });
     if (signal?.aborted === true) onAbort();
+  });
+}
+
+/** Requests one stable bootstrap to replace its service child and acknowledges completion. */
+function requestClientRestart(child: ChildProcess, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolveRestart, rejectRestart) => {
+    const timeout = setTimeout(() => finish(new RuntimeTimeoutError()), 30_000);
+    const finish = (error?: Error): void => {
+      clearTimeout(timeout);
+      child.removeListener('message', onMessage);
+      child.removeListener('error', onError);
+      child.removeListener('exit', onExit);
+      signal?.removeEventListener('abort', onAbort);
+      if (error === undefined) resolveRestart();
+      else rejectRestart(error);
+    };
+    const onMessage = (message: unknown): void => {
+      if (message === 'restarted') finish();
+    };
+    const onError = (): void => finish(new Error('client bootstrap restart failed'));
+    const onExit = (): void => finish(new Error('client bootstrap exited during restart'));
+    const onAbort = (): void => finish(new RuntimeTimeoutError());
+    child.on('message', onMessage);
+    child.once('error', onError);
+    child.once('exit', onExit);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted === true) onAbort();
+    else if (!child.connected) finish(new Error('client bootstrap IPC is unavailable'));
+    else child.send('restart');
   });
 }
 
