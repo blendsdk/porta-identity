@@ -16,10 +16,12 @@ import {
   coverageEnvironment,
   convertCapturedCoverage,
   createCoverageWorkspace,
+  extractRawCoverage,
   gracefullyFlushPorta,
   inspectPortaContainer,
   readActiveCoverageRun,
   writeCaptureManifest,
+  writeCoverageObservationSummary,
 } from '../coverage/index.js';
 import {
   AssuranceCleanupError,
@@ -262,14 +264,17 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
     const result = await withHarnessStack(
       profile,
       async () => {
+        let stage = 'active-run';
         try {
           const activeRun = readActiveCoverageRun(process.cwd());
+          stage = 'container-inspect';
           const container = await inspectPortaContainer(
             process.cwd(),
             workspace,
             activeRun,
             interruption.signal,
           );
+          stage = 'project';
           const projectResult = await runLifecycleAction(
             'project',
             project,
@@ -277,22 +282,33 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
             environment,
           );
           const projectExit = managedChildExit(projectResult, testFailureExit);
+          stage = 'graceful-stop';
           await gracefullyFlushPorta(process.cwd(), container);
+          stage = 'raw-extract';
+          await extractRawCoverage(process.cwd(), workspace, container, interruption.signal);
+          stage = 'raw-validate';
           const manifest = await writeCaptureManifest(process.cwd(), workspace, container, {
             seed,
             project,
             profile,
           });
           if (manifest.flushStatus !== 'complete') return 40;
+          stage = 'conversion';
           const conversion = await convertCapturedCoverage(
             process.cwd(),
             workspace,
             manifest,
             interruption.signal,
           );
-          if (!conversion.accepted) return 40;
+          if (!conversion.accepted || conversion.artifact === undefined) {
+            process.stderr.write('ASSURANCE_COVERAGE_FAILED: stage=conversion\n');
+            return 40;
+          }
+          stage = 'observation';
+          writeCoverageObservationSummary(workspace, conversion.artifact);
           return interruptedExit ?? projectExit;
         } catch {
+          process.stderr.write(`ASSURANCE_COVERAGE_FAILED: stage=${stage}\n`);
           return interruptedExit ?? 40;
         }
       },

@@ -674,3 +674,35 @@ the full Phase 4 security/correctness review remains the independent challenge. 
 version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: Node treats an
 empty variable as active coverage, Compose changes bind interpolation semantics, the container UID
 cannot write/read the handoff, or graceful SIGTERM does not produce complete raw records.
+
+### AR-49 — Container-to-host raw coverage handoff
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal filesystem ownership,
+recovery, and evidence-extraction design inside the approved coverage scope; it changes no product
+behavior, coverage oracle, acceptance criterion, or policy. **Objective**: make raw V8 evidence
+readable by the invoking host user without weakening non-root container execution, provenance, or
+cleanup ownership. **Decision**: replace the host-writable bind handoff with one Compose-project-
+owned named volume mounted only into Porta. After sending SIGTERM to the immutable label-verified
+container, require `docker wait` and inspection to prove a stopped, non-OOM, zero-exit process;
+then use `docker cp` without archive ownership preservation to copy the volume contents into a
+fresh owner-only staging directory. Validate bounded regular files, exact names, JSON envelopes,
+and sizes before atomically promoting staging to the previously absent final `raw` directory.
+Retain only allowlisted stage diagnostics and let exact lifecycle cleanup remove the recorded
+volume on every outcome. Reopen Task 4.7 because AR-48's container-UID readability trigger fired;
+Task 4.8 remains the clean two-run evidence gate. **Evidence**: the first clean live capture
+produced six validly named mode-`0600` files owned by container UID/GID `100:101` beneath a
+host-owned mode-`0777` bind directory, so host validation failed before a manifest could be
+written. The lifecycle already discovers, validates, persists, and deletes exact labeled Compose
+volume identities. **Rejected alternatives**: changing the container user or making raw files
+world-readable weakens the non-root boundary; retaining the bind still requires Docker-mediated
+extraction and leaves a world-writable inbox; replacing a nonempty bind directory cannot be one
+atomic rename and risks mixed evidence. **Strongest counterargument**: a named volume exists on
+ordinary harness runs even when coverage is disabled. It remains empty, project-labeled, and
+exactly lifecycle-owned, so its bounded creation cost is preferable to a writable host handoff.
+**Confidence**: High — the failure was reproduced from file ownership and the lifecycle already
+implements exact volume fencing. **Hardening**: a blind independent challenger preferred the
+named-volume design, required final container-state verification, bounded regular-file validation,
+and allowlisted stage-only diagnostics; those requirements are adopted. **Policy version**: 1.
+**Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: Docker copy ownership
+semantics change, the lifecycle cannot prove exact volume ownership, graceful Porta termination
+returns nonzero/OOM state, or output cannot be promoted without mixing captures.

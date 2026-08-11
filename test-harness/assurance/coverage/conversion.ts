@@ -15,6 +15,7 @@ import type { CoverageCaptureManifest, CoverageWorkspace } from './capture.js';
 import type {
   CoverageClassificationResult,
   CoverageConversionResult,
+  CoverageObservationSummary,
   CoverageProvenance,
   ConvertedCoverageArtifact,
   ExactCoverageCounts,
@@ -191,6 +192,28 @@ export async function convertCoverageEnvelope(
     exclusions: artifact.exclusions,
     unmapped: artifact.unmapped,
   });
+}
+
+/** Writes an explicit non-blocking exact-count summary for a successful live conversion. */
+export function writeCoverageObservationSummary(
+  workspace: CoverageWorkspace,
+  artifact: ConvertedCoverageArtifact,
+): string {
+  const summary: CoverageObservationSummary = Object.freeze({
+    version: 1,
+    mode: 'observation',
+    blocking: false,
+    ordinaryVerificationExitCode: 0,
+    normalizedPaths: artifact.normalizedPaths,
+    totals: artifact.totals,
+    files: artifact.files,
+  });
+  const path = resolve(workspace.reportDirectory, 'coverage-observation.json');
+  writeFileSync(path, `${JSON.stringify(summary, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  return path;
 }
 
 /** Converts one merged eligible script with an exact validated source map. */

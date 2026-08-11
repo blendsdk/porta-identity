@@ -45,7 +45,7 @@ services:
       PORTA_AUTO_MIGRATE: 'true'
       NODE_V8_COVERAGE: '${HARNESS_NODE_V8_COVERAGE:-}'
     volumes:
-      - '${HARNESS_COVERAGE_RAW_DIR:?HARNESS_COVERAGE_RAW_DIR is required}:/app/.v8-coverage'
+      - coverage-raw:/app/.v8-coverage
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,4 +105,8 @@ services:
 networks:
   harness-network:
     driver: bridge
+    labels: *assurance-labels
+
+volumes:
+  coverage-raw:
     labels: *assurance-labels

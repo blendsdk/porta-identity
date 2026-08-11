@@ -126,6 +126,24 @@ export interface ConvertedCoverageArtifact {
   readonly htmlProduced: boolean;
 }
 
+/** Non-enforcing exact-count snapshot emitted while the project is in observation mode. */
+export interface CoverageObservationSummary {
+  /** Summary schema version. */
+  readonly version: 1;
+  /** Explicit policy state that prevents this artifact from becoming an implicit gate. */
+  readonly mode: 'observation';
+  /** Observation artifacts never block ordinary verification. */
+  readonly blocking: false;
+  /** Ordinary verification result associated with a threshold miss during observation. */
+  readonly ordinaryVerificationExitCode: 0;
+  /** Stable source path set used for reproducibility comparison. */
+  readonly normalizedPaths: readonly string[];
+  /** Aggregate exact covered and total counts. */
+  readonly totals: ExactCoverageCounts;
+  /** Per-file exact counts used to distinguish path-set equality from aggregate cancellation. */
+  readonly files: Readonly<Record<string, ExactCoverageCounts>>;
+}
+
 /** Result of provenance validation, merging, and source-map conversion. */
 export interface CoverageConversionResult {
   /** Whether the resulting evidence is acceptable. */

@@ -1,10 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -22,6 +25,30 @@ const activeRunSchema = z.object({
     composeProject: z.string().min(1),
   }),
 });
+
+/** Maximum number of raw process files accepted from one bounded Porta run. */
+const maximumRawCoverageFiles = 256;
+
+/** Maximum bytes accepted for one raw V8 process file. */
+const maximumRawCoverageFileBytes = 32 * 1024 * 1024;
+
+/** Maximum aggregate bytes accepted for one raw V8 capture. */
+const maximumRawCoverageBytes = 256 * 1024 * 1024;
+
+/** Shell-free command capability used by the raw extraction boundary. */
+interface CoverageCommandRunner {
+  /** Runs one fixed command or rejects without returning untrusted process output. */
+  checked(
+    command: string,
+    args: readonly string[],
+    options: {
+      readonly cwd: string;
+      readonly environment: Readonly<Record<string, string>>;
+      readonly timeoutMilliseconds?: number;
+      readonly signal?: AbortSignal;
+    },
+  ): Promise<Readonly<{ exitCode: number; stdout: string; stderr: string }>>;
+}
 
 /** Supported harness project captured by the server-process coverage command. */
 export type CoverageProject = 'protocol' | 'security';
@@ -103,7 +130,7 @@ export interface CoverageCaptureManifest {
   readonly rawFiles: readonly RawCoverageFileIdentity[];
 }
 
-/** Creates an ignored, run-owned workspace and a world-writable container handoff directory. */
+/** Creates an ignored run-owned workspace; raw output is absent until validated extraction. */
 export function createCoverageWorkspace(
   repositoryRoot: string,
   project: CoverageProject,
@@ -121,8 +148,6 @@ export function createCoverageWorkspace(
   );
   const rawDirectory = resolve(root, 'raw');
   const compiledDirectory = resolve(root, 'compiled');
-  mkdirSync(rawDirectory, { recursive: true, mode: 0o700 });
-  chmodSync(rawDirectory, 0o777);
   mkdirSync(compiledDirectory, { recursive: true, mode: 0o700 });
   return Object.freeze({
     runId,
@@ -228,11 +253,63 @@ export async function gracefullyFlushPorta(
     environment: currentEnvironment(),
     signal,
   });
-  await runner.checked('docker', ['wait', container.containerId], {
+  const waited = await runner.checked('docker', ['wait', container.containerId], {
     cwd: repositoryRoot,
     environment: currentEnvironment(),
     signal,
   });
+  if (waited.stdout.trim() !== '0') {
+    throw new Error('Porta did not exit cleanly after graceful termination');
+  }
+  const state = await runner.checked(
+    'docker',
+    [
+      'inspect',
+      '--format',
+      '{{.State.Status}}|{{.State.OOMKilled}}|{{.State.ExitCode}}',
+      container.containerId,
+    ],
+    { cwd: repositoryRoot, environment: currentEnvironment(), signal },
+  );
+  if (state.stdout.trim() !== 'exited|false|0') {
+    throw new Error('Porta final state does not prove a graceful coverage flush');
+  }
+}
+
+/**
+ * Extracts raw output through Docker so host evidence never depends on the container UID.
+ *
+ * The final raw directory does not exist until every staged file has passed the bounded envelope
+ * checks. A failed extraction removes only its run-owned staging directory.
+ */
+export async function extractRawCoverage(
+  repositoryRoot: string,
+  workspace: CoverageWorkspace,
+  container: PortaContainerIdentity,
+  signal?: AbortSignal,
+  runner: CoverageCommandRunner = new RuntimeCommandRunner(),
+): Promise<readonly RawCoverageFileIdentity[]> {
+  const stagingDirectory = resolve(workspace.root, '.raw-staging');
+  validateOwnedPath(workspace.root, stagingDirectory);
+  if (existsSync(stagingDirectory) || existsSync(workspace.rawDirectory)) {
+    throw new Error('raw coverage extraction destination already exists');
+  }
+  mkdirSync(stagingDirectory, { mode: 0o700 });
+  try {
+    await runner.checked(
+      'docker',
+      ['cp', `${container.containerId}:/app/.v8-coverage/.`, stagingDirectory],
+      { cwd: repositoryRoot, environment: currentEnvironment(), signal },
+    );
+    const rawFiles = readRawCoverageFiles(stagingDirectory);
+    if (rawFiles.length === 0) throw new Error('graceful coverage flush produced no raw files');
+    renameSync(stagingDirectory, workspace.rawDirectory);
+    chmodSync(workspace.rawDirectory, 0o700);
+    return rawFiles;
+  } catch (error) {
+    rmSync(stagingDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 /** Validates every raw record and writes the provenance-bound capture manifest. */
@@ -284,19 +361,29 @@ export async function writeCaptureManifest(
 /** Returns the environment overrides that enable V8 coverage only for the Porta service. */
 export function coverageEnvironment(workspace: CoverageWorkspace): NodeJS.ProcessEnv {
   validateOwnedPath(workspace.root, workspace.rawDirectory);
-  return { ...process.env, HARNESS_COVERAGE_RAW_DIR: workspace.rawDirectory };
+  return { ...process.env, HARNESS_COVERAGE_RESULT_DIR: workspace.root };
 }
 
 /** Parses and identifies every regular raw V8 JSON file in stable order. */
 function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIdentity[] {
   const files: RawCoverageFileIdentity[] = [];
-  for (const entry of readdirSync(rawDirectory, { withFileTypes: true }).sort((a, b) =>
+  const entries = readdirSync(rawDirectory, { withFileTypes: true }).sort((a, b) =>
     a.name.localeCompare(b.name),
-  )) {
+  );
+  if (entries.length > maximumRawCoverageFiles) {
+    throw new Error('raw coverage file count exceeds its bound');
+  }
+  let aggregateBytes = 0;
+  for (const entry of entries) {
     if (!entry.isFile() || !/^coverage-[0-9]+-[0-9]+-[0-9]+\.json$/u.test(entry.name)) {
       throw new Error(`unexpected raw coverage entry: ${entry.name}`);
     }
     const path = resolve(rawDirectory, entry.name);
+    const bytes = statSync(path).size;
+    aggregateBytes += bytes;
+    if (bytes > maximumRawCoverageFileBytes || aggregateBytes > maximumRawCoverageBytes) {
+      throw new Error('raw coverage byte count exceeds its bound');
+    }
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
     if (
       parsed === null ||
@@ -305,7 +392,8 @@ function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIde
     ) {
       throw new Error(`raw coverage envelope is malformed: ${entry.name}`);
     }
-    files.push({ name: entry.name, digest: digestCoverageFile(path), bytes: statSync(path).size });
+    chmodSync(path, 0o600);
+    files.push({ name: entry.name, digest: digestCoverageFile(path), bytes });
   }
   return Object.freeze(files);
 }

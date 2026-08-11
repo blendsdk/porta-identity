@@ -37,7 +37,7 @@ export { RuntimeCommandRunner } from './lifecycle-runtime-command.js';
 export function environmentForManifest(
   manifest: EndpointManifest,
 ): Readonly<Record<string, string>> {
-  const coverageRawDirectory = coverageRawDirectoryForManifest(manifest);
+  const coverageResultDirectory = coverageResultDirectoryForManifest(manifest);
   return Object.freeze({
     ...currentEnvironment(),
     HARNESS_RUN_ID: manifest.runId,
@@ -54,9 +54,9 @@ export function environmentForManifest(
     HARNESS_BFF_URL: manifest.urls.bff,
     HARNESS_MAILHOG_URL: manifest.urls.mailhog,
     HARNESS_CERT_DIR: dirname(manifest.certificatePath),
-    HARNESS_COVERAGE_RAW_DIR: coverageRawDirectory,
+    HARNESS_COVERAGE_RESULT_DIR: coverageResultDirectory,
     HARNESS_NODE_V8_COVERAGE:
-      process.env.HARNESS_COVERAGE_RAW_DIR === undefined ? '' : '/app/.v8-coverage',
+      process.env.HARNESS_COVERAGE_RESULT_DIR === undefined ? '' : '/app/.v8-coverage',
     PORTA_ENDPOINT_MANIFEST: resolve(
       manifest.worktreePath,
       'test-harness/.assurance-runtime',
@@ -78,9 +78,9 @@ export function environmentForManifest(
   });
 }
 
-/** Resolves the coverage bind mount without permitting a caller-selected path outside the run. */
-function coverageRawDirectoryForManifest(manifest: EndpointManifest): string {
-  const requested = process.env.HARNESS_COVERAGE_RAW_DIR;
+/** Resolves the coverage result owner without permitting a path outside the current worktree. */
+function coverageResultDirectoryForManifest(manifest: EndpointManifest): string {
+  const requested = process.env.HARNESS_COVERAGE_RESULT_DIR;
   if (requested === undefined) {
     return resolve(
       manifest.worktreePath,
@@ -89,15 +89,15 @@ function coverageRawDirectoryForManifest(manifest: EndpointManifest): string {
       'coverage-disabled',
     );
   }
-  if (!isAbsolute(requested)) throw new Error('coverage raw directory must be absolute');
+  if (!isAbsolute(requested)) throw new Error('coverage result directory must be absolute');
   const allowedRoot = resolve(manifest.worktreePath, 'test-harness/.assurance-results');
   const candidate = resolve(requested);
   const relation = relative(allowedRoot, candidate);
   if (relation === '' || relation.startsWith('..') || isAbsolute(relation)) {
-    throw new Error('coverage raw directory must be inside the assurance results root');
+    throw new Error('coverage result directory must be inside the assurance results root');
   }
   if (!existsSync(candidate) || realpathSync(candidate) !== candidate) {
-    throw new Error('coverage raw directory must be an existing canonical directory');
+    throw new Error('coverage result directory must be an existing canonical directory');
   }
   return candidate;
 }
