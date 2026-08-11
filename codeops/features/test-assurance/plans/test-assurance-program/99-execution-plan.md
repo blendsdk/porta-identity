@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 06:31
-> **Progress**: 16/92 tasks (17%)
+> **Last Updated**: 2026-08-11 11:02
+> **Progress**: 17/92 tasks (18%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -59,7 +59,7 @@ text, but it cannot substitute another command for this binding.
 | 2.3       | `yarn assurance:red --case ST-09 --signature lifecycle-current-failure`                                                                                      |
 | 2.4–2.7   | `yarn assurance:test --select lifecycle`                                                                                                                     |
 | 2.8       | `yarn assurance:test --select lifecycle-all`                                                                                                                 |
-| 3.1–3.2   | `yarn assurance:validate`                                                                                                                                    |
+| 3.1–3.2   | `yarn test:structure`, assurance TypeScript, and harness ESLint; immutable specs stay outside runtime collection until Task 3.3 records RED                  |
 | 3.3       | `yarn assurance:red --case ST-13 --signature fixture-current-failure`                                                                                        |
 | 3.4–3.5   | `yarn assurance:test --select fixture-ontology`                                                                                                              |
 | 3.6       | `yarn assurance:test --select project-collection`                                                                                                            |
@@ -227,9 +227,17 @@ worktree's endpoints or resources.
 
 > **Scope**: seed/manifest, Playwright config/fixtures, operational and production-security profiles
 > **References**: [Harness and Fixtures](03-02-harness-and-fixtures.md), ST-13–ST-18, RD-02/RD-05
+> **Phase baseline tree**: `463d67a733bd0e7bc30aebbd24c04bb52b713125`
+> **Expected modification set**: `test-harness/assurance/`, `test-harness/fixtures/`,
+> `test-harness/scripts/`, `test-harness/tests/`, `test-harness/playwright.config.ts`,
+> `test-harness/docker-compose.yml`, harness-owned generated-file ignore/config contracts, root
+> assurance command wiring, and this plan's execution/review evidence
+> **Scope mode**: strict — deterministic actor fixtures, project collection, and runtime profiles
+> only; no product behavior, CI workflow, publishing, deployment, or later risk-slice work
 
-- [ ] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
+- [x] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
       clients, sessions/tokens/data; global applications/roles; super-admin-org administrative actors.
+      ✅ (completed: 2026-08-11 11:02)
 - [ ] 3.2 [spec-author] Write project collection, public postcondition, secret separation, and no-
       production-control specs, plus exact `operational` and `production-security` profile specs.
 - [ ] 3.3 Record exact RED signatures for current shared/single-tenant state, collection gaps, secret

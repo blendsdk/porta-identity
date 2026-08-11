@@ -1,6 +1,6 @@
 # Ambiguity Register: Porta Test Assurance Program
 
-> **Status**: ✅ GATE PASSED — all 32 items resolved
+> **Status**: ✅ GATE PASSED — all material items resolved
 > **Created**: 2026-08-09
 > **Root Invocation ID**: `AD-TA-20260809-1421`
 > **Auto-Design Policy**: 1
@@ -47,6 +47,7 @@ Porta product contract.
 | 30  | Static boundary  | How are RED specs checked before runtime modules exist? | A dedicated root-owned assurance TypeScript/ESLint project checks specs against declaration-only planned interfaces; runtime `.ts` files remain absent until their implementation tasks | AI (runtime)   | ✅     |
 | 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
 | 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
+| 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -461,3 +462,28 @@ evidence before unchanged full verification. **Policy
 version**: 1. **Root invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: a live adapter
 cannot reproduce the specification outcome, cleanup accepts incomplete identity, concurrent
 starters create more than one stack, or the re-review reports a residual Major or Critical finding.
+
+### AR-42 — Pre-commit verification for fixture specification tasks
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: execution sequencing for two
+test-only tasks inside the frozen verification and provenance policy; it changes no fixture oracle,
+product behavior, acceptance criterion, evidence authority, or scope. **Objective**: preserve both
+verified-before-commit execution and the rule that attributed evidence comes only from a clean,
+committed source tree. **Decision**: Tasks 3.1–3.2 run repository structure tests, the assurance
+TypeScript project, and harness ESLint before commit. Their immutable runtime specifications remain
+outside required collection until Task 3.3 records the exact RED signature. Clean-tree
+`assurance:validate` remains mandatory at committed roll-up checkpoints. **Evidence**:
+`inspectFoundationProvenance()` rejects every staged, unstaged, or untracked path, so the original
+Task 3.1–3.2 binding could not succeed before the commit it was meant to gate; Phase 2 used the same
+static boundary successfully without relaxing evidence provenance. **Rejected alternatives**:
+adding a dirty-tree evidence mode would reopen the provenance vulnerability; committing before
+verification violates the execution contract; temporarily hiding changes verifies a different
+tree. **Strongest counterargument**: static checks do not execute the new runtime oracle. That is
+intentional until the separate exact RED checkpoint, while the unchanged full repository verify
+still checks compilation and lint. **Confidence**: High — this is a small, reversible sequencing
+correction already exercised in Phase 2. **Hardening**: forced reframing found no alternative that
+preserves both clean evidence provenance and pre-commit verification; independent challenge is not
+required for this reversible internal checkpoint. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260811-P3`. **Reopen triggers**: validation gains a sound non-persisting dirty-tree
+mode, the commit gate changes, or the specification files enter required runtime collection before
+Task 3.3.
