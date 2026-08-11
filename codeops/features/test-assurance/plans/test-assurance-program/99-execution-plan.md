@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 11:02
-> **Progress**: 17/92 tasks (18%)
+> **Last Updated**: 2026-08-11 11:11
+> **Progress**: 18/92 tasks (19%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -238,8 +238,9 @@ worktree's endpoints or resources.
 - [x] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
       clients, sessions/tokens/data; global applications/roles; super-admin-org administrative actors.
       ✅ (completed: 2026-08-11 11:02)
-- [ ] 3.2 [spec-author] Write project collection, public postcondition, secret separation, and no-
+- [x] 3.2 [spec-author] Write project collection, public postcondition, secret separation, and no-
       production-control specs, plus exact `operational` and `production-security` profile specs.
+      ✅ (completed: 2026-08-11 11:11)
 - [ ] 3.3 Record exact RED signatures for current shared/single-tenant state, collection gaps, secret
       output, and absent production-security profile while required lanes remain green.
 - [ ] 3.4 Split deterministic seeding into typed arrangement modules and create disjoint ordinary
