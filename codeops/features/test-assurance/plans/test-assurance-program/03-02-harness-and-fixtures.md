@@ -51,7 +51,8 @@ The seed creates a fresh baseline instead of discovering and reusing arbitrary p
 
 - Ordinary organizations `alpha` and `bravo`, plus the bootstrapped super-admin organization.
 - Global applications and roles with explicit associations; disjoint public/confidential clients,
-  users, sessions, tokens, tenant data, redirects, origins, scopes, and secrets for alpha/bravo.
+  users, sessions, tokens, tenant data, redirects, origins, and secrets for alpha/bravo. OIDC scopes
+  use the shared allowlisted protocol vocabulary and never encode tenant ownership.
 - Administrative super-admin-organization actors with full, limited, and unprivileged permission
   sets; ordinary-tenant principals for OIDC/session/token isolation.
 - Active, locked, suspended, 2FA-enabled, recovery-enabled, and enumeration-control identities as

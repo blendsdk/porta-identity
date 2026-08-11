@@ -48,7 +48,7 @@ Porta product contract.
 | 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
 | 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
-| 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Separate tenant-specific scopes from shared protocol scopes; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
+| 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -496,23 +496,27 @@ correction of a specification-author defect so the immutable fixture oracle matc
 requirements and Porta's existing OIDC/RBAC model; it changes no product behavior, acceptance
 criterion, security policy, or scope. **Objective**: reject ambiguous tenant ownership without
 making valid OIDC clients, role-oriented applications, or an authenticated unprivileged control
-actor impossible. **Decision**: valid authorization clients retain shared protocol scopes including
-`openid`, while separately declared tenant-specific scopes must be disjoint and tenant-prefixed.
-Global applications declare `oidc`, `rbac`, or `mixed` purpose and must expose the corresponding
-client and/or role associations. Administrative roles declare a permission profile: full is a
-strict superset of limited, limited is nonempty, and the explicitly unprivileged control is empty;
-administrative actors are explicitly active. **Evidence**: Porta defines shared standard OIDC
-scopes and requires `openid`; roles belong globally to an application; the `porta-admin`
-application owns administrative roles; and a zero-permission authenticated actor is required to
-distinguish authentication from authorization denial. **Rejected alternatives**: whole-scope-set
-disjointness invalidates OIDC; requiring clients on every application confuses OIDC and RBAC
-purposes; requiring permissions on every role eliminates the negative control; scattered
-allowlisted exceptions are less maintainable than typed purposes. **Strongest counterargument**:
-the extra purpose and scope-partition fields increase fixture-model size. They make the ownership
-semantics mechanically testable and prevent three false assurances, so the bounded complexity is
-necessary. **Confidence**: High. **Hardening**: an independent blind challenger verified all three
-contradictions against RD-02 and Porta's OIDC, init, and role-storage code and selected the same
-typed purpose-aware correction. **Policy version**: 1. **Root invocation ID**:
+actor impossible. **Decision**: valid authorization clients use only an independently declared
+allowlist of Porta's shared standard scopes and include `openid`; scope names never represent
+tenant ownership. Tenant identity, redirects, origins, and protected credential references remain
+disjoint, while invalid redirect and origin candidates carry structured rejection expectations.
+Global applications declare `oidc`, `rbac`, or `mixed` purpose and expose the corresponding client
+and/or role associations. Administrative roles declare a permission profile: full is a strict
+superset of limited, limited is nonempty, and the explicitly unprivileged control is empty;
+administrative actors are explicitly active. **Evidence**: Porta exposes one fixed global OIDC
+scope vocabulary and requires `openid`; it has no tenant-specific custom-scope registration. Roles
+belong globally to an application; the `porta-admin` application owns administrative roles; and a
+zero-permission authenticated actor is required to distinguish authentication from authorization
+denial. **Rejected alternatives**: whole-scope-set disjointness invalidates OIDC; inventing custom
+tenant scopes contradicts Porta's provider; asymmetric standard-scope subsets weaken equivalent
+cross-tenant comparisons; requiring clients on every application confuses OIDC and RBAC purposes;
+and requiring permissions on every role eliminates the negative control. **Strongest
+counterargument**: the extra purpose and structured-invalidity fields increase fixture-model size.
+They make ownership and negative metadata mechanically testable without inventing product
+capability, so the bounded complexity is necessary. **Confidence**: High. **Hardening**: an
+independent blind challenger and a repository-grounded follow-up rejected both whole-set and custom
+scope disjointness, then converged on shared allowlisted scopes plus purpose-aware associations.
+**Policy version**: 1. **Root invocation ID**:
 `AD-TA-EXEC-20260811-P3`. **Reopen triggers**: Porta no longer requires `openid`, applications stop
 owning roles/clients, or the unprivileged control is replaced by a different authenticated denial
 mechanism.

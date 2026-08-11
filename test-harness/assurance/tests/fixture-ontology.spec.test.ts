@@ -8,6 +8,18 @@ import type {
 import { loadFixtureAssuranceSurface } from '../../fixtures/fixture-assurance.js';
 import { intersection, tenantCredentialRefs, uniqueSorted } from './fixture-spec-helpers.js';
 
+/** Independent public-contract scope vocabulary supported by fixture authorization clients. */
+const supportedProtocolScopes = new Set([
+  'openid',
+  'profile',
+  'email',
+  'address',
+  'phone',
+  'offline_access',
+  'roles',
+  'permissions',
+]);
+
 /** Returns every tenant-owned identifier whose ownership must not overlap another tenant. */
 function tenantOwnedIds(tenant: OrdinaryTenantFixture): readonly string[] {
   return uniqueSorted([
@@ -95,13 +107,12 @@ test('should expose exact valid and deliberately invalid client contracts', asyn
       assert.ok(client.origins.length > 0);
       assert.ok(client.grantTypes.length > 0);
       assert.ok(client.scopes.length > 0);
-      assert.ok(client.tenantScopes.length > 0);
-      assert.ok(client.tenantScopes.every((scope) => client.scopes.includes(scope)));
+      assert.ok(client.scopes.every((scope) => supportedProtocolScopes.has(scope)));
       assert.equal(uniqueSorted(client.redirectUris).length, client.redirectUris.length);
       assert.equal(uniqueSorted(client.origins).length, client.origins.length);
       assert.equal(uniqueSorted(client.grantTypes).length, client.grantTypes.length);
       assert.equal(uniqueSorted(client.scopes).length, client.scopes.length);
-      if (client.validity === 'invalid') assert.ok(client.invalidReason?.length);
+      if (client.validity === 'invalid') assert.ok(client.invalidConfiguration);
       if (client.validity === 'valid' && client.kind === 'public') {
         assert.ok(client.scopes.includes('openid'));
         assert.equal(client.clientSecretCredentialRef, undefined);
@@ -111,11 +122,19 @@ test('should expose exact valid and deliberately invalid client contracts', asyn
         assert.ok(client.clientSecretCredentialRef?.length);
       }
     }
+    assert.deepEqual(
+      uniqueSorted(
+        tenant.clients.flatMap((client) =>
+          client.invalidConfiguration === undefined ? [] : [client.invalidConfiguration.field],
+        ),
+      ),
+      ['origin', 'redirect-uri'],
+    );
   }
 });
 
-// Alpha and bravo fixture ownership, redirects, origins, tenant-specific scopes, and credentials
-// are disjoint. Shared OIDC protocol scopes such as `openid` are vocabulary, not tenant data.
+// Alpha and bravo fixture ownership, redirects, origins, and credentials are disjoint. OIDC
+// protocol scopes are deliberately shared vocabulary and never serve as a tenant identifier.
 test('should keep every alpha and bravo tenant identity disjoint', async () => {
   const { publicManifest } = await loadFixtureAssuranceSurface();
   const alpha = publicManifest.alpha;
@@ -137,21 +156,8 @@ test('should keep every alpha and bravo tenant identity disjoint', async () => {
     [],
   );
   assert.deepEqual(
-    intersection(
-      alpha.clients.flatMap((client) => client.tenantScopes),
-      bravo.clients.flatMap((client) => client.tenantScopes),
-    ),
-    [],
-  );
-  assert.ok(
-    alpha.clients.every((client) =>
-      client.tenantScopes.every((scope) => scope.startsWith('alpha:')),
-    ),
-  );
-  assert.ok(
-    bravo.clients.every((client) =>
-      client.tenantScopes.every((scope) => scope.startsWith('bravo:')),
-    ),
+    alpha.clients.find((client) => client.id === 'alpha-client-public')?.scopes,
+    bravo.clients.find((client) => client.id === 'bravo-client-public')?.scopes,
   );
   assert.deepEqual(intersection(tenantCredentialRefs(alpha), tenantCredentialRefs(bravo)), []);
 });

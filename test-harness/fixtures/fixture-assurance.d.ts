@@ -20,6 +20,16 @@ export type FixtureClientKind = 'public' | 'confidential';
 /** Whether a client is expected to pass registration validation. */
 export type FixtureClientValidity = 'valid' | 'invalid';
 
+/** Deliberately invalid client metadata exercised at the public OIDC boundary. */
+export interface InvalidClientConfiguration {
+  /** Exact metadata field whose candidate value must be rejected. */
+  readonly field: 'redirect-uri' | 'origin';
+  /** Synthetic candidate value submitted by the negative scenario. */
+  readonly value: string;
+  /** Public result expected before any authorization code or state change. */
+  readonly expectedRejection: 'invalid-client-metadata';
+}
+
 /** Synthetic user owned by exactly one organization. */
 export interface FixtureUser {
   /** Stable synthetic user identifier. */
@@ -48,8 +58,8 @@ export interface FixtureClient {
   readonly kind: FixtureClientKind;
   /** Whether protocol validation should accept the client. */
   readonly validity: FixtureClientValidity;
-  /** Explicit invalidity reason for deliberately rejected clients. */
-  readonly invalidReason?: string;
+  /** Structured invalid metadata for deliberately rejected clients. */
+  readonly invalidConfiguration?: InvalidClientConfiguration;
   /** Exact redirect URI allowlist. */
   readonly redirectUris: readonly string[];
   /** Exact browser-origin allowlist. */
@@ -58,8 +68,6 @@ export interface FixtureClient {
   readonly grantTypes: readonly string[];
   /** Exact scope allowlist. */
   readonly scopes: readonly string[];
-  /** Tenant-specific scopes whose ownership must not overlap another tenant. */
-  readonly tenantScopes: readonly string[];
   /** Protected client-secret reference for confidential clients. */
   readonly clientSecretCredentialRef?: string;
 }

@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 11:36
+> **Last Updated**: 2026-08-11 12:00
 > **Progress**: 19/92 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
@@ -237,7 +237,7 @@ worktree's endpoints or resources.
 
 - [x] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
       clients, sessions/tokens/data; global applications/roles; super-admin-org administrative actors.
-      ✅ (corrected: 2026-08-11 11:36)
+      ✅ (corrected: 2026-08-11 12:00 — shared allowlisted scopes and structured invalid metadata)
 - [x] 3.2 [spec-author] Write project collection, public postcondition, secret separation, and no-
       production-control specs, plus exact `operational` and `production-security` profile specs.
       ✅ (completed: 2026-08-11 11:11)
