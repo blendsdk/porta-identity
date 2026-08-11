@@ -107,6 +107,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
     'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-classification.impl.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',

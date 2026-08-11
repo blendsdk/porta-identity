@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 22:28
-> **Progress**: 28/92 tasks (30%)
+> **Last Updated**: 2026-08-11 22:56
+> **Progress**: 29/92 tasks (32%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -338,8 +338,9 @@ development evidence, and organization-prefixed user operations enforce tenant o
 - [x] 4.4 Add Porta-only `NODE_V8_COVERAGE`, ignored raw/report paths, mounted ownership, and clean
       shutdown collection bound to revision/image/lock/fixture identity. ✅ (completed:
       2026-08-11 22:28)
-- [ ] 4.5 Classify every raw script as eligible first-party, declared Node/internal, declared
-      dependency, or unexpected local; record exclusions/unmapped and reject unexpected local paths.
+- [x] 4.5 Classify every raw script as eligible first-party, declared Node/internal, declared
+      dependency, or unexpected local; record exclusions/unmapped and reject unexpected local
+      paths. ✅ (completed: 2026-08-11 22:56)
 - [ ] 4.6 Merge process records and source-map only eligible compiled server output; manually audit
       known executed/unexecuted lines and stop if material attribution is wrong.
 - [ ] 4.7 Run ST-19–ST-27 green and add implementation cases for duplicate processes, path

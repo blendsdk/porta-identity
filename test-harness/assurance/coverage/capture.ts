@@ -87,6 +87,8 @@ export interface CoverageCaptureManifest {
   readonly dependencyLockDigest: string;
   /** Generated public fixture identity. */
   readonly fixtureDigest: string;
+  /** Exact digest of compiled JavaScript and source maps copied from the image. */
+  readonly compiledOutputDigest: string;
   /** Node version executing Porta. */
   readonly nodeVersion: string;
   /** Exact covered process identity. */
@@ -137,7 +139,10 @@ export function readActiveCoverageRun(repositoryRoot: string): {
   const canonicalRoot = realpathSync(repositoryRoot);
   const activePath = resolve(canonicalRoot, 'test-harness/.assurance-runtime/active-run.json');
   const active = activeRunSchema.parse(JSON.parse(readFileSync(activePath, 'utf8')));
-  if (realpathSync(active.worktreePath) !== canonicalRoot || active.runId !== active.manifest.runId) {
+  if (
+    realpathSync(active.worktreePath) !== canonicalRoot ||
+    active.runId !== active.manifest.runId
+  ) {
     throw new Error('active lifecycle identity does not belong to this worktree');
   }
   return { runId: active.runId, composeProject: active.manifest.composeProject };
@@ -182,7 +187,11 @@ export async function inspectPortaContainer(
     { cwd: repositoryRoot, environment, signal },
   );
   const [imageDigest, runId, extra] = inspected.stdout.trim().split('|');
-  if (extra !== undefined || runId !== activeRun.runId || !/^sha256:[0-9a-f]{64}$/u.test(imageDigest ?? '')) {
+  if (
+    extra !== undefined ||
+    runId !== activeRun.runId ||
+    !/^sha256:[0-9a-f]{64}$/u.test(imageDigest ?? '')
+  ) {
     throw new Error('Porta container provenance does not match the active lifecycle');
   }
   const node = await runner.checked('docker', ['exec', containerId, 'node', '--version'], {
@@ -211,11 +220,11 @@ export async function gracefullyFlushPorta(
   signal?: AbortSignal,
 ): Promise<void> {
   const runner = new RuntimeCommandRunner();
-  await runner.checked(
-    'docker',
-    ['kill', '--signal=SIGTERM', '--', container.containerId],
-    { cwd: repositoryRoot, environment: currentEnvironment(), signal },
-  );
+  await runner.checked('docker', ['kill', '--signal=SIGTERM', '--', container.containerId], {
+    cwd: repositoryRoot,
+    environment: currentEnvironment(),
+    signal,
+  });
   await runner.checked('docker', ['wait', container.containerId], {
     cwd: repositoryRoot,
     environment: currentEnvironment(),
@@ -253,8 +262,9 @@ export async function writeCaptureManifest(
     profile: options.profile,
     revision,
     imageDigest: container.imageDigest,
-    dependencyLockDigest: digestFile(resolve(repositoryRoot, 'yarn.lock')),
-    fixtureDigest: digestFile(fixturePath),
+    dependencyLockDigest: digestCoverageFile(resolve(repositoryRoot, 'yarn.lock')),
+    fixtureDigest: digestCoverageFile(fixturePath),
+    compiledOutputDigest: digestCoverageDirectory(workspace.compiledDirectory),
     nodeVersion: container.nodeVersion,
     processIdentity: `container:${container.containerId}`,
     buildCommand: 'docker compose up -d --build',
@@ -292,14 +302,41 @@ function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIde
     ) {
       throw new Error(`raw coverage envelope is malformed: ${entry.name}`);
     }
-    files.push({ name: entry.name, digest: digestFile(path), bytes: statSync(path).size });
+    files.push({ name: entry.name, digest: digestCoverageFile(path), bytes: statSync(path).size });
   }
   return Object.freeze(files);
 }
 
 /** Returns a SHA-256 identity without retaining file contents. */
-function digestFile(path: string): string {
+export function digestCoverageFile(path: string): string {
   return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+}
+
+/** Returns a stable identity for every regular file beneath one generated directory. */
+export function digestCoverageDirectory(directory: string): string {
+  const digest = createHash('sha256');
+  for (const relativePath of listCoverageFiles(directory)) {
+    digest.update(relativePath);
+    digest.update('\0');
+    digest.update(readFileSync(resolve(directory, relativePath)));
+    digest.update('\0');
+  }
+  return `sha256:${digest.digest('hex')}`;
+}
+
+/** Lists only regular generated files in stable repository-independent order. */
+function listCoverageFiles(directory: string, prefix = ''): readonly string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
+    const relativePath = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) files.push(...listCoverageFiles(path, relativePath));
+    else if (entry.isFile()) files.push(relativePath);
+    else throw new Error(`compiled coverage snapshot contains a non-regular path: ${relativePath}`);
+  }
+  return files;
 }
 
 /** Ensures a generated child stays beneath its exact owned workspace. */
