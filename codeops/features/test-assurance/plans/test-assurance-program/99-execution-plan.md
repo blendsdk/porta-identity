@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 00:29
+> **Last Updated**: 2026-08-12 00:44
 > **Progress**: 31/92 tasks (34%)
 > **CodeOps Artifact Schema**: 1
 
@@ -347,8 +347,9 @@ development evidence, and organization-prefixed user operations enforce tenant o
 - [x] 4.7 Run ST-19–ST-27 green and add implementation cases for duplicate processes, path
       normalization, malformed maps, dependency scripts, partial output, missing maps, and the
       exact stopped-container raw-output handoff. Reopened after the clean capture exposed
-      container-UID-only raw files; the earlier completion was 2026-08-11 23:51. ✅ (completed:
-      2026-08-12 00:29)
+      container-UID-only raw files and again after named-volume discovery exposed a stale
+      authority comparison; earlier completions were 2026-08-11 23:51 and 2026-08-12 00:29. ✅
+      (completed: 2026-08-12 00:44)
 - [ ] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
       observation-only summary, and run `yarn verify`.
 

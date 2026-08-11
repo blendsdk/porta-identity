@@ -706,3 +706,29 @@ and allowlisted stage-only diagnostics; those requirements are adopted. **Policy
 **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: Docker copy ownership
 semantics change, the lifecycle cannot prove exact volume ownership, graceful Porta termination
 returns nonzero/OOM state, or output cannot be promoted without mixing captures.
+
+### AR-50 — Compose volume resource finalization
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: necessary consistency fix in
+the already approved lifecycle resource-fencing mechanism; it changes no product behavior,
+acceptance criterion, cleanup authority, or scope. **Objective**: allow a provisional empty lease
+to gain an exact label-verified Compose volume identity without allowing any authority field to
+change. **Decision**: treat `volumeNames` exactly like `containerIds` and `networkIds` in the
+non-resource authority comparison, while retaining the separate monotonic resource-discovery
+check and exact persisted-record compare-and-swap. Add a real filesystem-adapter regression case
+that starts with empty resource arrays, finalizes exact container/network/volume identities, and
+rejects later replacement. Reopen Task 4.7 again before Task 4.8 clean evidence. **Evidence**: the
+first named-volume startup created five correctly labeled containers, one network, and one labeled
+volume, but `sameLeaseAuthority()` cleared containers, networks, and host processes while leaving
+`volumeNames`; the empty provisional lease therefore could never equal discovered ownership and
+startup failed closed with exit 60. **Rejected alternatives**: omitting the volume from discovery
+would make cleanup incapable of deleting it safely; precomputing the Compose-generated name would
+replace observation with naming convention; weakening the complete-record CAS would permit
+authority drift. **Strongest counterargument**: excluding another field from the authority
+comparison could mask mutation. The separate monotonic resource check permits only empty-to-exact
+discovery or exact equality, and the final persisted replacement remains a full CAS. **Confidence**:
+High — the failing comparison is direct and the correction mirrors the existing container/network
+model. **Hardening**: the independent challenger required exact lifecycle ownership; this fix
+preserves that requirement instead of bypassing it. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260811-P4`. **Reopen triggers**: volumes gain mutable ownership fields, discovery is
+no longer label-bound, or resource finalization permits nonempty replacement.

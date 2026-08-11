@@ -75,6 +75,36 @@ test('should atomically transfer a stale filesystem lease to exactly one contend
   await leases.release(winner);
 });
 
+test('should finalize an exact discovered volume without changing lease authority', async (t) => {
+  const worktree = disposableDirectory(t, 'porta-volume-finalize-worktree-');
+  const leaseRoot = disposableDirectory(t, 'porta-volume-finalize-leases-');
+  const leases = new FileLeaseStateAdapter(leaseRoot);
+  const discovered = await createRecord(worktree);
+  const provisional = Object.freeze({
+    ...discovered,
+    containerIds: Object.freeze([]),
+    networkIds: Object.freeze([]),
+    volumeNames: Object.freeze([]),
+  });
+  assert.equal(await leases.tryAcquire(provisional), 'acquired');
+
+  const finalized = await leases.finalizeResources(provisional, discovered);
+
+  assert.notEqual(finalized, 'mismatch');
+  if (finalized === 'mismatch') return;
+  assert.deepEqual(finalized.containerIds, discovered.containerIds);
+  assert.deepEqual(finalized.networkIds, discovered.networkIds);
+  assert.deepEqual(finalized.volumeNames, discovered.volumeNames);
+  assert.equal(
+    await leases.finalizeResources(
+      finalized,
+      Object.freeze({ ...finalized, volumeNames: Object.freeze(['volume-replacement']) }),
+    ),
+    'mismatch',
+  );
+  await leases.release(finalized);
+});
+
 // A mismatched expected record or malformed takeover claim is never treated as permission to
 // replace durable ownership. A complete claim from a proven-dead process is safely reclaimable.
 test('should preserve the lease across mismatched and malformed takeover state', async (t) => {

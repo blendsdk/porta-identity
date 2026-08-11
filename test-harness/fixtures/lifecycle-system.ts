@@ -512,12 +512,14 @@ function sameLeaseAuthority(left: LeaseRecord, right: LeaseRecord): boolean {
       containerIds: [],
       networkIds: [],
       hostProcesses: [],
+      volumeNames: [],
     }) ===
     stableJson({
       ...right,
       containerIds: [],
       networkIds: [],
       hostProcesses: [],
+      volumeNames: [],
     })
   );
 }
