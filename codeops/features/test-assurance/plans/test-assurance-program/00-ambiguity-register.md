@@ -757,3 +757,28 @@ challenger's owner-only staging and non-root requirements with the smallest harn
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: the
 runtime UID changes, Compose enables `volume-nocopy`, or a supported container engine initializes
 the mountpoint with different ownership semantics.
+
+### AR-52 — Open-ended Istanbul mapping columns
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: converter validation detail
+inside the approved exact source-mapping mechanism; it changes no coverage target, product
+behavior, acceptance criterion, or gate policy. **Objective**: accept the pinned converter's
+documented-by-output open-ended end-column sentinel without accepting unbounded values in any
+position used for line attribution. **Decision**: permit positive infinity only for an Istanbul
+statement location's `end.column`; continue requiring finite positive lines, finite nonnegative
+start columns, exact nonnegative integer counters, and validated source paths. Attribution and
+line totals continue to use only `start.line`. Re-run the retained clean artifact through every
+eligible file before another clean capture. **Evidence**: the first complete host-owned capture
+classified successfully but rejected 52 eligible modules; direct schema diagnostics showed exact
+`Infinity` values only at `statementMap.*.end.column`, emitted by the pinned
+`ast-v8-to-istanbul` converter. The same objects contained valid exact `s`, `f`, and `b` counters
+and mapped source paths. **Rejected alternatives**: coercing infinity to a guessed source-column
+changes third-party mapping semantics; allowing arbitrary non-finite values weakens validation;
+dropping affected statements silently lowers totals. **Strongest counterargument**: accepting a
+non-JSON number can make artifacts unstable. The location map is never serialized; only exact
+derived integer counts and source-line sets are written, and the exception is limited to the
+unused end column. **Confidence**: High. **Hardening**: the full retained capture is the stronger
+integration oracle and must convert without any unmapped eligible input before completion.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: the
+converter emits a non-finite start position, totals depend on end columns, or the pinned converter
+changes its location representation.

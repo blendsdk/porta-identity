@@ -38,9 +38,19 @@ const istanbulPositionSchema = z.object({
   line: z.number().int().positive(),
   column: z.number().int().nonnegative(),
 });
+
+/** Accepts the converter's exact open-ended sentinel only where attribution never consumes it. */
+const istanbulEndColumnSchema = z.union([
+  z.number().int().nonnegative(),
+  z.custom<number>((value) => value === Number.POSITIVE_INFINITY),
+]);
+
 const istanbulLocationSchema = z.object({
   start: istanbulPositionSchema,
-  end: istanbulPositionSchema,
+  end: z.object({
+    line: z.number().int().positive(),
+    column: istanbulEndColumnSchema,
+  }),
 });
 const istanbulFileCoverageSchema = z.object({
   statementMap: z.record(z.string(), istanbulLocationSchema),
