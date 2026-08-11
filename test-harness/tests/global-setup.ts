@@ -9,7 +9,7 @@ export default async function globalSetup(): Promise<void> {
   const exitCode = await new Promise<number>((resolveExit, rejectExit) => {
     const child = spawn(
       process.execPath,
-      ['--import', 'tsx', resolve(import.meta.dirname, '../scripts/lifecycle.ts'), 'reset'],
+      ['--import', 'tsx', resolve(import.meta.dirname, '../scripts/lifecycle.ts'), 'prepare'],
       {
         cwd: resolve(import.meta.dirname, '../..'),
         env: process.env,
@@ -20,5 +20,5 @@ export default async function globalSetup(): Promise<void> {
     child.once('error', rejectExit);
     child.once('exit', (code) => resolveExit(code ?? 30));
   });
-  if (exitCode !== 0) throw new Error(`Harness reset prerequisite failed with exit ${exitCode}`);
+  if (exitCode !== 0) throw new Error(`Harness preparation failed with exit ${exitCode}`);
 }

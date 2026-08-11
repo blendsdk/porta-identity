@@ -429,3 +429,35 @@ does not weaken any runtime failure. **Policy version**: 1. **Root invocation ID
 `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: Phase 3 completes its deterministic fixture manifest,
 the current seed becomes independently revision/digest-bound, or the retained runtime begins producing
 fixture-backed evidence.
+
+### AR-41 — Phase 2 lifecycle quality correction
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal lifecycle safety and
+truthfulness corrections inside the approved Phase 2 harness boundary; no product source, fixture
+ontology, CI workflow, publishing, deployment, or public API changes. **Objective**: resolve every
+Major and Minor root cause accepted from the first independent Phase 2 quality review. **Decision**:
+the retained runtime distinguishes narrow transient preparation from complete reset; complete reset
+fails closed until Phase 3 installs its deterministic database fixture adapter. Startup owns one
+atomic worktree intent before mutation, persists actual Docker container/network/volume identities
+and PID-reuse-resistant SPA/BFF process identities, serializes lifecycle controls, and applies
+aborting operation deadlines. Cleanup requires complete persisted identity, retains a collision
+tombstone for unreadable leases, supports dead-supervisor recovery through a validated lookup, and
+keeps its control socket owner-only. Bounded candidate exhaustion releases only the losing startup
+intent. **Evidence**: the corrective specifications recorded five exact RED cases before the
+implementation and now run 259/259 green. Live validation observed five immutable container IDs,
+one immutable network ID, no declared volumes, two PID-fingerprinted host processes, one winner from
+two simultaneous same-worktree starters, malformed-control containment, successful SIGTERM cleanup
+with exit 143 and no residue, successful forced-crash recovery, and all six retained SPA/BFF
+journeys. **Rejected alternatives**: predicted Compose names
+cannot fence deletion; missing discovery cannot prove absence; in-memory child ownership cannot
+recover after a supervisor crash; overlapping reset/stop operations violate poison ordering; and a
+best-effort reset result would overstate assurance. **Strongest counterargument**: the full database
+reset remains unavailable in the live retained runtime. That is the truthful boundary already fixed
+by AR-40; Phase 3 owns the independent fixture oracle required to activate it. **Confidence**: High.
+**Hardening**: independent correctness and security/concurrency reviewers supplied the accepted
+failure cases; the single permitted re-review identified deadline joining, startup-intent, and
+immutable cleanup residuals, which were corrected and covered by focused live and implementation
+evidence before unchanged full verification. **Policy
+version**: 1. **Root invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: a live adapter
+cannot reproduce the specification outcome, cleanup accepts incomplete identity, concurrent
+starters create more than one stack, or the re-review reports a residual Major or Critical finding.

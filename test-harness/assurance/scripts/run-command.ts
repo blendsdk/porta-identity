@@ -59,7 +59,11 @@ const lifecycleTestFiles = [
   'test-harness/assurance/tests/reset-recovery.spec.test.ts',
   'test-harness/assurance/tests/reset-verification.spec.test.ts',
   'test-harness/assurance/tests/lifecycle-recovery.impl.test.ts',
+  'test-harness/assurance/tests/lifecycle-runtime.impl.test.ts',
   'test-harness/assurance/tests/reset-finalization.impl.test.ts',
+  'test-harness/assurance/tests/lifecycle-quality-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-intent-safety.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-operation-serialization.spec.test.ts',
 ] as const;
 
 /** Registered selector-to-specification mappings for internal Node suites. */

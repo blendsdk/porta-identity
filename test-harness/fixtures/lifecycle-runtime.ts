@@ -8,6 +8,7 @@ import type {
   ComposeInspection,
   DeadlineAdapter,
   EndpointManifest,
+  HostProcessIdentity,
   LeaseRecord,
   LifecycleDependencies,
   ManifestConsumerAdapter,
@@ -21,6 +22,13 @@ import {
   LinuxProcessProbeAdapter,
   LoopbackEndpointAvailabilityAdapter,
 } from './lifecycle-system.js';
+import {
+  hasNodeErrorCode,
+  RuntimeCommandRunner,
+  RuntimeTimeoutError,
+  signalChildProcessGroup,
+} from './lifecycle-runtime-command.js';
+export { RuntimeCommandRunner } from './lifecycle-runtime-command.js';
 
 /** Stable runtime environment derived only from one validated endpoint manifest. */
 export function environmentForManifest(
@@ -51,101 +59,6 @@ export function environmentForManifest(
 }
 
 /** Result of a bounded shell-free child process. */
-interface CommandResult {
-  readonly exitCode: number;
-  readonly stdout: string;
-  readonly stderr: string;
-}
-
-/** Runs fixed executables with argument arrays, bounded output, and no shell interpretation. */
-class RuntimeCommandRunner {
-  /** Executes a command and rejects on timeout, spawn failure, output overflow, or non-zero exit. */
-  public async checked(
-    command: string,
-    args: readonly string[],
-    options: {
-      readonly cwd: string;
-      readonly environment: Readonly<Record<string, string>>;
-      readonly timeoutMilliseconds?: number;
-    },
-  ): Promise<CommandResult> {
-    const result = await this.run(command, args, options);
-    if (result.exitCode !== 0) {
-      process.stderr.write(
-        `HARNESS_RUNTIME_COMMAND_FAILED: command=${command} exit=${result.exitCode}\n`,
-      );
-      throw new Error(`${command} failed with exit ${result.exitCode}`);
-    }
-    return result;
-  }
-
-  /** Executes a bounded command and returns sanitized process facts to the caller. */
-  public run(
-    command: string,
-    args: readonly string[],
-    options: {
-      readonly cwd: string;
-      readonly environment: Readonly<Record<string, string>>;
-      readonly timeoutMilliseconds?: number;
-    },
-  ): Promise<CommandResult> {
-    return new Promise((resolveResult, rejectResult) => {
-      const child = spawn(command, args, {
-        cwd: options.cwd,
-        env: options.environment,
-        shell: false,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      let stdout = '';
-      let stderr = '';
-      let settled = false;
-      const fail = (error: Error): void => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        child.kill('SIGTERM');
-        rejectResult(error);
-      };
-      const timeout = setTimeout(() => {
-        if (settled) return;
-        fail(new RuntimeTimeoutError());
-      }, options.timeoutMilliseconds ?? 120_000);
-      child.stdout?.on('data', (chunk: Buffer) => {
-        const appended = appendBounded(stdout, chunk);
-        if (appended === undefined) fail(new Error('runtime child output exceeded its bound'));
-        else stdout = appended;
-      });
-      child.stderr?.on('data', (chunk: Buffer) => {
-        const appended = appendBounded(stderr, chunk);
-        if (appended === undefined) fail(new Error('runtime child output exceeded its bound'));
-        else stderr = appended;
-      });
-      child.once('error', (error) => {
-        settled = true;
-        clearTimeout(timeout);
-        rejectResult(error);
-      });
-      child.once('exit', (code) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        resolveResult({ exitCode: code ?? 30, stdout, stderr });
-      });
-    });
-  }
-}
-
-/** Timeout error carrying only the stable discriminator consumed by the controller. */
-class RuntimeTimeoutError extends Error {
-  /** Stable interruption kind used by lifecycle classification. */
-  public readonly kind = 'timeout';
-
-  /** Creates one non-secret timeout error. */
-  public constructor() {
-    super('runtime command exceeded its deadline');
-    this.name = 'RuntimeTimeoutError';
-  }
-}
 
 /** Manages SPA/BFF children under the lifetime of one supervisor process. */
 class HarnessClientManager {
@@ -153,7 +66,7 @@ class HarnessClientManager {
   protected children: ChildProcess[] = [];
 
   /** Starts both clients once and directs output to an owned runtime log. */
-  public async start(manifest: EndpointManifest): Promise<void> {
+  public async start(manifest: EndpointManifest, signal?: AbortSignal): Promise<void> {
     if (this.children.length > 0) return;
     const runtimeDirectory = resolve(
       manifest.worktreePath,
@@ -162,26 +75,49 @@ class HarnessClientManager {
     );
     const log = openSync(resolve(runtimeDirectory, 'clients.log'), 'a', 0o600);
     const environment = environmentForManifest(manifest);
-    for (const script of ['test-harness/spa-server.ts', 'test-harness/bff/server.ts']) {
-      const child = spawn(process.execPath, ['--import', 'tsx', script], {
-        cwd: manifest.worktreePath,
-        env: environment,
-        shell: false,
-        stdio: ['ignore', log, log],
-      });
-      this.children.push(child);
+    try {
+      for (const role of ['spa', 'bff'] as const) {
+        const child = spawn(
+          process.execPath,
+          ['--import', 'tsx', 'test-harness/scripts/managed-client-bootstrap.ts', role],
+          {
+            cwd: manifest.worktreePath,
+            env: environment,
+            detached: process.platform !== 'win32',
+            shell: false,
+            stdio: ['ignore', log, log, 'ipc'],
+          },
+        );
+        if (child.pid === undefined) throw new Error(`${role} process has no identity`);
+        this.children.push(child);
+        await waitForBootstrapRegistration(child, signal);
+        if (signal?.aborted === true) throw new RuntimeTimeoutError();
+        child.send?.('release');
+      }
+    } finally {
+      closeSync(log);
     }
-    closeSync(log);
-    await Promise.all([waitForUrl(manifest.urls.app), waitForUrl(manifest.urls.bff)]);
+    await Promise.all([
+      waitForUrl(manifest.urls.app, signal),
+      waitForUrl(manifest.urls.bff, signal),
+    ]);
   }
 
   /** Terminates only children retained by this supervisor and waits for their exit. */
-  public async stop(): Promise<void> {
+  public async stop(record: LeaseRecord): Promise<void> {
     const children = this.children.splice(0);
-    for (const child of children) {
-      if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+    for (const identity of record.hostProcesses) {
+      const presence = await new LinuxProcessProbeAdapter().presence(identity);
+      if (presence === 'unreadable') throw new Error('host process ownership is unreadable');
+      if (presence === 'present') signalProcessIdentity(identity, 'SIGTERM');
     }
-    await Promise.all(children.map(waitForChildExit));
+    for (const child of children) {
+      signalChildProcessGroup(child, 'SIGTERM');
+    }
+    await Promise.all([
+      ...children.map(waitForChildExit),
+      ...record.hostProcesses.map(waitForProcessIdentityExit),
+    ]);
   }
 }
 
@@ -198,36 +134,143 @@ class RuntimeComposeAdapter implements ComposeAdapter {
   /** Reads Compose labels and resolves them back to the authoritative durable lease. */
   public async inspect(project: string): Promise<ComposeInspection> {
     try {
-      const result = await this.runner.checked(
+      const containerResult = await this.runner.checked(
         'docker',
-        ['ps', '-aq', '--filter', `label=com.docker.compose.project=${project}`],
+        ['ps', '-aq', '--no-trunc', '--filter', `label=com.docker.compose.project=${project}`],
         { cwd: this.worktreePath, environment: currentEnvironment() },
       );
-      const containerId = result.stdout.trim().split(/\s+/u).filter(Boolean)[0];
-      if (containerId === undefined) return { presence: 'absent' };
-      const labels = await this.runner.checked(
+      const networkResult = await this.runner.checked(
         'docker',
         [
-          'inspect',
-          '--format',
-          '{{index .Config.Labels "io.porta.assurance.run-id"}}|{{index .Config.Labels "io.porta.assurance.worktree"}}',
-          containerId,
+          'network',
+          'ls',
+          '-q',
+          '--no-trunc',
+          '--filter',
+          `label=com.docker.compose.project=${project}`,
         ],
         { cwd: this.worktreePath, environment: currentEnvironment() },
       );
-      const [runId, worktreePath] = labels.stdout.trim().split('|');
-      if (runId === undefined || worktreePath === undefined) return { presence: 'unreadable' };
+      const volumeResult = await this.runner.checked(
+        'docker',
+        ['volume', 'ls', '-q', '--filter', `label=com.docker.compose.project=${project}`],
+        { cwd: this.worktreePath, environment: currentEnvironment() },
+      );
+      const containerIds = splitIdentifiers(containerResult.stdout);
+      const networkIds = splitIdentifiers(networkResult.stdout);
+      const volumeNames = splitIdentifiers(volumeResult.stdout);
+      if (
+        containerIds.some((identifier) => !isDockerObjectId(identifier)) ||
+        networkIds.some((identifier) => !isDockerObjectId(identifier)) ||
+        volumeNames.some((name) => !isDockerVolumeName(name))
+      ) {
+        return { presence: 'unreadable' };
+      }
+      if (containerIds.length === 0 && networkIds.length === 0 && volumeNames.length === 0) {
+        return { presence: 'absent' };
+      }
+      if (containerIds.length === 0) return { presence: 'unreadable' };
+      const observedLabels = await Promise.all(
+        containerIds.map((containerId) => this.inspectContainerLabels(containerId)),
+      );
+      const [first] = observedLabels;
+      if (first === undefined) return { presence: 'unreadable' };
+      const { runId, worktreePath } = first;
+      if (
+        observedLabels.some(
+          (labels) =>
+            labels.runId !== runId ||
+            labels.worktreePath !== worktreePath ||
+            labels.project !== project,
+        )
+      ) {
+        return { presence: 'unreadable' };
+      }
+      for (const networkId of networkIds) {
+        const networkLabels = await this.runner.checked(
+          'docker',
+          [
+            'network',
+            'inspect',
+            '--format',
+            '{{index .Labels "io.porta.assurance.run-id"}}|{{index .Labels "io.porta.assurance.worktree"}}|{{index .Labels "com.docker.compose.project"}}',
+            networkId,
+          ],
+          { cwd: this.worktreePath, environment: currentEnvironment() },
+        );
+        if (networkLabels.stdout.trim() !== `${runId}|${worktreePath}|${project}`) {
+          return { presence: 'unreadable' };
+        }
+      }
+      for (const volumeName of volumeNames) {
+        const volumeLabels = await this.runner.checked(
+          'docker',
+          [
+            'volume',
+            'inspect',
+            '--format',
+            '{{index .Labels "io.porta.assurance.run-id"}}|{{index .Labels "io.porta.assurance.worktree"}}|{{index .Labels "com.docker.compose.project"}}',
+            volumeName,
+          ],
+          { cwd: this.worktreePath, environment: currentEnvironment() },
+        );
+        if (volumeLabels.stdout.trim() !== `${runId}|${worktreePath}|${project}`) {
+          return { presence: 'unreadable' };
+        }
+      }
+      const services = observedLabels.map((labels) => labels.service).sort();
+      if (services.join(',') !== 'mailhog,nginx,porta,postgres,redis') {
+        return { presence: 'unreadable' };
+      }
       const identity = await this.leases.read({ runId, worktreePath });
       return typeof identity === 'string'
         ? { presence: 'unreadable' }
-        : { presence: 'present', identity };
+        : {
+            presence: 'present',
+            identity: Object.freeze({
+              ...identity,
+              containerIds: Object.freeze([...containerIds].sort()),
+              networkIds: Object.freeze([...networkIds].sort()),
+              volumeNames: Object.freeze([...volumeNames].sort()),
+            }),
+          };
     } catch {
       return { presence: 'unreadable' };
     }
   }
 
+  /** Reads and validates all ownership labels from one immutable Docker container ID. */
+  protected async inspectContainerLabels(containerId: string): Promise<{
+    readonly runId: string;
+    readonly worktreePath: string;
+    readonly project: string;
+    readonly service: string;
+  }> {
+    const labels = await this.runner.checked(
+      'docker',
+      [
+        'inspect',
+        '--format',
+        '{{index .Config.Labels "io.porta.assurance.run-id"}}|{{index .Config.Labels "io.porta.assurance.worktree"}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}',
+        containerId,
+      ],
+      { cwd: this.worktreePath, environment: currentEnvironment() },
+    );
+    const [runId, worktreePath, project, service, extra] = labels.stdout.trim().split('|');
+    if (
+      runId === undefined ||
+      worktreePath === undefined ||
+      project === undefined ||
+      service === undefined ||
+      extra !== undefined
+    ) {
+      throw new Error('Docker ownership labels are incomplete');
+    }
+    return { runId, worktreePath, project, service };
+  }
+
   /** Builds and starts only the project derived from the immutable manifest. */
-  public async start(manifest: EndpointManifest): Promise<void> {
+  public async start(manifest: EndpointManifest, signal?: AbortSignal): Promise<void> {
     await this.runner.checked(
       'docker',
       this.composeArgs(manifest.composeProject, ['up', '-d', '--build']),
@@ -235,6 +278,7 @@ class RuntimeComposeAdapter implements ComposeAdapter {
         cwd: this.worktreePath,
         environment: environmentForManifest(manifest),
         timeoutMilliseconds: 600_000,
+        signal,
       },
     );
   }
@@ -249,16 +293,38 @@ class RuntimeComposeAdapter implements ComposeAdapter {
     } else if (inspection.presence === 'unreadable') {
       throw new Error('Compose ownership is unreadable');
     }
-    await this.clients.stop();
-    await this.runner.checked(
-      'docker',
-      this.composeArgs(record.composeProject, ['down', '--volumes', '--remove-orphans']),
-      {
+    await this.clients.stop(record);
+    if (record.containerIds.length > 0) {
+      await this.runner.checked('docker', ['rm', '-f', '--', ...record.containerIds], {
         cwd: this.worktreePath,
         environment: environmentForManifest(record.manifest),
         timeoutMilliseconds: 120_000,
-      },
-    );
+      });
+    }
+    if (record.networkIds.length > 0) {
+      await this.runner.checked('docker', ['network', 'rm', ...record.networkIds], {
+        cwd: this.worktreePath,
+        environment: environmentForManifest(record.manifest),
+        timeoutMilliseconds: 120_000,
+      });
+    }
+    if (record.volumeNames.length > 0) {
+      await this.runner.checked('docker', ['volume', 'rm', ...record.volumeNames], {
+        cwd: this.worktreePath,
+        environment: environmentForManifest(record.manifest),
+        timeoutMilliseconds: 120_000,
+      });
+    }
+    const postCleanup = await this.inspect(record.composeProject);
+    if (postCleanup.presence !== 'absent') {
+      throw new Error('Docker resources remain after exact cleanup');
+    }
+    if (
+      (await new LoopbackEndpointAvailabilityAdapter().occupiedEndpoints(record.manifest)).length >
+      0
+    ) {
+      throw new Error('owned endpoints remain bound after cleanup');
+    }
     rmSync(resolve(record.worktreePath, 'test-harness/.assurance-runtime', record.runId), {
       recursive: true,
       force: true,
@@ -320,24 +386,29 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
   ) {}
 
   /** Runs one prerequisite and rejects every non-success before dependent tests begin. */
-  public async run(name: PrerequisiteName, manifest: EndpointManifest): Promise<void> {
+  public async run(
+    name: PrerequisiteName,
+    manifest: EndpointManifest,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const environment = environmentForManifest(manifest);
     if (name === 'dns') {
       await this.runner.checked('node', ['test-harness/scripts/check-loopback-dns.mjs'], {
         cwd: manifest.worktreePath,
         environment,
+        signal,
       });
       return;
     }
     if (name === 'health') {
-      await waitForUrl(`${manifest.urls.porta}/health`);
+      await waitForUrl(`${manifest.urls.porta}/health`, signal);
       return;
     }
     if (name === 'migration') {
       await this.runner.checked(
         'docker',
         ['exec', `${manifest.composeProject}-porta-1`, 'porta', 'migrate', 'status'],
-        { cwd: manifest.worktreePath, environment },
+        { cwd: manifest.worktreePath, environment, signal },
       );
       return;
     }
@@ -359,18 +430,18 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
           '--password',
           'TestPassword123!',
         ],
-        { cwd: manifest.worktreePath, environment },
+        { cwd: manifest.worktreePath, environment, signal },
       );
       await this.runner.checked(
         process.execPath,
         ['--import', 'tsx', 'test-harness/scripts/seed.ts'],
-        { cwd: manifest.worktreePath, environment, timeoutMilliseconds: 120_000 },
+        { cwd: manifest.worktreePath, environment, timeoutMilliseconds: 120_000, signal },
       );
       return;
     }
     if (name === 'fixture-verification') {
       await this.copySpaLibraries(manifest);
-      await this.clients.start(manifest);
+      await this.clients.start(manifest, signal);
       if (!existsSync(resolve(manifest.worktreePath, 'test-harness/config.generated.json'))) {
         throw new Error('fixture config was not generated');
       }
@@ -380,13 +451,17 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
       await this.runner.checked(
         'docker',
         ['exec', `${manifest.composeProject}-redis-1`, 'redis-cli', 'FLUSHDB'],
-        { cwd: manifest.worktreePath, environment },
+        { cwd: manifest.worktreePath, environment, signal },
       );
       return;
     }
     if (name === 'mailhog-reset') {
       const response = await fetch(`${manifest.urls.mailhog}/api/v1/messages`, {
         method: 'DELETE',
+        signal:
+          signal === undefined
+            ? AbortSignal.timeout(10_000)
+            : AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
       });
       if (!response.ok) throw new Error('MailHog reset was not successful');
     }
@@ -418,7 +493,10 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
 }
 
 /** Creates production runtime adapters for one retained harness supervisor. */
-export function createRuntimeDependencies(worktreePath: string): LifecycleDependencies {
+export function createRuntimeDependencies(
+  worktreePath: string,
+  externalSignal?: AbortSignal,
+): LifecycleDependencies {
   const leases = new FileLeaseStateAdapter();
   const runner = new RuntimeCommandRunner();
   const clients = new HarnessClientManager();
@@ -435,11 +513,7 @@ export function createRuntimeDependencies(worktreePath: string): LifecycleDepend
       ).exitCode;
     },
   };
-  const deadlines: DeadlineAdapter = {
-    async run(_operation, work) {
-      return work();
-    },
-  };
+  const deadlines = new RuntimeDeadlineAdapter(externalSignal);
   return {
     leases,
     processes: new LinuxProcessProbeAdapter(),
@@ -459,10 +533,72 @@ export function createRuntimeDependencies(worktreePath: string): LifecycleDepend
   };
 }
 
+/** Applies one aborting wall-clock deadline to every lifecycle operation. */
+class RuntimeDeadlineAdapter implements DeadlineAdapter {
+  /** Creates deadlines that also observe an optional lifecycle-supervisor signal. */
+  public constructor(protected readonly externalSignal?: AbortSignal) {}
+
+  /** Runs startup with its build allowance and all other operations with the control allowance. */
+  public async run<T>(operation: string, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    const controller = new AbortController();
+    const timeoutMilliseconds = operation === 'startup' ? 900_000 : 120_000;
+    const timeout = setTimeout(() => controller.abort(), timeoutMilliseconds);
+    const signal =
+      this.externalSignal === undefined
+        ? controller.signal
+        : AbortSignal.any([controller.signal, this.externalSignal]);
+    try {
+      const result = await work(signal);
+      if (signal.aborted) throw new RuntimeTimeoutError();
+      return result;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 /** Appends child output while enforcing a hard non-secret diagnostic bound. */
-function appendBounded(previous: string, chunk: Buffer): string | undefined {
-  const next = previous + chunk.toString('utf8');
-  return Buffer.byteLength(next, 'utf8') > 256 * 1024 ? undefined : next;
+/** Splits newline-delimited immutable Docker identifiers without accepting empty values. */
+function splitIdentifiers(output: string): readonly string[] {
+  return output.trim().split(/\s+/u).filter(Boolean);
+}
+
+/** Accepts only immutable full Docker object identifiers returned by no-trunc inspection. */
+function isDockerObjectId(identifier: string): boolean {
+  return /^[a-f0-9]{64}$/u.test(identifier);
+}
+
+/** Accepts only Docker's non-option volume-name alphabet before fixed argv deletion. */
+function isDockerVolumeName(name: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u.test(name);
+}
+
+/** Signals the complete isolated child group, falling back to the direct child when unavailable. */
+/** Signals one exact recorded host process group after its start fingerprint was verified. */
+function signalProcessIdentity(identity: HostProcessIdentity, signal: NodeJS.Signals): void {
+  try {
+    if (process.platform === 'win32') process.kill(identity.pid, signal);
+    else process.kill(-identity.pid, signal);
+  } catch {
+    // A concurrent natural exit is already the desired terminal state.
+  }
+}
+
+/** Waits for a recorded host identity to disappear and escalates only that exact process group. */
+async function waitForProcessIdentityExit(identity: HostProcessIdentity): Promise<void> {
+  const probe = new LinuxProcessProbeAdapter();
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if ((await probe.presence(identity)) === 'absent') return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+  if ((await probe.presence(identity)) === 'present') signalProcessIdentity(identity, 'SIGKILL');
+  const killDeadline = Date.now() + 5_000;
+  while (Date.now() < killDeadline) {
+    if ((await probe.presence(identity)) === 'absent') return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+  throw new Error('host process did not terminate');
 }
 
 /** Waits for one child to terminate after an owned shutdown request. */
@@ -477,24 +613,72 @@ function waitForChildExit(child: ChildProcess): Promise<void> {
   });
 }
 
+/** Waits until a paused client bootstrap has durably registered its exact process identity. */
+function waitForBootstrapRegistration(child: ChildProcess, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolveReady, rejectReady) => {
+    const timeout = setTimeout(() => finish(new RuntimeTimeoutError()), 30_000);
+    const finish = (error?: Error): void => {
+      clearTimeout(timeout);
+      child.removeListener('message', onMessage);
+      child.removeListener('error', onError);
+      child.removeListener('exit', onExit);
+      signal?.removeEventListener('abort', onAbort);
+      if (error === undefined) resolveReady();
+      else rejectReady(error);
+    };
+    const onMessage = (message: unknown): void => {
+      if (message === 'registered') finish();
+    };
+    const onError = (): void => finish(new Error('client bootstrap failed'));
+    const onExit = (): void => finish(new Error('client bootstrap exited before registration'));
+    const onAbort = (): void => {
+      signalChildProcessGroup(child, 'SIGTERM');
+      finish(new RuntimeTimeoutError());
+    };
+    child.on('message', onMessage);
+    child.once('error', onError);
+    child.once('exit', onExit);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted === true) onAbort();
+  });
+}
+
 /** Polls one public URL until success or a bounded startup deadline. */
-async function waitForUrl(url: string): Promise<void> {
+async function waitForUrl(url: string, signal?: AbortSignal): Promise<void> {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    if (await curlSucceeds(url)) return;
-    await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+    if (signal?.aborted === true) throw new RuntimeTimeoutError();
+    if (await curlSucceeds(url, signal)) return;
+    await abortableDelay(500, signal);
   }
   throw new RuntimeTimeoutError();
 }
 
 /** Checks one URL with the harness's generated certificate accepted only for this child. */
-function curlSucceeds(url: string): Promise<boolean> {
+function curlSucceeds(url: string, signal?: AbortSignal): Promise<boolean> {
   return new Promise((resolveResult) => {
     const child = spawn('curl', ['-ksf', '--max-time', '2', url], {
+      signal,
       shell: false,
       stdio: 'ignore',
     });
     child.once('error', () => resolveResult(false));
     child.once('exit', (code) => resolveResult(code === 0));
+  });
+}
+
+/** Waits between health probes while allowing the owning lifecycle deadline to cancel promptly. */
+function abortableDelay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted === true) return Promise.reject(new RuntimeTimeoutError());
+  return new Promise((resolveDelay, rejectDelay) => {
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener('abort', abort);
+      resolveDelay();
+    }, milliseconds);
+    const abort = (): void => {
+      clearTimeout(timeout);
+      rejectDelay(new RuntimeTimeoutError());
+    };
+    signal?.addEventListener('abort', abort, { once: true });
   });
 }

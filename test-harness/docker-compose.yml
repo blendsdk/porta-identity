@@ -102,3 +102,4 @@ services:
 networks:
   harness-network:
     driver: bridge
+    labels: *assurance-labels

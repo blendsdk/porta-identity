@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createServer, createConnection, type Server } from 'node:net';
 import {
   closeSync,
+  chmodSync,
   existsSync,
   mkdirSync,
   openSync,
@@ -26,8 +27,9 @@ import {
   createRuntimeDependencies,
   environmentForManifest,
 } from '../fixtures/lifecycle-runtime.js';
+import { lifecycleSocketDirectory, lifecycleSocketPath } from '../fixtures/lifecycle-validation.js';
 
-const actionSchema = z.enum(['start', 'supervise', 'reset', 'stop', 'test']);
+const actionSchema = z.enum(['start', 'supervise', 'prepare', 'reset', 'recover', 'stop', 'test']);
 const activeRunSchema = z.object({
   runId: z.uuid(),
   worktreePath: z.string().min(1),
@@ -63,7 +65,7 @@ const activeRunSchema = z.object({
 type ActiveRun = z.infer<typeof activeRunSchema>;
 
 /** Request accepted by the owner-only local lifecycle control socket. */
-type ControlAction = 'reset' | 'stop';
+type ControlAction = 'prepare' | 'reset' | 'stop';
 
 /** Maximum bytes accepted from one local control request. */
 const maximumControlBytes = 1024;
@@ -125,7 +127,20 @@ async function supervise(
   runId: string,
   candidateBasePort: number,
 ): Promise<LifecycleExitCode> {
-  const controller = createLifecycleController(createRuntimeDependencies(root));
+  const startupAbort = new AbortController();
+  let requestedSignal: 130 | 143 | undefined;
+  let dispatchSignal = (exitCode: 130 | 143): void => {
+    requestedSignal ??= exitCode;
+    startupAbort.abort();
+  };
+  const onSigint = (): void => dispatchSignal(130);
+  const onSigterm = (): void => dispatchSignal(143);
+  process.once('SIGINT', onSigint);
+  process.once('SIGTERM', onSigterm);
+
+  const controller = createLifecycleController(
+    createRuntimeDependencies(root, startupAbort.signal),
+  );
   const started = await controller.start({
     runId,
     scenarioId: 'retained-harness',
@@ -135,22 +150,63 @@ async function supervise(
     collisionRetries: 16,
   });
   if (started.ownedRun === undefined) {
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
     process.stderr.write(
       `HARNESS_START_FAILED: exit=${started.outcome.exitCode} prerequisite=${started.outcome.prerequisite ?? 'runtime'} recovery=${started.outcome.recoveryIdentifiers.join(',') || 'none'}\n`,
     );
-    return started.outcome.exitCode;
+    return requestedSignal !== undefined && started.outcome.exitCode !== 60
+      ? requestedSignal
+      : started.outcome.exitCode;
   }
 
   let ownedRun: OwnedRun = started.ownedRun;
-  const socketPath = resolve('/tmp', `porta-assurance-${runId}.sock`);
+  const socketDirectory = lifecycleSocketDirectory(runId);
+  mkdirSync(socketDirectory, { recursive: true, mode: 0o700 });
+  chmodSync(socketDirectory, 0o700);
+  const socketPath = lifecycleSocketPath(runId);
   rmSync(socketPath, { force: true });
   let stopping = false;
+  let operationQueue: Promise<void> = Promise.resolve();
+  let stopOperation: Promise<LifecycleOutcome> | undefined;
   let resolveStopped: (exitCode: LifecycleExitCode) => void = () => undefined;
   const stopped = new Promise<LifecycleExitCode>((resolveStop) => {
     resolveStopped = resolveStop;
   });
   // The client half-closes after sending its bounded request. Keep the writable side open until
   // the asynchronous lifecycle operation has returned its stable outcome.
+  const scheduleControl = async (
+    rawRequest: string,
+  ): Promise<Awaited<ReturnType<typeof handleControlRequest>>> => {
+    let action: ControlAction;
+    try {
+      action = z.enum(['prepare', 'reset', 'stop']).parse(JSON.parse(rawRequest));
+    } catch {
+      return { outcome: setupFailureOutcome(), shouldStop: false };
+    }
+    if (action !== 'stop' && stopping) {
+      return { outcome: setupFailureOutcome(), shouldStop: false };
+    }
+    if (action === 'stop') {
+      stopping = true;
+      stopOperation ??= operationQueue.then(() => controller.stop(ownedRun));
+      const result = stopOperation.then((outcome) => ({ outcome, shouldStop: true }));
+      operationQueue = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    }
+    const operation = operationQueue.then(() =>
+      handleControlRequest(JSON.stringify(action), controller, ownedRun),
+    );
+    operationQueue = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  };
+
   const server = createServer({ allowHalfOpen: true }, (socket) => {
     let request = '';
     socket.setEncoding('utf8');
@@ -159,12 +215,11 @@ async function supervise(
       if (Buffer.byteLength(request, 'utf8') > maximumControlBytes) socket.destroy();
     });
     socket.on('end', () => {
-      void handleControlRequest(request, controller, ownedRun)
+      void scheduleControl(request)
         .then((result) => {
           if (result.ownedRun !== undefined) ownedRun = result.ownedRun;
           socket.end(`${JSON.stringify(result.outcome)}\n`);
-          if (result.shouldStop && !stopping) {
-            stopping = true;
+          if (result.shouldStop) {
             server.close(() => resolveStopped(result.outcome.exitCode));
           }
         })
@@ -173,6 +228,7 @@ async function supervise(
   });
   server.listen(socketPath);
   await onceListening(server);
+  chmodSync(socketPath, 0o600);
   writeActiveRun(root, {
     runId,
     worktreePath: root,
@@ -184,7 +240,8 @@ async function supervise(
   const stopFromSignal = (exitCode: 130 | 143): void => {
     if (stopping) return;
     stopping = true;
-    void controller.stop(ownedRun).then((outcome) => {
+    stopOperation ??= operationQueue.then(() => controller.stop(ownedRun));
+    void stopOperation.then((outcome) => {
       server.close(() => resolveSignalStop(outcome.exitCode === 0 ? exitCode : 60));
     });
   };
@@ -192,13 +249,26 @@ async function supervise(
   const signalStop = new Promise<LifecycleExitCode>((resolveStop) => {
     resolveSignalStop = resolveStop;
   });
-  process.once('SIGINT', () => stopFromSignal(130));
-  process.once('SIGTERM', () => stopFromSignal(143));
+  dispatchSignal = stopFromSignal;
+  if (requestedSignal !== undefined) stopFromSignal(requestedSignal);
 
   const exitCode = await Promise.race([stopped, signalStop]);
-  rmSync(activeRunPath(root), { force: true });
+  process.off('SIGINT', onSigint);
+  process.off('SIGTERM', onSigterm);
+  if (exitCode !== 60) rmSync(activeRunPath(root), { force: true });
   rmSync(socketPath, { force: true });
+  if (exitCode !== 60) rmSync(socketDirectory, { recursive: true, force: true });
   return exitCode;
+}
+
+/** Creates the stable fail-closed response used after supervisor shutdown begins. */
+function setupFailureOutcome(): LifecycleOutcome {
+  return {
+    exitCode: 30,
+    classification: 'setup-failure',
+    primaryExitCode: 30,
+    recoveryIdentifiers: [],
+  };
 }
 
 /** Dispatches one bounded socket action through the opaque owned capability. */
@@ -211,7 +281,10 @@ async function handleControlRequest(
   readonly ownedRun?: OwnedRun;
   readonly shouldStop: boolean;
 }> {
-  const action = z.enum(['reset', 'stop']).parse(JSON.parse(rawRequest));
+  const action = z.enum(['prepare', 'reset', 'stop']).parse(JSON.parse(rawRequest));
+  if (action === 'prepare') {
+    return { outcome: await controller.prepare(ownedRun), ownedRun, shouldStop: false };
+  }
   if (action === 'reset') {
     return { outcome: await controller.reset(ownedRun), ownedRun, shouldStop: false };
   }
@@ -222,7 +295,8 @@ async function handleControlRequest(
 /** Sends one exact action to the active supervisor and returns its stable lifecycle exit. */
 async function sendControl(action: ControlAction): Promise<LifecycleExitCode> {
   const root = worktreePath();
-  if (!existsSync(activeRunPath(root))) return action === 'stop' ? 0 : 30;
+  if (!existsSync(activeRunPath(root)))
+    return action === 'stop' ? cleanupStaleRuns(root, true) : 30;
   const active = readActiveRun(root);
   return new Promise((resolveExit, rejectExit) => {
     const socket = createConnection(active.socketPath);
@@ -264,6 +338,24 @@ async function sendControl(action: ControlAction): Promise<LifecycleExitCode> {
       if (!settled) rejectExit(new Error('lifecycle supervisor returned no complete outcome'));
     });
   });
+}
+
+/** Cleans a stale run discovered from the durable lease rather than a caller-supplied resource ID. */
+async function cleanupStaleRuns(root: string, emptyIsSuccess: boolean): Promise<LifecycleExitCode> {
+  const dependencies = createRuntimeDependencies(root);
+  const records = await dependencies.leases.findByWorktree(root);
+  if (records === 'unreadable' || records.length > 1) return 60;
+  const record = records[0];
+  if (record === undefined) return emptyIsSuccess ? 0 : 60;
+  const outcome = await createLifecycleController(dependencies).cleanupStale({
+    runId: record.runId,
+    worktreePath: record.worktreePath,
+  });
+  if (outcome.exitCode === 0) {
+    rmSync(activeRunPath(root), { force: true });
+    rmSync(lifecycleSocketDirectory(record.runId), { recursive: true, force: true });
+  }
+  return outcome.exitCode;
 }
 
 /** Executes the retained SPA/BFF Playwright projects with the active endpoint manifest. */
@@ -342,9 +434,21 @@ async function main(arguments_: readonly string[]): Promise<void> {
   const action = actionSchema.parse(rawAction);
   let exitCode: LifecycleExitCode;
   if (action === 'start') exitCode = await start(options);
+  else if (action === 'prepare')
+    exitCode = options.length === 0 ? await sendControl('prepare') : 30;
   else if (action === 'reset') exitCode = options.length === 0 ? await sendControl('reset') : 30;
-  else if (action === 'stop') exitCode = options.length === 0 ? await sendControl('stop') : 30;
-  else if (action === 'test') exitCode = await runRetainedTests(options);
+  else if (action === 'recover') {
+    exitCode = options.length === 0 ? await cleanupStaleRuns(worktreePath(), false) : 30;
+  } else if (action === 'stop') {
+    if (options.length !== 0) exitCode = 30;
+    else {
+      try {
+        exitCode = await sendControl('stop');
+      } catch {
+        exitCode = await cleanupStaleRuns(worktreePath(), true);
+      }
+    }
+  } else if (action === 'test') exitCode = await runRetainedTests(options);
   else {
     if (options.length !== 4 || options[0] !== '--run-id' || options[2] !== '--base-port') {
       exitCode = 30;

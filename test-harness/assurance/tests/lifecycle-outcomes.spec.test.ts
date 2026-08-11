@@ -32,15 +32,15 @@ for (const failedPrerequisite of startupPrerequisites) {
   });
 }
 
-// Redis reset failure aborts a scenario before behavioral assertions or later reset work begins.
-test('should abort reset immediately when Redis reset fails', async () => {
+// Redis preparation failure aborts a scenario before behavioral assertions or later work begins.
+test('should abort preparation immediately when Redis reset fails', async () => {
   const rig = createLifecycleSpecRig();
   const started = await rig.controller.start(validLifecycleRequest());
   assert.ok(started.ownedRun);
   rig.controls.prerequisiteCalls.length = 0;
   rig.controls.failedPrerequisite = 'redis-reset';
 
-  const outcome = await rig.controller.reset(started.ownedRun);
+  const outcome = await rig.controller.prepare(started.ownedRun);
 
   assert.equal(outcome.exitCode, 30);
   assert.equal(outcome.prerequisite, 'redis-reset');
@@ -48,14 +48,14 @@ test('should abort reset immediately when Redis reset fails', async () => {
 });
 
 // MailHog non-success aborts a scenario before behavioral assertions begin.
-test('should abort reset immediately when MailHog reset is not successful', async () => {
+test('should abort preparation immediately when MailHog reset is not successful', async () => {
   const rig = createLifecycleSpecRig();
   const started = await rig.controller.start(validLifecycleRequest());
   assert.ok(started.ownedRun);
   rig.controls.prerequisiteCalls.length = 0;
   rig.controls.failedPrerequisite = 'mailhog-reset';
 
-  const outcome = await rig.controller.reset(started.ownedRun);
+  const outcome = await rig.controller.prepare(started.ownedRun);
 
   assert.equal(outcome.exitCode, 30);
   assert.equal(outcome.prerequisite, 'mailhog-reset');

@@ -75,11 +75,12 @@ export function createLifecycleSpecRig(
   const leases: LeaseStateAdapter = {
     async tryAcquire(record) {
       const key = Object.values(record.manifest.ports).join(':');
-      if (acquiredBlocks.has(key)) return 'occupied';
+      if (acquiredBlocks.has(key)) return 'block-occupied';
       acquiredBlocks.add(key);
       acquiredRecords.push(record);
       return 'acquired';
     },
+    async releaseIntent(_record) {},
     async read(lookup) {
       if (controls.leaseReadOverride !== undefined) return controls.leaseReadOverride;
       return (
@@ -88,12 +89,21 @@ export function createLifecycleSpecRig(
         ) ?? 'missing'
       );
     },
+    async findByWorktree(worktreePath) {
+      return acquiredRecords.filter((record) => record.worktreePath === worktreePath);
+    },
     async transferOwner(expected, newOwner) {
       const index = acquiredRecords.findIndex((record) => record === expected);
       if (index < 0) return 'mismatch';
       const transferred = Object.freeze({ ...expected, ownerProcess: Object.freeze(newOwner) });
       acquiredRecords[index] = transferred;
       return transferred;
+    },
+    async finalizeResources(expected, discovered) {
+      const index = acquiredRecords.findIndex((record) => record === expected);
+      if (index < 0) return 'mismatch';
+      acquiredRecords[index] = discovered;
+      return discovered;
     },
     async release(record) {
       controls.releasedRecords.push(record);
@@ -114,7 +124,20 @@ export function createLifecycleSpecRig(
   };
 
   const compose: ComposeAdapter = {
-    async inspect(_project: string) {
+    async inspect(project: string) {
+      const provisional = acquiredRecords.find(
+        (record) => record.composeProject === project && record.containerIds.length === 0,
+      );
+      if (provisional !== undefined) {
+        return {
+          presence: 'present',
+          identity: {
+            ...provisional,
+            containerIds: ['a'.repeat(64)],
+            networkIds: ['b'.repeat(64)],
+          },
+        };
+      }
       return controls.composeInspection;
     },
     async start(manifest) {
@@ -145,7 +168,7 @@ export function createLifecycleSpecRig(
 
   const deadlines: DeadlineAdapter = {
     async run(_operation, work) {
-      return work();
+      return work(new AbortController().signal);
     },
   };
 

@@ -77,10 +77,18 @@ export interface ProcessIdentity {
   readonly startedAtFingerprint: string;
 }
 
+/** Host child identity bound to one retained harness role. */
+export interface HostProcessIdentity extends ProcessIdentity {
+  /** Allowlisted child role used for exact cleanup diagnostics. */
+  readonly role: 'spa' | 'bff';
+}
+
 /** Persisted ownership record used to fence cleanup and stale recovery. */
 export interface LeaseRecord {
   /** Validated run identifier. */
   readonly runId: string;
+  /** Internal acquisition identity that separates retries from concurrent same-run starters. */
+  readonly startupIntentId: string;
   /** Process that acquired the lease. */
   readonly ownerProcess: ProcessIdentity;
   /** Canonical owning worktree path. */
@@ -89,6 +97,10 @@ export interface LeaseRecord {
   readonly composeProject: string;
   /** Container identities owned by the run. */
   readonly containerIds: readonly string[];
+  /** Docker network identities owned by the run. */
+  readonly networkIds: readonly string[];
+  /** PID-reuse-resistant host children owned by the run. */
+  readonly hostProcesses: readonly HostProcessIdentity[];
   /** Volume identities owned by the run. */
   readonly volumeNames: readonly string[];
   /** Canonical generated-resource paths owned by the run. */
@@ -179,15 +191,24 @@ export interface LifecycleRecoveryResult extends LifecycleOutcome {
 /** Atomically persisted lease-state operations. */
 export interface LeaseStateAdapter {
   /** Atomically acquires the complete candidate block or reports a collision. */
-  tryAcquire(record: LeaseRecord): Promise<'acquired' | 'occupied'>;
+  tryAcquire(record: LeaseRecord): Promise<'acquired' | 'worktree-occupied' | 'block-occupied'>;
+  /** Releases an exact startup intent after bounded block selection acquired no lease. */
+  releaseIntent(record: LeaseRecord): Promise<void>;
   /** Reads a persisted lease without interpreting malformed data as absence. */
   read(
     lookup: LifecycleRecoveryLookup,
   ): Promise<LeaseRecord | 'missing' | 'malformed' | 'incomplete'>;
+  /** Lists validated leases for one canonical worktree or reports unsafe unreadable state. */
+  findByWorktree(worktreePath: string): Promise<readonly LeaseRecord[] | 'unreadable'>;
   /** Atomically transfers only process ownership when the complete prior record still matches. */
   transferOwner(
     expected: LeaseRecord,
     newOwner: ProcessIdentity,
+  ): Promise<LeaseRecord | 'mismatch'>;
+  /** Replaces provisional resource fields with exact post-start Docker identities. */
+  finalizeResources(
+    expected: LeaseRecord,
+    discovered: LeaseRecord,
   ): Promise<LeaseRecord | 'mismatch'>;
   /** Releases exactly the supplied, identity-matched lease. */
   release(record: LeaseRecord): Promise<void>;
@@ -216,7 +237,7 @@ export interface ComposeAdapter {
   /** Inspects a project and its identity labels without mutation. */
   inspect(project: string): Promise<ComposeInspection>;
   /** Starts a stack from the supplied immutable manifest. */
-  start(manifest: EndpointManifest): Promise<void>;
+  start(manifest: EndpointManifest, signal?: AbortSignal): Promise<void>;
   /** Removes only the resources whose observed identity matches the lease. */
   stop(record: LeaseRecord): Promise<void>;
 }
@@ -254,33 +275,33 @@ export interface ManifestConsumerAdapter {
 /** Public prerequisite checks whose failures must abort dependent assertions. */
 export interface PrerequisiteAdapter {
   /** Executes one named prerequisite against the immutable manifest. */
-  run(name: PrerequisiteName, manifest: EndpointManifest): Promise<void>;
+  run(name: PrerequisiteName, manifest: EndpointManifest, signal?: AbortSignal): Promise<void>;
 }
 
 /** Deadline boundary that classifies bounded work without hiding cleanup. */
 export interface DeadlineAdapter {
   /** Runs one operation within its named deadline and rejects on expiration. */
-  run<T>(operation: string, work: () => Promise<T>): Promise<T>;
+  run<T>(operation: string, work: (signal: AbortSignal) => Promise<T>): Promise<T>;
 }
 
 /** Traffic-admission boundary that keeps tests away from a mutating stack. */
 export interface TrafficAdmissionAdapter {
   /** Blocks new test traffic and waits for admitted work to quiesce. */
-  quiesce(record: LeaseRecord): Promise<void>;
+  quiesce(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Confirms no test traffic was admitted while reset was in progress. */
-  verifyBlocked(record: LeaseRecord): Promise<void>;
+  verifyBlocked(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Reopens test traffic only after poison is cleared following final verification. */
-  resume(record: LeaseRecord): Promise<void>;
+  resume(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
 }
 
 /** Porta and client runtime operations used during an ordered reset. */
 export interface ResetRuntimeAdapter {
   /** Stops Porta before any backing store is changed. */
-  stopPorta(record: LeaseRecord): Promise<void>;
+  stopPorta(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Restarts harness clients after backing stores and fixtures are ready. */
-  restartClients(record: LeaseRecord): Promise<void>;
+  restartClients(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Restarts Porta only after backing stores and fixtures are ready. */
-  restartPorta(record: LeaseRecord): Promise<void>;
+  restartPorta(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
 }
 
 /** Durable states that fence interrupted or failed resets. */
@@ -289,11 +310,11 @@ export type DurableResetState = 'ready' | 'resetting-poisoned';
 /** Durable poison state used to prevent unsafe in-place retry. */
 export interface ResetStateAdapter {
   /** Persists a state transition for the exact owned run. */
-  persist(record: LeaseRecord, state: DurableResetState): Promise<void>;
+  persist(record: LeaseRecord, state: DurableResetState, signal?: AbortSignal): Promise<void>;
   /** Flushes the state transition before destructive work may begin. */
-  flush(record: LeaseRecord): Promise<void>;
+  flush(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Reads the durable state for admission and recovery decisions. */
-  read(record: LeaseRecord): Promise<DurableResetState | 'unreadable'>;
+  read(record: LeaseRecord, signal?: AbortSignal): Promise<DurableResetState | 'unreadable'>;
 }
 
 /** Expected database and fixture identity supplied independently of production logic. */
@@ -323,33 +344,33 @@ export interface ResetDatabaseObservation {
 /** PostgreSQL recreation, exact migration, bootstrap, seed, and verification boundary. */
 export interface ResetDatabaseAdapter {
   /** Drops and recreates the harness-owned database. */
-  recreate(record: LeaseRecord): Promise<readonly string[]>;
+  recreate(record: LeaseRecord, signal?: AbortSignal): Promise<readonly string[]>;
   /** Applies exactly the supplied migration revision. */
-  migrate(record: LeaseRecord, revision: string): Promise<void>;
+  migrate(record: LeaseRecord, revision: string, signal?: AbortSignal): Promise<void>;
   /** Installs bootstrap records required by deterministic fixtures. */
-  bootstrap(record: LeaseRecord): Promise<void>;
+  bootstrap(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Installs deterministic synthetic fixture data. */
-  seed(record: LeaseRecord, expectations: ResetExpectations): Promise<void>;
+  seed(record: LeaseRecord, expectations: ResetExpectations, signal?: AbortSignal): Promise<void>;
   /** Reads migration and fixture identity without deriving the expected values. */
-  observe(record: LeaseRecord): Promise<ResetDatabaseObservation>;
+  observe(record: LeaseRecord, signal?: AbortSignal): Promise<ResetDatabaseObservation>;
 }
 
 /** Harness-dedicated Redis reset boundary. */
 export interface ResetRedisAdapter {
   /** Flushes only the Redis allocation owned by the harness run. */
-  flush(record: LeaseRecord): Promise<number>;
+  flush(record: LeaseRecord, signal?: AbortSignal): Promise<number>;
 }
 
 /** MailHog reset boundary. */
 export interface ResetMailAdapter {
   /** Removes all messages from the harness-owned MailHog allocation. */
-  clear(record: LeaseRecord): Promise<number>;
+  clear(record: LeaseRecord, signal?: AbortSignal): Promise<number>;
 }
 
 /** Public checks that gate reuse of a reset stack. */
 export interface ResetPublicVerificationAdapter {
   /** Verifies public health and reset postconditions using the immutable endpoint manifest. */
-  verify(record: LeaseRecord): Promise<void>;
+  verify(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
 }
 
 /** Capability bundle required only when the controller performs reset or poisoned recovery. */
@@ -412,12 +433,16 @@ export interface LifecycleDependencies {
 export interface LifecycleController {
   /** Validates input, acquires a complete block, and creates an ephemeral stack. */
   start(request: LifecycleStartRequest): Promise<LifecycleStartResult>;
+  /** Clears only transient Redis and MailHog prerequisites without claiming a complete reset. */
+  prepare(ownedRun: OwnedRun): Promise<LifecycleResetOutcome>;
   /** Resets mutable services before a dependent scenario executes. */
   reset(ownedRun: OwnedRun): Promise<LifecycleResetOutcome>;
   /** Cleans exactly the resources still owned by the supplied capability. */
   stop(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
   /** Reclaims persisted ownership only after lookup validation and two independent absence proofs. */
   recover(lookup: LifecycleRecoveryLookup): Promise<LifecycleRecoveryResult>;
+  /** Cleans a stale ready stack after dead-owner proof and exact resource inspection. */
+  cleanupStale(lookup: LifecycleRecoveryLookup): Promise<LifecycleOutcome>;
 }
 
 /** Creates a lifecycle controller from explicit capability adapters. */

@@ -1,4 +1,5 @@
-import { dirname, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 
 import {
   ownedRunBrand,
@@ -21,9 +22,32 @@ import {
 } from './lifecycle-planned.js';
 import {
   createEndpointManifest,
+  lifecycleSocketPath,
   validateRecoveryLookup,
   validateStartRequest,
 } from './lifecycle-validation.js';
+import {
+  cleanupFailure,
+  emptyResetReport,
+  ensureStartupActive,
+  freezeResetReport,
+  interruptionOutcome,
+  isLeaseRecord,
+  lifecyclePart,
+  lookupFor,
+  mutableResetReport,
+  outcome,
+  postMutationSteps,
+  prerequisiteForResetStep,
+  recoveryFailure,
+  resetFailureOutcome,
+  resourceDiscoveryCanAdvance,
+  safeIds,
+  sameLeaseAuthority,
+  sameLeaseRecord,
+  verificationMismatch,
+  type ResetStepName,
+} from './lifecycle-controller-support.js';
 
 const startupPrerequisites = [
   'health',
@@ -31,9 +55,6 @@ const startupPrerequisites = [
   'seed',
   'fixture-verification',
 ] as const satisfies readonly PrerequisiteName[];
-
-/** Stable endpoint order used for complete manifest comparisons. */
-const endpointNames = ['porta', 'app', 'bff', 'postgres', 'redis', 'mailhog'] as const;
 
 /** Implements lifecycle policy while delegating every external effect to explicit capabilities. */
 export class LifecycleControllerImplementation implements LifecycleController {
@@ -45,17 +66,36 @@ export class LifecycleControllerImplementation implements LifecycleController {
    */
   protected readonly ownedRecords = new WeakMap<OwnedRun, LeaseRecord>();
 
+  /** Per-capability operation tails that prevent reset and cleanup from overlapping. */
+  protected readonly operationQueues = new WeakMap<OwnedRun, Promise<void>>();
+
   /** Creates a controller with one complete set of lifecycle capabilities. */
   public constructor(protected readonly dependencies: LifecycleDependencies) {}
 
   /** Validates input, leases a complete endpoint block, and starts one owned stack. */
   public async start(request: LifecycleStartRequest): Promise<LifecycleStartResult> {
     try {
+      return await this.dependencies.deadlines.run('startup', (signal) =>
+        this.startWithinDeadline(request, signal),
+      );
+    } catch (error) {
+      return { outcome: interruptionOutcome(error) };
+    }
+  }
+
+  /** Performs startup inside the configured aborting deadline boundary. */
+  protected async startWithinDeadline(
+    request: LifecycleStartRequest,
+    signal: AbortSignal,
+  ): Promise<LifecycleStartResult> {
+    try {
       validateStartRequest(request);
     } catch {
       return { outcome: outcome(30) };
     }
 
+    const startupIntentId = randomUUID();
+    let unleasedIntent: LeaseRecord | undefined;
     for (let attempt = 0; attempt <= request.collisionRetries; attempt += 1) {
       let manifest: EndpointManifest;
       try {
@@ -65,21 +105,44 @@ export class LifecycleControllerImplementation implements LifecycleController {
       }
       if ((await this.dependencies.endpoints.occupiedEndpoints(manifest)).length > 0) continue;
 
-      const record = await this.createLeaseRecord(manifest);
-      if ((await this.dependencies.leases.tryAcquire(record)) === 'occupied') continue;
-      return this.startAcquiredRecord(record);
+      const record = await this.createLeaseRecord(manifest, startupIntentId);
+      const acquisition = await this.dependencies.leases.tryAcquire(record);
+      if (acquisition === 'worktree-occupied') return { outcome: outcome(30) };
+      if (acquisition === 'block-occupied') {
+        unleasedIntent = record;
+        continue;
+      }
+      return this.startAcquiredRecord(record, signal);
+    }
+    if (unleasedIntent !== undefined) {
+      try {
+        await this.dependencies.leases.releaseIntent(unleasedIntent);
+      } catch {
+        return { outcome: cleanupFailure(unleasedIntent) };
+      }
     }
     return { outcome: outcome(30) };
   }
 
   /** Resets every mutable dependency in one quiesced, durably poisoned transaction boundary. */
   public async reset(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
+    return this.serialize(ownedRun, () => this.resetOwned(ownedRun));
+  }
+
+  /** Executes one reset after all earlier operations on the capability have completed. */
+  protected async resetOwned(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
     const record = this.ownedRecords.get(ownedRun);
     const reset = this.dependencies.reset;
     if (record === undefined) {
       return { ...outcome(30), report: emptyResetReport(ownedRun.manifest.runId) };
     }
-    if (reset === undefined) return this.executePrerequisiteReset(record);
+    if (reset === undefined) {
+      return {
+        ...outcome(30),
+        prerequisite: 'fixture-verification',
+        report: emptyResetReport(record.runId),
+      };
+    }
     const state = await reset.state.read(record);
     if (state !== 'ready') {
       return { ...outcome(60), report: emptyResetReport(record.runId) };
@@ -87,8 +150,27 @@ export class LifecycleControllerImplementation implements LifecycleController {
     return this.executeReset(record, reset);
   }
 
+  /** Clears only transient harness dependencies without claiming database reset evidence. */
+  public async prepare(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
+    return this.serialize(ownedRun, () => this.prepareOwned(ownedRun));
+  }
+
+  /** Executes narrow preparation after all earlier operations on the capability have completed. */
+  protected async prepareOwned(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
+    const record = this.ownedRecords.get(ownedRun);
+    if (record === undefined) {
+      return { ...outcome(30), report: emptyResetReport(ownedRun.manifest.runId) };
+    }
+    return this.executePrerequisiteReset(record);
+  }
+
   /** Stops and releases only the exact lease represented by a controller-issued capability. */
   public async stop(ownedRun: OwnedRun): Promise<LifecycleOutcome> {
+    return this.serialize(ownedRun, () => this.stopOwned(ownedRun));
+  }
+
+  /** Executes cleanup only after every earlier operation on the capability has completed. */
+  protected async stopOwned(ownedRun: OwnedRun): Promise<LifecycleOutcome> {
     const expectedRecord = this.ownedRecords.get(ownedRun);
     if (expectedRecord === undefined) return outcome(60);
 
@@ -143,8 +225,53 @@ export class LifecycleControllerImplementation implements LifecycleController {
     }
   }
 
+  /** Adopts and removes a stale ready stack only after exact dead-owner/resource proof. */
+  public async cleanupStale(lookup: LifecycleRecoveryLookup): Promise<LifecycleOutcome> {
+    try {
+      validateRecoveryLookup(lookup);
+    } catch {
+      return outcome(60);
+    }
+    const persisted = await this.dependencies.leases.read(lookup);
+    if (!isLeaseRecord(persisted)) return outcome(60);
+    try {
+      if ((await this.dependencies.processes.presence(persisted.ownerProcess)) !== 'absent') {
+        return cleanupFailure(persisted);
+      }
+      const inspection = await this.dependencies.compose.inspect(persisted.composeProject);
+      if (inspection.presence === 'unreadable') return cleanupFailure(persisted);
+      let recoverable = persisted;
+      if (inspection.presence === 'present') {
+        if (inspection.identity === undefined) return cleanupFailure(persisted);
+        if (!sameLeaseRecord(inspection.identity, recoverable)) {
+          if (!resourceDiscoveryCanAdvance(recoverable, inspection.identity)) {
+            return cleanupFailure(persisted);
+          }
+          const finalized = await this.dependencies.leases.finalizeResources(
+            recoverable,
+            inspection.identity,
+          );
+          if (finalized === 'mismatch') return cleanupFailure(persisted);
+          recoverable = finalized;
+        }
+      }
+      const transferred = await this.dependencies.leases.transferOwner(
+        recoverable,
+        await this.dependencies.processes.currentIdentity(),
+      );
+      if (transferred === 'mismatch') return cleanupFailure(persisted);
+      const ownedRun = this.createOwnedRun(transferred);
+      return this.stopOwned(ownedRun);
+    } catch {
+      return cleanupFailure(persisted);
+    }
+  }
+
   /** Creates the persisted identity used to fence every later lifecycle operation. */
-  protected async createLeaseRecord(manifest: EndpointManifest): Promise<LeaseRecord> {
+  protected async createLeaseRecord(
+    manifest: EndpointManifest,
+    startupIntentId: string,
+  ): Promise<LeaseRecord> {
     const runtimeDirectory = resolve(
       manifest.worktreePath,
       'test-harness/.assurance-runtime',
@@ -152,19 +279,18 @@ export class LifecycleControllerImplementation implements LifecycleController {
     );
     return Object.freeze({
       runId: manifest.runId,
+      startupIntentId,
       ownerProcess: Object.freeze(await this.dependencies.processes.currentIdentity()),
       worktreePath: manifest.worktreePath,
       composeProject: manifest.composeProject,
-      containerIds: Object.freeze(
-        ['nginx', 'porta', 'postgres', 'redis', 'mailhog'].map(
-          (service) => `${manifest.composeProject}-${service}-1`,
-        ),
-      ),
-      volumeNames: Object.freeze([`bind:${dirname(manifest.certificatePath)}`]),
+      containerIds: Object.freeze([]),
+      networkIds: Object.freeze([]),
+      hostProcesses: Object.freeze([]),
+      volumeNames: Object.freeze([]),
       ownedPaths: Object.freeze([
         runtimeDirectory,
         resolve(runtimeDirectory, 'endpoint-manifest.json'),
-        resolve('/tmp', `porta-assurance-${manifest.runId}.sock`),
+        lifecycleSocketPath(manifest.runId),
       ]),
       certificatePath: manifest.certificatePath,
       manifest,
@@ -172,7 +298,11 @@ export class LifecycleControllerImplementation implements LifecycleController {
   }
 
   /** Configures every consumer from the same manifest and runs fatal prerequisites in order. */
-  protected async startAcquiredRecord(record: LeaseRecord): Promise<LifecycleStartResult> {
+  protected async startAcquiredRecord(
+    record: LeaseRecord,
+    signal?: AbortSignal,
+  ): Promise<LifecycleStartResult> {
+    let activeRecord = record;
     try {
       const manifest = record.manifest;
       await this.dependencies.composeConfig.apply(manifest);
@@ -183,26 +313,44 @@ export class LifecycleControllerImplementation implements LifecycleController {
       await this.dependencies.playwright.apply(manifest);
       await this.dependencies.health.apply(manifest);
       await this.dependencies.evidence.apply(manifest);
+      ensureStartupActive(signal);
       try {
-        await this.dependencies.prerequisites.run('dns', manifest);
+        await this.dependencies.prerequisites.run('dns', manifest, signal);
       } catch {
         return this.abortAcquiredStart(record, 'dns');
       }
-      await this.dependencies.compose.start(manifest);
+      await this.dependencies.compose.start(manifest, signal);
+      ensureStartupActive(signal);
+      const inspection = await this.dependencies.compose.inspect(record.composeProject);
+      if (inspection.presence !== 'present' || inspection.identity === undefined) {
+        return this.abortAcquiredStart(activeRecord);
+      }
+      const finalized = await this.dependencies.leases.finalizeResources(
+        activeRecord,
+        inspection.identity,
+      );
+      if (finalized === 'mismatch') return this.abortAcquiredStart(activeRecord);
+      activeRecord = finalized;
       for (const prerequisite of startupPrerequisites) {
         try {
-          await this.dependencies.prerequisites.run(prerequisite, manifest);
+          await this.dependencies.prerequisites.run(prerequisite, manifest, signal);
         } catch {
-          return this.abortAcquiredStart(record, prerequisite);
+          return this.abortAcquiredStart(activeRecord, prerequisite);
         }
+        ensureStartupActive(signal);
       }
+      const persisted = await this.dependencies.leases.read(lookupFor(activeRecord));
+      if (!isLeaseRecord(persisted) || !sameLeaseAuthority(activeRecord, persisted)) {
+        return this.abortAcquiredStart(activeRecord);
+      }
+      activeRecord = persisted;
       if (this.dependencies.reset !== undefined) {
-        await this.dependencies.reset.state.persist(record, 'ready');
-        await this.dependencies.reset.state.flush(record);
+        await this.dependencies.reset.state.persist(activeRecord, 'ready');
+        await this.dependencies.reset.state.flush(activeRecord);
       }
-      return { outcome: outcome(0), ownedRun: this.createOwnedRun(record) };
+      return { outcome: outcome(0), ownedRun: this.createOwnedRun(activeRecord) };
     } catch {
-      return this.abortAcquiredStart(record);
+      return this.abortAcquiredStart(activeRecord);
     }
   }
 
@@ -211,11 +359,14 @@ export class LifecycleControllerImplementation implements LifecycleController {
     record: LeaseRecord,
     prerequisite?: PrerequisiteName,
   ): Promise<LifecycleStartResult> {
-    if (await this.cleanupOwnedRecord(record)) {
+    const persisted = await this.dependencies.leases.read(lookupFor(record));
+    const cleanupRecord =
+      isLeaseRecord(persisted) && sameLeaseAuthority(record, persisted) ? persisted : record;
+    if (await this.cleanupOwnedRecord(cleanupRecord)) {
       return { outcome: { ...outcome(30), prerequisite } };
     }
     return {
-      outcome: { ...outcome(60, 30), prerequisite, recoveryIdentifiers: safeIds(record) },
+      outcome: { ...outcome(60, 30), prerequisite, recoveryIdentifiers: safeIds(cleanupRecord) },
     };
   }
 
@@ -229,16 +380,28 @@ export class LifecycleControllerImplementation implements LifecycleController {
     try {
       const persisted = await this.dependencies.leases.read(lookupFor(record));
       if (!isLeaseRecord(persisted) || !sameLeaseRecord(persisted, record)) return false;
+      let cleanupRecord = persisted;
       const inspection = await this.dependencies.compose.inspect(record.composeProject);
       if (inspection.presence === 'unreadable') return false;
-      if (
-        inspection.presence === 'present' &&
-        (inspection.identity === undefined || !sameLeaseRecord(inspection.identity, record))
-      ) {
-        return false;
+      if (inspection.presence === 'present') {
+        if (
+          inspection.identity === undefined ||
+          !sameLeaseAuthority(inspection.identity, cleanupRecord)
+        ) {
+          return false;
+        }
+        if (!sameLeaseRecord(inspection.identity, cleanupRecord)) {
+          if (!resourceDiscoveryCanAdvance(cleanupRecord, inspection.identity)) return false;
+          const finalized = await this.dependencies.leases.finalizeResources(
+            cleanupRecord,
+            inspection.identity,
+          );
+          if (finalized === 'mismatch') return false;
+          cleanupRecord = finalized;
+        }
       }
-      await this.dependencies.compose.stop(record);
-      await this.dependencies.leases.release(record);
+      await this.dependencies.compose.stop(cleanupRecord);
+      await this.dependencies.leases.release(cleanupRecord);
       return true;
     } catch {
       return false;
@@ -254,40 +417,48 @@ export class LifecycleControllerImplementation implements LifecycleController {
     let currentStep: ResetStepName = 'quiesce';
 
     try {
-      await this.runResetStep(currentStep, () => reset.traffic.quiesce(record));
+      await this.runResetStep(currentStep, (signal) => reset.traffic.quiesce(record, signal));
       currentStep = 'stop-porta';
-      await this.runResetStep(currentStep, () => reset.runtime.stopPorta(record));
+      await this.runResetStep(currentStep, (signal) => reset.runtime.stopPorta(record, signal));
       currentStep = 'persist-poison';
-      await this.runResetStep(currentStep, () => reset.state.persist(record, 'resetting-poisoned'));
+      await this.runResetStep(currentStep, (signal) =>
+        reset.state.persist(record, 'resetting-poisoned', signal),
+      );
       currentStep = 'flush-poison';
-      await this.runResetStep(currentStep, () => reset.state.flush(record));
+      await this.runResetStep(currentStep, (signal) => reset.state.flush(record, signal));
       currentStep = 'db-recreate';
       report.identifiers.push(
-        ...(await this.runResetStep(currentStep, () => reset.database.recreate(record))),
+        ...(await this.runResetStep(currentStep, (signal) =>
+          reset.database.recreate(record, signal),
+        )),
       );
       currentStep = 'migration';
-      await this.runResetStep(currentStep, () =>
-        reset.database.migrate(record, reset.expectations.migrationRevision),
+      await this.runResetStep(currentStep, (signal) =>
+        reset.database.migrate(record, reset.expectations.migrationRevision, signal),
       );
       currentStep = 'bootstrap';
-      await this.runResetStep(currentStep, () => reset.database.bootstrap(record));
+      await this.runResetStep(currentStep, (signal) => reset.database.bootstrap(record, signal));
       currentStep = 'seed';
-      await this.runResetStep(currentStep, () => reset.database.seed(record, reset.expectations));
+      await this.runResetStep(currentStep, (signal) =>
+        reset.database.seed(record, reset.expectations, signal),
+      );
       currentStep = 'redis';
-      report.redisKeysRemoved = await this.runResetStep(currentStep, () =>
-        reset.redis.flush(record),
+      report.redisKeysRemoved = await this.runResetStep(currentStep, (signal) =>
+        reset.redis.flush(record, signal),
       );
       currentStep = 'mailhog';
-      report.mailMessagesRemoved = await this.runResetStep(currentStep, () =>
-        reset.mail.clear(record),
+      report.mailMessagesRemoved = await this.runResetStep(currentStep, (signal) =>
+        reset.mail.clear(record, signal),
       );
       currentStep = 'restart-clients';
-      await this.runResetStep(currentStep, () => reset.runtime.restartClients(record));
+      await this.runResetStep(currentStep, (signal) =>
+        reset.runtime.restartClients(record, signal),
+      );
       currentStep = 'restart-porta';
-      await this.runResetStep(currentStep, () => reset.runtime.restartPorta(record));
+      await this.runResetStep(currentStep, (signal) => reset.runtime.restartPorta(record, signal));
       currentStep = 'digest-count-checks';
-      const observation = await this.runResetStep(currentStep, () =>
-        reset.database.observe(record),
+      const observation = await this.runResetStep(currentStep, (signal) =>
+        reset.database.observe(record, signal),
       );
       report.migrationDigest = observation.migrationDigest;
       report.fixtureDigest = observation.fixtureDigest;
@@ -297,15 +468,19 @@ export class LifecycleControllerImplementation implements LifecycleController {
         return { ...outcome(30), prerequisite: mismatch, report: freezeResetReport(report) };
       }
       currentStep = 'public-health';
-      await this.runResetStep(currentStep, () => reset.publicVerification.verify(record));
+      await this.runResetStep(currentStep, (signal) =>
+        reset.publicVerification.verify(record, signal),
+      );
       currentStep = 'verify-traffic-blocked';
-      await this.runResetStep(currentStep, () => reset.traffic.verifyBlocked(record));
+      await this.runResetStep(currentStep, (signal) => reset.traffic.verifyBlocked(record, signal));
       currentStep = 'clear-poison';
-      await this.runResetStep(currentStep, () => reset.state.persist(record, 'ready'));
+      await this.runResetStep(currentStep, (signal) =>
+        reset.state.persist(record, 'ready', signal),
+      );
       currentStep = 'flush-ready';
-      await this.runResetStep(currentStep, () => reset.state.flush(record));
+      await this.runResetStep(currentStep, (signal) => reset.state.flush(record, signal));
       currentStep = 'resume-traffic';
-      await this.runResetStep(currentStep, () => reset.traffic.resume(record));
+      await this.runResetStep(currentStep, (signal) => reset.traffic.resume(record, signal));
       return { ...outcome(0), report: freezeResetReport(report) };
     } catch (error) {
       if (!(await this.restorePoisonAfterFailure(record, reset, currentStep))) {
@@ -361,7 +536,10 @@ export class LifecycleControllerImplementation implements LifecycleController {
   }
 
   /** Applies the configured deadline to one named reset capability boundary. */
-  protected runResetStep<T>(step: ResetStepName, work: () => Promise<T>): Promise<T> {
+  protected runResetStep<T>(
+    step: ResetStepName,
+    work: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
     return this.dependencies.deadlines.run(`reset:${step}`, work);
   }
 
@@ -415,267 +593,21 @@ export class LifecycleControllerImplementation implements LifecycleController {
     this.ownedRecords.set(ownedRun, record);
     return ownedRun;
   }
-}
 
-/** Internal reset step names retained only while translating failures to stable outcomes. */
-type ResetStepName =
-  | 'quiesce'
-  | 'stop-porta'
-  | 'persist-poison'
-  | 'flush-poison'
-  | 'db-recreate'
-  | 'migration'
-  | 'bootstrap'
-  | 'seed'
-  | 'redis'
-  | 'mailhog'
-  | 'restart-clients'
-  | 'restart-porta'
-  | 'digest-count-checks'
-  | 'public-health'
-  | 'verify-traffic-blocked'
-  | 'clear-poison'
-  | 'flush-ready'
-  | 'resume-traffic';
-
-/** Steps at or after the first durable mutation, including all reuse-finalization boundaries. */
-const postMutationSteps = new Set<ResetStepName>([
-  'db-recreate',
-  'migration',
-  'bootstrap',
-  'seed',
-  'redis',
-  'mailhog',
-  'restart-clients',
-  'restart-porta',
-  'digest-count-checks',
-  'public-health',
-  'verify-traffic-blocked',
-  'clear-poison',
-  'flush-ready',
-  'resume-traffic',
-]);
-
-/** Mutable private report shape used while the ordered reset gathers non-secret facts. */
-interface MutableResetReport {
-  runId: string;
-  migrationRevision: string;
-  migrationDigest?: string;
-  fixtureDigest?: string;
-  fixtureCounts: Readonly<Record<string, number>>;
-  redisKeysRemoved: number;
-  mailMessagesRemoved: number;
-  identifiers: string[];
-}
-
-/** Creates a report using independent expectations rather than observed production values. */
-function mutableResetReport(record: LeaseRecord, reset: ResetDependencies): MutableResetReport {
-  return {
-    runId: record.runId,
-    migrationRevision: reset.expectations.migrationRevision,
-    fixtureCounts: Object.freeze({}),
-    redisKeysRemoved: 0,
-    mailMessagesRemoved: 0,
-    identifiers: [],
-  };
-}
-
-/** Converts accumulated reset facts into immutable public evidence. */
-function freezeResetReport(report: MutableResetReport): ResetReport {
-  return Object.freeze({
-    ...report,
-    fixtureCounts: Object.freeze({ ...report.fixtureCounts }),
-    identifiers: Object.freeze([...report.identifiers]),
-  });
-}
-
-/** Returns the exact verification prerequisite violated by an observation, when any. */
-function verificationMismatch(
-  observation: Awaited<ReturnType<ResetDependencies['database']['observe']>>,
-  reset: ResetDependencies,
-): PrerequisiteName | undefined {
-  if (
-    observation.migrationRevision !== reset.expectations.migrationRevision ||
-    observation.migrationDigest !== reset.expectations.migrationDigest
-  ) {
-    return 'migration';
+  /** Runs one capability operation after its predecessor and keeps rejection from breaking the tail. */
+  protected serialize<T>(ownedRun: OwnedRun, operation: () => Promise<T>): Promise<T> {
+    const predecessor = this.operationQueues.get(ownedRun) ?? Promise.resolve();
+    const current = predecessor.then(operation, operation);
+    const tail = current.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.operationQueues.set(ownedRun, tail);
+    void tail.finally(() => {
+      if (this.operationQueues.get(ownedRun) === tail) this.operationQueues.delete(ownedRun);
+    });
+    return current;
   }
-  if (
-    observation.fixtureDigest !== reset.expectations.fixtureDigest ||
-    !sameCounts(observation.fixtureCounts, reset.expectations.fixtureCounts)
-  ) {
-    return 'fixture-verification';
-  }
-  return undefined;
 }
 
-/** Compares exact synthetic entity counts without accepting missing or extra entities. */
-function sameCounts(
-  observed: Readonly<Record<string, number>>,
-  expected: Readonly<Record<string, number>>,
-): boolean {
-  const observedNames = Object.keys(observed).sort();
-  const expectedNames = Object.keys(expected).sort();
-  return (
-    sameStrings(observedNames, expectedNames) &&
-    expectedNames.every((name) => observed[name] === expected[name])
-  );
-}
-
-/** Maps a reset interruption to the stable lifecycle taxonomy without retaining its message. */
-function resetFailureOutcome(error: unknown, step: ResetStepName): LifecycleOutcome {
-  const kind = interruptionKind(error);
-  if ((step === 'persist-poison' || step === 'flush-poison') && kind === 'failure') {
-    return outcome(60);
-  }
-  if (kind === 'SIGINT') return outcome(130);
-  if (kind === 'SIGTERM') return outcome(143);
-  if (kind === 'cancellation' || kind === 'timeout') return outcome(70);
-  if (kind === 'unknown') return outcome(60);
-  return outcome(30);
-}
-
-/** Reads only the allowlisted interruption discriminator from an unknown adapter error. */
-function interruptionKind(
-  error: unknown,
-): 'failure' | 'SIGINT' | 'SIGTERM' | 'cancellation' | 'timeout' | 'unknown' {
-  if (!(error instanceof Error) || !('kind' in error)) return 'failure';
-  const kind = error.kind;
-  if (
-    kind === 'SIGINT' ||
-    kind === 'SIGTERM' ||
-    kind === 'cancellation' ||
-    kind === 'timeout' ||
-    kind === 'unknown'
-  ) {
-    return kind;
-  }
-  return 'failure';
-}
-
-/** Names the prerequisite whose boundary failed, when the contract defines one. */
-function prerequisiteForResetStep(step: ResetStepName): PrerequisiteName | undefined {
-  if (step === 'migration') return 'migration';
-  if (step === 'seed') return 'seed';
-  if (step === 'redis') return 'redis-reset';
-  if (step === 'mailhog') return 'mailhog-reset';
-  if (step === 'public-health') return 'health';
-  return undefined;
-}
-
-/** Removes reset-only evidence fields when recovery returns the common lifecycle result. */
-function lifecyclePart(resetOutcome: LifecycleResetOutcome): LifecycleOutcome {
-  return {
-    exitCode: resetOutcome.exitCode,
-    classification: resetOutcome.classification,
-    primaryExitCode: resetOutcome.primaryExitCode,
-    prerequisite: resetOutcome.prerequisite,
-    recoveryIdentifiers: resetOutcome.recoveryIdentifiers,
-  };
-}
-
-/** Returns a post-takeover failure together with the capability needed for exact cleanup. */
-function recoveryFailure(record: LeaseRecord, ownedRun: OwnedRun): LifecycleRecoveryResult {
-  return { ...cleanupFailure(record), recoveryIdentifiers: safeIds(record), ownedRun };
-}
-
-/** Returns the narrow durable lookup derived only from an already-issued ownership record. */
-function lookupFor(record: LeaseRecord): LifecycleRecoveryLookup {
-  return { runId: record.runId, worktreePath: record.worktreePath };
-}
-
-/** Distinguishes a validated lease value from durable-state sentinel strings. */
-function isLeaseRecord(
-  value: LeaseRecord | 'missing' | 'malformed' | 'incomplete',
-): value is LeaseRecord {
-  return typeof value !== 'string';
-}
-
-/**
- * Compares every ownership dimension before a destructive capability is invoked.
- *
- * The endpoint manifest is included because its ports and paths define the resources that the
- * Compose adapter is allowed to inspect and remove.
- */
-function sameLeaseRecord(left: LeaseRecord, right: LeaseRecord): boolean {
-  return (
-    left.runId === right.runId &&
-    left.ownerProcess.pid === right.ownerProcess.pid &&
-    left.ownerProcess.startedAtFingerprint === right.ownerProcess.startedAtFingerprint &&
-    left.worktreePath === right.worktreePath &&
-    left.composeProject === right.composeProject &&
-    sameStrings(left.containerIds, right.containerIds) &&
-    sameStrings(left.volumeNames, right.volumeNames) &&
-    sameStrings(left.ownedPaths, right.ownedPaths) &&
-    left.certificatePath === right.certificatePath &&
-    sameManifest(left.manifest, right.manifest)
-  );
-}
-
-/** Compares ordered identity lists without accepting missing or additional resources. */
-function sameStrings(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
-/** Compares the complete immutable endpoint identity used by every lifecycle consumer. */
-function sameManifest(left: EndpointManifest, right: EndpointManifest): boolean {
-  return (
-    left.runId === right.runId &&
-    left.scenarioId === right.scenarioId &&
-    left.composeProject === right.composeProject &&
-    left.worktreePath === right.worktreePath &&
-    left.environmentName === right.environmentName &&
-    left.certificatePath === right.certificatePath &&
-    endpointNames.every((name) => left.ports[name] === right.ports[name]) &&
-    endpointNames.every((name) => left.urls[name] === right.urls[name])
-  );
-}
-
-/** Gives incomplete cleanup precedence while retaining the successful primary operation. */
-function cleanupFailure(record: LeaseRecord): LifecycleOutcome {
-  return { ...outcome(60, 0), recoveryIdentifiers: safeIds(record) };
-}
-
-/** Creates one stable lifecycle result without retaining an exception or sensitive value. */
-export function outcome(
-  exitCode: LifecycleExitCode,
-  primaryExitCode: LifecycleExitCode = exitCode,
-): LifecycleOutcome {
-  return {
-    exitCode,
-    classification: classificationForExit(exitCode),
-    primaryExitCode,
-    recoveryIdentifiers: [],
-  };
-}
-
-/** Maps stable exits to public result classifications. */
-function classificationForExit(exitCode: LifecycleExitCode): LifecycleClassification {
-  if (exitCode === 0) return 'success';
-  if (exitCode === 30) return 'setup-failure';
-  if (exitCode === 60) return 'cleanup-failure';
-  if (exitCode === 70) return 'timeout';
-  return 'interrupted';
-}
-
-/** Returns exact synthetic identifiers that are safe to show in a recovery report. */
-export function safeIds(record: LeaseRecord): readonly string[] {
-  return Object.freeze([
-    `run:${record.runId}`,
-    `compose:${record.composeProject}`,
-    ...record.containerIds.map((id) => `container:${id}`),
-    ...record.volumeNames.map((name) => `volume:${name}`),
-  ]);
-}
-
-/** Creates a non-secret empty report for a reset that could not begin. */
-function emptyResetReport(runId: string): LifecycleResetOutcome['report'] {
-  return {
-    runId,
-    migrationRevision: '',
-    fixtureCounts: {},
-    redisKeysRemoved: 0,
-    mailMessagesRemoved: 0,
-    identifiers: [],
-  };
-}
+/** Throws the stable timeout discriminator after an owning startup deadline aborts. */

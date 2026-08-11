@@ -137,15 +137,19 @@ export function createResetSpecRig(
   const leases: LeaseStateAdapter = {
     async tryAcquire(record) {
       const block = Object.values(record.manifest.ports).join(':');
-      if (sharedState.blocks.has(block)) return 'occupied';
+      if (sharedState.blocks.has(block)) return 'block-occupied';
       sharedState.blocks.add(block);
       sharedState.leases.push(record);
       sharedState.resetStates.set(record.runId, 'ready');
       return 'acquired';
     },
+    async releaseIntent(_record) {},
     async read(lookup) {
       if (controls.leaseReadOverride !== undefined) return controls.leaseReadOverride;
       return findLease(sharedState, lookup) ?? 'missing';
+    },
+    async findByWorktree(worktreePath) {
+      return sharedState.leases.filter((record) => record.worktreePath === worktreePath);
     },
     async transferOwner(expected, newOwner) {
       const index = sharedState.leases.findIndex((record) => record === expected);
@@ -153,6 +157,12 @@ export function createResetSpecRig(
       const transferred = Object.freeze({ ...expected, ownerProcess: Object.freeze(newOwner) });
       sharedState.leases[index] = transferred;
       return transferred;
+    },
+    async finalizeResources(expected, discovered) {
+      const index = sharedState.leases.findIndex((record) => record === expected);
+      if (index < 0) return 'mismatch';
+      sharedState.leases[index] = discovered;
+      return discovered;
     },
     async release(_record) {},
     async quarantine(lookup) {
@@ -170,7 +180,20 @@ export function createResetSpecRig(
   };
 
   const compose: ComposeAdapter = {
-    async inspect(_project) {
+    async inspect(project) {
+      const provisional = sharedState.leases.find(
+        (record) => record.composeProject === project && record.containerIds.length === 0,
+      );
+      if (provisional !== undefined) {
+        return {
+          presence: 'present',
+          identity: {
+            ...provisional,
+            containerIds: ['a'.repeat(64)],
+            networkIds: ['b'.repeat(64)],
+          },
+        };
+      }
       return { presence: controls.composePresence };
     },
     async start(_manifest) {},
@@ -377,7 +400,7 @@ function createPrerequisites(): PrerequisiteAdapter {
 function createDeadlines(): DeadlineAdapter {
   return {
     async run(_operation, work) {
-      return work();
+      return work(new AbortController().signal);
     },
   };
 }

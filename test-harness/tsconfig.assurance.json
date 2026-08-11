@@ -7,6 +7,7 @@
     "assurance/**/*.ts",
     "fixtures/**/*.ts",
     "scripts/lifecycle.ts",
+    "scripts/managed-client-bootstrap.ts",
     "tests/global-setup.ts"
   ],
   "exclude": ["node_modules", ".assurance-results"]

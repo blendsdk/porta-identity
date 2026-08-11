@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 04:30
+> **Last Updated**: 2026-08-11 06:31
 > **Progress**: 16/92 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
@@ -204,7 +204,7 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
       bootstrap/seed, reset Redis/MailHog, restart clients/Porta, and verify fixture/migration digests.
 - [x] 2.7 Make post-mutation failure/signal/timeout poison the run and force full owned-stack ✅ (completed: 2026-08-11 04:30)
       recreation; add implementation tests for every durable boundary and recovery report.
-- [x] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax, ✅ (completed: 2026-08-11 05:14)
+- [x] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax, ✅ (completed: 2026-08-11 06:31)
       `docker compose -f test-harness/docker-compose.yml config`, and `yarn verify`.
       - Verification note: 240 lifecycle cases, 68 structure cases, the 6 retained SPA/BFF journeys,
         two live concurrent worktrees, independent SIGINT/SIGTERM cleanup, TypeScript, ESLint,
@@ -212,6 +212,13 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
         keeps database fixture reset blocked behind Phase 3's deterministic multi-actor manifest;
         Redis and MailHog resets are fatal now, and the complete poisoned reset state machine is
         independently specification-tested.
+      - Quality-gate correction: the first independent phase review found runtime resource-fencing,
+        crash-recovery, operation-serialization, timeout, quarantine, and reset-truthfulness defects.
+        The accepted corrections and the single permitted re-review are complete. The focused suite
+        passes 259/259; live evidence proves malformed-control containment, one-winner same-worktree
+        contention, SIGTERM exit 143 with no residue, and all six retained browser journeys. The
+        unchanged full `yarn verify` gate passed 68 structure tests, 224 server files / 3,348 tests,
+        31 SDK files / 404 tests, and 29 CLI files / 355 tests.
 
 **Phase gate:** no prerequisite/reset/cleanup failure can pass, and no run can bind or clean another
 worktree's endpoints or resources.

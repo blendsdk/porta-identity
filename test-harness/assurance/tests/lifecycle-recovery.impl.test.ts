@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test, { type TestContext } from 'node:test';
@@ -22,10 +22,13 @@ async function createRecord(worktreePath: string): Promise<LeaseRecord> {
   );
   return Object.freeze({
     runId: manifest.runId,
+    startupIntentId: '32d90188-e5b6-4df8-a7ef-dad1571a90da',
     ownerProcess: Object.freeze({ pid: 2_147_000_000, startedAtFingerprint: 'dead-owner' }),
     worktreePath,
     composeProject: manifest.composeProject,
     containerIds: Object.freeze(['container-a']),
+    networkIds: Object.freeze(['network-a']),
+    hostProcesses: Object.freeze([]),
     volumeNames: Object.freeze(['volume-a']),
     ownedPaths: Object.freeze([
       resolve(worktreePath, 'test-harness/.assurance-runtime', manifest.runId),
@@ -109,6 +112,44 @@ test('should preserve the lease across mismatched and malformed takeover state',
   const reclaimed = await leases.transferOwner(staleRecord, newOwner);
   assert.notEqual(reclaimed, 'mismatch');
   if (reclaimed !== 'mismatch') await leases.release(reclaimed);
+});
+
+// A bounded collision may create a same-worktree intent before it learns that the selected block
+// is unavailable. Explicit intent release restores clean discovery without touching that block.
+test('should release an unleased worktree intent after bounded port exhaustion', async (t) => {
+  const worktree = disposableDirectory(t, 'porta-intent-worktree-');
+  const leaseRoot = disposableDirectory(t, 'porta-intent-leases-');
+  const leases = new FileLeaseStateAdapter(leaseRoot);
+  const record = await createRecord(worktree);
+  const occupiedBlock = resolve(leaseRoot, `block-${record.manifest.ports.porta}`);
+  mkdirSync(occupiedBlock, { mode: 0o700 });
+  writeFileSync(resolve(occupiedBlock, 'occupied'), '', { mode: 0o600 });
+
+  assert.equal(await leases.tryAcquire(record), 'block-occupied');
+  assert.equal(await leases.findByWorktree(worktree), 'unreadable');
+  await leases.releaseIntent(record);
+  assert.deepEqual(await leases.findByWorktree(worktree), []);
+});
+
+// A different invocation in the same worktree never owns the winner's intent, even when it reuses
+// the same caller-supplied run ID and process identity.
+test('should preserve the winner when a second intent reuses the same run identity', async (t) => {
+  const worktree = disposableDirectory(t, 'porta-intent-winner-worktree-');
+  const leaseRoot = disposableDirectory(t, 'porta-intent-winner-leases-');
+  const leases = new FileLeaseStateAdapter(leaseRoot);
+  const winner = await createRecord(worktree);
+  const loser = Object.freeze({
+    ...winner,
+    startupIntentId: 'd2c6367a-acde-4f2f-b2b8-d16b36f8beeb',
+  });
+
+  assert.equal(await leases.tryAcquire(winner), 'acquired');
+  assert.equal(await leases.tryAcquire(loser), 'worktree-occupied');
+  assert.deepEqual(
+    await leases.read({ runId: winner.runId, worktreePath: winner.worktreePath }),
+    winner,
+  );
+  await leases.release(winner);
 });
 
 // A staged poison transition is not durable evidence. Only flush atomically publishes it, and a

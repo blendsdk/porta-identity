@@ -1,5 +1,4 @@
-import { createServer } from 'node:net';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   chmodSync,
   closeSync,
@@ -11,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  rmSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
@@ -19,6 +19,14 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
 import { z } from 'zod';
+
+import { hasErrorCode } from './lifecycle-os-error.js';
+import { readProcessStartFingerprint } from './lifecycle-system-probes.js';
+export {
+  LinuxProcessProbeAdapter,
+  linuxProcessIdentity,
+  LoopbackEndpointAvailabilityAdapter,
+} from './lifecycle-system-probes.js';
 
 import type {
   EndpointAvailabilityAdapter,
@@ -34,9 +42,6 @@ import type {
   ProcessProbeAdapter,
   ResetStateAdapter,
 } from './lifecycle-planned.js';
-
-/** Complete endpoint set used by loopback availability checks. */
-const endpointNames = ['porta', 'app', 'bff', 'postgres', 'redis', 'mailhog'] as const;
 
 /** Runtime validator for process identities crossing the durable lease boundary. */
 const processIdentitySchema = z.object({
@@ -73,10 +78,13 @@ const manifestSchema = z.object({
 /** Runtime validator for every field that authorizes later cleanup or ownership transfer. */
 const leaseRecordSchema = z.object({
   runId: z.uuid(),
+  startupIntentId: z.uuid(),
   ownerProcess: processIdentitySchema,
   worktreePath: z.string().min(1),
   composeProject: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/u),
   containerIds: z.array(z.string().min(1)),
+  networkIds: z.array(z.string().min(1)),
+  hostProcesses: z.array(processIdentitySchema.extend({ role: z.enum(['spa', 'bff']) })),
   volumeNames: z.array(z.string().min(1)),
   ownedPaths: z.array(z.string().min(1)),
   certificatePath: z.string().min(1),
@@ -99,18 +107,37 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
   }
 
   /** Atomically owns a complete port block and durably records its exact owner. */
-  public async tryAcquire(record: LeaseRecord): Promise<'acquired' | 'occupied'> {
+  public async tryAcquire(
+    record: LeaseRecord,
+  ): Promise<'acquired' | 'worktree-occupied' | 'block-occupied'> {
+    if (!this.acquireWorktreeClaim(record)) return 'worktree-occupied';
     const blockDirectory = this.blockDirectory(record.manifest.ports.porta);
+    const candidateDirectory = resolve(this.root, `.candidate-${record.runId}-${randomUUID()}`);
+    const ownerDirectory = resolve(candidateDirectory, `owner-${record.runId}`);
     try {
-      mkdirSync(blockDirectory, { mode: 0o700 });
+      mkdirSync(candidateDirectory, { mode: 0o700 });
+      mkdirSync(ownerDirectory, { mode: 0o700 });
+      writeDurableJson(resolve(ownerDirectory, 'lease.json'), record);
+      syncDirectory(candidateDirectory);
+      renameSync(candidateDirectory, blockDirectory);
+      syncDirectory(this.root);
+      return 'acquired';
     } catch (error) {
-      if (hasErrorCode(error, 'EEXIST')) return 'occupied';
+      rmSync(candidateDirectory, { recursive: true, force: true });
+      if (hasErrorCode(error, 'EEXIST') || hasErrorCode(error, 'ENOTEMPTY')) {
+        return 'block-occupied';
+      }
       throw error;
     }
-    const ownerDirectory = resolve(blockDirectory, `owner-${record.runId}`);
-    mkdirSync(ownerDirectory, { mode: 0o700 });
-    writeDurableJson(resolve(ownerDirectory, 'lease.json'), record);
-    return 'acquired';
+  }
+
+  /** Releases only an exact worktree intent when no block lease exists for that run. */
+  public async releaseIntent(record: LeaseRecord): Promise<void> {
+    if (this.ownerDirectories(record.runId).length !== 0) {
+      throw new Error('cannot release intent while a lease exists');
+    }
+    this.releaseWorktreeClaim(record);
+    syncDirectory(resolve(this.root, 'worktrees'));
   }
 
   /** Finds and validates one persisted lease without treating malformed state as absence. */
@@ -133,6 +160,51 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
     } catch {
       return 'malformed';
     }
+  }
+
+  /** Finds every valid lease for a worktree without treating malformed shared state as clean. */
+  public async findByWorktree(
+    worktreePath: string,
+  ): Promise<readonly LeaseRecord[] | 'unreadable'> {
+    const records: LeaseRecord[] = [];
+    const claimPath = this.worktreeClaimPath(worktreePath);
+    const claim = existsSync(claimPath) ? readWorktreeClaim(claimPath) : undefined;
+    if (existsSync(claimPath) && claim === undefined) return 'unreadable';
+    for (const block of readdirSync(this.root, { withFileTypes: true })) {
+      if (!block.isDirectory() || !/^block-\d{4,5}$/u.test(block.name)) continue;
+      const blockPath = resolve(this.root, block.name);
+      const tombstonePath = resolve(blockPath, 'quarantined.json');
+      if (existsSync(tombstonePath)) {
+        const tombstone = readQuarantineTombstone(tombstonePath);
+        if (tombstone === undefined) return 'unreadable';
+        if (tombstone.worktreePath === worktreePath) return 'unreadable';
+      }
+      for (const owner of readdirSync(blockPath, { withFileTypes: true })) {
+        if (!owner.isDirectory() || !owner.name.startsWith('owner-')) continue;
+        try {
+          const record = freezeLeaseRecord(
+            leaseRecordSchema.parse(
+              JSON.parse(readFileSync(resolve(blockPath, owner.name, 'lease.json'), 'utf8')),
+            ),
+          );
+          if (record.worktreePath === worktreePath) records.push(record);
+        } catch {
+          return 'unreadable';
+        }
+      }
+    }
+    if (
+      claim !== undefined &&
+      !records.some(
+        (record) =>
+          record.runId === claim.runId &&
+          record.startupIntentId === claim.startupIntentId &&
+          record.worktreePath === claim.worktreePath,
+      )
+    ) {
+      return 'unreadable';
+    }
+    return Object.freeze(records);
   }
 
   /** Atomically changes only process ownership when the complete prior lease still matches. */
@@ -166,6 +238,33 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
     }
   }
 
+  /** Atomically finalizes only discovered resource fields while all authority fields stay fixed. */
+  public async finalizeResources(
+    expected: LeaseRecord,
+    discovered: LeaseRecord,
+  ): Promise<LeaseRecord | 'mismatch'> {
+    const ownerDirectories = this.ownerDirectories(expected.runId);
+    if (
+      ownerDirectories.length !== 1 ||
+      !sameLeaseAuthority(expected, discovered) ||
+      !resourceDiscoveryCanAdvance(expected, discovered)
+    ) {
+      return 'mismatch';
+    }
+    const ownerDirectory = ownerDirectories[0] ?? '';
+    const leasePath = resolve(ownerDirectory, 'lease.json');
+    const persisted = freezeLeaseRecord(
+      leaseRecordSchema.parse(JSON.parse(readFileSync(leasePath, 'utf8'))),
+    );
+    if (stableJson(persisted) !== stableJson(expected)) return 'mismatch';
+    const finalized = freezeLeaseRecord(leaseRecordSchema.parse(discovered));
+    const replacementPath = resolve(ownerDirectory, `.lease-replacement-${randomUUID()}.json`);
+    writeDurableJson(replacementPath, finalized);
+    renameSync(replacementPath, leasePath);
+    syncDirectory(ownerDirectory);
+    return finalized;
+  }
+
   /** Releases only the lease whose complete persisted identity still matches. */
   public async release(record: LeaseRecord): Promise<void> {
     const ownerDirectories = this.ownerDirectories(record.runId);
@@ -177,6 +276,8 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
     unlinkSync(leasePath);
     rmdirSync(ownerDirectory);
     rmdirSync(dirname(ownerDirectory));
+    this.releaseWorktreeClaim(record);
+    syncDirectory(this.root);
   }
 
   /** Quarantines the exact owner directory so malformed state cannot be reclaimed automatically. */
@@ -188,7 +289,12 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
       const destination = resolve(quarantineRoot, `${lookup.runId}-${process.pid}-${index}`);
       renameSync(ownerDirectory, destination);
       const blockDirectory = dirname(ownerDirectory);
-      if (readdirSync(blockDirectory).length === 0) rmdirSync(blockDirectory);
+      writeDurableJson(resolve(blockDirectory, 'quarantined.json'), {
+        runId: lookup.runId,
+        worktreePath: lookup.worktreePath,
+        quarantinedAt: new Date().toISOString(),
+      });
+      syncDirectory(blockDirectory);
     }
     return Object.freeze([`lease:${lookup.runId}`]);
   }
@@ -196,6 +302,71 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
   /** Returns the collision domain for one complete endpoint block. */
   protected blockDirectory(basePort: number): string {
     return resolve(this.root, `block-${basePort}`);
+  }
+
+  /** Atomically excludes a second startup in the same canonical worktree before port mutation. */
+  protected acquireWorktreeClaim(record: LeaseRecord): boolean {
+    const claimsRoot = resolve(this.root, 'worktrees');
+    mkdirSync(claimsRoot, { recursive: true, mode: 0o700 });
+    const claimPath = this.worktreeClaimPath(record.worktreePath);
+    const candidatePath = resolve(claimsRoot, `.candidate-${record.runId}-${randomUUID()}`);
+    mkdirSync(candidatePath, { mode: 0o700 });
+    writeDurableJson(resolve(candidatePath, 'claim.json'), {
+      runId: record.runId,
+      startupIntentId: record.startupIntentId,
+      worktreePath: record.worktreePath,
+      ownerProcess: record.ownerProcess,
+    });
+    syncDirectory(candidatePath);
+    try {
+      renameSync(candidatePath, claimPath);
+      syncDirectory(claimsRoot);
+      return true;
+    } catch (error) {
+      rmSync(candidatePath, { recursive: true, force: true });
+      if (!hasErrorCode(error, 'EEXIST') && !hasErrorCode(error, 'ENOTEMPTY')) throw error;
+      const existing = readWorktreeClaim(claimPath);
+      if (
+        existing !== undefined &&
+        existing.runId === record.runId &&
+        existing.startupIntentId === record.startupIntentId &&
+        existing.worktreePath === record.worktreePath &&
+        processPresence(existing.ownerProcess) === 'present'
+      ) {
+        return true;
+      }
+      if (
+        existing !== undefined &&
+        processPresence(existing.ownerProcess) === 'absent' &&
+        this.ownerDirectories(existing.runId).length === 0
+      ) {
+        rmSync(claimPath, { recursive: true, force: true });
+        syncDirectory(claimsRoot);
+        return this.acquireWorktreeClaim(record);
+      }
+      return false;
+    }
+  }
+
+  /** Releases only the exact worktree claim paired with the verified lease. */
+  protected releaseWorktreeClaim(record: LeaseRecord): void {
+    const claimPath = this.worktreeClaimPath(record.worktreePath);
+    const existing = readWorktreeClaim(claimPath);
+    if (
+      existing === undefined ||
+      existing.runId !== record.runId ||
+      existing.startupIntentId !== record.startupIntentId ||
+      existing.worktreePath !== record.worktreePath
+    ) {
+      throw new Error('worktree startup claim changed');
+    }
+    rmSync(claimPath, { recursive: true });
+  }
+
+  /** Returns the non-reversible digest path for one canonical worktree claim. */
+  protected worktreeClaimPath(worktreePath: string): string {
+    const digest = createHash('sha256').update(worktreePath).digest('hex');
+    return resolve(this.root, 'worktrees', digest);
   }
 
   /** Finds only exact owner directories beneath validated block-directory names. */
@@ -256,37 +427,6 @@ export class FileLeaseStateAdapter implements LeaseStateAdapter {
         unlinkSync(path);
       }
     }
-  }
-}
-
-/** Linux process probe that includes the kernel start tick to reject PID reuse. */
-export class LinuxProcessProbeAdapter implements ProcessProbeAdapter {
-  /** Returns the identity of the process executing the lifecycle command. */
-  public async currentIdentity(): Promise<ProcessIdentity> {
-    return { pid: process.pid, startedAtFingerprint: readProcessStartFingerprint(process.pid) };
-  }
-
-  /** Distinguishes the exact recorded process from a reused PID or unreadable process table. */
-  public async presence(identity: ProcessIdentity): Promise<Presence> {
-    try {
-      return readProcessStartFingerprint(identity.pid) === identity.startedAtFingerprint
-        ? 'present'
-        : 'absent';
-    } catch (error) {
-      return hasErrorCode(error, 'ENOENT') ? 'absent' : 'unreadable';
-    }
-  }
-}
-
-/** Loopback availability probe used before an atomic harness lease is accepted. */
-export class LoopbackEndpointAvailabilityAdapter implements EndpointAvailabilityAdapter {
-  /** Returns every endpoint that cannot currently bind on IPv4 loopback. */
-  public async occupiedEndpoints(manifest: EndpointManifest): Promise<readonly EndpointName[]> {
-    const occupied: EndpointName[] = [];
-    for (const name of endpointNames) {
-      if (await isPortOccupied(manifest.ports[name])) occupied.push(name);
-    }
-    return Object.freeze(occupied);
   }
 }
 
@@ -355,6 +495,8 @@ function freezeLeaseRecord(record: z.infer<typeof leaseRecordSchema>): LeaseReco
     ...record,
     ownerProcess: Object.freeze(record.ownerProcess),
     containerIds: Object.freeze(record.containerIds),
+    networkIds: Object.freeze(record.networkIds),
+    hostProcesses: Object.freeze(record.hostProcesses.map((identity) => Object.freeze(identity))),
     volumeNames: Object.freeze(record.volumeNames),
     ownedPaths: Object.freeze(record.ownedPaths),
     manifest: Object.freeze({
@@ -363,6 +505,41 @@ function freezeLeaseRecord(record: z.infer<typeof leaseRecordSchema>): LeaseReco
       urls: Object.freeze(record.manifest.urls),
     }),
   });
+}
+
+/** Compares every non-resource field before a provisional lease may be finalized. */
+function sameLeaseAuthority(left: LeaseRecord, right: LeaseRecord): boolean {
+  return (
+    stableJson({
+      ...left,
+      containerIds: [],
+      networkIds: [],
+      hostProcesses: [],
+    }) ===
+    stableJson({
+      ...right,
+      containerIds: [],
+      networkIds: [],
+      hostProcesses: [],
+    })
+  );
+}
+
+/** Allows only previously empty discovered-resource fields to gain exact runtime identities. */
+function resourceDiscoveryCanAdvance(expected: LeaseRecord, discovered: LeaseRecord): boolean {
+  const unchangedOrEmpty = (left: readonly unknown[], right: readonly unknown[]): boolean =>
+    left.length === 0 || stableJson(left) === stableJson(right);
+  const hostProcessesAdvanceSafely =
+    expected.hostProcesses.length <= discovered.hostProcesses.length &&
+    expected.hostProcesses.every(
+      (identity, index) => stableJson(identity) === stableJson(discovered.hostProcesses[index]),
+    );
+  return (
+    unchangedOrEmpty(expected.containerIds, discovered.containerIds) &&
+    unchangedOrEmpty(expected.networkIds, discovered.networkIds) &&
+    hostProcessesAdvanceSafely &&
+    unchangedOrEmpty(expected.volumeNames, discovered.volumeNames)
+  );
 }
 
 /** Returns the canonical poison-state path already covered by the lease's owned runtime path. */
@@ -421,6 +598,46 @@ function readClaimant(path: string): ProcessIdentity | undefined {
   }
 }
 
+/** Reads one atomic worktree startup claim, treating malformed state as unsafe. */
+function readWorktreeClaim(path: string):
+  | {
+      readonly runId: string;
+      readonly startupIntentId: string;
+      readonly worktreePath: string;
+      readonly ownerProcess: ProcessIdentity;
+    }
+  | undefined {
+  try {
+    return z
+      .object({
+        runId: z.uuid(),
+        startupIntentId: z.uuid(),
+        worktreePath: z.string().min(1),
+        ownerProcess: processIdentitySchema,
+      })
+      .parse(JSON.parse(readFileSync(resolve(path, 'claim.json'), 'utf8')));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Reads one retained collision tombstone without treating malformed state as unrelated. */
+function readQuarantineTombstone(
+  path: string,
+): { readonly runId: string; readonly worktreePath: string } | undefined {
+  try {
+    return z
+      .object({
+        runId: z.uuid(),
+        worktreePath: z.string().min(1),
+        quarantinedAt: z.iso.datetime(),
+      })
+      .parse(JSON.parse(readFileSync(path, 'utf8')));
+  } catch {
+    return undefined;
+  }
+}
+
 /** Checks one exact process identity synchronously for takeover fencing. */
 function processPresence(identity: ProcessIdentity): Presence {
   try {
@@ -439,42 +656,4 @@ function unlinkIfPresent(path: string): void {
   } catch (error) {
     if (!hasErrorCode(error, 'ENOENT')) throw error;
   }
-}
-
-/** Reads the Linux kernel start-tick identity for one process. */
-function readProcessStartFingerprint(pid: number): string {
-  const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-  const commandEnd = stat.lastIndexOf(')');
-  const fields = stat
-    .slice(commandEnd + 2)
-    .trim()
-    .split(/\s+/u);
-  const startTick = fields[19];
-  if (commandEnd < 0 || startTick === undefined) throw new Error('process identity is unreadable');
-  return `${pid}:${startTick}`;
-}
-
-/** Checks one port using a temporary loopback listener and always closes it. */
-function isPortOccupied(port: number): Promise<boolean> {
-  return new Promise((resolveOccupied, rejectOccupied) => {
-    const server = createServer();
-    server.once('error', (error) => {
-      if (hasErrorCode(error, 'EADDRINUSE') || hasErrorCode(error, 'EACCES')) {
-        resolveOccupied(true);
-      } else {
-        rejectOccupied(error);
-      }
-    });
-    server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
-      server.close((error) => {
-        if (error === undefined) resolveOccupied(false);
-        else rejectOccupied(error);
-      });
-    });
-  });
-}
-
-/** Narrows an unknown operating-system error to one exact code. */
-function hasErrorCode(error: unknown, code: string): boolean {
-  return error instanceof Error && 'code' in error && error.code === code;
 }

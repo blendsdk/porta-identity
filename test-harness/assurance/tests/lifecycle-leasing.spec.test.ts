@@ -26,7 +26,8 @@ test('should atomically lease distinct complete blocks when contenders race', as
     assert.ok(record.ownerProcess.startedAtFingerprint.length > 0);
     assert.ok(record.composeProject.length > 0);
     assert.ok(record.containerIds.length > 0);
-    assert.ok(record.volumeNames.length > 0);
+    assert.ok(record.networkIds.length > 0);
+    assert.deepEqual(record.volumeNames, []);
     assert.ok(record.ownedPaths.length > 0);
     assert.ok(record.certificatePath.length > 0);
   }

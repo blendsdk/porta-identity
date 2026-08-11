@@ -46,12 +46,13 @@ test('should verify both harness names resolve only to IPv4 loopback before star
   const lifecycleController = readRepositoryFile('test-harness/fixtures/lifecycle-controller.ts');
   const preflightScript = readRepositoryFile('test-harness/scripts/check-loopback-dns.mjs');
   const preflightInvocation = 'test-harness/scripts/check-loopback-dns.mjs';
+  const composeStartInvocation = 'compose.start(manifest, signal)';
 
   assert.match(startScript, /scripts\/lifecycle\.ts start/);
   assert.ok(lifecycleRuntime.includes(preflightInvocation));
   assert.ok(
     lifecycleController.indexOf("prerequisites.run('dns'") <
-      lifecycleController.indexOf('compose.start(manifest)'),
+      lifecycleController.indexOf(composeStartInvocation),
     'DNS preflight must run before Docker Compose starts the harness',
   );
   assert.match(preflightScript, /resolve4/);

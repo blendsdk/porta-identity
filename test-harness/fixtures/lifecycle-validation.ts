@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os';
 import { isAbsolute, normalize, resolve } from 'node:path';
 
 import type {
@@ -9,6 +10,17 @@ import type {
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const namePattern = /^[a-z][a-z0-9-]{0,62}$/u;
 const unsafePathPattern = /[\p{Cc}`$;&|<>]/u;
+
+/** Returns the short owner-only Unix-socket directory for one validated run UUID. */
+export function lifecycleSocketDirectory(runId: string): string {
+  if (!uuidPattern.test(runId)) throw new Error('socket run identifier is invalid');
+  return resolve(tmpdir(), 'porta-assurance-sockets', runId);
+}
+
+/** Returns the bounded-length control-socket path inside one owner-only run directory. */
+export function lifecycleSocketPath(runId: string): string {
+  return resolve(lifecycleSocketDirectory(runId), 'control.sock');
+}
 
 /** Validates one untrusted lifecycle start request before any capability is invoked. */
 export function validateStartRequest(request: LifecycleStartRequest): void {
