@@ -20,6 +20,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
       completedAt: '2026-08-10T10:00:00.000Z',
       buildIdentity: 'commit:0123456789abcdef',
       fixtureIdentity: 'fixture:alpha-v1',
+      runtimeProfile: 'production-security',
       redactedLog: 'verification passed',
     };
     const gap = {
@@ -55,6 +56,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
       completedAt: '2026-08-10T10:00:00.000Z',
       buildIdentity: 'commit:0123456789abcdef',
       fixtureIdentity: 'not-applicable:definition-validation',
+      runtimeProfile: 'operational',
       redactedLog: 'validated assurance foundation definitions',
       metrics: {
         requirementCount: 79,
@@ -74,6 +76,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
       buildIdentity: result.buildIdentity,
       treeIdentity: 'tree:fedcba9876543210',
       fixtureIdentity: result.fixtureIdentity,
+      runtimeProfile: result.runtimeProfile,
       executionArtifact: { kind: 'source-tree', digest: 'sha256:0123456789abcdef' },
       dependencyLockDigest: 'sha256:0123456789abcdef',
       assuranceToolDigest: 'sha256:fedcba9876543210',
@@ -83,7 +86,9 @@ export function registerSchemaCases(schema: SchemaModule): void {
         testInventory: 'sha256:0123456789abcdef',
       },
       toolVersions: { node: 'v22.0.0', commandContract: 1 },
-      results: [{ command: result.command, status: result.status }],
+      results: [
+        { command: result.command, status: result.status, runtimeProfile: result.runtimeProfile },
+      ],
       killedFaultIds: [],
       artifacts: ['validation/result.json'],
       accessPolicy: 'restricted synthetic evidence',

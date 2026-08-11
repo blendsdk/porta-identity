@@ -15,6 +15,9 @@ const nonEmptyTextSchema = z.string().trim().min(1);
 /** ISO timestamp stored in portable evidence records. */
 const timestampSchema = z.iso.datetime({ offset: true });
 
+/** Exact runtime profile attached to every executable evidence record. */
+const runtimeProfileSchema = z.enum(['operational', 'production-security']);
+
 /** Authoritative source used to derive an independent oracle. */
 const sourceSchema = z.object({
   authority: nonEmptyTextSchema,
@@ -48,12 +51,14 @@ const sentinelSchema = z.object({
 export const evidenceResultSchema = z.object({
   command: nonEmptyTextSchema,
   status: z.enum(['passed', 'failed', 'invalid', 'incomplete']),
+  runtimeProfile: runtimeProfileSchema,
 });
 
 /** Evidence that binds a claim to exact source, fixture, commands, and sensitivity records. */
 const evidenceSchema = z.object({
   buildIdentity: nonEmptyTextSchema,
   fixtureIdentity: nonEmptyTextSchema,
+  runtimeProfile: runtimeProfileSchema,
   commands: z.array(nonEmptyTextSchema).min(1),
   results: z.array(evidenceResultSchema).min(1),
   faultIds: z.array(manifestIdSchema),
@@ -87,7 +92,7 @@ export const claimSchema = z
     evidence: evidenceSchema,
     gaps: z.array(gapSchema),
     reopenWhen: z.array(nonEmptyTextSchema).min(1),
-    profile: z.enum(['operational', 'production-security']),
+    profile: runtimeProfileSchema,
     sliceProfile: manifestIdSchema,
   })
   .superRefine((claim, context) => {
@@ -113,6 +118,7 @@ export const resultSchema = z
     completedAt: timestampSchema,
     buildIdentity: nonEmptyTextSchema,
     fixtureIdentity: nonEmptyTextSchema,
+    runtimeProfile: runtimeProfileSchema,
     redactedLog: z.string(),
     /** Fault kills observed by this exact result artifact, when the command executes faults. */
     killedFaultIds: z.array(manifestIdSchema).optional(),
@@ -156,6 +162,7 @@ export const foundationManifestSchema = z.object({
   buildIdentity: nonEmptyTextSchema,
   treeIdentity: nonEmptyTextSchema,
   fixtureIdentity: nonEmptyTextSchema,
+  runtimeProfile: runtimeProfileSchema,
   executionArtifact: sourceTreeArtifactSchema,
   dependencyLockDigest: nonEmptyTextSchema,
   assuranceToolDigest: nonEmptyTextSchema,

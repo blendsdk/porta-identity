@@ -58,8 +58,9 @@ export const completeClaim = {
   evidence: {
     buildIdentity: 'commit:0123456789abcdef',
     fixtureIdentity: 'fixture:alpha-v1',
+    runtimeProfile: 'production-security',
     commands: ['yarn verify'],
-    results: [{ command: 'yarn verify', status: 'passed' }],
+    results: [{ command: 'yarn verify', status: 'passed', runtimeProfile: 'production-security' }],
     faultIds: ['protocol-client-binding'],
     killedFaultIds: ['protocol-client-binding'],
     coverageReference: 'coverage/server.json',

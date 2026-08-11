@@ -131,10 +131,37 @@ export function readPublicRuntimeFixtureManifest(path: string): PublicRuntimeFix
   if (JSON.stringify(parsed.fixtureCounts) !== JSON.stringify(expectedFixtureCounts)) {
     throw new Error('generated fixture counts do not match the independent definition');
   }
-  if (JSON.stringify(parsed.publicManifest) !== JSON.stringify(publicFixtureManifest)) {
-    throw new Error('generated public fixture manifest does not match the independent definition');
+  if (
+    JSON.stringify(withoutResolvedClientEndpoints(parsed.publicManifest)) !==
+    JSON.stringify(withoutResolvedClientEndpoints(publicFixtureManifest))
+  ) {
+    throw new Error('generated public fixture manifest does not match the independent template');
   }
   return parsed;
+}
+
+/** Returns whether an unknown value is a plain key/value record. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Removes only run-resolved client endpoints before comparing the immutable template shape. */
+function withoutResolvedClientEndpoints(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutResolvedClientEndpoints);
+  if (!isRecord(value)) return value;
+  const normalized: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (
+      (key === 'redirectUris' || key === 'origins') &&
+      typeof value.id === 'string' &&
+      /^(?:alpha|bravo)-client-/u.test(value.id)
+    ) {
+      normalized[key] = ['<run-resolved-endpoint>'];
+    } else {
+      normalized[key] = withoutResolvedClientEndpoints(child);
+    }
+  }
+  return normalized;
 }
 
 /** Reads the protected store and returns one exact credential without logging it. */
@@ -144,4 +171,14 @@ export function readProtectedRuntimeCredential(path: string, reference: string):
   if (credential === undefined)
     throw new Error(`protected credential reference is absent: ${reference}`);
   return credential;
+}
+
+/** Reports protected credential cardinality and separation without returning secret values. */
+export function inspectProtectedRuntimeCredentials(path: string): {
+  readonly count: number;
+  readonly pairwiseDistinct: boolean;
+} {
+  const file = protectedCredentialFileSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
+  const values = Object.values(file.credentials);
+  return { count: values.length, pairwiseDistinct: new Set(values).size === values.length };
 }

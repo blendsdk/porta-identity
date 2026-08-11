@@ -2,10 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 import {
   administrativeActors,
-  alphaFixture,
-  bravoFixture,
   fixtureProtocolScopes,
-  publicFixtureManifest,
+  resolvePublicFixtureManifest,
 } from './fixture-definition.js';
 import type { PublicFixtureManifest } from './fixture-assurance-contract.js';
 
@@ -129,7 +127,7 @@ export async function arrangeFixtureBaseline(
   const pool = getPool();
   const credentials = new Map<string, string>();
   const entities: SeededEntityReference[] = [];
-  const runtimePassword = `P-${randomCredential(24)}!aA7`;
+  const resolvedManifest = resolvePublicFixtureManifest(endpoints);
 
   let application = await getApplicationBySlug('assurance-oidc');
   application ??= await createApplication({
@@ -141,7 +139,7 @@ export async function arrangeFixtureBaseline(
 
   const runtimeUsers = new Map<string, RuntimeUser>();
   const runtimeClients = new Map<string, RuntimeClient>();
-  for (const fixture of [alphaFixture, bravoFixture]) {
+  for (const fixture of [resolvedManifest.alpha, resolvedManifest.bravo]) {
     let organization = await getOrganizationBySlug(fixture.id);
     organization ??= await createOrganization({
       name: `Assurance ${fixture.id}`,
@@ -154,6 +152,7 @@ export async function arrangeFixtureBaseline(
     entities.push({ alias: fixture.id, id: organization.id });
 
     for (const userDefinition of fixture.users) {
+      const userPassword = `P-${randomCredential(24)}!aA7`;
       const email = fixtureEmail(userDefinition.id);
       let user = await getUserByEmail(organization.id, email);
       user ??= await createUser({
@@ -161,9 +160,9 @@ export async function arrangeFixtureBaseline(
         email,
         givenName: fixture.id,
         familyName: userDefinition.id.slice(`${fixture.id}-user-`.length),
-        password: runtimePassword,
+        password: userPassword,
       });
-      await setUserPassword(user.id, runtimePassword);
+      await setUserPassword(user.id, userPassword);
       if (user.status === 'inactive') await reactivateUser(user.id);
       await markEmailVerified(user.id);
       if (userDefinition.state === 'locked' && user.status !== 'locked') {
@@ -186,7 +185,7 @@ export async function arrangeFixtureBaseline(
           setup.recoveryCodes.join('\n'),
         );
       }
-      credentials.set(userDefinition.passwordCredentialRef, runtimePassword);
+      credentials.set(userDefinition.passwordCredentialRef, userPassword);
       runtimeUsers.set(userDefinition.id, { alias: userDefinition.id, id: user.id, email });
       entities.push({ alias: userDefinition.id, id: user.id });
     }
@@ -249,7 +248,10 @@ export async function arrangeFixtureBaseline(
         clientId: client.clientId,
         secret,
       });
-      entities.push({ alias: definition.id, id: client.id });
+      entities.push(
+        { alias: definition.id, id: client.id },
+        { alias: `${definition.id}-oidc-client-id`, id: client.clientId },
+      );
     }
 
     const permissionSlug = 'assurance:resource:read';
@@ -317,6 +319,7 @@ export async function arrangeFixtureBaseline(
   );
 
   for (const actor of administrativeActors) {
+    const actorPassword = `P-${randomCredential(24)}!aA7`;
     const email = `${actor.id}@test-harness.local`;
     let user = await getUserByEmail(superAdminOrganization.id, email);
     user ??= await createUser({
@@ -324,9 +327,9 @@ export async function arrangeFixtureBaseline(
       email,
       givenName: 'Assurance',
       familyName: actor.permissionSet,
-      password: runtimePassword,
+      password: actorPassword,
     });
-    await setUserPassword(user.id, runtimePassword);
+    await setUserPassword(user.id, actorPassword);
     if (user.status === 'inactive') await reactivateUser(user.id);
     await markEmailVerified(user.id);
     let role = await findRoleBySlug(adminApplication.id, actor.roleId);
@@ -340,7 +343,21 @@ export async function arrangeFixtureBaseline(
     }
     if (role === null) throw new Error(`Porta bootstrap role missing: ${actor.roleId}`);
     await assignRolesToUser(user.id, [role.id]);
-    credentials.set(actor.passwordCredentialRef, runtimePassword);
+    credentials.set(actor.passwordCredentialRef, actorPassword);
+    const adminToken = randomCredential();
+    await pool.query(
+      `INSERT INTO oidc_payloads (id, type, payload, expires_at)
+       VALUES ($1, 'AccessToken', $2::jsonb, NOW() + INTERVAL '1 hour')`,
+      [
+        adminToken,
+        JSON.stringify({
+          accountId: user.id,
+          clientId: 'porta-admin-assurance',
+          scope: fixtureProtocolScopes.join(' '),
+        }),
+      ],
+    );
+    credentials.set(actor.tokenCredentialRef, adminToken);
     entities.push({ alias: actor.id, id: user.id }, { alias: actor.roleId, id: role.id });
   }
 
@@ -355,9 +372,11 @@ export async function arrangeFixtureBaseline(
   ) {
     throw new Error('retained alpha browser fixtures are incomplete');
   }
+  const retainedPassword = credentials.get('credential:alpha:password:active');
+  if (retainedPassword === undefined) throw new Error('retained alpha password is absent');
 
   return {
-    publicManifest: publicFixtureManifest,
+    publicManifest: resolvedManifest,
     entities,
     credentials,
     retained: {
@@ -366,7 +385,7 @@ export async function arrangeFixtureBaseline(
       confidentialClientId: retainedConfidential.clientId,
       confidentialClientSecret: retainedConfidential.secret,
       userEmail: retainedUser.email,
-      userPassword: runtimePassword,
+      userPassword: retainedPassword,
     },
   };
 }

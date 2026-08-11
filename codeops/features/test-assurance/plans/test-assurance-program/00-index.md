@@ -54,7 +54,8 @@ separately authorized fix.
 
 - Do not delete, skip, soften, or reinterpret existing tests to make this plan green.
 - Do not add a production reset endpoint, bypass, fault switch, or test credential path.
-- Do not fix product behavior under an assurance task.
+- Do not fix product behavior under an assurance task unless a confirmed blocking defect receives
+  separate, explicit user authorization and the exception is recorded in the ambiguity register.
 - Do not merge server-process coverage with Vitest coverage until equivalence is proven.
 - Do not add every assurance campaign to `yarn verify`.
 - Do not claim certification or absence of exploits.

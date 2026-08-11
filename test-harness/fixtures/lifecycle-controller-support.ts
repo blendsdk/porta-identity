@@ -317,6 +317,8 @@ export function outcome(
 /** Maps stable exits to public result classifications. */
 function classificationForExit(exitCode: LifecycleExitCode): LifecycleClassification {
   if (exitCode === 0) return 'success';
+  if (exitCode === 20) return 'product-failure';
+  if (exitCode === 21) return 'test-failure';
   if (exitCode === 30) return 'setup-failure';
   if (exitCode === 60) return 'cleanup-failure';
   if (exitCode === 70) return 'timeout';

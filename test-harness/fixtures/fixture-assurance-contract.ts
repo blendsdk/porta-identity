@@ -140,6 +140,8 @@ export interface AdministrativeActor {
   readonly permissions: readonly string[];
   /** Protected password reference. */
   readonly passwordCredentialRef: string;
+  /** Protected opaque access-token reference used for public admin probes. */
+  readonly tokenCredentialRef: string;
 }
 
 /** Bootstrapped administrative organization and its exact actor classes. */
@@ -237,7 +239,8 @@ export interface AssuranceRuntimeProfile {
 }
 
 /** Public boundary categories used for post-reset fixture verification. */
-export type PublicVerificationBoundary = 'http' | 'browser' | 'protocol' | 'email';
+export type PublicVerificationBoundary =
+  'http' | 'browser' | 'protocol' | 'email' | 'fixtures' | 'administration';
 
 /** One public postcondition result independent from production-derived expectations. */
 export interface PublicPostconditionResult {
@@ -249,18 +252,34 @@ export interface PublicPostconditionResult {
   readonly expectationSource: 'public-contract';
   /** Production behavior never generates the expected result. */
   readonly productionDerived: false;
+  /** Stable observation identifiers completed for this boundary. */
+  readonly observations: readonly string[];
 }
 
 /** Result of one cross-tenant public resource observation. */
 export interface TenantResourceObservation {
-  /** Actor making the request. */
-  readonly actorId: string;
+  /** Administrative actor making the organization-scoped request. */
+  readonly administratorId: string;
+  /** Organization placed in the public route path. */
+  readonly pathOrganizationId: 'alpha' | 'bravo';
   /** Resource independently observed through a public boundary. */
   readonly resourceId: string;
   /** Independently observed owning organization. */
   readonly observedOrganizationId: FixtureOrganizationId;
   /** Public authorization result. */
   readonly status: 'allowed' | 'forbidden' | 'not-found';
+  /** Exact public route families that rejected the foreign tenant target. */
+  readonly routeChecks: readonly TenantUserRouteCheck[];
+  /** Whether rejected mutation attempts left the target user unchanged. */
+  readonly targetUnchanged: boolean;
+}
+
+/** One independently observed organization-scoped user-route result. */
+export interface TenantUserRouteCheck {
+  /** Stable route family exercised without recording concrete identifiers. */
+  readonly operation: 'read' | 'update' | 'suspend' | 'roles' | 'two-factor' | 'export' | 'history';
+  /** Foreign tenant targets must be indistinguishable from absent users. */
+  readonly status: 'not-found';
 }
 
 /** Residue snapshot after one complete deterministic suite sequence. */
@@ -275,12 +294,28 @@ export interface FixtureResidueSnapshot {
   readonly sessions: number;
 }
 
+/** Redacted canonical identities for every mutable fixture store. */
+export interface FixtureStoreDigests {
+  /** Stable PostgreSQL entity and relationship identity. */
+  readonly database: string;
+  /** Stable session and opaque-token identity. */
+  readonly sessionAndToken: string;
+  /** Stable harness-dedicated Redis key identity. */
+  readonly redis: string;
+  /** Stable MailHog message identity. */
+  readonly mail: string;
+}
+
 /** Stable outcome of a declared, reversed, or shuffled fixture sequence. */
 export interface FixtureSequenceOutcome {
   /** Digest of public behavioral outcomes. */
   readonly outcomeDigest: string;
   /** Residue remaining after reset and cleanup. */
   readonly residue: FixtureResidueSnapshot;
+  /** Canonical mutable-store identity before project execution. */
+  readonly baselineStoreDigests: FixtureStoreDigests;
+  /** Canonical mutable-store identity after the final reset. */
+  readonly finalStoreDigests: FixtureStoreDigests;
 }
 
 /** Planned fixture and collection boundary consumed only by immutable assurance specs. */
@@ -294,7 +329,11 @@ export interface FixtureAssuranceSurface {
   /** Exact operational and production-security profiles. */
   readonly profiles: readonly AssuranceRuntimeProfile[];
   /** Observes a tenant resource through an external authorization boundary. */
-  observeTenantResource(actorId: string, resourceId: string): Promise<TenantResourceObservation>;
+  observeTenantResource(
+    administratorId: string,
+    pathOrganizationId: 'alpha' | 'bravo',
+    resourceId: string,
+  ): Promise<TenantResourceObservation>;
   /** Executes a complete suite sequence against a fresh baseline. */
   runSequence(order: 'reverse' | 'shuffled'): Promise<FixtureSequenceOutcome>;
   /** Verifies all required postconditions through public boundaries. */

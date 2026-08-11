@@ -57,7 +57,7 @@ const redCommands: Readonly<
   },
 };
 
-/** Complete lifecycle suite shared by progressive and final Phase 2 selectors. */
+/** Complete lifecycle suite shared by progressive and final lifecycle selectors. */
 const lifecycleTestFiles = [
   'test-harness/assurance/tests/lifecycle-leasing.spec.test.ts',
   'test-harness/assurance/tests/lifecycle-cleanup.spec.test.ts',
@@ -94,7 +94,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
-/** Complete fixture specification and implementation files used by the Phase 3 rollup. */
+/** Complete fixture specification and implementation files used by the fixture rollup. */
 const fixtureRollupFiles = [
   'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
   'test-harness/assurance/tests/assurance-project-collection.spec.test.ts',
@@ -113,7 +113,11 @@ function managedChildExit(
   if (result.forwardedSignal === 'SIGTERM') return 143;
   if (result.timedOut) return timeoutExit;
   if (result.setupFailed) return setupFailureExit;
-  return result.code === 0 ? 0 : nonzeroExit;
+  if (result.code === 0) return 0;
+  if (result.code !== null && [20, 21, 30, 60, 70, 130, 143].includes(result.code)) {
+    return result.code;
+  }
+  return nonzeroExit;
 }
 
 /** Runs one shell-free lifecycle action used by an internal live-boundary suite. */
@@ -135,11 +139,38 @@ async function runLifecycleAction(
       cwd: process.cwd(),
       env: process.env,
       stdio: 'inherit',
-      timeoutMilliseconds: action === 'start' ? 900_000 : 120_000,
+      timeoutMilliseconds:
+        action === 'start' ? 900_000 : action === 'project' ? 1_800_000 : 120_000,
       terminationGraceMilliseconds: 10_000,
       cleanup: () => undefined,
     },
   );
+}
+
+/** Stops or recovers any durable run left by an interrupted or failed start attempt. */
+async function cleanupHarnessStack(): Promise<number> {
+  const stop = await runLifecycleAction('stop');
+  return managedChildExit(stop, 60) === 0 ? 0 : 60;
+}
+
+/** Owns one profile stack across a callback and always applies cleanup-failure precedence. */
+async function withHarnessStack(profile: string, work: () => Promise<number>): Promise<number> {
+  const start = await runLifecycleAction('start', undefined, profile);
+  const startExit = managedChildExit(start, setupFailureExit);
+  if (startExit !== 0) {
+    const cleanupExit = await cleanupHarnessStack();
+    return cleanupExit === 0 ? startExit : cleanupExit;
+  }
+  let primaryExit: number;
+  try {
+    primaryExit = await work();
+  } catch {
+    primaryExit = setupFailureExit;
+  } finally {
+    const cleanupExit = await cleanupHarnessStack();
+    if (cleanupExit !== 0) primaryExit = cleanupExit;
+  }
+  return primaryExit;
 }
 
 /** Executes one allowlisted Playwright project against an owned operational stack. */
@@ -164,19 +195,10 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
     return;
   }
 
-  const startResult = await runLifecycleAction('start', undefined, profile);
-  const startExit = managedChildExit(startResult, setupFailureExit);
-  if (startExit !== 0) {
-    process.exitCode = startExit;
-    return;
-  }
-  const projectResult = await runLifecycleAction('project', project);
-  const stopResult = await runLifecycleAction('stop');
-  if (managedChildExit(stopResult, 60) !== 0) {
-    process.exitCode = 60;
-    return;
-  }
-  process.exitCode = managedChildExit(projectResult, 20);
+  process.exitCode = await withHarnessStack(profile, async () => {
+    const projectResult = await runLifecycleAction('project', project);
+    return managedChildExit(projectResult, testFailureExit);
+  });
 }
 
 /** Runs a bounded internal Node suite with an optional exact test-name selector. */
@@ -207,66 +229,30 @@ function runNodeSuite(
 
 /** Runs all fixture cases across separately owned operational and production-security stacks. */
 async function runFixtureRollup(): Promise<void> {
-  const operationalStart = await runLifecycleAction('start', undefined, 'operational');
-  const operationalStartExit = managedChildExit(operationalStart, setupFailureExit);
-  if (operationalStartExit !== 0) {
-    process.exitCode = operationalStartExit;
-    return;
-  }
-  const operational = await runNodeSuite(fixtureRollupFiles);
-  const operationalProfiles =
-    managedChildExit(operational, testFailureExit) === 0
-      ? await runNodeSuite(
-          ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
-          'separate every runtime credential|expose only the exact operational|operational profile',
-        )
-      : undefined;
-  const operationalStop = await runLifecycleAction('stop');
-  if (managedChildExit(operationalStop, 60) !== 0) {
-    process.exitCode = 60;
-    return;
-  }
-  const operationalExit = managedChildExit(operational, testFailureExit);
+  const operationalExit = await withHarnessStack('operational', async () => {
+    const operational = await runNodeSuite(fixtureRollupFiles);
+    const suiteExit = managedChildExit(operational, testFailureExit);
+    if (suiteExit !== 0) return suiteExit;
+    const profiles = await runNodeSuite(
+      ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+      'separate every runtime credential|expose only the exact operational|operational profile',
+    );
+    return managedChildExit(profiles, testFailureExit);
+  });
   if (operationalExit !== 0) {
     process.exitCode = operationalExit;
     return;
   }
-  if (operationalProfiles === undefined) {
-    process.exitCode = testFailureExit;
-    return;
-  }
-  const operationalProfileExit = managedChildExit(operationalProfiles, testFailureExit);
-  if (operationalProfileExit !== 0) {
-    process.exitCode = operationalProfileExit;
-    return;
-  }
-
-  const productionStart = await runLifecycleAction('start', undefined, 'production-security');
-  const productionStartExit = managedChildExit(productionStart, setupFailureExit);
-  if (productionStartExit !== 0) {
-    process.exitCode = productionStartExit;
-    return;
-  }
-  const productionProfile = await runNodeSuite(
-    ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
-    '^should verify every public postcondition for the production-security profile$',
-  );
-  const productionProject =
-    managedChildExit(productionProfile, testFailureExit) === 0
-      ? await runLifecycleAction('project', 'security')
-      : undefined;
-  const productionStop = await runLifecycleAction('stop');
-  if (managedChildExit(productionStop, 60) !== 0) {
-    process.exitCode = 60;
-    return;
-  }
-  const profileExit = managedChildExit(productionProfile, testFailureExit);
-  process.exitCode =
-    profileExit !== 0
-      ? profileExit
-      : productionProject === undefined
-        ? testFailureExit
-        : managedChildExit(productionProject, 20);
+  process.exitCode = await withHarnessStack('production-security', async () => {
+    const profile = await runNodeSuite(
+      ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+      '^should verify every public postcondition for the production-security profile$',
+    );
+    const profileExit = managedChildExit(profile, testFailureExit);
+    if (profileExit !== 0) return profileExit;
+    const project = await runLifecycleAction('project', 'security');
+    return managedChildExit(project, testFailureExit);
+  });
 }
 
 /** Serializes the complete frozen command contract for repository checks and operators. */
@@ -329,38 +315,24 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
   }
 
   const ownsFixtureStack = selector === 'fixture-ontology';
-  if (ownsFixtureStack) {
-    const startResult = await runLifecycleAction('start');
-    const startExit = managedChildExit(startResult, setupFailureExit);
-    if (startExit !== 0) {
-      process.exitCode = startExit;
-      return;
-    }
-  }
-
-  const result = await runManagedChild(
-    process.execPath,
-    ['--import', 'tsx', '--test', ...selectedTests],
-    {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: 'inherit',
-      timeoutMilliseconds: 120_000,
-      terminationGraceMilliseconds: 2_000,
-      cleanup: () => undefined,
-    },
-  );
-
-  if (ownsFixtureStack) {
-    const stopResult = await runLifecycleAction('stop');
-    const stopExit = managedChildExit(stopResult, 60);
-    if (stopExit !== 0) {
-      process.exitCode = 60;
-      return;
-    }
-  }
-
-  process.exitCode = managedChildExit(result, testFailureExit);
+  const execute = async (): Promise<number> => {
+    const result = await runManagedChild(
+      process.execPath,
+      ['--import', 'tsx', '--test', ...selectedTests],
+      {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: 'inherit',
+        timeoutMilliseconds: ownsFixtureStack ? 900_000 : 120_000,
+        terminationGraceMilliseconds: 2_000,
+        cleanup: () => undefined,
+      },
+    );
+    return managedChildExit(result, testFailureExit);
+  };
+  process.exitCode = ownsFixtureStack
+    ? await withHarnessStack('operational', execute)
+    : await execute();
 }
 
 /** Runs one allowlisted RED child and accepts only its exact registered assertion failure. */

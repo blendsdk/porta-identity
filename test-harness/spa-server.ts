@@ -83,7 +83,7 @@ const server = createServer(
   },
 );
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`[SPA-HTTPS] Server running at https://app-harness.ci.portaidentity.com:${PORT}`);
   console.log(`[SPA-HTTPS] Serving files from ${SPA_DIR}`);
 });

@@ -52,8 +52,10 @@ test('should verify live fixture prerequisites through every required public bou
   const results = await surface.verifyPublicPostconditions('operational');
 
   assert.deepEqual(results.map((result) => result.boundary).sort(), [
+    'administration',
     'browser',
     'email',
+    'fixtures',
     'http',
     'protocol',
   ]);

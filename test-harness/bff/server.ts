@@ -286,7 +286,7 @@ router.get('/logout', async (ctx) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`[BFF] Server running at http://app-harness.ci.portaidentity.com:${PORT}`);
 });
 

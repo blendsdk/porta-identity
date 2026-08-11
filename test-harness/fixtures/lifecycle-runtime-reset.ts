@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto';
-import { appendFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash, randomBytes } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
-import { loadFixtureAssuranceSurface } from './fixture-assurance.js';
 import {
   expectedFixtureCounts,
   expectedFixtureDigest,
@@ -60,16 +59,15 @@ function processEnvironment(): Record<string, string> {
 }
 
 /** Builds the exact host-side Porta environment for migration, bootstrap, and fixture seeding. */
-function hostPortaEnvironment(record: LeaseRecord): Readonly<Record<string, string>> {
+export function hostPortaEnvironment(manifest: EndpointManifest): Readonly<Record<string, string>> {
   return {
     ...processEnvironment(),
-    NODE_ENV:
-      record.manifest.environmentName === 'production-security' ? 'production' : 'development',
-    LOG_LEVEL: record.manifest.environmentName === 'production-security' ? 'info' : 'debug',
+    NODE_ENV: manifest.environmentName === 'production-security' ? 'production' : 'development',
+    LOG_LEVEL: manifest.environmentName === 'production-security' ? 'info' : 'debug',
     PORT: '3000',
-    DATABASE_URL: `postgres://porta:harness_pr0d_s3cret@127.0.0.1:${record.manifest.ports.postgres}/porta`,
-    REDIS_URL: `redis://127.0.0.1:${record.manifest.ports.redis}`,
-    ISSUER_BASE_URL: record.manifest.urls.porta,
+    DATABASE_URL: `postgres://porta:harness_pr0d_s3cret@127.0.0.1:${manifest.ports.postgres}/porta`,
+    REDIS_URL: `redis://127.0.0.1:${manifest.ports.redis}`,
+    ISSUER_BASE_URL: manifest.urls.porta,
     TRUST_PROXY: 'true',
     COOKIE_KEYS: 'Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp',
     SMTP_HOST: 'smtp-capture.test-harness.local',
@@ -77,46 +75,82 @@ function hostPortaEnvironment(record: LeaseRecord): Readonly<Record<string, stri
     SMTP_FROM: 'noreply@test-harness.local',
     SIGNING_KEY_ENCRYPTION_KEY: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2',
     TWO_FACTOR_ENCRYPTION_KEY: 'f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2',
-    HARNESS_RUN_ID: record.runId,
-    HARNESS_PROFILE: record.manifest.environmentName,
-    HARNESS_WORKTREE: record.worktreePath,
-    HARNESS_PORTA_PORT: String(record.manifest.ports.porta),
-    HARNESS_APP_PORT: String(record.manifest.ports.app),
-    HARNESS_BFF_PORT: String(record.manifest.ports.bff),
-    HARNESS_POSTGRES_PORT: String(record.manifest.ports.postgres),
-    HARNESS_REDIS_PORT: String(record.manifest.ports.redis),
-    HARNESS_MAILHOG_PORT: String(record.manifest.ports.mailhog),
-    HARNESS_PORTA_URL: record.manifest.urls.porta,
-    HARNESS_APP_URL: record.manifest.urls.app,
-    HARNESS_BFF_URL: record.manifest.urls.bff,
-    HARNESS_MAILHOG_URL: record.manifest.urls.mailhog,
-    HARNESS_CERT_DIR: dirname(record.manifest.certificatePath),
+    HARNESS_RUN_ID: manifest.runId,
+    HARNESS_PROFILE: manifest.environmentName,
+    HARNESS_WORKTREE: manifest.worktreePath,
+    HARNESS_PORTA_PORT: String(manifest.ports.porta),
+    HARNESS_APP_PORT: String(manifest.ports.app),
+    HARNESS_BFF_PORT: String(manifest.ports.bff),
+    HARNESS_POSTGRES_PORT: String(manifest.ports.postgres),
+    HARNESS_REDIS_PORT: String(manifest.ports.redis),
+    HARNESS_MAILHOG_PORT: String(manifest.ports.mailhog),
+    HARNESS_PORTA_URL: manifest.urls.porta,
+    HARNESS_APP_URL: manifest.urls.app,
+    HARNESS_BFF_URL: manifest.urls.bff,
+    HARNESS_MAILHOG_URL: manifest.urls.mailhog,
+    HARNESS_CERT_DIR: dirname(manifest.certificatePath),
     PORTA_ENDPOINT_MANIFEST: resolve(
-      record.worktreePath,
+      manifest.worktreePath,
       'test-harness/.assurance-runtime',
-      record.runId,
+      manifest.runId,
       'endpoint-manifest.json',
     ),
     HARNESS_FIXTURE_MANIFEST: resolve(
-      record.worktreePath,
+      manifest.worktreePath,
       'test-harness/.assurance-runtime',
-      record.runId,
+      manifest.runId,
       'fixture-public.json',
     ),
     HARNESS_FIXTURE_CREDENTIALS: resolve(
-      record.worktreePath,
+      manifest.worktreePath,
       'test-harness/.assurance-runtime',
-      record.runId,
+      manifest.runId,
       'fixture-credentials.json',
     ),
   };
+}
+
+/** Runs Porta bootstrap from an owner-only input file so credentials never enter argv. */
+export async function runOwnerOnlyBootstrap(
+  runner: RuntimeCommandRunner,
+  manifest: EndpointManifest,
+  signal?: AbortSignal,
+): Promise<void> {
+  const bootstrapInput = resolve(
+    manifest.worktreePath,
+    'test-harness/.assurance-runtime',
+    manifest.runId,
+    'bootstrap-input.json',
+  );
+  rmSync(bootstrapInput, { force: true });
+  writeFileSync(
+    bootstrapInput,
+    `${JSON.stringify({ password: `P-${randomBytes(24).toString('base64url')}!aA7` })}\n`,
+    { encoding: 'utf8', mode: 0o600, flag: 'wx' },
+  );
+  try {
+    await runner.checked(
+      process.execPath,
+      ['--import', 'tsx', 'test-harness/scripts/bootstrap.ts'],
+      {
+        cwd: manifest.worktreePath,
+        environment: {
+          ...hostPortaEnvironment(manifest),
+          HARNESS_BOOTSTRAP_INPUT: bootstrapInput,
+        },
+        signal,
+      },
+    );
+  } finally {
+    rmSync(bootstrapInput, { force: true });
+  }
 }
 
 /** Resolves one exact Compose service container and verifies it belongs to the persisted lease. */
 async function serviceContainerId(
   runner: RuntimeCommandRunner,
   record: LeaseRecord,
-  service: 'porta' | 'postgres' | 'redis',
+  service: 'nginx' | 'porta' | 'postgres' | 'redis',
   signal?: AbortSignal,
 ): Promise<string> {
   const result = await runner.checked(
@@ -183,6 +217,31 @@ function recordResetStage(
   appendFileSync(path, `${stage}:${state}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
+/** Waits for Porta through the private container boundary while public ingress remains stopped. */
+async function waitForPrivatePorta(
+  runner: RuntimeCommandRunner,
+  record: LeaseRecord,
+  porta: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    if (signal?.aborted === true) throw new Error('private Porta readiness was aborted');
+    const result = await runner.run(
+      'docker',
+      ['exec', porta, 'wget', '-qO-', '--timeout=2', 'http://127.0.0.1:3000/health'],
+      {
+        cwd: record.worktreePath,
+        environment: processEnvironment(),
+        timeoutMilliseconds: 5_000,
+        signal,
+      },
+    );
+    if (result.exitCode === 0) return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 1_000));
+  }
+  throw new Error('private Porta health did not become ready');
+}
+
 /** Creates the real reset capability bundle for one lifecycle supervisor. */
 export function createRuntimeResetDependencies(
   worktreePath: string,
@@ -207,12 +266,37 @@ export function createRuntimeResetDependencies(
         if (signal?.aborted === true) throw new Error('reset traffic quiesce was aborted');
         const path = admissionPath(record);
         mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-        writeFileSync(path, `${JSON.stringify({ runId: record.runId })}\n`, {
-          encoding: 'utf8',
-          mode: 0o600,
-          flag: 'wx',
-        });
-        blockedRuns.add(record.runId);
+        const alreadyBlocked = blockedRuns.has(record.runId);
+        if (alreadyBlocked !== existsSync(path)) {
+          throw new Error('reset traffic admission state is inconsistent');
+        }
+        if (!alreadyBlocked) {
+          writeFileSync(path, `${JSON.stringify({ runId: record.runId })}\n`, {
+            encoding: 'utf8',
+            mode: 0o600,
+            flag: 'wx',
+          });
+          blockedRuns.add(record.runId);
+        }
+        const nginx = await serviceContainerId(runner, record, 'nginx', signal);
+        if (!alreadyBlocked) {
+          await runner.checked('docker', ['pause', nginx], {
+            cwd: record.worktreePath,
+            environment: processEnvironment(),
+            signal,
+          });
+        }
+        const refused = await runner.run(
+          'curl',
+          ['-ksf', '--max-time', '2', `${record.manifest.urls.porta}/health`],
+          {
+            cwd: record.worktreePath,
+            environment: processEnvironment(),
+            timeoutMilliseconds: 5_000,
+            signal,
+          },
+        );
+        if (refused.exitCode === 0) throw new Error('public admission remained open during reset');
       },
       async verifyBlocked(record, signal) {
         if (signal?.aborted === true || !blockedRuns.has(record.runId)) {
@@ -220,27 +304,11 @@ export function createRuntimeResetDependencies(
         }
       },
       async resume(record, signal) {
-        if (signal?.aborted === true || !blockedRuns.delete(record.runId)) {
+        if (signal?.aborted === true || !blockedRuns.has(record.runId)) {
           throw new Error('reset traffic admission fence changed');
         }
-        rmSync(admissionPath(record));
-      },
-    },
-    runtime: {
-      async stopPorta(record, signal) {
-        const porta = await serviceContainerId(runner, record, 'porta', signal);
-        await runner.checked('docker', ['stop', '--time', '10', porta], {
-          cwd: record.worktreePath,
-          environment: processEnvironment(),
-          signal,
-        });
-      },
-      async restartClients(record, signal) {
-        await clients.restart(record.manifest, signal);
-      },
-      async restartPorta(record, signal) {
-        const porta = await serviceContainerId(runner, record, 'porta', signal);
-        await runner.checked('docker', ['start', porta], {
+        const nginx = await serviceContainerId(runner, record, 'nginx', signal);
+        await runner.checked('docker', ['unpause', nginx], {
           cwd: record.worktreePath,
           environment: processEnvironment(),
           signal,
@@ -265,6 +333,49 @@ export function createRuntimeResetDependencies(
             signal,
           },
         );
+        blockedRuns.delete(record.runId);
+        rmSync(admissionPath(record), { force: true });
+      },
+      async restore(record, signal) {
+        if (signal?.aborted === true) throw new Error('reset traffic restore was aborted');
+        if (!blockedRuns.has(record.runId) && !existsSync(admissionPath(record))) return;
+        const nginx = await serviceContainerId(runner, record, 'nginx', signal);
+        await runner.run('docker', ['unpause', nginx], {
+          cwd: record.worktreePath,
+          environment: processEnvironment(),
+          signal,
+        });
+        const state = await runner.checked(
+          'docker',
+          ['inspect', '--format', '{{.State.Paused}}', nginx],
+          { cwd: record.worktreePath, environment: processEnvironment(), signal },
+        );
+        if (state.stdout.trim() !== 'false')
+          throw new Error('nginx admission fence remained paused');
+        blockedRuns.delete(record.runId);
+        rmSync(admissionPath(record), { force: true });
+      },
+    },
+    runtime: {
+      async stopPorta(record, signal) {
+        const porta = await serviceContainerId(runner, record, 'porta', signal);
+        await runner.checked('docker', ['stop', '--time', '10', porta], {
+          cwd: record.worktreePath,
+          environment: processEnvironment(),
+          signal,
+        });
+      },
+      async restartClients(record, signal) {
+        await clients.restart(record.manifest, signal);
+      },
+      async restartPorta(record, signal) {
+        const porta = await serviceContainerId(runner, record, 'porta', signal);
+        await runner.checked('docker', ['start', porta], {
+          cwd: record.worktreePath,
+          environment: processEnvironment(),
+          signal,
+        });
+        await waitForPrivatePorta(runner, record, porta, signal);
       },
     },
     state: new FileResetStateAdapter(),
@@ -303,7 +414,7 @@ export function createRuntimeResetDependencies(
         await runner.checked(
           process.execPath,
           ['--import', 'tsx', 'packages/server/src/cli/index.ts', 'migrate', 'up'],
-          { cwd: record.worktreePath, environment: hostPortaEnvironment(record), signal },
+          { cwd: record.worktreePath, environment: hostPortaEnvironment(record.manifest), signal },
         );
         recordResetStage(record, 'migration', 'completed');
       },
@@ -324,25 +435,7 @@ export function createRuntimeResetDependencies(
         });
         earlyRedisKeysRemoved += parseCount(before.stdout.trim());
         recordResetStage(record, 'bootstrap', 'started');
-        await runner.checked(
-          process.execPath,
-          [
-            '--import',
-            'tsx',
-            'packages/server/src/cli/index.ts',
-            'init',
-            '--force',
-            '--email',
-            'admin@test-harness.local',
-            '--given-name',
-            'Admin',
-            '--family-name',
-            'User',
-            '--password',
-            'TestPassword123!',
-          ],
-          { cwd: record.worktreePath, environment: hostPortaEnvironment(record), signal },
-        );
+        await runOwnerOnlyBootstrap(runner, record.manifest, signal);
         recordResetStage(record, 'bootstrap', 'completed');
       },
       async seed(record, suppliedExpectations, signal) {
@@ -355,7 +448,7 @@ export function createRuntimeResetDependencies(
           ['--import', 'tsx', 'test-harness/scripts/seed.ts'],
           {
             cwd: record.worktreePath,
-            environment: hostPortaEnvironment(record),
+            environment: hostPortaEnvironment(record.manifest),
             timeoutMilliseconds: 120_000,
             signal,
           },
@@ -485,17 +578,13 @@ export function createRuntimeResetDependencies(
       },
     },
     publicVerification: {
-      async verify(record) {
-        const results = await (
-          await loadFixtureAssuranceSurface()
-        ).verifyPublicPostconditions(
-          record.manifest.environmentName === 'production-security'
-            ? 'production-security'
-            : 'operational',
+      async verify(record, signal) {
+        const porta = await serviceContainerId(runner, record, 'porta', signal);
+        await runner.checked(
+          'docker',
+          ['exec', porta, 'wget', '-qO-', '--timeout=2', 'http://127.0.0.1:3000/health'],
+          { cwd: record.worktreePath, environment: processEnvironment(), signal },
         );
-        if (results.some((result) => result.status !== 'passed')) {
-          throw new Error('public reset postcondition failed');
-        }
       },
     },
   };

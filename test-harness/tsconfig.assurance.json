@@ -7,6 +7,7 @@
     "assurance/**/*.ts",
     "fixtures/**/*.ts",
     "scripts/lifecycle.ts",
+    "scripts/bootstrap.ts",
     "scripts/managed-client-bootstrap.ts",
     "scripts/seed.ts",
     "tests/global-setup.ts",

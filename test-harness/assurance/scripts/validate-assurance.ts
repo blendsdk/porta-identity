@@ -130,14 +130,15 @@ function validateOwnedManifest(
   for (const result of results) {
     if (
       result.buildIdentity !== manifest.buildIdentity ||
-      result.fixtureIdentity !== manifest.fixtureIdentity
+      result.fixtureIdentity !== manifest.fixtureIdentity ||
+      result.runtimeProfile !== manifest.runtimeProfile
     ) {
       throw new Error('owned result provenance does not match its manifest');
     }
   }
   requireExactJson(
     manifest.results,
-    results.map(({ command, status }) => ({ command, status })),
+    results.map(({ command, status, runtimeProfile }) => ({ command, status, runtimeProfile })),
     'manifest result summary',
   );
   requireExactJson(
@@ -295,6 +296,12 @@ function requireAssuredEvidence(
   if (claim.evidence.fixtureIdentity !== context.manifest.fixtureIdentity) {
     throw new Error('cannot enter assured state with mismatched fixture provenance');
   }
+  if (
+    claim.evidence.runtimeProfile !== claim.profile ||
+    context.manifest.runtimeProfile !== claim.profile
+  ) {
+    throw new Error('cannot enter assured state with mismatched runtime profile evidence');
+  }
   const results = claim.evidence.results;
   if (
     !Array.isArray(results) ||
@@ -307,7 +314,9 @@ function requireAssuredEvidence(
         !context.manifest.results.some(
           (authoritativeResult) =>
             authoritativeResult.command === result.command &&
-            authoritativeResult.status === result.status,
+            authoritativeResult.status === result.status &&
+            authoritativeResult.runtimeProfile === result.runtimeProfile &&
+            result.runtimeProfile === claim.profile,
         ),
     )
   ) {

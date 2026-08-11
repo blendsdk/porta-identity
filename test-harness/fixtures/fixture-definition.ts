@@ -159,6 +159,7 @@ function administrativeActor(
     roleId,
     permissions,
     passwordCredentialRef: `credential:super-admin:password:${permissionSet}`,
+    tokenCredentialRef: `credential:super-admin:token:${permissionSet}`,
   };
 }
 
@@ -289,6 +290,50 @@ export const publicFixtureManifest: PublicFixtureManifest = {
   globalRoles,
 };
 
+/** Run-owned endpoints used to resolve public client metadata without production-derived values. */
+export interface FixtureManifestEndpoints {
+  /** Retained SPA endpoint for the active port lease. */
+  readonly appBaseUrl: string;
+  /** Retained BFF endpoint for the active port lease. */
+  readonly bffBaseUrl: string;
+}
+
+/** Resolves the independent fixture template to the exact active client endpoints. */
+export function resolvePublicFixtureManifest(
+  endpoints: FixtureManifestEndpoints,
+): PublicFixtureManifest {
+  const resolveTenant = (tenant: OrdinaryTenantFixture): OrdinaryTenantFixture => {
+    const tenantApp =
+      tenant.id === 'alpha'
+        ? endpoints.appBaseUrl
+        : endpoints.appBaseUrl.replace('app-harness.', 'bravo-app-harness.');
+    const tenantBff =
+      tenant.id === 'alpha'
+        ? endpoints.bffBaseUrl
+        : endpoints.bffBaseUrl.replace('app-harness.', 'bravo-app-harness.');
+    return {
+      ...tenant,
+      clients: tenant.clients.map((entry) => {
+        const base = entry.kind === 'public' ? tenantApp : tenantBff;
+        return {
+          ...entry,
+          redirectUris: [`${base}${entry.kind === 'public' ? '/callback.html' : '/callback'}`],
+          origins: [base],
+        };
+      }),
+    };
+  };
+  const alpha = resolveTenant(alphaFixture);
+  const bravo = resolveTenant(bravoFixture);
+  return {
+    alpha,
+    bravo,
+    superAdmin: publicFixtureManifest.superAdmin,
+    globalApplications: publicFixtureManifest.globalApplications,
+    globalRoles: publicFixtureManifest.globalRoles,
+  };
+}
+
 /** Complete non-secret credential inventory; raw values remain runtime-only. */
 export const protectedCredentialDescriptors: readonly ProtectedCredentialDescriptor[] = [
   ...[alphaFixture, bravoFixture].flatMap((tenant) => [
@@ -304,6 +349,7 @@ export const protectedCredentialDescriptors: readonly ProtectedCredentialDescrip
   ...administrativeActors.map((entry) =>
     protectedCredential(entry.passwordCredentialRef, 'password'),
   ),
+  ...administrativeActors.map((entry) => protectedCredential(entry.tokenCredentialRef, 'token')),
   protectedCredential('credential:alpha:totp:two-factor', 'totp'),
   protectedCredential('credential:alpha:recovery:two-factor', 'recovery-code'),
   protectedCredential('credential:bravo:totp:two-factor', 'totp'),

@@ -23,12 +23,14 @@ import {
   LoopbackEndpointAvailabilityAdapter,
 } from './lifecycle-system.js';
 import {
-  hasNodeErrorCode,
   RuntimeCommandRunner,
   RuntimeTimeoutError,
   signalChildProcessGroup,
 } from './lifecycle-runtime-command.js';
-import { createRuntimeResetDependencies } from './lifecycle-runtime-reset.js';
+import {
+  createRuntimeResetDependencies,
+  runOwnerOnlyBootstrap,
+} from './lifecycle-runtime-reset.js';
 export { RuntimeCommandRunner } from './lifecycle-runtime-command.js';
 
 /** Stable runtime environment derived only from one validated endpoint manifest. */
@@ -248,6 +250,23 @@ class RuntimeComposeAdapter implements ComposeAdapter {
       if (services.join(',') !== 'mailhog,nginx,porta,postgres,redis') {
         return { presence: 'unreadable' };
       }
+      for (const [index, labels] of observedLabels.entries()) {
+        const containerId = containerIds[index];
+        if (containerId === undefined) return { presence: 'unreadable' };
+        const bindingResult = await this.runner.checked(
+          'docker',
+          ['container', 'inspect', '--format', '{{json .HostConfig.PortBindings}}', containerId],
+          { cwd: this.worktreePath, environment: currentEnvironment() },
+        );
+        const bindingText = bindingResult.stdout;
+        if (/"HostIp":"(?!127\.0\.0\.1")[^"]+"/u.test(bindingText)) {
+          return { presence: 'unreadable' };
+        }
+        const publishesHostPort = bindingText.includes('"HostIp":"127.0.0.1"');
+        if (labels.service === 'porta' ? publishesHostPort : !publishesHostPort) {
+          return { presence: 'unreadable' };
+        }
+      }
       const identity = await this.leases.read({ runId, worktreePath });
       return typeof identity === 'string'
         ? { presence: 'unreadable' }
@@ -447,25 +466,7 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
       return;
     }
     if (name === 'seed') {
-      await this.runner.checked(
-        'docker',
-        [
-          'exec',
-          `${manifest.composeProject}-porta-1`,
-          'porta',
-          'init',
-          '--force',
-          '--email',
-          'admin@test-harness.local',
-          '--given-name',
-          'Admin',
-          '--family-name',
-          'User',
-          '--password',
-          'TestPassword123!',
-        ],
-        { cwd: manifest.worktreePath, environment, signal },
-      );
+      await runOwnerOnlyBootstrap(this.runner, manifest, signal);
       await this.runner.checked(
         process.execPath,
         ['--import', 'tsx', 'test-harness/scripts/seed.ts'],

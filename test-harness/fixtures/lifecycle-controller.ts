@@ -5,10 +5,8 @@ import {
   ownedRunBrand,
   type EndpointManifest,
   type LeaseRecord,
-  type LifecycleClassification,
   type LifecycleController,
   type LifecycleDependencies,
-  type LifecycleExitCode,
   type LifecycleOutcome,
   type LifecycleRecoveryLookup,
   type LifecycleRecoveryResult,
@@ -18,7 +16,6 @@ import {
   type OwnedRun,
   type PrerequisiteName,
   type ResetDependencies,
-  type ResetReport,
 } from './lifecycle-planned.js';
 import {
   createEndpointManifest,
@@ -483,6 +480,18 @@ export class LifecycleControllerImplementation implements LifecycleController {
       await this.runResetStep(currentStep, (signal) => reset.traffic.resume(record, signal));
       return { ...outcome(0), report: freezeResetReport(report) };
     } catch (error) {
+      if (!postMutationSteps.has(currentStep)) {
+        try {
+          await reset.traffic.restore(record);
+        } catch {
+          return {
+            ...outcome(60),
+            prerequisite: prerequisiteForResetStep(currentStep),
+            recoveryIdentifiers: safeIds(record),
+            report: freezeResetReport(report),
+          };
+        }
+      }
       if (!(await this.restorePoisonAfterFailure(record, reset, currentStep))) {
         return {
           ...outcome(60),

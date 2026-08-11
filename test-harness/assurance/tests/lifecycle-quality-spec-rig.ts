@@ -320,6 +320,9 @@ function createReset(
       async resume(_record) {
         controls.calls.push('reset-resume');
       },
+      async restore(_record) {
+        controls.calls.push('reset-restore');
+      },
     },
     runtime: {
       async stopPorta(_record) {

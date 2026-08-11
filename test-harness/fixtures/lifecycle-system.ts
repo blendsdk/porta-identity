@@ -29,9 +29,7 @@ export {
 } from './lifecycle-system-probes.js';
 
 import type {
-  EndpointAvailabilityAdapter,
   EndpointManifest,
-  EndpointName,
   DurableResetState,
   LeaseRecord,
   LeaseStateAdapter,
@@ -39,7 +37,6 @@ import type {
   ManifestConsumerAdapter,
   Presence,
   ProcessIdentity,
-  ProcessProbeAdapter,
   ResetStateAdapter,
 } from './lifecycle-planned.js';
 

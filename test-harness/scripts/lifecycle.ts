@@ -26,7 +26,9 @@ import { createLifecycleController } from '../fixtures/lifecycle-planned.js';
 import {
   createRuntimeDependencies,
   environmentForManifest,
+  RuntimeCommandRunner,
 } from '../fixtures/lifecycle-runtime.js';
+import { RuntimeTimeoutError } from '../fixtures/lifecycle-runtime-command.js';
 import { lifecycleSocketDirectory, lifecycleSocketPath } from '../fixtures/lifecycle-validation.js';
 
 const actionSchema = z.enum([
@@ -74,7 +76,19 @@ const activeRunSchema = z.object({
 type ActiveRun = z.infer<typeof activeRunSchema>;
 
 /** Request accepted by the owner-only local lifecycle control socket. */
-type ControlAction = 'prepare' | 'reset' | 'stop';
+type AssuranceProject = 'spa' | 'bff' | 'protocol' | 'security' | 'compatibility';
+
+/** Serialized owner-socket actions, including project admission. */
+type ControlAction = 'prepare' | 'reset' | 'stop' | `project:${AssuranceProject}`;
+
+/** Parses one bounded control action without trusting a caller-supplied discriminator. */
+function parseControlAction(rawRequest: string): ControlAction {
+  const value = z.string().parse(JSON.parse(rawRequest));
+  if (value === 'prepare' || value === 'reset' || value === 'stop') return value;
+  const match = /^project:(.+)$/u.exec(value);
+  const project = z.enum(['spa', 'bff', 'protocol', 'security', 'compatibility']).parse(match?.[1]);
+  return `project:${project}`;
+}
 
 /** Maximum bytes accepted from one local control request. */
 const maximumControlBytes = 1024;
@@ -110,6 +124,16 @@ async function start(options: readonly string[]): Promise<LifecycleExitCode> {
   const runtimeDirectory = resolve(root, 'test-harness/.assurance-runtime', runId);
   mkdirSync(runtimeDirectory, { recursive: true, mode: 0o700 });
   const logFile = openSync(resolve(runtimeDirectory, 'supervisor.log'), 'a', 0o600);
+  const supervisorRef: { current?: ReturnType<typeof spawn> } = {};
+  let interrupted: 130 | 143 | undefined;
+  const forwardStartupSignal = (signal: 'SIGINT' | 'SIGTERM'): void => {
+    interrupted ??= signal === 'SIGINT' ? 130 : 143;
+    supervisorRef.current?.kill(signal);
+  };
+  const onSigint = (): void => forwardStartupSignal('SIGINT');
+  const onSigterm = (): void => forwardStartupSignal('SIGTERM');
+  process.once('SIGINT', onSigint);
+  process.once('SIGTERM', onSigterm);
   const child = spawn(
     process.execPath,
     [
@@ -132,11 +156,44 @@ async function start(options: readonly string[]): Promise<LifecycleExitCode> {
       stdio: ['ignore', logFile, logFile],
     },
   );
+  supervisorRef.current = child;
   closeSync(logFile);
-  child.unref();
-  await waitForActiveRun(root, runId, 600_000, child);
-  process.stdout.write(`HARNESS_RUN_ID=${runId}\n`);
-  return 0;
+  if (interrupted !== undefined) child.kill(interrupted === 130 ? 'SIGINT' : 'SIGTERM');
+  try {
+    await waitForActiveRun(root, runId, 600_000, child);
+    if (interrupted !== undefined) {
+      await waitForSupervisorExit(child);
+      const cleanupExit = await cleanupStaleRuns(root, true);
+      if (cleanupExit === 0) rmSync(runtimeDirectory, { recursive: true, force: true });
+      return cleanupExit === 0 ? interrupted : 60;
+    }
+    child.unref();
+    process.stdout.write(`HARNESS_RUN_ID=${runId}\n`);
+    return 0;
+  } catch (error) {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+    await waitForSupervisorExit(child);
+    const cleanupExit = await cleanupStaleRuns(root, true);
+    if (cleanupExit === 0) rmSync(runtimeDirectory, { recursive: true, force: true });
+    if (cleanupExit !== 0) return 60;
+    if (interrupted !== undefined) return interrupted;
+    throw error;
+  } finally {
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
+  }
+}
+
+/** Joins one exact startup supervisor so the launcher cannot report before cleanup ownership ends. */
+async function waitForSupervisorExit(supervisor: ReturnType<typeof spawn>): Promise<void> {
+  if (supervisor.exitCode !== null || supervisor.signalCode !== null) return;
+  await new Promise<void>((resolveExit) => {
+    const force = setTimeout(() => supervisor.kill('SIGKILL'), 10_000);
+    supervisor.once('exit', () => {
+      clearTimeout(force);
+      resolveExit();
+    });
+  });
 }
 
 /** Runs the lifecycle supervisor until an exact stop request or signal completes cleanup. */
@@ -186,6 +243,7 @@ async function supervise(
   const socketPath = lifecycleSocketPath(runId);
   rmSync(socketPath, { force: true });
   let stopping = false;
+  let activeProjectAbort: AbortController | undefined;
   let operationQueue: Promise<void> = Promise.resolve();
   let stopOperation: Promise<LifecycleOutcome> | undefined;
   let resolveStopped: (exitCode: LifecycleExitCode) => void = () => undefined;
@@ -196,10 +254,11 @@ async function supervise(
   // the asynchronous lifecycle operation has returned its stable outcome.
   const scheduleControl = async (
     rawRequest: string,
+    cancellationSignal?: AbortSignal,
   ): Promise<Awaited<ReturnType<typeof handleControlRequest>>> => {
     let action: ControlAction;
     try {
-      action = z.enum(['prepare', 'reset', 'stop']).parse(JSON.parse(rawRequest));
+      action = parseControlAction(rawRequest);
     } catch {
       return { outcome: setupFailureOutcome(), shouldStop: false };
     }
@@ -208,6 +267,7 @@ async function supervise(
     }
     if (action === 'stop') {
       stopping = true;
+      activeProjectAbort?.abort();
       stopOperation ??= operationQueue.then(() => controller.stop(ownedRun));
       const result = stopOperation.then((outcome) => ({ outcome, shouldStop: true }));
       operationQueue = result.then(
@@ -216,9 +276,27 @@ async function supervise(
       );
       return result;
     }
-    const operation = operationQueue.then(() =>
-      handleControlRequest(JSON.stringify(action), controller, ownedRun),
-    );
+    const operation = operationQueue.then(async () => {
+      if (!action.startsWith('project:')) {
+        return handleControlRequest(JSON.stringify(action), controller, ownedRun);
+      }
+      const projectAbort = new AbortController();
+      activeProjectAbort = projectAbort;
+      const cancelProject = (): void => projectAbort.abort();
+      cancellationSignal?.addEventListener('abort', cancelProject, { once: true });
+      if (cancellationSignal?.aborted === true) cancelProject();
+      try {
+        return await handleControlRequest(
+          JSON.stringify(action),
+          controller,
+          ownedRun,
+          projectAbort.signal,
+        );
+      } finally {
+        cancellationSignal?.removeEventListener('abort', cancelProject);
+        if (activeProjectAbort === projectAbort) activeProjectAbort = undefined;
+      }
+    });
     operationQueue = operation.then(
       () => undefined,
       () => undefined,
@@ -228,21 +306,27 @@ async function supervise(
 
   const server = createServer({ allowHalfOpen: true }, (socket) => {
     let request = '';
+    let responseCompleted = false;
+    const requestAbort = new AbortController();
     socket.setEncoding('utf8');
     socket.on('data', (chunk) => {
       request += chunk;
       if (Buffer.byteLength(request, 'utf8') > maximumControlBytes) socket.destroy();
     });
     socket.on('end', () => {
-      void scheduleControl(request)
+      void scheduleControl(request, requestAbort.signal)
         .then((result) => {
           if (result.ownedRun !== undefined) ownedRun = result.ownedRun;
+          responseCompleted = true;
           socket.end(`${JSON.stringify(result.outcome)}\n`);
           if (result.shouldStop) {
             server.close(() => resolveStopped(result.outcome.exitCode));
           }
         })
         .catch(() => socket.end(`${JSON.stringify({ exitCode: 30 })}\n`));
+    });
+    socket.once('close', () => {
+      if (!responseCompleted) requestAbort.abort();
     });
   });
   server.listen(socketPath);
@@ -259,6 +343,7 @@ async function supervise(
   const stopFromSignal = (exitCode: 130 | 143): void => {
     if (stopping) return;
     stopping = true;
+    activeProjectAbort?.abort();
     stopOperation ??= operationQueue.then(() => controller.stop(ownedRun));
     void stopOperation.then((outcome) => {
       server.close(() => resolveSignalStop(outcome.exitCode === 0 ? exitCode : 60));
@@ -295,17 +380,45 @@ async function handleControlRequest(
   rawRequest: string,
   controller: ReturnType<typeof createLifecycleController>,
   ownedRun: OwnedRun,
+  projectSignal?: AbortSignal,
 ): Promise<{
   readonly outcome: LifecycleOutcome;
   readonly ownedRun?: OwnedRun;
   readonly shouldStop: boolean;
 }> {
-  const action = z.enum(['prepare', 'reset', 'stop']).parse(JSON.parse(rawRequest));
+  const action = parseControlAction(rawRequest);
   if (action === 'prepare') {
     return { outcome: await controller.prepare(ownedRun), ownedRun, shouldStop: false };
   }
   if (action === 'reset') {
     return { outcome: await controller.reset(ownedRun), ownedRun, shouldStop: false };
+  }
+  if (action.startsWith('project:')) {
+    const project = z
+      .enum(['spa', 'bff', 'protocol', 'security', 'compatibility'])
+      .parse(action.slice('project:'.length));
+    const exitCode = await runProjectWithManifest(ownedRun.manifest, project, projectSignal);
+    const classification: LifecycleOutcome['classification'] =
+      exitCode === 0
+        ? 'success'
+        : exitCode === 20
+          ? 'product-failure'
+          : exitCode === 21
+            ? 'test-failure'
+            : exitCode === 70
+              ? 'timeout'
+              : 'setup-failure';
+    const outcome: LifecycleOutcome = {
+      exitCode,
+      classification,
+      primaryExitCode: exitCode,
+      recoveryIdentifiers: [],
+    };
+    return {
+      outcome,
+      ownedRun,
+      shouldStop: false,
+    };
   }
   const outcome = await controller.stop(ownedRun);
   return { outcome, shouldStop: outcome.exitCode === 0 };
@@ -329,6 +442,8 @@ async function sendControl(action: ControlAction): Promise<LifecycleExitCode> {
           .object({
             exitCode: z.union([
               z.literal(0),
+              z.literal(20),
+              z.literal(21),
               z.literal(30),
               z.literal(60),
               z.literal(70),
@@ -408,29 +523,35 @@ async function runRetainedTests(options: readonly string[]): Promise<LifecycleEx
 async function runAssuranceProject(options: readonly string[]): Promise<LifecycleExitCode> {
   if (options.length !== 2 || options[0] !== '--name') return 30;
   const project = z.enum(['spa', 'bff', 'protocol', 'security', 'compatibility']).parse(options[1]);
+  return sendControl(`project:${project}`);
+}
+
+/** Executes one admitted project inside the supervisor's serialized operation queue. */
+async function runProjectWithManifest(
+  manifest: OwnedRun['manifest'],
+  project: AssuranceProject,
+  signal?: AbortSignal,
+): Promise<LifecycleExitCode> {
   const root = worktreePath();
-  const active = readActiveRun(root);
-  if (
-    existsSync(
-      resolve(root, 'test-harness/.assurance-runtime', active.runId, 'traffic-blocked.json'),
-    )
-  ) {
-    return 30;
-  }
-  return new Promise((resolveExit, rejectExit) => {
-    const child = spawn(
+  try {
+    const result = await new RuntimeCommandRunner().run(
       resolve(root, 'node_modules/.bin/playwright'),
       ['test', '--project', project],
       {
         cwd: resolve(root, 'test-harness'),
-        env: environmentForManifest(active.manifest),
-        shell: false,
-        stdio: 'inherit',
+        environment: { ...environmentForManifest(manifest), HARNESS_PROJECT_ADMITTED: '1' },
+        timeoutMilliseconds: 1_800_000,
+        signal,
       },
     );
-    child.once('error', rejectExit);
-    child.once('exit', (code) => resolveExit(code === 0 ? 0 : 30));
-  });
+    if (result.exitCode === 0) return 0;
+    const failedAssertion = /(?:^|\n)\s*[1-9][0-9]* failed(?:\s|$)/u.test(
+      `${result.stdout}\n${result.stderr}`,
+    );
+    return failedAssertion ? 20 : 21;
+  } catch (error) {
+    return error instanceof RuntimeTimeoutError ? 70 : 30;
+  }
 }
 
 /** Writes active discovery through an owner-only atomic replacement. */

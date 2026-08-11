@@ -89,6 +89,7 @@ for (const step of ['quiesce', 'stop-porta', 'persist-poison'] as const) {
       assert.equal(interrupted.exitCode, expectedExitCode(kind));
       assert.ok(!rig.controls.calls.some((call) => call.step === 'db-recreate'));
       assert.equal(rig.sharedState.resetStates.get(ownedRun.manifest.runId), 'ready');
+      assert.equal(rig.controls.trafficBlocked, false);
       rig.controls.fault = undefined;
       rig.controls.calls.length = 0;
 

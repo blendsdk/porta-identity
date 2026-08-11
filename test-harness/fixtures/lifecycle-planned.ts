@@ -12,10 +12,16 @@ export const ownedRunBrand: unique symbol = Symbol('owned-run');
 
 /** Stable classifications emitted by every lifecycle operation. */
 export type LifecycleClassification =
-  'success' | 'setup-failure' | 'cleanup-failure' | 'timeout' | 'interrupted';
+  | 'success'
+  | 'product-failure'
+  | 'test-failure'
+  | 'setup-failure'
+  | 'cleanup-failure'
+  | 'timeout'
+  | 'interrupted';
 
 /** Exit codes reserved by the lifecycle contract. */
-export type LifecycleExitCode = 0 | 30 | 60 | 70 | 130 | 143;
+export type LifecycleExitCode = 0 | 20 | 21 | 30 | 60 | 70 | 130 | 143;
 
 /** Names of prerequisites that must complete before behavioral assertions begin. */
 export type PrerequisiteName =
@@ -292,6 +298,8 @@ export interface TrafficAdmissionAdapter {
   verifyBlocked(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
   /** Reopens test traffic only after poison is cleared following final verification. */
   resume(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
+  /** Restores the pre-reset admission state when no durable mutation began. */
+  restore(record: LeaseRecord, signal?: AbortSignal): Promise<void>;
 }
 
 /** Porta and client runtime operations used during an ordered reset. */
@@ -495,12 +503,14 @@ export async function runCompatibilityCommand(
 
 /** Returns whether a numeric child result belongs to the stable lifecycle taxonomy. */
 function isLifecycleExitCode(value: number): value is LifecycleExitCode {
-  return [0, 30, 60, 70, 130, 143].includes(value);
+  return [0, 20, 21, 30, 60, 70, 130, 143].includes(value);
 }
 
 /** Maps a stable lifecycle exit to its public classification. */
 function classificationForExit(exitCode: LifecycleExitCode): LifecycleClassification {
   if (exitCode === 0) return 'success';
+  if (exitCode === 20) return 'product-failure';
+  if (exitCode === 21) return 'test-failure';
   if (exitCode === 30) return 'setup-failure';
   if (exitCode === 60) return 'cleanup-failure';
   if (exitCode === 70) return 'timeout';

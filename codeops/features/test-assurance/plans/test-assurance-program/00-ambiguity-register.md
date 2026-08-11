@@ -49,6 +49,7 @@ Porta product contract.
 | 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
+| 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -520,3 +521,71 @@ scope disjointness, then converged on shared allowlisted scopes plus purpose-awa
 `AD-TA-EXEC-20260811-P3`. **Reopen triggers**: Porta no longer requires `openid`, applications stop
 owning roles/clients, or the unprivileged control is replaced by a different authenticated denial
 mechanism.
+
+### AR-44 — Authorized organization-scoped user-route remediation
+
+**Authority**: User — explicitly authorized after the corrected public oracle reproduced the
+blocking defect. **Objective**: close the concrete tenant data exposure without broadening Phase 3
+into unrelated product work. **Decision**: Phase 3 may modify product routes only to enforce that
+every user-specific operation beneath an organization-prefixed API addresses a user owned by that
+organization. Immutable public sentinels cover cross-tenant read, write, status, role, two-factor,
+export, and history boundaries and verify no mutation. The shared guard runs after admin
+authentication and the route's permission middleware so it cannot disclose membership to an actor
+who lacks the operation's permission. Standalone `/api/admin/users/:userId` routes remain unchanged
+because their documented contract intentionally has no organization path. **Evidence**: a live
+authenticated request for a Bravo user through an Alpha path returned `200`; the organization-
+prefixed handler used a global `getUserById` lookup and ignored `ctx.params.orgId`. The same pattern
+exists across user mutation/status/export/history handlers and the organization-prefixed role
+router; the two-factor router already performs an equivalent per-handler check. **Rejected
+alternatives**: weakening the oracle recreates the original false green; a router parameter hook
+runs before route permission middleware and can disclose membership through `403`/`404` differences;
+changing standalone routes would alter a separate documented API contract. **Strongest
+counterargument**: an extra user lookup adds latency to affected operations. Correct tenant
+authorization dominates that bounded administrative-route cost, and later refactoring may reuse a
+scoped user loaded by the guard. **Confidence**: High. **Hardening**: independent correctness and
+security reviews required the real boundary probe; the live reproduction and source audit converge
+on the same root cause. **Root invocation ID**: `AD-TA-EXEC-20260811-P3`. **Reopen triggers**: user
+organization ownership becomes mutable, routes gain a different authoritative tenant context, or a
+permission middleware no longer precedes the membership guard.
+
+### AR-45 — Phase 3 residual evidence and lifecycle correction design
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: necessary testing, recovery,
+concurrency, and failure-classification mechanisms inside the already approved fixture/lifecycle
+scope; the user separately authorized the only product-behavior change under AR-44. **Objective**:
+prevent Phase 3 from becoming green through a synthetic principal, aggregate-count cancellation,
+an admission-marker surrogate, leaked bootstrap argv, or a supervisor child that outlives its
+command. **Decision**: (1) run real authorization-code/PKCE journeys for both ordinary tenants and
+both persisted client classes, exchange each code, and verify userinfo for the intended synthetic
+principal; (2) treat invalid redirect/origin definitions as negative candidates applied to a
+persisted same-kind control client, require exact pre-interaction redirect rejection, and publish a
+stable fixture-to-observation matrix; (3) attribute organization-scoped admin route isolation to
+the full administrative actor and exact target/path organizations rather than an ordinary actor;
+(4) compare canonical redacted SHA-256 digests of PostgreSQL identities, session/token identities,
+Redis keys, and MailHog message identities before and after each sequence; (5) keep owned ingress
+stopped through private reset verification, explicitly restore ingress after every pre-mutation
+failure, and reopen only in the final resume step; (6) create the initial bootstrap password in an
+owner-only run file and execute the same host-side bootstrap path used by reset; (7) install startup
+signal ownership before spawning the detached supervisor, join cleanup for the exact run on every
+failed/interrupted readiness outcome, and (8) execute admitted Playwright projects as supervisor-
+owned bounded process groups whose assertion failures remain product failures, whose launch/
+collection failures remain test/setup failures, and whose cancellation is immediate rather than
+queued behind stop. **Evidence**: the bounded re-review directly observed a fixed password in
+`docker exec` argv, a full-admin token behind the ordinary-actor label, invalid-client fixtures
+excluded from persistence, count-only residue, nginx restarted before poison clearance, signal
+handlers installed after detach, and Playwright nonzero results collapsed through exit 30.
+**Rejected alternatives**: retaining aggregate counts permits delete-and-replace cancellation;
+persisting deliberately invalid clients contradicts the negative-registration contract; using
+ordinary tokens fabricated directly in `oidc_payloads` does not prove an authentication journey;
+marker-only admission does not fence the network; external command timeouts cannot kill a child
+owned by the supervisor; and weakening public sentinels would recreate the original false green.
+**Strongest counterargument**: four OIDC journeys and stable store digests add phase runtime. They
+replace vacuous evidence at the exact identity-provider boundaries this program exists to test, so
+the bounded cost is justified. **Confidence**: High — each mechanism is independently observable
+and uses the retained harness rather than a new test framework. **Hardening**: the correctness and
+security auditors independently converged on these residuals during the single permitted
+re-review; this correction implements their strongest compatible recommendation, and no third
+review will be dispatched. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260811-P3`. **Reopen triggers**: provider interaction fields change, a client class
+cannot complete its declared grant, reset verification requires public ingress, or Playwright
+introduces a structured exit/report contract that supersedes the current stage mapping.

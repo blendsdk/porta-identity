@@ -254,6 +254,9 @@ function createResetDependencies(
           controls.trafficBlocked = false;
         });
       },
+      async restore(_record) {
+        controls.trafficBlocked = false;
+      },
     },
     runtime: {
       async stopPorta(record) {

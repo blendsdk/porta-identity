@@ -72,6 +72,7 @@ export function registerGovernanceCases(
         completedAt,
         buildIdentity: provenance.commitIdentity,
         fixtureIdentity: claim.evidence.fixtureIdentity,
+        runtimeProfile: claim.profile,
         redactedLog: 'synthetic fixture result',
         killedFaultIds: claim.evidence.killedFaultIds,
       }),
@@ -87,6 +88,7 @@ export function registerGovernanceCases(
         buildIdentity: provenance.commitIdentity,
         treeIdentity: provenance.treeIdentity,
         fixtureIdentity: claim.evidence.fixtureIdentity,
+        runtimeProfile: claim.profile,
         executionArtifact: { kind: 'source-tree', digest: provenance.assuranceToolDigest },
         dependencyLockDigest: digestRepositoryFile(resolve(sandbox, 'yarn.lock')),
         assuranceToolDigest: provenance.assuranceToolDigest,
@@ -176,7 +178,9 @@ export function registerGovernanceCases(
       Object.assign(structuredClone(loaded.claim), {
         evidence: {
           ...loaded.claim.evidence,
-          results: [{ command: 'yarn verify', status: 'failed' }],
+          results: [
+            { command: 'yarn verify', status: 'failed', runtimeProfile: 'production-security' },
+          ],
         },
       }),
       Object.assign(structuredClone(loaded.claim), {

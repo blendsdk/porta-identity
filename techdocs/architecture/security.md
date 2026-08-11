@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-11
 
 ## Overview
 
@@ -49,11 +49,11 @@ graph TB
 
 All JWTs are signed using ECDSA P-256 (ES256). This is a non-negotiable standard — no algorithm downgrade is possible.
 
-| Property | Value |
-|----------|-------|
-| Algorithm | ES256 (ECDSA with P-256 curve) |
-| Key Storage | PEM-encoded in PostgreSQL, encrypted at rest |
-| Key Rotation | Supported via `porta keys rotate` CLI command |
+| Property      | Value                                                            |
+| ------------- | ---------------------------------------------------------------- |
+| Algorithm     | ES256 (ECDSA with P-256 curve)                                   |
+| Key Storage   | PEM-encoded in PostgreSQL, encrypted at rest                     |
+| Key Rotation  | Supported via `porta keys rotate` CLI command                    |
 | JWKS Endpoint | `/:orgSlug/.well-known/jwks` (auto-served by node-oidc-provider) |
 
 **Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `rotated`, or `revoked`. The OIDC provider loads active keys on startup and serves them via the JWKS endpoint.
@@ -62,14 +62,15 @@ All JWTs are signed using ECDSA P-256 (ES256). This is a non-negotiable standard
 
 All passwords are hashed using Argon2id with NIST SP 800-63B compliant parameters.
 
-| Property | Value |
-|----------|-------|
-| Algorithm | Argon2id |
+| Property       | Value                                   |
+| -------------- | --------------------------------------- |
+| Algorithm      | Argon2id                                |
 | Implementation | `argon2` npm package (native C binding) |
-| Validation | NIST SP 800-63B password rules |
-| Rehashing | On login if params change |
+| Validation     | NIST SP 800-63B password rules          |
+| Rehashing      | On login if params change               |
 
 **Password validation rules** (enforced at the service layer):
+
 - Minimum 8 characters
 - No maximum length restriction beyond reasonable limits
 - Checked against common password lists
@@ -85,12 +86,12 @@ Client secrets use a two-layer hashing strategy:
 
 TOTP secrets are encrypted at rest using AES-256-GCM:
 
-| Property | Value |
-|----------|-------|
-| Algorithm | AES-256-GCM |
+| Property       | Value                                   |
+| -------------- | --------------------------------------- |
+| Algorithm      | AES-256-GCM                             |
 | Key Derivation | From `COOKIE_KEYS` environment variable |
-| IV | Random 12 bytes per encryption |
-| Auth Tag | 16 bytes, stored alongside ciphertext |
+| IV             | Random 12 bytes per encryption          |
+| Auth Tag       | 16 bytes, stored alongside ciphertext   |
 
 Recovery codes are hashed with Argon2id — never stored in plaintext.
 
@@ -170,9 +171,13 @@ SELECT * FROM users WHERE id = $1;
 ```
 
 **Enforcement mechanisms:**
+
 - Composite unique indexes (e.g., `(organization_id, email)`)
 - Foreign keys to `organizations` table
 - Service-layer validation of org context before any data access
+- Organization-prefixed user and role routes validate that the target user belongs to the
+  `:orgId` path organization after permission checks and before the handler runs. Foreign and
+  missing targets both return `404`, avoiding cross-tenant existence disclosure.
 
 ### Cache Isolation
 
@@ -195,6 +200,7 @@ The tenant resolver middleware validates the organization from the URL path:
 4. Set `ctx.state.organization` for downstream handlers
 
 Cross-tenant requests are impossible because:
+
 - OIDC issuer URL includes the org slug
 - Token audience is org-specific
 - All data queries are org-scoped
@@ -205,15 +211,16 @@ Cross-tenant requests are impossible because:
 
 Authentication endpoints are protected by sliding-window rate limiting:
 
-| Endpoint | Rate Limit | Window |
-|----------|-----------|--------|
-| Login (password) | Configurable | Sliding window |
-| Magic link request | Configurable | Sliding window |
-| Password reset | Configurable | Sliding window |
-| 2FA verification | Configurable | Sliding window |
-| Email OTP | Configurable | Per-user cooldown |
+| Endpoint           | Rate Limit   | Window            |
+| ------------------ | ------------ | ----------------- |
+| Login (password)   | Configurable | Sliding window    |
+| Magic link request | Configurable | Sliding window    |
+| Password reset     | Configurable | Sliding window    |
+| 2FA verification   | Configurable | Sliding window    |
+| Email OTP          | Configurable | Per-user cooldown |
 
 **Implementation** (`packages/server/src/auth/rate-limiter.ts`):
+
 - Redis `INCR` + `EXPIRE` for sliding window counters
 - Keys include IP address and/or email for targeted limiting
 - Rate limit headers returned in responses (X-RateLimit-*)
@@ -226,13 +233,13 @@ The `failed_login_count` column on users tracks consecutive failed attempts. Aft
 
 Applied to all responses via middleware in `packages/server/src/middleware/security-headers.ts`:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
+| Header                    | Value                | Purpose                     |
+| ------------------------- | -------------------- | --------------------------- |
 | `Content-Security-Policy` | `default-src 'none'` | Prevent XSS, data injection |
-| `X-Content-Type-Options` | `nosniff` | Prevent MIME-type sniffing |
-| `X-Frame-Options` | `DENY` | Prevent clickjacking |
-| `Referrer-Policy` | `no-referrer` | Prevent referrer leakage |
-| `X-Request-Id` | UUID | Request tracing |
+| `X-Content-Type-Options`  | `nosniff`            | Prevent MIME-type sniffing  |
+| `X-Frame-Options`         | `DENY`               | Prevent clickjacking        |
+| `Referrer-Policy`         | `no-referrer`        | Prevent referrer leakage    |
+| `X-Request-Id`            | UUID                 | Request tracing             |
 
 ### Root Page No-Leakage Policy
 
@@ -260,10 +267,10 @@ Every API endpoint validates input with Zod before processing:
 
 ```typescript
 // ✅ Always parameterized
-const result = await pool.query(
-  'SELECT * FROM users WHERE organization_id = $1 AND email = $2',
-  [orgId, email]
-);
+const result = await pool.query('SELECT * FROM users WHERE organization_id = $1 AND email = $2', [
+  orgId,
+  email,
+]);
 
 // ❌ Never — raw interpolation is prohibited
 const result = await pool.query(`SELECT * FROM users WHERE email = '${email}'`);
@@ -272,6 +279,7 @@ const result = await pool.query(`SELECT * FROM users WHERE email = '${email}'`);
 ### Redirect URI Validation
 
 OIDC redirect URIs are validated with strict exact-match rules:
+
 - No wildcard matching
 - No open redirects
 - Must match registered URIs character-for-character
@@ -282,16 +290,17 @@ OIDC redirect URIs are validated with strict exact-match rules:
 
 OIDC session cookies use secure attributes:
 
-| Attribute | Production Value | Purpose |
-|-----------|-----------------|---------|
-| `Secure` | `true` | HTTPS only |
-| `HttpOnly` | `true` | No JavaScript access |
-| `SameSite` | `Lax` or `Strict` | CSRF protection |
-| `Path` | Scoped to org | Tenant isolation |
+| Attribute  | Production Value  | Purpose              |
+| ---------- | ----------------- | -------------------- |
+| `Secure`   | `true`            | HTTPS only           |
+| `HttpOnly` | `true`            | No JavaScript access |
+| `SameSite` | `Lax` or `Strict` | CSRF protection      |
+| `Path`     | Scoped to org     | Tenant isolation     |
 
 ### CSRF Protection
 
 State-changing interaction endpoints (login, consent) use CSRF tokens:
+
 - Token generated with `crypto.randomBytes(32)`
 - Embedded in HTML forms as hidden field
 - Validated on POST submission
@@ -308,13 +317,13 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 
 All security-relevant actions are logged to the `audit_log` table:
 
-| Event Category | Examples |
-|---------------|----------|
+| Event Category | Examples                                                          |
+| -------------- | ----------------------------------------------------------------- |
 | Authentication | `user.login_success`, `user.login_failed`, `user.magic_link_used` |
-| Account | `user.created`, `user.suspended`, `user.password_changed` |
-| Security | `security.login_method_disabled`, `security.rate_limited` |
-| Admin | `organization.created`, `client.secret_rotated`, `role.assigned` |
-| System | `system.config_changed`, `system.key_rotated` |
+| Account        | `user.created`, `user.suspended`, `user.password_changed`         |
+| Security       | `security.login_method_disabled`, `security.rate_limited`         |
+| Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
+| System         | `system.config_changed`, `system.key_rotated`                     |
 
 Audit writes are **fire-and-forget** — they do not block the main request flow and cannot cause request failures.
 
@@ -322,15 +331,15 @@ Audit writes are **fire-and-forget** — they do not block the main request flow
 
 The `packages/server/tests/pentest/` directory contains 32+ test files across 11 categories covering:
 
-| Category | What's Tested |
-|----------|--------------|
-| Auth Bypass | SQL injection, brute force, timing attacks, session fixation |
-| Magic Link | Token prediction, replay, host injection, enumeration |
-| Injection | SQL, XSS, CRLF, SSTI |
-| Crypto | JWT algorithm confusion, key confusion, token manipulation |
+| Category       | What's Tested                                                    |
+| -------------- | ---------------------------------------------------------------- |
+| Auth Bypass    | SQL injection, brute force, timing attacks, session fixation     |
+| Magic Link     | Token prediction, replay, host injection, enumeration            |
+| Injection      | SQL, XSS, CRLF, SSTI                                             |
+| Crypto         | JWT algorithm confusion, key confusion, token manipulation       |
 | Admin Security | Unauthorized access, privilege escalation, IDOR, mass assignment |
-| Multi-Tenant | Cross-tenant auth, enumeration, slug injection |
-| Infrastructure | HTTP headers, CORS, method tampering, info disclosure |
+| Multi-Tenant   | Cross-tenant auth, enumeration, slug injection                   |
+| Infrastructure | HTTP headers, CORS, method tampering, info disclosure            |
 
 The pentest suite serves as a **codified security baseline** — all tests must pass on every build.
 

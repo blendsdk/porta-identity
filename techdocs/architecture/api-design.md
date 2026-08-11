@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-11
 
 ## Overview
 
@@ -8,7 +8,7 @@ Porta exposes two distinct API surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
 2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
-This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
+   This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
 
 ## REST Conventions
 
@@ -34,34 +34,34 @@ All admin endpoints follow a consistent RESTful pattern:
 
 ### HTTP Methods
 
-| Method | Purpose | Idempotent | Response |
-|--------|---------|-----------|----------|
-| `GET` | Retrieve resource(s) | Yes | 200 + body |
-| `POST` | Create resource | No | 201 + body |
-| `PUT` | Full update | Yes | 200 + body |
-| `PATCH` | Partial update / status change | Yes | 200 + body |
-| `DELETE` | Remove resource | Yes | 204 (no body) |
+| Method   | Purpose                        | Idempotent | Response      |
+| -------- | ------------------------------ | ---------- | ------------- |
+| `GET`    | Retrieve resource(s)           | Yes        | 200 + body    |
+| `POST`   | Create resource                | No         | 201 + body    |
+| `PUT`    | Full update                    | Yes        | 200 + body    |
+| `PATCH`  | Partial update / status change | Yes        | 200 + body    |
+| `DELETE` | Remove resource                | Yes        | 204 (no body) |
 
 ### Endpoint Inventory
 
-| Route File | Base Path | Endpoints | Description |
-|-----------|-----------|-----------|-------------|
-| `organizations.ts` | `/api/admin/organizations` | 10 | Org CRUD + status lifecycle + branding |
-| `applications.ts` | `/api/admin/applications` | 11 | App CRUD + status + modules |
-| `clients.ts` | `/api/admin/clients` | 10 | Client CRUD + status + secrets |
-| `users.ts` | `/api/admin/organizations/:orgId/users` | 13 | User CRUD + status + password + login tracking |
-| `roles.ts` | `/api/admin/applications/:appId/roles` | 9 | Role CRUD + permission assignment |
-| `permissions.ts` | `/api/admin/applications/:appId/permissions` | 6 | Permission CRUD |
-| `user-roles.ts` | `/api/admin/organizations/:orgId/users/:userId/roles` | 4 | User-role assignment |
-| `custom-claims.ts` | `/api/admin/applications/:appId/claims` | 9 | Claim definitions + user values |
-| `config.ts` | `/api/admin/config` | — | System configuration management |
-| `keys.ts` | `/api/admin/keys` | — | Signing key management |
-| `audit.ts` | `/api/admin/audit` | — | Audit log viewer with filters |
-| `stats.ts` | `/api/admin/stats` | — | Dashboard statistics (6 aggregate queries) |
-| `sessions.ts` | `/api/admin/sessions` | — | Session management + revocation |
-| `bulk.ts` | `/api/admin/bulk` | — | Bulk status operations |
-| `branding.ts` | `/api/admin/organizations/:orgId/branding` | — | Logo/favicon upload (bytea) |
-| `exports.ts` | `/api/admin/export/:entityType` | — | CSV/JSON data export |
+| Route File         | Base Path                                             | Endpoints | Description                                    |
+| ------------------ | ----------------------------------------------------- | --------- | ---------------------------------------------- |
+| `organizations.ts` | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
+| `applications.ts`  | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
+| `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
+| `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
+| `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
+| `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
+| `custom-claims.ts` | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
+| `config.ts`        | `/api/admin/config`                                   | —         | System configuration management                |
+| `keys.ts`          | `/api/admin/keys`                                     | —         | Signing key management                         |
+| `audit.ts`         | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
+| `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
+| `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
+| `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
+| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | —         | Logo/favicon upload (bytea)                    |
+| `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
 
 ## Authentication
 
@@ -91,14 +91,19 @@ sequenceDiagram
 ```
 
 **Key properties:**
+
 - **Self-authentication** — Porta validates tokens signed by its own keys
 - **ES256 only** — No algorithm negotiation; ECDSA P-256 is enforced
 - **Role-based** — Requires `porta-admin` role in the super-admin organization
+- **Nested-resource isolation** — Organization-prefixed user and user-role routes run permission
+  middleware first, then require the target user to belong to the path organization before the
+  handler can read or mutate it
 - **Metadata endpoint** — `GET /api/admin/metadata` is unauthenticated (for CLI login discovery)
 
 ### OIDC Authentication
 
 OIDC endpoints use standard OpenID Connect mechanisms:
+
 - **Authorization Code + PKCE** for public clients (SPAs, CLI)
 - **Client Secret Post** for confidential clients (with SHA-256 pre-hash)
 - **Client Credentials** for machine-to-machine
@@ -111,7 +116,12 @@ All request bodies are validated using **Zod schemas** defined inline in route h
 // Example: Create organization
 const schema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(2).max(63).regex(/^[a-z0-9-]+$/).optional(),
+  slug: z
+    .string()
+    .min(2)
+    .max(63)
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
   defaultLocale: z.string().max(10).optional(),
 });
 
@@ -119,6 +129,7 @@ const body = schema.parse(ctx.request.body);
 ```
 
 **Validation principles:**
+
 - Every request body field is validated before reaching the service layer
 - Zod parse errors are caught by the error handler and returned as 400 responses
 - Path parameters (UUIDs) are validated with `z.string().uuid()`
@@ -202,20 +213,20 @@ All errors follow a consistent JSON format:
 
 ### HTTP Status Codes
 
-| Code | Meaning | When Used |
-|------|---------|-----------|
-| 200 | OK | Successful read or update |
-| 201 | Created | Successful resource creation |
-| 204 | No Content | Successful deletion |
-| 400 | Bad Request | Validation failure (Zod parse error) |
-| 401 | Unauthorized | Missing or invalid authentication |
-| 403 | Forbidden | Insufficient permissions or suspended tenant |
-| 404 | Not Found | Resource does not exist |
-| 409 | Conflict | Duplicate slug, email uniqueness violation |
-| 410 | Gone | Archived tenant |
-| 412 | Precondition Failed | ETag mismatch |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Unhandled error (details hidden) |
+| Code | Meaning               | When Used                                    |
+| ---- | --------------------- | -------------------------------------------- |
+| 200  | OK                    | Successful read or update                    |
+| 201  | Created               | Successful resource creation                 |
+| 204  | No Content            | Successful deletion                          |
+| 400  | Bad Request           | Validation failure (Zod parse error)         |
+| 401  | Unauthorized          | Missing or invalid authentication            |
+| 403  | Forbidden             | Insufficient permissions or suspended tenant |
+| 404  | Not Found             | Resource does not exist                      |
+| 409  | Conflict              | Duplicate slug, email uniqueness violation   |
+| 410  | Gone                  | Archived tenant                              |
+| 412  | Precondition Failed   | ETag mismatch                                |
+| 429  | Too Many Requests     | Rate limit exceeded                          |
+| 500  | Internal Server Error | Unhandled error (details hidden)             |
 
 ### Domain Error Classes
 

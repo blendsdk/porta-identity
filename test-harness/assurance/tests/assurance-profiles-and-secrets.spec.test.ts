@@ -6,8 +6,10 @@ import { loadFixtureAssuranceSurface } from '../../fixtures/fixture-assurance.js
 import { publicCredentialRefs, uniqueSorted } from './fixture-spec-helpers.js';
 
 const requiredPublicBoundaries: readonly PublicVerificationBoundary[] = [
+  'administration',
   'browser',
   'email',
+  'fixtures',
   'http',
   'protocol',
 ];
@@ -106,5 +108,26 @@ for (const profileId of ['operational', 'production-security'] as const) {
     assert.ok(results.every((result) => result.status === 'passed'));
     assert.ok(results.every((result) => result.expectationSource === 'public-contract'));
     assert.ok(results.every((result) => result.productionDerived === false));
+    const observations = new Set(results.flatMap((result) => result.observations));
+    for (const tenant of ['alpha', 'bravo']) {
+      for (const kind of ['public', 'confidential']) {
+        assert.ok(observations.has(`oidc-login:${tenant}:${kind}`));
+      }
+      assert.ok(observations.has(`invalid-redirect:${tenant}`));
+      assert.ok(
+        observations.has(
+          profileId === 'production-security'
+            ? `invalid-origin:${tenant}`
+            : `invalid-origin:${tenant}:profile-not-eligible`,
+        ),
+      );
+      assert.ok(observations.has(`fixture-users:${tenant}`));
+      assert.ok(observations.has(`fixture-session-token:${tenant}`));
+      assert.ok(observations.has(`fixture-two-factor:${tenant}`));
+    }
+    assert.ok(observations.has('admin:full-read'));
+    assert.ok(observations.has('admin:limited-read'));
+    assert.ok(observations.has('admin:limited-write-denied'));
+    assert.ok(observations.has('admin:unprivileged-denied'));
   });
 }

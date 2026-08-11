@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 14:12
+> **Last Updated**: 2026-08-11 17:25
 > **Progress**: 24/92 tasks (26%)
 > **CodeOps Artifact Schema**: 1
 
@@ -21,7 +21,8 @@ task. Existing behavior that starts green uses its exact curated-fault tuple for
 Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, every task runs the
 alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
 preserve the oracle, block only affected claims, and are routed to separately authorized work. This
-plan never edits production behavior or the read-only CI workflow.
+plan edits production behavior only for the separately authorized AR-44 blocking defect and never
+edits the read-only CI workflow.
 
 ## Phase Overview
 
@@ -231,9 +232,12 @@ worktree's endpoints or resources.
 > **Expected modification set**: `test-harness/assurance/`, `test-harness/fixtures/`,
 > `test-harness/scripts/`, `test-harness/tests/`, `test-harness/playwright.config.ts`,
 > `test-harness/docker-compose.yml`, harness-owned generated-file ignore/config contracts, root
-> assurance command wiring, and this plan's execution/review evidence
-> **Scope mode**: strict — deterministic actor fixtures, project collection, and runtime profiles
-> only; no product behavior, CI workflow, publishing, deployment, or later risk-slice work
+> assurance command wiring, `packages/server/src/routes/` and focused server tests for the
+> separately authorized organization-scoped user-route defect, the corresponding repository
+> inventory contract, and this plan's execution/review evidence
+> **Scope mode**: strict — deterministic actor fixtures, project collection, runtime profiles, and
+> only the separately authorized organization-scoped user-route remediation; no other product
+> behavior, CI workflow, publishing, deployment, or later risk-slice work
 
 - [x] 3.1 [spec-author] Write fixture ontology/cardinality specs: alpha/bravo tenant-owned users,
       clients, sessions/tokens/data; global applications/roles; super-admin-org administrative actors.
@@ -276,9 +280,8 @@ worktree's endpoints or resources.
         request without a client identifier reflected `https://attacker.invalid`. Phase 3 does not
         authorize a product fix or an invented CORS oracle; the later injection/exposure slice must
         resolve the contract and retain an exact sentinel if the behavior is prohibited.
-- [x] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue
+- [x] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue ✅ (completed: 2026-08-11 17:25)
       checks, harness implementation tests, and `yarn verify`.
-      ✅ (completed: 2026-08-11 14:12)
       - Auto-design correction: the measured live fixture rollup exceeds the generic 120-second
         internal-test bound, so the frozen command contract assigns `fixture-ontology` a 900-second
         bound and each `fixtures-all` child a 900-second bound. All other internal selectors retain
@@ -289,9 +292,29 @@ worktree's endpoints or resources.
         suite, assurance TypeScript/ESLint/format checks, both Compose configurations, and `yarn
         verify` all passed; the latter covered 68 structure tests, 224 server files / 3,348 tests,
         31 SDK files / 404 tests, and the complete CLI lane.
+      - Quality-review reopening: the independent review replaced a vacuous opaque-token fixture
+        check with a real public administrative boundary probe. The corrected immutable oracle now
+        fails because `GET /api/admin/organizations/:orgId/users/:userId` returns a Bravo user when
+        the path names Alpha. The route reads by global user ID and does not enforce `:orgId`.
+        The user separately authorized the exact product correction. A permission-ordered
+        organization-membership guard now covers every organization-prefixed user and role route;
+        the public sentinel verifies read/update/status/role/2FA/export/history denials and target
+        non-mutation. `fixtures-all`, focused gates, and unchanged `yarn verify` are green. The
+        single bounded quality re-review found additional fixture, reset, startup, cancellation,
+        and failure-taxonomy gaps. Those corrections are implemented and verified; no third review
+        was run, as required by the quality policy.
+      - Final verification note: `fixtures-all` passed 14 operational roll-up cases, 3 profile/
+        secret cases, and the production public-profile case in 372 seconds. Lifecycle passed
+        265/265, governance passed 53/53, repeated reset/public and reset/SPA cycles passed 3/3,
+        and the focused organization guard/route tests passed. The unchanged `yarn verify` passed
+        all four workspace tasks: 68 structure tests, 226 server files / 3,354 tests, 31 SDK files /
+        404 tests, and 29 CLI files / 355 tests. TypeScript, ESLint, Prettier, both Compose profiles,
+        diff hygiene, and owned-stack cleanup also passed.
 
-**Phase gate:** fixtures match Porta's real authority/data model, five projects collect exactly
-once, and environment-dependent claims cannot use development evidence.
+**Phase gate:** Satisfied. Fixtures match Porta's real
+authority/data model, five projects collect exactly once, environment-dependent claims cannot use
+development evidence, and organization-prefixed user operations enforce tenant ownership. See
+[Phase 3 Quality Review](11-phase-3-quality-review.md).
 
 ## Phase 4: Attributed Server-Process Coverage
 

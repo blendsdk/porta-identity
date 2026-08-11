@@ -45,8 +45,8 @@ test('should preserve argv and environment with shell execution disabled', async
   assert.equal(recorder.requests[0]?.shell, false);
 });
 
-// Setup, cleanup, and timeout results retain the lifecycle's stable process semantics.
-for (const exitCode of [30, 60, 70] as const) {
+// Product, test, setup, cleanup, and timeout results retain distinct stable process semantics.
+for (const exitCode of [20, 21, 30, 60, 70] as const) {
   test(`should preserve lifecycle exit code ${exitCode} through the compatibility boundary`, async () => {
     const recorder = createChildRecorder(exitCode);
 
@@ -57,7 +57,14 @@ for (const exitCode of [30, 60, 70] as const) {
 
     assert.equal(outcome.exitCode, exitCode);
     assert.equal(outcome.primaryExitCode, exitCode);
-    if (exitCode === 70) assert.equal(outcome.classification, 'timeout');
+    const expected = {
+      20: 'product-failure',
+      21: 'test-failure',
+      30: 'setup-failure',
+      60: 'cleanup-failure',
+      70: 'timeout',
+    } as const;
+    assert.equal(outcome.classification, expected[exitCode]);
   });
 }
 
