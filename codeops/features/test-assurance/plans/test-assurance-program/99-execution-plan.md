@@ -3,7 +3,7 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
 > **Last Updated**: 2026-08-11 12:41
-> **Progress**: 22/92 tasks (23%)
+> **Progress**: 23/92 tasks (25%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -265,8 +265,17 @@ worktree's endpoints or resources.
         operational `assurance:harness` root command; retained `harness:test` still collected only
         its original six SPA/BFF journeys, all green. `yarn verify` passed the complete 3,348-test
         server matrix and all structure/SDK/CLI lanes.
-- [ ] 3.7 Add operational and production-security Compose profiles; bind claim metadata to one and
+- [x] 3.7 Add operational and production-security Compose profiles; bind claim metadata to one and
       require production mode/TLS/cookies/errors/headers for environment-sensitive claims.
+      ✅ (completed: 2026-08-11 13:30)
+      - Verification note: the merged Compose profile validated, the live security project passed
+        2/2 with the exact production container environment and no safety bypass, and public TLS,
+        HSTS/CSP/header, minimal-error, and secure/HttpOnly/SameSite cookie checks passed. The
+        operational retained journeys remained 6/6 and `yarn verify` passed every existing lane.
+      - Named security observation: a candidate production CORS probe found that an invalid token
+        request without a client identifier reflected `https://attacker.invalid`. Phase 3 does not
+        authorize a product fix or an invented CORS oracle; the later injection/exposure slice must
+        resolve the contract and retain an exact sentinel if the behavior is prohibited.
 - [ ] 3.8 Run ST-13–ST-18 green, both profiles, retained journeys twice in shuffled order, residue
       checks, harness implementation tests, and `yarn verify`.
 

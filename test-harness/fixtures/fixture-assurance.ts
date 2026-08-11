@@ -94,16 +94,36 @@ const projects: readonly AssuranceProjectDefinition[] = [
     files: ['tests/compatibility/retained-clients.spec.test.ts'],
   },
 ];
-const profiles: readonly AssuranceRuntimeProfile[] = [];
+const profiles: readonly AssuranceRuntimeProfile[] = [
+  {
+    id: 'operational',
+    environmentSecurityEvidenceEligible: false,
+    productionModeRequired: false,
+    tlsRequired: false,
+    secureCookiesRequired: false,
+    minimalErrorsRequired: false,
+    securityHeadersRequired: false,
+  },
+  {
+    id: 'production-security',
+    environmentSecurityEvidenceEligible: true,
+    productionModeRequired: true,
+    tlsRequired: true,
+    secureCookiesRequired: true,
+    minimalErrorsRequired: true,
+    securityHeadersRequired: true,
+  },
+];
 
 /** Reads exact public endpoints after verifying fixture and endpoint run identity. */
 function activeEndpoints(): {
+  readonly profile: string;
   readonly porta: string;
   readonly app: string;
   readonly mailhog: string;
 } {
   const activeRun = z
-    .object({ runId: z.uuid() })
+    .object({ runId: z.uuid(), manifest: z.object({ environmentName: z.string().min(1) }) })
     .passthrough()
     .parse(
       JSON.parse(
@@ -129,7 +149,7 @@ function activeEndpoints(): {
   const fixture = readPublicRuntimeFixtureManifest(fixtureManifestPath);
   if (fixture.runId !== endpoint.runId)
     throw new Error('fixture and endpoint run identities differ');
-  return endpoint.urls;
+  return { ...endpoint.urls, profile: activeRun.manifest.environmentName };
 }
 
 /** Runs one public-boundary check while retaining only its stable result classification. */
@@ -156,8 +176,11 @@ async function publicResult(
 }
 
 /** Verifies active HTTP, protocol, browser, and email-capture boundaries. */
-async function verifyPublicPostconditions(): Promise<readonly PublicPostconditionResult[]> {
+async function verifyPublicPostconditions(
+  profileId: 'operational' | 'production-security',
+): Promise<readonly PublicPostconditionResult[]> {
   const endpoints = activeEndpoints();
+  if (endpoints.profile !== profileId) throw new Error('active runtime profile does not match');
   const api = await request.newContext({ ignoreHTTPSErrors: true });
   try {
     const http = await publicResult('http', async () => {

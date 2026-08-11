@@ -78,6 +78,7 @@ type ControlAction = 'prepare' | 'reset' | 'stop';
 
 /** Maximum bytes accepted from one local control request. */
 const maximumControlBytes = 1024;
+const profileSchema = z.enum(['operational', 'production-security']);
 
 /** Resolves the canonical repository worktree owning this command. */
 function worktreePath(): string {
@@ -91,13 +92,19 @@ function activeRunPath(root: string): string {
 
 /** Starts interactively or launches a detached long-lived CI supervisor. */
 async function start(options: readonly string[]): Promise<LifecycleExitCode> {
-  if (options.length > 1 || (options.length === 1 && options[0] !== '--ci')) return 30;
+  const ci = options[0] === '--ci';
+  let profile: z.infer<typeof profileSchema> = 'operational';
+  if (options.length === 3 && ci && options[1] === '--profile') {
+    const parsedProfile = profileSchema.safeParse(options[2]);
+    if (!parsedProfile.success) return 30;
+    profile = parsedProfile.data;
+  } else if (options.length !== 0 && !(options.length === 1 && ci)) return 30;
   const root = worktreePath();
   if (existsSync(activeRunPath(root))) return 30;
   const runId = randomUUID();
   const candidateBasePort = randomInt(3_000, 5_000) * 10;
-  if (options[0] !== '--ci') {
-    return supervise(root, runId, candidateBasePort);
+  if (!ci) {
+    return supervise(root, runId, candidateBasePort, profile);
   }
 
   const runtimeDirectory = resolve(root, 'test-harness/.assurance-runtime', runId);
@@ -114,6 +121,8 @@ async function start(options: readonly string[]): Promise<LifecycleExitCode> {
       runId,
       '--base-port',
       String(candidateBasePort),
+      '--profile',
+      profile,
     ],
     {
       cwd: root,
@@ -135,6 +144,7 @@ async function supervise(
   root: string,
   runId: string,
   candidateBasePort: number,
+  profile: 'operational' | 'production-security',
 ): Promise<LifecycleExitCode> {
   const startupAbort = new AbortController();
   let requestedSignal: 130 | 143 | undefined;
@@ -152,9 +162,9 @@ async function supervise(
   );
   const started = await controller.start({
     runId,
-    scenarioId: 'retained-harness',
+    scenarioId: `assurance-${profile}`,
     worktreePath: root,
-    environmentName: 'retained-harness',
+    environmentName: profile,
     candidateBasePort,
     collisionRetries: 16,
   });
@@ -482,12 +492,18 @@ async function main(arguments_: readonly string[]): Promise<void> {
   } else if (action === 'test') exitCode = await runRetainedTests(options);
   else if (action === 'project') exitCode = await runAssuranceProject(options);
   else {
-    if (options.length !== 4 || options[0] !== '--run-id' || options[2] !== '--base-port') {
+    if (
+      options.length !== 6 ||
+      options[0] !== '--run-id' ||
+      options[2] !== '--base-port' ||
+      options[4] !== '--profile'
+    ) {
       exitCode = 30;
     } else {
       const runId = z.uuid().parse(options[1]);
       const basePort = z.coerce.number().int().min(1024).max(65_530).parse(options[3]);
-      exitCode = await supervise(worktreePath(), runId, basePort);
+      const profile = profileSchema.parse(options[5]);
+      exitCode = await supervise(worktreePath(), runId, basePort, profile);
     }
   }
   process.exitCode = exitCode;

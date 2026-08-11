@@ -37,6 +37,7 @@ export function environmentForManifest(
   return Object.freeze({
     ...currentEnvironment(),
     HARNESS_RUN_ID: manifest.runId,
+    HARNESS_PROFILE: manifest.environmentName,
     HARNESS_WORKTREE: manifest.worktreePath,
     HARNESS_PORTA_PORT: String(manifest.ports.porta),
     HARNESS_APP_PORT: String(manifest.ports.app),
@@ -285,7 +286,7 @@ class RuntimeComposeAdapter implements ComposeAdapter {
   public async start(manifest: EndpointManifest, signal?: AbortSignal): Promise<void> {
     await this.runner.checked(
       'docker',
-      this.composeArgs(manifest.composeProject, ['up', '-d', '--build']),
+      this.composeArgs(manifest.composeProject, ['up', '-d', '--build'], manifest.environmentName),
       {
         cwd: this.worktreePath,
         environment: environmentForManifest(manifest),
@@ -344,8 +345,16 @@ class RuntimeComposeAdapter implements ComposeAdapter {
   }
 
   /** Creates fixed Compose arguments with an explicit project on every invocation. */
-  protected composeArgs(project: string, suffix: readonly string[]): readonly string[] {
-    return ['compose', '-p', project, '-f', 'test-harness/docker-compose.yml', ...suffix];
+  protected composeArgs(
+    project: string,
+    suffix: readonly string[],
+    profile = 'operational',
+  ): readonly string[] {
+    const files = ['-f', 'test-harness/docker-compose.yml'];
+    if (profile === 'production-security') {
+      files.push('-f', 'test-harness/docker-compose.production-security.yml');
+    }
+    return ['compose', '-p', project, ...files, ...suffix];
   }
 }
 
@@ -452,6 +461,7 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
       return;
     }
     if (name === 'fixture-verification') {
+      await this.verifyRuntimeProfile(manifest, signal);
       await this.copySpaLibraries(manifest);
       await this.clients.start(manifest, signal);
       if (!existsSync(resolve(manifest.worktreePath, 'test-harness/config.generated.json'))) {
@@ -476,6 +486,34 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
             : AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
       });
       if (!response.ok) throw new Error('MailHog reset was not successful');
+    }
+  }
+
+  /** Verifies the selected profile against the running Porta container without exposing its env. */
+  protected async verifyRuntimeProfile(
+    manifest: EndpointManifest,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const result = await this.runner.checked(
+      'docker',
+      [
+        'inspect',
+        '--format',
+        '{{range .Config.Env}}{{println .}}{{end}}',
+        `${manifest.composeProject}-porta-1`,
+      ],
+      { cwd: manifest.worktreePath, environment: environmentForManifest(manifest), signal },
+    );
+    const environment = new Set(result.stdout.split(/\r?\n/u).filter(Boolean));
+    const expected =
+      manifest.environmentName === 'production-security'
+        ? ['NODE_ENV=production', 'LOG_LEVEL=info']
+        : ['NODE_ENV=development', 'LOG_LEVEL=debug'];
+    if (!expected.every((entry) => environment.has(entry))) {
+      throw new Error('running Porta container does not match the selected runtime profile');
+    }
+    if (environment.has('PORTA_SKIP_PROD_SAFETY=true')) {
+      throw new Error('production safety bypass is forbidden in assurance profiles');
     }
   }
 

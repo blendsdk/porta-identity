@@ -111,10 +111,11 @@ function managedChildExit(
 async function runLifecycleAction(
   action: 'start' | 'stop' | 'project',
   project?: string,
+  profile?: string,
 ): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
   const actionOptions =
     action === 'start'
-      ? ['--ci']
+      ? ['--ci', ...(profile === undefined ? [] : ['--profile', profile])]
       : action === 'project' && project !== undefined
         ? ['--name', project]
         : [];
@@ -148,13 +149,13 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
     process.exitCode = setupFailureExit;
     return;
   }
-  if (profile !== 'operational') {
-    process.stderr.write(`ASSURANCE_PROFILE_UNAVAILABLE: ${profile}\n`);
+  if (!['operational', 'production-security'].includes(profile)) {
+    process.stderr.write(`ASSURANCE_PROFILE_UNREGISTERED: ${profile}\n`);
     process.exitCode = setupFailureExit;
     return;
   }
 
-  const startResult = await runLifecycleAction('start');
+  const startResult = await runLifecycleAction('start', undefined, profile);
   const startExit = managedChildExit(startResult, setupFailureExit);
   if (startExit !== 0) {
     process.exitCode = startExit;
