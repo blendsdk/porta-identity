@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 17:25
-> **Progress**: 24/92 tasks (26%)
+> **Last Updated**: 2026-08-11 21:24
+> **Progress**: 25/92 tasks (27%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -66,7 +66,7 @@ text, but it cannot substitute another command for this binding.
 | 3.6       | `yarn assurance:test --select project-collection`                                                                                                            |
 | 3.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 3.8       | `yarn assurance:test --select fixtures-all`                                                                                                                  |
-| 4.1       | `yarn assurance:validate`                                                                                                                                    |
+| 4.1       | `yarn test:structure`, assurance TypeScript, and harness ESLint; immutable specs stay outside runtime collection until Task 4.2 records RED                 |
 | 4.2       | `yarn assurance:red --case ST-19 --signature coverage-current-failure`                                                                                       |
 | 4.3–4.6   | `yarn assurance:test --select coverage-pipeline`                                                                                                             |
 | 4.7       | `yarn assurance:test --select coverage-all`                                                                                                                  |
@@ -320,9 +320,16 @@ development evidence, and organization-prefixed user operations enforce tenant o
 
 > **Scope**: harness container capture, converter, source maps, direct conversion dependencies
 > **References**: [Coverage and Faults](03-03-coverage-and-faults.md), ST-19–ST-27, RD-03
+> **Phase baseline tree**: `f3bd7aa8d31ea4a9ae5b3bc38bfba2372b90270d`
+> **Expected modification set**: `package.json`, `yarn.lock`, `.gitignore`,
+> `test-harness/docker-compose.yml`, `test-harness/Dockerfile`, `test-harness/assurance/`,
+> `test-harness/fixtures/`, `test-harness/scripts/`, and Phase 4 CodeOps/techdocs evidence
+> **Scope mode**: strict — attributed server-process coverage only; no product, CI, ratchet, or
+> release-policy changes
 
-- [ ] 4.1 [spec-author] Write raw-envelope, classification, provenance, flush, mapping,
-      reproducibility, exclusion, and observation-policy specs ST-19–ST-27.
+- [x] 4.1 [spec-author] Write raw-envelope, classification, provenance, flush, mapping,
+      reproducibility, exclusion, and observation-policy specs ST-19–ST-27. ✅ (completed:
+      2026-08-11 21:24)
 - [ ] 4.2 Record exact RED signatures for absent capture/conversion while keeping the known-module
       mapping fixture and required lanes green.
 - [ ] 4.3 Add exact direct conversion dependencies and frozen-lock changes after validating Node 22/

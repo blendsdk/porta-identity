@@ -50,6 +50,7 @@ Porta product contract.
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
+| 46  | Coverage spec verification | How can Task 4.1 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime coverage specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed coverage checkpoints | AI (runtime)   | ✅     |
 
 ## Delegated Decision Rationale
 
@@ -589,3 +590,27 @@ review will be dispatched. **Policy version**: 1. **Root invocation ID**:
 `AD-TA-EXEC-20260811-P3`. **Reopen triggers**: provider interaction fields change, a client class
 cannot complete its declared grant, reset verification requires public ingress, or Playwright
 introduces a structured exit/report contract that supersedes the current stage mapping.
+
+### AR-46 — Pre-commit verification for coverage specifications
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: execution sequencing for one
+test-only task inside the frozen provenance policy; it changes no coverage oracle, product
+behavior, acceptance criterion, evidence authority, or scope. **Objective**: preserve verified-
+before-commit execution without attributing evidence to an uncommitted source tree. **Decision**:
+Task 4.1 runs repository structure tests, the assurance TypeScript project, and harness ESLint
+before commit. Its immutable runtime specifications remain outside required collection until Task
+4.2 records the exact RED signature. Clean-tree `assurance:validate` remains mandatory at committed
+coverage checkpoints. **Evidence**: `inspectFoundationProvenance()` rejects every staged,
+unstaged, or untracked path, so the original binding could not succeed before the commit it was
+meant to gate; the same static boundary preserved both provenance and spec-first ordering in
+Phases 2 and 3. **Rejected alternatives**: accepting dirty evidence would weaken provenance;
+committing before verification violates the execution contract; temporarily hiding changes
+verifies a different tree. **Strongest counterargument**: static checks do not execute the new
+runtime oracle. That is intentional until the exact RED checkpoint, while unchanged full
+repository verification still checks compilation and lint. **Confidence**: High — this is a small,
+reversible sequencing correction already exercised twice. **Hardening**: forced reframing found no
+alternative that preserves both clean evidence provenance and pre-commit verification;
+independent challenge is unnecessary for this reversible internal checkpoint. **Policy version**:
+1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: validation gains a sound
+non-persisting dirty-tree mode, the commit gate changes, or the specifications enter required
+runtime collection before Task 4.2.
