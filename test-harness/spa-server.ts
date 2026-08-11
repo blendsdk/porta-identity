@@ -14,9 +14,13 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname!, '.');
-const CERT_DIR = join(ROOT, 'certs');
+const CERT_DIR = process.env.HARNESS_CERT_DIR ?? join(ROOT, 'certs');
 const SPA_DIR = join(ROOT, 'spa');
-const PORT = 4100;
+const PORT = Number.parseInt(process.env.HARNESS_APP_PORT ?? '4100', 10);
+
+if (!Number.isSafeInteger(PORT) || PORT < 1024 || PORT > 65_535) {
+  throw new Error('HARNESS_APP_PORT must be a valid non-privileged TCP port');
+}
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

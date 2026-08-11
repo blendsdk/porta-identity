@@ -401,3 +401,31 @@ post-takeover outcome, and long-lived supervisor invariant; all are adopted. **P
 1. **Root invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: the runtime cannot keep
 the recovery supervisor alive, the filesystem cannot provide atomic link/rename and directory
 durability, or crash tests show two successful owners or malformed committed lease state.
+
+### AR-40 — Transitional retained-harness reset boundary
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal sequencing of two
+already-approved phases; it changes no product behavior, acceptance criterion, topology, CI policy,
+or scope. **Objective**: make retained-harness resets fail closed now without inventing a database
+oracle from the legacy single-tenant, randomly generated seed. **Decision**: the Phase 2 runtime
+uses the lifecycle controller for owned startup, prerequisite validation, Redis reset, MailHog reset,
+and fatal reset outcomes. The complete database-recreate/migrate/bootstrap/deterministic-seed state
+machine remains implemented and specification-tested behind the controller, but the retained runtime
+does not activate it until Phase 3 installs the approved multi-actor fixture manifest, exact migration
+revision/digest, fixture digest, and count oracle. Phase 3 must replace the transitional prerequisite
+adapter with the complete reset dependency adapter before any fixture-backed claim is eligible.
+**Evidence**: the current seed creates one organization and random client credentials, so a runtime
+database reset cannot independently prove the approved alpha/bravo actor cardinality or stable fixture
+digest. Redis and MailHog already have exact isolated reset operations and must never remain non-fatal.
+**Rejected alternatives**: treating the current idempotent seed as the approved oracle would make reset
+evidence implementation-derived; duplicating Phase 3 fixtures in Phase 2 would violate task ownership
+and create two manifests; leaving legacy best-effort cleanup would preserve the known false-green path.
+**Strongest counterargument**: Task 2.8 cannot yet demonstrate the complete database-reset sequence
+through the live retained harness. That evidence is deliberately blocked rather than overstated, while
+the full state machine and every interruption boundary remain executable with independent fixtures.
+**Confidence**: High. **Hardening**: the dependency was verified against the current seed and the
+approved Phase 3 fixture ownership; the decision is reversible when the fixture manifest lands and
+does not weaken any runtime failure. **Policy version**: 1. **Root invocation ID**:
+`AD-TA-EXEC-20260811-P2`. **Reopen triggers**: Phase 3 completes its deterministic fixture manifest,
+the current seed becomes independently revision/digest-bound, or the retained runtime begins producing
+fixture-backed evidence.

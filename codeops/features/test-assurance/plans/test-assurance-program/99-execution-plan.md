@@ -3,7 +3,7 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
 > **Last Updated**: 2026-08-11 04:30
-> **Progress**: 15/92 tasks (16%)
+> **Progress**: 16/92 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -204,8 +204,14 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
       bootstrap/seed, reset Redis/MailHog, restart clients/Porta, and verify fixture/migration digests.
 - [x] 2.7 Make post-mutation failure/signal/timeout poison the run and force full owned-stack ✅ (completed: 2026-08-11 04:30)
       recreation; add implementation tests for every durable boundary and recovery report.
-- [ ] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax,
+- [x] 2.8 Run lifecycle specs green, two concurrent-worktree and signal smokes, script lint/syntax, ✅ (completed: 2026-08-11 05:14)
       `docker compose -f test-harness/docker-compose.yml config`, and `yarn verify`.
+      - Verification note: 240 lifecycle cases, 68 structure cases, the 6 retained SPA/BFF journeys,
+        two live concurrent worktrees, independent SIGINT/SIGTERM cleanup, TypeScript, ESLint,
+        shell syntax/lint, Compose configuration, and `yarn verify` all passed. The retained runtime
+        keeps database fixture reset blocked behind Phase 3's deterministic multi-actor manifest;
+        Redis and MailHog resets are fatal now, and the complete poisoned reset state machine is
+        independently specification-tested.
 
 **Phase gate:** no prerequisite/reset/cleanup failure can pass, and no run can bind or clean another
 worktree's endpoints or resources.

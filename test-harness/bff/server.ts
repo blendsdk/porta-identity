@@ -33,7 +33,10 @@ import * as openidClient from 'openid-client';
 const configPath = resolve(import.meta.dirname!, '../config.generated.json');
 const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
-const PORT = 4101;
+const PORT = Number.parseInt(process.env.HARNESS_BFF_PORT ?? '4101', 10);
+if (!Number.isSafeInteger(PORT) || PORT < 1024 || PORT > 65_535) {
+  throw new Error('HARNESS_BFF_PORT must be a valid non-privileged TCP port');
+}
 const PORTA_BASE_URL: string = config.porta.baseUrl;
 const ORG_SLUG: string = config.orgSlug; // test-org
 

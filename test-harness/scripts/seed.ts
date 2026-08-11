@@ -53,12 +53,14 @@ const ORG_SLUG = 'test-org';
 const APP_NAME = 'Test App';
 
 const SPA_CLIENT_NAME = 'Test SPA';
-const SPA_REDIRECT_URI = 'https://app-harness.ci.portaidentity.com:4100/callback.html';
-const SPA_POST_LOGOUT_URI = 'https://app-harness.ci.portaidentity.com:4100/';
+const APP_BASE_URL = process.env.HARNESS_APP_URL ?? 'https://app-harness.ci.portaidentity.com:4100';
+const BFF_BASE_URL = process.env.HARNESS_BFF_URL ?? 'http://app-harness.ci.portaidentity.com:4101';
+const SPA_REDIRECT_URI = `${APP_BASE_URL}/callback.html`;
+const SPA_POST_LOGOUT_URI = `${APP_BASE_URL}/`;
 
 const BFF_CLIENT_NAME = 'Test BFF';
-const BFF_REDIRECT_URI = 'http://app-harness.ci.portaidentity.com:4101/callback';
-const BFF_POST_LOGOUT_URI = 'http://app-harness.ci.portaidentity.com:4101/';
+const BFF_REDIRECT_URI = `${BFF_BASE_URL}/callback`;
+const BFF_POST_LOGOUT_URI = `${BFF_BASE_URL}/`;
 
 const SHARED_SCOPE = 'openid profile email offline_access';
 
@@ -67,7 +69,8 @@ const TEST_USER_PASSWORD = 'TestPassword123!';
 const TEST_USER_GIVEN_NAME = 'Test';
 const TEST_USER_FAMILY_NAME = 'User';
 
-const PORTA_BASE_URL = 'https://porta-harness.ci.portaidentity.com:3443';
+const PORTA_BASE_URL =
+  process.env.HARNESS_PORTA_URL ?? 'https://porta-harness.ci.portaidentity.com:3443';
 
 // ---------------------------------------------------------------------------
 // Main
@@ -152,7 +155,7 @@ async function main() {
         grantTypes: ['authorization_code', 'refresh_token'],
         scope: SHARED_SCOPE,
         // The browser SPA needs an exact origin allowlist when Porta applies production CORS.
-        allowedOrigins: ['https://app-harness.ci.portaidentity.com:4100'],
+        allowedOrigins: [APP_BASE_URL],
       });
       spaClient = result.client;
       console.log(`  ✅ Client "${SPA_CLIENT_NAME}" created: ${spaClient.clientId}`);

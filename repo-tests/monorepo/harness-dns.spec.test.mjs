@@ -42,12 +42,16 @@ test('should use the reserved CI loopback names throughout the OIDC harness', ()
 // DNS drift must fail before the harness starts containers or launches browsers.
 test('should verify both harness names resolve only to IPv4 loopback before startup', () => {
   const startScript = readRepositoryFile('test-harness/scripts/start.sh');
+  const lifecycleRuntime = readRepositoryFile('test-harness/fixtures/lifecycle-runtime.ts');
+  const lifecycleController = readRepositoryFile('test-harness/fixtures/lifecycle-controller.ts');
   const preflightScript = readRepositoryFile('test-harness/scripts/check-loopback-dns.mjs');
-  const preflightInvocation = 'node "$PROJECT_ROOT/test-harness/scripts/check-loopback-dns.mjs"';
+  const preflightInvocation = 'test-harness/scripts/check-loopback-dns.mjs';
 
-  assert.ok(startScript.includes(preflightInvocation));
+  assert.match(startScript, /scripts\/lifecycle\.ts start/);
+  assert.ok(lifecycleRuntime.includes(preflightInvocation));
   assert.ok(
-    startScript.indexOf(preflightInvocation) < startScript.indexOf('docker compose'),
+    lifecycleController.indexOf("prerequisites.run('dns'") <
+      lifecycleController.indexOf('compose.start(manifest)'),
     'DNS preflight must run before Docker Compose starts the harness',
   );
   assert.match(preflightScript, /resolve4/);
@@ -58,8 +62,8 @@ test('should verify both harness names resolve only to IPv4 loopback before star
 
 // The generated test certificate must name both browser-visible harness hosts.
 test('should generate a TLS certificate for both CI loopback names', () => {
-  const startScript = readRepositoryFile('test-harness/scripts/start.sh');
+  const lifecycleRuntime = readRepositoryFile('test-harness/fixtures/lifecycle-runtime.ts');
 
-  assert.match(startScript, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
-  assert.match(startScript, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
+  assert.match(lifecycleRuntime, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
+  assert.match(lifecycleRuntime, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
 });

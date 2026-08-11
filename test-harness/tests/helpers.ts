@@ -19,7 +19,7 @@ export const TEST_USER = {
 };
 
 /** MailHog API endpoint used by the browser harness. */
-export const MAILHOG_API = `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}/api`;
+export const MAILHOG_API = `${process.env.HARNESS_MAILHOG_URL ?? `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}`}/api`;
 
 // ── Porta Login Page Helpers ────────────────────────────
 
@@ -163,12 +163,12 @@ export function extractMagicLink(emailBody: string): string {
   decoded = decoded.replace(/&amp;/g, '&');
 
   // Magic link emails typically contain a URL like:
-  // https://porta-harness.ci.portaidentity.com:3443/test-org/interaction/{uid}/magic-link/verify?token={token}
+  // <manifest Porta URL>/test-org/interaction/{uid}/magic-link/verify?token={token}
   const urlMatch = decoded.match(/https?:\/\/[^\s"<>]+magic[^\s"<>]*/i);
   if (!urlMatch) {
     // Fallback: find a Porta URL served through the harness TLS proxy.
     const fallbackMatch = decoded.match(
-      /https?:\/\/porta-harness\.ci\.portaidentity\.com:3443[^\s"<>]+/i,
+      /https?:\/\/porta-harness\.ci\.portaidentity\.com:\d{2,5}[^\s"<>]+/i,
     );
     if (!fallbackMatch) {
       throw new Error('Could not find magic link URL in email body');

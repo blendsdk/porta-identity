@@ -26,7 +26,6 @@ import {
 } from './lifecycle-validation.js';
 
 const startupPrerequisites = [
-  'dns',
   'health',
   'migration',
   'seed',
@@ -165,6 +164,7 @@ export class LifecycleControllerImplementation implements LifecycleController {
       ownedPaths: Object.freeze([
         runtimeDirectory,
         resolve(runtimeDirectory, 'endpoint-manifest.json'),
+        resolve('/tmp', `porta-assurance-${manifest.runId}.sock`),
       ]),
       certificatePath: manifest.certificatePath,
       manifest,
@@ -183,6 +183,11 @@ export class LifecycleControllerImplementation implements LifecycleController {
       await this.dependencies.playwright.apply(manifest);
       await this.dependencies.health.apply(manifest);
       await this.dependencies.evidence.apply(manifest);
+      try {
+        await this.dependencies.prerequisites.run('dns', manifest);
+      } catch {
+        return this.abortAcquiredStart(record, 'dns');
+      }
       await this.dependencies.compose.start(manifest);
       for (const prerequisite of startupPrerequisites) {
         try {

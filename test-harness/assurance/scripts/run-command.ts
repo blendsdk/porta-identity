@@ -48,22 +48,26 @@ const redCommands: Readonly<
   },
 };
 
+/** Complete lifecycle suite shared by progressive and final Phase 2 selectors. */
+const lifecycleTestFiles = [
+  'test-harness/assurance/tests/lifecycle-leasing.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-cleanup.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-compatibility.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-outcomes.spec.test.ts',
+  'test-harness/assurance/tests/reset-success.spec.test.ts',
+  'test-harness/assurance/tests/reset-interruptions.spec.test.ts',
+  'test-harness/assurance/tests/reset-recovery.spec.test.ts',
+  'test-harness/assurance/tests/reset-verification.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-recovery.impl.test.ts',
+  'test-harness/assurance/tests/reset-finalization.impl.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
   'assurance-signal-probe': ['test-harness/assurance/tests/signal-probe.impl.fixture.ts'],
-  lifecycle: [
-    'test-harness/assurance/tests/lifecycle-leasing.spec.test.ts',
-    'test-harness/assurance/tests/lifecycle-cleanup.spec.test.ts',
-    'test-harness/assurance/tests/lifecycle-compatibility.spec.test.ts',
-    'test-harness/assurance/tests/lifecycle-outcomes.spec.test.ts',
-    'test-harness/assurance/tests/reset-success.spec.test.ts',
-    'test-harness/assurance/tests/reset-interruptions.spec.test.ts',
-    'test-harness/assurance/tests/reset-recovery.spec.test.ts',
-    'test-harness/assurance/tests/reset-verification.spec.test.ts',
-    'test-harness/assurance/tests/lifecycle-recovery.impl.test.ts',
-    'test-harness/assurance/tests/reset-finalization.impl.test.ts',
-  ],
+  lifecycle: lifecycleTestFiles,
+  'lifecycle-all': lifecycleTestFiles,
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',

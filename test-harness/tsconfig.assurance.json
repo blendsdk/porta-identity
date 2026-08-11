@@ -3,6 +3,11 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["assurance/**/*.ts", "fixtures/**/*.ts"],
+  "include": [
+    "assurance/**/*.ts",
+    "fixtures/**/*.ts",
+    "scripts/lifecycle.ts",
+    "tests/global-setup.ts"
+  ],
   "exclude": ["node_modules", ".assurance-results"]
 }
