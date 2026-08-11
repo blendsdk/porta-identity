@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 02:24
-> **Progress**: 10/92 tasks (11%)
+> **Last Updated**: 2026-08-11 02:51
+> **Progress**: 11/92 tasks (12%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -184,8 +184,13 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
       endpoint-manifest propagation, ownership fencing, stale-lease recovery, and cleanup.
 - [x] 2.2 [spec-author] Write reset-state specs for quiesce/stop, DB recreation, exact migration and ✅ (completed: 2026-08-11 02:24)
       deterministic seed, Redis/mail reset, restart/public verification, and every interruption edge.
-- [ ] 2.3 Record exact RED signatures for current non-fatal reset, fixed endpoints, cross-cleanup,
+- [x] 2.3 Record exact RED signatures for current non-fatal reset, fixed endpoints, cross-cleanup, ✅ (completed: 2026-08-11 02:51)
       and partial reset behavior while existing required lanes remain green.
+      - RED evidence: isolated child exit 1; one failing case, `should expose the complete current
+        lifecycle surface gap set before implementation`; registered signature
+        `lifecycle-current-failure` matched the exact ordered marker for non-fatal reset, fixed
+        endpoints, unfenced cleanup, and absent poison state; zero passing cases and no setup,
+        collection, timeout, cleanup, or unrelated failure.
 - [ ] 2.4 Implement validated run UUID/PID/worktree/Compose identity, an atomic complete port-block
       lease with bounded collision retry, and one endpoint manifest consumed by all components.
 - [ ] 2.5 Fence every Compose/start/stop/cleanup action with the persisted owner and recorded

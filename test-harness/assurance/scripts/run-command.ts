@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import process from 'node:process';
 
 import {
@@ -9,6 +11,7 @@ import {
   isAssuranceCommandAction,
   rootAliasForAction,
 } from '../commands.js';
+import { redSignatureRegistrySchema } from '../schema.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -16,6 +19,7 @@ import {
   runFoundationValidation,
 } from './foundation-artifacts.js';
 import { runManagedChild } from './managed-child.js';
+import { matchRedSignature } from './validate-assurance.js';
 
 /** Exit code used when a command's owning phase has not installed its handler yet. */
 const setupFailureExit = 30;
@@ -25,6 +29,24 @@ const testFailureExit = 21;
 
 /** Exit code used when a bounded child process exceeds the command contract. */
 const timeoutExit = 70;
+
+/** Maximum TAP output retained while matching one exact RED signature. */
+const redOutputLimitBytes = 256 * 1024;
+
+/** Shell-free child definitions for RED cases installed by their owning phase. */
+const redCommands: Readonly<
+  Record<string, { readonly display: string; readonly args: readonly string[] }>
+> = {
+  'lifecycle-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    ],
+  },
+};
 
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
@@ -129,6 +151,91 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
   process.exitCode = result.code === 0 ? 0 : testFailureExit;
 }
 
+/** Runs one allowlisted RED child and accepts only its exact registered assertion failure. */
+async function runRedCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 4 || options[0] !== '--case' || options[2] !== '--signature') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --case <ST-ID> --signature <signature-id>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const caseId = options[1] ?? '';
+  const signatureId = options[3] ?? '';
+  const command = redCommands[signatureId];
+  if (command === undefined) {
+    process.stderr.write('ASSURANCE_RED_UNAVAILABLE: signature handler is not installed\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  try {
+    const registry = redSignatureRegistrySchema.parse(
+      JSON.parse(
+        readFileSync(resolve(process.cwd(), 'test-harness/assurance/red-signatures.json'), 'utf8'),
+      ),
+    );
+    const signature = registry.signatures.find((candidate) => candidate.id === signatureId);
+    if (
+      signature === undefined ||
+      signature.command !== command.display ||
+      signature.normalizedFailureExit !== testFailureExit
+    ) {
+      throw new Error('registered RED command contract does not match its handler');
+    }
+
+    const result = await runManagedChild(process.execPath, command.args, {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'pipe',
+      maxOutputBytes: redOutputLimitBytes,
+      timeoutMilliseconds: 120_000,
+      terminationGraceMilliseconds: 2_000,
+      cleanup: () => undefined,
+    });
+    if (result.cleanupFailed) {
+      process.exitCode = 60;
+      return;
+    }
+    if (result.forwardedSignal === 'SIGINT') {
+      process.exitCode = 130;
+      return;
+    }
+    if (result.forwardedSignal === 'SIGTERM') {
+      process.exitCode = 143;
+      return;
+    }
+    if (result.timedOut) {
+      process.exitCode = timeoutExit;
+      return;
+    }
+    if (result.setupFailed || result.outputTruncated || result.code === null) {
+      process.exitCode = setupFailureExit;
+      return;
+    }
+
+    const boundedOutput = `${result.stdout}\n${result.stderr}`;
+    matchRedSignature(registry, caseId, signatureId, result.code, boundedOutput);
+    if (!/(?:^|\n)# pass 0(?:\r?\n|$)/u.test(boundedOutput)) {
+      throw new Error('RED child did not report zero passing cases');
+    }
+    if (!/(?:^|\n)# fail 1(?:\r?\n|$)/u.test(boundedOutput)) {
+      throw new Error('RED child did not report exactly one failing case');
+    }
+    if (boundedOutput.split(signature.marker).length !== 2) {
+      throw new Error('RED marker must occur exactly once');
+    }
+
+    process.stdout.write(
+      `ASSURANCE_RED_MATCHED: case=${caseId} signature=${signatureId} raw-exit=${result.code}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(`ASSURANCE_RED_REJECTED: ${errorMessage(error)}\n`);
+    process.exitCode = testFailureExit;
+  }
+}
+
 /** Returns a minimal diagnostic message without serializing an exception or stack. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown assurance command failure';
@@ -199,6 +306,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'test') {
     await runInternalTests(options);
+    return;
+  }
+  if (action === 'red') {
+    await runRedCommand(options);
     return;
   }
   if (action === 'validate') {

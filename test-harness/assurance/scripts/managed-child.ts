@@ -14,6 +14,12 @@ export interface ManagedChildOutcome {
   setupFailed: boolean;
   /** Whether owned-resource cleanup failed after child termination. */
   cleanupFailed: boolean;
+  /** Bounded standard output captured when pipe mode is selected. */
+  stdout: string;
+  /** Bounded standard error captured when pipe mode is selected. */
+  stderr: string;
+  /** Whether output exceeded the configured ceiling and forced termination. */
+  outputTruncated: boolean;
 }
 
 /** Options for one shell-free child with signal, timeout, and cleanup ownership. */
@@ -23,7 +29,9 @@ export interface ManagedChildOptions {
   /** Environment inherited by the child. */
   env?: NodeJS.ProcessEnv;
   /** Output behavior for the child process. */
-  stdio: 'inherit' | 'ignore';
+  stdio: 'inherit' | 'ignore' | 'pipe';
+  /** Maximum combined stdout/stderr bytes accepted in pipe mode. */
+  maxOutputBytes?: number;
   /** Maximum execution time before group termination begins. */
   timeoutMilliseconds: number;
   /** Grace period between SIGTERM and SIGKILL during timeout handling. */
@@ -65,6 +73,14 @@ export async function runManagedChild(
   arguments_: readonly string[],
   options: ManagedChildOptions,
 ): Promise<ManagedChildOutcome> {
+  if (
+    options.stdio === 'pipe' &&
+    (options.maxOutputBytes === undefined ||
+      !Number.isSafeInteger(options.maxOutputBytes) ||
+      options.maxOutputBytes <= 0)
+  ) {
+    throw new Error('pipe mode requires a positive safe maxOutputBytes value');
+  }
   const child = spawn(command, arguments_, {
     cwd: options.cwd,
     detached: true,
@@ -76,6 +92,10 @@ export async function runManagedChild(
   let timedOut = false;
   let setupFailed = false;
   let cleanupFailed = false;
+  let stdout = '';
+  let stderr = '';
+  let capturedBytes = 0;
+  let outputTruncated = false;
   let terminationPromise: Promise<boolean> | undefined;
 
   const terminateGroup = (signal: 'SIGINT' | 'SIGTERM'): Promise<boolean> => {
@@ -105,6 +125,22 @@ export async function runManagedChild(
     void terminateGroup('SIGTERM');
   }, options.timeoutMilliseconds);
 
+  const capture = (channel: 'stdout' | 'stderr', chunk: Buffer): void => {
+    if (outputTruncated) return;
+    capturedBytes += chunk.byteLength;
+    if (capturedBytes > (options.maxOutputBytes ?? 0)) {
+      outputTruncated = true;
+      void terminateGroup('SIGTERM');
+      return;
+    }
+    if (channel === 'stdout') stdout += chunk.toString('utf8');
+    else stderr += chunk.toString('utf8');
+  };
+  if (options.stdio === 'pipe') {
+    child.stdout?.on('data', (chunk: Buffer) => capture('stdout', chunk));
+    child.stderr?.on('data', (chunk: Buffer) => capture('stderr', chunk));
+  }
+
   try {
     const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
       (resolveClose) => {
@@ -124,7 +160,16 @@ export async function runManagedChild(
     } catch {
       cleanupFailed = true;
     }
-    return { ...result, forwardedSignal, timedOut, setupFailed, cleanupFailed };
+    return {
+      ...result,
+      forwardedSignal,
+      timedOut,
+      setupFailed,
+      cleanupFailed,
+      stdout,
+      stderr,
+      outputTruncated,
+    };
   } finally {
     clearTimeout(timeout);
     process.off('SIGINT', onSigint);

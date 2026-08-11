@@ -8,6 +8,14 @@
       "normalizedFailureExit": 21,
       "command": "yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts",
       "marker": "ASSURANCE_FOUNDATION_MISSING"
+    },
+    {
+      "id": "lifecycle-current-failure",
+      "caseId": "ST-09",
+      "observedChildExit": 1,
+      "normalizedFailureExit": 21,
+      "command": "yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts",
+      "marker": "LIFECYCLE_CURRENT_SURFACE_GAPS: reset-failures-nonfatal,fixed-endpoints,cleanup-unfenced,poison-state-absent"
     }
   ]
 }

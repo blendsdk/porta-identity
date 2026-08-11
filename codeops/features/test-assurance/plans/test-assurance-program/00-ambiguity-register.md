@@ -312,3 +312,31 @@ independent review is reserved for the complete phase diff. **Policy version**: 
 invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: validation gains a sound
 non-persisting dirty-tree mode, the commit gate changes, or the specification files enter required
 runtime collection before Task 2.3.
+
+### AR-37 — Transitional current-surface RED evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test execution and bounded
+process-capture design inside the approved RED checkpoint; it changes no product behavior,
+acceptance criterion, lifecycle oracle, or scope. **Objective**: prove the four known current
+harness gaps through one exact assertion without accepting the intentionally missing future module
+as RED. **Decision**: retain the controller/reset specifications as the authoritative lifecycle
+oracle and add one narrow requirement-derived current-surface specification that reports the exact
+ordered gap marker for non-fatal reset, fixed endpoints, unfenced cleanup, and absent poison state.
+The RED handler uses a hard-coded signature-to-argv allowlist, never executes the registry command
+string, captures stdout/stderr separately under a combined 256 KiB ceiling, requires raw exit 1,
+zero passes, exactly one failure, one literal marker occurrence, and returns wrapper success only
+for that complete match. Overflow, setup, signal, timeout, cleanup, partial diagnosis, or unrelated
+failure cannot count as RED. **Evidence**: the future lifecycle runtime is declaration-only at this
+checkpoint, while the frozen execution contract explicitly forbids module-load/setup failure from
+counting as RED. **Rejected alternatives**: a temporary current-behavior adapter would shape the
+oracle around intended implementation and add disposable machinery; accepting missing-module
+failure has no behavioral sensitivity; broad shell black-box fakes cannot prove poison-state
+absence proportionately. **Strongest counterargument**: a static surface check can be satisfied
+cosmetically. It therefore proves only the pre-implementation RED baseline and can never promote a
+claim; later controller/reset specifications and real Compose/concurrency/signal smokes remain the
+green authority. **Confidence**: High. **Hardening**: an independent challenger selected this
+bounded bridge and required exact-set matching, allowlisted argv, bounded capture, and no raw-output
+persistence; the implementation adopts all four constraints. **Policy version**: 1. **Root
+invocation ID**: `AD-TA-EXEC-20260811-P2`. **Reopen triggers**: the future runtime becomes
+available before RED is recorded, the bridge enters claim evidence, output is persisted or
+unbounded, or signature execution becomes data-driven from a command string.
