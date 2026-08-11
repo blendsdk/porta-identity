@@ -355,8 +355,10 @@ planned container/bind-volume identities, owned paths, and the immutable endpoin
 Malformed/incomplete records are never absence and move only to an exact quarantine path. A
 loopback bind probe detects external occupation before acquisition but does not claim to reserve
 ports against arbitrary processes. The `lifecycle` selector progressively collects the already-
-committed immutable groups: leasing in Task 2.4, cleanup/outcomes/compatibility in Task 2.5, then
-reset groups in Task 2.6; Task 2.8 re-collects the complete suite. **Evidence**: one selector is
+committed immutable groups: leasing in Task 2.4, cleanup/compatibility in Task 2.5, then outcomes
+and reset groups in Task 2.6; Task 2.8 re-collects the complete suite. **Evidence**: the outcomes
+file contains reset cases whose implementation is owned by Task 2.6, so collecting it in Task 2.5
+would either advance a sibling task or create a knowingly failing gate; one selector is
 bound to Tasks 2.4–2.7, while their approved implementation responsibilities are sequential and
 the specification files were frozen before RED. **Rejected alternatives**: one monolithic Task
 2.4 implementation would advance sibling tasks; conditional skips create vacuous green; random

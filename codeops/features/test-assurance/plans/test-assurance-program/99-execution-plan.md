@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-11 03:27
-> **Progress**: 12/92 tasks (13%)
+> **Last Updated**: 2026-08-11 03:59
+> **Progress**: 13/92 tasks (14%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -198,7 +198,7 @@ and clean-tree run `e5586c13-3f0c-4878-bc95-29135039a4a1` validates the final pr
         change because the random tag already ended in `ff`. The unchanged isolated file then
         passed 16/16 and the unchanged final `yarn verify` passed 3,348/3,348; no out-of-scope test
         or product file was modified.
-- [ ] 2.5 Fence every Compose/start/stop/cleanup action with the persisted owner and recorded
+- [x] 2.5 Fence every Compose/start/stop/cleanup action with the persisted owner and recorded ✅ (completed: 2026-08-11 03:59)
       container/process/volume/path identity; reclaim stale leases only after owner and Compose absence.
 - [ ] 2.6 Implement the reset state machine: block traffic, stop Porta, recreate DB, migrate/
       bootstrap/seed, reset Redis/MailHog, restart clients/Porta, and verify fixture/migration digests.
