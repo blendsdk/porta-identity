@@ -9,6 +9,10 @@ if (outcome === 'success') {
   process.argv = [process.execPath, cliBinPath, 'not-a-porta-command'];
 } else {
   globalThis.fetch = () => new Promise(() => undefined);
+  if (outcome === 'timeout') setInterval(() => undefined, 1_000);
+  if (outcome === 'sigint' || outcome === 'sigterm') {
+    setTimeout(() => process.kill(process.pid, outcome === 'sigint' ? 'SIGINT' : 'SIGTERM'), 200);
+  }
   process.argv = [
     process.execPath,
     cliBinPath,

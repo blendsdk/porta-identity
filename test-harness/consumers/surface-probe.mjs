@@ -1,6 +1,17 @@
-import '@portaidentity/sdk';
-import '@portaidentity/sdk/agent';
-import '@portaidentity/sdk/browser';
-import '@portaidentity/sdk/node';
+import { readFile } from 'node:fs/promises';
 
-process.stdout.write('PACKED_SDK_EXPORTS_LOADED\n');
+const manifest = JSON.parse(
+  await readFile(
+    new URL('./node_modules/@portaidentity/sdk/package.json', import.meta.url),
+    'utf8',
+  ),
+);
+const exportNames = Object.keys(manifest.exports ?? {});
+const observations = [];
+for (const exportName of exportNames) {
+  const specifier =
+    exportName === '.' ? '@portaidentity/sdk' : `@portaidentity/sdk${exportName.slice(1)}`;
+  await import(specifier);
+  observations.push({ exportName, url: import.meta.resolve(specifier) });
+}
+process.stdout.write(`${JSON.stringify(observations)}\n`);

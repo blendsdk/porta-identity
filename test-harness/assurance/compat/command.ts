@@ -9,7 +9,7 @@ import { readPublicRuntimeFixtureManifest } from '../../fixtures/fixture-runtime
 import { cleanupPackedConsumer, loadPackedSurfaces, preparePackedConsumer } from './consumer.js';
 import { runPackedCliWithIsolatedHome, type PackedCliOutcome } from './credential-home.js';
 import { verifyPackedCliSdkResolution } from './resolution.js';
-import type { PreparedPackedConsumer } from './model.js';
+import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
 
 /** Selectors currently implemented by the packed-client foundation command. */
 export const packedCompatibilitySelectors = ['ST-69', 'ST-72', 'ST-73', 'compatibility'] as const;
@@ -25,6 +25,10 @@ export interface PackedCompatibilityResult {
   readonly selector: PackedCompatibilitySelector;
   /** Repository-relative result artifact path. */
   readonly artifactPath: string;
+  /** Stable root assurance exit code after exact cleanup precedence. */
+  readonly exitCode: 0 | 30 | 60 | 70 | 130 | 143;
+  /** Exact bounded cleanup command when automatic consumer removal failed. */
+  readonly recoveryCommand?: string;
 }
 
 /** Complete CLI outcome set whose credential isolation is mandatory. */
@@ -132,14 +136,19 @@ export async function runPackedCompatibilityFoundation(
   const imageDigest = ownedPortaImageDigest(canonicalRoot);
   let consumer: PreparedPackedConsumer | undefined;
   const commandRunId = randomUUID();
-  let evidence: object;
+  let evidence: object | undefined;
+  let exitCode: PackedCompatibilityResult['exitCode'] = 0;
+  let stage: 'preparation' | 'surfaces' | 'credentials' | 'cleanup' | 'provenance' = 'preparation';
+  let recoveryCommand: string | undefined;
   try {
     consumer = await preparePackedConsumer(canonicalRoot, {
       serverImageDigest: imageDigest,
       fixtureIdentity: fixture.fixtureDigest,
     });
+    stage = 'surfaces';
     const surfaces = await loadPackedSurfaces(consumer);
     const resolution = await verifyPackedCliSdkResolution(consumer);
+    stage = 'credentials';
     const credentialResults = [];
     for (const outcome of packedCliOutcomes) {
       credentialResults.push(await runPackedCliWithIsolatedHome(consumer, outcome));
@@ -173,13 +182,53 @@ export async function runPackedCompatibilityFoundation(
       primaryTreeUnchanged: true,
       ownedConsumerResidue: [],
     };
+  } catch (error) {
+    exitCode = error instanceof PackedCompatibilityExecutionError ? error.exitCode : 30;
+    recoveryCommand =
+      error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
-    if (consumer !== undefined) cleanupPackedConsumer(consumer);
+    if (consumer !== undefined) {
+      const cleanup = cleanupPackedConsumer(consumer);
+      if (!cleanup.removed) {
+        exitCode = 60;
+        stage = 'cleanup';
+        recoveryCommand = cleanup.recoveryCommand;
+      }
+    }
   }
-  const after = inspectFoundationProvenance(canonicalRoot);
-  if (JSON.stringify(after) !== JSON.stringify(before)) {
-    throw new Error('packed compatibility changed primary source provenance');
+  try {
+    const after = inspectFoundationProvenance(canonicalRoot);
+    if (JSON.stringify(after) !== JSON.stringify(before)) {
+      throw new Error('packed compatibility changed primary source provenance');
+    }
+  } catch {
+    exitCode = 60;
+    stage = 'provenance';
   }
-  const artifactPath = writeCompatibilityResult(canonicalRoot, commandRunId, selector, evidence);
-  return Object.freeze({ runId: commandRunId, selector, artifactPath });
+  const admittedEvidence =
+    exitCode === 0 && evidence !== undefined
+      ? evidence
+      : {
+          version: 1,
+          status: 'failed',
+          selector,
+          runId: commandRunId,
+          stage,
+          exitCode,
+          ownedConsumerResidue: recoveryCommand === undefined ? [] : ['compat-runtime'],
+          ...(recoveryCommand === undefined ? {} : { recoveryCommand }),
+        };
+  const artifactPath = writeCompatibilityResult(
+    canonicalRoot,
+    commandRunId,
+    selector,
+    admittedEvidence,
+  );
+  return Object.freeze({
+    runId: commandRunId,
+    selector,
+    artifactPath,
+    exitCode,
+    ...(recoveryCommand === undefined ? {} : { recoveryCommand }),
+  });
 }

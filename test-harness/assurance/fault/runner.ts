@@ -45,8 +45,8 @@ export interface FaultCommandResult {
   readonly recoveryCommand?: string;
 }
 
-/** Internal mutable outcome accumulated before final cleanup precedence is known. */
-interface PendingFaultOutcome {
+/** Internal outcome accumulated before final cleanup precedence is known. */
+export interface PendingFaultOutcome {
   classification: FaultClassification;
   exitCode: FaultCommandResult['exitCode'];
   tuple: FaultTuple;
@@ -123,6 +123,7 @@ function applyReviewedPatch(
   repositoryRoot: string,
   worktreePath: string,
   patchRepositoryPath: string,
+  targetRepositoryPath: string,
 ): void {
   const patchPath = resolveFaultFile(
     repositoryRoot,
@@ -141,6 +142,31 @@ function applyReviewedPatch(
     timeout: 10_000,
     stdio: ['ignore', 'ignore', 'ignore'],
   });
+  verifyExactPatchedTarget(worktreePath, targetRepositoryPath);
+}
+
+/** Proves that applying one reviewed patch changed exactly its declared target and nothing else. */
+export function verifyExactPatchedTarget(worktreePath: string, targetRepositoryPath: string): void {
+  const tracked = execFileSync('git', ['diff', '--name-only', '-z', '--no-renames', 'HEAD', '--'], {
+    cwd: worktreePath,
+    encoding: 'utf8',
+    timeout: 10_000,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  const untracked = execFileSync(
+    'git',
+    ['ls-files', '--others', '--exclude-standard', '-z', '--'],
+    {
+      cwd: worktreePath,
+      encoding: 'utf8',
+      timeout: 10_000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
+  );
+  const changedPaths = `${tracked}${untracked}`.split('\0').filter(Boolean);
+  if (changedPaths.length !== 1 || changedPaths[0] !== targetRepositoryPath) {
+    throw new Error('reviewed fault patch changed files outside its declared target');
+  }
 }
 
 /** Runs one allowlisted foundation build without interpreting catalog text as a command. */
@@ -186,19 +212,20 @@ async function runSentinel(
   );
 }
 
-/** Converts one managed child into the controlled observation taxonomy. */
-function observationFromChild(
+/** Accepts only the closed success or designated-failure output grammar of one sentinel. */
+export function observationFromSentinelChild(
   stage: FaultObservation['stage'],
   child: ManagedChildOutcome,
+  expectedSignature: string,
 ): FaultObservation {
-  const signatures = `${child.stdout}\n${child.stderr}`
-    .split(/\r?\n/u)
-    .filter((line) => /^[A-Z][A-Z0-9_]{2,127}$/u.test(line));
+  const exactFailure =
+    child.code === 1 && child.stdout === '' && child.stderr === `${expectedSignature}\n`;
+  const exactSuccess = child.code === 0 && child.stdout === '' && child.stderr === '';
   return Object.freeze({
     stage,
     exitCode: child.code ?? 1,
-    assertionSignatures: Object.freeze(signatures),
-    unrelatedFailure: false,
+    assertionSignatures: Object.freeze(exactFailure ? [expectedSignature] : []),
+    unrelatedFailure: !exactFailure && !exactSuccess,
     timedOut: child.timedOut,
   });
 }
@@ -247,6 +274,39 @@ function invalidPending(tuple: FaultTuple, stage: FaultObservation['stage']): Pe
   };
 }
 
+/** Applies terminal and cleanup precedence while clearing every inadmissible claim outcome. */
+export function finalizePendingFaultOutcome(
+  pending: PendingFaultOutcome,
+  terminalExit: FaultCommandResult['exitCode'] | undefined,
+  cleanupComplete: boolean,
+): PendingFaultOutcome {
+  if (!cleanupComplete) {
+    return {
+      ...invalidPending(pending.tuple, 'cleanup'),
+      exitCode: 60,
+    };
+  }
+  if (terminalExit === undefined) return pending;
+  if (terminalExit === 70) {
+    return {
+      classification: 'timeout',
+      exitCode: 70,
+      tuple: pending.tuple,
+      blockedClaims: [],
+      killedClaims: [],
+      stage: pending.stage,
+    };
+  }
+  return {
+    classification: terminalExit === 60 ? 'infrastructure-failed' : 'invalid',
+    exitCode: terminalExit,
+    tuple: pending.tuple,
+    blockedClaims: [],
+    killedClaims: [],
+    stage: terminalExit === 60 ? 'cleanup' : pending.stage,
+  };
+}
+
 /** Removes the exact disposable worktree and runtime directory. */
 function cleanupDisposableContext(
   repositoryRoot: string,
@@ -269,12 +329,6 @@ function cleanupDisposableContext(
   if (clean) {
     try {
       rmSync(runtimeRoot, { recursive: true, force: true });
-      execFileSync('git', ['worktree', 'prune'], {
-        cwd: repositoryRoot,
-        encoding: 'utf8',
-        timeout: 10_000,
-        stdio: ['ignore', 'ignore', 'ignore'],
-      });
     } catch {
       clean = false;
     }
@@ -324,90 +378,103 @@ export async function runCuratedFault(
   process.on('SIGTERM', onSigterm);
 
   try {
-    const targetPath = resolveFaultFile(
-      canonicalRoot,
-      fault.target.path,
-      'test-harness/assurance/fault',
-    );
-    const revisionEligible = revisionIsEligible(canonicalRoot, fault.target.ancestorCommit);
-    const targetHashMatches = digestFile(targetPath) === fault.target.sha256;
-    if (!revisionEligible || !targetHashMatches || interruptedExit !== undefined) {
-      pending.exitCode = interruptedExit ?? 50;
-    } else {
-      requireOwnedDirectory(runtimeRoot);
-      execFileSync('git', ['worktree', 'add', '--detach', worktreePath, 'HEAD^{commit}'], {
-        cwd: canonicalRoot,
-        encoding: 'utf8',
-        timeout: 30_000,
-        stdio: ['ignore', 'ignore', 'ignore'],
-      });
-      worktreeCreated = true;
-      applyReviewedPatch(canonicalRoot, worktreePath, fault.patchPath);
-      const build = await runBuild(fault, worktreePath);
-      const buildOverride = childExitOverride(build);
-      if (buildOverride !== undefined || build.code !== 0) {
-        pending = invalidPending(tuple, 'build');
-        pending.exitCode = buildOverride ?? 50;
+    try {
+      const targetPath = resolveFaultFile(
+        canonicalRoot,
+        fault.target.path,
+        'test-harness/assurance/fault',
+      );
+      const revisionEligible = revisionIsEligible(canonicalRoot, fault.target.ancestorCommit);
+      const targetHashMatches = digestFile(targetPath) === fault.target.sha256;
+      if (!revisionEligible || !targetHashMatches || interruptedExit !== undefined) {
+        pending = finalizePendingFaultOutcome(pending, interruptedExit ?? 50, true);
       } else {
-        const sentinel = await runSentinel(fault, tuple, worktreePath);
-        const sentinelOverride = childExitOverride(sentinel);
-        const classified = classifyFaultTuple({
-          tuples: fault.tuples,
-          claimId: tuple.claimId,
-          sentinelId: tuple.sentinelId,
-          revisionEligible,
-          targetHashMatches,
-          observation: observationFromChild('sentinel', sentinel),
+        requireOwnedDirectory(runtimeRoot);
+        execFileSync('git', ['worktree', 'add', '--detach', worktreePath, 'HEAD^{commit}'], {
+          cwd: canonicalRoot,
+          encoding: 'utf8',
+          timeout: 30_000,
+          stdio: ['ignore', 'ignore', 'ignore'],
         });
-        pending = pendingFromClassification(classified);
-        pending.exitCode = sentinelOverride ?? interruptedExit ?? pending.exitCode;
+        worktreeCreated = true;
+        applyReviewedPatch(canonicalRoot, worktreePath, fault.patchPath, fault.target.path);
+        const build = await runBuild(fault, worktreePath);
+        const buildOverride = childExitOverride(build);
+        if (buildOverride !== undefined || build.code !== 0) {
+          pending = finalizePendingFaultOutcome(
+            invalidPending(tuple, 'build'),
+            buildOverride,
+            true,
+          );
+        } else {
+          const sentinel = await runSentinel(fault, tuple, worktreePath);
+          const sentinelOverride = childExitOverride(sentinel);
+          const classified = classifyFaultTuple({
+            tuples: fault.tuples,
+            claimId: tuple.claimId,
+            sentinelId: tuple.sentinelId,
+            revisionEligible,
+            targetHashMatches,
+            observation: observationFromSentinelChild(
+              'sentinel',
+              sentinel,
+              tuple.expectedSignature,
+            ),
+          });
+          pending = finalizePendingFaultOutcome(
+            pendingFromClassification(classified),
+            sentinelOverride ?? interruptedExit,
+            true,
+          );
+        }
       }
+    } catch {
+      pending = invalidPending(tuple, worktreeCreated ? 'build' : 'validation');
     }
-  } catch {
-    pending = invalidPending(tuple, worktreeCreated ? 'build' : 'validation');
+
+    const cleanupSucceeded = cleanupDisposableContext(canonicalRoot, runtimeRoot, worktreePath);
+    let primaryTreeUnchanged: boolean;
+    try {
+      const after = inspectFoundationProvenance(canonicalRoot);
+      primaryTreeUnchanged =
+        after.commitIdentity === baseline.commitIdentity &&
+        after.treeIdentity === baseline.treeIdentity &&
+        after.assuranceToolDigest === baseline.assuranceToolDigest;
+    } catch {
+      primaryTreeUnchanged = false;
+    }
+    const cleanupComplete = cleanupSucceeded && primaryTreeUnchanged;
+    pending = finalizePendingFaultOutcome(pending, interruptedExit, true);
+    pending = finalizePendingFaultOutcome(pending, undefined, cleanupComplete);
+    requireOwnedDirectory(resultDirectory);
+    const artifactPath = resolve(resultDirectory, 'fault-result.json');
+    writeAtomic(artifactPath, {
+      version: 1,
+      runId,
+      faultId: fault.id,
+      claimId: tuple.claimId,
+      sentinelId: tuple.sentinelId,
+      expectedSignature: tuple.expectedSignature,
+      classification: pending.classification,
+      stage: pending.stage,
+      exitCode: pending.exitCode,
+      blockedClaims: pending.blockedClaims,
+      killedClaims: pending.killedClaims,
+      targetRevision: baseline.commitIdentity,
+      targetHash: fault.target.sha256,
+      primaryTreeUnchanged,
+      residue: cleanupSucceeded ? [] : ['disposable-worktree'],
+      recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
+    });
+    return {
+      runId,
+      classification: pending.classification,
+      exitCode: pending.exitCode,
+      artifactPath: relative(canonicalRoot, artifactPath).split(sep).join('/'),
+      recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
+    };
   } finally {
     process.off('SIGINT', onSigint);
     process.off('SIGTERM', onSigterm);
   }
-
-  const cleanupSucceeded = cleanupDisposableContext(canonicalRoot, runtimeRoot, worktreePath);
-  let primaryTreeUnchanged: boolean;
-  try {
-    const after = inspectFoundationProvenance(canonicalRoot);
-    primaryTreeUnchanged =
-      after.commitIdentity === baseline.commitIdentity &&
-      after.treeIdentity === baseline.treeIdentity &&
-      after.assuranceToolDigest === baseline.assuranceToolDigest;
-  } catch {
-    primaryTreeUnchanged = false;
-  }
-  const cleanupComplete = cleanupSucceeded && primaryTreeUnchanged;
-  const finalExit = cleanupComplete ? pending.exitCode : 60;
-  requireOwnedDirectory(resultDirectory);
-  const artifactPath = resolve(resultDirectory, 'fault-result.json');
-  writeAtomic(artifactPath, {
-    version: 1,
-    runId,
-    faultId: fault.id,
-    claimId: tuple.claimId,
-    sentinelId: tuple.sentinelId,
-    expectedSignature: tuple.expectedSignature,
-    classification: pending.classification,
-    stage: pending.stage,
-    exitCode: finalExit,
-    blockedClaims: pending.blockedClaims,
-    killedClaims: pending.killedClaims,
-    targetRevision: baseline.commitIdentity,
-    targetHash: fault.target.sha256,
-    primaryTreeUnchanged,
-    residue: cleanupSucceeded ? [] : ['disposable-worktree'],
-    recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
-  });
-  return {
-    runId,
-    classification: pending.classification,
-    exitCode: finalExit,
-    artifactPath: relative(canonicalRoot, artifactPath).split(sep).join('/'),
-    recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
-  };
 }

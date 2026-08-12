@@ -9,20 +9,24 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { basename, relative, resolve, sep } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import { runManagedChild } from '../scripts/managed-child.js';
 import { inspectFoundationProvenance } from '../scripts/source-provenance.js';
 import { digestRegularTree, requireCanonicalChild, sha256Bytes } from './filesystem.js';
 import type {
   PackedArchiveIdentity,
+  PackedConsumerCleanupResult,
   PackedConsumerProvenance,
   PreparedPackedConsumer,
   PackedSurfaceResult,
 } from './model.js';
+import { PackedCompatibilityExecutionError as CompatibilityExecutionError } from './model.js';
 
 /** Maximum build, pack, extract, install, or probe runtime. */
 const compatibilityStepTimeoutMilliseconds = 600_000;
@@ -66,7 +70,7 @@ async function runRequiredChild(
   arguments_: readonly string[],
   cwd: string,
   environment: NodeJS.ProcessEnv = process.env,
-): Promise<void> {
+): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
   const result = await runManagedChild(command, arguments_, {
     cwd,
     env: environment,
@@ -85,13 +89,57 @@ async function runRequiredChild(
     result.cleanupFailed ||
     result.outputTruncated
   ) {
-    throw new Error('packed consumer prerequisite failed');
+    const exitCode = result.cleanupFailed
+      ? 60
+      : result.forwardedSignal === 'SIGINT'
+        ? 130
+        : result.forwardedSignal === 'SIGTERM'
+          ? 143
+          : result.timedOut
+            ? 70
+            : 30;
+    throw new CompatibilityExecutionError(exitCode);
   }
+  return result;
 }
 
 /** Builds one current package before creating its public archive. */
 async function buildPackage(repositoryRoot: string, workspace: string): Promise<void> {
   await runRequiredChild('yarn', ['workspace', workspace, 'build'], repositoryRoot);
+}
+
+/** Creates an exact detached source worktree with only the primary toolchain linked into it. */
+function createBuildWorktree(repositoryRoot: string, worktreePath: string, revision: string): void {
+  execFileSync('git', ['worktree', 'add', '--detach', '--', worktreePath, revision], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    timeout: 30_000,
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
+  try {
+    const primaryModules = realpathSync(resolve(repositoryRoot, 'node_modules'));
+    symlinkSync(primaryModules, resolve(worktreePath, 'node_modules'), 'dir');
+  } catch (error) {
+    try {
+      removeBuildWorktree(repositoryRoot, worktreePath);
+    } catch {
+      throw new CompatibilityExecutionError(
+        60,
+        `git worktree remove --force -- test-harness/.assurance-runtime/compat/${basename(resolve(worktreePath, '..'))}/build-worktree`,
+      );
+    }
+    throw error;
+  }
+}
+
+/** Removes only the exact detached build worktree registered by this consumer run. */
+function removeBuildWorktree(repositoryRoot: string, worktreePath: string): void {
+  execFileSync('git', ['worktree', 'remove', '--force', '--', worktreePath], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    timeout: 30_000,
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
 }
 
 /** Packs twice and rejects any non-deterministic archive identity. */
@@ -163,6 +211,7 @@ function validateConsumerLocation(repositoryRoot: string, consumerPath: string):
 function validateInstalledDependencyGraph(
   consumerPath: string,
   dependencies: Readonly<Record<'@portaidentity/sdk' | '@portaidentity/cli', string>>,
+  archives: readonly PackedArchiveIdentity[],
 ): void {
   const manifest = JSON.parse(readFileSync(resolve(consumerPath, 'package.json'), 'utf8')) as {
     dependencies?: Record<string, string>;
@@ -181,6 +230,13 @@ function validateInstalledDependencyGraph(
       throw new Error('packed dependency is not an ordinary installed directory');
     }
     requireCanonicalChild(consumerPath, installedRoot);
+    const archive = archives.find((candidate) => candidate.name === name);
+    if (
+      archive === undefined ||
+      digestRegularTree(installedRoot, new Set(['node_modules'])) !== archive.contentSha256
+    ) {
+      throw new Error('installed packed dependency content does not match its local archive');
+    }
   }
 }
 
@@ -206,28 +262,39 @@ export async function preparePackedConsumer(
   const inspectionDirectory = resolve(runRoot, 'inspection');
   const consumerPath = resolve(runRoot, 'consumer');
   const cachePath = resolve(runRoot, 'cache');
+  const buildWorktreePath = resolve(runRoot, 'build-worktree');
   createOwnedDirectory(archivesDirectory);
   createOwnedDirectory(inspectionDirectory);
   createOwnedDirectory(consumerPath);
   createOwnedDirectory(cachePath);
   validateConsumerLocation(canonicalRoot, consumerPath);
+  let buildWorktreeCreated = false;
   try {
-    await buildPackage(canonicalRoot, '@portaidentity/sdk');
-    await buildPackage(canonicalRoot, '@portaidentity/cli');
+    const sourceRevision = provenance.commitIdentity.replace(/^commit:/u, '');
+    createBuildWorktree(canonicalRoot, buildWorktreePath, sourceRevision);
+    buildWorktreeCreated = true;
+    await buildPackage(buildWorktreePath, '@portaidentity/sdk');
+    await buildPackage(buildWorktreePath, '@portaidentity/cli');
     const sdk = await packDeterministicArchive(
-      canonicalRoot,
+      buildWorktreePath,
       archivesDirectory,
       inspectionDirectory,
       '@portaidentity/sdk',
       'portaidentity-sdk',
     );
     const cli = await packDeterministicArchive(
-      canonicalRoot,
+      buildWorktreePath,
       archivesDirectory,
       inspectionDirectory,
       '@portaidentity/cli',
       'portaidentity-cli',
     );
+    removeBuildWorktree(canonicalRoot, buildWorktreePath);
+    buildWorktreeCreated = false;
+    const afterPackaging = inspectFoundationProvenance(canonicalRoot);
+    if (JSON.stringify(afterPackaging) !== JSON.stringify(provenance)) {
+      throw new Error('packed archive source provenance changed during packaging');
+    }
     if (sdk.version !== cli.version) throw new Error('current SDK and CLI versions must match');
     const dependencies = Object.freeze({
       '@portaidentity/sdk': `file:${sdk.archivePath}`,
@@ -254,8 +321,7 @@ export async function preparePackedConsumer(
       consumerPath,
       { ...process.env, YARN_CACHE_FOLDER: cachePath },
     );
-    validateInstalledDependencyGraph(consumerPath, dependencies);
-    const sourceRevision = provenance.commitIdentity.replace(/^commit:/u, '');
+    validateInstalledDependencyGraph(consumerPath, dependencies, [sdk, cli]);
     return Object.freeze({
       runId,
       consumerPath: realpathSync(consumerPath),
@@ -272,7 +338,24 @@ export async function preparePackedConsumer(
       }),
     });
   } catch (error) {
-    rmSync(runRoot, { recursive: true, force: true });
+    if (buildWorktreeCreated) {
+      try {
+        removeBuildWorktree(canonicalRoot, buildWorktreePath);
+      } catch {
+        throw new CompatibilityExecutionError(
+          60,
+          `git worktree remove --force -- test-harness/.assurance-runtime/compat/${runId}/build-worktree`,
+        );
+      }
+    }
+    try {
+      rmSync(runRoot, { recursive: true, force: true });
+    } catch {
+      throw new CompatibilityExecutionError(
+        60,
+        `rm -rf -- test-harness/.assurance-runtime/compat/${runId}`,
+      );
+    }
     throw error;
   }
 }
@@ -285,7 +368,34 @@ export async function loadPackedSurfaces(
     consumer.consumerPath,
     resolve(consumer.consumerPath, 'surface-probe.mjs'),
   );
-  await runRequiredChild(process.execPath, [probePath], consumer.consumerPath);
+  const probe = await runRequiredChild(process.execPath, [probePath], consumer.consumerPath);
+  const observations = JSON.parse(probe.stdout) as Array<{ exportName?: string; url?: string }>;
+  if (!Array.isArray(observations) || observations.length !== sdkExportNames.length) {
+    throw new Error('packed SDK export observations are incomplete');
+  }
+  const sdkRoot = requireCanonicalChild(
+    consumer.consumerPath,
+    resolve(consumer.consumerPath, 'node_modules/@portaidentity/sdk'),
+  );
+  const observedNames = observations.map((observation) => observation.exportName ?? '');
+  if (JSON.stringify([...observedNames].sort()) !== JSON.stringify([...sdkExportNames].sort())) {
+    throw new Error('packed SDK declared exports changed');
+  }
+  const resolvedSdkFiles = observations.map((observation) => {
+    if (typeof observation.url !== 'string' || !observation.url.startsWith('file:')) {
+      throw new Error('packed SDK export did not resolve to a file');
+    }
+    const resolvedPath = requireCanonicalChild(sdkRoot, fileURLToPath(observation.url));
+    const fromSdk = relative(sdkRoot, resolvedPath).split(sep).join('/');
+    if (!fromSdk.startsWith('dist/') || !fromSdk.endsWith('.js')) {
+      throw new Error('packed SDK export did not resolve to compiled dist output');
+    }
+    const metadata = lstatSync(resolvedPath);
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error('packed SDK export is not an ordinary compiled file');
+    }
+    return resolvedPath;
+  });
   const cliRoot = requireCanonicalChild(
     consumer.consumerPath,
     resolve(consumer.consumerPath, 'node_modules/@portaidentity/cli'),
@@ -302,15 +412,35 @@ export async function loadPackedSurfaces(
     throw new Error('packed CLI bin must be an executable regular file');
   }
   return Object.freeze({
-    loadedSdkExports: Object.freeze([...sdkExportNames]),
+    loadedSdkExports: Object.freeze([...observedNames]),
+    resolvedSdkFiles: Object.freeze(
+      resolvedSdkFiles.map((path) => relative(sdkRoot, path).split(sep).join('/')),
+    ),
     cliBinPath,
-    distOnly: cliBinPath.includes('/dist/'),
+    distOnly:
+      resolvedSdkFiles.length === sdkExportNames.length &&
+      relative(cliRoot, cliBinPath).split(sep).join('/').startsWith('dist/'),
   });
 }
 
 /** Removes the exact run root owned by one prepared consumer. */
-export function cleanupPackedConsumer(consumer: PreparedPackedConsumer): void {
+export function cleanupPackedConsumer(
+  consumer: PreparedPackedConsumer,
+): PackedConsumerCleanupResult {
   const runRoot = resolve(consumer.consumerPath, '..');
-  requireCanonicalChild(resolve(runRoot, '..'), runRoot);
-  rmSync(runRoot, { recursive: true, force: true });
+  const compatRoot = resolve(runRoot, '..');
+  const recoveryCommand = `rm -rf -- test-harness/.assurance-runtime/compat/${consumer.runId}`;
+  try {
+    if (!/^[0-9a-f-]{36}$/u.test(consumer.runId) || basename(runRoot) !== consumer.runId) {
+      throw new Error('packed consumer cleanup identity is malformed');
+    }
+    requireCanonicalChild(compatRoot, runRoot);
+    if (realpathSync(consumer.consumerPath) !== resolve(runRoot, 'consumer')) {
+      throw new Error('packed consumer cleanup path does not match its run identity');
+    }
+    rmSync(runRoot, { recursive: true, force: false });
+    return Object.freeze({ removed: true });
+  } catch {
+    return Object.freeze({ removed: false, recoveryCommand });
+  }
 }

@@ -5,7 +5,7 @@ import process from 'node:process';
 
 import { runManagedChild } from '../scripts/managed-child.js';
 import { digestRegularTree, requireCanonicalChild } from './filesystem.js';
-import type { PreparedPackedConsumer } from './model.js';
+import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
 
 /** Exact resolution evidence for the SDK package loaded from inside the packed CLI. */
 export interface PackedCliSdkResolution {
@@ -75,7 +75,16 @@ export async function verifyPackedCliSdkResolution(
     probe.cleanupFailed ||
     probe.outputTruncated
   ) {
-    throw new Error('packed CLI SDK resolution probe failed');
+    const exitCode = probe.cleanupFailed
+      ? 60
+      : probe.forwardedSignal === 'SIGINT'
+        ? 130
+        : probe.forwardedSignal === 'SIGTERM'
+          ? 143
+          : probe.timedOut
+            ? 70
+            : 30;
+    throw new PackedCompatibilityExecutionError(exitCode);
   }
   const resolutionUrl = probe.stdout.trim();
   if (!resolutionUrl.startsWith('file:') || resolutionUrl.includes('\n')) {

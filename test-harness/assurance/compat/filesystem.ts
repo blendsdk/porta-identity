@@ -18,10 +18,19 @@ export function requireCanonicalChild(root: string, candidate: string): string {
   return absoluteCandidate;
 }
 
-/** Hashes a regular directory tree by stable relative path and exact file bytes. */
-export function digestRegularTree(directory: string): string {
+/**
+ * Hashes a regular directory tree by stable relative path and exact file bytes.
+ *
+ * Installed packages may contain a package-manager-owned nested `node_modules` directory that was
+ * not part of the archive. Callers may exclude that one top-level dependency directory while the
+ * package manifest and every published file remain part of the digest.
+ */
+export function digestRegularTree(
+  directory: string,
+  excludedTopLevelNames: ReadonlySet<string> = new Set(),
+): string {
   const digest = createHash('sha256');
-  for (const path of listRegularFiles(directory)) {
+  for (const path of listRegularFiles(directory, '', excludedTopLevelNames)) {
     digest.update(path);
     digest.update('\0');
     digest.update(readFileSync(resolve(directory, path)));
@@ -31,17 +40,23 @@ export function digestRegularTree(directory: string): string {
 }
 
 /** Lists regular files without accepting symbolic links or special filesystem entries. */
-function listRegularFiles(directory: string, prefix = ''): string[] {
+function listRegularFiles(
+  directory: string,
+  prefix = '',
+  excludedTopLevelNames: ReadonlySet<string> = new Set(),
+): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(directory, { withFileTypes: true }).sort((left, right) =>
     left.name.localeCompare(right.name),
   )) {
+    if (prefix === '' && excludedTopLevelNames.has(entry.name)) continue;
     const relativePath = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
     const absolutePath = resolve(directory, entry.name);
     const metadata = lstatSync(absolutePath);
     if (metadata.isSymbolicLink())
-      throw new Error('packed archive content cannot contain symlinks');
-    if (metadata.isDirectory()) files.push(...listRegularFiles(absolutePath, relativePath));
+      throw new Error(`packed archive content cannot contain symlinks: ${relativePath}`);
+    if (metadata.isDirectory())
+      files.push(...listRegularFiles(absolutePath, relativePath, excludedTopLevelNames));
     else if (metadata.isFile()) files.push(relativePath);
     else throw new Error('packed archive content must contain only regular files and directories');
   }

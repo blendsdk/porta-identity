@@ -48,10 +48,34 @@ export interface PreparedPackedConsumer {
 export interface PackedSurfaceResult {
   /** SDK export entry points successfully loaded through package resolution. */
   readonly loadedSdkExports: readonly string[];
+  /** Package-relative compiled files observed through import.meta.resolve for those exports. */
+  readonly resolvedSdkFiles: readonly string[];
   /** Canonical compiled CLI executable path. */
   readonly cliBinPath: string;
   /** Whether every observed public entry is package `dist` output. */
   readonly distOnly: boolean;
+}
+
+/** Stable compatibility-process failure that preserves root exit precedence without diagnostics. */
+export class PackedCompatibilityExecutionError extends Error {
+  /** Root assurance exit code represented by this sanitized failure. */
+  public readonly exitCode: 30 | 60 | 70 | 130 | 143;
+  /** Exact bounded cleanup command when this failure retained owned residue. */
+  public readonly recoveryCommand?: string;
+
+  /** Creates one non-secret terminal failure. */
+  public constructor(exitCode: 30 | 60 | 70 | 130 | 143, recoveryCommand?: string) {
+    super('packed compatibility execution failed');
+    this.name = 'PackedCompatibilityExecutionError';
+    this.exitCode = exitCode;
+    this.recoveryCommand = recoveryCommand;
+  }
+}
+
+/** Exact cleanup outcome for one generated consumer root. */
+export interface PackedConsumerCleanupResult {
+  readonly removed: boolean;
+  readonly recoveryCommand?: string;
 }
 
 /** Caller-supplied server identities that complete current-triplet provenance. */

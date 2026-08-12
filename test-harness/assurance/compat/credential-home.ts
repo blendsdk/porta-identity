@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   chmodSync,
@@ -15,7 +14,7 @@ import process from 'node:process';
 
 import { runManagedChild } from '../scripts/managed-child.js';
 import { requireCanonicalChild } from './filesystem.js';
-import type { PreparedPackedConsumer } from './model.js';
+import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
 
 /** Terminal outcomes exercised against the compiled packed CLI. */
 export type PackedCliOutcome = 'success' | 'failure' | 'timeout' | 'sigint' | 'sigterm';
@@ -60,54 +59,6 @@ function packedCliBin(consumer: PreparedPackedConsumer): string {
   return requireCanonicalChild(cliRoot, resolve(cliRoot, manifest.bin.porta));
 }
 
-/** Waits for a direct child to close, with bounded forced cleanup on failure. */
-async function runSignalledProbe(
-  command: string,
-  arguments_: readonly string[],
-  cwd: string,
-  environment: NodeJS.ProcessEnv,
-  signal: 'SIGINT' | 'SIGTERM',
-): Promise<void> {
-  const child = spawn(command, arguments_, {
-    cwd,
-    env: environment,
-    detached: true,
-    shell: false,
-    stdio: 'ignore',
-  });
-  const closed = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-    (resolveClose, rejectClose) => {
-      child.once('error', rejectClose);
-      child.once('close', (code, closeSignal) => resolveClose({ code, signal: closeSignal }));
-    },
-  );
-  await new Promise((resolveWait) => setTimeout(resolveWait, 200));
-  if (child.pid === undefined) throw new Error('packed CLI signal probe did not start');
-  process.kill(-child.pid, signal);
-  let deadlineHandle: NodeJS.Timeout | undefined;
-  const deadline = new Promise<never>((_, rejectDeadline) => {
-    deadlineHandle = setTimeout(
-      () => rejectDeadline(new Error('packed CLI signal probe did not stop')),
-      5_000,
-    );
-  });
-  try {
-    const result = await Promise.race([closed, deadline]);
-    if (result.signal !== signal)
-      throw new Error('packed CLI signal outcome did not match request');
-  } catch (error) {
-    try {
-      process.kill(-child.pid, 'SIGKILL');
-    } catch {
-      // The process group may already be absent after a concurrent close.
-    }
-    await closed.catch(() => undefined);
-    throw error;
-  } finally {
-    if (deadlineHandle !== undefined) clearTimeout(deadlineHandle);
-  }
-}
-
 /** Runs the compiled packed CLI under one newly created owner-only HOME. */
 export async function runPackedCliWithIsolatedHome(
   consumer: PreparedPackedConsumer,
@@ -128,36 +79,33 @@ export async function runPackedCliWithIsolatedHome(
   const environment = { ...process.env, HOME: temporaryHomePath, USERPROFILE: temporaryHomePath };
 
   try {
-    if (outcome === 'sigint' || outcome === 'sigterm') {
-      await runSignalledProbe(
-        process.execPath,
-        [probePath, outcome, cliBinPath],
-        consumer.consumerPath,
-        environment,
-        outcome === 'sigint' ? 'SIGINT' : 'SIGTERM',
-      );
-    } else {
-      const result = await runManagedChild(process.execPath, [probePath, outcome, cliBinPath], {
-        cwd: consumer.consumerPath,
-        env: environment,
-        stdio: 'pipe',
-        maxOutputBytes: 256 * 1024,
-        timeoutMilliseconds: outcome === 'timeout' ? 250 : 30_000,
-        terminationGraceMilliseconds: 2_000,
-        cleanup: () => undefined,
-      });
-      if (outcome === 'success' && result.code !== 0) {
-        throw new Error('packed CLI success probe failed');
-      }
-      if (outcome === 'failure' && (result.code === null || result.code === 0)) {
-        throw new Error('packed CLI failure probe did not fail');
-      }
-      if (outcome === 'timeout' && !result.timedOut) {
-        throw new Error('packed CLI timeout probe did not time out');
-      }
-      if (result.cleanupFailed || result.outputTruncated || result.setupFailed) {
-        throw new Error('packed CLI probe cleanup or setup failed');
-      }
+    const result = await runManagedChild(process.execPath, [probePath, outcome, cliBinPath], {
+      cwd: consumer.consumerPath,
+      env: environment,
+      stdio: 'pipe',
+      maxOutputBytes: 256 * 1024,
+      timeoutMilliseconds: outcome === 'timeout' ? 250 : 30_000,
+      terminationGraceMilliseconds: 2_000,
+      cleanup: () => undefined,
+    });
+    if (result.cleanupFailed || result.outputTruncated || result.setupFailed) {
+      throw new PackedCompatibilityExecutionError(result.cleanupFailed ? 60 : 30);
+    }
+    if (result.forwardedSignal === 'SIGINT') throw new PackedCompatibilityExecutionError(130);
+    if (result.forwardedSignal === 'SIGTERM') throw new PackedCompatibilityExecutionError(143);
+    if (outcome === 'success' && result.code !== 0) {
+      throw new Error('packed CLI success probe failed');
+    }
+    if (outcome === 'failure' && (result.code === null || result.code === 0)) {
+      throw new Error('packed CLI failure probe did not fail');
+    }
+    if (outcome === 'timeout' && !result.timedOut) {
+      throw new Error('packed CLI timeout probe did not time out');
+    }
+    const expectedSignal =
+      outcome === 'sigint' ? 'SIGINT' : outcome === 'sigterm' ? 'SIGTERM' : null;
+    if (expectedSignal !== null && result.signal !== expectedSignal) {
+      throw new Error('packed CLI signal outcome did not match request');
     }
   } finally {
     rmSync(temporaryHomePath, { recursive: true, force: true });

@@ -709,10 +709,18 @@ async function runCompatibilityCommand(options: readonly string[]): Promise<void
   process.exitCode = await withHarnessStack('operational', async () => {
     try {
       const result = await runPackedCompatibilityFoundation(process.cwd(), selector);
-      process.stdout.write(
-        `ASSURANCE_COMPAT_RESULT: run=${result.runId} selector=${result.selector} artifact=${result.artifactPath}\n`,
-      );
-      return 0;
+      if (result.exitCode === 0) {
+        process.stdout.write(
+          `ASSURANCE_COMPAT_RESULT: run=${result.runId} selector=${result.selector} artifact=${result.artifactPath}\n`,
+        );
+      } else if (result.recoveryCommand !== undefined) {
+        process.stderr.write(
+          `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+        );
+      } else {
+        process.stderr.write('ASSURANCE_COMPAT_FAILED: stage=foundation\n');
+      }
+      return result.exitCode;
     } catch {
       process.stderr.write('ASSURANCE_COMPAT_FAILED: stage=foundation\n');
       return setupFailureExit;

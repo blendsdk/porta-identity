@@ -16,6 +16,7 @@ export { verifyPackedCliSdkResolution, type PackedCliSdkResolution } from './res
 export type {
   CurrentTripletIdentity,
   PackedArchiveIdentity,
+  PackedConsumerCleanupResult,
   PackedConsumerProvenance,
   PackedSurfaceResult,
   PreparedPackedConsumer,
