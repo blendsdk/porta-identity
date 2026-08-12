@@ -32,6 +32,14 @@
       "normalizedFailureExit": 21,
       "command": "yarn tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts",
       "marker": "COVERAGE_CURRENT_SURFACE_GAPS: porta-v8-capture-absent,raw-output-mount-absent,converter-module-absent,coverage-handler-unavailable"
+    },
+    {
+      "id": "fault-runner-missing",
+      "caseId": "ST-64",
+      "observedChildExit": 1,
+      "normalizedFailureExit": 21,
+      "command": "yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts",
+      "marker": "FAULT_RUNNER_CURRENT_SURFACE_GAPS: fault-catalog-absent,fault-runner-module-absent,fault-handler-unavailable"
     }
   ]
 }

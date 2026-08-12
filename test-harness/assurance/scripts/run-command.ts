@@ -80,6 +80,15 @@ const redCommands: Readonly<
       'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     ],
   },
+  'fault-runner-missing': {
+    display: 'yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    ],
+  },
 };
 
 /** Complete lifecycle suite shared by progressive and final lifecycle selectors. */
