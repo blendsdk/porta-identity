@@ -340,14 +340,28 @@ export async function inspectPortaContainer(
   ) {
     throw new Error('Porta container provenance does not match the active lifecycle');
   }
-  const node = await runner.checked('docker', ['exec', containerId, 'node', '--version'], {
-    cwd: repositoryRoot,
-    environment,
-    signal,
-  });
+  const node = await runner.checked(
+    'docker',
+    ['exec', containerId, 'env', '-u', 'NODE_V8_COVERAGE', 'node', '--version'],
+    {
+      cwd: repositoryRoot,
+      environment,
+      signal,
+    },
+  );
   const inventoryOutput = await runner.checked(
     'docker',
-    ['exec', containerId, 'node', '--input-type=module', '-e', runtimeDependencyInventoryScript],
+    [
+      'exec',
+      containerId,
+      'env',
+      '-u',
+      'NODE_V8_COVERAGE',
+      'node',
+      '--input-type=module',
+      '-e',
+      runtimeDependencyInventoryScript,
+    ],
     { cwd: repositoryRoot, environment, signal, timeoutMilliseconds: 30_000 },
   );
   const dependencies = z

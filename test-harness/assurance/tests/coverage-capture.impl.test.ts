@@ -166,6 +166,12 @@ test('should configure NODE_V8_COVERAGE only on the Porta service', () => {
   );
 });
 
+test('should remove NODE_V8_COVERAGE from every in-container provenance probe', () => {
+  const source = readFileSync(resolve(import.meta.dirname, '../coverage/capture.ts'), 'utf8');
+  assert.match(source, /'env',\s*'-u',\s*'NODE_V8_COVERAGE',\s*'node',\s*'--version'/u);
+  assert.match(source, /'env',\s*'-u',\s*'NODE_V8_COVERAGE',\s*'node',\s*'--input-type=module'/u);
+});
+
 test('should reject a selected Porta container absent from the unchanged durable lease', async () => {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-lease-'));
   const leaseRoot = mkdtempSync(resolve(tmpdir(), 'porta-coverage-leases-'));

@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -96,6 +96,12 @@ async function main(arguments_: readonly string[]): Promise<void> {
     request.manifest,
   );
   if (!conversion.accepted || conversion.artifact === undefined) {
+    mkdirSync(request.workspace.reportDirectory, { recursive: true, mode: 0o700 });
+    writeFileSync(
+      resolve(request.workspace.reportDirectory, 'coverage-conversion-failure.json'),
+      `${JSON.stringify({ version: 1, status: 'rejected', ...conversion }, null, 2)}\n`,
+      { encoding: 'utf8', mode: 0o600 },
+    );
     process.exitCode = 40;
     return;
   }
