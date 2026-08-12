@@ -11,7 +11,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import process from 'node:process';
 
 import { runManagedChild } from '../scripts/managed-child.js';
@@ -159,6 +159,31 @@ function validateConsumerLocation(repositoryRoot: string, consumerPath: string):
   });
 }
 
+/** Proves Yarn installed only the two exact local archives into ordinary package directories. */
+function validateInstalledDependencyGraph(
+  consumerPath: string,
+  dependencies: Readonly<Record<'@portaidentity/sdk' | '@portaidentity/cli', string>>,
+): void {
+  const manifest = JSON.parse(readFileSync(resolve(consumerPath, 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
+  };
+  if (JSON.stringify(manifest.dependencies) !== JSON.stringify(dependencies)) {
+    throw new Error('packed consumer dependencies changed during installation');
+  }
+  const lock = readFileSync(resolve(consumerPath, 'yarn.lock'), 'utf8');
+  for (const [name, source] of Object.entries(dependencies)) {
+    if (!lock.includes(`${name}@file:`) || !lock.includes(basename(source.slice(5)))) {
+      throw new Error('packed consumer lock does not bind the local archive');
+    }
+    const installedRoot = resolve(consumerPath, 'node_modules', ...name.split('/'));
+    const metadata = lstatSync(installedRoot);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+      throw new Error('packed dependency is not an ordinary installed directory');
+    }
+    requireCanonicalChild(consumerPath, installedRoot);
+  }
+}
+
 /**
  * Builds, packs, and installs the current SDK and CLI into one ignored clean consumer.
  *
@@ -229,6 +254,7 @@ export async function preparePackedConsumer(
       consumerPath,
       { ...process.env, YARN_CACHE_FOLDER: cachePath },
     );
+    validateInstalledDependencyGraph(consumerPath, dependencies);
     const sourceRevision = provenance.commitIdentity.replace(/^commit:/u, '');
     return Object.freeze({
       runId,

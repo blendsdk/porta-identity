@@ -21,7 +21,7 @@ function readRequiredSource(repositoryPath: string): string {
 // The RED checkpoint is valid only while runtime packing, the source template, and dispatcher
 // ownership are all absent. A partial diagnosis is stale and cannot satisfy the exact wrapper.
 test('should expose the complete current packed-client foundation gap set', () => {
-  readRequiredSource('test-harness/assurance/tests/packed-client-foundations-planned.d.ts');
+  readRequiredSource('test-harness/assurance/tests/packed-client-foundations-planned.ts');
   const dispatcherSource = readRequiredSource('test-harness/assurance/scripts/run-command.ts');
   const observations: readonly (readonly [(typeof expectedGaps)[number], boolean])[] = [
     [

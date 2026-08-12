@@ -1,5 +1,12 @@
 export { cleanupPackedConsumer, loadPackedSurfaces, preparePackedConsumer } from './consumer.js';
 export {
+  isPackedCompatibilitySelector,
+  packedCompatibilitySelectors,
+  runPackedCompatibilityFoundation,
+  type PackedCompatibilityResult,
+  type PackedCompatibilitySelector,
+} from './command.js';
+export {
   runPackedCliWithIsolatedHome,
   type PackedCliIsolationResult,
   type PackedCliOutcome,

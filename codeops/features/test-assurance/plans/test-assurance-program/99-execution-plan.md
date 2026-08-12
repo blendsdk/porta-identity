@@ -400,8 +400,16 @@ residual corrections, and the replacement server-only evidence are recorded in t
 - [x] 5.9 Spawn every CLI subprocess with a restrictive temporary `HOME`; fingerprint the caller's
       real credential path and clean on success/failure/timeout/SIGINT/SIGTERM. ✅ (completed:
       2026-08-12 15:28)
-- [ ] 5.10 Run ST-64–ST-69/ST-72–ST-73 green and add implementation cases for patch validation,
-      signals, archive identity, dependency resolution, permissions, and cleanup.
+- [x] 5.10 Run ST-64–ST-69/ST-72–ST-73 green and add implementation cases for patch validation,
+      signals, archive identity, dependency resolution, permissions, and cleanup. ✅ (completed:
+      2026-08-12 15:47)
+      - Verification note: `fault-packed-foundations` passed 27/27 exact specification and
+        implementation cases. The packed command now binds an owned Porta image and fixture to
+        deterministic local SDK/CLI archives, verifies the CLI's installed SDK content, exercises
+        success/failure/timeout/SIGINT/SIGTERM under owner-only temporary homes, and emits only
+        sanitized evidence after cleanup. TypeScript, ESLint, Prettier, diff hygiene, and `yarn
+        verify` passed; the latter covered 68 structure tests, 226 server files / 3,354 tests, 31
+        SDK files / 404 tests, and 29 CLI files / 355 tests.
 - [ ] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
       credentials unchanged, inspect redaction/residue, and run `yarn verify`.
 

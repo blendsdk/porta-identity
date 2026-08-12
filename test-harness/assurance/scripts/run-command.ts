@@ -30,6 +30,10 @@ import {
 } from './coverage-orchestration.js';
 import { runCuratedFault } from '../fault/index.js';
 import {
+  isPackedCompatibilitySelector,
+  runPackedCompatibilityFoundation,
+} from '../compat/index.js';
+import {
   AssuranceCleanupError,
   AssuranceSetupError,
   renderFoundationReport,
@@ -157,11 +161,25 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/fault-validation.spec.test.ts',
     'test-harness/assurance/tests/fault-classification.spec.test.ts',
     'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
+    'test-harness/assurance/tests/fault-runner.impl.test.ts',
   ],
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
     'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
+    'test-harness/assurance/tests/packed-consumer.impl.test.ts',
+  ],
+  'fault-packed-foundations': [
+    'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/fault-validation.spec.test.ts',
+    'test-harness/assurance/tests/fault-classification.spec.test.ts',
+    'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
+    'test-harness/assurance/tests/fault-runner.impl.test.ts',
+    'test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
+    'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
+    'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
+    'test-harness/assurance/tests/packed-consumer.impl.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
@@ -673,6 +691,35 @@ async function runFaultCommand(options: readonly string[]): Promise<void> {
   }
 }
 
+/** Runs the packed current-client foundation against one owned operational harness stack. */
+async function runCompatibilityCommand(options: readonly string[]): Promise<void> {
+  const selectedValue = options[1] ?? '';
+  if (
+    options.length !== 2 ||
+    options[0] !== '--select' ||
+    !isPackedCompatibilitySelector(selectedValue)
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-72|ST-73|compatibility>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const selector = selectedValue;
+  process.exitCode = await withHarnessStack('operational', async () => {
+    try {
+      const result = await runPackedCompatibilityFoundation(process.cwd(), selector);
+      process.stdout.write(
+        `ASSURANCE_COMPAT_RESULT: run=${result.runId} selector=${result.selector} artifact=${result.artifactPath}\n`,
+      );
+      return 0;
+    } catch {
+      process.stderr.write('ASSURANCE_COMPAT_FAILED: stage=foundation\n');
+      return setupFailureExit;
+    }
+  });
+}
+
 /** Returns a minimal diagnostic message without serializing an exception or stack. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown assurance command failure';
@@ -759,6 +806,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'fault') {
     await runFaultCommand(options);
+    return;
+  }
+  if (action === 'compat') {
+    await runCompatibilityCommand(options);
     return;
   }
   if (action === 'validate') {

@@ -84,9 +84,13 @@ async function runSignalledProbe(
   await new Promise((resolveWait) => setTimeout(resolveWait, 200));
   if (child.pid === undefined) throw new Error('packed CLI signal probe did not start');
   process.kill(-child.pid, signal);
-  const deadline = new Promise<never>((_, rejectDeadline) =>
-    setTimeout(() => rejectDeadline(new Error('packed CLI signal probe did not stop')), 5_000),
-  );
+  let deadlineHandle: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, rejectDeadline) => {
+    deadlineHandle = setTimeout(
+      () => rejectDeadline(new Error('packed CLI signal probe did not stop')),
+      5_000,
+    );
+  });
   try {
     const result = await Promise.race([closed, deadline]);
     if (result.signal !== signal)
@@ -99,6 +103,8 @@ async function runSignalledProbe(
     }
     await closed.catch(() => undefined);
     throw error;
+  } finally {
+    if (deadlineHandle !== undefined) clearTimeout(deadlineHandle);
   }
 }
 
