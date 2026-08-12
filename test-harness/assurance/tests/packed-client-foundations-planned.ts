@@ -2,6 +2,7 @@ import {
   cleanupPackedConsumer,
   loadPackedSurfaces,
   preparePackedConsumer,
+  runPackedCliWithIsolatedHome,
   verifyPackedCliSdkResolution,
   type PreparedPackedConsumer,
 } from '../compat/index.js';
@@ -158,8 +159,8 @@ export function createPackedClientFoundationsContract(): PackedClientFoundations
         liveJourneyAllowed: true,
       });
     },
-    async runCliWithIsolatedHome(_outcome: PackedCliOutcome): Promise<PackedCliIsolationResult> {
-      throw new Error('packed CLI HOME isolation is not installed');
+    async runCliWithIsolatedHome(outcome: PackedCliOutcome): Promise<PackedCliIsolationResult> {
+      return runPackedCliWithIsolatedHome(await prepared(), outcome);
     },
   });
 }

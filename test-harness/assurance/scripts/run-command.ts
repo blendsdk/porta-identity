@@ -161,6 +161,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
     'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
+    'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
