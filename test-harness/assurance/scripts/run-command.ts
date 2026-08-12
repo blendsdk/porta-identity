@@ -90,6 +90,16 @@ const redCommands: Readonly<
       'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
     ],
   },
+  'packed-consumer-missing': {
+    display:
+      'yarn tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    ],
+  },
 };
 
 /** Complete lifecycle suite shared by progressive and final lifecycle selectors. */

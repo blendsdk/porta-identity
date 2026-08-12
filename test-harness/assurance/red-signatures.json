@@ -40,6 +40,14 @@
       "normalizedFailureExit": 21,
       "command": "yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts",
       "marker": "FAULT_RUNNER_CURRENT_SURFACE_GAPS: fault-catalog-absent,fault-runner-module-absent,fault-handler-unavailable"
+    },
+    {
+      "id": "packed-consumer-missing",
+      "caseId": "ST-69",
+      "observedChildExit": 1,
+      "normalizedFailureExit": 21,
+      "command": "yarn tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts",
+      "marker": "PACKED_CONSUMER_CURRENT_SURFACE_GAPS: packed-consumer-module-absent,consumer-template-absent,compat-handler-unavailable"
     }
   ]
 }
