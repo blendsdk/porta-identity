@@ -250,7 +250,6 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
   }
 
   const workspace = createCoverageWorkspace(process.cwd(), project, profile);
-  const environment = coverageEnvironment(workspace);
   const interruption = new AbortController();
   let interruptedExit: 130 | 143 | undefined;
   const interrupt = (exitCode: 130 | 143): void => {
@@ -263,6 +262,23 @@ async function runCoverageCommand(options: readonly string[]): Promise<void> {
   process.on('SIGTERM', onSigterm);
   let terminalStage: CoverageFailureStage = 'startup';
   try {
+    let environment: NodeJS.ProcessEnv;
+    try {
+      environment = coverageEnvironment(workspace);
+    } catch {
+      process.exitCode = setupFailureExit;
+      removeCoverageObservation(workspace);
+      writeCoverageFailureArtifact(workspace, {
+        stage: 'startup',
+        exitCode: setupFailureExit,
+        classification: exitTaxonomy[setupFailureExit],
+        project,
+        profile,
+        seed,
+      });
+      process.stderr.write('ASSURANCE_COVERAGE_FAILED: stage=startup\n');
+      return;
+    }
     const result = await withHarnessStack(
       profile,
       async () => {

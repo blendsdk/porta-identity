@@ -616,6 +616,7 @@ function runGit(repositoryRoot: string, args: readonly string[]): Buffer {
 /** Parses and identifies every regular raw V8 JSON file in stable order. */
 function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIdentity[] {
   const files: RawCoverageFileIdentity[] = [];
+  const processIds = new Set<string>();
   const entries = readdirSync(rawDirectory, { withFileTypes: true }).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
@@ -624,9 +625,11 @@ function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIde
   }
   let aggregateBytes = 0;
   for (const entry of entries) {
-    if (!entry.isFile() || !/^coverage-[0-9]+-[0-9]+-[0-9]+\.json$/u.test(entry.name)) {
+    const identity = /^coverage-([0-9]+)-[0-9]+-[0-9]+\.json$/u.exec(entry.name);
+    if (!entry.isFile() || identity === null) {
       throw new Error(`unexpected raw coverage entry: ${entry.name}`);
     }
+    processIds.add(identity[1] ?? '');
     const path = resolve(rawDirectory, entry.name);
     const bytes = statSync(path).size;
     aggregateBytes += bytes;
@@ -643,6 +646,9 @@ function readRawCoverageFiles(rawDirectory: string): readonly RawCoverageFileIde
     }
     chmodSync(path, 0o600);
     files.push({ name: entry.name, digest: digestCoverageFile(path), bytes });
+  }
+  if (processIds.size > 1) {
+    throw new Error('raw coverage must originate from exactly one process');
   }
   return Object.freeze(files);
 }

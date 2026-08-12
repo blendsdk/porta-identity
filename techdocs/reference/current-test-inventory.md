@@ -1,6 +1,7 @@
 # Current Test Inventory
 
-> **Snapshot date**: 2026-08-10
+> **Inventory snapshot date**: 2026-08-10
+> **Assurance architecture update**: 2026-08-12
 > **Scope**: All test projects executed by the branch CI workflow
 > **Purpose**: Describe what the current suite exercises before any test-trust audit or rewrite
 
@@ -8,9 +9,10 @@
 
 Porta has **328 branch-CI test files containing 4,315 currently collected test cases**. The often
 quoted “3K+” figure covers only the server's Vitest projects. The complete branch-CI surface also
-contains SDK, CLI, browser, external OIDC harness, and repository-structure tests. Six additional
-root-owned assurance-internal files contain 53 cases and run through `yarn assurance:test`; they
-remain outside the required branch lane until separately authorized.
+contains SDK, CLI, browser, external OIDC harness, and repository-structure tests. At the snapshot,
+six root-owned assurance-internal files contained 53 governance cases. The assurance program now
+contains 39 phase-gated specification and implementation files selected by explicit root commands;
+they remain outside the required branch lane until separately authorized.
 
 The repository contains a substantial test investment: **74,916 lines of test code** compared with
 **47,784 lines of TypeScript production source** across the server, SDK, and CLI. The branch-CI
@@ -42,15 +44,16 @@ static declarations and 3,348 runtime-collected server cases.
 
 ## Execution Topology
 
-| Command or job                                      | What it executes                                                                                                      |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                       | 68 structure tests, all 3,348 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
-| `yarn assurance:test --select assurance-governance` | 53 root-owned foundation specification and implementation cases; intentionally separate from branch CI                |
-| `yarn test:ui`                                      | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
-| `yarn harness:test`                                 | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
-| CI `verify` job                                     | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
-| CI `ui` job                                         | Builds packages and runs the Playwright UI suite                                                                      |
-| CI `harness` job                                    | Runs the independently packaged OIDC harness                                                                          |
+| Command or job                                                                              | What it executes                                                                                                      |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `yarn verify`                                                                               | 68 structure tests, all 3,348 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
+| `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
+| `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
+| `yarn test:ui`                                                                              | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
+| `yarn harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
+| CI `verify` job                                                                             | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
+| CI `ui` job                                                                                 | Builds packages and runs the Playwright UI suite                                                                      |
+| CI `harness` job                                                                            | Runs the independently packaged OIDC harness                                                                          |
 
 The branch workflow therefore executes every suite in this inventory. UI and harness coverage are
 not part of the local `yarn verify` command; they are separate CI jobs.
@@ -213,10 +216,12 @@ cover:
 ## Assurance Foundation
 
 The root-owned assurance suite adds immutable requirement-derived specifications and separate
-implementation diagnostics without creating another workspace or test framework. Its current 53
-cases validate typed claim/evidence records, exact traceability, canonical path and inventory
-ownership, command/exit contracts, clean committed-source provenance, secret and personal-data
-redaction, deterministic reports, and bounded descendant cleanup after signals or timeouts.
+implementation diagnostics without creating another workspace or test framework. Its governance
+selector contains 53 cases that validate typed claim/evidence records, exact traceability,
+canonical path and inventory ownership, command/exit contracts, clean committed-source
+provenance, secret and personal-data redaction, deterministic reports, and bounded descendant
+cleanup after signals or timeouts. Additional phase selectors cover lifecycle, fixtures, project
+collection, and assembled-process coverage.
 
 Passing these foundation cases does not make a Porta behavior claim assured. A claim can transition
 to `assured` only when its canonical sentinels and exact owned result/fault artifacts match a clean
@@ -282,6 +287,25 @@ Consequently, the result proves that the configured gate currently fails and ide
 real unit-test blind spots, especially branch coverage and data import. It does not prove that every
 reported zero-percent route is never exercised end to end.
 
+### Assembled Porta process observation
+
+The assurance coverage command separately captures V8 records from the Porta process running in
+the retained Docker harness. It does not merge these records with Vitest or enforce a threshold.
+The command stops the exact container recorded by the durable lifecycle lease, extracts its raw
+records from a run-owned volume, and source-maps only eligible compiled server files.
+
+Evidence is rejected unless image labels and the capture manifest agree on the committed revision,
+dependency-lock digest, source-tree digest, compiled-output digest, fixture digest, lifecycle run,
+and container identity. Runtime dependency exclusions come from an inventory generated inside that
+same image. Node-internal and dependency records are reported as exclusions; pathless records are
+explicitly deferred instead of being guessed to be Node internals. Unexpected local scripts,
+unmapped eligible files, incomplete termination, malformed source maps, or collection failures
+prevent an observation from being admitted.
+
+Fixed-seed capture comparisons record exact normalized paths and totals. Those figures describe one
+deterministic journey under a named runtime profile; they are observation evidence, not a quality
+score, completeness claim, or CI/release gate.
+
 ## Current Assurance Characteristics
 
 | Characteristic                      | Current evidence                                                                               |
@@ -344,4 +368,7 @@ yarn test:structure
 
 # Execute all server Vitest projects with V8 coverage and enforce thresholds.
 yarn test:coverage
+
+# Observe coverage from the assembled Porta process without enforcing a threshold.
+yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline
 ```

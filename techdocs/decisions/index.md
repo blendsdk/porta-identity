@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-08-10
+> **Last Updated**: 2026-08-12
 
 ## Overview
 
@@ -284,8 +284,12 @@ work; the assurance program does not silently change product behavior.
 The implemented foundation now provides root-owned typed claim/evidence schemas, exact
 requirement-to-case-to-task-to-claim validation, immutable specification boundaries, canonical
 test inventory, clean-tree provenance, sanitized owner-only evidence, and managed child-process
-cleanup. Later phases still own lifecycle fencing, black-box risk slices, attributable runtime
-coverage, curated faults, packed clients, and reliability qualification.
+cleanup. The retained harness also has collision-fenced lifecycle ownership, deterministic fixture
+reset, runtime-profile binding, and attributable V8 coverage from the assembled Porta process.
+Coverage capture is accepted only when the exact leased container, image labels, committed source,
+dependency lock, compiled output, fixture digest, and runtime dependency inventory agree. Later
+phases still own black-box risk slices, curated faults, packed clients, and reliability
+qualification.
 
 **Consequences**:
 

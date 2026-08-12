@@ -172,6 +172,19 @@ test('should remove NODE_V8_COVERAGE from every in-container provenance probe', 
   assert.match(source, /'env',\s*'-u',\s*'NODE_V8_COVERAGE',\s*'node',\s*'--input-type=module'/u);
 });
 
+test('should remove NODE_V8_COVERAGE from every auxiliary Porta CLI process', () => {
+  const entrypoint = readFileSync(resolve(process.cwd(), 'docker/entrypoint.sh'), 'utf8');
+  const lifecycle = readFileSync(
+    resolve(process.cwd(), 'test-harness/fixtures/lifecycle-runtime.ts'),
+    'utf8',
+  );
+  assert.match(entrypoint, /env -u NODE_V8_COVERAGE node dist\/cli\/index\.js migrate up/u);
+  assert.match(
+    lifecycle,
+    /'docker',\s*\[\s*'exec',[\s\S]*?'env',\s*'-u',\s*'NODE_V8_COVERAGE',[\s\S]*?'porta',\s*'migrate',\s*'status'/u,
+  );
+});
+
 test('should reject a selected Porta container absent from the unchanged durable lease', async () => {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-lease-'));
   const leaseRoot = mkdtempSync(resolve(tmpdir(), 'porta-coverage-leases-'));
@@ -281,6 +294,35 @@ test('should promote only host-owned validated raw files from the exact stopped 
       0o600,
     );
     assert.equal(existsSync(resolve(workspace.root, '.raw-staging')), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('should reject raw coverage emitted by more than one process', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'porta-coverage-multiprocess-'));
+  try {
+    mkdirSync(resolve(root, 'test-harness/.assurance-results'), { recursive: true });
+    const workspace = createCoverageWorkspace(root, 'protocol', 'operational');
+    const runner = {
+      checked: async (_command: string, args: readonly string[]) => {
+        const stagingDirectory = args[2];
+        assert.ok(stagingDirectory);
+        for (const name of ['coverage-7-100-0.json', 'coverage-25-101-0.json']) {
+          writeFileSync(resolve(stagingDirectory, name), `${JSON.stringify({ result: [] })}\n`, {
+            mode: 0o600,
+          });
+        }
+        return { exitCode: 0, stdout: '', stderr: '' };
+      },
+    };
+
+    await assert.rejects(
+      extractRawCoverage(root, workspace, portaContainer(), undefined, runner),
+      /exactly one process/u,
+    );
+    assert.equal(existsSync(resolve(workspace.root, '.raw-staging')), false);
+    assert.equal(existsSync(workspace.rawDirectory), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

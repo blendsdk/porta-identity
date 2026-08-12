@@ -488,7 +488,16 @@ class RuntimePrerequisiteAdapter implements PrerequisiteAdapter {
     if (name === 'migration') {
       await this.runner.checked(
         'docker',
-        ['exec', `${manifest.composeProject}-porta-1`, 'porta', 'migrate', 'status'],
+        [
+          'exec',
+          `${manifest.composeProject}-porta-1`,
+          'env',
+          '-u',
+          'NODE_V8_COVERAGE',
+          'porta',
+          'migrate',
+          'status',
+        ],
         { cwd: manifest.worktreePath, environment, signal },
       );
       return;
