@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 01:22
-> **Progress**: 32/92 tasks (35%)
+> **Last Updated**: 2026-08-12 13:49
+> **Progress**: 33/92 tasks (36%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -372,9 +372,15 @@ residual corrections, and the replacement server-only evidence are recorded in t
 
 > **Scope**: fault metadata/runner and isolated SDK/CLI consumer lifecycle
 > **References**: ST-64–ST-69/ST-72–ST-73, RD-04/RD-06
+> **Phase baseline tree**: `b730f8db7568b22905dd4eeb1d0292c5cac95726`
+> **Expected modification set**: `package.json`, `.gitignore`, `test-harness/assurance/`,
+> `test-harness/consumers/`, harness-owned package/fault fixtures and scripts, and Phase 5
+> CodeOps/techdocs evidence
+> **Scope mode**: strict — fault-runner and packed-current-client foundations only; no product,
+> CI, publishing, deployment, compatibility-policy, or later risk-slice implementation
 
-- [ ] 5.1 [spec-author] Write fault validation/classification/signature/timeout/cleanup specs with
-      explicit claim–sentinel–expected-signature tuples.
+- [x] 5.1 [spec-author] Write fault validation/classification/signature/timeout/cleanup specs with
+      explicit claim–sentinel–expected-signature tuples. ✅ (completed: 2026-08-12 13:49)
 - [ ] 5.2 Record exact RED for the absent fault catalog/runner and commit the signature evidence;
       required existing lanes remain green.
 - [ ] 5.3 Implement target-hash checks, disposable worktree/build execution, sanitized evidence,
