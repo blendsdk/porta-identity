@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 15:28
-> **Progress**: 41/92 tasks (45%)
+> **Last Updated**: 2026-08-12 16:33
+> **Progress**: 43/92 tasks (47%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -410,7 +410,7 @@ residual corrections, and the replacement server-only evidence are recorded in t
         sanitized evidence after cleanup. TypeScript, ESLint, Prettier, diff hygiene, and `yarn
         verify` passed; the latter covered 68 structure tests, 226 server files / 3,354 tests, 31
         SDK files / 404 tests, and 29 CLI files / 355 tests.
-- [~] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
+- [x] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
       credentials unchanged, inspect redaction/residue, and run `yarn verify`. ✅ (completed:
       2026-08-12 15:57)
       - Verification note: the exact `foundation-smoke/CLAIM-R6-01/ST-64` tuple was killed in 0.95
@@ -421,12 +421,20 @@ residual corrections, and the replacement server-only evidence are recorded in t
       test server, 31-file/404-test SDK, and 29-file/355-test CLI matrices.
       - Quality-review reopening: the phase-end correctness/security audits found false-kill,
         patch-scope, unrelated-worktree cleanup, stale packed-output provenance, observation-derived
-        SDK surface, and compatibility cleanup-taxonomy gaps. The accepted auto-design corrections
-        must pass the focused selector, both live smokes, one bounded re-review, and `yarn verify`
-        before this task closes again.
+      SDK surface, and compatibility cleanup-taxonomy gaps. The accepted auto-design corrections
+      must pass the focused selector, both live smokes, one bounded re-review, and `yarn verify`
+      before this task closes again.
+      - Final quality note: all accepted corrections are implemented. The combined selector passed
+        31/31, the corrected live fault and compatibility artifacts are provenance-bound to
+        `26d1a8aa`, and the clean snapshot passed `yarn verify`. The single bounded re-review found
+        one residual recovery-completeness issue; the final correction centralizes validated
+        run-root recovery behind `yarn assurance:compat --recover <run-id>`, removes a registered
+        build worktree before the run root, verifies absence, and retains a sanitized residue class
+        whenever managed-child cleanup is unproven. Per policy, no third review cycle was run.
 
-**Phase gate:** every slice can execute real sensitivity tuples and packed public clients without
-waiting for a later phase or touching developer credentials.
+**Phase gate:** Satisfied. Every slice can execute real sensitivity tuples and packed public clients
+without waiting for a later phase or touching developer credentials. See
+[Phase 5 Quality Review](13-phase-5-quality-review.md).
 
 ## Phase 6: Tenant Isolation and Administrative Authorization
 

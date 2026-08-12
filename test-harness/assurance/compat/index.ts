@@ -1,4 +1,9 @@
-export { cleanupPackedConsumer, loadPackedSurfaces, preparePackedConsumer } from './consumer.js';
+export {
+  cleanupPackedConsumer,
+  loadPackedSurfaces,
+  preparePackedConsumer,
+  recoverPackedConsumerRun,
+} from './consumer.js';
 export {
   isPackedCompatibilitySelector,
   packedCompatibilitySelectors,

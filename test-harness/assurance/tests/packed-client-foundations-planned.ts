@@ -126,7 +126,7 @@ async function prepared(): Promise<PreparedPackedConsumer> {
   const consumer = await preparedConsumer;
   if (!cleanupRegistered) {
     cleanupRegistered = true;
-    process.once('exit', () => cleanupPackedConsumer(consumer));
+    process.once('exit', () => cleanupPackedConsumer(process.cwd(), consumer));
   }
   return consumer;
 }

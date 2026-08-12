@@ -288,8 +288,15 @@ cleanup. The retained harness also has collision-fenced lifecycle ownership, det
 reset, runtime-profile binding, and attributable V8 coverage from the assembled Porta process.
 Coverage capture is accepted only when the exact leased container, image labels, committed source,
 dependency lock, compiled output, fixture digest, and runtime dependency inventory agree. Later
-phases still own black-box risk slices, curated faults, packed clients, and reliability
-qualification.
+phases still own black-box risk slices and reliability qualification.
+
+Curated faults now run only from a versioned catalog with exact target bytes, one declared target,
+closed command identifiers, exact claim/sentinel signatures, and run-owned disposable worktrees.
+Packed-client evidence now builds the current SDK and CLI from a clean detached source worktree,
+installs both local archives into an isolated consumer, derives SDK `dist` evidence from actual
+package resolution, and isolates every CLI subprocess from developer credentials. These foundations
+do not yet claim that SDK or CLI product journeys work; each later risk slice must supply its own
+public-boundary sentinel and sensitivity evidence.
 
 **Consequences**:
 

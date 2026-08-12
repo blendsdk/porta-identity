@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   readFileSync,
@@ -342,19 +343,13 @@ export async function preparePackedConsumer(
       try {
         removeBuildWorktree(canonicalRoot, buildWorktreePath);
       } catch {
-        throw new CompatibilityExecutionError(
-          60,
-          `git worktree remove --force -- test-harness/.assurance-runtime/compat/${runId}/build-worktree`,
-        );
+        throw new CompatibilityExecutionError(60, `yarn assurance:compat --recover ${runId}`);
       }
     }
     try {
       rmSync(runRoot, { recursive: true, force: true });
     } catch {
-      throw new CompatibilityExecutionError(
-        60,
-        `rm -rf -- test-harness/.assurance-runtime/compat/${runId}`,
-      );
+      throw new CompatibilityExecutionError(60, `yarn assurance:compat --recover ${runId}`);
     }
     throw error;
   }
@@ -425,22 +420,53 @@ export async function loadPackedSurfaces(
 
 /** Removes the exact run root owned by one prepared consumer. */
 export function cleanupPackedConsumer(
+  repositoryRoot: string,
   consumer: PreparedPackedConsumer,
 ): PackedConsumerCleanupResult {
-  const runRoot = resolve(consumer.consumerPath, '..');
-  const compatRoot = resolve(runRoot, '..');
-  const recoveryCommand = `rm -rf -- test-harness/.assurance-runtime/compat/${consumer.runId}`;
+  const canonicalRoot = realpathSync(repositoryRoot);
+  const runRoot = resolve(canonicalRoot, 'test-harness/.assurance-runtime/compat', consumer.runId);
+  const recoveryCommand = `yarn assurance:compat --recover ${consumer.runId}`;
   try {
-    if (!/^[0-9a-f-]{36}$/u.test(consumer.runId) || basename(runRoot) !== consumer.runId) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+        consumer.runId,
+      )
+    ) {
       throw new Error('packed consumer cleanup identity is malformed');
     }
-    requireCanonicalChild(compatRoot, runRoot);
     if (realpathSync(consumer.consumerPath) !== resolve(runRoot, 'consumer')) {
       throw new Error('packed consumer cleanup path does not match its run identity');
     }
-    rmSync(runRoot, { recursive: true, force: false });
+    if (!recoverPackedConsumerRun(canonicalRoot, consumer.runId)) {
+      throw new Error('packed consumer cleanup did not prove absence');
+    }
     return Object.freeze({ removed: true });
   } catch {
     return Object.freeze({ removed: false, recoveryCommand });
+  }
+}
+
+/** Removes one validated compatibility run, including its registered build worktree, and proves absence. */
+export function recoverPackedConsumerRun(repositoryRoot: string, runId: string): boolean {
+  const canonicalRoot = realpathSync(repositoryRoot);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(runId)) {
+    return false;
+  }
+  const compatRoot = resolve(canonicalRoot, 'test-harness/.assurance-runtime/compat');
+  const runRoot = resolve(compatRoot, runId);
+  const buildWorktreePath = resolve(runRoot, 'build-worktree');
+  try {
+    if (existsSync(buildWorktreePath)) {
+      execFileSync('git', ['worktree', 'remove', '--force', '--', buildWorktreePath], {
+        cwd: canonicalRoot,
+        encoding: 'utf8',
+        timeout: 30_000,
+        stdio: ['ignore', 'ignore', 'ignore'],
+      });
+    }
+    rmSync(runRoot, { recursive: true, force: true });
+    return !existsSync(runRoot);
+  } catch {
+    return false;
   }
 }

@@ -31,6 +31,7 @@ import {
 import { runCuratedFault } from '../fault/index.js';
 import {
   isPackedCompatibilitySelector,
+  recoverPackedConsumerRun,
   runPackedCompatibilityFoundation,
 } from '../compat/index.js';
 import {
@@ -693,6 +694,16 @@ async function runFaultCommand(options: readonly string[]): Promise<void> {
 
 /** Runs the packed current-client foundation against one owned operational harness stack. */
 async function runCompatibilityCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover') {
+    const runId = options[1] ?? '';
+    if (!recoverPackedConsumerRun(process.cwd(), runId)) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
   const selectedValue = options[1] ?? '';
   if (
     options.length !== 2 ||

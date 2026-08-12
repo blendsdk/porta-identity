@@ -188,7 +188,7 @@ export async function runPackedCompatibilityFoundation(
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
     if (consumer !== undefined) {
-      const cleanup = cleanupPackedConsumer(consumer);
+      const cleanup = cleanupPackedConsumer(canonicalRoot, consumer);
       if (!cleanup.removed) {
         exitCode = 60;
         stage = 'cleanup';
@@ -215,7 +215,7 @@ export async function runPackedCompatibilityFoundation(
           runId: commandRunId,
           stage,
           exitCode,
-          ownedConsumerResidue: recoveryCommand === undefined ? [] : ['compat-runtime'],
+          ownedConsumerResidue: exitCode === 60 ? ['compat-runtime-or-child'] : [],
           ...(recoveryCommand === undefined ? {} : { recoveryCommand }),
         };
   const artifactPath = writeCompatibilityResult(

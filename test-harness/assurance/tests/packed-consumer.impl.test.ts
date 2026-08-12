@@ -59,7 +59,8 @@ test('installs exact local archives as ordinary directories and removes its owne
     );
     assert.equal(resolution.resolvedContentSha256, resolution.packedContentSha256);
   } finally {
-    if (consumer !== undefined) assert.equal(cleanupPackedConsumer(consumer).removed, true);
+    if (consumer !== undefined)
+      assert.equal(cleanupPackedConsumer(process.cwd(), consumer).removed, true);
     rmSync(stalePrimaryOutput, { force: true });
   }
   assert.ok(runRoot);
@@ -68,7 +69,7 @@ test('installs exact local archives as ordinary directories and removes its owne
 
 test('returns only a bounded exact recovery when consumer cleanup authority is malformed', () => {
   const runId = '00000000-0000-4000-8000-000000000099';
-  const cleanup = cleanupPackedConsumer({
+  const cleanup = cleanupPackedConsumer(process.cwd(), {
     runId,
     consumerPath: resolve(process.cwd(), 'test-harness/.assurance-runtime/compat/other/consumer'),
     outsideEveryWorkspace: true,
@@ -86,6 +87,6 @@ test('returns only a bounded exact recovery when consumer cleanup authority is m
 
   assert.deepEqual(cleanup, {
     removed: false,
-    recoveryCommand: `rm -rf -- test-harness/.assurance-runtime/compat/${runId}`,
+    recoveryCommand: `yarn assurance:compat --recover ${runId}`,
   });
 });

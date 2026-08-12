@@ -221,7 +221,20 @@ selector contains 53 cases that validate typed claim/evidence records, exact tra
 canonical path and inventory ownership, command/exit contracts, clean committed-source
 provenance, secret and personal-data redaction, deterministic reports, and bounded descendant
 cleanup after signals or timeouts. Additional phase selectors cover lifecycle, fixtures, project
-collection, and assembled-process coverage.
+collection, assembled-process coverage, curated-fault execution, and packed-client foundations.
+
+The curated-fault runner applies one reviewed patch in a disposable Git worktree only after the
+clean revision, exact target digest, registered claim/sentinel tuple, and one-target patch scope
+agree. A kill requires a closed sentinel output grammar; signals, timeouts, unrelated output, or
+incomplete cleanup cannot retain killed claims. Cleanup removes only the registered disposable
+worktree and never prunes unrelated worktree metadata.
+
+The packed-client foundation builds the current SDK and CLI from a clean detached source worktree,
+packs each archive twice, and installs both as explicit local `file:` dependencies into an ignored
+consumer outside every workspace. It verifies archive and installed-content digests, resolves every
+declared SDK export from inside the installed package, requires SDK and CLI entry points to use
+compiled `dist` output, and runs CLI outcomes under fresh owner-only temporary home directories.
+The caller's real credential path is compared by fingerprint only and is never read into evidence.
 
 Passing these foundation cases does not make a Porta behavior claim assured. A claim can transition
 to `assured` only when its canonical sentinels and exact owned result/fault artifacts match a clean
@@ -319,23 +332,23 @@ PID and produced the same 137 normalized source paths and observation digest,
 
 ## Current Assurance Characteristics
 
-| Characteristic                      | Current evidence                                                                               |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Real infrastructure                 | Strong: integration, E2E, pentest, and UI layers use PostgreSQL/Redis; email flows use MailHog |
-| Full assembled server               | Strong presence in E2E, pentest, and UI projects                                               |
-| Independent external clients        | Present but narrow: six SPA/BFF scenarios                                                      |
-| Browser coverage                    | Chromium only                                                                                  |
-| SDK-to-live-server compatibility    | Not directly tested                                                                            |
-| CLI-to-live-server compatibility    | Initialization only; normal CLI commands mock the SDK                                          |
-| Coverage measurement                | Operational: 79.57% lines, 79.18% statements, 70.28% branches, and 85.87% functions            |
-| Coverage enforcement in CI          | None; `yarn verify` does not invoke coverage                                                   |
-| Mutation testing                    | Not configured                                                                                 |
-| Property-based/fuzz testing         | Not configured                                                                                 |
-| Load/performance testing            | Not configured                                                                                 |
-| Snapshot/visual-regression testing  | Not configured                                                                                 |
-| Specification/implementation naming | 12 `*.spec.test.*`, 8 `*.impl.test.*`, and 275 undifferentiated Vitest/Node test files         |
-| Skipped/todo cases                  | No explicit `.skip`, `.todo`, or `.only` markers found                                         |
-| Silent conditional exits            | Present in cross-tenant and JWT-manipulation penetration tests                                 |
+| Characteristic                      | Current evidence                                                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Real infrastructure                 | Strong: integration, E2E, pentest, and UI layers use PostgreSQL/Redis; email flows use MailHog                       |
+| Full assembled server               | Strong presence in E2E, pentest, and UI projects                                                                     |
+| Independent external clients        | Present but narrow: six SPA/BFF scenarios                                                                            |
+| Browser coverage                    | Chromium only                                                                                                        |
+| SDK-to-live-server compatibility    | Packed current SDK is provenance-bound to an owned server/fixture; live journeys start in risk slices                |
+| CLI-to-live-server compatibility    | Packed current CLI resolves the exact packed SDK and proves credential isolation; live journeys start in risk slices |
+| Coverage measurement                | Operational: 79.57% lines, 79.18% statements, 70.28% branches, and 85.87% functions                                  |
+| Coverage enforcement in CI          | None; `yarn verify` does not invoke coverage                                                                         |
+| Mutation testing                    | Not configured                                                                                                       |
+| Property-based/fuzz testing         | Not configured                                                                                                       |
+| Load/performance testing            | Not configured                                                                                                       |
+| Snapshot/visual-regression testing  | Not configured                                                                                                       |
+| Specification/implementation naming | 12 `*.spec.test.*`, 8 `*.impl.test.*`, and 275 undifferentiated Vitest/Node test files                               |
+| Skipped/todo cases                  | No explicit `.skip`, `.todo`, or `.only` markers found                                                               |
+| Silent conditional exits            | Present in cross-tenant and JWT-manipulation penetration tests                                                       |
 
 ## What the Suite Currently Demonstrates
 
