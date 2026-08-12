@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 14:47
-> **Progress**: 38/92 tasks (41%)
+> **Last Updated**: 2026-08-12 15:03
+> **Progress**: 39/92 tasks (42%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -392,8 +392,8 @@ residual corrections, and the replacement server-only evidence are recorded in t
       archives before consumer tooling exists. ✅ (completed: 2026-08-12 14:36)
 - [x] 5.6 Record exact RED for absent pack/install/consumer tooling and commit the signature evidence;
       required existing lanes remain green. ✅ (completed: 2026-08-12 14:47)
-- [ ] 5.7 Implement deterministic build/pack identities and an ignored clean consumer whose manifest
-      declares both archives as explicit `file:` dependencies.
+- [x] 5.7 Implement deterministic build/pack identities and an ignored clean consumer whose manifest
+      declares both archives as explicit `file:` dependencies. ✅ (completed: 2026-08-12 15:03)
 - [ ] 5.8 Assert the CLI-resolved SDK path/content digest matches the local SDK archive and reject
       registry/workspace/symlink/source resolution before any live journey.
 - [ ] 5.9 Spawn every CLI subprocess with a restrictive temporary `HOME`; fingerprint the caller's

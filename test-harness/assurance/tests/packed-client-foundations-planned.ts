@@ -1,9 +1,9 @@
-/**
- * Declaration-only boundary for validating locally packed Porta clients.
- *
- * Runtime packing, installation, process execution, and cleanup intentionally remain absent while
- * immutable specifications define the public-consumer trust boundary.
- */
+import {
+  cleanupPackedConsumer,
+  loadPackedSurfaces,
+  preparePackedConsumer,
+  type PreparedPackedConsumer,
+} from '../compat/index.js';
 
 /** Stable identity for one locally produced package archive. */
 export interface PackedArchiveIdentity {
@@ -30,7 +30,9 @@ export interface CurrentTripletIdentity {
 }
 
 /** Prepared consumer isolated from every repository workspace and dependency cache. */
-export interface PreparedPackedConsumer {
+export interface PreparedPackedConsumerContract {
+  /** UUID that owns the generated consumer lifecycle. */
+  readonly runId: string;
   /** Canonical temporary consumer path. */
   readonly consumerPath: string;
   /** Whether the consumer lies outside every configured workspace. */
@@ -96,17 +98,45 @@ export interface PackedCliIsolationResult {
 /** Immutable contract consumed by packed-client foundation specifications. */
 export interface PackedClientFoundationsContract {
   /** Builds, packs, and installs the current SDK and CLI into a clean external consumer. */
-  prepareCurrentConsumer(): Promise<PreparedPackedConsumer>;
+  prepareCurrentConsumer(): Promise<PreparedPackedConsumerContract>;
   /** Loads every declared SDK export and the compiled CLI executable. */
-  loadDeclaredSurfaces(consumer: PreparedPackedConsumer): Promise<PackedSurfaceResult>;
+  loadDeclaredSurfaces(consumer: PreparedPackedConsumerContract): Promise<PackedSurfaceResult>;
   /** Proves or rejects the SDK resolution used by the packed CLI. */
   verifyCliSdkResolution(
-    consumer: PreparedPackedConsumer,
+    consumer: PreparedPackedConsumerContract,
     source: 'local-archive' | 'registry' | 'workspace' | 'source' | 'alias' | 'symlink',
   ): Promise<CliSdkResolutionResult>;
   /** Executes one packed CLI subprocess with a fresh isolated HOME. */
   runCliWithIsolatedHome(outcome: PackedCliOutcome): Promise<PackedCliIsolationResult>;
 }
 
-/** Creates the planned packed-client contract fixture. */
-export function createPackedClientFoundationsContract(): PackedClientFoundationsContract;
+let preparedConsumer: Promise<PreparedPackedConsumer> | undefined;
+let cleanupRegistered = false;
+
+/** Returns one shared real packed consumer for the immutable foundation specifications. */
+async function prepared(): Promise<PreparedPackedConsumer> {
+  preparedConsumer ??= preparePackedConsumer(process.cwd(), {
+    serverImageDigest: `sha256:${'a'.repeat(64)}`,
+    fixtureIdentity: 'fixture:test-assurance-packed-foundation',
+  });
+  const consumer = await preparedConsumer;
+  if (!cleanupRegistered) {
+    cleanupRegistered = true;
+    process.once('exit', () => cleanupPackedConsumer(consumer));
+  }
+  return consumer;
+}
+
+/** Creates the real pack/install adapter while later isolation capabilities remain fail closed. */
+export function createPackedClientFoundationsContract(): PackedClientFoundationsContract {
+  return Object.freeze({
+    prepareCurrentConsumer: prepared,
+    loadDeclaredSurfaces: loadPackedSurfaces,
+    async verifyCliSdkResolution(): Promise<CliSdkResolutionResult> {
+      throw new Error('packed CLI SDK resolution proof is not installed');
+    },
+    async runCliWithIsolatedHome(_outcome: PackedCliOutcome): Promise<PackedCliIsolationResult> {
+      throw new Error('packed CLI HOME isolation is not installed');
+    },
+  });
+}
