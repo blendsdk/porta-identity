@@ -823,3 +823,28 @@ integration oracle and must convert without any unmapped eligible input before c
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260811-P4`. **Reopen triggers**: the
 converter emits a non-finite start position, totals depend on end columns, or the pinned converter
 changes its location representation.
+
+### AR-54 — Curated-fault revision and command identity
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal provenance and execution
+mechanism for the approved disposable curated-fault runner; it changes no product behavior, fault
+policy, acceptance criterion, production source, or CI/release gate. **Objective**: keep a reviewed
+fault executable across later assurance commits without allowing mutable revisions, unreviewed
+target bytes, or catalog-provided shell commands. **Decision**: each fault records an immutable
+full-commit ancestor floor, an exact SHA-256 of its one canonical regular target file, a repository-
+owned unified patch, and closed allowlisted build/sentinel command identifiers. The runner requires
+the clean execution revision to descend from the floor, verifies the exact target hash before
+applying the patch in a disposable worktree, and never evaluates catalog strings as shell.
+**Evidence**: the fault catalog is committed in the same evolving branch that later slices extend,
+so pinning the exact catalog commit would make every subsequent commit ineligible; the target hash
+and patch precondition bind the security-relevant bytes more precisely than a mutable branch name.
+**Rejected alternatives**: exact current `HEAD` is self-invalidating after the next task; a branch
+or tag range is mutable; arbitrary command arrays or shell strings turn reviewed data into an
+injection boundary. **Strongest counterargument**: an ancestor floor admits later commits. The
+exact target hash, patch check, clean-tree provenance, and closed command registry ensure those
+later commits cannot silently change the patched control or executed command. **Confidence**: High
+— the mechanism is deterministic and directly testable. **Hardening**: forced reframing retained
+the ancestor floor only when paired with exact bytes and closed commands; neither check alone is
+sufficient. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260812-P5`. **Reopen
+triggers**: a fault spans multiple semantic targets, generated patches are introduced, or a slice
+requires a command not representable by the closed runner registry.

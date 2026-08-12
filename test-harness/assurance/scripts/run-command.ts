@@ -28,6 +28,7 @@ import {
   writeCoverageFailureArtifact,
   type CoverageFailureStage,
 } from './coverage-orchestration.js';
+import { runCuratedFault } from '../fault/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -140,6 +141,12 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/coverage-classification.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
     'test-harness/assurance/tests/coverage-conversion-hardening.impl.test.ts',
+  ],
+  'fault-runner': [
+    'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/fault-validation.spec.test.ts',
+    'test-harness/assurance/tests/fault-classification.spec.test.ts',
+    'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
@@ -616,6 +623,41 @@ async function runRedCommand(options: readonly string[]): Promise<void> {
   }
 }
 
+/** Executes one exact registered curated-fault tuple through the disposable runner. */
+async function runFaultCommand(options: readonly string[]): Promise<void> {
+  if (
+    options.length !== 6 ||
+    options[0] !== '--fault' ||
+    options[2] !== '--claim' ||
+    options[4] !== '--sentinel'
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const result = await runCuratedFault(process.cwd(), {
+      faultId: options[1] ?? '',
+      claimId: options[3] ?? '',
+      sentinelId: options[5] ?? '',
+    });
+    process.stdout.write(
+      `ASSURANCE_FAULT_RESULT: run=${result.runId} classification=${result.classification} artifact=${result.artifactPath}\n`,
+    );
+    if (result.recoveryCommand !== undefined) {
+      process.stderr.write(
+        `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+      );
+    }
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_FAULT_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
 /** Returns a minimal diagnostic message without serializing an exception or stack. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown assurance command failure';
@@ -698,6 +740,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'coverage') {
     await runCoverageCommand(options);
+    return;
+  }
+  if (action === 'fault') {
+    await runFaultCommand(options);
     return;
   }
   if (action === 'validate') {

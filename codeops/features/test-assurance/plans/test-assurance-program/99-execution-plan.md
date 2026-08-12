@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 13:59
-> **Progress**: 34/92 tasks (37%)
+> **Last Updated**: 2026-08-12 14:15
+> **Progress**: 35/92 tasks (38%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -383,8 +383,8 @@ residual corrections, and the replacement server-only evidence are recorded in t
       explicit claim–sentinel–expected-signature tuples. ✅ (completed: 2026-08-12 13:49)
 - [x] 5.2 Record exact RED for the absent fault catalog/runner and commit the signature evidence;
       required existing lanes remain green. ✅ (completed: 2026-08-12 13:59)
-- [ ] 5.3 Implement target-hash checks, disposable worktree/build execution, sanitized evidence,
-      signals, and unconditional cleanup.
+- [x] 5.3 Implement target-hash checks, disposable worktree/build execution, sanitized evidence,
+      signals, and unconditional cleanup. ✅ (completed: 2026-08-12 14:15)
 - [ ] 5.4 Prove one fault shared by multiple claims kills each tuple independently; a build/setup/
       timeout/unrelated failure remains invalid and a survivor blocks only mapped claims.
 - [ ] 5.5 [spec-author] Write pack/install/provenance/credential-isolation specs for local SDK and CLI

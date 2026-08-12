@@ -97,5 +97,17 @@ export interface PlannedFaultRunnerContract {
  * while their separate RED checkpoint proves that absence through the public dispatcher.
  */
 export async function createPlannedFaultRunner(): Promise<PlannedFaultRunnerContract> {
-  throw new Error('curated fault runner is not installed');
+  return Object.freeze({
+    async execute(request: PlannedFaultExecution): Promise<PlannedFaultTupleResult> {
+      return classifyFaultTuple({
+        tuples: request.fault.tuples,
+        claimId: request.claimId,
+        sentinelId: request.sentinelId,
+        revisionEligible: request.observedRevision === request.fault.targetRevision,
+        targetHashMatches: request.observedTargetHash === request.fault.targetHash,
+        observation: request.observation,
+      });
+    },
+  });
 }
+import { classifyFaultTuple } from '../fault/index.js';
