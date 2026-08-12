@@ -2,6 +2,7 @@ import {
   cleanupPackedConsumer,
   loadPackedSurfaces,
   preparePackedConsumer,
+  verifyPackedCliSdkResolution,
   type PreparedPackedConsumer,
 } from '../compat/index.js';
 
@@ -13,6 +14,8 @@ export interface PackedArchiveIdentity {
   readonly version: string;
   /** SHA-256 digest of the exact archive bytes. */
   readonly sha256: string;
+  /** SHA-256 digest of the normalized package content. */
+  readonly contentSha256: string;
   /** Canonical absolute path to the local archive. */
   readonly archivePath: string;
 }
@@ -132,8 +135,28 @@ export function createPackedClientFoundationsContract(): PackedClientFoundations
   return Object.freeze({
     prepareCurrentConsumer: prepared,
     loadDeclaredSurfaces: loadPackedSurfaces,
-    async verifyCliSdkResolution(): Promise<CliSdkResolutionResult> {
-      throw new Error('packed CLI SDK resolution proof is not installed');
+    async verifyCliSdkResolution(
+      consumer: PreparedPackedConsumerContract,
+      source: 'local-archive' | 'registry' | 'workspace' | 'source' | 'alias' | 'symlink',
+    ): Promise<CliSdkResolutionResult> {
+      if (source !== 'local-archive') {
+        return Object.freeze({
+          accepted: false,
+          resolvedPath: '',
+          resolvedContentSha256: '',
+          packedContentSha256: '',
+          rejectionReason: source,
+          liveJourneyAllowed: false,
+        });
+      }
+      const result = await verifyPackedCliSdkResolution(consumer);
+      return Object.freeze({
+        accepted: true,
+        resolvedPath: result.resolvedPath,
+        resolvedContentSha256: result.resolvedContentSha256,
+        packedContentSha256: result.packedContentSha256,
+        liveJourneyAllowed: true,
+      });
     },
     async runCliWithIsolatedHome(_outcome: PackedCliOutcome): Promise<PackedCliIsolationResult> {
       throw new Error('packed CLI HOME isolation is not installed');

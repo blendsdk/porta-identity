@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 15:03
-> **Progress**: 39/92 tasks (42%)
+> **Last Updated**: 2026-08-12 15:16
+> **Progress**: 40/92 tasks (43%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -394,8 +394,9 @@ residual corrections, and the replacement server-only evidence are recorded in t
       required existing lanes remain green. ✅ (completed: 2026-08-12 14:47)
 - [x] 5.7 Implement deterministic build/pack identities and an ignored clean consumer whose manifest
       declares both archives as explicit `file:` dependencies. ✅ (completed: 2026-08-12 15:03)
-- [ ] 5.8 Assert the CLI-resolved SDK path/content digest matches the local SDK archive and reject
-      registry/workspace/symlink/source resolution before any live journey.
+- [x] 5.8 Assert the CLI-resolved SDK path/content digest matches the local SDK archive and reject
+      registry/workspace/symlink/source resolution before any live journey. ✅ (completed:
+      2026-08-12 15:16)
 - [ ] 5.9 Spawn every CLI subprocess with a restrictive temporary `HOME`; fingerprint the caller's
       real credential path and clean on success/failure/timeout/SIGINT/SIGTERM.
 - [ ] 5.10 Run ST-64–ST-69/ST-72–ST-73 green and add implementation cases for patch validation,
