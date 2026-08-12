@@ -776,11 +776,16 @@ outcome emits a distinct sanitized failure record. Runtime dependencies must mat
 generated inside the attributed image. Pathless scripts are explicit deferred inputs rather than
 assumed Node internals, and exact exclusions, unmapped inputs, deferred records, and collection
 failures survive rejection. The graceful-flush implementation receives direct outcome tests and
-a bounded disposable-container forced-termination smoke. **Evidence**: the independent phase
+a bounded disposable-container forced-termination smoke. Clean-provenance initialization uses the
+same guarded failure path, and `NODE_V8_COVERAGE` is removed from every auxiliary Porta CLI
+invocation; a capture containing more than one process ID is ineligible. **Evidence**: the independent phase
 review found that host metadata was sampled after execution, container selection was not compared
 with the lease, a losing concurrent command could stop the winner, conversion ignored parent
 cancellation, failed projects still wrote baseline-shaped summaries, path prefixes stood in for
-dependency proof, and the forced-termination specification used only a synthetic envelope.
+dependency proof, and the forced-termination specification used only a synthetic envelope. The
+bounded re-review then caught an unguarded dirty-provenance exception and reproducible
+CLI/migration contamination; both were corrected, and the replacement captures contain only the
+server PID.
 **Rejected alternatives**: trusting the current Git `HEAD`, Compose project labels, or filesystem
 prefixes does not bind executed bytes; retaining in-process conversion cannot guarantee prompt
 signal cleanup; writing an observation with a failure flag keeps a dangerous baseline-shaped

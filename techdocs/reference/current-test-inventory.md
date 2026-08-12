@@ -306,6 +306,17 @@ Fixed-seed capture comparisons record exact normalized paths and totals. Those f
 deterministic journey under a named runtime profile; they are observation evidence, not a quality
 score, completeness claim, or CI/release gate.
 
+Two clean fixed-seed protocol captures on 2026-08-12 each retained two raw records from one server
+PID and produced the same 137 normalized source paths and observation digest,
+`sha256:9c26ad1b89ba2d6cc82a492ae3c3e4643849f924f629aaa0c2c68319f387fa8f`:
+
+| Metric     | Covered | Total |
+| ---------- | ------: | ----: |
+| Statements |     815 | 6,319 |
+| Branches   |      84 | 3,009 |
+| Functions  |     105 |   914 |
+| Lines      |     811 | 6,096 |
+
 ## Current Assurance Characteristics
 
 | Characteristic                      | Current evidence                                                                               |

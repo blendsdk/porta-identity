@@ -353,18 +353,20 @@ development evidence, and organization-prefixed user operations enforce tenant o
       completions were 2026-08-11 23:51, 2026-08-12 00:29, 2026-08-12 00:44, and 2026-08-12
       00:58. ✅ (completed: 2026-08-12 01:10)
 - [x] 4.8 Run two clean fixed-seed captures with identical exact counts/path sets, emit an
-      observation-only summary, and run `yarn verify`. Captures
-      `3af36c26-579a-4118-88b9-bcc4821452a7` and `de3b07e5-0be5-40a8-8ea8-1199793f3350`
-      produced the same 148-path observation digest
-      `sha256:e2fd112835a9551180e84c5a996fedf767716684895361fa0b5b3d3f16a3f79a` with blocking
-      disabled. ✅ (completed: 2026-08-12 01:22)
+      observation-only summary, and run `yarn verify`. The quality review invalidated the first
+      captures because container-wide instrumentation included two auxiliary CLI processes.
+      Corrected captures `adefb62a-5151-4209-a838-e3457462f60a` and
+      `96f6fd1d-978e-42dd-bc0f-c4f4447be4da` each contain only PID 7 and produced the same 137-path
+      observation digest
+      `sha256:9c26ad1b89ba2d6cc82a492ae3c3e4643849f924f629aaa0c2c68319f387fa8f` with blocking
+      disabled. ✅ (completed: 2026-08-12 02:22)
 
 **Phase gate:** server-process coverage is reproducible, provenance-bound, fully classified, and
 separate from Vitest; no ratchet or CI policy changes.
 
-The mandatory phase-end review and its correction evidence are recorded in the
-[Phase 4 Quality Review](12-phase-4-quality-review.md). The phase gate remains open until that
-review is closed.
+**Quality gate:** Passed. The mandatory phase-end review, the single bounded re-review, both
+residual corrections, and the replacement server-only evidence are recorded in the
+[Phase 4 Quality Review](12-phase-4-quality-review.md).
 
 ## Phase 5: Fault Runner and Packed-Client Foundations
 
