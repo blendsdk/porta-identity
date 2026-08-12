@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 14:24
-> **Progress**: 36/92 tasks (39%)
+> **Last Updated**: 2026-08-12 14:36
+> **Progress**: 37/92 tasks (40%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -388,8 +388,8 @@ residual corrections, and the replacement server-only evidence are recorded in t
 - [x] 5.4 Prove one fault shared by multiple claims kills each tuple independently; a build/setup/
       timeout/unrelated failure remains invalid and a survivor blocks only mapped claims. ✅
       (completed: 2026-08-12 14:24)
-- [ ] 5.5 [spec-author] Write pack/install/provenance/credential-isolation specs for local SDK and CLI
-      archives before consumer tooling exists.
+- [x] 5.5 [spec-author] Write pack/install/provenance/credential-isolation specs for local SDK and CLI
+      archives before consumer tooling exists. ✅ (completed: 2026-08-12 14:36)
 - [ ] 5.6 Record exact RED for absent pack/install/consumer tooling and commit the signature evidence;
       required existing lanes remain green.
 - [ ] 5.7 Implement deterministic build/pack identities and an ignored clean consumer whose manifest
