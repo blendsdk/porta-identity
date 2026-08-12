@@ -410,8 +410,15 @@ residual corrections, and the replacement server-only evidence are recorded in t
         sanitized evidence after cleanup. TypeScript, ESLint, Prettier, diff hygiene, and `yarn
         verify` passed; the latter covered 68 structure tests, 226 server files / 3,354 tests, 31
         SDK files / 404 tests, and 29 CLI files / 355 tests.
-- [ ] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
-      credentials unchanged, inspect redaction/residue, and run `yarn verify`.
+- [x] 5.11 Execute clean fault and packed-client foundation smokes, verify primary tree/real
+      credentials unchanged, inspect redaction/residue, and run `yarn verify`. ✅ (completed:
+      2026-08-12 15:57)
+      - Verification note: the exact `foundation-smoke/CLAIM-R6-01/ST-64` tuple was killed in 0.95
+        seconds, and the live `compatibility` selector completed against an owned operational stack
+        in 36.85 seconds. Sanitized result scans found no credential/path fields, the consumer and
+        harness left no owned residue, the primary source identity and real credential fingerprint
+        were unchanged, and `yarn verify` passed 68 structure cases plus the full 226-file/3,354-
+        test server, 31-file/404-test SDK, and 29-file/355-test CLI matrices.
 
 **Phase gate:** every slice can execute real sensitivity tuples and packed public clients without
 waiting for a later phase or touching developer credentials.
