@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-13 18:03
-> **Progress**: 44/92 tasks (48%)
+> **Last Updated**: 2026-08-14 11:03
+> **Progress**: 45/92 tasks (49%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -453,8 +453,13 @@ without waiting for a later phase or touching developer credentials. See
       and reject incomplete matrices. Clean-snapshot `yarn assurance:validate`, seven focused
       specification cases, static checks, 68 structure tests, and `yarn verify` all passed. ✅
       (completed: 2026-08-13 18:03)
-- [ ] 6.2 [spec-author] Write ST-28–ST-32: authorized handler controls, then vary target ID/slug/org,
+- [x] 6.2 [spec-author] Write ST-28–ST-32: authorized handler controls, then vary target ID/slug/org,
       permissions, issuer/cache context, and super-admin exceptions with independent non-mutation.
+      The frozen specs use a swappable adapter contract, exact raw substitutions, independent
+      target fingerprints, complete side-effect observations, concurrent tenant contexts, and
+      bootstrap super-admin protections; the current transparent rig is explicitly non-evidentiary.
+      The 14-case `tenant-admin-specs` selector, static checks, and `yarn verify` passed. ✅
+      (completed: 2026-08-14 11:03)
 - [ ] 6.3 Add stale-state cases that warm caches then remove roles, deactivate/suspend actors, and
       revoke sessions through supported APIs; retry with existing/fresh clients and after a fresh
       Porta process. Record organization reassignment/removal as not-applicable or a named gap.

@@ -182,6 +182,12 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
     'test-harness/assurance/tests/packed-consumer.impl.test.ts',
   ],
+  'tenant-admin-specs': [
+    'test-harness/assurance/tests/tenant-admin-slice-profiles.spec.test.ts',
+    'test-harness/assurance/tests/tenant-oidc-isolation.spec.test.ts',
+    'test-harness/assurance/tests/control-plane-authorization.spec.test.ts',
+    'test-harness/assurance/tests/stale-authority-boundary.spec.test.ts',
+  ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
