@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -83,6 +85,15 @@ test('should reject a CLI SDK resolution that differs from the prepared local ar
       }),
     /prepared SDK archive/i,
   );
+});
+
+test('should pass the Porta origin to the SDK transport without duplicating its admin prefix', () => {
+  const probe = readFileSync(
+    resolve(process.cwd(), 'test-harness/consumers/tenant-admin-sdk-probe.mjs'),
+    'utf8',
+  );
+  assert.match(probe, /baseUrl:\s*input\.server/u);
+  assert.doesNotMatch(probe, /input\.server[^\n]*api\/admin/u);
 });
 
 test('should execute every packed tenant/admin requirement exactly once in frozen order', async () => {

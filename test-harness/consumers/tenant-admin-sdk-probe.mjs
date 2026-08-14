@@ -6,7 +6,7 @@ import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 const input = JSON.parse(await readFile(process.argv[2], 'utf8'));
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const transport = createNodeTransport({
-  baseUrl: `${input.server}/api/admin`,
+  baseUrl: input.server,
   auth: createTokenAuth(input.token),
 });
 const client = createPortaClient({ transport });
