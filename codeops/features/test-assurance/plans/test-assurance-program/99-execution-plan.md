@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 18:36
-> **Progress**: 49/94 tasks (52%)
+> **Last Updated**: 2026-08-14 18:48
+> **Progress**: 50/94 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -507,9 +507,15 @@ without waiting for a later phase or touching developer credentials. See
       with the established packed-consumer contract. Archive evidence now preserves that exact
       canonical format; the focused selector passed 13/13 and `yarn verify` passed again. ✅
       (completed: 2026-08-14 18:36)
-- [ ] 6.7 From the clean pushed capability revision, run the packed SDK/CLI tenant/admin adjuncts
+- [x] 6.7 From the clean pushed capability revision, run the packed SDK/CLI tenant/admin adjuncts
       against one owned stack, validate server/archive/fixture identity and residue, then admit the
-      packed evidence. The tenant/admin slice cannot close before this checkpoint is green.
+      packed evidence. The tenant/admin slice cannot close before this checkpoint is green. The
+      clean revision admitted all eight journeys with exact archive/server/fixture identities,
+      independent target observations, redaction, credential isolation, and zero residue. Full
+      artifact checks confirmed revision `309157ad8e389379f945a00fdaf9e8345f6d5fbb`, mode `0600`,
+      no protected-value/path leakage, no runtime files, and no assurance-owned Docker resources.
+      `yarn verify` passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅
+      (completed: 2026-08-14 18:48)
 - [ ] 6.8 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
       tests after the black-box specs are green.
 - [ ] 6.9 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
