@@ -48,6 +48,9 @@ Porta product contract.
 | 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
 | 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
 | 55  | Slice baseline | What counts as Task 6.4 evidence when no existing exact E2E/pentest sentinel reaches the protected tenant/admin boundary? | Record strict `missing-live-sentinel` RED evidence; never treat setup failure, partial lower-level tests, or early authentication denial as product evidence | User (runtime) | ✅     |
+| 56  | Live slice execution | How does the Playwright-owned security command execute the immutable Node oracle and packed-client adjuncts without creating a second oracle? | Use one owned-stack, three-block orchestration with explicit live mode, deterministic resets, and lifecycle-owned Porta-only restart | User (runtime) | ✅     |
+| 57  | Live contract ruling | Is a client registered to one organization allowed to initiate authorization under another organization's issuer, is bootstrap-user archive applicable, and may Phase 6 fix the confirmed role-removal defect? | Enforce strict issuer/client tenant binding; mark bootstrap-user archive non-applicable; fix protected bootstrap-role removal and strengthen its role-assignment observer | User (runtime) | ✅     |
+| 58  | Packed evidence checkpoints | How can Task 6.5 commit verified raw/product changes and later execute packed clients from the mandatory clean revision? | Split the task into raw/product, packed-capability, and clean-live-evidence checkpoints; never synthesize or stash a dirty-tree revision | User (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -876,3 +879,72 @@ existing tenant/admin pentest candidates; no exact external sentinel with author
 handler reachability, varied target, and independent non-mutation was found. **Reopen triggers**:
 an existing exact external sentinel is identified, or the user authorizes a different evidence
 eligibility boundary.
+
+### AR-56 — Live tenant/admin oracle and packed-client orchestration
+
+**Authority**: User — explicitly authorized the recommended architecture on 2026-08-14.
+**Objective**: make the immutable tenant/admin specifications observe live
+Porta behavior while preserving one oracle, one harness owner, exact cleanup, packed-package
+provenance, and the fresh-process meaning of ST-31. **Observed constraint**: the security harness
+currently runs only one Playwright project inside its owned stack, while the five immutable
+tenant/admin files run under Node and their adapter still delegates to a requirements-only rig.
+The packed compatibility foundation runs separately against an already-owned stack and currently
+proves package surfaces and credential isolation rather than tenant/admin journeys.
+**Decision**: use one owned-stack command with three ordered evidence blocks:
+(1) existing Playwright security, (2) the unchanged immutable Node specifications using an
+explicit fail-closed `live` adapter and raw HTTP as the canonical oracle, and (3) packed SDK/CLI
+adjunct journeys whose effects are independently checked through raw HTTP or fixture state. Reset
+deterministically between blocks and mutable scenarios. Add a lifecycle-owned Porta-only restart
+capability for ST-31; a fresh client and a full fixture reset do not prove a fresh server process.
+Packed clients remain outside the raw-HTTP adapter contract. **Rejected alternative**: duplicating
+the cases as Playwright-native security specs leaves the named Node oracle synthetic, creates a
+second assertion implementation that can drift, and still does not solve packed provenance or the
+fresh-process boundary. **Strongest counterargument**: the recommended orchestration is longer and
+adds a restart capability. Staging the three blocks with typed resets and cleanup precedence is
+more work, but it is the only reviewed design that preserves the existing immutable oracle and
+proves ST-31 honestly. **Confidence**: High. **Hardening**: independent architecture challenge
+confirmed the recommendation and required explicit adapter mode, block/scenario resets, separate
+packed adjuncts, independent effect checks, and lifecycle-owned Porta restart. **Reopen triggers**:
+the immutable specifications become runner-neutral, packed clients gain an independently complete
+oracle, or lifecycle ownership cannot provide a bounded Porta-only restart.
+
+### AR-57 — Live tenant/admin contract ruling
+
+**Authority**: User approved on 2026-08-14. **Objective**: preserve the separation between independent
+assurance, product-policy decisions, oracle corrections, and product remediation after the live
+oracle reaches real Porta boundaries. **Observed behavior**: an alpha client ID submitted to the
+bravo authorization endpoint returns a 303 interaction. Public tenancy documentation implies that
+this must be hidden, while the implementation deliberately models cross-organization third-party
+applications; this is a product-policy ambiguity until the intended contract is ruled. The
+bootstrap-user archive case is an oracle defect because users have neither an archived state nor a
+public archive operation; it must become non-applicable or a named future gap, not a new route added
+for the test. The existing public role-removal route returns success for the protected bootstrap
+user despite its documented forbidden contract; this is a product defect. Its observer must also
+fingerprint role assignments rather than infer non-mutation from the user profile. Deactivate,
+purge/delete, lock, 2FA management, and suspend are correctly forbidden; real OIDC session
+revocation is rejected by existing, fresh-client, and fresh-Porta-process retries. **Current
+boundary**: enforce strict issuer/client tenant binding, treat bootstrap-user archive as
+non-applicable, repair the protected bootstrap-role removal path, and observe the actual role
+assignment before and after the request. Cross-organization third-party client support is not part
+of the current product contract. Do not invent an archive route or weaken the forbidden
+role-removal expectation. **Reopen triggers**: product authority later elects to support
+cross-organization third-party clients or adds a real bootstrap-user archive lifecycle.
+
+### AR-58 — Clean packed-client evidence checkpoints
+
+**Authority**: User approved the three-checkpoint refinement on 2026-08-14. **Objective**: preserve both CodeOps' verified-task commit
+gate and the compatibility runner's clean reachable-revision provenance. **Observed constraint**:
+the raw/product correction is green but uncommitted; the compatibility foundation rejects staged,
+unstaged, and untracked primary-tree changes and builds packed clients from committed `HEAD`. A
+single task cannot commit its raw correction before packed evidence, while packed evidence cannot
+represent that correction until it is committed. Implementing new packed adjunct tooling after the
+raw commit would dirty the tree again, so a two-part split is also insufficient. **Recommended
+boundary**: refine the original outcome into three independently verifiable checkpoints: raw/product
+green and commit; packed-adjunct capability with fail-closed tests and commit; then clean-revision
+live SDK/CLI evidence and final slice admission. Preserve the Phase 6 closure gate until the third
+checkpoint. **Rejected**: synthetic `commit-tree`, stash, temporary WIP branch commits, or testing
+`HEAD` clients against a dirty-built server; these introduce an unapproved provenance class or a
+false current-triplet claim. **Confidence**: High. **Hardening**: an independent provenance
+challenge confirmed the three-checkpoint pattern already used by Phase 5. **Reopen trigger**: a
+checkpoint cannot be verified independently without weakening clean-revision provenance or the
+Phase 6 closure gate.

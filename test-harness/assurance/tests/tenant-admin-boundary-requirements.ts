@@ -98,11 +98,18 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
 
 /** Exact destructive operations forbidden for the protected bootstrap super-admin user. */
 export const protectedSuperAdminOperations = [
-  'archive',
   'deactivate',
   'delete',
   'lock',
   'manage-2fa',
   'remove-super-admin-role',
   'suspend',
+] as const;
+
+/** Bootstrap-user operations that have no current public product lifecycle. */
+export const nonApplicableSuperAdminOperations = [
+  {
+    operation: 'archive',
+    reason: 'users have no archived state or public archive operation',
+  },
 ] as const;

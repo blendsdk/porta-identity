@@ -100,13 +100,7 @@ export interface ConcurrentTenantIsolationResult {
 export interface SuperAdminExceptionObservation {
   /** Protected destructive operation. */
   readonly operation:
-    | 'delete'
-    | 'suspend'
-    | 'archive'
-    | 'lock'
-    | 'deactivate'
-    | 'remove-super-admin-role'
-    | 'manage-2fa';
+    'delete' | 'suspend' | 'lock' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
   /** Public result observed after the protected operation. */
   readonly result: AuthorizationResult;
   /** Whether independently verified bootstrap-user state remained unchanged. */

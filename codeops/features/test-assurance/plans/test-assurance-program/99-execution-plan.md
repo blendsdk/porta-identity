@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Ready for Execution
-> **Last Updated**: 2026-08-14 12:15
-> **Progress**: 47/92 tasks (51%)
+> **Status**: In Progress
+> **Last Updated**: 2026-08-14 17:01
+> **Progress**: 48/94 tasks (51%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -21,8 +21,9 @@ task. Existing behavior that starts green uses its exact curated-fault tuple for
 Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, every task runs the
 alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
 preserve the oracle, block only affected claims, and are routed to separately authorized work. This
-plan edits production behavior only for the separately authorized AR-44 blocking defect and never
-edits the read-only CI workflow.
+plan edits production behavior only for the separately authorized organization-route and Phase 6
+tenant/admin blocking defects recorded in the ambiguity register, and never edits the read-only CI
+workflow.
 
 ## Phase Overview
 
@@ -33,14 +34,14 @@ edits the read-only CI workflow.
 |     3 | Real actor fixtures, projects, and runtime profiles |     8 |
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
-|     6 | Tenant isolation and administrative authorization   |     8 |
+|     6 | Tenant isolation and administrative authorization   |    10 |
 |     7 | OIDC, ID-token, and token lifecycle                 |     8 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 92 tasks across 11 release-safe phases.**
+**Total: 94 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -82,9 +83,12 @@ text, but it cannot substitute another command for this binding.
 | 6.1       | `yarn assurance:validate`                                                                                                                                    |
 | 6.2–6.3   | `yarn assurance:test --select tenant-admin-specs`                                                                                                            |
 | 6.4       | `yarn assurance:baseline --case ST-28`                                                                                                                       |
-| 6.5–6.6   | `yarn assurance:harness --project security --profile operational`                                                                                            |
-| 6.7       | `yarn assurance:fault --fault tenant-admin-slice --claim CLAIM-R5-03 --sentinel ST-29`                                                                       |
+| 6.5       | `yarn assurance:harness --project security --profile operational`                                                                                            |
+| 6.6       | `yarn assurance:test --select tenant-admin-packed`                                                                                                           |
+| 6.7       | `yarn assurance:compat --select tenant-admin`                                                                                                                 |
 | 6.8       | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
+| 6.9       | `yarn assurance:fault --fault tenant-admin-slice --claim CLAIM-R5-03 --sentinel ST-29`                                                                       |
+| 6.10      | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
 | 7.1       | `yarn assurance:validate`                                                                                                                                    |
 | 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
 | 7.4       | `yarn assurance:baseline --case ST-33`                                                                                                                       |
@@ -474,13 +478,26 @@ without waiting for a later phase or touching developer credentials. See
       `natural-red: missing-live-sentinel`. Every audited candidate carries an exact rejection
       reason, no artifact reports a product failure, and all five owner-only results passed
       independent schema/provenance checks. ✅ (completed: 2026-08-14 12:15)
-- [ ] 6.5 Add missing raw/packed SDK/CLI probes and reach green; unsupported immediate-revocation
-      contracts remain named blocked gaps and product defects route separately.
-- [ ] 6.6 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
+- [x] 6.5 Reach green at the live raw tenant/OIDC and control-plane boundaries. Enforce strict
+      issuer/client tenant binding, mark bootstrap-user archive non-applicable, repair protected
+      bootstrap-role removal, fingerprint role assignments independently, and preserve named gaps
+      for unsupported immediate revocation. Run the focused live suite and `yarn verify`, then
+      commit this independently complete raw/product checkpoint before packed-client work. The
+      owned-stack live suite passed all 17 immutable cases; the affected E2E/pentest contract files
+      passed 44/44; and `yarn verify` passed 68 structure checks, 227 server files / 3,359 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-14 17:01)
+- [ ] 6.6 Add immutable packed SDK/CLI tenant/admin adjunct specifications and implement the
+      capability with exact local-archive resolution, isolated credentials, independent raw or
+      fixture-state effect verification, redaction, cleanup, and fail-closed provenance tests.
+      Verify capability behavior without claiming clean live evidence, then commit the checkpoint.
+- [ ] 6.7 From the clean pushed capability revision, run the packed SDK/CLI tenant/admin adjuncts
+      against one owned stack, validate server/archive/fixture identity and residue, then admit the
+      packed evidence. The tenant/admin slice cannot close before this checkpoint is green.
+- [ ] 6.8 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
       tests after the black-box specs are green.
-- [ ] 6.7 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
+- [ ] 6.9 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
       tuples; require each mapped sentinel signature to kill its tuple.
-- [ ] 6.8 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
+- [ ] 6.10 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`.
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim

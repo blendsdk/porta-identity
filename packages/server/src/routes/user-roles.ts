@@ -24,6 +24,7 @@ import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
@@ -128,6 +129,7 @@ export function createUserRoleRouter(): Router {
     async (ctx) => {
       try {
         const body = roleIdsSchema.parse(ctx.request.body);
+        await guardSuperAdmin(ctx.params.userId, 'remove-super-admin-role');
         await userRoleService.removeRolesFromUser(ctx.params.userId, body.roleIds);
         ctx.status = 204;
       } catch (err) {

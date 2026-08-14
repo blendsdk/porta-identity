@@ -43,6 +43,7 @@ import {
 } from './foundation-artifacts.js';
 import { runManagedChild } from './managed-child.js';
 import { matchRedSignature } from './validate-assurance.js';
+import { environmentForManifest } from '../../fixtures/lifecycle-runtime.js';
 
 /** Exit code used when a command's owning phase has not installed its handler yet. */
 const setupFailureExit = 30;
@@ -230,7 +231,7 @@ function managedChildExit(
 
 /** Runs one shell-free lifecycle action used by an internal live-boundary suite. */
 async function runLifecycleAction(
-  action: 'start' | 'stop' | 'project',
+  action: 'start' | 'stop' | 'reset' | 'restart-porta' | 'project',
   project?: string,
   profile?: string,
   environment: NodeJS.ProcessEnv = process.env,
@@ -446,7 +447,23 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
 
   process.exitCode = await withHarnessStack(profile, async () => {
     const projectResult = await runLifecycleAction('project', project);
-    return managedChildExit(projectResult, testFailureExit);
+    const projectExit = managedChildExit(projectResult, testFailureExit);
+    if (projectExit !== 0 || project !== 'security') return projectExit;
+
+    const reset = await runLifecycleAction('reset');
+    const resetExit = managedChildExit(reset, setupFailureExit);
+    if (resetExit !== 0) return resetExit;
+
+    const active = readActiveCoverageRun(process.cwd());
+    const liveSpecifications = await runNodeSuite(
+      tenantAdminSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(active.lease.manifest),
+        PORTA_ASSURANCE_TENANT_ADMIN_ADAPTER: 'live',
+      }),
+    );
+    return managedChildExit(liveSpecifications, testFailureExit);
   });
 }
 
@@ -454,6 +471,7 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
 function runNodeSuite(
   files: readonly string[],
   testNamePattern?: string,
+  environment: NodeJS.ProcessEnv = process.env,
 ): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
   return runManagedChild(
     process.execPath,
@@ -467,7 +485,7 @@ function runNodeSuite(
     ],
     {
       cwd: process.cwd(),
-      env: process.env,
+      env: environment,
       stdio: 'inherit',
       timeoutMilliseconds: 900_000,
       terminationGraceMilliseconds: 10_000,

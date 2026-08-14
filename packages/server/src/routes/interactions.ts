@@ -23,7 +23,12 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
-import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
+import {
+  generateCsrfToken,
+  verifyCsrfToken,
+  setCsrfCookie,
+  getCsrfFromCookie,
+} from '../auth/csrf.js';
 import {
   checkRateLimit,
   resetRateLimit,
@@ -38,12 +43,14 @@ import { sendMagicLinkEmail, sendOtpCodeEmail } from '../auth/email-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
-import { getUserByEmail, verifyUserPassword, recordLogin, recordFailedLogin, checkAutoUnlock } from '../users/service.js';
 import {
-  requiresTwoFactor,
-  determineTwoFactorMethod,
-  sendOtpCode,
-} from '../two-factor/service.js';
+  getUserByEmail,
+  verifyUserPassword,
+  recordLogin,
+  recordFailedLogin,
+  checkAutoUnlock,
+} from '../users/service.js';
+import { requiresTwoFactor, determineTwoFactorMethod, sendOtpCode } from '../two-factor/service.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
@@ -52,10 +59,7 @@ import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
 import type { Organization } from '../organizations/types.js';
-import {
-  hasMagicLinkSession,
-  consumeMagicLinkSession,
-} from '../auth/magic-link-session.js';
+import { hasMagicLinkSession, consumeMagicLinkSession } from '../auth/magic-link-session.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
 import { purgeExpired } from '../oidc/postgres-adapter.js';
@@ -110,13 +114,12 @@ function resolveLoginMethodsFromOidcClient(
 ): LoginMethod[] {
   // oidc-provider's Client objects expose metadata() → Record<string, unknown>.
   // Missing client or missing metadata function → treat as fully inherited.
-  const metadata = (client as { metadata?: () => Record<string, unknown> } | null | undefined)
-    ?.metadata?.();
+  const metadata = (
+    client as { metadata?: () => Record<string, unknown> } | null | undefined
+  )?.metadata?.();
   const raw = metadata?.['urn:porta:login_methods'];
   // Defensive: accept only null or string[]; treat anything else as null.
-  const normalized: LoginMethod[] | null = Array.isArray(raw)
-    ? (raw as LoginMethod[])
-    : null;
+  const normalized: LoginMethod[] | null = Array.isArray(raw) ? (raw as LoginMethod[]) : null;
   return resolveLoginMethods(org, { loginMethods: normalized });
 }
 
@@ -200,9 +203,7 @@ export async function resolveOrganizationForInteraction(
   if (ctx.state.organization) return;
 
   // Prefer the auth-flow org stored in Redis during interaction creation.
-  // The interactionUrl callback (provider.ts) stores the tenant-resolver
-  // org ID keyed by interaction UID. This preserves the correct tenant
-  // when the client belongs to a different org (third-party app scenario).
+  // OIDC entry middleware has already proved that this organization owns the client.
   if (interactionUid) {
     try {
       const storedOrgId = await getRedis().get(`interaction:org:${interactionUid}`);
@@ -240,10 +241,7 @@ export async function resolveOrganizationForInteraction(
  * @param t - Translation function
  * @returns Error message string, or undefined if status allows login
  */
-function getStatusErrorMessage(
-  status: string,
-  t: (key: string) => string,
-): string | undefined {
+function getStatusErrorMessage(status: string, t: (key: string) => string): string | undefined {
   switch (status) {
     case 'inactive':
       return t('login.error_account_inactive');
@@ -430,15 +428,15 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // format. We DO defensively trim and length-cap at RFC 5321 max (320 chars)
     // to avoid pathological template renders. Handlebars HTML-escapes on
     // interpolation, which blocks XSS via the value="" attribute.
-    const rawHint = typeof params.login_hint === 'string'
-      ? params.login_hint.trim().slice(0, 320)
-      : '';
+    const rawHint =
+      typeof params.login_hint === 'string' ? params.login_hint.trim().slice(0, 320) : '';
     const emailHint = rawHint.length > 0 ? rawHint : undefined;
 
     // Resolve human-readable client name from OIDC provider metadata.
     // Falls back to the raw client_id if not found.
     const oidcClient = await provider.Client.find(params.client_id as string);
-    const clientName = (oidcClient?.metadata()?.client_name as string) ?? (params.client_id as string);
+    const clientName =
+      (oidcClient?.metadata()?.client_name as string) ?? (params.client_id as string);
 
     // Resolve the effective login methods from the client's OIDC metadata.
     // When no client is found (edge case — client deleted mid-flow), fall back
@@ -539,17 +537,33 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Resolve locale for error messages
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
     const t = getTranslationFunction(locale, org.slug);
 
     // Step 1: Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.csrf_invalid'),
+      );
       return;
     }
 
@@ -590,7 +604,12 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.login_method_disabled'),
         403,
       );
@@ -615,7 +634,12 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.rate_limit_exceeded'),
         429,
       );
@@ -635,7 +659,15 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         ipAddress: ctx.ip,
       });
 
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid'));
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('login.error_invalid'),
+      );
       return;
     }
 
@@ -706,13 +738,18 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
 
     if (twoFactorRequired) {
       // Store pending login in the interaction session — user must complete 2FA
-      await provider.interactionResult(ctx.req, ctx.res, {
-        twoFactor: {
-          pendingAccountId: user.id,
-          method: twoFactorMethod ?? 'email',
-          email: user.email,
+      await provider.interactionResult(
+        ctx.req,
+        ctx.res,
+        {
+          twoFactor: {
+            pendingAccountId: user.id,
+            method: twoFactorMethod ?? 'email',
+            email: user.email,
+          },
         },
-      }, { mergeWithLastSubmission: true });
+        { mergeWithLastSubmission: true },
+      );
 
       // If method is email, auto-send the first OTP code
       if (twoFactorMethod === 'email' || (!user.twoFactorEnabled && !twoFactorMethod)) {
@@ -720,8 +757,19 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
           const otpCode = await sendOtpCode(user.id, user.email, org.id);
           // Send the OTP code via email (fire-and-forget)
           sendOtpCodeEmail(
-            { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-            { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+            {
+              id: user.id,
+              email: user.email,
+              givenName: user.givenName,
+              familyName: user.familyName,
+            },
+            {
+              id: org.id,
+              slug: org.slug,
+              brandingLogoUrl: org.brandingLogoUrl,
+              brandingPrimaryColor: org.brandingPrimaryColor,
+              brandingCompanyName: org.brandingCompanyName,
+            },
             otpCode,
             10,
             locale,
@@ -797,17 +845,33 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Resolve locale for page rendering
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
     const t = getTranslationFunction(locale, org.slug);
 
     // Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.csrf_invalid'),
+      );
       return;
     }
 
@@ -841,7 +905,12 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.login_method_disabled'),
         403,
       );
@@ -865,7 +934,12 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.rate_limit_exceeded'),
         429,
       );
@@ -895,7 +969,13 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       // Send the magic link email (fire-and-forget)
       sendMagicLinkEmail(
         { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+        {
+          id: org.id,
+          slug: org.slug,
+          brandingLogoUrl: org.brandingLogoUrl,
+          brandingPrimaryColor: org.brandingPrimaryColor,
+          brandingCompanyName: org.brandingCompanyName,
+        },
         magicLinkUrl,
         locale,
       );
@@ -977,7 +1057,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
         }
         if (details.missingResourceScopes) {
           for (const [indicator, scopes] of Object.entries(
-            details.missingResourceScopes as Record<string, Iterable<string>>
+            details.missingResourceScopes as Record<string, Iterable<string>>,
           )) {
             grant.addResourceScope(indicator, [...scopes].join(' '));
           }
@@ -1024,10 +1104,10 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
         uid: interaction.uid,
         prompt: prompt.name,
         params: params as Record<string, unknown>,
-        client: { clientName: client?.metadata()?.client_name as string ?? clientId },
+        client: { clientName: (client?.metadata()?.client_name as string) ?? clientId },
       },
       scopes: requestedScopes,
-      clientName: client?.metadata()?.client_name as string ?? clientId,
+      clientName: (client?.metadata()?.client_name as string) ?? clientId,
     };
 
     await renderAndRespond(ctx, 'consent', context);
@@ -1057,7 +1137,11 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Verify CSRF token
@@ -1094,7 +1178,7 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
       // Grant missing resource scopes
       if (details.missingResourceScopes) {
         for (const [indicator, scopes] of Object.entries(
-          details.missingResourceScopes as Record<string, Iterable<string>>
+          details.missingResourceScopes as Record<string, Iterable<string>>,
         )) {
           grant.addResourceScope(indicator, [...scopes].join(' '));
         }
@@ -1162,7 +1246,11 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     writeAuditLog({
@@ -1281,7 +1369,13 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
     const context: TemplateContext = {
       branding: org
         ? buildBrandingFromOrg(org)
-        : { logoUrl: null, faviconUrl: null, primaryColor: '#3B82F6', companyName: 'Porta', customCss: null },
+        : {
+            logoUrl: null,
+            faviconUrl: null,
+            primaryColor: '#3B82F6',
+            companyName: 'Porta',
+            customCss: null,
+          },
       locale,
       t,
       csrfToken,

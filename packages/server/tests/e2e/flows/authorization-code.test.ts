@@ -112,8 +112,8 @@ describe('Authorization Code + PKCE Flow (E2E)', () => {
 
     const response = await http.get(url);
 
-    // Should get an error for unknown client
-    expect([400, 302, 303]).toContain(response.status);
+    // Unknown and foreign clients share one tenant-scoped not-found boundary.
+    expect(response.status).toBe(404);
   });
 
   // ── Error: Code exchange without PKCE verifier ─────────────────

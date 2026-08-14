@@ -36,6 +36,7 @@ const actionSchema = z.enum([
   'supervise',
   'prepare',
   'reset',
+  'restart-porta',
   'recover',
   'stop',
   'test',
@@ -79,12 +80,14 @@ type ActiveRun = z.infer<typeof activeRunSchema>;
 type AssuranceProject = 'spa' | 'bff' | 'protocol' | 'security' | 'compatibility';
 
 /** Serialized owner-socket actions, including project admission. */
-type ControlAction = 'prepare' | 'reset' | 'stop' | `project:${AssuranceProject}`;
+type ControlAction = 'prepare' | 'reset' | 'restart-porta' | 'stop' | `project:${AssuranceProject}`;
 
 /** Parses one bounded control action without trusting a caller-supplied discriminator. */
 function parseControlAction(rawRequest: string): ControlAction {
   const value = z.string().parse(JSON.parse(rawRequest));
-  if (value === 'prepare' || value === 'reset' || value === 'stop') return value;
+  if (value === 'prepare' || value === 'reset' || value === 'restart-porta' || value === 'stop') {
+    return value;
+  }
   const match = /^project:(.+)$/u.exec(value);
   const project = z.enum(['spa', 'bff', 'protocol', 'security', 'compatibility']).parse(match?.[1]);
   return `project:${project}`;
@@ -393,6 +396,9 @@ async function handleControlRequest(
   if (action === 'reset') {
     return { outcome: await controller.reset(ownedRun), ownedRun, shouldStop: false };
   }
+  if (action === 'restart-porta') {
+    return { outcome: await controller.restartPorta(ownedRun), ownedRun, shouldStop: false };
+  }
   if (action.startsWith('project:')) {
     const project = z
       .enum(['spa', 'bff', 'protocol', 'security', 'compatibility'])
@@ -612,7 +618,9 @@ async function main(arguments_: readonly string[]): Promise<void> {
   else if (action === 'prepare')
     exitCode = options.length === 0 ? await sendControl('prepare') : 30;
   else if (action === 'reset') exitCode = options.length === 0 ? await sendControl('reset') : 30;
-  else if (action === 'recover') {
+  else if (action === 'restart-porta') {
+    exitCode = options.length === 0 ? await sendControl('restart-porta') : 30;
+  } else if (action === 'recover') {
     exitCode = options.length === 0 ? await cleanupStaleRuns(worktreePath(), false) : 30;
   } else if (action === 'stop') {
     if (options.length !== 0) exitCode = 30;

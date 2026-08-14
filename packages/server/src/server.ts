@@ -35,6 +35,7 @@ import { healthCheck } from './middleware/health.js';
 import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
+import { oidcClientTenantBinding } from './middleware/oidc-client-tenant.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { promptLoginReset } from './middleware/prompt-login-reset.js';
 import { createOrganizationRouter } from './routes/organizations.js';
@@ -59,7 +60,10 @@ import { createBulkRouter } from './routes/bulk.js';
 import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
-import { createTwoFactorUserAdminRouter, createTwoFactorOrgAdminRouter } from './routes/two-factor-admin.js';
+import {
+  createTwoFactorUserAdminRouter,
+  createTwoFactorOrgAdminRouter,
+} from './routes/two-factor-admin.js';
 import { adminCors } from './middleware/admin-cors.js';
 import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
@@ -135,9 +139,9 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Routes that must NOT be body-parsed:
   //   /:orgSlug/*      — OIDC provider endpoints (token, revocation, introspection, etc.)
   const bp = bodyParser({
-    jsonLimit: '100kb',    // Defence-in-depth: limit JSON body size (default was 1mb)
-    formLimit: '100kb',    // Limit form body size
-    textLimit: '100kb',    // Limit text body size
+    jsonLimit: '100kb', // Defence-in-depth: limit JSON body size (default was 1mb)
+    formLimit: '100kb', // Limit form body size
+    textLimit: '100kb', // Limit text body size
   });
   app.use(async (ctx, next) => {
     if (
@@ -208,9 +212,7 @@ export function createApp(oidcProvider?: Provider): Koa {
       page: 1,
       pageSize: 10,
     });
-    const cliClient = clients.data.find(
-      (c) => c.applicationType === 'native',
-    );
+    const cliClient = clients.data.find((c) => c.applicationType === 'native');
 
     ctx.body = {
       issuer: `${config.issuerBaseUrl}/${superAdminOrg.slug}`,
@@ -463,6 +465,11 @@ export function createApp(oidcProvider?: Provider): Koa {
       await next();
     });
 
+    // A client is valid only beneath the issuer owned by its organization. This check runs before
+    // CORS, secret transformation, and oidc-provider so a foreign client cannot create an
+    // interaction or authenticate under another tenant's issuer.
+    oidcRouter.use(oidcClientTenantBinding());
+
     // OIDC CORS — pre-sets Access-Control-Allow-Origin and related headers
     // BEFORE the request enters oidc-provider's internal Koa context.
     //
@@ -499,9 +506,8 @@ export function createApp(oidcProvider?: Provider): Koa {
       ctx.req.url = originalUrl.replace(`/${ctx.params.orgSlug}`, '');
 
       // Pass the tenant-resolved org to the provider's internal context.
-      // The interactionUrl callback (provider.ts) reads this to store the
-      // auth-flow org in Redis, preserving the correct tenant for interaction
-      // handlers (important for third-party / cross-org clients).
+      // The interactionUrl callback (provider.ts) stores it so interaction
+      // handlers can recover the issuer organization after the slug is stripped.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (ctx.req as any)._portaOrganization = ctx.state.organization;
 
@@ -537,9 +543,7 @@ export function createApp(oidcProvider?: Provider): Koa {
       const orgIssuer = `${config.issuerBaseUrl}/${ctx.params.orgSlug}`;
 
       // Delegate to node-oidc-provider inside the per-request issuer context
-      await issuerStore.run(orgIssuer, () =>
-        oidcProvider.callback()(ctx.req, ctx.res),
-      );
+      await issuerStore.run(orgIssuer, () => oidcProvider.callback()(ctx.req, ctx.res));
     });
 
     app.use(oidcRouter.routes());

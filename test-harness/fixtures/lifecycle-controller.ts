@@ -126,6 +126,50 @@ export class LifecycleControllerImplementation implements LifecycleController {
     return this.serialize(ownedRun, () => this.resetOwned(ownedRun));
   }
 
+  /** Restarts only Porta after quiescing public traffic and preserves every backing store. */
+  public async restartPorta(ownedRun: OwnedRun): Promise<LifecycleOutcome> {
+    return this.serialize(ownedRun, () => this.restartOwnedPorta(ownedRun));
+  }
+
+  /** Executes a bounded fresh-process transition without resetting durable fixture state. */
+  protected async restartOwnedPorta(ownedRun: OwnedRun): Promise<LifecycleOutcome> {
+    const record = this.ownedRecords.get(ownedRun);
+    const reset = this.dependencies.reset;
+    if (record === undefined || reset === undefined) return outcome(30);
+    if ((await reset.state.read(record)) !== 'ready') {
+      return { ...outcome(60), recoveryIdentifiers: safeIds(record) };
+    }
+
+    let trafficBlocked = false;
+    let portaStopped = false;
+    try {
+      await this.dependencies.deadlines.run('restart-porta', async (signal) => {
+        await reset.traffic.quiesce(record, signal);
+        trafficBlocked = true;
+        await reset.runtime.stopPorta(record, signal);
+        portaStopped = true;
+        await reset.runtime.restartPorta(record, signal);
+        portaStopped = false;
+        await reset.publicVerification.verify(record, signal);
+        await reset.traffic.verifyBlocked(record, signal);
+        await reset.traffic.resume(record, signal);
+        trafficBlocked = false;
+      });
+      return outcome(0);
+    } catch (error) {
+      try {
+        if (portaStopped) await reset.runtime.restartPorta(record);
+        if (trafficBlocked) {
+          await reset.publicVerification.verify(record);
+          await reset.traffic.resume(record);
+        }
+        return interruptionOutcome(error);
+      } catch {
+        return { ...outcome(60), recoveryIdentifiers: safeIds(record) };
+      }
+    }
+  }
+
   /** Executes one reset after all earlier operations on the capability have completed. */
   protected async resetOwned(ownedRun: OwnedRun): Promise<LifecycleResetOutcome> {
     const record = this.ownedRecords.get(ownedRun);

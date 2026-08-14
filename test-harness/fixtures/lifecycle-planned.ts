@@ -445,6 +445,8 @@ export interface LifecycleController {
   prepare(ownedRun: OwnedRun): Promise<LifecycleResetOutcome>;
   /** Resets mutable services before a dependent scenario executes. */
   reset(ownedRun: OwnedRun): Promise<LifecycleResetOutcome>;
+  /** Restarts only Porta while preserving the owned database, cache, and fixture state. */
+  restartPorta(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
   /** Cleans exactly the resources still owned by the supplied capability. */
   stop(ownedRun: OwnedRun): Promise<LifecycleOutcome>;
   /** Reclaims persisted ownership only after lookup validation and two independent absence proofs. */

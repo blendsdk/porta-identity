@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   controlPlaneVariations,
+  nonApplicableSuperAdminOperations,
   protectedSuperAdminOperations,
 } from './tenant-admin-boundary-requirements.js';
 import { createTenantAdminBoundariesContract } from './tenant-admin-boundaries-adapter.js';
@@ -71,4 +72,10 @@ test('should preserve documented bootstrap super-admin protections', async () =>
   ]);
   assert.ok(observations.every((entry) => entry.result === 'forbidden'));
   assert.ok(observations.every((entry) => entry.targetUnchanged));
+  assert.deepEqual(nonApplicableSuperAdminOperations, [
+    {
+      operation: 'archive',
+      reason: 'users have no archived state or public archive operation',
+    },
+  ]);
 });

@@ -203,7 +203,8 @@ const profiles: readonly AssuranceRuntimeProfile[] = [
 ];
 
 /** Reads exact public endpoints after verifying fixture and endpoint run identity. */
-function activeEndpoints(): {
+/** Validated endpoints and owner-only fixture paths for the active harness run. */
+export interface ActiveFixtureEndpoints {
   readonly runId: string;
   readonly profile: string;
   readonly porta: string;
@@ -213,7 +214,10 @@ function activeEndpoints(): {
   readonly composeProject: string;
   readonly fixtureManifestPath: string;
   readonly credentialManifestPath: string;
-} {
+}
+
+/** Reads exact public endpoints after binding fixture and endpoint identities to the active run. */
+export function activeEndpoints(): ActiveFixtureEndpoints {
   const activeRun = z
     .object({
       runId: z.uuid(),
@@ -311,7 +315,7 @@ async function oidcStage<T>(stage: string, work: () => Promise<T>): Promise<T> {
 }
 
 /** Completes a real authorization-code journey and verifies the intended ordinary principal. */
-async function verifyOidcLogin(
+export async function verifyOidcLogin(
   tenant: 'alpha' | 'bravo',
   kind: 'public' | 'confidential',
   endpoints: ReturnType<typeof activeEndpoints>,
@@ -728,7 +732,7 @@ async function activeServiceContainer(service: 'postgres' | 'redis'): Promise<st
 }
 
 /** One exact mutable-store observation used for both drift counts and identity comparison. */
-interface ObservedFixtureState {
+export interface ObservedFixtureState {
   /** Aggregate counts retained as a small human-readable drift summary. */
   readonly counts: FixtureResidueSnapshot;
   /** Canonical redacted state that prevents equal counts from hiding replacement. */
@@ -736,7 +740,7 @@ interface ObservedFixtureState {
 }
 
 /** Observes mutable stores without retaining bearer values or production-derived expectations. */
-async function observeFixtureState(): Promise<ObservedFixtureState> {
+export async function observeFixtureState(): Promise<ObservedFixtureState> {
   const endpoints = activeEndpoints();
   const postgres = await activeServiceContainer('postgres');
   const redis = await activeServiceContainer('redis');

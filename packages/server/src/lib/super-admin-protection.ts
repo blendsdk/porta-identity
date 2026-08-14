@@ -12,7 +12,6 @@
  * Protected operations (all throw 403 Forbidden):
  *   - Delete
  *   - Suspend
- *   - Archive
  *   - Lock
  *   - Deactivate
  *   - Remove porta-super-admin role
@@ -37,7 +36,6 @@ export const SUPER_ADMIN_USER_ID_KEY = 'super_admin_user_id';
 export const PROTECTED_OPERATIONS = [
   'delete',
   'suspend',
-  'archive',
   'lock',
   'deactivate',
   'remove-super-admin-role',

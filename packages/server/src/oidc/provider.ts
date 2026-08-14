@@ -53,14 +53,14 @@ export async function createOidcProvider(params: {
     clientBasedCORS: oidcCors,
     // Interaction URL builder.
     // Also stores the auth-flow org ID in Redis so interaction handlers
-    // can resolve the correct tenant (the URL slug is stripped before
-    // the provider sees it, so returnTo doesn't contain the org slug).
+    // can recover the validated client tenant after the URL slug is stripped.
     interactionUrl: (ctx, interaction) => {
       // ctx here is the provider's internal Koa context, NOT the outer app's.
       // The org is passed via req._portaOrganization (set in server.ts).
       type PortaReq = { _portaOrganization?: { id: string } };
       type InternalCtx = { req?: PortaReq; request?: { req?: PortaReq } };
-      const req = (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
+      const req =
+        (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
       const org = req?._portaOrganization;
       if (org?.id && interaction?.uid) {
         getRedis()

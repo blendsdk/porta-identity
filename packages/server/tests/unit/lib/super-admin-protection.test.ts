@@ -35,14 +35,13 @@ describe('super-admin-protection', () => {
     it('should include all expected protected operations', () => {
       expect(PROTECTED_OPERATIONS).toContain('delete');
       expect(PROTECTED_OPERATIONS).toContain('suspend');
-      expect(PROTECTED_OPERATIONS).toContain('archive');
       expect(PROTECTED_OPERATIONS).toContain('lock');
       expect(PROTECTED_OPERATIONS).toContain('deactivate');
       expect(PROTECTED_OPERATIONS).toContain('remove-super-admin-role');
     });
 
-    it('should have exactly 7 operations', () => {
-      expect(PROTECTED_OPERATIONS.length).toBe(7);
+    it('should have exactly 6 operations', () => {
+      expect(PROTECTED_OPERATIONS.length).toBe(6);
     });
   });
 
@@ -115,8 +114,8 @@ describe('super-admin-protection', () => {
     });
 
     it('should store the operation', () => {
-      const error = new SuperAdminProtectionError('archive');
-      expect(error.operation).toBe('archive');
+      const error = new SuperAdminProtectionError('remove-super-admin-role');
+      expect(error.operation).toBe('remove-super-admin-role');
     });
 
     it('should have a descriptive message for each operation', () => {
@@ -186,19 +185,6 @@ describe('super-admin-protection', () => {
         const e = error as SuperAdminProtectionError;
         expect(e.status).toBe(403);
         expect(e.message).toBe('Cannot suspend the super-admin user');
-      }
-    });
-
-    it('should throw with 403 status for archive operation', async () => {
-      mockGetConfig.mockResolvedValue(superAdminId);
-
-      try {
-        await guardSuperAdmin(superAdminId, 'archive');
-        expect.fail('Should have thrown');
-      } catch (error) {
-        const e = error as SuperAdminProtectionError;
-        expect(e.status).toBe(403);
-        expect(e.message).toBe('Cannot archive the super-admin user');
       }
     });
 
