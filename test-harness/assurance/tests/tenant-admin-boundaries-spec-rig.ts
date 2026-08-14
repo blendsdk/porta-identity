@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   controlPlaneVariations,
   protectedSuperAdminOperations,
+  staleAuthorityScenarios,
   tenantProbeShapeBySurface,
 } from './tenant-admin-boundary-requirements.js';
 import {
@@ -17,6 +18,9 @@ import type {
   ConcurrentTenantIsolationResult,
   ControlPlaneBoundaryObservation,
   ControlPlaneVariationRequest,
+  StaleAuthorityScenarioObservation,
+  StaleAuthorityScenarioRequest,
+  StaleAuthorityRetryContext,
   SuperAdminExceptionObservation,
   TargetStateFingerprint,
   TenantAdminBoundariesContract,
@@ -39,6 +43,8 @@ export function createTenantAdminBoundariesSpecRig(): TenantAdminBoundariesContr
       observeControlPlaneVariation(request),
     observeConcurrentTenantIsolation: async () => concurrentTenantIsolation(),
     observeSuperAdminExceptions: async () => protectedSuperAdminObservations(),
+    observeStaleAuthorityScenario: async (request: StaleAuthorityScenarioRequest) =>
+      observeStaleAuthorityScenario(request),
   });
 }
 
@@ -199,4 +205,64 @@ function protectedSuperAdminObservations(): readonly SuperAdminExceptionObservat
       Object.freeze({ operation, result: 'forbidden' as const, targetUnchanged: true as const }),
     ),
   );
+}
+
+/** Produces one catalog-derived stale-authority scenario without contacting Porta. */
+function observeStaleAuthorityScenario(
+  request: StaleAuthorityScenarioRequest,
+): StaleAuthorityScenarioObservation {
+  const declared = staleAuthorityScenarios.find(
+    (candidate) =>
+      candidate.transition === request.transition &&
+      candidate.authorizedControlCaseId === request.authorizedControlCaseId &&
+      candidate.mutationMethod === request.mutationMethod &&
+      candidate.mutationRoute === request.mutationRoute &&
+      candidate.expectedResult === request.expectedResult,
+  );
+  if (declared === undefined) throw new Error(`undeclared stale transition: ${request.transition}`);
+
+  const control =
+    controlPlaneAuthorityProfile.cases.find(
+      (candidate) => candidate.id === request.authorizedControlCaseId,
+    ) ??
+    tenantOidcAuthorityProfile.cases.find(
+      (candidate) => candidate.id === request.authorizedControlCaseId,
+    );
+  if (control?.result !== 'allowed') {
+    throw new Error(`stale transition control is not allowed: ${request.authorizedControlCaseId}`);
+  }
+
+  const contexts: readonly StaleAuthorityRetryContext[] = [
+    'existing-client',
+    'fresh-client',
+    'fresh-porta-process',
+  ];
+  const target = targetFingerprint(`stale-authority:${request.transition}`);
+  return Object.freeze({
+    transition: request.transition,
+    authorizedControlCaseId: request.authorizedControlCaseId,
+    mutationMethod: request.mutationMethod,
+    mutationRoute: request.mutationRoute,
+    authorizedControlPassed: true,
+    cacheWarmed: true,
+    mutationAccepted: true,
+    revokedStateObserved: true,
+    retries: Object.freeze(
+      contexts.map((context) =>
+        Object.freeze({
+          context,
+          result: request.expectedResult,
+          authorityAccepted: false,
+          authorityMaterial: 'pre-transition' as const,
+          portaRestarted: context === 'fresh-porta-process',
+        }),
+      ),
+    ),
+    prohibitedSideEffects: absentSideEffects([
+      ...tenantOidcAuthorityProfile.threatProfile.prohibitedSideEffects,
+      ...controlPlaneAuthorityProfile.threatProfile.prohibitedSideEffects,
+    ]),
+    targetBefore: target,
+    targetAfter: target,
+  });
 }

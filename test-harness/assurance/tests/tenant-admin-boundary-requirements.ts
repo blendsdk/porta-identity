@@ -1,6 +1,7 @@
 import type { TenantSurface } from './tenant-admin-profile-requirements.js';
 import type {
   ControlPlaneVariationRequest,
+  StaleAuthorityScenarioRequest,
   TenantPublicProbeShape,
 } from './tenant-admin-boundaries-contract.js';
 
@@ -56,6 +57,44 @@ export const staleAuthoritySentinel = {
   ],
   unavailableTransitions: ['organization-membership-removal', 'organization-reassignment'],
 } as const;
+
+/**
+ * Exact supported public transitions and post-transition outcomes for stale-authority testing.
+ *
+ * Each scenario begins with an independently allowed control, warms the relevant cache/session
+ * state, performs the transition through its public administrative route, then retries from the
+ * existing client, a fresh client, and a fresh Porta process.
+ */
+export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] = [
+  {
+    transition: 'role-removal',
+    authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
+    mutationMethod: 'DELETE',
+    mutationRoute: '/api/admin/organizations/:orgId/users/:userId/roles',
+    expectedResult: 'forbidden',
+  },
+  {
+    transition: 'actor-deactivation',
+    authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
+    mutationMethod: 'POST',
+    mutationRoute: '/api/admin/organizations/:orgId/users/:userId/deactivate',
+    expectedResult: 'unauthenticated',
+  },
+  {
+    transition: 'actor-suspension',
+    authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
+    mutationMethod: 'POST',
+    mutationRoute: '/api/admin/organizations/:orgId/users/:userId/suspend',
+    expectedResult: 'unauthenticated',
+  },
+  {
+    transition: 'session-revocation',
+    authorizedControlCaseId: 'alpha-principal-resume-session-alpha-session',
+    mutationMethod: 'DELETE',
+    mutationRoute: '/api/admin/sessions/:sessionId',
+    expectedResult: 'unauthenticated',
+  },
+];
 
 /** Exact destructive operations forbidden for the protected bootstrap super-admin user. */
 export const protectedSuperAdminOperations = [

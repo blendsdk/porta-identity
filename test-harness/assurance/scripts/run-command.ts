@@ -187,6 +187,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/tenant-oidc-isolation.spec.test.ts',
     'test-harness/assurance/tests/control-plane-authorization.spec.test.ts',
     'test-harness/assurance/tests/stale-authority-boundary.spec.test.ts',
+    'test-harness/assurance/tests/stale-authority-transitions.spec.test.ts',
   ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',

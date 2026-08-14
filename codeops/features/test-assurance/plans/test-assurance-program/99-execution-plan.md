@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-14 11:03
-> **Progress**: 45/92 tasks (49%)
+> **Last Updated**: 2026-08-14 11:29
+> **Progress**: 46/92 tasks (50%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -460,9 +460,14 @@ without waiting for a later phase or touching developer credentials. See
       bootstrap super-admin protections; the current transparent rig is explicitly non-evidentiary.
       The 14-case `tenant-admin-specs` selector, static checks, and `yarn verify` passed. ✅
       (completed: 2026-08-14 11:03)
-- [ ] 6.3 Add stale-state cases that warm caches then remove roles, deactivate/suspend actors, and
+- [x] 6.3 Add stale-state cases that warm caches then remove roles, deactivate/suspend actors, and
       revoke sessions through supported APIs; retry with existing/fresh clients and after a fresh
-      Porta process. Record organization reassignment/removal as not-applicable or a named gap.
+      Porta process. Record organization reassignment/removal as not-applicable or a named gap. The
+      immutable ST-31 scenarios bind the exact public method/route and pre-transition authority,
+      require cache warming plus durable revocation, and deny the same authority in existing,
+      fresh-client, and restarted-Porta contexts without target mutation. Membership removal and
+      reassignment remain named non-applicable gaps. The 17-case selector, static checks, and
+      `yarn verify` passed. ✅ (completed: 2026-08-14 11:29)
 - [ ] 6.4 Record natural RED or legacy green claim by claim without altering the oracle; select only
       existing exact E2E/pentest sentinels.
 - [ ] 6.5 Add missing raw/packed SDK/CLI probes and reach green; unsupported immediate-revocation

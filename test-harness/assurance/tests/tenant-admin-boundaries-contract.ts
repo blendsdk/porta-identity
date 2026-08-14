@@ -113,6 +113,69 @@ export interface SuperAdminExceptionObservation {
   readonly targetUnchanged: boolean;
 }
 
+/** Supported public authority transition exercised by the stale-state sentinel. */
+export type SupportedStaleAuthorityTransition =
+  'role-removal' | 'actor-deactivation' | 'actor-suspension' | 'session-revocation';
+
+/** Client/process context used to retry authority after a durable transition. */
+export type StaleAuthorityRetryContext = 'existing-client' | 'fresh-client' | 'fresh-porta-process';
+
+/** Immutable request for one stale-authority transition scenario. */
+export interface StaleAuthorityScenarioRequest {
+  /** Supported transition performed through its public administrative API. */
+  readonly transition: SupportedStaleAuthorityTransition;
+  /** Allowed case proving the subject has authority before the transition. */
+  readonly authorizedControlCaseId: string;
+  /** Public HTTP method used to perform the transition. */
+  readonly mutationMethod: 'DELETE' | 'POST';
+  /** Stable route template; concrete identifiers remain protected fixture data. */
+  readonly mutationRoute: string;
+  /** Exact result expected from every post-transition reuse attempt. */
+  readonly expectedResult: 'unauthenticated' | 'forbidden';
+}
+
+/** One independently observed post-transition retry. */
+export interface StaleAuthorityRetryObservation {
+  /** Existing, fresh-client, or fresh-process context used for the retry. */
+  readonly context: StaleAuthorityRetryContext;
+  /** Public authorization result observed after the transition. */
+  readonly result: AuthorizationResult;
+  /** Whether revoked authority was accepted by the public boundary. */
+  readonly authorityAccepted: boolean;
+  /** Authorization material originates before the transition under test. */
+  readonly authorityMaterial: 'pre-transition';
+  /** Whether this observation followed a completed fresh Porta restart. */
+  readonly portaRestarted: boolean;
+}
+
+/** Black-box outcome for one cache-warmed authority transition and all required retries. */
+export interface StaleAuthorityScenarioObservation {
+  /** Supported transition exercised by this observation. */
+  readonly transition: SupportedStaleAuthorityTransition;
+  /** Exact allowed catalog case executed before the transition. */
+  readonly authorizedControlCaseId: string;
+  /** Public method independently observed for the transition request. */
+  readonly mutationMethod: 'DELETE' | 'POST';
+  /** Stable public route template independently observed for the transition request. */
+  readonly mutationRoute: string;
+  /** Whether the pre-transition allowed control reached its intended boundary. */
+  readonly authorizedControlPassed: boolean;
+  /** Whether the relevant authorization/session cache was warm before mutation. */
+  readonly cacheWarmed: boolean;
+  /** Whether the public transition endpoint accepted and durably recorded the mutation. */
+  readonly mutationAccepted: boolean;
+  /** Whether the authority/session state was independently observed as revoked. */
+  readonly revokedStateObserved: boolean;
+  /** Existing, fresh-client, and fresh-process retry outcomes. */
+  readonly retries: readonly StaleAuthorityRetryObservation[];
+  /** Every cataloged prohibited side effect and whether it occurred. */
+  readonly prohibitedSideEffects: Readonly<Record<string, boolean>>;
+  /** Target state before the rejected retries, observed independently. */
+  readonly targetBefore: TargetStateFingerprint;
+  /** Target state after the rejected retries, observed independently. */
+  readonly targetAfter: TargetStateFingerprint;
+}
+
 /** Stable adapter boundary consumed by immutable tenant/admin specifications. */
 export interface TenantAdminBoundariesContract {
   /** Runs one public tenant/OIDC catalog case through its compatible public request shape. */
@@ -130,4 +193,8 @@ export interface TenantAdminBoundariesContract {
   observeConcurrentTenantIsolation(): Promise<ConcurrentTenantIsolationResult>;
   /** Exercises documented protections for the bootstrap super-admin user. */
   observeSuperAdminExceptions(): Promise<readonly SuperAdminExceptionObservation[]>;
+  /** Warms authority state, performs one supported transition, and retries in all contexts. */
+  observeStaleAuthorityScenario(
+    request: StaleAuthorityScenarioRequest,
+  ): Promise<StaleAuthorityScenarioObservation>;
 }
