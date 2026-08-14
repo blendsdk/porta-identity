@@ -23,16 +23,27 @@ import { observeLiveStaleAuthorityScenario } from './tenant-admin-live-stale.js'
  * observations while the public HTTP implementation is being installed.
  */
 export function createTenantAdminBoundariesLiveAdapter(): TenantAdminBoundariesContract {
-  const context = new LiveTenantAdminContext();
+  let context: LiveTenantAdminContext | undefined;
+  const liveContext = (): LiveTenantAdminContext => {
+    context ??= new LiveTenantAdminContext();
+    return context;
+  };
   return Object.freeze({
     observeTenantCase: (caseId: string, probeShape: TenantPublicProbeShape) =>
-      observeLiveTenantCase(context, caseId, probeShape),
-    observeControlPlaneCase: (caseId: string) => observeLiveControlPlaneCase(context, caseId),
-    observeControlPlaneVariation: (request: ControlPlaneVariationRequest) =>
-      observeLiveControlPlaneVariation(context, request),
-    observeConcurrentTenantIsolation: () => observeLiveConcurrentTenantIsolation(context),
-    observeSuperAdminExceptions: () => observeLiveSuperAdminExceptions(context),
+      observeLiveTenantCase(liveContext(), caseId, probeShape),
+    observeControlPlaneCase: (caseId: string) => observeLiveControlPlaneCase(liveContext(), caseId),
+    observeControlPlaneVariation: (request: ControlPlaneVariationRequest) => {
+      if (request.invariantMarker === 'same-user-write-under-wrong-organization-path') {
+        throw new Error('TENANT_ADMIN_WRITE_VARIATION_LIVE_UNAVAILABLE');
+      }
+      return observeLiveControlPlaneVariation(liveContext(), request);
+    },
+    observeAdminMembershipNegativeControl: async () => {
+      throw new Error('TENANT_ADMIN_MEMBERSHIP_LIVE_UNAVAILABLE');
+    },
+    observeConcurrentTenantIsolation: () => observeLiveConcurrentTenantIsolation(liveContext()),
+    observeSuperAdminExceptions: () => observeLiveSuperAdminExceptions(liveContext()),
     observeStaleAuthorityScenario: (request: StaleAuthorityScenarioRequest) =>
-      observeLiveStaleAuthorityScenario(context, request),
+      observeLiveStaleAuthorityScenario(liveContext(), request),
   });
 }

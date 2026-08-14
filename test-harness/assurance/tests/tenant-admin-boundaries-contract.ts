@@ -42,8 +42,12 @@ export interface ControlPlaneVariationRequest {
   readonly authorizedControlCaseId: string;
   /** One changed authority or resource-addressing dimension. */
   readonly variation: ControlPlaneVariation;
+  /** Exact raw HTTP method that distinguishes read from mutation probes. */
+  readonly requestMethod: 'GET' | 'PUT';
   /** Exact expected public classification. */
   readonly expectedResult: 'forbidden' | 'not-found';
+  /** Optional exact semantic target for an invariant-specific variation. */
+  readonly invariantMarker?: 'same-user-write-under-wrong-organization-path';
 }
 
 /** Black-box observation for one control-plane catalog or substitution case. */
@@ -54,6 +58,8 @@ export interface ControlPlaneBoundaryObservation {
   readonly result: AuthorizationResult;
   /** Transport proves substitutions were not normalized by an SDK or browser. */
   readonly transport: 'raw-http';
+  /** HTTP method independently observed by invariant-specific probes. */
+  readonly requestMethod?: 'GET' | 'PUT' | 'DELETE';
   /** Administrative authentication completed before permission/resource evaluation. */
   readonly adminAuthenticationAccepted: boolean;
   /** Intended handler was reached before the request was rejected. */
@@ -62,6 +68,40 @@ export interface ControlPlaneBoundaryObservation {
   readonly decisionBoundary: 'handler' | 'permission' | 'resource';
   /** Every cataloged prohibited side effect and whether it was observed. */
   readonly prohibitedSideEffects: Readonly<Record<string, boolean>>;
+  /** Target state before the request, observed independently. */
+  readonly targetBefore: TargetStateFingerprint;
+  /** Target state after the request, observed independently. */
+  readonly targetAfter: TargetStateFingerprint;
+}
+
+/** Active ordinary-tenant actor presented to the administrative boundary. */
+export interface AdminMembershipNegativeControlRequest {
+  /** Stable synthetic actor identity. */
+  readonly actorId: 'alpha-ordinary-admin-role-control';
+  /** Actor remains active while membership alone is varied. */
+  readonly userState: 'active';
+  /** Ordinary organization that owns the actor. */
+  readonly organization: 'alpha';
+  /** Structurally valid opaque token presented to the admin boundary. */
+  readonly token: 'valid-opaque-token';
+  /** Admin-shaped role that cannot replace organization membership. */
+  readonly assignedRole: 'porta-auditor';
+  /** Exact expected public result. */
+  readonly expectedResult: 'forbidden';
+  /** Exact expected authorization boundary. */
+  readonly rejectionBoundary: 'admin-organization-membership';
+}
+
+/** Observed administrative membership result for one ordinary tenant actor. */
+export interface AdminMembershipNegativeControlObservation {
+  /** Stable actor identity observed by the adapter. */
+  readonly actorId: string;
+  /** Whether the structurally valid opaque token passed token validation. */
+  readonly validTokenAdmitted: boolean;
+  /** Exact public authorization result observed. */
+  readonly result: AuthorizationResult;
+  /** Boundary that made the observed decision. */
+  readonly decisionBoundary: 'authentication' | 'admin-organization-membership' | 'permission';
   /** Target state before the request, observed independently. */
   readonly targetBefore: TargetStateFingerprint;
   /** Target state after the request, observed independently. */
@@ -183,6 +223,10 @@ export interface TenantAdminBoundariesContract {
   observeControlPlaneVariation(
     request: ControlPlaneVariationRequest,
   ): Promise<ControlPlaneBoundaryObservation>;
+  /** Presents one active ordinary-tenant actor to the administrative membership boundary. */
+  observeAdminMembershipNegativeControl(
+    request: AdminMembershipNegativeControlRequest,
+  ): Promise<AdminMembershipNegativeControlObservation>;
   /** Overlaps alpha and bravo OIDC requests after warming issuer and tenant caches. */
   observeConcurrentTenantIsolation(): Promise<ConcurrentTenantIsolationResult>;
   /** Exercises documented protections for the bootstrap super-admin user. */

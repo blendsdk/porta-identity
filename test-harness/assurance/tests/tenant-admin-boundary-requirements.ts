@@ -25,22 +25,33 @@ export const controlPlaneVariations: readonly ControlPlaneVariationRequest[] = [
   {
     authorizedControlCaseId: 'admin-full-update-target-user-admin-target-alpha-user',
     variation: 'permission',
+    requestMethod: 'PUT',
     expectedResult: 'forbidden',
   },
   {
     authorizedControlCaseId: 'admin-full-read-target-user-admin-target-alpha-user',
     variation: 'target-organization',
+    requestMethod: 'GET',
     expectedResult: 'not-found',
   },
   {
     authorizedControlCaseId: 'admin-full-read-target-client-admin-target-bravo-client',
     variation: 'target-id',
+    requestMethod: 'GET',
     expectedResult: 'not-found',
   },
   {
     authorizedControlCaseId: 'admin-full-read-target-session-admin-target-alpha-session',
     variation: 'target-slug',
+    requestMethod: 'GET',
     expectedResult: 'not-found',
+  },
+  {
+    authorizedControlCaseId: 'admin-full-update-target-user-admin-target-alpha-user',
+    variation: 'target-organization',
+    requestMethod: 'PUT',
+    expectedResult: 'not-found',
+    invariantMarker: 'same-user-write-under-wrong-organization-path',
   },
 ];
 

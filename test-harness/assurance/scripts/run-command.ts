@@ -141,6 +141,18 @@ const tenantAdminImplementationFiles = [
   'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
 ] as const;
 
+/** Independently selectable invariant-specific tenant/admin fault specifications. */
+const tenantAdminFaultSpecificationFiles = [
+  'test-harness/assurance/tests/tenant-admin-fault-requirements.spec.test.ts',
+  'test-harness/assurance/tests/tenant-read-scope-fault.spec.test.ts',
+  'test-harness/assurance/tests/tenant-write-scope-fault.spec.test.ts',
+  'test-harness/assurance/tests/issuer-separation-fault.spec.test.ts',
+  'test-harness/assurance/tests/organization-cache-separation-fault.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-fault.spec.test.ts',
+  'test-harness/assurance/tests/admin-organization-membership-fault.spec.test.ts',
+  'test-harness/assurance/tests/admin-permission-rbac-fault.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -201,6 +213,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'tenant-admin-specs': tenantAdminSpecificationFiles,
   'tenant-admin-all': [...tenantAdminSpecificationFiles, ...tenantAdminImplementationFiles],
   'tenant-admin-baseline': ['test-harness/assurance/tests/tenant-admin-baseline.impl.test.ts'],
+  'tenant-admin-fault-specs': tenantAdminFaultSpecificationFiles,
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',

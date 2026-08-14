@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 19:01
-> **Progress**: 51/94 tasks (54%)
+> **Last Updated**: 2026-08-14 21:03
+> **Progress**: 52/96 tasks (54%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -34,14 +34,14 @@ workflow.
 |     3 | Real actor fixtures, projects, and runtime profiles |     8 |
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
-|     6 | Tenant isolation and administrative authorization   |    10 |
+|     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |     8 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 94 tasks across 11 release-safe phases.**
+**Total: 96 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -87,8 +87,10 @@ text, but it cannot substitute another command for this binding.
 | 6.6       | `yarn assurance:test --select tenant-admin-packed`                                                                                                           |
 | 6.7       | `yarn assurance:compat --select tenant-admin`                                                                                                                 |
 | 6.8       | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
-| 6.9       | `yarn assurance:fault --fault tenant-admin-slice --claim CLAIM-R5-03 --sentinel ST-29`                                                                       |
-| 6.10      | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
+| 6.9       | `yarn assurance:test --select tenant-admin-fault-specs`                                                                                                      |
+| 6.10      | `yarn assurance:test --select tenant-admin-faults`                                                                                                           |
+| 6.11      | Every exact command in the versioned tenant/admin fault campaign manifest                                                                                    |
+| 6.12      | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
 | 7.1       | `yarn assurance:validate`                                                                                                                                    |
 | 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
 | 7.4       | `yarn assurance:baseline --case ST-33`                                                                                                                       |
@@ -523,9 +525,23 @@ without waiting for a later phase or touching developer credentials. See
       effects, and warm-before-mutation plus existing/fresh/restarted retry wiring. `yarn verify`
       passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅
       (completed: 2026-08-14 19:01)
-- [ ] 6.9 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
-      tuples; require each mapped sentinel signature to kill its tuple.
-- [ ] 6.10 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
+- [x] 6.9 [spec-author] Define invariant-specific tenant-read, tenant-write, issuer/cache,
+      stale-authority, admin-membership, and permission/RBAC fault tuples and exact live
+      sub-sentinel signatures. Add the organization-membership negative-control actor and public
+      denial oracle without changing the existing non-applicable membership-transition gaps. The
+      seven semantic faults have closed requirement-owned IDs, invariant-specific sub-sentinels,
+      and exact signatures; the ordinary-tenant membership control uses a valid opaque token and
+      `porta-auditor` role while membership transitions remain explicitly non-applicable. The
+      10-case focused selector, assurance typecheck, lint, formatting, 68 structure tests, and
+      `yarn verify` all passed. ✅ (completed: 2026-08-14 21:03)
+- [ ] 6.10 Implement the closed live-mutant executor, code-owned production-target/sub-sentinel
+      registry, reviewed one-target patches, inner exact-result parser, lifecycle-owned stack and
+      recovery handling, and implementation tests. Do not claim live fault evidence in this dirty
+      capability checkpoint.
+- [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin fault tuple and
+      require each designated sentinel signature to kill independently with no primary-tree or
+      owned runtime residue.
+- [ ] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`.
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim

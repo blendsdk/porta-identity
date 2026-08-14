@@ -15,6 +15,8 @@ import {
   type TenantResource,
 } from './tenant-admin-profile-requirements.js';
 import type {
+  AdminMembershipNegativeControlObservation,
+  AdminMembershipNegativeControlRequest,
   ConcurrentTenantIsolationResult,
   ControlPlaneBoundaryObservation,
   ControlPlaneVariationRequest,
@@ -41,6 +43,8 @@ export function createTenantAdminBoundariesSpecRig(): TenantAdminBoundariesContr
     observeControlPlaneCase: async (caseId: string) => observeControlPlaneCase(caseId),
     observeControlPlaneVariation: async (request: ControlPlaneVariationRequest) =>
       observeControlPlaneVariation(request),
+    observeAdminMembershipNegativeControl: async (request: AdminMembershipNegativeControlRequest) =>
+      adminMembershipNegativeControl(request),
     observeConcurrentTenantIsolation: async () => concurrentTenantIsolation(),
     observeSuperAdminExceptions: async () => protectedSuperAdminObservations(),
     observeStaleAuthorityScenario: async (request: StaleAuthorityScenarioRequest) =>
@@ -153,7 +157,9 @@ function observeControlPlaneVariation(
     (candidate) =>
       candidate.authorizedControlCaseId === request.authorizedControlCaseId &&
       candidate.variation === request.variation &&
-      candidate.expectedResult === request.expectedResult,
+      candidate.requestMethod === request.requestMethod &&
+      candidate.expectedResult === request.expectedResult &&
+      candidate.invariantMarker === request.invariantMarker,
   );
   if (declared === undefined)
     throw new Error(`undeclared control-plane variation: ${request.variation}`);
@@ -166,6 +172,7 @@ function observeControlPlaneVariation(
     caseId: `${control.id}-${request.variation}`,
     result: request.expectedResult,
     transport: 'raw-http',
+    requestMethod: request.requestMethod,
     adminAuthenticationAccepted: true,
     handlerReached: true,
     decisionBoundary: request.variation === 'permission' ? 'permission' : 'resource',
@@ -174,6 +181,21 @@ function observeControlPlaneVariation(
     ),
     targetBefore: fingerprint,
     targetAfter: fingerprint,
+  });
+}
+
+/** Produces the ordinary-tenant membership denial without representing a live request. */
+function adminMembershipNegativeControl(
+  request: AdminMembershipNegativeControlRequest,
+): AdminMembershipNegativeControlObservation {
+  const target = targetFingerprint('admin-target-alpha-user');
+  return Object.freeze({
+    actorId: request.actorId,
+    validTokenAdmitted: true,
+    result: request.expectedResult,
+    decisionBoundary: request.rejectionBoundary,
+    targetBefore: target,
+    targetAfter: target,
   });
 }
 

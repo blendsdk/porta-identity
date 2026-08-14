@@ -51,6 +51,7 @@ Porta product contract.
 | 56  | Live slice execution | How does the Playwright-owned security command execute the immutable Node oracle and packed-client adjuncts without creating a second oracle? | Use one owned-stack, three-block orchestration with explicit live mode, deterministic resets, and lifecycle-owned Porta-only restart | User (runtime) | ✅     |
 | 57  | Live contract ruling | Is a client registered to one organization allowed to initiate authorization under another organization's issuer, is bootstrap-user archive applicable, and may Phase 6 fix the confirmed role-removal defect? | Enforce strict issuer/client tenant binding; mark bootstrap-user archive non-applicable; fix protected bootstrap-role removal and strengthen its role-assignment observer | User (runtime) | ✅     |
 | 58  | Packed evidence checkpoints | How can Task 6.5 commit verified raw/product changes and later execute packed clients from the mandatory clean revision? | Split the task into raw/product, packed-capability, and clean-live-evidence checkpoints; never synthesize or stash a dirty-tree revision | User (runtime) | ✅     |
+| 59  | Live fault execution | How can tenant/admin sentinels challenge real Porta controls without admitting arbitrary production patches or unrelated failures? | Use one reviewed fault ID per semantic production patch, a code-owned target/sub-sentinel registry, lifecycle-owned disposable stacks, and separate specification, capability, and clean-campaign checkpoints | AI (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -948,3 +949,41 @@ false current-triplet claim. **Confidence**: High. **Hardening**: an independent
 challenge confirmed the three-checkpoint pattern already used by Phase 5. **Reopen trigger**: a
 checkpoint cannot be verified independently without weakening clean-revision provenance or the
 Phase 6 closure gate.
+
+### AR-59 — Closed live tenant/admin fault execution
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: security-testing mechanism and
+implementation sequencing inside the approved curated-fault and tenant/admin scope; this changes
+no Porta product contract, accepted risk, claim requirement, CI policy, or production interface.
+**Objective**: prove that each tenant/admin sentinel detects a representative broken production
+control for the intended reason while keeping the primary worktree and every owned runtime resource
+unchanged. **Decision**: refine the remaining Phase 6 work into three checkpoints: immutable
+invariant-specific fault specifications, a closed live-mutant capability, then clean-revision
+campaign evidence. Each semantic fault has its own ID, reviewed one-file patch, base-revision floor,
+original and patched target digests, and exact claim/sub-sentinel/signature tuple. TypeScript owns an
+exact fault-ID-to-production-target and sub-sentinel registry; catalog data cannot choose arbitrary
+source paths, commands, test files, or name patterns. The disposable worktree retains its reviewed
+uncommitted patch and is identified by the clean base commit/tree, patch digest, exact changed path,
+patched target digest, and built image identity. A staged runner uses the existing lifecycle owner
+to build and start a fresh patched stack, execute only the registered live Node sub-sentinel, and
+prove stack/worktree absence before classification. The outer exact one-line failure grammar stays
+unchanged; an inner TAP parser may emit it only when one registered live subtest fails, its allowed
+control ran, and no unrelated failure, cancellation, or skip occurred. Organization-membership
+coverage receives an explicit ordinary-tenant actor carrying a Porta role so the existing admin-
+organization check is externally observable; unsupported organization reassignment/removal remains
+a separate named gap. **Evidence**: the foundation runner currently accepts only its own fixture
+target and cannot exercise real tenant/admin controls; ST-28–ST-32 are broad matrix tests, so a
+whole-suite non-zero cannot identify the intended assertion. The clean-revision provenance rule
+also means capability implementation must be committed before its live campaign runs. **Rejected
+alternatives**: harness-only mutants prove the harness rather than Porta; a broad server-source
+target regex turns catalog edits into arbitrary patch authority; a mega-fault destroys attribution;
+the full security suite admits unrelated failures; a synthetic Git commit leaves shared object
+residue and invents a provenance class; direct Docker commands bypass lifecycle fencing.
+**Strongest counterargument**: one fresh stack and exact sub-sentinel per fault costs more runtime
+than a shared stack. The self-contained lifecycle and cleanup proof is more important than speed for
+initial P0 evidence; optimization may follow only after reliability evidence exists. **Confidence**:
+High. **Hardening**: a blind independent architecture challenge converged on the same closed staged
+executor. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260814-P6-F`.
+**Reopen triggers**: lifecycle cannot admit an explicitly provenanced uncommitted mutant without
+weakening normal clean-source evidence, a selected sentinel cannot isolate one invariant-specific
+failure, or a required control spans more than one semantic target.
