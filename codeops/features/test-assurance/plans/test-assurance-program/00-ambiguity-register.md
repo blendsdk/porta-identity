@@ -47,6 +47,7 @@ Porta product contract.
 | 30  | Static boundary  | How are RED specs checked before runtime modules exist? | A dedicated root-owned assurance TypeScript/ESLint project checks specs against declaration-only planned interfaces; runtime `.ts` files remain absent until their implementation tasks | AI (runtime)   | ✅     |
 | 31  | Alias bootstrap  | What do registered aliases do before their owning handlers exist? | The shared dispatcher exposes exact help/contract data and otherwise fails closed as `setup-failure` until the planned owning phase installs the handler; it never reports placeholder success | AI (runtime)   | ✅     |
 | 32  | Foundation selector | How does one selector verify sequential foundation tasks without changing immutable oracles? | A permanent collection wrapper registers the already-authored cases owned by the implemented foundation components; later tasks add their pre-authored case groups to the same suite without changing assertions | AI (runtime)   | ✅     |
+| 55  | Slice baseline | What counts as Task 6.4 evidence when no existing exact E2E/pentest sentinel reaches the protected tenant/admin boundary? | Record strict `missing-live-sentinel` RED evidence; never treat setup failure, partial lower-level tests, or early authentication denial as product evidence | User (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -848,3 +849,30 @@ the ancestor floor only when paired with exact bytes and closed commands; neithe
 sufficient. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260812-P5`. **Reopen
 triggers**: a fault spans multiple semantic targets, generated patches are introduced, or a slice
 requires a command not representable by the closed runner registry.
+
+### AR-55 — Tenant/admin baseline evidence without an exact existing sentinel
+
+**Authority**: User — accepted the recommended strict evidence boundary on 2026-08-14.
+**Objective**: record an honest Task 6.4 baseline without counting setup failure, mock behavior, or
+an early unauthenticated denial as tenant/admin assurance. **Observed constraint**: the declared
+`assurance:baseline` alias has no runtime handler yet. The audited E2E/pentest candidates either
+stop at authentication, use fake credentials, accept broad status outcomes, or exercise mocked
+lookup behavior; none proves an authorized control reaches the protected handler before the exact
+tenant, permission, cache, or super-admin variation is denied without target mutation.
+**Decision**: implement a sanitized baseline artifact that records ST-28 through
+ST-32 as `natural-red: missing-live-sentinel`. Keep the immutable specification selector green,
+record every rejected candidate and its reason, and distinguish missing executable evidence from
+a product defect. Task 6.5 then replaces the transparent requirements adapter with live raw and
+packed-client observations. **Rejected alternative**: admitting unit/integration tests as partial
+legacy-green evidence weakens the exact external-boundary eligibility rule. **Rejected
+interpretation**: dispatcher setup failure is not RED evidence, and a 401
+before handler reachability is vacuous for these claims. **Rationale**: this decision
+preserves the plan's exact E2E/pentest boundary and makes the current evidence gap visible instead
+of overstating assurance. **Strongest counterargument**: “natural RED” usually describes observed
+product behavior, whereas this result describes missing evidence. The explicit
+`missing-live-sentinel` subtype prevents that conflation and must never be reported as a product
+failure. **Confidence**: High. **Hardening**: grounded against the command dispatcher and the
+existing tenant/admin pentest candidates; no exact external sentinel with authorized control,
+handler reachability, varied target, and independent non-mutation was found. **Reopen triggers**:
+an existing exact external sentinel is identified, or the user authorizes a different evidence
+eligibility boundary.

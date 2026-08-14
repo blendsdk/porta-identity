@@ -34,6 +34,7 @@ import {
   recoverPackedConsumerRun,
   runPackedCompatibilityFoundation,
 } from '../compat/index.js';
+import { isTenantAdminBaselineCaseId, recordTenantAdminBaseline } from '../baseline/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -125,6 +126,15 @@ const lifecycleTestFiles = [
   'test-harness/assurance/tests/lifecycle-operation-serialization.spec.test.ts',
 ] as const;
 
+/** Immutable tenant/admin specifications that must stay green before baseline evidence is written. */
+const tenantAdminSpecificationFiles = [
+  'test-harness/assurance/tests/tenant-admin-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/tenant-oidc-isolation.spec.test.ts',
+  'test-harness/assurance/tests/control-plane-authorization.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-boundary.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-transitions.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -182,13 +192,8 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
     'test-harness/assurance/tests/packed-consumer.impl.test.ts',
   ],
-  'tenant-admin-specs': [
-    'test-harness/assurance/tests/tenant-admin-slice-profiles.spec.test.ts',
-    'test-harness/assurance/tests/tenant-oidc-isolation.spec.test.ts',
-    'test-harness/assurance/tests/control-plane-authorization.spec.test.ts',
-    'test-harness/assurance/tests/stale-authority-boundary.spec.test.ts',
-    'test-harness/assurance/tests/stale-authority-transitions.spec.test.ts',
-  ],
+  'tenant-admin-specs': tenantAdminSpecificationFiles,
+  'tenant-admin-baseline': ['test-harness/assurance/tests/tenant-admin-baseline.impl.test.ts'],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -664,6 +669,39 @@ async function runRedCommand(options: readonly string[]): Promise<void> {
   }
 }
 
+/** Records strict RED evidence only after the immutable tenant/admin specifications remain green. */
+async function runBaselineCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 2 || options[0] !== '--case') {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: expected --case <ST-ID>\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const caseId = options[1] ?? '';
+  if (!isTenantAdminBaselineCaseId(caseId)) {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${caseId}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const specifications = await runNodeSuite(tenantAdminSpecificationFiles);
+  const specificationExit = managedChildExit(specifications, testFailureExit);
+  if (specificationExit !== 0) {
+    process.exitCode = specificationExit;
+    return;
+  }
+
+  try {
+    const recorded = recordTenantAdminBaseline(process.cwd(), caseId);
+    const artifact = `test-harness/.assurance-results/${recorded.result.runId}/baseline/${caseId}/result.json`;
+    process.stdout.write(
+      `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=natural-red reason=missing-live-sentinel artifact=${artifact}\n`,
+    );
+  } catch {
+    process.stderr.write('ASSURANCE_BASELINE_FAILED: stage=evidence\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
 /** Executes one exact registered curated-fault tuple through the disposable runner. */
 async function runFaultCommand(options: readonly string[]): Promise<void> {
   if (
@@ -820,6 +858,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'red') {
     await runRedCommand(options);
+    return;
+  }
+  if (action === 'baseline') {
+    await runBaselineCommand(options);
     return;
   }
   if (action === 'harness') {

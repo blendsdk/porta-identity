@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-14 11:29
+> **Last Updated**: 2026-08-14 12:02
 > **Progress**: 46/92 tasks (50%)
 > **CodeOps Artifact Schema**: 1
 
@@ -468,7 +468,7 @@ without waiting for a later phase or touching developer credentials. See
       fresh-client, and restarted-Porta contexts without target mutation. Membership removal and
       reassignment remain named non-applicable gaps. The 17-case selector, static checks, and
       `yarn verify` passed. ✅ (completed: 2026-08-14 11:29)
-- [ ] 6.4 Record natural RED or legacy green claim by claim without altering the oracle; select only
+- [~] 6.4 Record natural RED or legacy green claim by claim without altering the oracle; select only
       existing exact E2E/pentest sentinels.
 - [ ] 6.5 Add missing raw/packed SDK/CLI probes and reach green; unsupported immediate-revocation
       contracts remain named blocked gaps and product defects route separately.
