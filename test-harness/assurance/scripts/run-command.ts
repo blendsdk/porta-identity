@@ -136,6 +136,11 @@ const tenantAdminSpecificationFiles = [
   'test-harness/assurance/tests/stale-authority-transitions.spec.test.ts',
 ] as const;
 
+/** Implementation-level guards for live tenant/admin orchestration and evidence helpers. */
+const tenantAdminImplementationFiles = [
+  'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -194,6 +199,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-consumer.impl.test.ts',
   ],
   'tenant-admin-specs': tenantAdminSpecificationFiles,
+  'tenant-admin-all': [...tenantAdminSpecificationFiles, ...tenantAdminImplementationFiles],
   'tenant-admin-baseline': ['test-harness/assurance/tests/tenant-admin-baseline.impl.test.ts'],
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',

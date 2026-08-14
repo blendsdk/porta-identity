@@ -43,6 +43,23 @@ function mutationAction(action: string): boolean {
   return action.startsWith('update-') || action.startsWith('revoke-');
 }
 
+/** Derives non-vacuous authentication, handler, and decision-boundary evidence. */
+export function controlPlaneReachability(
+  actor: LiveAdminActorId,
+  result: ControlPlaneBoundaryObservation['result'],
+): Pick<
+  ControlPlaneBoundaryObservation,
+  'adminAuthenticationAccepted' | 'handlerReached' | 'decisionBoundary'
+> {
+  const adminAuthenticationAccepted = actor !== 'unauthenticated' && result !== 'unauthenticated';
+  return Object.freeze({
+    adminAuthenticationAccepted,
+    handlerReached: adminAuthenticationAccepted,
+    decisionBoundary:
+      result === 'forbidden' ? 'permission' : result === 'not-found' ? 'resource' : 'handler',
+  });
+}
+
 /** Executes the exact route and method represented by one catalog case. */
 async function executeCatalogCase(
   context: LiveTenantAdminContext,
@@ -74,16 +91,12 @@ async function observeCase(
   const targetChanged = before.digest !== after.digest;
   const targetDisclosed =
     observedResult !== 'allowed' && context.responseDisclosedTarget(response, target);
-  const authenticated = entry.actor !== 'unauthenticated' && observedResult !== 'unauthenticated';
-  const permissionDenied = authenticated && observedResult === 'forbidden';
-  const resourceDenied = authenticated && observedResult === 'not-found';
+  const reachability = controlPlaneReachability(actorId(entry.actor), observedResult);
   const observation: ControlPlaneBoundaryObservation = Object.freeze({
     caseId: entry.id,
     result: observedResult,
     transport: 'raw-http',
-    adminAuthenticationAccepted: authenticated,
-    handlerReached: authenticated,
-    decisionBoundary: permissionDenied ? 'permission' : resourceDenied ? 'resource' : 'handler',
+    ...reachability,
     prohibitedSideEffects: context.observedSideEffects(
       controlPlaneAuthorityProfile.threatProfile.prohibitedSideEffects,
       {
@@ -139,13 +152,15 @@ export async function observeLiveControlPlaneVariation(
   const after = await context.targetFingerprint(target);
   const result = authorizationResult(response.status);
   const targetChanged = before.digest !== after.digest;
+  const reachability = controlPlaneReachability(
+    request.variation === 'permission' ? 'admin-limited' : 'admin-full',
+    result,
+  );
   return Object.freeze({
     caseId: `${control.id}-${request.variation}`,
     result,
     transport: 'raw-http',
-    adminAuthenticationAccepted: result !== 'unauthenticated',
-    handlerReached: result !== 'unauthenticated',
-    decisionBoundary: request.variation === 'permission' ? 'permission' : 'resource',
+    ...reachability,
     prohibitedSideEffects: context.observedSideEffects(
       controlPlaneAuthorityProfile.threatProfile.prohibitedSideEffects,
       {

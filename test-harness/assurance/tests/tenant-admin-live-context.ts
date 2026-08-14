@@ -61,6 +61,31 @@ export function authorizationResult(status: number): AuthorizationResult {
   throw new Error(`unsupported authorization response status: ${status}`);
 }
 
+/** Maps independently observed facts onto every declared prohibited-side-effect key. */
+export function mapObservedSideEffects(
+  keys: readonly string[],
+  facts: {
+    readonly targetChanged: boolean;
+    readonly targetDisclosed: boolean;
+    readonly unauthorizedAccepted: boolean;
+  },
+): Readonly<Record<string, boolean>> {
+  return Object.freeze(
+    Object.fromEntries(
+      keys.map((key) => {
+        const observed = key.includes('disclosure')
+          ? facts.targetDisclosed
+          : key.includes('mutation')
+            ? facts.targetChanged
+            : key.includes('token-acceptance') || key.includes('cache-reuse')
+              ? facts.unauthorizedAccepted
+              : false;
+        return [key, observed];
+      }),
+    ),
+  );
+}
+
 /**
  * Live retained-harness context for raw administrative and OIDC observations.
  *
@@ -252,20 +277,7 @@ export class LiveTenantAdminContext {
       readonly unauthorizedAccepted: boolean;
     },
   ): Readonly<Record<string, boolean>> {
-    return Object.freeze(
-      Object.fromEntries(
-        keys.map((key) => {
-          const observed = key.includes('disclosure')
-            ? facts.targetDisclosed
-            : key.includes('mutation')
-              ? facts.targetChanged
-              : key.includes('token-acceptance') || key.includes('cache-reuse')
-                ? facts.unauthorizedAccepted
-                : false;
-          return [key, observed];
-        }),
-      ),
-    );
+    return mapObservedSideEffects(keys, facts);
   }
 
   /** Returns the concrete target identifier only for in-memory disclosure comparison. */

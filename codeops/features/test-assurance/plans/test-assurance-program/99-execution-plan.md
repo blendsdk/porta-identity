@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 18:48
-> **Progress**: 50/94 tasks (53%)
+> **Last Updated**: 2026-08-14 19:01
+> **Progress**: 51/94 tasks (54%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -516,8 +516,13 @@ without waiting for a later phase or touching developer credentials. See
       no protected-value/path leakage, no runtime files, and no assurance-owned Docker resources.
       `yarn verify` passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅
       (completed: 2026-08-14 18:48)
-- [ ] 6.8 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
-      tests after the black-box specs are green.
+- [x] 6.8 Add matrix-generation, handler-reachability, cache-warm, and target-state implementation
+      tests after the black-box specs are green. The 22-case `tenant-admin-all` selector keeps the
+      immutable oracle green while checking exact controlled matrices, closed status classes,
+      authenticated handler/permission/resource boundaries, independent target digests and side
+      effects, and warm-before-mutation plus existing/fresh/restarted retry wiring. `yarn verify`
+      passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅
+      (completed: 2026-08-14 19:01)
 - [ ] 6.9 Add and execute tenant-scope, issuer/cache, stale-auth, membership, and permission fault
       tuples; require each mapped sentinel signature to kill its tuple.
 - [ ] 6.10 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
