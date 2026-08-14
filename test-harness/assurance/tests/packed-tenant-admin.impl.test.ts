@@ -105,6 +105,16 @@ test('should pass the runtime token through the public SDK authentication option
   assert.doesNotMatch(probe, /createTokenAuth\(input\.token\)/u);
 });
 
+test('should resolve actor tokens from the current fixture generation instead of caching them', () => {
+  const driver = readFileSync(
+    resolve(process.cwd(), 'test-harness/assurance/compat/tenant-admin-live.ts'),
+    'utf8',
+  );
+  assert.match(driver, /private tokenFor\(actor: 'full' \| 'unprivileged'\)/u);
+  assert.match(driver, /readProtectedRuntimeCredential\(/u);
+  assert.doesNotMatch(driver, /private readonly (fullToken|unprivilegedToken)/u);
+});
+
 test('should execute every packed tenant/admin requirement exactly once in frozen order', async () => {
   const executed: string[] = [];
   const independentlyObserved: string[] = [];

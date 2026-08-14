@@ -66,8 +66,6 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
   private readonly endpoints = activeEndpoints();
   private readonly apiPromise: Promise<APIRequestContext>;
   private entities: ReadonlyMap<string, string>;
-  private readonly fullToken: string;
-  private readonly unprivilegedToken: string;
 
   /** Creates a driver after resolving only owner-scoped fixture identities and credentials. */
   public constructor(
@@ -77,14 +75,6 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
     const runtime = readPublicRuntimeFixtureManifest(this.endpoints.fixtureManifestPath);
     if (runtime.runId !== this.endpoints.runId) throw new Error('packed fixture run is not active');
     this.entities = new Map(runtime.entities.map((entry) => [entry.alias, entry.id]));
-    this.fullToken = readProtectedRuntimeCredential(
-      this.endpoints.credentialManifestPath,
-      'credential:super-admin:token:full',
-    );
-    this.unprivilegedToken = readProtectedRuntimeCredential(
-      this.endpoints.credentialManifestPath,
-      'credential:super-admin:token:unprivileged',
-    );
     this.apiPromise = request.newContext({ ignoreHTTPSErrors: true });
   }
 
@@ -102,7 +92,7 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
     const api = await this.apiPromise;
     const response = await api.get(
       `${this.endpoints.porta}/api/admin/organizations/${this.entity('alpha')}/users/${this.entity('alpha-user-active')}`,
-      { headers: { Authorization: `Bearer ${this.fullToken}` } },
+      { headers: { Authorization: `Bearer ${this.tokenFor('full')}` } },
     );
     if (response.status() !== 200) throw new Error('packed target observation failed');
     const data = responseEnvelopeSchema.parse(await response.json()).data;
@@ -138,13 +128,23 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
     return value;
   }
 
+  /** Reads the current reset generation's opaque actor token without caching it across resets. */
+  private tokenFor(actor: 'full' | 'unprivileged'): string {
+    return readProtectedRuntimeCredential(
+      this.endpoints.credentialManifestPath,
+      actor === 'full'
+        ? 'credential:super-admin:token:full'
+        : 'credential:super-admin:token:unprivileged',
+    );
+  }
+
   /** Executes one SDK operation through the installed archive and validates bounded output. */
   private async executeSdk(
     requirement: PackedTenantAdminJourneyRequirement,
   ): Promise<PackedTenantAdminClientObservation> {
     const inputPath = resolve(this.consumer.consumerPath, `.tenant-admin-${randomUUID()}.json`);
     const probePath = resolve(this.consumer.consumerPath, `.tenant-admin-${randomUUID()}.mjs`);
-    const token = requirement.actor === 'full' ? this.fullToken : this.unprivilegedToken;
+    const token = this.tokenFor(requirement.actor);
     copyFileSync(
       resolve(process.cwd(), 'test-harness/consumers/tenant-admin-sdk-probe.mjs'),
       probePath,
@@ -199,7 +199,7 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
     chmodSync(home, 0o700);
     mkdirSync(credentialDirectory, { mode: 0o700 });
     const temporaryHomeMode = statSync(home).mode & 0o777;
-    const token = requirement.actor === 'full' ? this.fullToken : this.unprivilegedToken;
+    const token = this.tokenFor(requirement.actor);
     writeFileSync(
       resolve(credentialDirectory, 'credentials.json'),
       JSON.stringify({
@@ -294,6 +294,8 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
   ): PackedTenantAdminClientObservation {
     const bravo = this.entity('bravo-user-active');
     const observedResult = packedAuthorizationResult(status);
+    const fullToken = this.tokenFor('full');
+    const unprivilegedToken = this.tokenFor('unprivileged');
     if (
       observedResult === 'allowed' &&
       requirement.client === 'sdk' &&
@@ -310,7 +312,7 @@ export class PackedTenantAdminLiveDriver implements PackedTenantAdminJourneyDriv
       clientTargetId: 'alpha-user-active',
       foreignTenantIdsObserved:
         targetIds.includes(bravo) || output.includes(bravo) ? ['bravo-user-active'] : [],
-      outputRedacted: !output.includes(this.fullToken) && !output.includes(this.unprivilegedToken),
+      outputRedacted: !output.includes(fullToken) && !output.includes(unprivilegedToken),
     };
   }
 }
