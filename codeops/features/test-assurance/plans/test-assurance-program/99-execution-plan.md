@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 17:52
+> **Last Updated**: 2026-08-14 18:04
 > **Progress**: 49/94 tasks (52%)
 > **CodeOps Artifact Schema**: 1
 
@@ -497,7 +497,10 @@ without waiting for a later phase or touching developer credentials. See
       and `yarn verify` passed 227 server files / 3,359 tests plus all SDK and CLI verification.
       The first clean 6.7 run exposed and safely rejected a doubled SDK administrative path. The
       SDK origin contract was corrected, the focused regression selector passed 11/11, and the
-      full `yarn verify` gate passed again. ✅ (completed: 2026-08-14 17:52)
+      full `yarn verify` gate passed again. The next clean attempt proved the probe passed the token
+      outside the SDK's required options object; that contract now has its own regression case.
+      The focused selector passed 12/12 and `yarn verify` passed again. ✅
+      (completed: 2026-08-14 18:04)
 - [ ] 6.7 From the clean pushed capability revision, run the packed SDK/CLI tenant/admin adjuncts
       against one owned stack, validate server/archive/fixture identity and residue, then admit the
       packed evidence. The tenant/admin slice cannot close before this checkpoint is green.

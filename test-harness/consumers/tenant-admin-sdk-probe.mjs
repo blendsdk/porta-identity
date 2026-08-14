@@ -7,7 +7,7 @@ const input = JSON.parse(await readFile(process.argv[2], 'utf8'));
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const transport = createNodeTransport({
   baseUrl: input.server,
-  auth: createTokenAuth(input.token),
+  auth: createTokenAuth({ token: input.token }),
 });
 const client = createPortaClient({ transport });
 

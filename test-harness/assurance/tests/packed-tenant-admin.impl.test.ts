@@ -96,6 +96,15 @@ test('should pass the Porta origin to the SDK transport without duplicating its 
   assert.doesNotMatch(probe, /input\.server[^\n]*api\/admin/u);
 });
 
+test('should pass the runtime token through the public SDK authentication options object', () => {
+  const probe = readFileSync(
+    resolve(process.cwd(), 'test-harness/consumers/tenant-admin-sdk-probe.mjs'),
+    'utf8',
+  );
+  assert.match(probe, /createTokenAuth\(\{\s*token:\s*input\.token\s*\}\)/u);
+  assert.doesNotMatch(probe, /createTokenAuth\(input\.token\)/u);
+});
+
 test('should execute every packed tenant/admin requirement exactly once in frozen order', async () => {
   const executed: string[] = [];
   const independentlyObserved: string[] = [];
