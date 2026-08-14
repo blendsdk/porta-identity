@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 18:21
+> **Last Updated**: 2026-08-14 18:36
 > **Progress**: 49/94 tasks (52%)
 > **CodeOps Artifact Schema**: 1
 
@@ -502,8 +502,11 @@ without waiting for a later phase or touching developer credentials. See
       The focused selector passed 12/12 and `yarn verify` passed again. Reopened after a complete
       live diagnostic proved reset-generation tokens were cached across fixture recreation.
       Tokens are now resolved from the current owner-scoped credential manifest for every
-      operation. The focused selector passed 13/13 and `yarn verify` passed again. ✅
-      (completed: 2026-08-14 18:21)
+      operation. The focused selector passed 13/13 and `yarn verify` passed again. Reopened after
+      full live execution reached evidence validation and exposed an archive-digest format mismatch
+      with the established packed-consumer contract. Archive evidence now preserves that exact
+      canonical format; the focused selector passed 13/13 and `yarn verify` passed again. ✅
+      (completed: 2026-08-14 18:36)
 - [ ] 6.7 From the clean pushed capability revision, run the packed SDK/CLI tenant/admin adjuncts
       against one owned stack, validate server/archive/fixture identity and residue, then admit the
       packed evidence. The tenant/admin slice cannot close before this checkpoint is green.

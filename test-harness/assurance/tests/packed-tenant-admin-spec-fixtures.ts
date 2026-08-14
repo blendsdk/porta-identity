@@ -8,8 +8,8 @@ export function completePackedTenantAdminEvidence(): unknown {
     serverImageDigest: `sha256:${'b'.repeat(64)}`,
     fixtureIdentity: `sha256:${'c'.repeat(64)}`,
     archives: {
-      sdk: `sha256:${'d'.repeat(64)}`,
-      cli: `sha256:${'e'.repeat(64)}`,
+      sdk: 'd'.repeat(64),
+      cli: 'e'.repeat(64),
     },
     resolution: {
       sdkDistOnly: true,

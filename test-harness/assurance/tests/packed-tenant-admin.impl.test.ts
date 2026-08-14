@@ -13,7 +13,7 @@ import {
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
 import type { PackedCliSdkResolution } from '../compat/resolution.js';
 
-const sdkContentDigest = `sha256:${'f'.repeat(64)}`;
+const sdkContentDigest = 'f'.repeat(64);
 
 /** Creates the minimum typed prepared consumer needed for provenance binding tests. */
 function preparedConsumer(): PreparedPackedConsumer {
@@ -31,15 +31,15 @@ function preparedConsumer(): PreparedPackedConsumer {
       {
         name: '@portaidentity/sdk',
         version: '1.6.2',
-        sha256: `sha256:${'d'.repeat(64)}`,
+        sha256: 'd'.repeat(64),
         contentSha256: sdkContentDigest,
         archivePath: '/tmp/sdk.tgz',
       },
       {
         name: '@portaidentity/cli',
         version: '1.6.2',
-        sha256: `sha256:${'e'.repeat(64)}`,
-        contentSha256: `sha256:${'1'.repeat(64)}`,
+        sha256: 'e'.repeat(64),
+        contentSha256: '1'.repeat(64),
         archivePath: '/tmp/cli.tgz',
       },
     ],
@@ -67,8 +67,8 @@ const resolution: PackedCliSdkResolution = {
 
 test('should derive provenance from the prepared archives and observed resolution', () => {
   const context = createPackedTenantAdminRunContext(preparedConsumer(), surfaces, resolution);
-  assert.equal(context.archives.sdk, `sha256:${'d'.repeat(64)}`);
-  assert.equal(context.archives.cli, `sha256:${'e'.repeat(64)}`);
+  assert.equal(context.archives.sdk, 'd'.repeat(64));
+  assert.equal(context.archives.cli, 'e'.repeat(64));
   assert.deepEqual(context.resolution, {
     sdkDistOnly: true,
     cliDistOnly: true,
@@ -81,7 +81,7 @@ test('should reject a CLI SDK resolution that differs from the prepared local ar
     () =>
       createPackedTenantAdminRunContext(preparedConsumer(), surfaces, {
         ...resolution,
-        resolvedContentSha256: `sha256:${'2'.repeat(64)}`,
+        resolvedContentSha256: '2'.repeat(64),
       }),
     /prepared SDK archive/i,
   );
@@ -165,7 +165,7 @@ test('should execute every packed tenant/admin requirement exactly once in froze
       sourceRevision: 'a'.repeat(40),
       serverImageDigest: `sha256:${'b'.repeat(64)}`,
       fixtureIdentity: `sha256:${'c'.repeat(64)}`,
-      archives: { sdk: `sha256:${'d'.repeat(64)}`, cli: `sha256:${'e'.repeat(64)}` },
+      archives: { sdk: 'd'.repeat(64), cli: 'e'.repeat(64) },
       resolution: { sdkDistOnly: true, cliDistOnly: true, cliUsesPackedSdk: true },
       primaryTreeUnchanged: true,
       ownedResidue: [],
@@ -230,7 +230,7 @@ test('should reset after an update executor fails before independent observation
           sourceRevision: 'a'.repeat(40),
           serverImageDigest: `sha256:${'b'.repeat(64)}`,
           fixtureIdentity: `sha256:${'c'.repeat(64)}`,
-          archives: { sdk: `sha256:${'d'.repeat(64)}`, cli: `sha256:${'e'.repeat(64)}` },
+          archives: { sdk: 'd'.repeat(64), cli: 'e'.repeat(64) },
           resolution: { sdkDistOnly: true, cliDistOnly: true, cliUsesPackedSdk: true },
           primaryTreeUnchanged: true,
           ownedResidue: [],

@@ -155,6 +155,7 @@ export interface PackedTenantAdminJourneyRequirement {
 }
 
 const digestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/u);
+const archiveDigestSchema = z.string().regex(/^[a-f0-9]{64}$/u);
 const revisionSchema = z.string().regex(/^[a-f0-9]{40}$/u);
 const cliObservationSchema = z
   .object({
@@ -185,7 +186,7 @@ const evidenceSchema = z
     sourceRevision: revisionSchema,
     serverImageDigest: digestSchema,
     fixtureIdentity: digestSchema,
-    archives: z.object({ sdk: digestSchema, cli: digestSchema }).strict(),
+    archives: z.object({ sdk: archiveDigestSchema, cli: archiveDigestSchema }).strict(),
     resolution: z
       .object({
         sdkDistOnly: z.boolean(),
