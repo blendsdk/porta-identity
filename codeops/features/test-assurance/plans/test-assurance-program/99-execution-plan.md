@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Ready for Execution
-> **Last Updated**: 2026-08-12 16:33
-> **Progress**: 43/92 tasks (47%)
+> **Last Updated**: 2026-08-13 18:03
+> **Progress**: 44/92 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -440,9 +440,19 @@ without waiting for a later phase or touching developer credentials. See
 
 > **Scope**: tenant/admin slice profiles, claims, sentinels, applicable packed-client journeys
 > **References**: ST-28–ST-32/ST-63, RD-04/RD-05
+> **Phase baseline tree**: `6449a3afa0233800d9ff9b28f141b378fee93b72`
+> **Expected modification set**: `test-harness/assurance/`, harness-owned specs/fixtures/scripts,
+> Phase 6 CodeOps evidence, and opted-in technical documentation
+> **Scope mode**: strict — tenant/admin assurance only; no later OIDC-lifecycle slice, product, CI,
+> publishing/deployment, or compatibility-policy changes
 
-- [ ] 6.1 [spec-author] Catalog tenant/OIDC and control-plane admin surfaces into separate typed
-      actor/action/resource/result and threat/log/recovery profiles.
+- [x] 6.1 [spec-author] Catalog tenant/OIDC and control-plane admin surfaces into separate typed
+      actor/action/resource/result and threat/log/recovery profiles. The immutable catalogs keep
+      ordinary-tenant OIDC authority separate from super-admin-organization control-plane
+      authority, bind exact fixture roles and permissions, require same-target authorized controls,
+      and reject incomplete matrices. Clean-snapshot `yarn assurance:validate`, seven focused
+      specification cases, static checks, 68 structure tests, and `yarn verify` all passed. ✅
+      (completed: 2026-08-13 18:03)
 - [ ] 6.2 [spec-author] Write ST-28–ST-32: authorized handler controls, then vary target ID/slug/org,
       permissions, issuer/cache context, and super-admin exceptions with independent non-mutation.
 - [ ] 6.3 Add stale-state cases that warm caches then remove roles, deactivate/suspend actors, and
