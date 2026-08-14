@@ -9,10 +9,23 @@ import { readPublicRuntimeFixtureManifest } from '../../fixtures/fixture-runtime
 import { cleanupPackedConsumer, loadPackedSurfaces, preparePackedConsumer } from './consumer.js';
 import { runPackedCliWithIsolatedHome, type PackedCliOutcome } from './credential-home.js';
 import { verifyPackedCliSdkResolution } from './resolution.js';
+import {
+  createPackedTenantAdminLiveDriver,
+  type PackedTenantAdminLiveDriver,
+} from './tenant-admin-live.js';
+import { createPackedTenantAdminRunContext, runPackedTenantAdminAdjunct } from './tenant-admin.js';
 import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
 
 /** Selectors currently implemented by the packed-client foundation command. */
-export const packedCompatibilitySelectors = ['ST-69', 'ST-72', 'ST-73', 'compatibility'] as const;
+export const packedCompatibilitySelectors = [
+  'ST-69',
+  'ST-70',
+  'ST-71',
+  'ST-72',
+  'ST-73',
+  'tenant-admin',
+  'compatibility',
+] as const;
 
 /** Selector accepted by the packed-client foundation command. */
 export type PackedCompatibilitySelector = (typeof packedCompatibilitySelectors)[number];
@@ -140,6 +153,7 @@ export async function runPackedCompatibilityFoundation(
   let exitCode: PackedCompatibilityResult['exitCode'] = 0;
   let stage: 'preparation' | 'surfaces' | 'credentials' | 'cleanup' | 'provenance' = 'preparation';
   let recoveryCommand: string | undefined;
+  let tenantAdminDriver: PackedTenantAdminLiveDriver | undefined;
   try {
     consumer = await preparePackedConsumer(canonicalRoot, {
       serverImageDigest: imageDigest,
@@ -148,12 +162,7 @@ export async function runPackedCompatibilityFoundation(
     stage = 'surfaces';
     const surfaces = await loadPackedSurfaces(consumer);
     const resolution = await verifyPackedCliSdkResolution(consumer);
-    stage = 'credentials';
-    const credentialResults = [];
-    for (const outcome of packedCliOutcomes) {
-      credentialResults.push(await runPackedCliWithIsolatedHome(consumer, outcome));
-    }
-    evidence = {
+    const commonEvidence = {
       version: 1,
       status: 'passed',
       selector,
@@ -172,21 +181,47 @@ export async function runPackedCompatibilityFoundation(
       distOnly: surfaces.distOnly,
       sdkResolutionMatchesArchive:
         resolution.resolvedContentSha256 === resolution.packedContentSha256,
-      credentialOutcomes: credentialResults.map((result) => ({
-        outcome: result.outcome,
-        temporaryHomeMode: result.temporaryHomeMode,
-        temporaryResourcesRemoved: result.temporaryResourcesRemoved,
-        realCredentialUnchanged:
-          result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
-      })),
       primaryTreeUnchanged: true,
       ownedConsumerResidue: [],
     };
+    if (selector === 'tenant-admin') {
+      stage = 'credentials';
+      tenantAdminDriver = createPackedTenantAdminLiveDriver(consumer, surfaces);
+      const tenantAdmin = await runPackedTenantAdminAdjunct(
+        createPackedTenantAdminRunContext(consumer, surfaces, resolution),
+        tenantAdminDriver,
+      );
+      evidence = { ...commonEvidence, tenantAdmin };
+    } else {
+      stage = 'credentials';
+      const credentialResults = [];
+      for (const outcome of packedCliOutcomes) {
+        credentialResults.push(await runPackedCliWithIsolatedHome(consumer, outcome));
+      }
+      evidence = {
+        ...commonEvidence,
+        credentialOutcomes: credentialResults.map((result) => ({
+          outcome: result.outcome,
+          temporaryHomeMode: result.temporaryHomeMode,
+          temporaryResourcesRemoved: result.temporaryResourcesRemoved,
+          realCredentialUnchanged:
+            result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
+        })),
+      };
+    }
   } catch (error) {
     exitCode = error instanceof PackedCompatibilityExecutionError ? error.exitCode : 30;
     recoveryCommand =
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
+    if (tenantAdminDriver !== undefined) {
+      try {
+        await tenantAdminDriver.dispose();
+      } catch {
+        exitCode = 60;
+        stage = 'cleanup';
+      }
+    }
     if (consumer !== undefined) {
       const cleanup = cleanupPackedConsumer(canonicalRoot, consumer);
       if (!cleanup.removed) {

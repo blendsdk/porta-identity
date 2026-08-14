@@ -201,7 +201,7 @@ export function registerEvidenceAndCommandCases(
         /clean baseline.*registered tuple.*Docker.*disposable worktree/i,
       ],
       'assurance:compat': [
-        '--select <ST-69|ST-70|ST-71|ST-72|ST-73|compatibility>',
+        '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|compatibility>',
         '1800s',
         'compat/<selector>/',
         /SDK.*CLI.*archives.*clean consumer.*temporary HOME.*healthy harness/i,
