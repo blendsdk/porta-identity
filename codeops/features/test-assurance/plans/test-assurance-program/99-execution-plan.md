@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 13:44
+> **Last Updated**: 2026-08-15 14:02
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -558,7 +558,13 @@ without waiting for a later phase or touching developer credentials. See
       compilation. The build-safe replacements explicitly consume only values made unused by the
       isolated transformation, and the focused selector now prepares and builds all seven real
       variants. It passed 18/18; `yarn verify` again passed 227 server files / 3,359 tests plus all
-      SDK and CLI verification. ✅ (completed: 2026-08-15 13:44)
+      SDK and CLI verification. Reopened when the first build-valid live check exposed a one-sided
+      browser observer that could see login rejection but not a real consent or registered-callback
+      continuation. The closed observer now accepts only visible login rejection, real consent, or
+      a registered callback carrying a code; ambiguous states remain invalid. Tenant/admin passed
+      19/19, control sensitivity passed 18/18, assurance typecheck passed, and `yarn verify` again
+      passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅ (completed:
+      2026-08-15 14:02)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue.

@@ -165,16 +165,42 @@ async function tenantTarget(context: LiveTenantAdminContext, resource: TenantRes
   return context.adminTarget(`admin-target-${resource.owner}-${suffix}`);
 }
 
+/** Browser states that independently distinguish rejection from authenticated continuation. */
+export interface ForeignCredentialState {
+  /** The login form became visible again after credential submission. */
+  readonly loginVisible: boolean;
+  /** Porta displayed its real consent form after accepting the credentials. */
+  readonly consentVisible: boolean;
+  /** The registered callback received an authorization code. */
+  readonly callbackHasCode: boolean;
+}
+
+/** Classifies only unambiguous public OIDC states after a foreign credential submission. */
+export function classifyForeignCredentialState(
+  state: ForeignCredentialState,
+): 'allowed' | 'not-found' {
+  const authenticatedContinuation = state.consentVisible || state.callbackHasCode;
+  if (state.loginVisible === authenticatedContinuation) {
+    throw new Error('foreign credential outcome is not independently observable');
+  }
+  return authenticatedContinuation ? 'allowed' : 'not-found';
+}
+
 /** Executes a foreign credential attempt against the target tenant's real login interaction. */
 async function foreignCredentialAttempt(
   context: LiveTenantAdminContext,
   targetTenant: 'alpha' | 'bravo',
   actorTenant: 'alpha' | 'bravo',
-): Promise<{ readonly result: 'not-found'; readonly disclosed: boolean }> {
+): Promise<{ readonly result: 'allowed' | 'not-found'; readonly disclosed: boolean }> {
   const actor = context.manifest[actorTenant].users.find(
     (candidate) => candidate.state === 'active' && !candidate.twoFactorEnabled,
   );
   if (actor === undefined) throw new Error('live foreign principal fixture is absent');
+  const client = context.manifest[targetTenant].clients.find(
+    (candidate) => candidate.validity === 'valid' && candidate.kind === 'public',
+  );
+  const redirectUri = client?.redirectUris[0];
+  if (redirectUri === undefined) throw new Error('live foreign credential redirect is absent');
   const browser = await chromium.launch({ headless: true });
   try {
     const browserContext = await browser.newContext({ ignoreHTTPSErrors: true });
@@ -185,10 +211,31 @@ async function foreignCredentialAttempt(
     await page.locator('input#email').fill(`${actor.id}@test-harness.local`);
     await page.locator('input#password').fill(context.credential(actor.passwordCredentialRef));
     await page.locator('form[action$="/login"] button[type="submit"]').click();
-    await page.locator('input#email').waitFor({ state: 'visible' });
+    const consent = page.locator(
+      'button[type="submit"][name="consent"], button:has-text("Allow"), button:has-text("Authorize")',
+    );
+    const state = await Promise.any([
+      page
+        .locator('input#email')
+        .waitFor({ state: 'visible', timeout: 15_000 })
+        .then(() => ({ loginVisible: true, consentVisible: false, callbackHasCode: false })),
+      consent
+        .waitFor({ state: 'visible', timeout: 15_000 })
+        .then(() => ({ loginVisible: false, consentVisible: true, callbackHasCode: false })),
+      page
+        .waitForURL((url) => url.origin === new URL(redirectUri).origin, { timeout: 15_000 })
+        .then(() => ({
+          loginVisible: false,
+          consentVisible: false,
+          callbackHasCode: new URL(page.url()).searchParams.get('code') !== null,
+        })),
+    ]);
     const body = await page.locator('body').innerText();
     const targetEmail = `${targetTenant}-user-active@test-harness.local`;
-    return Object.freeze({ result: 'not-found', disclosed: body.includes(targetEmail) });
+    return Object.freeze({
+      result: classifyForeignCredentialState(state),
+      disclosed: body.includes(targetEmail),
+    });
   } finally {
     await browser.close();
   }

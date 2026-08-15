@@ -13,6 +13,7 @@ import {
   mapObservedSideEffects,
 } from './tenant-admin-live-context.js';
 import { controlPlaneReachability } from './tenant-admin-live-control.js';
+import { classifyForeignCredentialState } from './tenant-admin-live-oidc.js';
 
 test('should generate a unique controlled matrix for every compatible authority case', () => {
   for (const profile of [tenantOidcAuthorityProfile, controlPlaneAuthorityProfile]) {
@@ -53,6 +54,51 @@ test('should classify exact public statuses and reject ambiguous handler outcome
   assert.equal(authorizationResult(404), 'not-found');
   assert.throws(() => authorizationResult(302), /unsupported authorization response status/u);
   assert.throws(() => authorizationResult(500), /unsupported authorization response status/u);
+});
+
+test('should classify only an observed login rejection or authenticated continuation', () => {
+  assert.equal(
+    classifyForeignCredentialState({
+      loginVisible: true,
+      consentVisible: false,
+      callbackHasCode: false,
+    }),
+    'not-found',
+  );
+  assert.equal(
+    classifyForeignCredentialState({
+      loginVisible: false,
+      consentVisible: true,
+      callbackHasCode: false,
+    }),
+    'allowed',
+  );
+  assert.equal(
+    classifyForeignCredentialState({
+      loginVisible: false,
+      consentVisible: false,
+      callbackHasCode: true,
+    }),
+    'allowed',
+  );
+  assert.throws(
+    () =>
+      classifyForeignCredentialState({
+        loginVisible: false,
+        consentVisible: false,
+        callbackHasCode: false,
+      }),
+    /credential outcome is not independently observable/u,
+  );
+  assert.throws(
+    () =>
+      classifyForeignCredentialState({
+        loginVisible: true,
+        consentVisible: true,
+        callbackHasCode: false,
+      }),
+    /credential outcome is not independently observable/u,
+  );
 });
 
 test('should distinguish handler permission and resource boundaries after authentication', () => {

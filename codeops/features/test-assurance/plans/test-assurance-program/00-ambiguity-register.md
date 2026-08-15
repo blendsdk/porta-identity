@@ -1046,3 +1046,27 @@ failed Docker campaigns. **Confidence**: High. **Hardening**: the exact compiler
 reproduced in a disposable worktree. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: a registered transformation cannot preserve both
 its intended missing-control semantics and the ordinary server build contract.
+
+### AR-63 — Observable foreign-credential outcomes
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test-observer mechanics inside
+the approved tenant-read control check; no Porta behavior, tenant policy, or acceptance criterion
+changes. **Objective**: distinguish a real tenant-scoped login rejection from authenticated
+cross-tenant continuation without treating browser timing or an unrelated page as evidence.
+**Observed behavior**: the build-valid tenant-read campaign reached its designated check. After
+the foreign credential submission, the existing observer waited only for the login form to become
+visible again. Under the isolated source variant, Porta continued beyond login, so that one-sided
+wait timed out and the runner correctly classified the result as `experiment-invalid` rather than
+`detected`. **Decision**: observe a closed three-state browser boundary: the login form becoming
+visible is `not-found`; a real consent form or the registered callback carrying an authorization
+code is `allowed`; any other state remains invalid. Add a pure classification regression and race
+only those exact DOM/URL observations. **Rejected alternatives**: treating any navigation or
+missing login form as acceptance creates false detections; accepting the timeout as detection
+weakens the exact-signature rule; replacing the public OIDC boundary with a database query would no
+longer test the exposed behavior. **Strongest counterargument**: consent presence alone precedes
+final code issuance, but it is already proof that the foreign credentials authenticated across the
+tenant boundary; callback-with-code remains the second independently valid acceptance state.
+**Confidence**: High. **Hardening**: a disposable live stack reproduced the precise Playwright
+timeout after successful build/start/fixture setup, with full cleanup afterward. **Policy
+version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: the public
+interaction changes its stable login, consent, or registered-callback contract.
