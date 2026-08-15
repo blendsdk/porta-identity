@@ -91,6 +91,10 @@ test('registers one exact source target and designated signature for every requi
     assert.match(definition.targetPath, /^packages\/server\/src\/[a-z0-9./-]+\.ts$/u);
     assert.ok(definition.replacements.length > 0);
   }
+  assert.equal(
+    tenantAdminControlCheck('organization-cache-scope').targetPath,
+    'packages/server/src/middleware/tenant-resolver.ts',
+  );
 });
 
 test('applies every reviewed transformation to only its exact copied target', () => {

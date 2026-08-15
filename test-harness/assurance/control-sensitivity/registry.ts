@@ -57,16 +57,12 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
       id: 'organization-cache-scope',
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-30',
-      targetPath: 'packages/server/src/organizations/cache.ts',
-      originalSha256: 'sha256:7850cff1c65fea7266c46a11a7b59e4426861cab607627d2bf2e1b6d7b3fa9d3',
+      targetPath: 'packages/server/src/middleware/tenant-resolver.ts',
+      originalSha256: 'sha256:e5f8e5ddae538490b39b295bcf515c7b71f30377c0ce9a7ef01705e72054c91c',
       replacements: [
         {
-          before: 'const data = await redis.get(`${SLUG_PREFIX}${slug}`);',
-          after: 'const data = await redis.get(`${SLUG_PREFIX}shared-control-check`);',
-        },
-        {
-          before: "await redis.set(`${SLUG_PREFIX}${org.slug}`, data, 'EX', CACHE_TTL);",
-          after: "await redis.set(`${SLUG_PREFIX}shared-control-check`, data, 'EX', CACHE_TTL);",
+          before: 'let org: Organization | null = await getCachedOrganizationBySlug(orgSlug);',
+          after: "let org: Organization | null = await getCachedOrganizationBySlug('alpha');",
         },
       ],
       subSentinel: 'ST-30_ORGANIZATION_CACHE_SEPARATION',

@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 16:21
+> **Last Updated**: 2026-08-15 16:39
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -583,7 +583,12 @@ without waiting for a later phase or touching developer credentials. See
       curated-fault command no longer dispatches tenant/admin checks. Focused verification passed
       18 control-check, 25 tenant/admin, 10 command-contract, and 68 structure cases; `yarn verify`
       passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
-      ✅ (completed: 2026-08-15 16:21)
+      Reopened when the first neutral cache check remained `not-detected`: the cache-module variant
+      changed writer and reader together without producing a discriminating public result. The
+      corrected one-file negative control changes the tenant resolver's cache lookup to alpha while
+      the public observer authorizes bravo's valid client. The 18 focused checks, typecheck, lint,
+      formatting, and `yarn verify` passed the same 68 structure, 227 server / 3,359 test, 31 SDK /
+      404 test, and 29 CLI / 355 test matrix. ✅ (completed: 2026-08-15 16:39)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue. Historical results that used the superseded command or signature vocabulary

@@ -1160,3 +1160,26 @@ provider validates bravo's registered client against the resolved organization. 
 version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: authorization
 stops binding its registered client to the resolved organization or no longer reaches a stable
 interaction URL after successful tenant resolution.
+
+### AR-68 — Cache lookup negative control at tenant resolution
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: exact local source-variant
+selection inside the approved cache-scope check; no product behavior, public contract, or security
+policy changes. **Objective**: ensure the public authorization observer actually depends on the
+tenant-scoped cache lookup being checked. **Observed behavior**: the AR-67 observer completed
+cleanly against the shared-key cache-module variant but remained `not-detected`. The cache module
+variant changed both writer and reader together, leaving the public path insufficiently
+discriminating in the integrated stack. **Decision**: move this negative control to the cache
+consumer in `tenant-resolver.ts`: after alpha is cached through the existing public refresh, the
+isolated variant resolves bravo from alpha's cache key. The unchanged registered bravo client must
+then receive exact not-found from the existing client-to-resolved-organization binding. The variant
+still changes one reviewed file and exposes no production hook. **Rejected alternatives**: another
+opaque-token probe has an independent consumer rejection; Redis inspection is not black-box;
+dropping the check leaves the named cache-scope claim without sensitivity evidence. **Strongest
+counterargument**: a fixed alpha lookup is deliberately direct, but that is appropriate for a
+negative control whose sole purpose is to prove the sentinel observes loss of request-scoped cache
+selection. **Confidence**: High. **Hardening**: the middleware order shows tenant resolution reads
+the cache before the existing client-tenant binding compares the resolved organization ID.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: tenant
+resolution stops using the slug cache or client binding no longer compares against its resolved
+organization.
