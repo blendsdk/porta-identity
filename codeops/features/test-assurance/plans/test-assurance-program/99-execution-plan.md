@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 16:58
-> **Progress**: 53/96 tasks (55%)
+> **Last Updated**: 2026-08-15 17:14
+> **Progress**: 54/96 tasks (56%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -594,10 +594,17 @@ without waiting for a later phase or touching developer credentials. See
       the real per-request admin authorization boundary. The 18 focused checks and full 68
       structure, 227 server / 3,359 test, 31 SDK / 404 test, and 29 CLI / 355 test verification
       matrix passed. ✅ (completed: 2026-08-15 16:58)
-- [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
+- [x] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue. Historical results that used the superseded command or signature vocabulary
-      do not close this task; all seven neutral checks run again from this revision.
+      do not close this task; all seven neutral checks run again from this revision. Revision
+      `e2fe556e` independently detected tenant read (`825f52c6`), tenant write (`fa37b27e`), issuer
+      separation (`377932fa`), organization-cache scope (`d09d4713`), stale-authority recheck
+      (`4704d0d3`), admin-organization membership (`04a91980`), and permission/RBAC (`253711d5`).
+      Every result artifact is mode `0600`, retains only its registered `CONTROL_ABSENCE` signature,
+      reports cleanup complete, and leaves no control-check runtime or primary-tree change.
+      `yarn verify` then passed 68 structure tests, 227 server files / 3,359 tests, 31 SDK files /
+      404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-15 17:14)
 - [ ] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`.
 
