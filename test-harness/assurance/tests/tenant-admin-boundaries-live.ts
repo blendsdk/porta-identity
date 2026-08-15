@@ -14,6 +14,7 @@ import {
 import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
 import {
   observeLiveConcurrentTenantIsolation,
+  observeLiveOrganizationCacheIsolation,
   observeLiveTenantCase,
 } from './tenant-admin-live-oidc.js';
 import { observeLiveStaleAuthorityScenario } from './tenant-admin-live-stale.js';
@@ -39,6 +40,7 @@ export function createTenantAdminBoundariesLiveAdapter(): TenantAdminBoundariesC
     observeAdminMembershipNegativeControl: (request: AdminMembershipNegativeControlRequest) =>
       observeLiveAdminMembershipNegativeControl(liveContext(), request),
     observeConcurrentTenantIsolation: () => observeLiveConcurrentTenantIsolation(liveContext()),
+    observeOrganizationCacheIsolation: () => observeLiveOrganizationCacheIsolation(liveContext()),
     observeSuperAdminExceptions: () => observeLiveSuperAdminExceptions(liveContext()),
     observeStaleAuthorityScenario: (request: StaleAuthorityScenarioRequest) =>
       observeLiveStaleAuthorityScenario(liveContext(), request),

@@ -1091,3 +1091,29 @@ to alpha/bravo and every other value is semantically the same mismatch. **Confid
 fixture setup, OIDC login, and discovery, followed by complete cleanup. **Policy version**: 1.
 **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: the fixture tenant set or
 issuer-path contract changes.
+
+### AR-65 — Public cache-scope sensitivity observation
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: black-box test-orchestration
+mechanism inside the approved organization-cache sensitivity check; no product cache policy,
+endpoint, credential, or acceptance criterion changes. **Objective**: prove that the ST-30 cache
+sentinel detects removal of organization scoping through independently observable public behavior.
+**Observed behavior**: the shared-key source variant built and ran but was `not-detected`. The
+existing concurrent adapter assigned `cacheOrganization` from the discovery issuer rather than
+observing cache state; the issuer is path-scoped separately, so the synthesized field remained
+correct even when the organization cache was wrong. **Decision**: keep the concurrent observer for
+issuer isolation and add a dedicated cache-scope observation. Through existing public APIs, refresh
+alpha with its current name to force a known alpha cache write, then present alpha's existing opaque
+token to bravo UserInfo. Exact 2xx means the shared cache crossed the tenant boundary; 401/404 means
+isolation held; all other responses invalidate the experiment. The requirements-only rig returns
+the same closed baseline shape. **Rejected alternatives**: inspecting or editing Redis bypasses the
+public boundary; continuing to infer cache identity from issuer data is tautological; making the
+source variant more destructive would test a different control. **Strongest counterargument**: an
+idempotent organization refresh writes `updatedAt` and an audit event, but it occurs only inside the
+disposable owned stack and provides the only deterministic public cache write without adding a
+production hook. **Confidence**: High. **Hardening**: repository code confirms organization update
+invalidates and immediately re-caches the returned organization, while tenant resolution reads the
+slug cache before token consumption. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: organization refresh no longer writes the slug
+cache, UserInfo stops resolving tenant context, or an existing read-only public operation gains a
+stronger deterministic cache-write contract.

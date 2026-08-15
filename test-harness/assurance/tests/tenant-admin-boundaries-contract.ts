@@ -139,6 +139,18 @@ export interface ConcurrentTenantIsolationResult {
   readonly crossTalkDetected: boolean;
 }
 
+/** Public result after forcing one tenant cache write and probing another tenant. */
+export interface OrganizationCacheIsolationObservation {
+  /** Whether the alpha organization refresh completed through the public admin API. */
+  readonly cacheWarmAccepted: boolean;
+  /** Tenant named by the UserInfo request path. */
+  readonly requestOrganization: 'bravo';
+  /** Tenant that owns the opaque token presented to UserInfo. */
+  readonly tokenOrganization: 'alpha';
+  /** Whether the foreign token was accepted or remained hidden. */
+  readonly result: 'allowed' | 'not-found';
+}
+
 /** One documented protection for the bootstrap super-admin user. */
 export interface SuperAdminExceptionObservation {
   /** Protected destructive operation. */
@@ -232,6 +244,8 @@ export interface TenantAdminBoundariesContract {
   ): Promise<AdminMembershipNegativeControlObservation>;
   /** Overlaps alpha and bravo OIDC requests after warming issuer and tenant caches. */
   observeConcurrentTenantIsolation(): Promise<ConcurrentTenantIsolationResult>;
+  /** Forces one known cache write and probes the other tenant through public UserInfo. */
+  observeOrganizationCacheIsolation(): Promise<OrganizationCacheIsolationObservation>;
   /** Exercises documented protections for the bootstrap super-admin user. */
   observeSuperAdminExceptions(): Promise<readonly SuperAdminExceptionObservation[]>;
   /** Warms authority state, performs one supported transition, and retries in all contexts. */

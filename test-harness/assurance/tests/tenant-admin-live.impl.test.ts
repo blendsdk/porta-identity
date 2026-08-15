@@ -14,6 +14,7 @@ import {
 } from './tenant-admin-live-context.js';
 import { controlPlaneReachability } from './tenant-admin-live-control.js';
 import {
+  cacheIsolationResult,
   classifyForeignCredentialState,
   observedOrganizationFromIssuer,
 } from './tenant-admin-live-oidc.js';
@@ -109,6 +110,15 @@ test('should retain a missing or unknown issuer organization as an observable mi
   assert.equal(observedOrganizationFromIssuer('https://porta.example.test/bravo'), 'bravo');
   assert.equal(observedOrganizationFromIssuer('https://porta.example.test'), 'none');
   assert.equal(observedOrganizationFromIssuer('https://porta.example.test/other'), 'none');
+});
+
+test('should classify only exact public cache-isolation response statuses', () => {
+  assert.equal(cacheIsolationResult(200), 'allowed');
+  assert.equal(cacheIsolationResult(204), 'allowed');
+  assert.equal(cacheIsolationResult(401), 'not-found');
+  assert.equal(cacheIsolationResult(404), 'not-found');
+  assert.throws(() => cacheIsolationResult(302), /cache-isolation response status/u);
+  assert.throws(() => cacheIsolationResult(500), /cache-isolation response status/u);
 });
 
 test('should distinguish handler permission and resource boundaries after authentication', () => {

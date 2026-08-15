@@ -13,6 +13,7 @@ import {
 import type {
   ConcurrentTenantIsolationResult,
   ObservedTenantOrganization,
+  OrganizationCacheIsolationObservation,
   TenantBoundaryObservation,
   TenantPublicProbeShape,
 } from './tenant-admin-boundaries-contract.js';
@@ -191,6 +192,13 @@ export function classifyForeignCredentialState(
 export function observedOrganizationFromIssuer(issuer: string): ObservedTenantOrganization {
   const organization = new URL(issuer).pathname.split('/').filter(Boolean).at(-1);
   return organization === 'alpha' || organization === 'bravo' ? organization : 'none';
+}
+
+/** Maps only expected public UserInfo statuses onto the cache-isolation result domain. */
+export function cacheIsolationResult(status: number): 'allowed' | 'not-found' {
+  if (status >= 200 && status < 300) return 'allowed';
+  if (status === 401 || status === 404) return 'not-found';
+  throw new Error(`unsupported cache-isolation response status: ${status}`);
 }
 
 /** Executes a foreign credential attempt against the target tenant's real login interaction. */
@@ -421,5 +429,41 @@ export async function observeLiveConcurrentTenantIsolation(
     overlapped: alphaStarted && bravoStarted,
     observations: Object.freeze(observations),
     crossTalkDetected,
+  });
+}
+
+/** Forces alpha into the slug cache, then presents alpha authority to bravo UserInfo. */
+export async function observeLiveOrganizationCacheIsolation(
+  context: LiveTenantAdminContext,
+): Promise<OrganizationCacheIsolationObservation> {
+  const alphaId = context.entity('alpha');
+  const current = await context.rawRequest(
+    'GET',
+    `/api/admin/organizations/${alphaId}`,
+    'admin-full',
+  );
+  if (current.status !== 200) throw new Error('organization cache warm control could not be read');
+  const name = z
+    .object({ data: z.object({ name: z.string().min(1) }).passthrough() })
+    .parse(current.body).data.name;
+  const refreshed = await context.rawRequest(
+    'PUT',
+    `/api/admin/organizations/${alphaId}`,
+    'admin-full',
+    { name },
+  );
+  if (refreshed.status !== 200) {
+    throw new Error('organization cache warm control was not accepted');
+  }
+  const foreign = await context.rawOrdinaryTokenRequest(
+    'GET',
+    '/bravo/me',
+    'credential:alpha:token:baseline',
+  );
+  return Object.freeze({
+    cacheWarmAccepted: true,
+    requestOrganization: 'bravo',
+    tokenOrganization: 'alpha',
+    result: cacheIsolationResult(foreign.status),
   });
 }

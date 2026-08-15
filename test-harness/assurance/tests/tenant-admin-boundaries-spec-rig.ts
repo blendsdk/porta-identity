@@ -18,6 +18,7 @@ import type {
   AdminMembershipNegativeControlObservation,
   AdminMembershipNegativeControlRequest,
   ConcurrentTenantIsolationResult,
+  OrganizationCacheIsolationObservation,
   ControlPlaneBoundaryObservation,
   ControlPlaneVariationRequest,
   StaleAuthorityScenarioObservation,
@@ -46,6 +47,7 @@ export function createTenantAdminBoundariesSpecRig(): TenantAdminBoundariesContr
     observeAdminMembershipNegativeControl: async (request: AdminMembershipNegativeControlRequest) =>
       adminMembershipNegativeControl(request),
     observeConcurrentTenantIsolation: async () => concurrentTenantIsolation(),
+    observeOrganizationCacheIsolation: async () => organizationCacheIsolation(),
     observeSuperAdminExceptions: async () => protectedSuperAdminObservations(),
     observeStaleAuthorityScenario: async (request: StaleAuthorityScenarioRequest) =>
       observeStaleAuthorityScenario(request),
@@ -217,6 +219,16 @@ function concurrentTenantIsolation(): ConcurrentTenantIsolationResult {
       ),
     ),
     crossTalkDetected: false,
+  });
+}
+
+/** Produces the exact public cache-isolation baseline without contacting Porta. */
+function organizationCacheIsolation(): OrganizationCacheIsolationObservation {
+  return Object.freeze({
+    cacheWarmAccepted: true,
+    requestOrganization: 'bravo',
+    tokenOrganization: 'alpha',
+    result: 'not-found',
   });
 }
 

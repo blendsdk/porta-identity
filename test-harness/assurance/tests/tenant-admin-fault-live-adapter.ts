@@ -83,27 +83,25 @@ export async function evaluateTenantAdminControlCheck(
     );
     return;
   }
-  if (faultId === 'issuer-separation-removed' || faultId === 'organization-cache-scope-removed') {
+  if (faultId === 'issuer-separation-removed') {
     const result = await contract.observeConcurrentTenantIsolation();
     const issuerValid = result.observations.every(
       (entry) => entry.issuerOrganization === entry.requestOrganization,
     );
-    const cacheValid =
-      result.observations.every(
-        (entry) =>
-          entry.cacheOrganization === entry.requestOrganization &&
-          entry.sessionOrganization === entry.requestOrganization &&
-          entry.responseOrganization === entry.requestOrganization,
-      ) &&
-      new Set(result.observations.map((entry) => entry.cacheKeyFingerprint)).size ===
-        result.observations.length;
     requireInvariant(
-      result.overlapped &&
-        !result.crossTalkDetected &&
-        (faultId === 'issuer-separation-removed' ? issuerValid : cacheValid),
-      faultId === 'issuer-separation-removed'
-        ? 'ST30_ISSUER_SEPARATION_BYPASS'
-        : 'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS',
+      result.overlapped && !result.crossTalkDetected && issuerValid,
+      'ST30_ISSUER_SEPARATION_BYPASS',
+    );
+    return;
+  }
+  if (faultId === 'organization-cache-scope-removed') {
+    const result = await contract.observeOrganizationCacheIsolation();
+    requireInvariant(
+      result.cacheWarmAccepted &&
+        result.requestOrganization === 'bravo' &&
+        result.tokenOrganization === 'alpha' &&
+        result.result === 'not-found',
+      'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS',
     );
     return;
   }

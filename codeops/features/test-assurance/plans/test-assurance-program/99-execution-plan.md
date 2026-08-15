@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 14:19
+> **Last Updated**: 2026-08-15 14:36
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -569,7 +569,12 @@ without waiting for a later phase or touching developer credentials. See
       `none` observation-domain correction keeps missing or unknown tenant values observable while
       leaving exact alpha/bravo matching unchanged. Tenant/admin passed 20/20, control sensitivity
       passed 18/18, assurance typecheck passed, and `yarn verify` again passed the full repository
-      matrix. ✅ (completed: 2026-08-15 14:19)
+      matrix. The organization-cache variant then survived because the concurrent observer inferred
+      cache identity from issuer data. A dedicated public cache-write and foreign-token observation
+      now refreshes alpha through the admin API and presents alpha authority to bravo UserInfo; no
+      Redis internals or production hooks are used. Tenant/admin passed 21/21, control sensitivity
+      passed 18/18, assurance typecheck passed, and `yarn verify` again passed the full repository
+      matrix. ✅ (completed: 2026-08-15 14:36)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue.
