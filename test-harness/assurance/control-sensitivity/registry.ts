@@ -12,8 +12,9 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
       replacements: [
         {
           before:
-            "'SELECT * FROM users WHERE organization_id = $1 AND email = $2',\n    [orgId, email],",
-          after: "'SELECT * FROM users WHERE email = $1',\n    [email],",
+            "const result = await pool.query<UserRow>(\n    'SELECT * FROM users WHERE organization_id = $1 AND email = $2',\n    [orgId, email],\n  );",
+          after:
+            "void orgId;\n  const result = await pool.query<UserRow>(\n    'SELECT * FROM users WHERE email = $1',\n    [email],\n  );",
         },
       ],
       subSentinel: 'ST-28_TENANT_READ_SCOPE',
@@ -46,7 +47,7 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
         {
           before:
             'await issuerStore.run(orgIssuer, () => oidcProvider.callback()(ctx.req, ctx.res));',
-          after: 'await oidcProvider.callback()(ctx.req, ctx.res);',
+          after: 'void orgIssuer;\n      await oidcProvider.callback()(ctx.req, ctx.res);',
         },
       ],
       subSentinel: 'ST-30_ISSUER_SEPARATION',
@@ -81,7 +82,7 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
         {
           before:
             'await redis.del(\n      `${USER_ROLES_PREFIX}${userId}`,\n      `${USER_PERMISSIONS_PREFIX}${userId}`,\n    );',
-          after: 'await Promise.resolve();',
+          after: 'void redis;\n    await Promise.resolve();',
         },
       ],
       subSentinel: 'ST-31_STALE_AUTHORITY',
@@ -111,7 +112,8 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
       replacements: [
         {
           before: 'if (!hasPermissions([...adminUser.permissions], requiredPermissions)) {',
-          after: 'if (requiredPermissions.length === 0 && adminUser.permissions.length === 0) {',
+          after:
+            'void hasPermissions;\n    if (requiredPermissions.length === 0 && adminUser.permissions.length === 0) {',
         },
       ],
       subSentinel: 'ST-32_PERMISSION_RBAC',

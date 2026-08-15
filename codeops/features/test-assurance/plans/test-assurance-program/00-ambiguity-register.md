@@ -1025,3 +1025,24 @@ but verifying before the link is simpler and preserves the existing exact verifi
 only the registered source file and the dependency symlink. **Policy version**: 1. **Root
 Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: a build prerequisite must exist
 before the transformation or exact changed-path verification.
+
+### AR-62 — Build-valid registered source variants
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal test-capability
+validation inside the approved local control-sensitivity campaign; no product source, contract,
+security policy, or acceptance criterion changes. **Objective**: ensure every registered isolated
+source variant reaches the live check only when it remains a valid build of Porta. **Observed
+behavior**: after variant ordering was corrected, the first campaign reached the build stage and
+failed because removing the tenant predicate also made a required function parameter unused under
+the repository's strict TypeScript settings. The runner classified this as `experiment-invalid`
+and cleaned its resources. **Decision**: keep the missing-scope semantics but explicitly consume
+the now-unused parameter in the reviewed replacement, and strengthen the real-worktree
+implementation test to prepare and build all seven registered variants. **Rejected alternatives**:
+relaxing TypeScript unused checks changes the product build contract; treating a build failure as
+detection would produce false evidence; discovering build validity one live campaign at a time is
+needlessly slow and leaves the registry under-tested. **Strongest counterargument**: building all
+seven variants adds focused-test runtime, but it is bounded and substantially cheaper than seven
+failed Docker campaigns. **Confidence**: High. **Hardening**: the exact compiler diagnostic was
+reproduced in a disposable worktree. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: a registered transformation cannot preserve both
+its intended missing-control semantics and the ordinary server build contract.

@@ -196,13 +196,15 @@ test('rejects malformed recovery identities without touching runtime state', asy
   assert.equal(await recoverLocalControlSensitivityRun(process.cwd(), 'not-a-uuid'), false);
 });
 
-test('prepares one real isolated variant before linking frozen dependencies', async () => {
-  const runtime = new LocalControlSensitivityRuntime(process.cwd());
-  const definition = tenantAdminControlCheck('tenant-read-scope-removed');
-  try {
-    assert.deepEqual(await runtime.prepareVariant(definition), passed);
-  } finally {
-    assert.deepEqual(await runtime.cleanup(), passed);
+test('prepares and builds every real isolated variant with frozen dependencies', async () => {
+  for (const definition of tenantAdminControlChecks) {
+    const runtime = new LocalControlSensitivityRuntime(process.cwd());
+    try {
+      assert.deepEqual(await runtime.prepareVariant(definition), passed, definition.id);
+      assert.deepEqual(await runtime.build(), passed, definition.id);
+    } finally {
+      assert.deepEqual(await runtime.cleanup(), passed, definition.id);
+    }
   }
 });
 

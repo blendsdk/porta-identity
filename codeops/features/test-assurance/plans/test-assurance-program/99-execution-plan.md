@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 13:29
+> **Last Updated**: 2026-08-15 13:44
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -553,7 +553,12 @@ without waiting for a later phase or touching developer credentials. See
       symlink was created before exact changed-path verification; the capability correction and
       real-worktree regression now verify the isolated transformation before linking dependencies.
       The focused selector passed 18/18 and `yarn verify` passed 227 server files / 3,359 tests plus
-      all SDK and CLI verification. ✅ (completed: 2026-08-15 13:29)
+      all SDK and CLI verification. Reopened again when the clean campaign reached the build stage:
+      the first variant preserved its missing-scope semantics but violated strict unused-parameter
+      compilation. The build-safe replacements explicitly consume only values made unused by the
+      isolated transformation, and the focused selector now prepares and builds all seven real
+      variants. It passed 18/18; `yarn verify` again passed 227 server files / 3,359 tests plus all
+      SDK and CLI verification. ✅ (completed: 2026-08-15 13:44)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue.
