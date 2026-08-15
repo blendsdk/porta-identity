@@ -95,6 +95,10 @@ test('registers one exact source target and designated signature for every requi
     tenantAdminControlCheck('organization-cache-scope').targetPath,
     'packages/server/src/middleware/tenant-resolver.ts',
   );
+  assert.equal(
+    tenantAdminControlCheck('stale-authority-recheck').targetPath,
+    'packages/server/src/middleware/admin-auth.ts',
+  );
 });
 
 test('applies every reviewed transformation to only its exact copied target', () => {

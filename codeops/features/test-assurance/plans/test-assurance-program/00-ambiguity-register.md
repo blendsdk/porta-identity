@@ -1183,3 +1183,26 @@ the cache before the existing client-tenant binding compares the resolved organi
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: tenant
 resolution stops using the slug cache or client binding no longer compares against its resolved
 organization.
+
+### AR-69 — Stale-authority negative control at the live recheck
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: exact local source-variant
+selection inside the approved stale-authority check; no product behavior, role policy, or public
+contract changes. **Objective**: prove the live role-removal sentinel depends on Porta re-reading
+the actor's current authority for every administrative request. **Observed behavior**: six checks
+were detected, but the RBAC-cache invalidation variant survived. `admin-auth.ts` reads the actor's
+current role assignments from PostgreSQL on each request and resolves administrative permissions
+from those roles; it does not consume the token-claims cache changed by the surviving variant.
+**Decision**: move the isolated stale-authority negative control to that actual recheck and retain
+the removed actor's previously valid `porta-auditor` role in the disposable build. The unchanged
+live scenario must observe acceptance after public role removal and emit only its exact
+`CONTROL_ABSENCE` signature. **Rejected alternatives**: keeping the unrelated cache target creates
+false confidence; changing the observer to token claims would test a different surface; dropping
+the check leaves stale administrative authority without sensitivity evidence. **Strongest
+counterargument**: retaining a known fixture role is direct, but this is a closed local negative
+control and the sentinel independently performs and verifies the public role removal first.
+**Confidence**: High. **Hardening**: the live route and middleware show the role-removal mutation
+updates PostgreSQL before the next request calls `getUserRoles` and derives permissions.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**:
+administrative authorization stops reading current role assignments per request or the fixture
+limited role changes.

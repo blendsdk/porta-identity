@@ -72,13 +72,14 @@ export const tenantAdminControlChecks: readonly TenantAdminControlCheckDefinitio
       id: 'stale-authority-recheck',
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-31',
-      targetPath: 'packages/server/src/rbac/cache.ts',
-      originalSha256: 'sha256:a3dd9eb834cbfb75c10f4941b16cbb1bdb9ce521872d5eee5f28e0d33806ae42',
+      targetPath: 'packages/server/src/middleware/admin-auth.ts',
+      originalSha256: 'sha256:7ba5bfa3c61578caa7fc4be11b2cd57e39ca92ff30697a4088e3cf0edb75f24e',
       replacements: [
         {
           before:
-            'await redis.del(\n      `${USER_ROLES_PREFIX}${userId}`,\n      `${USER_PERMISSIONS_PREFIX}${userId}`,\n    );',
-          after: 'void redis;\n    await Promise.resolve();',
+            'const adminRoleSlugs = userRoles\n      .map((role) => role.slug)\n      .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));',
+          after:
+            "const adminRoleSlugs = userRoles\n      .map((role) => role.slug)\n      .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));\n    adminRoleSlugs.push('porta-auditor');",
         },
       ],
       subSentinel: 'ST-31_STALE_AUTHORITY',

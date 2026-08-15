@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 16:39
+> **Last Updated**: 2026-08-15 16:58
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -588,7 +588,12 @@ without waiting for a later phase or touching developer credentials. See
       corrected one-file negative control changes the tenant resolver's cache lookup to alpha while
       the public observer authorizes bravo's valid client. The 18 focused checks, typecheck, lint,
       formatting, and `yarn verify` passed the same 68 structure, 227 server / 3,359 test, 31 SDK /
-      404 test, and 29 CLI / 355 test matrix. ✅ (completed: 2026-08-15 16:39)
+      404 test, and 29 CLI / 355 test matrix. Reopened when the stale-authority check survived:
+      administrative requests re-read roles from PostgreSQL and do not consume the changed token-
+      claims cache. Its corrected negative control retains the removed actor's prior auditor role at
+      the real per-request admin authorization boundary. The 18 focused checks and full 68
+      structure, 227 server / 3,359 test, 31 SDK / 404 test, and 29 CLI / 355 test verification
+      matrix passed. ✅ (completed: 2026-08-15 16:58)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue. Historical results that used the superseded command or signature vocabulary
