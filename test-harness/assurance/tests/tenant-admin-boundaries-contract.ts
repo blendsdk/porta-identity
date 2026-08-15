@@ -108,18 +108,21 @@ export interface AdminMembershipNegativeControlObservation {
   readonly targetAfter: TargetStateFingerprint;
 }
 
+/** Closed tenant identity observed at a public boundary, including an omitted or unknown tenant. */
+export type ObservedTenantOrganization = 'alpha' | 'bravo' | 'none';
+
 /** One side of the concurrent issuer/cache isolation observation. */
 export interface ConcurrentTenantObservation {
   /** Organization that initiated the request. */
   readonly requestOrganization: 'alpha' | 'bravo';
   /** Organization encoded by the response issuer. */
-  readonly issuerOrganization: 'alpha' | 'bravo';
+  readonly issuerOrganization: ObservedTenantOrganization;
   /** Organization namespace used by the warmed cache entry. */
-  readonly cacheOrganization: 'alpha' | 'bravo';
+  readonly cacheOrganization: ObservedTenantOrganization;
   /** Organization bound to the resulting session. */
-  readonly sessionOrganization: 'alpha' | 'bravo';
+  readonly sessionOrganization: ObservedTenantOrganization;
   /** Organization whose synthetic data appears in the response. */
-  readonly responseOrganization: 'alpha' | 'bravo';
+  readonly responseOrganization: ObservedTenantOrganization;
   /** Stable cache-key fingerprint, never a credential or token. */
   readonly cacheKeyFingerprint: string;
   /** Stable session fingerprint, never a session cookie. */

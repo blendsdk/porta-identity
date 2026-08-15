@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 14:02
+> **Last Updated**: 2026-08-15 14:19
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -563,8 +563,13 @@ without waiting for a later phase or touching developer credentials. See
       continuation. The closed observer now accepts only visible login rejection, real consent, or
       a registered callback carrying a code; ambiguous states remain invalid. Tenant/admin passed
       19/19, control sensitivity passed 18/18, assurance typecheck passed, and `yarn verify` again
-      passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅ (completed:
-      2026-08-15 14:02)
+      passed 227 server files / 3,359 tests plus all SDK and CLI verification. Issuer execution then
+      exposed that the live observation type
+      rejected a missing tenant segment before the exact-match oracle could inspect it. The closed
+      `none` observation-domain correction keeps missing or unknown tenant values observable while
+      leaving exact alpha/bravo matching unchanged. Tenant/admin passed 20/20, control sensitivity
+      passed 18/18, assurance typecheck passed, and `yarn verify` again passed the full repository
+      matrix. ✅ (completed: 2026-08-15 14:19)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue.

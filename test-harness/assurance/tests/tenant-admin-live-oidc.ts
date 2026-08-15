@@ -12,6 +12,7 @@ import {
 } from './tenant-admin-profile-requirements.js';
 import type {
   ConcurrentTenantIsolationResult,
+  ObservedTenantOrganization,
   TenantBoundaryObservation,
   TenantPublicProbeShape,
 } from './tenant-admin-boundaries-contract.js';
@@ -184,6 +185,12 @@ export function classifyForeignCredentialState(
     throw new Error('foreign credential outcome is not independently observable');
   }
   return authenticatedContinuation ? 'allowed' : 'not-found';
+}
+
+/** Maps a discovered issuer URL onto the closed fixture tenant observation domain. */
+export function observedOrganizationFromIssuer(issuer: string): ObservedTenantOrganization {
+  const organization = new URL(issuer).pathname.split('/').filter(Boolean).at(-1);
+  return organization === 'alpha' || organization === 'bravo' ? organization : 'none';
 }
 
 /** Executes a foreign credential attempt against the target tenant's real login interaction. */
@@ -391,10 +398,7 @@ export async function observeLiveConcurrentTenantIsolation(
       .object({ issuer: z.string().url() })
       .passthrough()
       .parse(await discovery.json());
-    const issuerOrganization = new URL(document.issuer).pathname.split('/').filter(Boolean).at(-1);
-    if (issuerOrganization !== 'alpha' && issuerOrganization !== 'bravo') {
-      throw new Error('concurrent issuer omitted its organization');
-    }
+    const issuerOrganization = observedOrganizationFromIssuer(document.issuer);
     return Object.freeze({
       requestOrganization: tenant,
       issuerOrganization,

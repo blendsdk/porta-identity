@@ -13,7 +13,10 @@ import {
   mapObservedSideEffects,
 } from './tenant-admin-live-context.js';
 import { controlPlaneReachability } from './tenant-admin-live-control.js';
-import { classifyForeignCredentialState } from './tenant-admin-live-oidc.js';
+import {
+  classifyForeignCredentialState,
+  observedOrganizationFromIssuer,
+} from './tenant-admin-live-oidc.js';
 
 test('should generate a unique controlled matrix for every compatible authority case', () => {
   for (const profile of [tenantOidcAuthorityProfile, controlPlaneAuthorityProfile]) {
@@ -99,6 +102,13 @@ test('should classify only an observed login rejection or authenticated continua
       }),
     /credential outcome is not independently observable/u,
   );
+});
+
+test('should retain a missing or unknown issuer organization as an observable mismatch', () => {
+  assert.equal(observedOrganizationFromIssuer('https://porta.example.test/alpha'), 'alpha');
+  assert.equal(observedOrganizationFromIssuer('https://porta.example.test/bravo'), 'bravo');
+  assert.equal(observedOrganizationFromIssuer('https://porta.example.test'), 'none');
+  assert.equal(observedOrganizationFromIssuer('https://porta.example.test/other'), 'none');
 });
 
 test('should distinguish handler permission and resource boundaries after authentication', () => {

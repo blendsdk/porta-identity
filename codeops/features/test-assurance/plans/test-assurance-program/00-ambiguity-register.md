@@ -1070,3 +1070,24 @@ tenant boundary; callback-with-code remains the second independently valid accep
 timeout after successful build/start/fixture setup, with full cleanup afterward. **Policy
 version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: the public
 interaction changes its stable login, consent, or registered-callback contract.
+
+### AR-64 — Missing issuer organization as observable mismatch
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal observation-domain
+correction for the approved issuer-separation check; it changes no product issuer requirement or
+accepted result. **Objective**: let the immutable exact-tenant oracle evaluate a missing or unknown
+issuer tenant segment instead of losing that observation to a setup error. **Observed behavior**:
+the isolated issuer variant completed both OIDC journeys and discovery requests, then the live
+adapter threw `concurrent issuer omitted its organization` because its observation type admitted
+only `alpha|bravo`. The outer runner correctly marked the experiment invalid. **Decision**: add
+`none` to the observed tenant-organization domain, map missing or unknown issuer path segments to
+that value, and let the unchanged exact-match oracle produce its designated signature. Add a pure
+mapping regression. **Rejected alternatives**: treating the thrown error as detection conflates
+observer bugs with security evidence; coercing the value to either tenant fabricates data; changing
+the requirement to accept a tenantless issuer weakens OIDC isolation. **Strongest counterargument**:
+an open string domain captures future tenant names, but the fixture matrix is deliberately closed
+to alpha/bravo and every other value is semantically the same mismatch. **Confidence**: High.
+**Hardening**: the exact missing-segment state was reproduced after successful build, startup,
+fixture setup, OIDC login, and discovery, followed by complete cleanup. **Policy version**: 1.
+**Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: the fixture tenant set or
+issuer-path contract changes.
