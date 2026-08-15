@@ -172,6 +172,23 @@ export class LiveTenantAdminContext {
     return this.sanitizeResponse(response);
   }
 
+  /** Executes one raw request with an ordinary fixture token resolved at the last possible moment. */
+  public async rawOrdinaryTokenRequest(
+    method: 'GET' | 'PUT' | 'POST' | 'DELETE',
+    path: string,
+    tokenCredentialRef: string,
+    data?: Readonly<Record<string, unknown>>,
+  ): Promise<LiveHttpObservation> {
+    const api = await this.api();
+    const response = await api.fetch(`${this.endpoints.porta}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${this.credential(tokenCredentialRef)}` },
+      data,
+      maxRedirects: 0,
+    });
+    return this.sanitizeResponse(response);
+  }
+
   /** Reads and validates one JSON response without retaining raw response headers. */
   protected async sanitizeResponse(response: APIResponse): Promise<LiveHttpObservation> {
     const contentType = response.headers()['content-type'] ?? '';

@@ -987,3 +987,19 @@ executor. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260814-P6
 **Reopen triggers**: lifecycle cannot admit an explicitly provenanced uncommitted mutant without
 weakening normal clean-source evidence, a selected sentinel cannot isolate one invariant-specific
 failure, or a required control spans more than one semantic target.
+
+### AR-60 — Defensive terminology for tenant/admin sensitivity checks
+
+**Authority**: User. **Objective**: describe Phase 6 as verification of Porta's own defensive test
+surface, without language that implies intrusion into an external system. **Decision**: Task 6.10
+and its operator-facing evidence use `control sensitivity`, `isolated source variant`, and
+`designated check`. Outcomes are `detected`, `not-detected`, `experiment-invalid`,
+`environment-failed`, and `timed-out`. The retained `assurance:fault` alias and historical schema
+fields remain compatibility implementation details until a separately planned migration; they are
+not broadened or exposed as arbitrary execution. Every check runs only from the current repository
+against a disposable local worktree and lifecycle-owned local stack. No production endpoint,
+credential, bypass switch, deployable test hook, or third-party target is introduced. Avoiding the
+sensitivity checks entirely was rejected because a naturally green test still needs independent
+evidence that it notices removal of its governing control. **Confidence**: High. **Reopen trigger**:
+a check requires a production hook, external target, arbitrary catalog command/path, or behavior
+beyond the repository-owned disposable environment.

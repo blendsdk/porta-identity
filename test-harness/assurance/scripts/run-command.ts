@@ -29,6 +29,12 @@ import {
   type CoverageFailureStage,
 } from './coverage-orchestration.js';
 import { runCuratedFault } from '../fault/index.js';
+import { runTenantAdminControlSensitivity } from '../control-sensitivity/command.js';
+import { recoverLocalControlSensitivityRun } from '../control-sensitivity/local-runtime.js';
+import {
+  isTenantAdminControlCheckId,
+  tenantAdminControlCheck,
+} from '../control-sensitivity/registry.js';
 import {
   isPackedCompatibilitySelector,
   recoverPackedConsumerRun,
@@ -214,6 +220,14 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'tenant-admin-all': [...tenantAdminSpecificationFiles, ...tenantAdminImplementationFiles],
   'tenant-admin-baseline': ['test-harness/assurance/tests/tenant-admin-baseline.impl.test.ts'],
   'tenant-admin-fault-specs': tenantAdminFaultSpecificationFiles,
+  'tenant-admin-faults': [
+    ...tenantAdminFaultSpecificationFiles,
+    'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
+  ],
+  'tenant-admin-control-sensitivity': [
+    ...tenantAdminFaultSpecificationFiles,
+    'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
+  ],
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',
@@ -746,6 +760,17 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
 
 /** Executes one exact registered curated-fault tuple through the disposable runner. */
 async function runFaultCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover-control') {
+    const runId = options[1] ?? '';
+    const recovered = await recoverLocalControlSensitivityRun(process.cwd(), runId);
+    if (!recovered) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
   if (
     options.length !== 6 ||
     options[0] !== '--fault' ||
@@ -759,8 +784,26 @@ async function runFaultCommand(options: readonly string[]): Promise<void> {
     return;
   }
   try {
+    const selectedId = options[1] ?? '';
+    if (isTenantAdminControlCheckId(selectedId)) {
+      const definition = tenantAdminControlCheck(selectedId);
+      if (options[3] !== definition.claimId || options[5] !== definition.sentinelId) {
+        throw new Error('tenant/admin control check tuple is not registered');
+      }
+      const result = await runTenantAdminControlSensitivity(process.cwd(), selectedId);
+      process.stdout.write(
+        `ASSURANCE_CONTROL_SENSITIVITY_RESULT: run=${result.runId} outcome=${result.outcome} artifact=${result.artifactPath}\n`,
+      );
+      if (result.recoveryCommand !== undefined) {
+        process.stderr.write(
+          `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+        );
+      }
+      process.exitCode = result.exitCode;
+      return;
+    }
     const result = await runCuratedFault(process.cwd(), {
-      faultId: options[1] ?? '',
+      faultId: selectedId,
       claimId: options[3] ?? '',
       sentinelId: options[5] ?? '',
     });

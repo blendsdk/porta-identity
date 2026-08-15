@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-14 21:03
-> **Progress**: 52/96 tasks (54%)
+> **Last Updated**: 2026-08-15 10:41
+> **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -534,18 +534,30 @@ without waiting for a later phase or touching developer credentials. See
       `porta-auditor` role while membership transitions remain explicitly non-applicable. The
       10-case focused selector, assurance typecheck, lint, formatting, 68 structure tests, and
       `yarn verify` all passed. ✅ (completed: 2026-08-14 21:03)
-- [ ] 6.10 Implement the closed live-mutant executor, code-owned production-target/sub-sentinel
-      registry, reviewed one-target patches, inner exact-result parser, lifecycle-owned stack and
-      recovery handling, and implementation tests. Do not claim live fault evidence in this dirty
-      capability checkpoint.
-- [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin fault tuple and
-      require each designated sentinel signature to kill independently with no primary-tree or
-      owned runtime residue.
+- [x] 6.10 Implement defensive control-sensitivity validation for the seven tenant/admin
+      invariants. A code-owned registry selects one exact repository file, one reviewed isolated
+      source transformation, and one designated live check per run. The staged local executor must
+      validate, build, start a lifecycle-owned disposable stack, run only that check, and prove
+      cleanup. Operator-facing outcomes are `detected`, `not-detected`, `experiment-invalid`,
+      `environment-failed`, and `timed-out`; historical fault-runner names remain internal
+      compatibility details. This capability checkpoint must use test doubles for execution tests
+      and must not claim live control-sensitivity evidence from the dirty tree. The completed
+      capability uses a closed seven-entry registry, exact source identities and literal
+      transformations, one designated live check per entry, staged lifecycle ownership, exact
+      signature parsing, owner-validated recovery, and cleanup precedence. The ordinary alpha
+      membership control carries a valid opaque token plus `porta-auditor` role without changing
+      its organization. No isolated source variant was executed or admitted as evidence in this
+      checkpoint. Seventeen focused cases, 53 governance cases, six fixture-ontology cases, 68
+      structure tests, assurance typecheck/lint/format checks, and `yarn verify` all passed. ✅
+      (completed: 2026-08-15 10:41)
+- [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
+      require each designated signature to be detected independently with no primary-tree or owned
+      runtime residue.
 - [ ] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`.
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim
-has current green plus its own killed tuple.
+has current green plus its own independently detected control-sensitivity check.
 
 ## Phase 7: OIDC, ID-Token, and Token Lifecycle
 

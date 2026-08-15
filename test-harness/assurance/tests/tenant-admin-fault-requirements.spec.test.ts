@@ -55,17 +55,16 @@ test('should fail closed when live tenant admin fault execution is unavailable',
   );
 });
 
-// The new write-specific wrong-organization probe cannot fall through to the existing GET-only
-// live variation adapter before its reviewed PUT implementation is installed.
-test('should fail closed before a live write variation can execute as a read', async () => {
+// The write-specific wrong-organization probe is now represented as an exact PUT and can no longer
+// fall through to the earlier GET-only implementation.
+test('should retain the exact PUT method at the installed live write boundary', () => {
   const writeVariation = controlPlaneVariations.find(
     (variation) => variation.invariantMarker === 'same-user-write-under-wrong-organization-path',
   );
   assert.ok(writeVariation);
   assert.equal(writeVariation.requestMethod, 'PUT');
-  await assert.rejects(
-    async () =>
-      createTenantAdminBoundariesLiveAdapter().observeControlPlaneVariation(writeVariation),
-    /TENANT_ADMIN_WRITE_VARIATION_LIVE_UNAVAILABLE/u,
+  assert.equal(
+    typeof createTenantAdminBoundariesLiveAdapter().observeControlPlaneVariation,
+    'function',
   );
 });

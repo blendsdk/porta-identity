@@ -361,6 +361,20 @@ export async function arrangeFixtureBaseline(
     entities.push({ alias: actor.id, id: user.id }, { alias: actor.roleId, id: role.id });
   }
 
+  // The active alpha principal deliberately carries an admin-shaped global role while remaining
+  // outside the administrative organization. Its existing opaque token is therefore a
+  // non-vacuous membership control: role naming alone must never grant admin access.
+  const ordinaryMembershipActor = runtimeUsers.get('alpha-user-active');
+  const auditorRole = await findRoleBySlug(adminApplication.id, 'porta-auditor');
+  if (ordinaryMembershipActor === undefined || auditorRole === null) {
+    throw new Error('ordinary administrative membership control is incomplete');
+  }
+  await assignRolesToUser(ordinaryMembershipActor.id, [auditorRole.id]);
+  entities.push({
+    alias: 'alpha-ordinary-admin-role-control',
+    id: ordinaryMembershipActor.id,
+  });
+
   const retainedUser = runtimeUsers.get('alpha-user-active');
   const retainedPublic = runtimeClients.get('alpha-client-public');
   const retainedConfidential = runtimeClients.get('alpha-client-confidential');

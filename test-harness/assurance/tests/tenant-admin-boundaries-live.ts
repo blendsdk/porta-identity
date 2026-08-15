@@ -1,10 +1,12 @@
 import type {
+  AdminMembershipNegativeControlRequest,
   ControlPlaneVariationRequest,
   StaleAuthorityScenarioRequest,
   TenantAdminBoundariesContract,
   TenantPublicProbeShape,
 } from './tenant-admin-boundaries-contract.js';
 import {
+  observeLiveAdminMembershipNegativeControl,
   observeLiveControlPlaneCase,
   observeLiveControlPlaneVariation,
   observeLiveSuperAdminExceptions,
@@ -32,15 +34,10 @@ export function createTenantAdminBoundariesLiveAdapter(): TenantAdminBoundariesC
     observeTenantCase: (caseId: string, probeShape: TenantPublicProbeShape) =>
       observeLiveTenantCase(liveContext(), caseId, probeShape),
     observeControlPlaneCase: (caseId: string) => observeLiveControlPlaneCase(liveContext(), caseId),
-    observeControlPlaneVariation: (request: ControlPlaneVariationRequest) => {
-      if (request.invariantMarker === 'same-user-write-under-wrong-organization-path') {
-        throw new Error('TENANT_ADMIN_WRITE_VARIATION_LIVE_UNAVAILABLE');
-      }
-      return observeLiveControlPlaneVariation(liveContext(), request);
-    },
-    observeAdminMembershipNegativeControl: async () => {
-      throw new Error('TENANT_ADMIN_MEMBERSHIP_LIVE_UNAVAILABLE');
-    },
+    observeControlPlaneVariation: (request: ControlPlaneVariationRequest) =>
+      observeLiveControlPlaneVariation(liveContext(), request),
+    observeAdminMembershipNegativeControl: (request: AdminMembershipNegativeControlRequest) =>
+      observeLiveAdminMembershipNegativeControl(liveContext(), request),
     observeConcurrentTenantIsolation: () => observeLiveConcurrentTenantIsolation(liveContext()),
     observeSuperAdminExceptions: () => observeLiveSuperAdminExceptions(liveContext()),
     observeStaleAuthorityScenario: (request: StaleAuthorityScenarioRequest) =>

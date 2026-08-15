@@ -276,7 +276,8 @@ export const globalRoles: readonly GlobalRoleFixture[] = [
     id: actor.roleId,
     applicationId: 'porta-admin',
     permissionProfile: actor.permissionSet,
-    assignedUserIds: [actor.id],
+    assignedUserIds:
+      actor.roleId === 'porta-auditor' ? [actor.id, 'alpha-user-active'] : [actor.id],
     permissions: actor.permissions,
   })),
 ];

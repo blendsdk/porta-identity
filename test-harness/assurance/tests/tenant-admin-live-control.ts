@@ -7,6 +7,8 @@ import {
   type ControlPlaneAuthorityCase,
 } from './tenant-admin-profile-requirements.js';
 import type {
+  AdminMembershipNegativeControlObservation,
+  AdminMembershipNegativeControlRequest,
   ControlPlaneBoundaryObservation,
   ControlPlaneVariationRequest,
   SuperAdminExceptionObservation,
@@ -141,13 +143,19 @@ export async function observeLiveControlPlaneVariation(
     response = await executeCatalogCase(context, { ...control, actor: 'admin-limited' }, target);
   } else {
     const missing = '00000000-0000-4000-8000-000000000000';
+    const sourcePath = request.requestMethod === 'PUT' ? target.mutationPath : target.readPath;
     const changedPath =
       request.variation === 'target-organization'
-        ? target.readPath.replace(context.entity('alpha'), context.entity('bravo'))
+        ? sourcePath.replace(context.entity('alpha'), context.entity('bravo'))
         : request.variation === 'target-slug'
-          ? `${target.readPath}-missing`
-          : target.readPath.replace(/[^/]+$/u, missing);
-    response = await context.rawRequest('GET', changedPath, 'admin-full');
+          ? `${sourcePath}-missing`
+          : sourcePath.replace(/[^/]+$/u, missing);
+    response = await context.rawRequest(
+      request.requestMethod,
+      changedPath,
+      'admin-full',
+      request.requestMethod === 'PUT' ? target.updateBody : undefined,
+    );
   }
   const after = await context.targetFingerprint(target);
   const result = authorizationResult(response.status);
@@ -160,6 +168,7 @@ export async function observeLiveControlPlaneVariation(
     caseId: `${control.id}-${request.variation}`,
     result,
     transport: 'raw-http',
+    requestMethod: request.requestMethod,
     ...reachability,
     prohibitedSideEffects: context.observedSideEffects(
       controlPlaneAuthorityProfile.threatProfile.prohibitedSideEffects,
@@ -169,6 +178,38 @@ export async function observeLiveControlPlaneVariation(
         unauthorizedAccepted: result === 'allowed',
       },
     ),
+    targetBefore: before,
+    targetAfter: after,
+  });
+}
+
+/** Presents the ordinary alpha token and Porta-shaped role to the admin membership boundary. */
+export async function observeLiveAdminMembershipNegativeControl(
+  context: LiveTenantAdminContext,
+  request: AdminMembershipNegativeControlRequest,
+): Promise<AdminMembershipNegativeControlObservation> {
+  if (
+    request.actorId !== 'alpha-ordinary-admin-role-control' ||
+    request.token !== 'valid-opaque-token' ||
+    request.expectedResult !== 'forbidden' ||
+    request.rejectionBoundary !== 'admin-organization-membership'
+  ) {
+    throw new Error('undeclared admin membership negative control');
+  }
+  const target = await context.adminTarget('admin-target-alpha-user');
+  const before = await context.targetFingerprint(target);
+  const response = await context.rawOrdinaryTokenRequest(
+    'GET',
+    target.readPath,
+    'credential:alpha:token:baseline',
+  );
+  const after = await context.targetFingerprint(target);
+  const result = authorizationResult(response.status);
+  return Object.freeze({
+    actorId: request.actorId,
+    validTokenAdmitted: response.status !== 401,
+    result,
+    decisionBoundary: result === 'forbidden' ? 'admin-organization-membership' : 'permission',
     targetBefore: before,
     targetAfter: after,
   });

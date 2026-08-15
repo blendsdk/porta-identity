@@ -106,7 +106,8 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
     cleanupContract: 'owned resources are removed; incomplete flush remains a coverage failure',
   },
   'assurance:fault': {
-    selectorGrammar: '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>',
+    selectorGrammar:
+      '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id> | --recover-control <run-uuid>',
     timeout: '3600s',
     artifactSubdirectory: 'fault/<fault>/<claim>/<sentinel>/',
     prerequisites: [

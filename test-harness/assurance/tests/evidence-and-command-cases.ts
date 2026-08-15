@@ -195,7 +195,7 @@ export function registerEvidenceAndCommandCases(
         /harness.*image.*maps.*writable raw mount/i,
       ],
       'assurance:fault': [
-        '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>',
+        '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id> | --recover-control <run-uuid>',
         '3600s',
         'fault/<fault>/<claim>/<sentinel>/',
         /clean baseline.*registered tuple.*Docker.*disposable worktree/i,
