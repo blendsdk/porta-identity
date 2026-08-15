@@ -227,8 +227,8 @@ function organizationCacheIsolation(): OrganizationCacheIsolationObservation {
   return Object.freeze({
     cacheWarmAccepted: true,
     requestOrganization: 'bravo',
-    tokenOrganization: 'alpha',
-    result: 'not-found',
+    clientOrganization: 'bravo',
+    result: 'allowed',
   });
 }
 

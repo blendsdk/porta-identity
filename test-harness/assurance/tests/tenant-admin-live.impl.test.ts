@@ -112,13 +112,12 @@ test('should retain a missing or unknown issuer organization as an observable mi
   assert.equal(observedOrganizationFromIssuer('https://porta.example.test/other'), 'none');
 });
 
-test('should classify only exact public cache-isolation response statuses', () => {
-  assert.equal(cacheIsolationResult(200), 'allowed');
-  assert.equal(cacheIsolationResult(204), 'allowed');
-  assert.equal(cacheIsolationResult(401), 'not-found');
-  assert.equal(cacheIsolationResult(404), 'not-found');
-  assert.throws(() => cacheIsolationResult(302), /cache-isolation response status/u);
-  assert.throws(() => cacheIsolationResult(500), /cache-isolation response status/u);
+test('should classify only a valid tenant authorization continuation or exact rejection', () => {
+  assert.equal(cacheIsolationResult(200, true), 'allowed');
+  assert.equal(cacheIsolationResult(404, false), 'not-found');
+  assert.throws(() => cacheIsolationResult(200, false), /cache-isolation response/u);
+  assert.throws(() => cacheIsolationResult(302, false), /cache-isolation response/u);
+  assert.throws(() => cacheIsolationResult(500, false), /cache-isolation response/u);
 });
 
 test('should distinguish handler permission and resource boundaries after authentication', () => {

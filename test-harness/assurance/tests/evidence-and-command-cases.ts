@@ -195,10 +195,16 @@ export function registerEvidenceAndCommandCases(
         /harness.*image.*maps.*writable raw mount/i,
       ],
       'assurance:fault': [
-        '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id> | --recover-control <run-uuid>',
+        '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>',
         '3600s',
         'fault/<fault>/<claim>/<sentinel>/',
         /clean baseline.*registered tuple.*Docker.*disposable worktree/i,
+      ],
+      'assurance:control-check': [
+        '--check <tenant-read-scope|tenant-write-scope|issuer-separation|organization-cache-scope|stale-authority-recheck|admin-organization-membership|admin-permission-rbac> | --recover <run-uuid>',
+        '3600s',
+        'control-check/<check>/',
+        /clean baseline.*registered check.*Docker.*disposable worktree/i,
       ],
       'assurance:compat': [
         '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|compatibility>',
@@ -256,7 +262,7 @@ export function registerEvidenceAndCommandCases(
       21: 'test-failure',
       30: 'setup-failure',
       40: 'coverage-incomplete',
-      50: 'fault-invalid',
+      50: 'assurance-invalid',
       60: 'cleanup-failure',
       70: 'timeout',
       130: 'interrupted-sigint',

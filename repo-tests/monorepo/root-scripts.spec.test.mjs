@@ -8,6 +8,7 @@ const supportedScripts = [
   'assurance:all',
   'assurance:baseline',
   'assurance:compat',
+  'assurance:control-check',
   'assurance:coverage',
   'assurance:fault',
   'assurance:harness',

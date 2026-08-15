@@ -5,8 +5,8 @@ import { tenantAdminFaultRequirement } from './tenant-admin-fault-requirements.j
 import { tenantOidcAuthorityProfile } from './tenant-admin-profile-requirements.js';
 
 // Foreign ordinary-tenant reads must fail this exact sub-sentinel if tenant read scope is removed.
-test('should bind tenant read scope fault to the exact foreign-read invariant', () => {
-  const requirement = tenantAdminFaultRequirement('tenant-read-scope-removed');
+test('should bind the tenant read negative control to the exact foreign-read invariant', () => {
+  const requirement = tenantAdminFaultRequirement('tenant-read-scope');
   assert.equal(requirement.semanticTarget, 'tenant-read-scope');
   assert.equal(
     requirement.invariantMarker,
@@ -16,7 +16,7 @@ test('should bind tenant read scope fault to the exact foreign-read invariant', 
     claimId: 'CLAIM-R5-03',
     sentinelId: 'ST-28',
     subSentinel: 'ST-28_TENANT_READ_SCOPE',
-    expectedSignature: 'ST28_TENANT_READ_SCOPE_BYPASS',
+    expectedSignature: 'ST28_TENANT_READ_SCOPE_CONTROL_ABSENCE',
   });
   assert.ok(
     tenantOidcAuthorityProfile.cases.some(

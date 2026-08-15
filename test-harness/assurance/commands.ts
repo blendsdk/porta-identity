@@ -25,6 +25,7 @@ export const assuranceCommandActions = [
   'harness',
   'coverage',
   'fault',
+  'control-check',
   'compat',
   'report',
   'stability',
@@ -106,13 +107,27 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
     cleanupContract: 'owned resources are removed; incomplete flush remains a coverage failure',
   },
   'assurance:fault': {
-    selectorGrammar:
-      '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id> | --recover-control <run-uuid>',
+    selectorGrammar: '--fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>',
     timeout: '3600s',
     artifactSubdirectory: 'fault/<fault>/<claim>/<sentinel>/',
     prerequisites: [
       'clean baseline',
       'registered tuple',
+      'Docker available',
+      'disposable worktree support',
+    ],
+    signalContract: 'SIGINT and SIGTERM trigger common signal cleanup',
+    cleanupContract:
+      'owned resources are removed or exact recovery is reported; primary tree immutable',
+  },
+  'assurance:control-check': {
+    selectorGrammar:
+      '--check <tenant-read-scope|tenant-write-scope|issuer-separation|organization-cache-scope|stale-authority-recheck|admin-organization-membership|admin-permission-rbac> | --recover <run-uuid>',
+    timeout: '3600s',
+    artifactSubdirectory: 'control-check/<check>/',
+    prerequisites: [
+      'clean baseline',
+      'registered check',
       'Docker available',
       'disposable worktree support',
     ],
@@ -180,7 +195,7 @@ export const exitTaxonomy = {
   21: 'test-failure',
   30: 'setup-failure',
   40: 'coverage-incomplete',
-  50: 'fault-invalid',
+  50: 'assurance-invalid',
   60: 'cleanup-failure',
   70: 'timeout',
   130: 'interrupted-sigint',

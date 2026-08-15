@@ -33,7 +33,7 @@ function childObservation(child: ManagedChildOutcome): ControlSensitivityStageOb
 }
 
 /**
- * Local runtime for one defensive tenant/admin control-sensitivity experiment.
+ * Local runtime for one defensive tenant/admin control check.
  *
  * It owns one detached Git worktree and delegates all service ownership to the existing lifecycle
  * supervisor. No source variant, selector, or runtime path is accepted from caller-controlled
@@ -46,7 +46,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
   /** Canonical clean primary worktree. */
   protected readonly repositoryRoot: string;
 
-  /** Exact runtime directory for this experiment. */
+  /** Exact runtime directory for this check. */
   protected readonly runtimeRoot: string;
 
   /** Detached worktree containing the isolated source variant. */
@@ -60,7 +60,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
     this.repositoryRoot = realpathSync(repositoryRoot);
     this.runtimeRoot = resolve(
       this.repositoryRoot,
-      'test-harness/.assurance-runtime/control-sensitivity',
+      'test-harness/.assurance-runtime/control-check',
       this.runId,
     );
     this.worktreeRoot = resolve(this.runtimeRoot, 'worktree');
@@ -230,7 +230,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
   }
 }
 
-/** Recovers only the exact repository-owned control-sensitivity run selected by UUID. */
+/** Recovers only the exact repository-owned control-check run selected by UUID. */
 export async function recoverLocalControlSensitivityRun(
   repositoryRoot: string,
   runId: string,
@@ -241,7 +241,7 @@ export async function recoverLocalControlSensitivityRun(
   const canonicalRoot = realpathSync(repositoryRoot);
   const runtimeRoot = resolve(
     canonicalRoot,
-    'test-harness/.assurance-runtime/control-sensitivity',
+    'test-harness/.assurance-runtime/control-check',
     runId,
   );
   const worktreeRoot = resolve(runtimeRoot, 'worktree');

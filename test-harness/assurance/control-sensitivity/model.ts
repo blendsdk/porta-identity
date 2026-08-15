@@ -1,6 +1,6 @@
-/** Operator-facing result of one defensive control-sensitivity experiment. */
+/** Operator-facing result of one defensive local control check. */
 export type ControlSensitivityOutcome =
-  'detected' | 'not-detected' | 'experiment-invalid' | 'environment-failed' | 'timed-out';
+  'detected' | 'not-detected' | 'check-invalid' | 'environment-failed' | 'timed-out';
 
 /** Ordered stages owned by the local control-sensitivity executor. */
 export type ControlSensitivityStage =
@@ -8,13 +8,13 @@ export type ControlSensitivityStage =
 
 /** Closed tenant/admin control-check selectors. */
 export type TenantAdminControlCheckId =
-  | 'tenant-read-scope-removed'
-  | 'tenant-write-scope-removed'
-  | 'issuer-separation-removed'
-  | 'organization-cache-scope-removed'
-  | 'stale-authority-recheck-removed'
-  | 'admin-organization-membership-removed'
-  | 'admin-permission-rbac-removed';
+  | 'tenant-read-scope'
+  | 'tenant-write-scope'
+  | 'issuer-separation'
+  | 'organization-cache-scope'
+  | 'stale-authority-recheck'
+  | 'admin-organization-membership'
+  | 'admin-permission-rbac';
 
 /** One exact literal replacement in a reviewed repository file. */
 export interface ReviewedSourceReplacement {
@@ -80,7 +80,7 @@ export interface ControlSensitivityRuntime {
   ): Promise<ControlSensitivityStageObservation>;
 }
 
-/** Sanitized final result of one local defensive experiment. */
+/** Sanitized final result of one local defensive control check. */
 export interface ControlSensitivityResult {
   /** Stable selected control-check ID. */
   readonly id: string;

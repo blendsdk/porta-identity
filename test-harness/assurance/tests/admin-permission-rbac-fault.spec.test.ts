@@ -6,14 +6,14 @@ import { controlPlaneAuthorityProfile } from './tenant-admin-profile-requirement
 
 // Permission/RBAC weakening must fail only the exact limited-write and unprivileged-action
 // invariant after administrative organization membership and handler reachability succeed.
-test('should bind permission fault to limited and unprivileged denials', () => {
-  const requirement = tenantAdminFaultRequirement('admin-permission-rbac-removed');
+test('should bind the permission negative control to limited and unprivileged denials', () => {
+  const requirement = tenantAdminFaultRequirement('admin-permission-rbac');
   assert.equal(requirement.semanticTarget, 'permission-rbac');
   assert.deepEqual(requirement.tuple, {
     claimId: 'CLAIM-R5-03',
     sentinelId: 'ST-32',
     subSentinel: 'ST-32_PERMISSION_RBAC',
-    expectedSignature: 'ST32_ADMIN_PERMISSION_RBAC_BYPASS',
+    expectedSignature: 'ST32_ADMIN_PERMISSION_RBAC_CONTROL_ABSENCE',
   });
   const permissionDenials = controlPlaneAuthorityProfile.cases.filter(
     (entry) => entry.variedDimension === 'permission' && entry.result === 'forbidden',

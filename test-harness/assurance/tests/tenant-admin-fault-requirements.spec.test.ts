@@ -9,9 +9,9 @@ import {
   tenantAdminFaultRequirements,
 } from './tenant-admin-fault-requirements.js';
 
-// Every requirements-only fault owns one semantic target and one exact claim/sub-sentinel/signature
+// Every requirements-only negative control owns one semantic target and one exact claim/sub-sentinel/signature
 // tuple. No entry may choose a patch path, build command, or execution command.
-test('should define seven unique runner-neutral tenant admin fault requirements', () => {
+test('should define seven unique runner-neutral tenant admin negative controls', () => {
   assert.equal(tenantAdminFaultRequirements.length, 7);
   assert.equal(
     new Set(tenantAdminFaultRequirements.map((requirement) => requirement.id)).size,
@@ -46,11 +46,11 @@ test('should define seven unique runner-neutral tenant admin fault requirements'
   }
 });
 
-// Requirement metadata cannot be mistaken for live fault evidence; live execution remains a
-// stable fail-closed boundary until a reviewed disposable fault implementation replaces it.
-test('should fail closed when live tenant admin fault execution is unavailable', async () => {
+// Requirement metadata cannot be mistaken for live check evidence; execution remains a stable
+// fail-closed boundary until a reviewed disposable local implementation replaces it.
+test('should fail closed when live tenant admin control-check execution is unavailable', async () => {
   await assert.rejects(
-    executeTenantAdminFaultLive('tenant-read-scope-removed'),
+    executeTenantAdminFaultLive('tenant-read-scope'),
     /TENANT_ADMIN_FAULT_LIVE_UNAVAILABLE/u,
   );
 });

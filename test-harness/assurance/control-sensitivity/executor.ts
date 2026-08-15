@@ -7,14 +7,14 @@ import type {
   TenantAdminControlCheckDefinition,
 } from './model.js';
 
-/** Maps a failed stage onto the stable defensive experiment vocabulary. */
+/** Maps a failed stage onto the stable defensive control-check vocabulary. */
 function failedOutcome(
   stage: ControlSensitivityStage,
   observation: ControlSensitivityStageObservation,
 ): ControlSensitivityOutcome {
   if (observation.status === 'timed-out') return 'timed-out';
   return stage === 'validation' || stage === 'variant' || stage === 'build'
-    ? 'experiment-invalid'
+    ? 'check-invalid'
     : 'environment-failed';
 }
 
@@ -35,7 +35,7 @@ export async function executeControlSensitivityCheck(
   ];
   let primary: Omit<ControlSensitivityResult, 'cleanupComplete'> = {
     id: definition.id,
-    outcome: 'experiment-invalid',
+    outcome: 'check-invalid',
     stage: 'validation',
   };
   try {
@@ -59,7 +59,7 @@ export async function executeControlSensitivityCheck(
         signature: check.signature,
       };
     } else {
-      primary = { id: definition.id, outcome: 'experiment-invalid', stage: 'check' };
+      primary = { id: definition.id, outcome: 'check-invalid', stage: 'check' };
     }
     return await finalize(definition, runtime, primary);
   } catch {

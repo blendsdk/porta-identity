@@ -194,11 +194,14 @@ export function observedOrganizationFromIssuer(issuer: string): ObservedTenantOr
   return organization === 'alpha' || organization === 'bravo' ? organization : 'none';
 }
 
-/** Maps only expected public UserInfo statuses onto the cache-isolation result domain. */
-export function cacheIsolationResult(status: number): 'allowed' | 'not-found' {
-  if (status >= 200 && status < 300) return 'allowed';
-  if (status === 401 || status === 404) return 'not-found';
-  throw new Error(`unsupported cache-isolation response status: ${status}`);
+/** Maps only a registered-client interaction or exact not-found onto the cache result domain. */
+export function cacheIsolationResult(
+  status: number,
+  reachedInteraction: boolean,
+): 'allowed' | 'not-found' {
+  if (status === 200 && reachedInteraction) return 'allowed';
+  if (status === 404 && !reachedInteraction) return 'not-found';
+  throw new Error('unsupported cache-isolation response');
 }
 
 /** Executes a foreign credential attempt against the target tenant's real login interaction. */
@@ -432,7 +435,7 @@ export async function observeLiveConcurrentTenantIsolation(
   });
 }
 
-/** Forces alpha into the slug cache, then presents alpha authority to bravo UserInfo. */
+/** Forces alpha into the slug cache, then starts authorization for bravo's registered client. */
 export async function observeLiveOrganizationCacheIsolation(
   context: LiveTenantAdminContext,
 ): Promise<OrganizationCacheIsolationObservation> {
@@ -455,15 +458,15 @@ export async function observeLiveOrganizationCacheIsolation(
   if (refreshed.status !== 200) {
     throw new Error('organization cache warm control was not accepted');
   }
-  const foreign = await context.rawOrdinaryTokenRequest(
-    'GET',
-    '/bravo/me',
-    'credential:alpha:token:baseline',
-  );
+  const api = await context.api();
+  const authorization = await api.get(authorizationUrl(context, 'bravo').toString(), {
+    maxRedirects: 10,
+  });
+  const reachedInteraction = /\/interaction\//u.test(authorization.url());
   return Object.freeze({
     cacheWarmAccepted: true,
     requestOrganization: 'bravo',
-    tokenOrganization: 'alpha',
-    result: cacheIsolationResult(foreign.status),
+    clientOrganization: 'bravo',
+    result: cacheIsolationResult(authorization.status(), reachedInteraction),
   });
 }

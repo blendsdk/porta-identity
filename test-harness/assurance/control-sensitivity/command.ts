@@ -7,9 +7,9 @@ import { LocalControlSensitivityRuntime } from './local-runtime.js';
 import type { ControlSensitivityOutcome } from './model.js';
 import { tenantAdminControlCheck } from './registry.js';
 
-/** Root-command result for one defensive control-sensitivity experiment. */
+/** Root-command result for one defensive local control check. */
 export interface ControlSensitivityCommandResult {
-  /** Local experiment owner. */
+  /** Local control-check owner. */
   readonly runId: string;
   /** Stable operator-facing outcome. */
   readonly outcome: ControlSensitivityOutcome;
@@ -21,12 +21,12 @@ export interface ControlSensitivityCommandResult {
   readonly recoveryCommand?: string;
 }
 
-/** Maps defensive experiment outcomes to the retained root command taxonomy. */
+/** Maps defensive check outcomes to the stable root command taxonomy. */
 function outcomeExit(outcome: ControlSensitivityOutcome, cleanupComplete: boolean) {
   if (!cleanupComplete) return 60 as const;
   if (outcome === 'detected') return 0 as const;
   if (outcome === 'not-detected') return 21 as const;
-  if (outcome === 'experiment-invalid') return 50 as const;
+  if (outcome === 'check-invalid') return 50 as const;
   if (outcome === 'timed-out') return 70 as const;
   return 30 as const;
 }
@@ -58,7 +58,7 @@ export async function runTenantAdminControlSensitivity(
     repositoryRoot,
     'test-harness/.assurance-results',
     runtime.runId,
-    'control-sensitivity',
+    'control-check',
     definition.id,
     'result.json',
   );
@@ -82,6 +82,6 @@ export async function runTenantAdminControlSensitivity(
     artifactPath: relative(repositoryRoot, artifact).split(sep).join('/'),
     recoveryCommand: result.cleanupComplete
       ? undefined
-      : `yarn assurance:fault --recover-control ${runtime.runId}`,
+      : `yarn assurance:control-check --recover ${runtime.runId}`,
   });
 }

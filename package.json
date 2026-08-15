@@ -51,6 +51,7 @@
     "assurance:harness": "tsx test-harness/assurance/scripts/run-command.ts harness",
     "assurance:coverage": "tsx test-harness/assurance/scripts/run-command.ts coverage",
     "assurance:fault": "tsx test-harness/assurance/scripts/run-command.ts fault",
+    "assurance:control-check": "tsx test-harness/assurance/scripts/run-command.ts control-check",
     "assurance:compat": "tsx test-harness/assurance/scripts/run-command.ts compat",
     "assurance:report": "tsx test-harness/assurance/scripts/run-command.ts report",
     "assurance:stability": "tsx test-harness/assurance/scripts/run-command.ts stability",

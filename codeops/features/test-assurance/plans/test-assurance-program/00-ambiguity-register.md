@@ -993,10 +993,10 @@ failure, or a required control spans more than one semantic target.
 **Authority**: User. **Objective**: describe Phase 6 as verification of Porta's own defensive test
 surface, without language that implies intrusion into an external system. **Decision**: Task 6.10
 and its operator-facing evidence use `control sensitivity`, `isolated source variant`, and
-`designated check`. Outcomes are `detected`, `not-detected`, `experiment-invalid`,
-`environment-failed`, and `timed-out`. The retained `assurance:fault` alias and historical schema
-fields remain compatibility implementation details until a separately planned migration; they are
-not broadened or exposed as arbitrary execution. Every check runs only from the current repository
+`designated check`. This initial naming decision was superseded by AR-66: the current public
+outcomes use `check-invalid`, and tenant/admin checks no longer use the `assurance:fault` alias.
+Historical schema fields remain compatibility implementation details and are not broadened or
+exposed as arbitrary execution. Every check runs only from the current repository
 against a disposable local worktree and lifecycle-owned local stack. No production endpoint,
 credential, bypass switch, deployable test hook, or third-party target is introduced. Avoiding the
 sensitivity checks entirely was rejected because a naturally green test still needs independent
@@ -1117,3 +1117,46 @@ slug cache before token consumption. **Policy version**: 1. **Root Invocation ID
 `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: organization refresh no longer writes the slug
 cache, UserInfo stops resolving tenant context, or an existing read-only public operation gains a
 stronger deterministic cache-write contract.
+
+### AR-66 — Neutral public control-check command and taxonomy
+
+**Authority**: User. **Objective**: make the current Porta-owned verification work unambiguously
+read as local quality assurance rather than an attempt to access or compromise another system.
+**Decision**: the tenant/admin campaign uses the dedicated public command
+`yarn assurance:control-check --check <registered-check>` and the neutral selectors
+`tenant-read-scope`, `tenant-write-scope`, `issuer-separation`, `organization-cache-scope`,
+`stale-authority-recheck`, `admin-organization-membership`, and `admin-permission-rbac`. Its exact
+signatures end in `CONTROL_ABSENCE`, and its outcomes are `detected`, `not-detected`,
+`check-invalid`, `environment-failed`, and `timed-out`. The general `assurance:fault` command
+remains a separate compatibility surface for the plan's curated fault campaigns and no longer
+dispatches tenant/admin control checks. The local executor still creates only one disposable
+source variant and lifecycle-owned local stack; it accepts no arbitrary path, command, endpoint,
+or external target. **Rejected alternatives**: skipping the seven checks would leave naturally
+green claims without independent sensitivity evidence; globally renaming the later curated-fault
+program would change unrelated phases; keeping the old public alias would preserve the ambiguity
+the user explicitly asked to remove. **Confidence**: High. **Reopen trigger**: the public command
+can select an unregistered check, arbitrary source path/command, non-local target, or retained
+tenant/admin result still exposes the old public taxonomy.
+
+### AR-67 — Authorization continuation as the cache-scope observation
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal black-box observer
+mechanics inside the approved organization-cache check; no Porta behavior, cache policy, or
+acceptance criterion changes. **Objective**: make the cache negative control observable through a
+public tenant-resolution boundary that is not independently rejected by token ownership.
+**Observed behavior**: the UserInfo probe selected by AR-65 remained `not-detected` after the
+shared cache-key variant ran successfully. UserInfo independently binds the opaque token and
+client context, so its denial did not reveal which organization tenant resolution supplied.
+**Decision**: retain the public alpha organization refresh as the deterministic cache write, then
+request bravo authorization with bravo's registered public client. A real interaction continuation
+is the allowed baseline; exact not-found is the negative-control detection; every other status or
+redirect state invalidates the check. **Rejected alternatives**: accepting the surviving UserInfo
+result would create false evidence; reading Redis would cease to be black-box; adding a production
+test hook would expand the product surface. **Strongest counterargument**: authorization has more
+moving parts than a direct cache query, but it is an existing public boundary and its registered
+client gives an exact, independently observable continuation. **Confidence**: High. **Hardening**:
+the route and cache-service flow show that the refreshed alpha slug value is read before the
+provider validates bravo's registered client against the resolved organization. **Policy
+version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: authorization
+stops binding its registered client to the resolved organization or no longer reaches a stable
+interaction URL after successful tenant resolution.

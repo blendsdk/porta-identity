@@ -10,14 +10,14 @@ import { controlPlaneAuthorityProfile } from './tenant-admin-profile-requirement
 
 // An active alpha user with a valid opaque token and porta-auditor role remains outside the one
 // administrative organization and must be forbidden before permission evaluation.
-test('should bind admin membership fault to an ordinary-tenant negative control', async () => {
-  const requirement = tenantAdminFaultRequirement('admin-organization-membership-removed');
+test('should bind the admin membership check to an ordinary-tenant negative control', async () => {
+  const requirement = tenantAdminFaultRequirement('admin-organization-membership');
   assert.equal(requirement.semanticTarget, 'admin-organization-membership');
   assert.deepEqual(requirement.tuple, {
     claimId: 'CLAIM-R5-03',
     sentinelId: 'ST-32',
     subSentinel: 'ST-32_ADMIN_ORGANIZATION_MEMBERSHIP',
-    expectedSignature: 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_BYPASS',
+    expectedSignature: 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_CONTROL_ABSENCE',
   });
   assert.deepEqual(ordinaryTenantAdminMembershipNegativeControl, {
     actorId: 'alpha-ordinary-admin-role-control',

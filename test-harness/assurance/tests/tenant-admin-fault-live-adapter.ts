@@ -45,7 +45,7 @@ export async function evaluateTenantAdminControlCheck(
   faultId: TenantAdminFaultRequirementId,
   contract: TenantAdminBoundariesContract,
 ): Promise<void> {
-  if (faultId === 'tenant-read-scope-removed') {
+  if (faultId === 'tenant-read-scope') {
     const negative = tenantOidcAuthorityProfile.cases.find(
       (entry) =>
         entry.variedDimension === 'tenant' &&
@@ -63,11 +63,11 @@ export async function evaluateTenantAdminControlCheck(
         denied.result === 'not-found' &&
         !denied.foreignDataDisclosed &&
         denied.targetBefore.digest === denied.targetAfter.digest,
-      'ST28_TENANT_READ_SCOPE_BYPASS',
+      'ST28_TENANT_READ_SCOPE_CONTROL_ABSENCE',
     );
     return;
   }
-  if (faultId === 'tenant-write-scope-removed') {
+  if (faultId === 'tenant-write-scope') {
     const request = controlPlaneVariations.find(
       (entry) => entry.invariantMarker === 'same-user-write-under-wrong-organization-path',
     );
@@ -79,33 +79,33 @@ export async function evaluateTenantAdminControlCheck(
         denied.requestMethod === 'PUT' &&
         denied.result === 'not-found' &&
         denied.targetBefore.digest === denied.targetAfter.digest,
-      'ST29_TENANT_WRITE_SCOPE_BYPASS',
+      'ST29_TENANT_WRITE_SCOPE_CONTROL_ABSENCE',
     );
     return;
   }
-  if (faultId === 'issuer-separation-removed') {
+  if (faultId === 'issuer-separation') {
     const result = await contract.observeConcurrentTenantIsolation();
     const issuerValid = result.observations.every(
       (entry) => entry.issuerOrganization === entry.requestOrganization,
     );
     requireInvariant(
       result.overlapped && !result.crossTalkDetected && issuerValid,
-      'ST30_ISSUER_SEPARATION_BYPASS',
+      'ST30_ISSUER_SEPARATION_CONTROL_ABSENCE',
     );
     return;
   }
-  if (faultId === 'organization-cache-scope-removed') {
+  if (faultId === 'organization-cache-scope') {
     const result = await contract.observeOrganizationCacheIsolation();
     requireInvariant(
       result.cacheWarmAccepted &&
         result.requestOrganization === 'bravo' &&
-        result.tokenOrganization === 'alpha' &&
-        result.result === 'not-found',
-      'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS',
+        result.clientOrganization === 'bravo' &&
+        result.result === 'allowed',
+      'ST30_ORGANIZATION_CACHE_SEPARATION_CONTROL_ABSENCE',
     );
     return;
   }
-  if (faultId === 'stale-authority-recheck-removed') {
+  if (faultId === 'stale-authority-recheck') {
     const scenario = staleAuthorityScenarios.find((entry) => entry.transition === 'role-removal');
     if (scenario === undefined) throw new Error('stale authority check is absent');
     const observed = await contract.observeStaleAuthorityScenario(scenario);
@@ -116,11 +116,11 @@ export async function evaluateTenantAdminControlCheck(
         observed.revokedStateObserved &&
         observed.retries.every((entry) => !entry.authorityAccepted) &&
         observed.targetBefore.digest === observed.targetAfter.digest,
-      'ST31_STALE_AUTHORITY_RECHECK_BYPASS',
+      'ST31_STALE_AUTHORITY_RECHECK_CONTROL_ABSENCE',
     );
     return;
   }
-  if (faultId === 'admin-organization-membership-removed') {
+  if (faultId === 'admin-organization-membership') {
     const observed = await contract.observeAdminMembershipNegativeControl({
       actorId: 'alpha-ordinary-admin-role-control',
       userState: 'active',
@@ -135,7 +135,7 @@ export async function evaluateTenantAdminControlCheck(
         observed.result === 'forbidden' &&
         observed.decisionBoundary === 'admin-organization-membership' &&
         observed.targetBefore.digest === observed.targetAfter.digest,
-      'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_BYPASS',
+      'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_CONTROL_ABSENCE',
     );
     return;
   }
@@ -152,6 +152,6 @@ export async function evaluateTenantAdminControlCheck(
       denied.adminAuthenticationAccepted &&
       denied.result === 'forbidden' &&
       denied.targetBefore.digest === denied.targetAfter.digest,
-    'ST32_ADMIN_PERMISSION_RBAC_BYPASS',
+    'ST32_ADMIN_PERMISSION_RBAC_CONTROL_ABSENCE',
   );
 }

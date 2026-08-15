@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 14:36
+> **Last Updated**: 2026-08-15 16:21
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -87,9 +87,9 @@ text, but it cannot substitute another command for this binding.
 | 6.6       | `yarn assurance:test --select tenant-admin-packed`                                                                                                           |
 | 6.7       | `yarn assurance:compat --select tenant-admin`                                                                                                                 |
 | 6.8       | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
-| 6.9       | `yarn assurance:test --select tenant-admin-fault-specs`                                                                                                      |
-| 6.10      | `yarn assurance:test --select tenant-admin-faults`                                                                                                           |
-| 6.11      | Every exact command in the versioned tenant/admin fault campaign manifest                                                                                    |
+| 6.9       | `yarn assurance:test --select tenant-admin-control-check-specs`                                                                                              |
+| 6.10      | `yarn assurance:test --select tenant-admin-control-checks`                                                                                                   |
+| 6.11      | Every `yarn assurance:control-check --check <registered-check>` command in the versioned tenant/admin campaign manifest                                      |
 | 6.12      | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
 | 7.1       | `yarn assurance:validate`                                                                                                                                    |
 | 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
@@ -526,22 +526,22 @@ without waiting for a later phase or touching developer credentials. See
       passed 227 server files / 3,359 tests plus all SDK and CLI verification. ✅
       (completed: 2026-08-14 19:01)
 - [x] 6.9 [spec-author] Define invariant-specific tenant-read, tenant-write, issuer/cache,
-      stale-authority, admin-membership, and permission/RBAC fault tuples and exact live
+      stale-authority, admin-membership, and permission/RBAC negative-control tuples and exact live
       sub-sentinel signatures. Add the organization-membership negative-control actor and public
       denial oracle without changing the existing non-applicable membership-transition gaps. The
-      seven semantic faults have closed requirement-owned IDs, invariant-specific sub-sentinels,
+      seven negative controls have closed requirement-owned IDs, invariant-specific sub-sentinels,
       and exact signatures; the ordinary-tenant membership control uses a valid opaque token and
       `porta-auditor` role while membership transitions remain explicitly non-applicable. The
       10-case focused selector, assurance typecheck, lint, formatting, 68 structure tests, and
       `yarn verify` all passed. ✅ (completed: 2026-08-14 21:03)
-- [x] 6.10 Implement defensive control-sensitivity validation for the seven tenant/admin
+- [x] 6.10 Implement defensive control-check validation for the seven tenant/admin
       invariants. A code-owned registry selects one exact repository file, one reviewed isolated
       source transformation, and one designated live check per run. The staged local executor must
       validate, build, start a lifecycle-owned disposable stack, run only that check, and prove
-      cleanup. Operator-facing outcomes are `detected`, `not-detected`, `experiment-invalid`,
+      cleanup. Operator-facing outcomes are `detected`, `not-detected`, `check-invalid`,
       `environment-failed`, and `timed-out`; historical fault-runner names remain internal
       compatibility details. This capability checkpoint must use test doubles for execution tests
-      and must not claim live control-sensitivity evidence from the dirty tree. The completed
+      and must not claim live control-check evidence from the dirty tree. The completed
       capability uses a closed seven-entry registry, exact source identities and literal
       transformations, one designated live check per entry, staged lifecycle ownership, exact
       signature parsing, owner-validated recovery, and cleanup precedence. The ordinary alpha
@@ -574,15 +574,25 @@ without waiting for a later phase or touching developer credentials. See
       now refreshes alpha through the admin API and presents alpha authority to bravo UserInfo; no
       Redis internals or production hooks are used. Tenant/admin passed 21/21, control sensitivity
       passed 18/18, assurance typecheck passed, and `yarn verify` again passed the full repository
-      matrix. ✅ (completed: 2026-08-15 14:36)
+      matrix. Reopened by user decision to move the current campaign onto a neutral, dedicated
+      `assurance:control-check` command and by clean evidence showing that the UserInfo cache probe
+      has an independent token/client rejection boundary. The replacement observer uses a valid
+      bravo authorization continuation after an alpha cache write. The public command now accepts
+      only seven neutral check IDs, emits `*_CONTROL_ABSENCE` signatures and the `check-invalid`
+      outcome, writes below `control-check/<check>/`, and owns exact UUID recovery. The general
+      curated-fault command no longer dispatches tenant/admin checks. Focused verification passed
+      18 control-check, 25 tenant/admin, 10 command-contract, and 68 structure cases; `yarn verify`
+      passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-15 16:21)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
-      runtime residue.
+      runtime residue. Historical results that used the superseded command or signature vocabulary
+      do not close this task; all seven neutral checks run again from this revision.
 - [ ] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`.
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim
-has current green plus its own independently detected control-sensitivity check.
+has current green plus its own independently detected local control check.
 
 ## Phase 7: OIDC, ID-Token, and Token Lifecycle
 

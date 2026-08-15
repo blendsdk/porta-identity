@@ -7,14 +7,14 @@ import { tenantAdminFaultRequirement } from './tenant-admin-fault-requirements.j
 
 // The write-scope sentinel first permits the exact full update, then sends the same user update
 // beneath the wrong organization path and requires not-found plus independent non-mutation.
-test('should bind tenant write scope fault to the wrong-organization update invariant', async () => {
-  const requirement = tenantAdminFaultRequirement('tenant-write-scope-removed');
+test('should bind the tenant write negative control to the wrong-organization update invariant', async () => {
+  const requirement = tenantAdminFaultRequirement('tenant-write-scope');
   assert.equal(requirement.semanticTarget, 'tenant-write-scope');
   assert.deepEqual(requirement.tuple, {
     claimId: 'CLAIM-R5-03',
     sentinelId: 'ST-29',
     subSentinel: 'ST-29_TENANT_WRITE_SCOPE',
-    expectedSignature: 'ST29_TENANT_WRITE_SCOPE_BYPASS',
+    expectedSignature: 'ST29_TENANT_WRITE_SCOPE_CONTROL_ABSENCE',
   });
   const variation = controlPlaneVariations.find(
     (candidate) => candidate.invariantMarker === 'same-user-write-under-wrong-organization-path',

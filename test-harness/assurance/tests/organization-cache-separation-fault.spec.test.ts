@@ -5,8 +5,8 @@ import { tenantAdminFaultRequirement } from './tenant-admin-fault-requirements.j
 
 // Cache, session, and response organization identities share one exact independently selectable
 // sub-sentinel without conflating them with the separate issuer invariant.
-test('should bind organization cache fault to cache session and response isolation', () => {
-  const requirement = tenantAdminFaultRequirement('organization-cache-scope-removed');
+test('should bind the organization cache negative control to tenant resolution isolation', () => {
+  const requirement = tenantAdminFaultRequirement('organization-cache-scope');
   assert.equal(requirement.semanticTarget, 'organization-cache-separation');
   assert.equal(
     requirement.invariantMarker,
@@ -16,6 +16,6 @@ test('should bind organization cache fault to cache session and response isolati
     claimId: 'CLAIM-R5-03',
     sentinelId: 'ST-30',
     subSentinel: 'ST-30_ORGANIZATION_CACHE_SEPARATION',
-    expectedSignature: 'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS',
+    expectedSignature: 'ST30_ORGANIZATION_CACHE_SEPARATION_CONTROL_ABSENCE',
   });
 });

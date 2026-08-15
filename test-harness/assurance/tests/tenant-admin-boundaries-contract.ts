@@ -143,11 +143,11 @@ export interface ConcurrentTenantIsolationResult {
 export interface OrganizationCacheIsolationObservation {
   /** Whether the alpha organization refresh completed through the public admin API. */
   readonly cacheWarmAccepted: boolean;
-  /** Tenant named by the UserInfo request path. */
+  /** Tenant named by the authorization request path. */
   readonly requestOrganization: 'bravo';
-  /** Tenant that owns the opaque token presented to UserInfo. */
-  readonly tokenOrganization: 'alpha';
-  /** Whether the foreign token was accepted or remained hidden. */
+  /** Tenant that owns the registered public client used by authorization. */
+  readonly clientOrganization: 'bravo';
+  /** Whether authorization reached its interaction or rejected tenant resolution. */
   readonly result: 'allowed' | 'not-found';
 }
 

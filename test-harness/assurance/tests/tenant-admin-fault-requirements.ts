@@ -1,12 +1,12 @@
-/** Stable invariant-specific fault identities for tenant/admin assurance. */
+/** Stable invariant-specific negative-control identities for tenant/admin assurance. */
 export type TenantAdminFaultRequirementId =
-  | 'tenant-read-scope-removed'
-  | 'tenant-write-scope-removed'
-  | 'issuer-separation-removed'
-  | 'organization-cache-scope-removed'
-  | 'stale-authority-recheck-removed'
-  | 'admin-organization-membership-removed'
-  | 'admin-permission-rbac-removed';
+  | 'tenant-read-scope'
+  | 'tenant-write-scope'
+  | 'issuer-separation'
+  | 'organization-cache-scope'
+  | 'stale-authority-recheck'
+  | 'admin-organization-membership'
+  | 'admin-permission-rbac';
 
 /** Semantic control targeted by exactly one requirements-only fault. */
 export type TenantAdminFaultSemanticTarget =
@@ -30,13 +30,13 @@ export type TenantAdminFaultSubSentinel =
 
 /** Closed exact failure signatures compatible with curated-fault tuple validation. */
 export type TenantAdminFaultExpectedSignature =
-  | 'ST28_TENANT_READ_SCOPE_BYPASS'
-  | 'ST29_TENANT_WRITE_SCOPE_BYPASS'
-  | 'ST30_ISSUER_SEPARATION_BYPASS'
-  | 'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS'
-  | 'ST31_STALE_AUTHORITY_RECHECK_BYPASS'
-  | 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_BYPASS'
-  | 'ST32_ADMIN_PERMISSION_RBAC_BYPASS';
+  | 'ST28_TENANT_READ_SCOPE_CONTROL_ABSENCE'
+  | 'ST29_TENANT_WRITE_SCOPE_CONTROL_ABSENCE'
+  | 'ST30_ISSUER_SEPARATION_CONTROL_ABSENCE'
+  | 'ST30_ORGANIZATION_CACHE_SEPARATION_CONTROL_ABSENCE'
+  | 'ST31_STALE_AUTHORITY_RECHECK_CONTROL_ABSENCE'
+  | 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_CONTROL_ABSENCE'
+  | 'ST32_ADMIN_PERMISSION_RBAC_CONTROL_ABSENCE';
 
 /** Exact sentinel tuple that must fail only for its named invariant marker. */
 export interface TenantAdminFaultTupleRequirement {
@@ -99,7 +99,7 @@ export const ordinaryTenantAdminMembershipNegativeControl: OrdinaryTenantAdminMe
 /** Immutable invariant-specific tenant/admin fault requirements. */
 export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[] = Object.freeze([
   {
-    id: 'tenant-read-scope-removed',
+    id: 'tenant-read-scope',
     rationale: 'A foreign ordinary principal must never read tenant-owned identity data.',
     semanticTarget: 'tenant-read-scope',
     invariantMarker: 'foreign-tenant-read-is-not-found-and-discloses-no-data',
@@ -107,12 +107,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-28',
       subSentinel: 'ST-28_TENANT_READ_SCOPE',
-      expectedSignature: 'ST28_TENANT_READ_SCOPE_BYPASS',
+      expectedSignature: 'ST28_TENANT_READ_SCOPE_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'tenant-write-scope-removed',
+    id: 'tenant-write-scope',
     rationale: 'A tenant-targeted administrative write must not cross its organization path.',
     semanticTarget: 'tenant-write-scope',
     invariantMarker: 'same-user-write-under-wrong-organization-is-not-found-and-unchanged',
@@ -120,12 +120,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-29',
       subSentinel: 'ST-29_TENANT_WRITE_SCOPE',
-      expectedSignature: 'ST29_TENANT_WRITE_SCOPE_BYPASS',
+      expectedSignature: 'ST29_TENANT_WRITE_SCOPE_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'issuer-separation-removed',
+    id: 'issuer-separation',
     rationale: 'Concurrent organization requests must retain distinct OIDC issuer contexts.',
     semanticTarget: 'issuer-separation',
     invariantMarker: 'concurrent-response-issuer-matches-request-organization',
@@ -133,12 +133,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-30',
       subSentinel: 'ST-30_ISSUER_SEPARATION',
-      expectedSignature: 'ST30_ISSUER_SEPARATION_BYPASS',
+      expectedSignature: 'ST30_ISSUER_SEPARATION_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'organization-cache-scope-removed',
+    id: 'organization-cache-scope',
     rationale: 'Concurrent organization requests must never share tenant cache or session state.',
     semanticTarget: 'organization-cache-separation',
     invariantMarker: 'cache-session-and-response-organization-match-request-organization',
@@ -146,12 +146,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-30',
       subSentinel: 'ST-30_ORGANIZATION_CACHE_SEPARATION',
-      expectedSignature: 'ST30_ORGANIZATION_CACHE_SEPARATION_BYPASS',
+      expectedSignature: 'ST30_ORGANIZATION_CACHE_SEPARATION_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'stale-authority-recheck-removed',
+    id: 'stale-authority-recheck',
     rationale: 'Durably revoked authority must fail for existing, fresh, and restarted contexts.',
     semanticTarget: 'stale-authority',
     invariantMarker: 'revoked-authority-is-rejected-in-every-retry-context',
@@ -159,12 +159,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-31',
       subSentinel: 'ST-31_STALE_AUTHORITY',
-      expectedSignature: 'ST31_STALE_AUTHORITY_RECHECK_BYPASS',
+      expectedSignature: 'ST31_STALE_AUTHORITY_RECHECK_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'admin-organization-membership-removed',
+    id: 'admin-organization-membership',
     rationale: 'An active ordinary tenant actor cannot become an administrator through role shape.',
     semanticTarget: 'admin-organization-membership',
     invariantMarker: 'active-alpha-user-with-porta-role-is-forbidden-before-permission-evaluation',
@@ -172,12 +172,12 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-32',
       subSentinel: 'ST-32_ADMIN_ORGANIZATION_MEMBERSHIP',
-      expectedSignature: 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_BYPASS',
+      expectedSignature: 'ST32_ADMIN_ORGANIZATION_MEMBERSHIP_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },
   {
-    id: 'admin-permission-rbac-removed',
+    id: 'admin-permission-rbac',
     rationale: 'Authenticated administrative actors may exercise only their exact permissions.',
     semanticTarget: 'permission-rbac',
     invariantMarker: 'limited-write-and-unprivileged-actions-are-forbidden-and-unchanged',
@@ -185,7 +185,7 @@ export const tenantAdminFaultRequirements: readonly TenantAdminFaultRequirement[
       claimId: 'CLAIM-R5-03',
       sentinelId: 'ST-32',
       subSentinel: 'ST-32_PERMISSION_RBAC',
-      expectedSignature: 'ST32_ADMIN_PERMISSION_RBAC_BYPASS',
+      expectedSignature: 'ST32_ADMIN_PERMISSION_RBAC_CONTROL_ABSENCE',
     },
     liveExecution: 'unavailable',
   },

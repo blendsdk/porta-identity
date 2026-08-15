@@ -114,11 +114,11 @@ test('applies every reviewed transformation to only its exact copied target', ()
   }
 });
 
-test('rejects target drift and unknown selectors before creating an experiment', () => {
+test('rejects target drift and unknown selectors before creating a control check', () => {
   assert.throws(() => tenantAdminControlCheck('unregistered-control'));
   const root = mkdtempSync(resolve(tmpdir(), 'porta-control-drift-'));
   try {
-    const definition = tenantAdminControlCheck('tenant-read-scope-removed');
+    const definition = tenantAdminControlCheck('tenant-read-scope');
     const target = resolve(root, definition.targetPath);
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(resolve(process.cwd(), definition.targetPath), target);
@@ -133,7 +133,7 @@ test('rejects target drift and unknown selectors before creating an experiment',
 });
 
 test('classifies only the exact designated signature as detected', async () => {
-  const definition = tenantAdminControlCheck('tenant-read-scope-removed');
+  const definition = tenantAdminControlCheck('tenant-read-scope');
   const runtime = new SensitivityRuntimeDouble();
   runtime.observations.set('check', {
     status: 'failed',
@@ -156,15 +156,15 @@ test('classifies only the exact designated signature as detected', async () => {
   const unrelated = new SensitivityRuntimeDouble();
   unrelated.observations.set('check', { status: 'failed', signature: 'UNRELATED_FAILURE' });
   const unrelatedResult = await executeControlSensitivityCheck(definition, unrelated);
-  assert.equal(unrelatedResult.outcome, 'experiment-invalid');
+  assert.equal(unrelatedResult.outcome, 'check-invalid');
   assert.equal(unrelatedResult.signature, undefined);
 });
 
 test('distinguishes undetected invalid environment timeout and cleanup outcomes', async () => {
-  const definition = tenantAdminControlCheck('tenant-read-scope-removed');
+  const definition = tenantAdminControlCheck('tenant-read-scope');
   const cases = [
     { stage: 'check', observation: passed, outcome: 'not-detected' },
-    { stage: 'build', observation: { status: 'failed' } as const, outcome: 'experiment-invalid' },
+    { stage: 'build', observation: { status: 'failed' } as const, outcome: 'check-invalid' },
     { stage: 'startup', observation: { status: 'failed' } as const, outcome: 'environment-failed' },
     { stage: 'check', observation: { status: 'timed-out' } as const, outcome: 'timed-out' },
   ] as const;
