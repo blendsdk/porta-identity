@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-15 10:41
+> **Last Updated**: 2026-08-15 13:29
 > **Progress**: 53/96 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
@@ -548,8 +548,12 @@ without waiting for a later phase or touching developer credentials. See
       membership control carries a valid opaque token plus `porta-auditor` role without changing
       its organization. No isolated source variant was executed or admitted as evidence in this
       checkpoint. Seventeen focused cases, 53 governance cases, six fixture-ontology cases, 68
-      structure tests, assurance typecheck/lint/format checks, and `yarn verify` all passed. ✅
-      (completed: 2026-08-15 10:41)
+      structure tests, assurance typecheck/lint/format checks, and `yarn verify` all passed.
+      Reopened after the first clean 6.11 run correctly failed closed because the frozen dependency
+      symlink was created before exact changed-path verification; the capability correction and
+      real-worktree regression now verify the isolated transformation before linking dependencies.
+      The focused selector passed 18/18 and `yarn verify` passed 227 server files / 3,359 tests plus
+      all SDK and CLI verification. ✅ (completed: 2026-08-15 13:29)
 - [ ] 6.11 From the clean pushed capability revision, execute every tenant/admin control check and
       require each designated signature to be detected independently with no primary-tree or owned
       runtime residue.

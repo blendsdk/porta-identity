@@ -95,13 +95,13 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
         stdio: ['ignore', 'ignore', 'ignore'],
       });
       this.worktreeCreated = true;
+      applyControlVariant(this.worktreeRoot, definition);
+      verifyExactPatchedTarget(this.worktreeRoot, definition.targetPath);
       symlinkSync(
         resolve(this.repositoryRoot, 'node_modules'),
         resolve(this.worktreeRoot, 'node_modules'),
         'dir',
       );
-      applyControlVariant(this.worktreeRoot, definition);
-      verifyExactPatchedTarget(this.worktreeRoot, definition.targetPath);
       return Object.freeze({ status: 'passed' });
     } catch {
       return Object.freeze({ status: 'failed' });

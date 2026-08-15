@@ -1003,3 +1003,25 @@ sensitivity checks entirely was rejected because a naturally green test still ne
 evidence that it notices removal of its governing control. **Confidence**: High. **Reopen trigger**:
 a check requires a production hook, external target, arbitrary catalog command/path, or behavior
 beyond the repository-owned disposable environment.
+
+### AR-61 — Isolated variant verification before dependency linking
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal verification ordering
+inside the approved local control-sensitivity capability; this changes no Porta behavior, security
+policy, scope, acceptance criterion, or external interface. **Objective**: prove that an isolated
+source transformation changes exactly its registered file while still reusing the repository's
+frozen dependencies for the later build and live check. **Observed behavior**: the first clean
+campaign stopped at variant preparation because the runtime created the `node_modules` symlink
+before exact changed-path verification. Git therefore reported the intended source file plus the
+otherwise safe dependency symlink, and the experiment correctly failed closed. **Decision**:
+apply the registered transformation, verify that its target is the sole changed path, and only then
+link the exact primary `node_modules` directory. Add a real detached-worktree regression test for
+this ordering. **Rejected alternatives**: ignoring all untracked paths would weaken the one-target
+boundary; teaching the shared fault verifier to special-case `node_modules` would broaden a sound
+primitive used by other campaigns; copying dependencies would be slower and create more mutable
+residue. **Strongest counterargument**: a narrowly allowlisted symlink exception could be safe,
+but verifying before the link is simpler and preserves the existing exact verifier unchanged.
+**Confidence**: High. **Hardening**: the failure is reproduced directly with Git, which reports
+only the registered source file and the dependency symlink. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**: a build prerequisite must exist
+before the transformation or exact changed-path verification.

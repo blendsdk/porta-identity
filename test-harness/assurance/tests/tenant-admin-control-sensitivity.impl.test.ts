@@ -5,7 +5,10 @@ import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 
 import { executeControlSensitivityCheck } from '../control-sensitivity/executor.js';
-import { recoverLocalControlSensitivityRun } from '../control-sensitivity/local-runtime.js';
+import {
+  LocalControlSensitivityRuntime,
+  recoverLocalControlSensitivityRun,
+} from '../control-sensitivity/local-runtime.js';
 import type {
   ControlSensitivityRuntime,
   ControlSensitivityStageObservation,
@@ -191,6 +194,16 @@ test('distinguishes undetected invalid environment timeout and cleanup outcomes'
 test('rejects malformed recovery identities without touching runtime state', async () => {
   assert.equal(await recoverLocalControlSensitivityRun(process.cwd(), '../other-run'), false);
   assert.equal(await recoverLocalControlSensitivityRun(process.cwd(), 'not-a-uuid'), false);
+});
+
+test('prepares one real isolated variant before linking frozen dependencies', async () => {
+  const runtime = new LocalControlSensitivityRuntime(process.cwd());
+  const definition = tenantAdminControlCheck('tenant-read-scope-removed');
+  try {
+    assert.deepEqual(await runtime.prepareVariant(definition), passed);
+  } finally {
+    assert.deepEqual(await runtime.cleanup(), passed);
+  }
 });
 
 test('keeps every designated control check green against the requirement-owned baseline rig', async () => {
