@@ -11,6 +11,7 @@ import {
   authorizationResult,
   liveDigest,
   mapObservedSideEffects,
+  selectNewAuthenticatedSession,
   sessionRenewalObserved,
 } from './tenant-admin-live-context.js';
 import {
@@ -205,8 +206,53 @@ test('should distinguish handler permission and resource boundaries after authen
   );
   assert.throws(
     () =>
+      controlPlaneReachability(
+        'admin-limited',
+        {
+          status: 403,
+          body: {
+            error: 'Forbidden',
+            message: 'Insufficient permissions. Required: admin:client:read',
+          },
+        },
+        proof,
+      ),
+    /expected public decision boundary/u,
+  );
+  assert.throws(
+    () =>
       controlPlaneReachability('admin-full', { status: 404, body: { error: 'ambiguous' } }, proof),
     /expected public decision boundary/u,
+  );
+  assert.throws(
+    () =>
+      controlPlaneReachability('admin-full', { status: 404, body: { error: 'Not Found' } }, proof),
+    /expected public decision boundary/u,
+  );
+});
+
+test('should select only a newly created authenticated session for a concurrent journey', () => {
+  const userId = '00000000-0000-4000-8000-000000000001';
+  const clientId = '00000000-0000-4000-8000-000000000002';
+  const prior = {
+    sessionId: 'prior',
+    userId,
+    clientId,
+    organizationId: '00000000-0000-4000-8000-000000000003',
+    createdAt: '2026-08-18T10:00:00.000Z',
+  };
+  const created = {
+    ...prior,
+    sessionId: 'created',
+    createdAt: '2026-08-18T10:00:01.000Z',
+  };
+  assert.deepEqual(
+    selectNewAuthenticatedSession([prior, created], new Set(['prior']), userId, clientId),
+    created,
+  );
+  assert.throws(
+    () => selectNewAuthenticatedSession([prior], new Set(['prior']), userId, clientId),
+    /new tracked tenant session is absent/u,
   );
 });
 

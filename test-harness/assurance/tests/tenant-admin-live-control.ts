@@ -53,13 +53,6 @@ function destructiveControl(target: LiveAdminTarget): boolean {
   return target.surface === 'session';
 }
 
-const permissionDenialSchema = z
-  .object({
-    error: z.literal('Forbidden'),
-    message: z.string().regex(/^Insufficient permissions\. Required: /u),
-  })
-  .passthrough();
-const resourceDenialSchema = z.object({ error: z.string().regex(/not found/iu) }).passthrough();
 const membershipDenialSchema = z
   .object({
     error: z.literal('Forbidden'),
@@ -72,6 +65,29 @@ export interface AuthorizedRouteProof {
   readonly caseId: string;
   readonly targetId: string;
   readonly method: 'GET' | 'PUT' | 'DELETE';
+  readonly permissionMessage: string;
+  readonly resourceError: string;
+}
+
+/** Returns the exact permission middleware message for one catalog action. */
+function permissionMessage(entry: ControlPlaneAuthorityCase): string {
+  const action = controlPlaneAuthorityProfile.actions.find(
+    (candidate) => candidate.id === entry.action,
+  );
+  if (action === undefined) throw new Error('live control-plane action is not declared');
+  return `Insufficient permissions. Required: ${action.requiredPermission}`;
+}
+
+/** Returns the exact public not-found error for one administrative resource surface. */
+function resourceError(target: LiveAdminTarget): string {
+  const names: Record<LiveAdminTarget['surface'], string> = {
+    user: 'User not found',
+    client: 'Client not found',
+    session: 'Session not found',
+    application: 'Application not found',
+    role: 'Role not found',
+  };
+  return names[target.surface];
 }
 
 /** Returns the public method exercised by one catalog action and target. */
@@ -96,6 +112,8 @@ export function authorizedRouteProof(
     caseId: entry.id,
     targetId: target.catalogId,
     method: catalogMethod(entry, target),
+    permissionMessage: permissionMessage(entry),
+    resourceError: resourceError(target),
   });
 }
 
@@ -141,10 +159,19 @@ export function controlPlaneReachability(
   if (proof === undefined) throw new Error('denied route is missing its authorized control proof');
   const decisionBoundary =
     result === 'forbidden'
-      ? permissionDenialSchema.safeParse(response.body).success
+      ? z
+          .object({
+            error: z.literal('Forbidden'),
+            message: z.literal(proof.permissionMessage),
+          })
+          .passthrough()
+          .safeParse(response.body).success
         ? 'permission'
         : undefined
-      : resourceDenialSchema.safeParse(response.body).success
+      : z
+            .object({ error: z.literal(proof.resourceError) })
+            .passthrough()
+            .safeParse(response.body).success
         ? 'resource'
         : undefined;
   if (decisionBoundary === undefined) {

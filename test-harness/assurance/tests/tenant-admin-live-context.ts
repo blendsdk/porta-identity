@@ -56,6 +56,36 @@ export interface LiveTenantIdentityObservation {
   readonly fingerprint: string;
 }
 
+/** Authenticated administrative session fields used for public before/after correlation. */
+export interface ObservedAuthenticatedSession {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly clientId: string | null;
+  readonly organizationId: string | null;
+  readonly createdAt: string;
+}
+
+/**
+ * Selects the session created by the current journey rather than a preexisting fixture session.
+ *
+ * The expected user and client remain independent checks after the session-ID delta is applied.
+ */
+export function selectNewAuthenticatedSession(
+  sessions: readonly ObservedAuthenticatedSession[],
+  priorSessionIds: ReadonlySet<string>,
+  userId: string,
+  clientId: string,
+): ObservedAuthenticatedSession {
+  const candidates = sessions.filter(
+    (entry) =>
+      !priorSessionIds.has(entry.sessionId) &&
+      entry.userId === userId &&
+      (entry.clientId === null || entry.clientId === clientId),
+  );
+  if (candidates.length !== 1) throw new Error('new tracked tenant session is absent or ambiguous');
+  return candidates[0];
+}
+
 /** Stable actor names used by the authorization catalog. */
 export type LiveAdminActorId =
   'admin-full' | 'admin-limited' | 'admin-unprivileged' | 'unauthenticated';
@@ -462,12 +492,11 @@ export class LiveTenantAdminContext {
     return Object.freeze({ organization, fingerprint: liveDigest(body) });
   }
 
-  /** Observes a tracked session for the exact fixture user and client through the admin API. */
-  public async observeSessionOrganization(
+  /** Reads active authenticated sessions for one fixture user through the public admin API. */
+  protected async activeTenantSessions(
     tenant: 'alpha' | 'bravo',
-  ): Promise<LiveTenantIdentityObservation> {
+  ): Promise<readonly ObservedAuthenticatedSession[]> {
     const userId = this.entity(`${tenant}-user-active`);
-    const clientId = this.entity(`${tenant}-client-public`);
     const response = await this.rawRequest(
       'GET',
       `/api/admin/sessions?userId=${encodeURIComponent(userId)}&activeOnly=true&pageSize=100`,
@@ -490,13 +519,24 @@ export class LiveTenantAdminContext {
       })
       .passthrough()
       .parse(response.body).data;
-    const session = sessions
-      .filter(
-        (entry) =>
-          entry.userId === userId && (entry.clientId === null || entry.clientId === clientId),
-      )
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
-    if (session === undefined) throw new Error('tracked tenant session is absent');
+    return sessions.filter((entry) => entry.userId === userId);
+  }
+
+  /** Captures active session IDs before a journey so its new session can be correlated exactly. */
+  public async observeActiveSessionIds(tenant: 'alpha' | 'bravo'): Promise<ReadonlySet<string>> {
+    const sessions = await this.activeTenantSessions(tenant);
+    return new Set(sessions.map((entry) => entry.sessionId));
+  }
+
+  /** Observes the newly created session for the exact fixture user and client. */
+  public async observeSessionOrganization(
+    tenant: 'alpha' | 'bravo',
+    priorSessionIds: ReadonlySet<string>,
+  ): Promise<LiveTenantIdentityObservation> {
+    const userId = this.entity(`${tenant}-user-active`);
+    const clientId = this.entity(`${tenant}-client-public`);
+    const sessions = await this.activeTenantSessions(tenant);
+    const session = selectNewAuthenticatedSession(sessions, priorSessionIds, userId, clientId);
     const organization = this.organizationFromUserId(session.userId);
     return Object.freeze({
       organization,

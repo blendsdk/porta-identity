@@ -31,6 +31,18 @@ import { applyControlVariant } from './variant.js';
 const commandTimeoutMilliseconds = 900_000;
 const checkOutputLimitBytes = 16 * 1024;
 
+/** Minimal injectable command boundary used to prove Docker query failures fail closed. */
+export type DockerContainerQuery = (
+  command: string,
+  arguments_: string[],
+  options: {
+    readonly cwd: string;
+    readonly encoding: 'utf8';
+    readonly timeout: number;
+    readonly stdio: ['ignore', 'pipe', 'ignore'];
+  },
+) => string;
+
 const runRecordSchema = z
   .object({
     version: z.literal(1),
@@ -80,6 +92,69 @@ function childObservation(child: ManagedChildOutcome): ControlSensitivityStageOb
     return Object.freeze({ status: 'passed' });
   }
   return Object.freeze({ status: 'failed' });
+}
+
+/**
+ * Classifies the designated live-check child without losing an operator signal.
+ *
+ * A signal takes precedence over timeout and output grammar because it explains why the child did
+ * not produce a normal result.
+ */
+export function controlCheckChildObservation(
+  child: ManagedChildOutcome,
+  expectedSignature: string,
+): ControlSensitivityStageObservation {
+  if (child.forwardedSignal !== null) {
+    return Object.freeze({ status: 'failed', forwardedSignal: child.forwardedSignal });
+  }
+  if (child.timedOut) return Object.freeze({ status: 'timed-out' });
+  if (
+    child.code === 1 &&
+    child.stdout === '' &&
+    child.stderr === `${expectedSignature}\n` &&
+    !child.cleanupFailed &&
+    !child.outputTruncated
+  ) {
+    return Object.freeze({ status: 'failed', signature: expectedSignature });
+  }
+  if (
+    child.code === 0 &&
+    child.stdout === '' &&
+    child.stderr === '' &&
+    !child.cleanupFailed &&
+    !child.outputTruncated
+  ) {
+    return Object.freeze({ status: 'passed' });
+  }
+  return Object.freeze({ status: 'failed' });
+}
+
+/**
+ * Proves that one exact container ID is absent through a successful Docker query.
+ *
+ * Query failures are ambiguous and therefore return false instead of being mistaken for absence.
+ */
+export function dockerContainerIsAbsent(
+  repositoryRoot: string,
+  containerId: string,
+  query: DockerContainerQuery = (command, arguments_, options) =>
+    execFileSync(command, arguments_, options),
+): boolean {
+  try {
+    const output = query(
+      'docker',
+      ['container', 'ls', '--all', '--quiet', '--no-trunc', '--filter', `id=${containerId}`],
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        timeout: 10_000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    );
+    return output.trim() === '';
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -232,28 +307,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
         cleanup: () => undefined,
       },
     );
-    if (child.timedOut) return Object.freeze({ status: 'timed-out' });
-    if (
-      child.code === 1 &&
-      child.stdout === '' &&
-      child.stderr === `${definition.expectedSignature}\n` &&
-      !child.cleanupFailed &&
-      !child.outputTruncated &&
-      child.forwardedSignal === null
-    ) {
-      return Object.freeze({ status: 'failed', signature: definition.expectedSignature });
-    }
-    if (
-      child.code === 0 &&
-      child.stdout === '' &&
-      child.stderr === '' &&
-      !child.cleanupFailed &&
-      !child.outputTruncated &&
-      child.forwardedSignal === null
-    ) {
-      return Object.freeze({ status: 'passed' });
-    }
-    return Object.freeze({ status: 'failed' });
+    return controlCheckChildObservation(child, definition.expectedSignature);
   }
 
   /** Stops the owned stack, removes the exact worktree, and proves its runtime directory absent. */
@@ -434,16 +488,9 @@ export async function recoverLocalControlSensitivityRun(
   }
   if (clean) {
     for (const containerId of record.provenance.containerIds ?? []) {
-      try {
-        execFileSync('docker', ['inspect', '--', containerId], {
-          cwd: canonicalRoot,
-          encoding: 'utf8',
-          timeout: 10_000,
-          stdio: ['ignore', 'ignore', 'ignore'],
-        });
+      if (!dockerContainerIsAbsent(canonicalRoot, containerId)) {
         clean = false;
-      } catch {
-        // Docker inspect failing is the expected absence proof after lifecycle cleanup.
+        break;
       }
     }
   }

@@ -10,6 +10,8 @@ import {
   validateControlSensitivityArtifact,
 } from '../control-sensitivity/command.js';
 import {
+  controlCheckChildObservation,
+  dockerContainerIsAbsent,
   LocalControlSensitivityRuntime,
   recoverLocalControlSensitivityRun,
 } from '../control-sensitivity/local-runtime.js';
@@ -277,6 +279,43 @@ test('preserves operator signals separately and applies cleanup precedence', asy
   );
   assert.equal(betweenResult.terminalSignal, 'SIGINT');
   assert.deepEqual(betweenStages.calls, ['validation', 'cleanup']);
+});
+
+test('preserves a signal forwarded during the designated live check', () => {
+  const definition = tenantAdminControlCheck('tenant-read-scope');
+  const interrupted: ManagedChildOutcome = {
+    code: null,
+    signal: 'SIGTERM',
+    forwardedSignal: 'SIGTERM',
+    timedOut: false,
+    setupFailed: false,
+    cleanupFailed: false,
+    stdout: '',
+    stderr: '',
+    outputTruncated: false,
+  };
+  assert.deepEqual(controlCheckChildObservation(interrupted, definition.expectedSignature), {
+    status: 'failed',
+    forwardedSignal: 'SIGTERM',
+  });
+});
+
+test('fails closed when Docker absence cannot be queried', () => {
+  const containerId = 'a'.repeat(64);
+  assert.equal(
+    dockerContainerIsAbsent(process.cwd(), containerId, () => ''),
+    true,
+  );
+  assert.equal(
+    dockerContainerIsAbsent(process.cwd(), containerId, () => `${containerId}\n`),
+    false,
+  );
+  assert.equal(
+    dockerContainerIsAbsent(process.cwd(), containerId, () => {
+      throw new Error('daemon unavailable');
+    }),
+    false,
+  );
 });
 
 test('rejects incomplete or tampered control-check provenance artifacts', () => {

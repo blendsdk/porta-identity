@@ -435,7 +435,11 @@ export async function observeLiveConcurrentTenantIsolation(
   context: LiveTenantAdminContext,
 ): Promise<ConcurrentTenantIsolationResult> {
   const api = await context.api();
-  const run = async (tenant: 'alpha' | 'bravo') => {
+  const tenants = ['alpha', 'bravo'] as const;
+  const priorSessionIds = await Promise.all(
+    tenants.map((tenant) => context.observeActiveSessionIds(tenant)),
+  );
+  const run = async (tenant: 'alpha' | 'bravo', sessionIds: ReadonlySet<string>) => {
     const startedAt = performance.now();
     const token = await verifyOidcLogin(tenant, 'public', context.endpoints, api);
     const discovery = await api.get(
@@ -448,7 +452,7 @@ export async function observeLiveConcurrentTenantIsolation(
       .parse(await discovery.json());
     const issuerOrganization = observedOrganizationFromIssuer(document.issuer);
     const response = await context.observeResponseOrganization(tenant, token);
-    const session = await context.observeSessionOrganization(tenant);
+    const session = await context.observeSessionOrganization(tenant, sessionIds);
     const cache = context.observeCacheOrganization(tenant);
     return Object.freeze({
       startedAt,
@@ -464,7 +468,9 @@ export async function observeLiveConcurrentTenantIsolation(
       }),
     });
   };
-  const journeys = await Promise.all([run('alpha'), run('bravo')]);
+  const journeys = await Promise.all(
+    tenants.map((tenant, index) => run(tenant, priorSessionIds[index])),
+  );
   const observations = journeys.map((journey) => journey.observation);
   const overlapped = concurrentJourneysOverlap(journeys);
   const crossTalkDetected = tenantCrossTalkDetected(observations);
