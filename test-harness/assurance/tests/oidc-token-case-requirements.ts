@@ -84,8 +84,15 @@ function protocolCase(
 const rejectedBeforeCode = {
   result: 'rejected',
   status: 400,
-  error: 'invalid_request',
+  error: 'invalid_redirect_uri',
   responseLocation: 'direct-response',
+  codeIssued: false,
+} as const;
+const redirectedPkceRejection = {
+  result: 'rejected',
+  status: 303,
+  error: 'invalid_request',
+  responseLocation: 'redirect-response',
   codeIssued: false,
 } as const;
 const invalidGrant = {
@@ -103,7 +110,7 @@ export const st33RedirectPkceCase = protocolCase(
     step({
       id: 'valid-s256-exact-redirect-control',
       inputs: { redirectVariant: 'exact', codeChallengeMethod: 'S256', verifier: 'valid' },
-      expectedFacts: { result: 'accepted', status: 302, codeIssued: true },
+      expectedFacts: { result: 'accepted', status: 303, codeIssued: true },
     }),
     step({
       id: 'valid-s256-token-control',
@@ -116,13 +123,13 @@ export const st33RedirectPkceCase = protocolCase(
       id: 'missing-pkce',
       controlId: 'valid-s256-exact-redirect-control',
       inputs: { codeChallenge: null },
-      expectedFacts: rejectedBeforeCode,
+      expectedFacts: redirectedPkceRejection,
     }),
     step({
       id: 'plain-pkce',
       controlId: 'valid-s256-exact-redirect-control',
       inputs: { codeChallengeMethod: 'plain' },
-      expectedFacts: rejectedBeforeCode,
+      expectedFacts: redirectedPkceRejection,
     }),
     step({
       id: 'one-character-redirect-change',

@@ -17,6 +17,7 @@
  *   PRIMARY KEY (id, type)
  */
 
+import { errors } from 'oidc-provider';
 import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 
@@ -166,10 +167,17 @@ export class PostgresAdapter {
   async consume(id: string): Promise<void> {
     const pool = getPool();
 
-    await pool.query(
-      `UPDATE oidc_payloads SET consumed_at = NOW() WHERE id = $1 AND type = $2`,
+    const result = await pool.query(
+      `UPDATE oidc_payloads SET consumed_at = NOW()
+       WHERE id = $1 AND type = $2 AND consumed_at IS NULL
+         AND (expires_at IS NULL OR expires_at > NOW())
+       RETURNING id`,
       [id, this.name],
     );
+
+    // The conditional write is the durable single-use decision. A preceding read cannot provide
+    // that guarantee because two requests may both observe the artifact before either consumes it.
+    if (result.rowCount !== 1) throw new errors.InvalidGrant();
   }
 
   /**

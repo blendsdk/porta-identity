@@ -18,7 +18,7 @@ Porta product contract.
 | 1   | Scope            | Which requirements are implemented?              | All seven `test-assurance` RDs in one phased program                                                                                                                                                             | User           | ✅     |
 | 2   | Delivery         | Big-bang or incremental?                         | Eleven independently verifiable phases; Porta remains publishable                                                                                                                                                | User           | ✅     |
 | 3   | Harness          | New runner or retained harness?                  | Retain Docker/Playwright externally and root Node/tsx internally; add no harness workspace/package or extra test framework                                                                                       | User           | ✅     |
-| 4   | Product changes  | Fix discovered behavior inline?                  | No by default; only the separately authorized organization, tenant/admin, and privacy-safe protocol-observation corrections recorded below may be fixed in this program                                           | User           | ✅     |
+| 4   | Product changes  | Fix discovered behavior inline?                  | No by default; only the separately authorized organization, tenant/admin, and Phase 7 protocol corrections recorded below may be fixed in this program                                                            | User           | ✅     |
 | 5   | Evidence home    | Where do durable definitions live?               | Versioned definitions under `test-harness/assurance/`; generated results stay ignored                                                                                                                            | AI             | ✅     |
 | 6   | Claim format     | Markdown, JSON, or both?                         | JSON claim records validated by TypeScript/Zod, rendered to Markdown summaries                                                                                                                                   | AI             | ✅     |
 | 7   | Oracle boundary  | May production code calculate expectations?      | No; production imports are arrangement-only and assertions use public boundaries                                                                                                                                 | User/AI        | ✅     |
@@ -55,6 +55,8 @@ Porta product contract.
 | 70  | Phase 6 quality correction | How are provenance, signal/recovery, traceability, and live-observation review defects corrected without production hooks or weaker claims? | Use evidence-backed public observation proofs, a persistent owner-fenced control-check run record, and executable Markdown/JSON traceability consistency | AI (runtime) | ✅     |
 | 72  | Protocol live evidence | How can Task 7.5 add raw/JOSE and packed-client evidence while preserving clean packed provenance and one authoritative oracle? | Split independent JOSE, raw live observation, packed capability, and clean packed evidence; raw HTTP/independent JOSE remains authoritative and packed journeys cover only public SDK/CLI protocol surfaces | AI (runtime) | ✅     |
 | 73  | Protocol rejection observation | How can the immutable protocol oracle observe required privacy-safe rejection logs when Porta currently emits no such event and ordinary logs retain query strings? | Add one separately verified product checkpoint using typed provider events plus explicit pre-provider observation, server-generated correlation, closed event classes, client-ID digests, deduplication, and path-only ordinary logs | User/AI (runtime) | ✅     |
+| 74  | Authorization redirect oracle | Must missing/plain PKCE be rejected by a direct 400 once the client and registered redirect have already been validated? | No; require a 303 `invalid_request` only to the exact registered redirect, while an unregistered redirect remains a direct 400 `invalid_redirect_uri` with no redirect or code | AI (runtime) | ✅     |
+| 75  | Live token defects | May Phase 7 correct concurrent refresh reuse and cross-tenant UserInfo acceptance found by its immutable live oracle? | Yes; atomically consume durable refresh artifacts and bind opaque UserInfo tokens to the resolved issuer organization, preserving provider-compatible public errors and privacy-safe observation | User/AI (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -1313,3 +1315,47 @@ challenge confirmed typed provider events plus explicit pre-provider calls as th
 capture points. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260818-P7-C`. **Reopen trigger**: the provider event contract changes, a new enabled
 protocol endpoint enters the assurance slice, or the public log schema changes.
+
+### AR-74 — Authorization-error redirect classification
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: correction of an independently
+wrong protocol oracle; no product behavior or security-policy change. **Objective**: distinguish
+errors that are safe to return through a previously validated redirect URI from an attacker-chosen
+redirect mismatch. **Decision**: the missing-PKCE and unsupported plain-PKCE cases require a 303
+authorization error containing `invalid_request` at the exact registered callback and no code. A
+one-character redirect mismatch remains a direct 400 containing `invalid_redirect_uri` and must
+not redirect. The positive flow retains the provider's observed 303 redirect contract. **Rejected
+alternatives**: requiring every
+authorization error to be direct contradicts the established authorization-response channel after
+redirect validation; accepting a redirect for the mismatched URI would create an open-redirect and
+code-disclosure risk. **Strongest counterargument**: a direct error is simpler to test, but it loses
+the client-visible error channel without improving safety once the callback is already known and
+exactly registered. **Confidence**: High. **Hardening**: the correction preserves exact redirect
+matching and was made after separating the valid-redirect PKCE cases from the invalid-redirect
+case, rather than normalizing all 3xx behavior. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260818-P7-D`. **Reopen trigger**: the authorization server can no longer prove the
+redirect URI exact before emitting the error, or the approved Porta redirect status changes.
+
+### AR-75 — Atomic refresh consumption and UserInfo issuer binding
+
+**Authority**: User — authorized by the instruction to continue through completion; architecture
+refined under `--auto-design`. **Eligibility**: necessary corrections for two confirmed live
+failures inside the approved token replay and tenant-isolation scope. **Objective**: ensure one
+refresh predecessor creates at most one replacement and an opaque access token discloses identity
+only beneath the issuer organization that owns its client. **Decision**: make PostgreSQL consume a
+single conditional, unexpired update and return generic `invalid_grant` when another request has
+already claimed the artifact. At UserInfo, resolve exactly one bounded header or form token through
+the provider, require its active client to belong to the resolved organization, and otherwise emit
+the existing privacy-safe rejection event plus provider-compatible `401 invalid_token`. Malformed,
+ambiguous, absent, and unknown tokens remain provider-owned decisions. **Rejected alternatives**:
+serializing in one Node process would fail across replicas; trusting the CORS lookup would turn a
+best-effort header mechanism into authorization; weakening the immutable live expectations would
+retain both defects. **Strongest counterargument**: outer UserInfo validation partially duplicates
+provider token extraction, so the boundary accepts only the provider's documented mechanisms and
+delegates every ambiguous input. **Confidence**: High. **Hardening**: an independent challenge
+converged on both mechanisms and identified Redis authorization-code atomicity plus the synthetic
+wrong-client UserInfo subcase as explicit follow-up inputs to Tasks 7.6–7.7, not grounds to claim
+the broader replay slice complete at this checkpoint. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260818-P7-E`. **Reopen trigger**: access tokens cease to be opaque, UserInfo token
+transport changes, the provider changes adapter failure semantics, or durable token storage moves
+away from PostgreSQL.

@@ -468,7 +468,7 @@ export function createApp(oidcProvider?: Provider): Koa {
     // A client is valid only beneath the issuer owned by its organization. This check runs before
     // CORS, secret transformation, and oidc-provider so a foreign client cannot create an
     // interaction or authenticate under another tenant's issuer.
-    oidcRouter.use(oidcClientTenantBinding());
+    oidcRouter.use(oidcClientTenantBinding(oidcProvider));
 
     // OIDC CORS — pre-sets Access-Control-Allow-Origin and related headers
     // BEFORE the request enters oidc-provider's internal Koa context.

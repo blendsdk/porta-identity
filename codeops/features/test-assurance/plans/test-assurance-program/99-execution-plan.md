@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 21:02
-> **Progress**: 62/101 tasks (61%)
+> **Last Updated**: 2026-08-18 21:52
+> **Progress**: 63/101 tasks (62%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -22,8 +22,9 @@ Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, ev
 alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
 preserve the oracle, block only affected claims, and are routed to separately authorized work. This
 plan edits production behavior only for the separately authorized organization-route, Phase 6
-tenant/admin blocking defects, and Phase 7 privacy-safe protocol rejection observation recorded in
-the ambiguity register, and never edits the read-only CI workflow.
+tenant/admin blocking defects, and Phase 7 privacy-safe protocol observation, atomic refresh
+consumption, and UserInfo tenant-binding corrections recorded in the ambiguity register, and never
+edits the read-only CI workflow.
 
 ## Phase Overview
 
@@ -633,9 +634,9 @@ has current green plus its own independently detected local control check.
 > **References**: ST-33–ST-41/ST-50–ST-51/ST-63, RD-04/RD-05
 > **Phase baseline tree**: `bf2c74d955cbcce7dac09eb0ceda407b7c078a12`
 > **Expected modification set**: `test-harness/assurance/`, harness-owned protocol specs/fixtures/
-> scripts, protocol-specific packed-client and control-check assets, and this feature's plan/
-> roadmap/review evidence. Product files remain excluded unless a separately authorized confirmed
-> defect correction is recorded.
+> scripts, protocol-specific packed-client and control-check assets, the repository's exact test-
+> inventory contract, and this feature's plan/roadmap/review evidence. Product files remain
+> excluded unless a separately authorized confirmed defect correction is recorded.
 > **Scope mode**: strict — OIDC, ID-token, opaque-token, rotation, replay, and distributed-boundary
 > assurance only; no production test hooks, CI changes, certification claims, or later auth/P1 work
 
@@ -704,9 +705,18 @@ has current green plus its own independently detected local control check.
       The focused specification/implementation and related middleware suite passed 22/22, server
       typecheck/lint/formatting passed, and `yarn verify` passed 230 server files / 3,367
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 21:02)
-- [ ] 7.5b2 Add the missing live black-box adapter behind the immutable ST-33–ST-41 specifications,
+- [x] 7.5b2 Add the missing live black-box adapter behind the immutable ST-33–ST-41 specifications,
       using raw HTTP and the independent JOSE verifier. Run it inside the lifecycle-owned protocol
       stack and preserve exact log, recovery, and prohibited-side-effect observations.
+      Added owner-fenced raw HTTP/browser execution, independent JOSE and JWKS observations,
+      correlated privacy-safe log checks, exact public context substitutions, and deterministic
+      concurrent requests. Live evidence found and drove separately authorized atomic refresh-
+      token consumption and opaque UserInfo tenant-binding fixes without production test hooks.
+      Final owned run `70bac9b2-a829-4844-bc88-652bb7196b18` passed 15/15 with deterministic
+      decoded-byte signature mutation and zero retained stack residue. Focused server tests passed
+      40/40, protocol specs
+      passed 20/20, and `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 21:52)
 - [ ] 7.5c Add immutable packed-protocol adjunct specifications and implement the capability for
       browser-assisted CLI authorization-code/PKCE login and SDK refresh-token use. Reuse the
       established local-archive, isolated-HOME, independent raw/JOSE observation, cleanup,

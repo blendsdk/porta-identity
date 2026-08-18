@@ -8,6 +8,8 @@ import { getClientByClientId } from '../../../src/clients/service.js';
 import { oidcClientTenantBinding } from '../../../src/middleware/oidc-client-tenant.js';
 import type { Client } from '../../../src/clients/types.js';
 
+const provider = { AccessToken: { find: vi.fn().mockResolvedValue(undefined) } };
+
 /** Creates the client fields used by the tenant-binding middleware. */
 function client(organizationId: string): Client {
   return {
@@ -61,7 +63,10 @@ describe('OIDC client tenant binding', () => {
     vi.mocked(getClientByClientId).mockResolvedValue(client('alpha-organization'));
     const next = vi.fn();
 
-    await oidcClientTenantBinding()(context({ queryClientId: 'alpha-client' }) as never, next);
+    await oidcClientTenantBinding(provider)(
+      context({ queryClientId: 'alpha-client' }) as never,
+      next,
+    );
 
     expect(getClientByClientId).toHaveBeenCalledWith('alpha-client');
     expect(next).toHaveBeenCalledOnce();
@@ -72,7 +77,7 @@ describe('OIDC client tenant binding', () => {
     const next = vi.fn();
 
     await expect(
-      oidcClientTenantBinding()(context({ queryClientId: 'bravo-client' }) as never, next),
+      oidcClientTenantBinding(provider)(context({ queryClientId: 'bravo-client' }) as never, next),
     ).rejects.toMatchObject({ status: 404, message: 'Client not found' });
     expect(next).not.toHaveBeenCalled();
   });
@@ -81,7 +86,10 @@ describe('OIDC client tenant binding', () => {
     vi.mocked(getClientByClientId).mockResolvedValue(null);
 
     await expect(
-      oidcClientTenantBinding()(context({ bodyClientId: 'unknown-client' }) as never, vi.fn()),
+      oidcClientTenantBinding(provider)(
+        context({ bodyClientId: 'unknown-client' }) as never,
+        vi.fn(),
+      ),
     ).rejects.toMatchObject({ status: 404, message: 'Client not found' });
   });
 
@@ -90,7 +98,7 @@ describe('OIDC client tenant binding', () => {
     const authorization = `Basic ${Buffer.from('bravo-client:secret').toString('base64')}`;
 
     await expect(
-      oidcClientTenantBinding()(context({ authorization }) as never, vi.fn()),
+      oidcClientTenantBinding(provider)(context({ authorization }) as never, vi.fn()),
     ).rejects.toMatchObject({ status: 404, message: 'Client not found' });
     expect(getClientByClientId).toHaveBeenCalledWith('bravo-client');
   });
@@ -98,7 +106,7 @@ describe('OIDC client tenant binding', () => {
   it('should continue on discovery-style requests without a client identifier', async () => {
     const next = vi.fn();
 
-    await oidcClientTenantBinding()(context({}) as never, next);
+    await oidcClientTenantBinding(provider)(context({}) as never, next);
 
     expect(getClientByClientId).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledOnce();

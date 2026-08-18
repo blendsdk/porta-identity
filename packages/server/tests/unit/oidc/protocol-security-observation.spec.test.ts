@@ -121,7 +121,9 @@ describe('protocol security rejection observation', () => {
     context.state = { organization: { id: 'org-alpha' } };
     testState.getClientByClientId.mockResolvedValue({ organizationId: 'org-bravo' });
 
-    const binding = oidcClientTenantBinding();
+    const binding = oidcClientTenantBinding({
+      AccessToken: { find: vi.fn().mockResolvedValue(undefined) },
+    });
     const thrown = Object.assign(new Error('Client not found'), { status: 404 });
     context.throw = vi.fn(() => {
       throw thrown;

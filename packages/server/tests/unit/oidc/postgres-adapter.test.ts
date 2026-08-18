@@ -40,8 +40,8 @@ describe('PostgresAdapter', () => {
       expect(params[0]).toBe('token-id');
       expect(params[1]).toBe('AccessToken');
       expect(params[3]).toBe('grant-1'); // grant_id
-      expect(params[4]).toBe('uc-1');    // user_code
-      expect(params[5]).toBe('uid-1');   // uid
+      expect(params[4]).toBe('uc-1'); // user_code
+      expect(params[5]).toBe('uid-1'); // uid
     });
 
     it('calculates expires_at from expiresIn', async () => {
@@ -117,10 +117,14 @@ describe('PostgresAdapter', () => {
 
   describe('consume', () => {
     it('updates consumed_at to NOW()', async () => {
-      const mockQuery = mockPool();
+      const mockQuery = vi.fn().mockResolvedValue({ rows: [{ id: 'token-id' }], rowCount: 1 });
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
       await adapter.consume('token-id');
       const sql = mockQuery.mock.calls[0][0] as string;
       expect(sql).toContain('UPDATE oidc_payloads SET consumed_at = NOW()');
+      expect(sql).toContain('consumed_at IS NULL');
+      expect(sql).toContain('(expires_at IS NULL OR expires_at > NOW())');
+      expect(sql).toContain('RETURNING id');
       expect(mockQuery.mock.calls[0][1]).toEqual(['token-id', 'AccessToken']);
     });
   });

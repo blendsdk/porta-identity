@@ -168,6 +168,12 @@ const protocolSpecificationFiles = [
   'test-harness/assurance/tests/protocol-interleavings.spec.test.ts',
 ] as const;
 
+/** Protocol specifications that currently have a live public-boundary adapter. */
+const protocolLiveSpecificationFiles = [
+  'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -502,7 +508,25 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
   process.exitCode = await withHarnessStack(profile, async () => {
     const projectResult = await runLifecycleAction('project', project);
     const projectExit = managedChildExit(projectResult, testFailureExit);
-    if (projectExit !== 0 || project !== 'security') return projectExit;
+    if (projectExit !== 0) return projectExit;
+
+    if (project === 'protocol') {
+      const reset = await runLifecycleAction('reset');
+      const resetExit = managedChildExit(reset, setupFailureExit);
+      if (resetExit !== 0) return resetExit;
+      const active = readActiveCoverageRun(process.cwd());
+      const liveSpecifications = await runNodeSuite(
+        protocolLiveSpecificationFiles,
+        undefined,
+        Object.freeze({
+          ...environmentForManifest(active.lease.manifest),
+          PORTA_ASSURANCE_PROTOCOL_ADAPTER: 'live',
+        }),
+      );
+      return managedChildExit(liveSpecifications, testFailureExit);
+    }
+
+    if (project !== 'security') return projectExit;
 
     const reset = await runLifecycleAction('reset');
     const resetExit = managedChildExit(reset, setupFailureExit);

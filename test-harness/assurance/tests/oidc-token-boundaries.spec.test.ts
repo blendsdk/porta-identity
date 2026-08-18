@@ -103,11 +103,14 @@ async function observeAndAssertCase(
 
 test('ST-33 rejects missing wrong or plain PKCE and changed redirects before issuance', async () => {
   const observation = await observeAndAssertCase(st33RedirectPkceCase);
-  for (const id of ['missing-pkce', 'plain-pkce', 'one-character-redirect-change']) {
+  for (const id of ['missing-pkce', 'plain-pkce']) {
     const probe = observationById(observation.probes, id);
     assert.equal(probe.facts.codeIssued, false, id);
     assert.equal(probe.facts.error, 'invalid_request', id);
   }
+  const invalidRedirect = observationById(observation.probes, 'one-character-redirect-change');
+  assert.equal(invalidRedirect.facts.codeIssued, false);
+  assert.equal(invalidRedirect.facts.error, 'invalid_redirect_uri');
   const wrongVerifier = observationById(observation.probes, 'wrong-pkce-verifier');
   assert.equal(wrongVerifier.facts.error, 'invalid_grant');
   assert.equal(wrongVerifier.facts.tokenIssuedCount, 0);

@@ -63,6 +63,7 @@ import { hasMagicLinkSession, consumeMagicLinkSession } from '../auth/magic-link
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
 import { purgeExpired } from '../oidc/postgres-adapter.js';
+import { observeProtocolSecurityRejection } from '../oidc/protocol-security-observer.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -270,6 +271,20 @@ function getStatusErrorMessage(status: string, t: (key: string) => string): stri
 export function createInteractionRouter(provider: Provider): Router {
   const router = new Router({ prefix: '/interaction' });
 
+  router.use(async (ctx, next) => {
+    try {
+      await next();
+    } catch (error: unknown) {
+      if (isMissingInteraction(error)) {
+        observeProtocolSecurityRejection({
+          request: ctx.req,
+          eventClass: 'interaction-context-rejected',
+        });
+      }
+      throw error;
+    }
+  });
+
   // -------------------------------------------------------------------------
   // GET /interaction/:uid — Show login or consent page
   // -------------------------------------------------------------------------
@@ -313,6 +328,12 @@ export function createInteractionRouter(provider: Provider): Router {
   });
 
   return router;
+}
+
+/** Identifies the provider's exact expired, absent, or mismatched interaction state error. */
+function isMissingInteraction(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || Array.isArray(error)) return false;
+  return Reflect.get(error, 'name') === 'SessionNotFound' && Reflect.get(error, 'status') === 400;
 }
 
 // ---------------------------------------------------------------------------
