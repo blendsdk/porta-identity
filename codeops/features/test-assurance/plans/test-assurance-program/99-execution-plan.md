@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 19:22
-> **Progress**: 61/100 tasks (61%)
+> **Last Updated**: 2026-08-18 21:02
+> **Progress**: 62/101 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -21,9 +21,9 @@ task. Existing behavior that starts green uses its exact curated-fault tuple for
 Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, every task runs the
 alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
 preserve the oracle, block only affected claims, and are routed to separately authorized work. This
-plan edits production behavior only for the separately authorized organization-route and Phase 6
-tenant/admin blocking defects recorded in the ambiguity register, and never edits the read-only CI
-workflow.
+plan edits production behavior only for the separately authorized organization-route, Phase 6
+tenant/admin blocking defects, and Phase 7 privacy-safe protocol rejection observation recorded in
+the ambiguity register, and never edits the read-only CI workflow.
 
 ## Phase Overview
 
@@ -35,13 +35,13 @@ workflow.
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
-|     7 | OIDC, ID-token, and token lifecycle                 |    12 |
+|     7 | OIDC, ID-token, and token lifecycle                 |    13 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 100 tasks across 11 release-safe phases.**
+**Total: 101 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -96,7 +96,8 @@ text, but it cannot substitute another command for this binding.
 | 7.4a      | `yarn assurance:test --select protocol-specs` plus protocol baseline specification/implementation tests                                                     |
 | 7.4b      | `yarn assurance:baseline --case ST-33`                                                                                                                       |
 | 7.5a      | `yarn assurance:test --select protocol-jose`                                                                                                                  |
-| 7.5b, 7.6 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.5b1      | Focused server protocol-rejection observation specifications and implementation tests                                                                       |
+| 7.5b2, 7.6 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
 | 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
 | 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
 | 7.7       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
@@ -694,7 +695,16 @@ has current green plus its own independently detected local control check.
       claim/lifetime contract, and exposes a separate opaque-token rejection path that performs no
       JWT decode. The registered five-case `protocol-jose` selector and assurance typecheck/lint/
       formatting gates passed. ✅ (completed: 2026-08-18 19:22)
-- [ ] 7.5b Add the missing live black-box adapter behind the immutable ST-33–ST-41 specifications,
+- [x] 7.5b1 Add privacy-safe protocol rejection observation at typed provider and pre-provider
+      boundaries. Preserve public responses, use only server-generated correlation identifiers,
+      emit the closed required event fields without secrets or personal data, and remove query
+      strings from ordinary request/error logs. Added request-correlated typed provider listeners,
+      explicit foreign-client binding observation, bounded domain-separated client-ID digests,
+      duplicate suppression, non-interfering logging, and path-only ordinary request/error logs.
+      The focused specification/implementation and related middleware suite passed 22/22, server
+      typecheck/lint/formatting passed, and `yarn verify` passed 230 server files / 3,367
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 21:02)
+- [ ] 7.5b2 Add the missing live black-box adapter behind the immutable ST-33–ST-41 specifications,
       using raw HTTP and the independent JOSE verifier. Run it inside the lifecycle-owned protocol
       stack and preserve exact log, recovery, and prohibited-side-effect observations.
 - [ ] 7.5c Add immutable packed-protocol adjunct specifications and implement the capability for

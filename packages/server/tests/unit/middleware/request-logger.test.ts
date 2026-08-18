@@ -15,8 +15,10 @@ vi.mock('../../../src/lib/logger.js', () => ({
 function createMockContext(overrides = {}): Record<string, unknown> {
   const headers: Record<string, string> = {};
   return {
+    req: {},
     status: 200,
     method: 'GET',
+    path: '/test',
     url: '/test',
     state: {},
     set: vi.fn((key: string, value: string) => {
@@ -73,11 +75,16 @@ describe('requestLogger middleware', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('logs request info with method, url, status, and duration', async () => {
+  it('logs request info with method, path, status, and duration', async () => {
     const { logger } = await import('../../../src/lib/logger.js');
     vi.mocked(logger.info).mockClear();
     const middleware = requestLogger();
-    const ctx = createMockContext({ method: 'POST', url: '/api/test', status: 201 });
+    const ctx = createMockContext({
+      method: 'POST',
+      path: '/api/test',
+      url: '/api/test?ignored=value',
+      status: 201,
+    });
     const next = vi.fn().mockResolvedValue(undefined);
 
     await middleware(ctx as never, next);
@@ -86,7 +93,7 @@ describe('requestLogger middleware', () => {
       expect.objectContaining({
         requestId: expect.any(String),
         method: 'POST',
-        url: '/api/test',
+        path: '/api/test',
         status: 201,
         duration: expect.any(Number),
       }),

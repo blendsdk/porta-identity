@@ -18,7 +18,7 @@ Porta product contract.
 | 1   | Scope            | Which requirements are implemented?              | All seven `test-assurance` RDs in one phased program                                                                                                                                                             | User           | ✅     |
 | 2   | Delivery         | Big-bang or incremental?                         | Eleven independently verifiable phases; Porta remains publishable                                                                                                                                                | User           | ✅     |
 | 3   | Harness          | New runner or retained harness?                  | Retain Docker/Playwright externally and root Node/tsx internally; add no harness workspace/package or extra test framework                                                                                       | User           | ✅     |
-| 4   | Product changes  | Fix discovered behavior inline?                  | No; reproduce, block the claim, and route a separate product task                                                                                                                                                | User           | ✅     |
+| 4   | Product changes  | Fix discovered behavior inline?                  | No by default; only the separately authorized organization, tenant/admin, and privacy-safe protocol-observation corrections recorded below may be fixed in this program                                           | User           | ✅     |
 | 5   | Evidence home    | Where do durable definitions live?               | Versioned definitions under `test-harness/assurance/`; generated results stay ignored                                                                                                                            | AI             | ✅     |
 | 6   | Claim format     | Markdown, JSON, or both?                         | JSON claim records validated by TypeScript/Zod, rendered to Markdown summaries                                                                                                                                   | AI             | ✅     |
 | 7   | Oracle boundary  | May production code calculate expectations?      | No; production imports are arrangement-only and assertions use public boundaries                                                                                                                                 | User/AI        | ✅     |
@@ -54,6 +54,7 @@ Porta product contract.
 | 59  | Live fault execution | How can tenant/admin sentinels challenge real Porta controls without admitting arbitrary production patches or unrelated failures? | Use one reviewed fault ID per semantic production patch, a code-owned target/sub-sentinel registry, lifecycle-owned disposable stacks, and separate specification, capability, and clean-campaign checkpoints | AI (runtime) | ✅     |
 | 70  | Phase 6 quality correction | How are provenance, signal/recovery, traceability, and live-observation review defects corrected without production hooks or weaker claims? | Use evidence-backed public observation proofs, a persistent owner-fenced control-check run record, and executable Markdown/JSON traceability consistency | AI (runtime) | ✅     |
 | 72  | Protocol live evidence | How can Task 7.5 add raw/JOSE and packed-client evidence while preserving clean packed provenance and one authoritative oracle? | Split independent JOSE, raw live observation, packed capability, and clean packed evidence; raw HTTP/independent JOSE remains authoritative and packed journeys cover only public SDK/CLI protocol surfaces | AI (runtime) | ✅     |
+| 73  | Protocol rejection observation | How can the immutable protocol oracle observe required privacy-safe rejection logs when Porta currently emits no such event and ordinary logs retain query strings? | Add one separately verified product checkpoint using typed provider events plus explicit pre-provider observation, server-generated correlation, closed event classes, client-ID digests, deduplication, and path-only ordinary logs | User/AI (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -1287,3 +1288,28 @@ class is introduced. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260818-P7-B`. **Reopen trigger**: another public packed protocol surface becomes
 required for this slice, or compatibility evidence can safely bind a separately approved source
 identity.
+
+### AR-73 — Privacy-safe protocol rejection observation
+
+**Authority**: User — authorized by the instruction to proceed through the remaining program;
+architecture refined under `--auto-design`. **Eligibility**: necessary product correction for the
+already approved immutable protocol-log oracle. **Objective**: provide independently observable
+security-rejection events without exposing authorization artifacts in either the new event or
+ordinary request/error logs. **Decision**: insert Task 7.5b1 before the live adapter. A focused
+observer registers server-generated request correlation against the shared raw request, listens to
+typed `oidc-provider` rejection events, and is called explicitly only at approved pre-provider
+security boundaries. It emits one closed event name, closed location-oriented event classes, and a
+domain-separated SHA-256 digest of a bounded public client identifier. Duplicate request/class
+events are suppressed. Unknown client identity is represented without inventing or exposing an
+identifier. Ordinary request and unhandled-error logs record only the URL path. Public responses,
+status codes, protocol decisions, and cryptographic behavior remain unchanged. **Rejected
+alternatives**: deriving evidence from every outer 4xx is ambiguous; `renderError` misses JSON and
+redirected failures; logging inside validators duplicates provider internals; accepting the absent
+event as a named gap prevents the approved live claim from ever becoming evidentiary. **Strongest
+counterargument**: product logging changes can themselves leak data, so the checkpoint is
+specification-first, emits an exact minimal payload, performs no database lookup, and includes
+query-string/secret canary regressions. **Confidence**: High. **Hardening**: an independent design
+challenge confirmed typed provider events plus explicit pre-provider calls as the narrowest sound
+capture points. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260818-P7-C`. **Reopen trigger**: the provider event contract changes, a new enabled
+protocol endpoint enters the assurance slice, or the public log schema changes.

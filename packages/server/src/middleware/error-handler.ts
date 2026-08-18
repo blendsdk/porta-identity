@@ -14,7 +14,7 @@ export function errorHandler(): Middleware {
       };
 
       if (ctx.status >= 500) {
-        logger.error({ err, method: ctx.method, url: ctx.url }, 'Unhandled error');
+        logger.error({ err, method: ctx.method, path: ctx.path }, 'Unhandled error');
       }
     }
   };

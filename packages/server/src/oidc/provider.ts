@@ -20,6 +20,7 @@ import { buildProviderConfiguration } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
+import { registerProtocolSecurityObservers } from './protocol-security-observer.js';
 
 /**
  * Create and configure the node-oidc-provider instance.
@@ -75,6 +76,7 @@ export async function createOidcProvider(params: {
   // The actual per-org issuer is resolved dynamically via URL rewriting
   // in the Koa router (server.ts strips the /:orgSlug prefix).
   const provider = new Provider(config.issuerBaseUrl, configuration);
+  registerProtocolSecurityObservers(provider);
 
   // Enable proxy mode — required for path-based multi-tenancy so the
   // provider trusts forwarded headers and handles URL rewriting correctly.

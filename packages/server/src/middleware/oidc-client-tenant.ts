@@ -9,6 +9,7 @@
 
 import type { Middleware } from 'koa';
 import { getClientByClientId } from '../clients/service.js';
+import { observeProtocolSecurityRejection } from '../oidc/protocol-security-observer.js';
 
 const MAX_CLIENT_ID_LENGTH = 255;
 const MAX_BASIC_HEADER_LENGTH = 4096;
@@ -81,6 +82,11 @@ export function oidcClientTenantBinding(): Middleware {
     for (const clientId of candidates) {
       const client = await getClientByClientId(clientId);
       if (client === null || client.organizationId !== organizationId) {
+        observeProtocolSecurityRejection({
+          request: ctx.req,
+          eventClass: 'client-tenant-binding-rejected',
+          clientId,
+        });
         ctx.throw(404, 'Client not found');
       }
     }
