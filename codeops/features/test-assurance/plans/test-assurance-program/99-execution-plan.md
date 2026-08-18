@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 13:55
-> **Progress**: 54/96 tasks (56%)
+> **Last Updated**: 2026-08-18 15:39
+> **Progress**: 55/96 tasks (57%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -605,20 +605,19 @@ without waiting for a later phase or touching developer credentials. See
       reports cleanup complete, and leaves no control-check runtime or primary-tree change.
       `yarn verify` then passed 68 structure tests, 227 server files / 3,359 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-15 17:14)
-- [~] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
-      log/recovery checks, all pentests, and `yarn verify`. Revision `f5ec1f4f` passed the 25-case
-      tenant/admin selector, 17 live operational cases, eight packed SDK/CLI journeys, attributed
-      security coverage, 53 governance cases, 35 pentest files / 224 tests, foundation validation,
-      and sanitized report generation. Evidence is revision/image/fixture bound, retained JSON and
-      Markdown are mode `0600`, redaction checks found no protected values, and owned Docker,
-      runtime, worktree, credential, and consumer residue is empty. Two stale foundation
-      assumptions discovered by this gate were corrected and independently committed before the
-      complete evidence matrix was rerun. The final targeted selector passed 25/25. `yarn verify`
-      passed 68 structure tests, 227 server files / 3,359 tests, 31 SDK files / 404 tests,
-      and 29 CLI files / 355 tests. Reopened by the mandatory Phase 6 review: seven Major
-      provenance, signal/recovery, traceability, reachability, concurrency, and side-effect
-      observation defects require the accepted AR-70 corrections and one bounded re-review before
-      the phase gate can close. ⏳ (implemented: 2026-08-18 13:55)
+- [x] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
+      log/recovery checks, all pentests, and `yarn verify`. Clean correction revision `12eb4c4d`
+      passed foundation validation, the 28-case tenant/admin selector, 17 live operational cases,
+      eight packed SDK/CLI journeys, attributed security coverage, 55 governance cases, 35 pentest
+      files / 224 tests, and sanitized report generation. All seven control checks independently
+      detected their designated absence signature with complete revision/tree/tool/lock/target/
+      variant/lifecycle/fixture/image/container provenance and cleanup. Retained JSON and Markdown
+      are mode `0600`, redaction checks found no protected values, and owned Docker, runtime,
+      worktree, credential, and consumer residue is empty. The single bounded re-review found four
+      residual signal, denial-schema, session-correlation, and Docker-query defects; regression
+      tests and the complete clean-revision evidence campaign corrected them. `yarn verify` passed
+      68 structure tests, 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files /
+      355 tests. ✅ (completed: 2026-08-18 15:39)
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim
 has current green plus its own independently detected local control check.

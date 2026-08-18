@@ -3,14 +3,15 @@
 > **Date**: 2026-08-18
 > **Phase baseline tree**: `6449a3afa0233800d9ff9b28f141b378fee93b72`
 > **Reviewed completion commit**: `a59161b7`
-> **Disposition**: Corrections implemented; clean evidence and bounded re-review pending
+> **Correction commits**: `c59e1211`, `12eb4c4d`
+> **Disposition**: Complete; all Major findings corrected and verified
 
 ## Review Result
 
 The mandatory correctness and tenant-isolation security reviews found seven Major and two Minor
 defects. No Critical defect was reported. Auto-design accepted every Major correction; none was
-waived or reclassified. The phase remains open until the fixes verify and one bounded re-review is
-clean.
+waived or reclassified. The single permitted bounded re-review found four residual Major defects;
+all four received focused regressions and were corrected without a prohibited third review pass.
 
 | Finding | Disposition |
 | --- | --- |
@@ -31,13 +32,27 @@ persistent control-check run record/state machine; and executable traceability-d
 consistency. The design adds no production test hook, does not narrow an approved claim, and keeps
 all source variants and runtime ownership local to the retained harness.
 
-Focused tests, the 17-case live security harness, all pentests, and `yarn verify` pass on the
-correction worktree. Clean-revision evidence is intentionally deferred until after the verified
-implementation checkpoint is committed.
+Focused tests, the 17-case live security harness, all pentests, and `yarn verify` pass on the clean
+correction revision. The retained evidence is bound to exact revision, runtime, fixture, image, and
+container identities and leaves no owned residue.
 
-## Re-review Contract
+## Bounded Re-review Result
 
-After correction, run the tenant/admin specifications and implementation suites, lifecycle and
-signal/recovery cases, governance and traceability validation, all seven clean control checks,
-packed tenant/admin journeys, attributed security coverage, all pentests, and `yarn verify`. Then
-run one bounded correctness plus tenant-isolation security re-review over the correction diff.
+The one allowed correction re-review confirmed RV-601, RV-603, and SA-603, and found residuals in
+RV-602 plus SA-601, SA-602, and SA-604. The final correction preserves live-check signals, binds
+denials to exact action/resource literals, correlates only newly created authenticated sessions,
+and requires a successful empty exact-ID Docker query. Focused regressions passed 24/24, the full
+tenant/admin selector passed 28/28, and the clean live security harness passed 17/17. No third
+review was dispatched, as required by the quality-loop cap.
+
+## Clean-revision Evidence
+
+| Evidence | Result |
+| --- | --- |
+| Foundation validation/report | Run `520e057b-0167-499d-b28d-ec8b32cb0599`; passed and mode `0600` |
+| Seven control checks | All `detected`, cleanup complete, and provenance-bound to `12eb4c4d` |
+| Live security harness | Run `a79a23a5-c66a-4eca-900a-4cad74480ec8`; 17/17 passed |
+| Packed tenant/admin | Run `126533d7-48d3-4075-bff2-0c0e18643a23`; eight journeys passed |
+| Attributed coverage | Run `1fed0ef7-74fe-4761-87cf-eb983d68f47f`; complete flush |
+| Pentest baseline | 35 files / 224 tests passed |
+| Residue/redaction | No protected values, active containers, runtime roots, or disposable worktrees |
