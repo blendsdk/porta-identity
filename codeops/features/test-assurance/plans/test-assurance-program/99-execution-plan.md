@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 17:42
-> **Progress**: 56/96 tasks (58%)
+> **Last Updated**: 2026-08-18 18:07
+> **Progress**: 57/96 tasks (59%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -643,8 +643,15 @@ has current green plus its own independently detected local control check.
       specifications passed 5/5, structure passed 68/68, assurance typecheck/lint/formatting passed,
       and `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI
       files / 355 tests. ✅ (completed: 2026-08-18 17:42)
-- [ ] 7.2 [spec-author] Write exact ST-33–ST-41 raw HTTP and independent ID-token/JWKS cases,
+- [x] 7.2 [spec-author] Write exact ST-33–ST-41 raw HTTP and independent ID-token/JWKS cases,
       including unknown `kid`, attacker JOSE key-location headers, and concurrent issuer separation.
+      Added a stable observation contract, closed case catalog, transparent non-evidentiary
+      requirements rig, fail-closed adapter seam, and ten immutable specifications. Every negative
+      probe links an exact positive control and checks exact facts, prohibited effects, privacy-safe
+      log fields, and recovery; observation types remain broad enough to report live defects.
+      Focused specifications passed 10/10, assurance typecheck/lint/formatting passed, and
+      `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files /
+      355 tests. ✅ (completed: 2026-08-18 18:07)
 - [ ] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
       before/after-commit failure, timeout unknown outcome/retry, and fresh-process replay.
 - [ ] 7.4 Record natural RED or legacy green claim by claim; audit OIDC E2E/pentest cases and reject
