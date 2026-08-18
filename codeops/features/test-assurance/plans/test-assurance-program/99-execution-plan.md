@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 21:52
-> **Progress**: 63/101 tasks (62%)
+> **Last Updated**: 2026-08-18 22:25
+> **Progress**: 64/101 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -717,10 +717,18 @@ has current green plus its own independently detected local control check.
       40/40, protocol specs
       passed 20/20, and `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 21:52)
-- [ ] 7.5c Add immutable packed-protocol adjunct specifications and implement the capability for
+- [x] 7.5c Add immutable packed-protocol adjunct specifications and implement the capability for
       browser-assisted CLI authorization-code/PKCE login and SDK refresh-token use. Reuse the
       established local-archive, isolated-HOME, independent raw/JOSE observation, cleanup,
       redaction, and fail-closed provenance boundaries; do not claim clean live evidence yet.
+      Added exact packed CLI and SDK evidence contracts, browser-assisted manual callback
+      orchestration, owner-only credential handoff, public Node SDK refresh execution, independent
+      JWKS/raw HTTP observations, consumed-token retry, signal/process-group cleanup, and the closed
+      `protocol-packed`/`protocol` selectors. The exact RED marker was
+      `PACKED_PROTOCOL_CAPABILITY_UNAVAILABLE`; final packed protocol passed 13/13, JOSE passed 6/6,
+      governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233 server files /
+      3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No clean live packed
+      evidence was claimed. ✅ (completed: 2026-08-18 22:25)
 - [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
       evidence. The protocol slice cannot close before this checkpoint is green.

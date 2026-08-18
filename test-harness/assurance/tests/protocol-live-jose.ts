@@ -19,7 +19,7 @@ const jwtPayloadSchema = z
     iss: z.string().min(1),
     aud: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
     sub: z.string().min(1),
-    nonce: z.string().min(1),
+    nonce: z.string().min(1).optional(),
     exp: z.number().int(),
     nbf: z.number().int().optional(),
   })
@@ -44,7 +44,7 @@ export interface IndependentIdTokenExpectation {
   /** Synthetic fixture subject that completed the authorization. */
   readonly subject: string;
   /** Client-generated nonce sent on the authorization request. */
-  readonly nonce: string;
+  readonly nonce?: string;
   /** Current epoch time used for deterministic lifetime checks. */
   readonly now: number;
 }
@@ -122,7 +122,10 @@ export function verifyIndependentIdToken(
   const issExact = payload.iss === expectation.issuer;
   const audExact = audienceMatches(payload.aud, expectation.audience);
   const subExact = payload.sub === expectation.subject;
-  const nonceExact = payload.nonce === expectation.nonce;
+  const nonceExact =
+    expectation.nonce === undefined
+      ? payload.nonce === undefined
+      : payload.nonce === expectation.nonce;
   const expValid = payload.exp > expectation.now;
   const nbfValid = payload.nbf === undefined || payload.nbf <= expectation.now;
   const accepted =

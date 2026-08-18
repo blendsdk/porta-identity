@@ -14,6 +14,8 @@ import {
   type PackedTenantAdminLiveDriver,
 } from './tenant-admin-live.js';
 import { createPackedTenantAdminRunContext, runPackedTenantAdminAdjunct } from './tenant-admin.js';
+import { createPackedProtocolLiveDriver, type PackedProtocolLiveDriver } from './protocol-live.js';
+import { createPackedProtocolRunContext, runPackedProtocolAdjunct } from './protocol.js';
 import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
 
 /** Selectors currently implemented by the packed-client foundation command. */
@@ -24,6 +26,7 @@ export const packedCompatibilitySelectors = [
   'ST-72',
   'ST-73',
   'tenant-admin',
+  'protocol',
   'compatibility',
 ] as const;
 
@@ -154,6 +157,7 @@ export async function runPackedCompatibilityFoundation(
   let stage: 'preparation' | 'surfaces' | 'credentials' | 'cleanup' | 'provenance' = 'preparation';
   let recoveryCommand: string | undefined;
   let tenantAdminDriver: PackedTenantAdminLiveDriver | undefined;
+  let protocolDriver: PackedProtocolLiveDriver | undefined;
   try {
     consumer = await preparePackedConsumer(canonicalRoot, {
       serverImageDigest: imageDigest,
@@ -192,6 +196,14 @@ export async function runPackedCompatibilityFoundation(
         tenantAdminDriver,
       );
       evidence = { ...commonEvidence, tenantAdmin };
+    } else if (selector === 'protocol') {
+      stage = 'credentials';
+      protocolDriver = createPackedProtocolLiveDriver(consumer, surfaces);
+      const protocol = await runPackedProtocolAdjunct(
+        createPackedProtocolRunContext(consumer, surfaces, resolution),
+        protocolDriver,
+      );
+      evidence = { ...commonEvidence, protocol };
     } else {
       stage = 'credentials';
       const credentialResults = [];
@@ -214,6 +226,14 @@ export async function runPackedCompatibilityFoundation(
     recoveryCommand =
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
+    if (protocolDriver !== undefined) {
+      try {
+        protocolDriver.dispose();
+      } catch {
+        exitCode = 60;
+        stage = 'cleanup';
+      }
+    }
     if (tenantAdminDriver !== undefined) {
       try {
         await tenantAdminDriver.dispose();

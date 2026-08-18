@@ -130,3 +130,15 @@ test('should reject malformed token and JWKS envelopes before verification', () 
     /invalid_type|expected array/i,
   );
 });
+
+test('should verify a native-client ID token when neither request nor token carries nonce', () => {
+  const fixture = tokenFixture({}, { nonce: undefined });
+  const result = verifyIndependentIdToken(fixture.token, fixture.jwks, {
+    issuer: 'https://issuer.example/alpha',
+    audience: 'client-a',
+    subject: 'user-a',
+    now: 1_000,
+  });
+  assert.equal(result.accepted, true);
+  assert.equal(result.facts.nonceExact, true);
+});

@@ -37,6 +37,17 @@ export {
   type PackedTenantAdminRunContext,
   type PackedTenantAdminTargetObservation,
 } from './tenant-admin.js';
+export { createPackedProtocolLiveDriver, PackedProtocolLiveDriver } from './protocol-live.js';
+export {
+  createPackedProtocolRunContext,
+  runPackedProtocolAdjunct,
+  validatePackedProtocolEvidence,
+  type PackedProtocolCliLoginEvidence,
+  type PackedProtocolEvidence,
+  type PackedProtocolJourneyDriver,
+  type PackedProtocolRunContext,
+  type PackedProtocolSdkRefreshEvidence,
+} from './protocol.js';
 export type {
   CurrentTripletIdentity,
   PackedArchiveIdentity,

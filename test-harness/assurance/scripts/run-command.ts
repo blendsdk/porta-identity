@@ -255,6 +255,11 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-tenant-admin.impl.test.ts',
   ],
+  'protocol-packed': [
+    'test-harness/assurance/tests/packed-cli-protocol.spec.test.ts',
+    'test-harness/assurance/tests/packed-sdk-protocol.spec.test.ts',
+    'test-harness/assurance/tests/packed-protocol.impl.test.ts',
+  ],
   'assurance-governance': [
     'test-harness/assurance/tests/assurance.spec.test.ts',
     'test-harness/assurance/tests/commands.impl.test.ts',
@@ -898,7 +903,7 @@ async function runCompatibilityCommand(options: readonly string[]): Promise<void
     !isPackedCompatibilitySelector(selectedValue)
   ) {
     process.stderr.write(
-      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|compatibility>\n',
+      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|protocol|compatibility>\n',
     );
     process.exitCode = setupFailureExit;
     return;
