@@ -134,3 +134,12 @@ test('should preserve only a closed non-secret packed protocol failure stage', (
   assert.equal(failure.stage, 'protocol-cli-browser');
   assert.equal(failure.message, 'packed compatibility execution failed');
 });
+
+test('should select the supported manual-mode environment without the broken negated flag', () => {
+  const driver = readFileSync(
+    resolve(process.cwd(), 'test-harness/assurance/compat/protocol-cli-login.ts'),
+    'utf8',
+  );
+  assert.match(driver, /PORTA_CONTAINER:\s*'1'/u);
+  assert.doesNotMatch(driver, /['"]--no-browser['"]/u);
+});

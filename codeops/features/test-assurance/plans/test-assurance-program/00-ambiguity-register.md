@@ -1359,3 +1359,24 @@ the broader replay slice complete at this checkpoint. **Policy version**: 1. **R
 `AD-TA-EXEC-20260818-P7-E`. **Reopen trigger**: access tokens cease to be opaque, UserInfo token
 transport changes, the provider changes adapter failure semantics, or durable token storage moves
 away from PostgreSQL.
+
+### AR-76 — Packed CLI manual-mode selection
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal assurance execution
+mechanism within the approved packed CLI login boundary; no product behavior or acceptance
+criterion changes. **Objective**: exercise the distributed CLI's real authorization-code and PKCE
+flow non-interactively without patching the CLI or accepting a synthetic login. **Decision**: set
+the CLI's documented `PORTA_CONTAINER=1` environment and omit `--no-browser`. The first clean run
+proved that Yargs interprets the published option name as negation of an undeclared `browser`
+option and exits with `Unknown argument: browser`; the environment is an existing public manual-
+mode mechanism implemented by `isContainerized()`. Record the flag behavior as a product defect
+outside this assurance correction. **Rejected alternatives**: fixing CLI option parsing is a
+separately authorized product change; launching the host browser is not deterministic or owner-
+fenced; importing CLI internals would bypass the packed executable. **Strongest counterargument**:
+container-mode selection is environment-dependent, but the value is explicit, allowlisted, and
+drives the same public manual callback flow the option intended to select. **Confidence**: High.
+**Hardening**: live reproduction against an owned stack returned the exact Yargs error before any
+authorization request, while direct code inspection confirmed `PORTA_CONTAINER=1` is the supported
+override. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-F`.
+**Reopen trigger**: the CLI removes the environment override, repairs and tests `--no-browser`, or
+manual mode stops using the same authorization-code/PKCE path.

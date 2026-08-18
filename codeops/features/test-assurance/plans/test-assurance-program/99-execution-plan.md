@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 22:48
+> **Last Updated**: 2026-08-18 23:03
 > **Progress**: 64/101 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
@@ -733,7 +733,14 @@ has current green plus its own independently detected local control check.
       later clean run can distinguish request, browser, process, credential, observation, refresh,
       and consumed-token retry failures. The refined implementation suite passed 14/14 and the
       unchanged full verification passed all 3,382 server tests after one isolated timing-test
-      rerun confirmed the first run's pre-existing threshold noise. ✅ (completed: 2026-08-18 22:48)
+      rerun confirmed the first run's pre-existing threshold noise. Reopened after the next clean
+      run classified `protocol-cli-request`: the published CLI's documented `--no-browser` option
+      is parsed by Yargs as an unknown negated `browser` option. The harness now selects the CLI's
+      already supported `PORTA_CONTAINER=1` manual-mode boundary and leaves the product defect
+      unchanged. The packed protocol selector passed 15/15, governance passed 55/55, and the final
+      `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. No clean live packed evidence was claimed. ✅ (completed:
+      2026-08-18 23:03)
 - [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
       evidence. The protocol slice cannot close before this checkpoint is green.

@@ -190,11 +190,16 @@ async function runInteractiveCli(
 ): Promise<InteractiveCliResult> {
   const child = spawn(
     process.execPath,
-    [surfaces.cliBinPath, 'login', '--server', endpoints.porta, '--no-browser', '--insecure'],
+    [surfaces.cliBinPath, 'login', '--server', endpoints.porta, '--insecure'],
     {
       cwd: consumer.consumerPath,
       detached: true,
-      env: { ...process.env, HOME: home, USERPROFILE: home },
+      env: {
+        ...process.env,
+        HOME: home,
+        USERPROFILE: home,
+        PORTA_CONTAINER: '1',
+      },
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
     },
