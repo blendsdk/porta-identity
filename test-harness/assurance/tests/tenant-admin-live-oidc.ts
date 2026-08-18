@@ -17,7 +17,44 @@ import type {
   TenantBoundaryObservation,
   TenantPublicProbeShape,
 } from './tenant-admin-boundaries-contract.js';
-import { liveDigest, LiveTenantAdminContext } from './tenant-admin-live-context.js';
+import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
+
+interface TimedTenantJourney {
+  readonly startedAt: number;
+  readonly completedAt: number;
+}
+
+/** Requires a genuine open interval shared by every concurrent tenant journey. */
+export function concurrentJourneysOverlap(journeys: readonly TimedTenantJourney[]): boolean {
+  if (
+    journeys.length < 2 ||
+    journeys.some(
+      (journey) =>
+        !Number.isFinite(journey.startedAt) ||
+        !Number.isFinite(journey.completedAt) ||
+        journey.completedAt <= journey.startedAt,
+    )
+  ) {
+    throw new Error('concurrent journey intervals are invalid');
+  }
+  return (
+    Math.max(...journeys.map((journey) => journey.startedAt)) <
+    Math.min(...journeys.map((journey) => journey.completedAt))
+  );
+}
+
+/** Detects any independently observed tenant identity that differs from its request. */
+export function tenantCrossTalkDetected(
+  observations: ConcurrentTenantIsolationResult['observations'],
+): boolean {
+  return observations.some(
+    (entry) =>
+      entry.issuerOrganization !== entry.requestOrganization ||
+      entry.cacheOrganization !== entry.requestOrganization ||
+      entry.sessionOrganization !== entry.requestOrganization ||
+      entry.responseOrganization !== entry.requestOrganization,
+  );
+}
 
 /** Finds one immutable tenant catalog case or rejects an unknown selector. */
 function catalogCase(caseId: string): TenantAuthorityCase {
@@ -367,8 +404,10 @@ export async function observeLiveTenantCase(
   }
   const target = await tenantTarget(context, resource);
   const before = await context.targetFingerprint(target);
+  const sideEffectsBefore = await context.captureSideEffectSnapshot();
   const execution = await executeTenantCase(context, entry, resource);
   const after = await context.targetFingerprint(target);
+  const sideEffectsAfter = await context.captureSideEffectSnapshot();
   const targetChanged = before.digest !== after.digest;
   return Object.freeze({
     caseId: entry.id,
@@ -383,6 +422,8 @@ export async function observeLiveTenantCase(
         targetDisclosed: execution.disclosed,
         unauthorizedAccepted: entry.result !== 'allowed' && execution.result === 'allowed',
       },
+      sideEffectsBefore,
+      sideEffectsAfter,
     ),
     targetBefore: before,
     targetAfter: after,
@@ -394,12 +435,8 @@ export async function observeLiveConcurrentTenantIsolation(
   context: LiveTenantAdminContext,
 ): Promise<ConcurrentTenantIsolationResult> {
   const api = await context.api();
-  let alphaStarted = false;
-  let bravoStarted = false;
   const run = async (tenant: 'alpha' | 'bravo') => {
-    if (tenant === 'alpha') alphaStarted = true;
-    else bravoStarted = true;
-    await Promise.resolve();
+    const startedAt = performance.now();
     const token = await verifyOidcLogin(tenant, 'public', context.endpoints, api);
     const discovery = await api.get(
       `${context.endpoints.porta}/${tenant}/.well-known/openid-configuration`,
@@ -410,26 +447,29 @@ export async function observeLiveConcurrentTenantIsolation(
       .passthrough()
       .parse(await discovery.json());
     const issuerOrganization = observedOrganizationFromIssuer(document.issuer);
+    const response = await context.observeResponseOrganization(tenant, token);
+    const session = await context.observeSessionOrganization(tenant);
+    const cache = context.observeCacheOrganization(tenant);
     return Object.freeze({
-      requestOrganization: tenant,
-      issuerOrganization,
-      cacheOrganization: issuerOrganization,
-      sessionOrganization: tenant,
-      responseOrganization: tenant,
-      cacheKeyFingerprint: liveDigest(document.issuer),
-      sessionFingerprint: liveDigest(token),
+      startedAt,
+      completedAt: performance.now(),
+      observation: Object.freeze({
+        requestOrganization: tenant,
+        issuerOrganization,
+        cacheOrganization: cache.organization,
+        sessionOrganization: session.organization,
+        responseOrganization: response.organization,
+        cacheKeyFingerprint: cache.fingerprint,
+        sessionFingerprint: session.fingerprint,
+      }),
     });
   };
-  const observations = await Promise.all([run('alpha'), run('bravo')]);
-  const crossTalkDetected = observations.some(
-    (entry) =>
-      entry.issuerOrganization !== entry.requestOrganization ||
-      entry.cacheOrganization !== entry.requestOrganization ||
-      entry.sessionOrganization !== entry.requestOrganization ||
-      entry.responseOrganization !== entry.requestOrganization,
-  );
+  const journeys = await Promise.all([run('alpha'), run('bravo')]);
+  const observations = journeys.map((journey) => journey.observation);
+  const overlapped = concurrentJourneysOverlap(journeys);
+  const crossTalkDetected = tenantCrossTalkDetected(observations);
   return Object.freeze({
-    overlapped: alphaStarted && bravoStarted,
+    overlapped,
     observations: Object.freeze(observations),
     crossTalkDetected,
   });

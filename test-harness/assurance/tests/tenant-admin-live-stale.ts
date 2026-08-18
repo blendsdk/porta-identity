@@ -84,6 +84,7 @@ export async function observeLiveStaleAuthorityScenario(
   if (request.transition === 'session-revocation') {
     return observeSessionRevocation(context, request);
   }
+  const sideEffectsBefore = await context.captureSideEffectSnapshot();
   const mutation = await mutateAdministrativeAuthority(context, request);
   const existingResult = await retryAdminRead(context, mutation.token);
   const freshContext = new LiveTenantAdminContext();
@@ -97,6 +98,7 @@ export async function observeLiveStaleAuthorityScenario(
     retryObservation('fresh-porta-process', restartedResult),
   ]);
   const after = await restartedContext.targetFingerprint(target);
+  const sideEffectsAfter = await restartedContext.captureSideEffectSnapshot();
   const targetChanged = before.digest !== after.digest;
   const prohibitedKeys = [
     ...tenantOidcAuthorityProfile.threatProfile.prohibitedSideEffects,
@@ -112,11 +114,16 @@ export async function observeLiveStaleAuthorityScenario(
     mutationAccepted: mutation.mutationAccepted,
     revokedStateObserved: retries.every((retry) => !retry.authorityAccepted),
     retries,
-    prohibitedSideEffects: context.observedSideEffects(prohibitedKeys, {
-      targetChanged,
-      targetDisclosed: false,
-      unauthorizedAccepted: retries.some((retry) => retry.authorityAccepted),
-    }),
+    prohibitedSideEffects: context.observedSideEffects(
+      prohibitedKeys,
+      {
+        targetChanged,
+        targetDisclosed: false,
+        unauthorizedAccepted: retries.some((retry) => retry.authorityAccepted),
+      },
+      sideEffectsBefore,
+      sideEffectsAfter,
+    ),
     targetBefore: before,
     targetAfter: after,
   });
@@ -133,6 +140,7 @@ async function observeSessionRevocation(
   try {
     const target = await context.adminTarget('admin-target-alpha-user');
     const before = await context.targetFingerprint(target);
+    const sideEffectsBefore = await context.captureSideEffectSnapshot();
     const userId = context.entity('alpha-user-active');
     const inventory = await context.rawRequest(
       'GET',
@@ -171,6 +179,7 @@ async function observeSessionRevocation(
       retryObservation('fresh-porta-process', restartedResult),
     ]);
     const after = await context.targetFingerprint(target);
+    const sideEffectsAfter = await context.captureSideEffectSnapshot();
     const targetChanged = before.digest !== after.digest;
     const prohibitedKeys = [
       ...tenantOidcAuthorityProfile.threatProfile.prohibitedSideEffects,
@@ -186,11 +195,16 @@ async function observeSessionRevocation(
       mutationAccepted: mutation.status >= 200 && mutation.status < 300,
       revokedStateObserved: retries.every((retry) => !retry.authorityAccepted),
       retries,
-      prohibitedSideEffects: context.observedSideEffects(prohibitedKeys, {
-        targetChanged,
-        targetDisclosed: false,
-        unauthorizedAccepted: retries.some((retry) => retry.authorityAccepted),
-      }),
+      prohibitedSideEffects: context.observedSideEffects(
+        prohibitedKeys,
+        {
+          targetChanged,
+          targetDisclosed: false,
+          unauthorizedAccepted: retries.some((retry) => retry.authorityAccepted),
+        },
+        sideEffectsBefore,
+        sideEffectsAfter,
+      ),
       targetBefore: before,
       targetAfter: after,
     });

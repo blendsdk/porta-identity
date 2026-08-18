@@ -630,6 +630,79 @@ export function validateTraceability<T>(traceability: T, authorityInput: unknown
   return traceability;
 }
 
+/** Expands one human task expression such as `6.1–6.3, 7.2` into exact task identifiers. */
+function expandDocumentedTasks(expression: string, taskUniverse: readonly string[]): string[] {
+  const tasks: string[] = [];
+  for (const rawPart of expression.split(',')) {
+    const part = rawPart.trim();
+    const range = /^(\d+)\.(\d+)[–-](?:(\d+)\.)?(\d+)$/u.exec(part);
+    if (range !== null) {
+      const phase = Number(range[1]);
+      const start = Number(range[2]);
+      const endPhase = Number(range[3] ?? range[1]);
+      const end = Number(range[4]);
+      if (phase === endPhase) {
+        if (start > end) throw new Error('invalid documented task range');
+        for (let task = start; task <= end; task += 1) tasks.push(`${phase}.${task}`);
+      } else {
+        const ranged = taskUniverse
+          .map((task) => ({ task, match: /^(\d+)\.(\d+)$/u.exec(task) }))
+          .filter(({ match }) => {
+            if (match === null) return false;
+            const candidatePhase = Number(match[1]);
+            const candidateTask = Number(match[2]);
+            return (
+              (candidatePhase > phase || (candidatePhase === phase && candidateTask >= start)) &&
+              (candidatePhase < endPhase || (candidatePhase === endPhase && candidateTask <= end))
+            );
+          })
+          .sort((left, right) => {
+            const leftMatch = left.match;
+            const rightMatch = right.match;
+            if (leftMatch === null || rightMatch === null) return 0;
+            return (
+              Number(leftMatch[1]) - Number(rightMatch[1]) ||
+              Number(leftMatch[2]) - Number(rightMatch[2])
+            );
+          })
+          .map(({ task }) => task);
+        if (ranged.length === 0) throw new Error('invalid documented task range');
+        tasks.push(...ranged);
+      }
+      continue;
+    }
+    if (!/^\d+\.\d+$/u.test(part)) throw new Error('invalid documented task expression');
+    tasks.push(part);
+  }
+  return tasks;
+}
+
+/** Requires the human traceability matrix to name the same exact tasks as executable JSON. */
+export function validateDocumentedTraceabilityTasks(
+  markdown: string,
+  traceabilityInput: unknown,
+): void {
+  const traceability = traceabilitySchema.parse(traceabilityInput);
+  const documented = new Map<string, string[]>();
+  for (const line of markdown.split(/\r?\n/u)) {
+    const columns = line
+      .split('|')
+      .slice(1, -1)
+      .map((column) => column.trim());
+    const requirement = columns[0];
+    const tasks = columns[2];
+    if (requirement !== undefined && /^R\d+\.\d+$/u.test(requirement) && tasks !== undefined) {
+      documented.set(requirement, expandDocumentedTasks(tasks, traceability.tasks));
+    }
+  }
+  for (const mapping of traceability.mappings) {
+    const tasks = documented.get(mapping.requirement);
+    if (tasks === undefined || JSON.stringify(tasks) !== JSON.stringify(mapping.tasks)) {
+      throw new Error(`documented traceability tasks differ: ${mapping.requirement}`);
+    }
+  }
+}
+
 /** Validates and preserves one versioned exact RED-signature registry. */
 export function validateRedSignatureRegistry<T>(registry: T): T {
   const parsed = redSignatureRegistrySchema.parse(registry);

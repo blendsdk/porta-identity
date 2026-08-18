@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 13:44
-> **Progress**: 55/96 tasks (57%)
+> **Last Updated**: 2026-08-18 13:55
+> **Progress**: 54/96 tasks (56%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -605,7 +605,7 @@ without waiting for a later phase or touching developer credentials. See
       reports cleanup complete, and leaves no control-check runtime or primary-tree change.
       `yarn verify` then passed 68 structure tests, 227 server files / 3,359 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-15 17:14)
-- [x] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
+- [~] 6.12 Run the tenant/admin project, applicable packed clients, attributed coverage, evidence/
       log/recovery checks, all pentests, and `yarn verify`. Revision `f5ec1f4f` passed the 25-case
       tenant/admin selector, 17 live operational cases, eight packed SDK/CLI journeys, attributed
       security coverage, 53 governance cases, 35 pentest files / 224 tests, foundation validation,
@@ -615,7 +615,10 @@ without waiting for a later phase or touching developer credentials. See
       assumptions discovered by this gate were corrected and independently committed before the
       complete evidence matrix was rerun. The final targeted selector passed 25/25. `yarn verify`
       passed 68 structure tests, 227 server files / 3,359 tests, 31 SDK files / 404 tests,
-      and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 13:44)
+      and 29 CLI files / 355 tests. Reopened by the mandatory Phase 6 review: seven Major
+      provenance, signal/recovery, traceability, reachability, concurrency, and side-effect
+      observation defects require the accepted AR-70 corrections and one bounded re-review before
+      the phase gate can close. ⏳ (implemented: 2026-08-18 13:55)
 
 **Phase gate:** no vacuous early denial can count as tenant/admin assurance and every closed claim
 has current green plus its own independently detected local control check.

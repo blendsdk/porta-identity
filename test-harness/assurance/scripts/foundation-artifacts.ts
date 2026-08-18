@@ -29,6 +29,7 @@ import {
   loadTraceabilityAuthority,
   validateRedSignatureRegistry,
   validateTraceability,
+  validateDocumentedTraceabilityTasks,
 } from './validate-assurance.js';
 import {
   AssuranceProvenanceError,
@@ -155,6 +156,16 @@ export function runFoundationValidation(repositoryRoot: string): string {
 
   const traceability = traceabilitySchema.parse(readJson(traceabilityPath));
   validateTraceability(traceability, loadTraceabilityAuthority(canonicalRoot));
+  validateDocumentedTraceabilityTasks(
+    readFileSync(
+      resolve(
+        canonicalRoot,
+        'codeops/features/test-assurance/plans/test-assurance-program/08-traceability-matrix.md',
+      ),
+      'utf8',
+    ),
+    traceability,
+  );
   const signatures = redSignatureRegistrySchema.parse(readJson(signaturesPath));
   validateRedSignatureRegistry(signatures);
   testInventorySchema.parse(readJson(inventoryPath));

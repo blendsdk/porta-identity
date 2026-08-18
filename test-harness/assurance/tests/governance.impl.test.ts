@@ -12,6 +12,7 @@ import {
   validateCatalog,
   validateRedSignatureRegistry,
   validateTraceability,
+  validateDocumentedTraceabilityTasks,
 } from '../scripts/validate-assurance.js';
 import { completeClaim, knownTests } from './assurance-fixtures.js';
 
@@ -57,6 +58,25 @@ test('should reject traceability node lists that drift from exact mappings', () 
   assert.throws(
     () => validateTraceability(driftedGraph, loadTraceabilityAuthority(process.cwd())),
     /task list does not match exact mappings/i,
+  );
+});
+
+test('should reject human traceability task drift from executable mappings', () => {
+  const graph = traceabilitySchema.parse(
+    JSON.parse(readFileSync('test-harness/assurance/traceability.json', 'utf8')),
+  );
+  const matrix = readFileSync(
+    'codeops/features/test-assurance/plans/test-assurance-program/08-traceability-matrix.md',
+    'utf8',
+  );
+  assert.doesNotThrow(() => validateDocumentedTraceabilityTasks(matrix, graph));
+  assert.throws(
+    () =>
+      validateDocumentedTraceabilityTasks(
+        matrix.replace('6.1–6.12, 7.2, 7.8', '6.1–6.10, 7.2, 7.8'),
+        graph,
+      ),
+    /R5\.3/u,
   );
 });
 

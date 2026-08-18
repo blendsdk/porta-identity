@@ -52,6 +52,7 @@ Porta product contract.
 | 57  | Live contract ruling | Is a client registered to one organization allowed to initiate authorization under another organization's issuer, is bootstrap-user archive applicable, and may Phase 6 fix the confirmed role-removal defect? | Enforce strict issuer/client tenant binding; mark bootstrap-user archive non-applicable; fix protected bootstrap-role removal and strengthen its role-assignment observer | User (runtime) | ✅     |
 | 58  | Packed evidence checkpoints | How can Task 6.5 commit verified raw/product changes and later execute packed clients from the mandatory clean revision? | Split the task into raw/product, packed-capability, and clean-live-evidence checkpoints; never synthesize or stash a dirty-tree revision | User (runtime) | ✅     |
 | 59  | Live fault execution | How can tenant/admin sentinels challenge real Porta controls without admitting arbitrary production patches or unrelated failures? | Use one reviewed fault ID per semantic production patch, a code-owned target/sub-sentinel registry, lifecycle-owned disposable stacks, and separate specification, capability, and clean-campaign checkpoints | AI (runtime) | ✅     |
+| 70  | Phase 6 quality correction | How are provenance, signal/recovery, traceability, and live-observation review defects corrected without production hooks or weaker claims? | Use evidence-backed public observation proofs, a persistent owner-fenced control-check run record, and executable Markdown/JSON traceability consistency | AI (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -1206,3 +1207,32 @@ updates PostgreSQL before the next request calls `getUserRoles` and derives perm
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260815-P6-C`. **Reopen trigger**:
 administrative authorization stops reading current role assignments per request or the fixture
 limited role changes.
+
+### AR-70 — Phase 6 quality-correction architecture
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: assurance observation,
+provenance, cleanup, signal, and traceability mechanisms inside the already-approved Phase 6
+contract; no Porta product behavior, security policy, or acceptance criterion changes.
+**Objective**: prevent vacuous or synthetic tenant/admin evidence and make every retained local
+control-check result independently attributable and recoverable. **Decision**: introduce three
+bounded abstractions. First, administrative reachability uses paired route-specific public controls,
+concurrency uses actual overlapping request intervals and distinct public/lifecycle-owned identity
+observations, and prohibited side effects use a closed exhaustive observer with real session and
+audit checks. Second, every control check persists an owner-only run record containing clean
+source/tree, target/variant, dependency, image, fixture, signal, stage, and cleanup identities;
+signals retain 130/143 semantics after cleanup, and failed stop preserves recovery context until
+owned-resource absence is proven. Third, executable validation expands and compares the human
+traceability matrix with the JSON graph, including Tasks 6.11–6.12 for R5.3. **Rejected
+alternatives**: status-only reachability and default-false observations are the reviewed defects;
+production test hooks violate the approved boundary; narrowing issuer/cache/session/audit claims
+changes acceptance criteria; deleting recovery state after failed stop loses the only safe owner;
+revision-only artifact labels do not prove the executed tree, variant, image, or fixture.
+**Strongest counterargument**: lifecycle-owned cache inspection is less purely black-box than HTTP,
+but the cache identity has no independent public representation and the inspection is confined to
+the already-owned disposable stack while product effects remain public-boundary observations.
+**Confidence**: High. **Hardening**: an independent correctness reviewer and tenant-isolation
+auditor found the defects, and a blind correction challenge converged on the same three shared
+abstractions. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260818-P6-Q`. **Reopen trigger**: any retained check lacks one required identity,
+an upstream denial can satisfy reachability, an unobserved side effect maps to false, overlap is
+inferred rather than measured, or recovery can succeed while an owned resource remains.

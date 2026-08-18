@@ -50,6 +50,34 @@ export interface ControlSensitivityStageObservation {
   readonly status: 'passed' | 'failed' | 'timed-out';
   /** Exact assertion signature emitted by the designated check, when any. */
   readonly signature?: string;
+  /** Operator signal forwarded while the stage was active. */
+  readonly forwardedSignal?: 'SIGINT' | 'SIGTERM';
+}
+
+/** Immutable identities that bind a local control check to its exact inputs and owned runtime. */
+export interface ControlSensitivityProvenance {
+  /** Clean source commit used to create the disposable worktree. */
+  readonly commitIdentity: string;
+  /** Clean source tree used to create the disposable worktree. */
+  readonly treeIdentity: string;
+  /** Assurance implementation identity used by the command. */
+  readonly assuranceToolDigest: string;
+  /** Root dependency lock identity. */
+  readonly dependencyLockDigest: string;
+  /** Exact reviewed production target. */
+  readonly targetPath: string;
+  /** Original target content identity. */
+  readonly originalSha256: string;
+  /** Disposable variant target content identity, when prepared. */
+  readonly variantSha256?: string;
+  /** Lifecycle run that owned the local stack, when started. */
+  readonly lifecycleRunId?: string;
+  /** Public fixture definition identity, when seeded. */
+  readonly fixtureIdentity?: string;
+  /** Exact Porta image identity, when started. */
+  readonly serverImageDigest?: string;
+  /** Exact Docker containers owned by the lifecycle run. */
+  readonly containerIds?: readonly string[];
 }
 
 /** Runtime capabilities required by the staged executor. */
@@ -78,6 +106,8 @@ export interface ControlSensitivityRuntime {
   cleanup(
     definition: TenantAdminControlCheckDefinition,
   ): Promise<ControlSensitivityStageObservation>;
+  /** Returns the sanitized immutable identities observed so far. */
+  provenance(): ControlSensitivityProvenance | undefined;
 }
 
 /** Sanitized final result of one local defensive control check. */
@@ -92,4 +122,8 @@ export interface ControlSensitivityResult {
   readonly cleanupComplete: boolean;
   /** Exact designated signature retained only for a detected result. */
   readonly signature?: string;
+  /** Operator signal retained separately from the five semantic outcomes. */
+  readonly terminalSignal?: 'SIGINT' | 'SIGTERM';
+  /** Exact immutable identities observed for this run. */
+  readonly provenance?: ControlSensitivityProvenance;
 }

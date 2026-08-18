@@ -1,5 +1,5 @@
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
 
 import { request, type APIRequestContext, type APIResponse } from '@playwright/test';
 import { z } from 'zod';
@@ -18,6 +18,43 @@ import type { AuthorizationResult } from './tenant-admin-profile-requirements.js
 import type { TargetStateFingerprint } from './tenant-admin-boundaries-contract.js';
 
 const responseEnvelopeSchema = z.object({ data: z.unknown() }).passthrough();
+
+/** Closed side effects that the tenant/admin live oracle can independently observe. */
+export type TenantAdminSideEffectKey =
+  | 'foreign-data-disclosure'
+  | 'foreign-state-mutation'
+  | 'foreign-session-renewal'
+  | 'foreign-token-acceptance'
+  | 'unauthorized-target-disclosure'
+  | 'unauthorized-target-mutation'
+  | 'cross-target-cache-reuse'
+  | 'sensitive-audit-content';
+
+/** Independently observed facts consumed by the closed side-effect classifier. */
+export interface TenantAdminSideEffectFacts {
+  readonly targetChanged: boolean;
+  readonly targetDisclosed: boolean;
+  readonly unauthorizedAccepted: boolean;
+  readonly sessionRenewed?: boolean;
+  readonly crossTargetCacheReuse?: boolean;
+  readonly sensitiveAuditContent?: boolean;
+}
+
+/** Bounded lifecycle/public snapshot used before and after one live request. */
+export interface TenantAdminSideEffectSnapshot {
+  readonly activeSessions: readonly {
+    readonly identity: string;
+    readonly renewalFingerprint: string;
+  }[];
+  readonly crossTargetCacheReuse: boolean;
+  readonly sensitiveAuditContent: boolean;
+}
+
+/** Independently observed tenant identities and opaque digests for one completed OIDC journey. */
+export interface LiveTenantIdentityObservation {
+  readonly organization: 'alpha' | 'bravo' | 'none';
+  readonly fingerprint: string;
+}
 
 /** Stable actor names used by the authorization catalog. */
 export type LiveAdminActorId =
@@ -64,26 +101,52 @@ export function authorizationResult(status: number): AuthorizationResult {
 /** Maps independently observed facts onto every declared prohibited-side-effect key. */
 export function mapObservedSideEffects(
   keys: readonly string[],
-  facts: {
-    readonly targetChanged: boolean;
-    readonly targetDisclosed: boolean;
-    readonly unauthorizedAccepted: boolean;
-  },
+  facts: TenantAdminSideEffectFacts,
 ): Readonly<Record<string, boolean>> {
   return Object.freeze(
     Object.fromEntries(
       keys.map((key) => {
-        const observed = key.includes('disclosure')
-          ? facts.targetDisclosed
-          : key.includes('mutation')
-            ? facts.targetChanged
-            : key.includes('token-acceptance') || key.includes('cache-reuse')
-              ? facts.unauthorizedAccepted
-              : false;
-        return [key, observed];
+        switch (key as TenantAdminSideEffectKey) {
+          case 'foreign-data-disclosure':
+          case 'unauthorized-target-disclosure':
+            return [key, facts.targetDisclosed];
+          case 'foreign-state-mutation':
+          case 'unauthorized-target-mutation':
+            return [key, facts.targetChanged];
+          case 'foreign-token-acceptance':
+            return [key, facts.unauthorizedAccepted];
+          case 'foreign-session-renewal':
+            if (facts.sessionRenewed === undefined) {
+              throw new Error('foreign session renewal observation is required');
+            }
+            return [key, facts.sessionRenewed];
+          case 'cross-target-cache-reuse':
+            if (facts.crossTargetCacheReuse === undefined) {
+              throw new Error('cross-target cache observation is required');
+            }
+            return [key, facts.crossTargetCacheReuse];
+          case 'sensitive-audit-content':
+            if (facts.sensitiveAuditContent === undefined) {
+              throw new Error('sensitive audit observation is required');
+            }
+            return [key, facts.sensitiveAuditContent];
+          default:
+            throw new Error('unsupported tenant/admin side-effect observation');
+        }
       }),
     ),
   );
+}
+
+/** Detects creation or expiry extension without misclassifying activity or revocation as renewal. */
+export function sessionRenewalObserved(
+  before: TenantAdminSideEffectSnapshot['activeSessions'],
+  after: TenantAdminSideEffectSnapshot['activeSessions'],
+): boolean {
+  return after.some((current) => {
+    const previous = before.find((entry) => entry.identity === current.identity);
+    return previous === undefined || previous.renewalFingerprint !== current.renewalFingerprint;
+  });
 }
 
 /**
@@ -288,13 +351,271 @@ export class LiveTenantAdminContext {
   /** Creates observed side-effect flags from target drift, disclosure, and request acceptance. */
   public observedSideEffects(
     keys: readonly string[],
-    facts: {
-      readonly targetChanged: boolean;
-      readonly targetDisclosed: boolean;
-      readonly unauthorizedAccepted: boolean;
-    },
+    facts: Pick<
+      TenantAdminSideEffectFacts,
+      'targetChanged' | 'targetDisclosed' | 'unauthorizedAccepted'
+    >,
+    before?: TenantAdminSideEffectSnapshot,
+    after?: TenantAdminSideEffectSnapshot,
   ): Readonly<Record<string, boolean>> {
-    return mapObservedSideEffects(keys, facts);
+    const needsExtendedObservation = keys.some(
+      (key) =>
+        key === 'foreign-session-renewal' ||
+        key === 'cross-target-cache-reuse' ||
+        key === 'sensitive-audit-content',
+    );
+    if (!needsExtendedObservation) return mapObservedSideEffects(keys, facts);
+    if (before === undefined || after === undefined) {
+      throw new Error('closed tenant/admin side-effect snapshots are required');
+    }
+    return mapObservedSideEffects(keys, this.completeSideEffectFacts(before, after, facts));
+  }
+
+  /** Captures session, cache, and audit facts through public or lifecycle-owned boundaries. */
+  public async captureSideEffectSnapshot(): Promise<TenantAdminSideEffectSnapshot> {
+    const [sessions, audit] = await Promise.all([
+      this.rawRequest('GET', '/api/admin/sessions?activeOnly=true&pageSize=100', 'admin-full'),
+      this.rawRequest('GET', '/api/admin/audit?limit=500', 'admin-full'),
+    ]);
+    if (sessions.status !== 200 || audit.status !== 200) {
+      throw new Error('tenant/admin side-effect observation boundary is unavailable');
+    }
+    const sessionData = z
+      .object({
+        data: z.array(
+          z
+            .object({
+              sessionId: z.string().min(1),
+              userId: z.string().uuid().nullable(),
+              clientId: z.string().uuid().nullable(),
+              organizationId: z.string().uuid().nullable(),
+              expiresAt: z.string().min(1),
+            })
+            .passthrough(),
+        ),
+      })
+      .passthrough()
+      .parse(sessions.body).data;
+    const auditData = z
+      .object({ data: z.array(z.record(z.string(), z.unknown())) })
+      .passthrough()
+      .parse(audit.body).data;
+    const cache = [this.cachedOrganization('alpha'), this.cachedOrganization('bravo')];
+    const crossTargetCacheReuse = cache.some(
+      (entry) => entry.organization !== 'none' && entry.organization !== entry.requested,
+    );
+    const serializedAudit = JSON.stringify(auditData);
+    return Object.freeze({
+      activeSessions: Object.freeze(
+        sessionData
+          .filter((entry) => entry.userId !== null)
+          .map((entry) => ({
+            identity: liveDigest({
+              sessionId: entry.sessionId,
+              userId: entry.userId,
+              clientId: entry.clientId,
+              organizationId: entry.organizationId,
+            }),
+            renewalFingerprint: liveDigest({ expiresAt: entry.expiresAt }),
+          }))
+          .sort((left, right) => left.identity.localeCompare(right.identity)),
+      ),
+      crossTargetCacheReuse,
+      sensitiveAuditContent: this.protectedValues().some(
+        (value) => value.length > 0 && serializedAudit.includes(value),
+      ),
+    });
+  }
+
+  /** Completes the closed side-effect facts from two independent snapshots. */
+  public completeSideEffectFacts(
+    before: TenantAdminSideEffectSnapshot,
+    after: TenantAdminSideEffectSnapshot,
+    facts: Pick<
+      TenantAdminSideEffectFacts,
+      'targetChanged' | 'targetDisclosed' | 'unauthorizedAccepted'
+    >,
+  ): TenantAdminSideEffectFacts {
+    return Object.freeze({
+      ...facts,
+      sessionRenewed: sessionRenewalObserved(before.activeSessions, after.activeSessions),
+      crossTargetCacheReuse: after.crossTargetCacheReuse,
+      sensitiveAuditContent: after.sensitiveAuditContent,
+    });
+  }
+
+  /** Observes the tenant-specific UserInfo result produced by one access token. */
+  public async observeResponseOrganization(
+    tenant: 'alpha' | 'bravo',
+    token: string,
+  ): Promise<LiveTenantIdentityObservation> {
+    const api = await this.api();
+    const response = await api.get(`${this.endpoints.porta}/${tenant}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok()) throw new Error('tenant response identity could not be observed');
+    const body = z
+      .object({ email: z.string().email() })
+      .passthrough()
+      .parse(await response.json());
+    const organization = this.organizationFromSyntheticEmail(body.email);
+    return Object.freeze({ organization, fingerprint: liveDigest(body) });
+  }
+
+  /** Observes a tracked session for the exact fixture user and client through the admin API. */
+  public async observeSessionOrganization(
+    tenant: 'alpha' | 'bravo',
+  ): Promise<LiveTenantIdentityObservation> {
+    const userId = this.entity(`${tenant}-user-active`);
+    const clientId = this.entity(`${tenant}-client-public`);
+    const response = await this.rawRequest(
+      'GET',
+      `/api/admin/sessions?userId=${encodeURIComponent(userId)}&activeOnly=true&pageSize=100`,
+      'admin-full',
+    );
+    if (response.status !== 200) throw new Error('tenant session identity could not be observed');
+    const sessions = z
+      .object({
+        data: z.array(
+          z
+            .object({
+              sessionId: z.string().min(1),
+              userId: z.string().uuid(),
+              clientId: z.string().uuid().nullable(),
+              organizationId: z.string().uuid().nullable(),
+              createdAt: z.string().min(1),
+            })
+            .passthrough(),
+        ),
+      })
+      .passthrough()
+      .parse(response.body).data;
+    const session = sessions
+      .filter(
+        (entry) =>
+          entry.userId === userId && (entry.clientId === null || entry.clientId === clientId),
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
+    if (session === undefined) throw new Error('tracked tenant session is absent');
+    const organization = this.organizationFromUserId(session.userId);
+    return Object.freeze({
+      organization,
+      fingerprint: liveDigest({
+        sessionId: session.sessionId,
+        userId: session.userId,
+        clientId: session.clientId,
+        organizationId: session.organizationId,
+      }),
+    });
+  }
+
+  /** Observes one organization cache entry from the exact lifecycle-owned Redis container. */
+  public observeCacheOrganization(tenant: 'alpha' | 'bravo'): LiveTenantIdentityObservation {
+    const observed = this.cachedOrganization(tenant);
+    if (observed.organization === 'none') {
+      throw new Error('tenant cache identity could not be observed');
+    }
+    return Object.freeze({
+      organization: observed.organization,
+      fingerprint: observed.fingerprint,
+    });
+  }
+
+  /** Maps a fixture organization UUID onto the closed public observation domain. */
+  protected organizationFromId(value: string): 'alpha' | 'bravo' | 'none' {
+    if (value === this.entity('alpha')) return 'alpha';
+    if (value === this.entity('bravo')) return 'bravo';
+    return 'none';
+  }
+
+  /** Maps an independently returned fixture user UUID onto its owning organization. */
+  protected organizationFromUserId(value: string): 'alpha' | 'bravo' | 'none' {
+    if (value === this.entity('alpha-user-active')) return 'alpha';
+    if (value === this.entity('bravo-user-active')) return 'bravo';
+    return 'none';
+  }
+
+  /** Maps synthetic fixture email identity without trusting the requested tenant. */
+  protected organizationFromSyntheticEmail(email: string): 'alpha' | 'bravo' | 'none' {
+    if (email === 'alpha-user-active@test-harness.local') return 'alpha';
+    if (email === 'bravo-user-active@test-harness.local') return 'bravo';
+    return 'none';
+  }
+
+  /** Reads and validates one cache entry without retaining its contents. */
+  protected cachedOrganization(tenant: 'alpha' | 'bravo'): {
+    readonly requested: 'alpha' | 'bravo';
+    readonly organization: 'alpha' | 'bravo' | 'none';
+    readonly fingerprint: string;
+  } {
+    const redis = this.activeRedisContainer();
+    const value = execFileSync(
+      'docker',
+      ['exec', redis, 'redis-cli', '--raw', 'GET', `org:slug:${tenant}`],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 10_000,
+        maxBuffer: 256 * 1024,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    ).trim();
+    if (value === '') {
+      return { requested: tenant, organization: 'none', fingerprint: liveDigest(null) };
+    }
+    const parsed = z
+      .object({ id: z.string().uuid(), slug: z.string().min(1) })
+      .passthrough()
+      .parse(JSON.parse(value));
+    return {
+      requested: tenant,
+      organization: this.organizationFromId(parsed.id),
+      fingerprint: liveDigest({ id: parsed.id, slug: parsed.slug }),
+    };
+  }
+
+  /** Resolves the unique Redis container owned by the active lifecycle run. */
+  protected activeRedisContainer(): string {
+    const output = execFileSync(
+      'docker',
+      [
+        'ps',
+        '-aq',
+        '--no-trunc',
+        '--filter',
+        `label=com.docker.compose.project=${this.endpoints.composeProject}`,
+        '--filter',
+        'label=com.docker.compose.service=redis',
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 10_000,
+        maxBuffer: 64 * 1024,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    ).trim();
+    const identifiers = output.split(/\s+/u).filter(Boolean);
+    if (identifiers.length !== 1 || !/^[a-f0-9]{64}$/u.test(identifiers[0] ?? '')) {
+      throw new Error('active Redis container identity is not unique');
+    }
+    return identifiers[0] ?? '';
+  }
+
+  /** Resolves protected fixture canaries only for an in-memory audit-content comparison. */
+  protected protectedValues(): readonly string[] {
+    const references = [
+      ...this.manifest.superAdmin.actors.map((actor) => actor.tokenCredentialRef),
+      ...(['alpha', 'bravo'] as const).flatMap((tenant) => [
+        `credential:${tenant}:token:baseline`,
+        `credential:${tenant}:cookie:baseline`,
+        ...this.manifest[tenant].users.map((user) => user.passwordCredentialRef),
+        ...this.manifest[tenant].clients.flatMap((client) =>
+          client.clientSecretCredentialRef === undefined ? [] : [client.clientSecretCredentialRef],
+        ),
+      ]),
+    ];
+    return references.map((reference) => this.credential(reference));
   }
 
   /** Returns the concrete target identifier only for in-memory disclosure comparison. */

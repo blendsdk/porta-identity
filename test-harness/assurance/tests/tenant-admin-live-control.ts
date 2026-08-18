@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   controlPlaneVariations,
   protectedSuperAdminOperations,
@@ -16,6 +18,7 @@ import type {
 import {
   authorizationResult,
   type LiveAdminActorId,
+  type LiveHttpObservation,
   type LiveAdminTarget,
   LiveTenantAdminContext,
 } from './tenant-admin-live-context.js';
@@ -45,21 +48,118 @@ function mutationAction(action: string): boolean {
   return action.startsWith('update-') || action.startsWith('revoke-');
 }
 
-/** Derives non-vacuous authentication, handler, and decision-boundary evidence. */
+/** Returns whether the paired control consumes a fixture and therefore requires reseeding. */
+function destructiveControl(target: LiveAdminTarget): boolean {
+  return target.surface === 'session';
+}
+
+const permissionDenialSchema = z
+  .object({
+    error: z.literal('Forbidden'),
+    message: z.string().regex(/^Insufficient permissions\. Required: /u),
+  })
+  .passthrough();
+const resourceDenialSchema = z.object({ error: z.string().regex(/not found/iu) }).passthrough();
+const membershipDenialSchema = z
+  .object({
+    error: z.literal('Forbidden'),
+    message: z.literal('Admin access requires membership in the admin organization'),
+  })
+  .passthrough();
+
+/** Evidence that the exact route, method, and target succeeded before one variation. */
+export interface AuthorizedRouteProof {
+  readonly caseId: string;
+  readonly targetId: string;
+  readonly method: 'GET' | 'PUT' | 'DELETE';
+}
+
+/** Returns the public method exercised by one catalog action and target. */
+function catalogMethod(
+  entry: ControlPlaneAuthorityCase,
+  target: LiveAdminTarget,
+): AuthorizedRouteProof['method'] {
+  return target.surface === 'session' ? 'DELETE' : mutationAction(entry.action) ? 'PUT' : 'GET';
+}
+
+/** Creates a paired route proof only from an exact successful public control response. */
+export function authorizedRouteProof(
+  entry: ControlPlaneAuthorityCase,
+  target: LiveAdminTarget,
+  response: LiveHttpObservation,
+): AuthorizedRouteProof {
+  if (authorizationResult(response.status) !== 'allowed') {
+    throw new Error('authorized route control did not succeed');
+  }
+  if (!mutationAction(entry.action)) responseEnvelope(response.body);
+  return Object.freeze({
+    caseId: entry.id,
+    targetId: target.catalogId,
+    method: catalogMethod(entry, target),
+  });
+}
+
+/** Rejects a successful control that did not exercise the denied request's exact route. */
+export function assertAuthorizedRouteProof(
+  deniedEntry: ControlPlaneAuthorityCase,
+  target: LiveAdminTarget,
+  proof: AuthorizedRouteProof,
+): void {
+  if (
+    deniedEntry.authorizedControl !== proof.caseId ||
+    target.catalogId !== proof.targetId ||
+    catalogMethod(deniedEntry, target) !== proof.method
+  ) {
+    throw new Error('authorized control proof does not match the denied route');
+  }
+}
+
+/** Derives reachability only from a paired route proof and an exact public error schema. */
 export function controlPlaneReachability(
   actor: LiveAdminActorId,
-  result: ControlPlaneBoundaryObservation['result'],
+  response: LiveHttpObservation,
+  proof?: AuthorizedRouteProof,
 ): Pick<
   ControlPlaneBoundaryObservation,
   'adminAuthenticationAccepted' | 'handlerReached' | 'decisionBoundary'
 > {
-  const adminAuthenticationAccepted = actor !== 'unauthenticated' && result !== 'unauthenticated';
+  const result = authorizationResult(response.status);
+  if (result === 'allowed') {
+    return Object.freeze({
+      adminAuthenticationAccepted: actor !== 'unauthenticated',
+      handlerReached: true,
+      decisionBoundary: 'handler',
+    });
+  }
+  if (result === 'unauthenticated') {
+    return Object.freeze({
+      adminAuthenticationAccepted: false,
+      handlerReached: false,
+      decisionBoundary: 'handler',
+    });
+  }
+  if (proof === undefined) throw new Error('denied route is missing its authorized control proof');
+  const decisionBoundary =
+    result === 'forbidden'
+      ? permissionDenialSchema.safeParse(response.body).success
+        ? 'permission'
+        : undefined
+      : resourceDenialSchema.safeParse(response.body).success
+        ? 'resource'
+        : undefined;
+  if (decisionBoundary === undefined) {
+    throw new Error('denied route did not expose the expected public decision boundary');
+  }
   return Object.freeze({
-    adminAuthenticationAccepted,
-    handlerReached: adminAuthenticationAccepted,
-    decisionBoundary:
-      result === 'forbidden' ? 'permission' : result === 'not-found' ? 'resource' : 'handler',
+    adminAuthenticationAccepted: actor !== 'unauthenticated',
+    handlerReached: true,
+    decisionBoundary,
   });
+}
+
+/** Validates the common response envelope returned by reachable GET handlers. */
+function responseEnvelope(value: unknown): void {
+  z.object({ data: z.unknown() }).passthrough().parse(value);
 }
 
 /** Executes the exact route and method represented by one catalog case. */
@@ -81,9 +181,11 @@ async function executeCatalogCase(
 async function observeCase(
   context: LiveTenantAdminContext,
   entry: ControlPlaneAuthorityCase,
+  proof?: AuthorizedRouteProof,
 ): Promise<ControlPlaneBoundaryObservation> {
   const target = await context.adminTarget(entry.resource);
   const before = await context.targetFingerprint(target);
+  const sideEffectsBefore = await context.captureSideEffectSnapshot();
   const response = await executeCatalogCase(context, entry, target);
   const observedResult = authorizationResult(response.status);
   let after = before;
@@ -93,7 +195,11 @@ async function observeCase(
   const targetChanged = before.digest !== after.digest;
   const targetDisclosed =
     observedResult !== 'allowed' && context.responseDisclosedTarget(response, target);
-  const reachability = controlPlaneReachability(actorId(entry.actor), observedResult);
+  const sideEffectsAfter = await context.captureSideEffectSnapshot();
+  if (entry.result !== 'allowed' && proof !== undefined) {
+    assertAuthorizedRouteProof(entry, target, proof);
+  }
+  const reachability = controlPlaneReachability(actorId(entry.actor), response, proof);
   const observation: ControlPlaneBoundaryObservation = Object.freeze({
     caseId: entry.id,
     result: observedResult,
@@ -106,11 +212,13 @@ async function observeCase(
         targetDisclosed,
         unauthorizedAccepted: entry.result !== 'allowed' && observedResult === 'allowed',
       },
+      sideEffectsBefore,
+      sideEffectsAfter,
     ),
     targetBefore: before,
     targetAfter: after,
   });
-  if (mutationAction(entry.action) && observedResult === 'allowed')
+  if (destructiveControl(target) && mutationAction(entry.action) && observedResult === 'allowed')
     await context.lifecycle('reset');
   return observation;
 }
@@ -120,7 +228,19 @@ export async function observeLiveControlPlaneCase(
   context: LiveTenantAdminContext,
   caseId: string,
 ): Promise<ControlPlaneBoundaryObservation> {
-  return observeCase(context, catalogCase(caseId));
+  const entry = catalogCase(caseId);
+  if (entry.result === 'allowed') return observeCase(context, entry);
+  if (entry.authorizedControl === undefined) {
+    throw new Error('denied live control-plane case omitted its authorized control');
+  }
+  const controlEntry = catalogCase(entry.authorizedControl);
+  const controlTarget = await context.adminTarget(controlEntry.resource);
+  const controlResponse = await executeCatalogCase(context, controlEntry, controlTarget);
+  const proof = authorizedRouteProof(controlEntry, controlTarget, controlResponse);
+  if (destructiveControl(controlTarget) && mutationAction(controlEntry.action)) {
+    await context.lifecycle('reset');
+  }
+  return observeCase(context, entry, proof);
 }
 
 /** Runs one raw permission or resource substitution after validating its allowed control. */
@@ -136,8 +256,15 @@ export async function observeLiveControlPlaneVariation(
   );
   if (declared === undefined) throw new Error('undeclared live control-plane variation');
   const control = catalogCase(request.authorizedControlCaseId);
+  const controlTarget = await context.adminTarget(control.resource);
+  const controlResponse = await executeCatalogCase(context, control, controlTarget);
+  const proof = authorizedRouteProof(control, controlTarget, controlResponse);
+  if (destructiveControl(controlTarget) && mutationAction(control.action)) {
+    await context.lifecycle('reset');
+  }
   const target = await context.adminTarget(control.resource);
   const before = await context.targetFingerprint(target);
+  const sideEffectsBefore = await context.captureSideEffectSnapshot();
   let response: Awaited<ReturnType<LiveTenantAdminContext['rawRequest']>>;
   if (request.variation === 'permission') {
     response = await executeCatalogCase(context, { ...control, actor: 'admin-limited' }, target);
@@ -158,11 +285,14 @@ export async function observeLiveControlPlaneVariation(
     );
   }
   const after = await context.targetFingerprint(target);
+  const sideEffectsAfter = await context.captureSideEffectSnapshot();
   const result = authorizationResult(response.status);
   const targetChanged = before.digest !== after.digest;
+  assertAuthorizedRouteProof({ ...control, authorizedControl: control.id, result }, target, proof);
   const reachability = controlPlaneReachability(
     request.variation === 'permission' ? 'admin-limited' : 'admin-full',
-    result,
+    response,
+    proof,
   );
   return Object.freeze({
     caseId: `${control.id}-${request.variation}`,
@@ -177,6 +307,8 @@ export async function observeLiveControlPlaneVariation(
         targetDisclosed: context.responseDisclosedTarget(response, target),
         unauthorizedAccepted: result === 'allowed',
       },
+      sideEffectsBefore,
+      sideEffectsAfter,
     ),
     targetBefore: before,
     targetAfter: after,
@@ -205,11 +337,15 @@ export async function observeLiveAdminMembershipNegativeControl(
   );
   const after = await context.targetFingerprint(target);
   const result = authorizationResult(response.status);
+  const membershipBoundary = membershipDenialSchema.safeParse(response.body).success;
+  if (result === 'forbidden' && !membershipBoundary) {
+    throw new Error('admin membership denial did not expose its exact public boundary');
+  }
   return Object.freeze({
     actorId: request.actorId,
     validTokenAdmitted: response.status !== 401,
     result,
-    decisionBoundary: result === 'forbidden' ? 'admin-organization-membership' : 'permission',
+    decisionBoundary: membershipBoundary ? 'admin-organization-membership' : 'permission',
     targetBefore: before,
     targetAfter: after,
   });

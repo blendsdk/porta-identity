@@ -11,12 +11,19 @@ import {
   authorizationResult,
   liveDigest,
   mapObservedSideEffects,
+  sessionRenewalObserved,
 } from './tenant-admin-live-context.js';
-import { controlPlaneReachability } from './tenant-admin-live-control.js';
+import {
+  assertAuthorizedRouteProof,
+  authorizedRouteProof,
+  controlPlaneReachability,
+} from './tenant-admin-live-control.js';
 import {
   cacheIsolationResult,
   classifyForeignCredentialState,
+  concurrentJourneysOverlap,
   observedOrganizationFromIssuer,
+  tenantCrossTalkDetected,
 } from './tenant-admin-live-oidc.js';
 
 test('should generate a unique controlled matrix for every compatible authority case', () => {
@@ -121,26 +128,86 @@ test('should classify only a valid tenant authorization continuation or exact re
 });
 
 test('should distinguish handler permission and resource boundaries after authentication', () => {
-  assert.deepEqual(controlPlaneReachability('admin-full', 'allowed'), {
+  const allowedCase = controlPlaneAuthorityProfile.cases.find(
+    (entry) => entry.result === 'allowed' && entry.action === 'read-target-user',
+  );
+  assert.ok(allowedCase);
+  const target = {
+    catalogId: allowedCase.resource,
+    surface: 'user' as const,
+    organization: 'alpha' as const,
+    readPath: '/api/admin/users/target',
+    mutationPath: '/api/admin/users/target',
+  };
+  const allowedResponse = { status: 200, body: { data: { id: 'target' } } };
+  const proof = authorizedRouteProof(allowedCase, target, allowedResponse);
+  const deniedCase = controlPlaneAuthorityProfile.cases.find(
+    (entry) => entry.authorizedControl === allowedCase.id,
+  );
+  assert.ok(deniedCase);
+  assert.doesNotThrow(() => assertAuthorizedRouteProof(deniedCase, target, proof));
+  assert.throws(
+    () => assertAuthorizedRouteProof(deniedCase, { ...target, catalogId: 'other-target' }, proof),
+    /does not match the denied route/u,
+  );
+  assert.deepEqual(controlPlaneReachability('admin-full', allowedResponse), {
     adminAuthenticationAccepted: true,
     handlerReached: true,
     decisionBoundary: 'handler',
   });
-  assert.deepEqual(controlPlaneReachability('admin-limited', 'forbidden'), {
-    adminAuthenticationAccepted: true,
-    handlerReached: true,
-    decisionBoundary: 'permission',
-  });
-  assert.deepEqual(controlPlaneReachability('admin-full', 'not-found'), {
-    adminAuthenticationAccepted: true,
-    handlerReached: true,
-    decisionBoundary: 'resource',
-  });
-  assert.deepEqual(controlPlaneReachability('unauthenticated', 'unauthenticated'), {
+  assert.deepEqual(
+    controlPlaneReachability(
+      'admin-limited',
+      {
+        status: 403,
+        body: {
+          error: 'Forbidden',
+          message: 'Insufficient permissions. Required: admin:user:read',
+        },
+      },
+      proof,
+    ),
+    {
+      adminAuthenticationAccepted: true,
+      handlerReached: true,
+      decisionBoundary: 'permission',
+    },
+  );
+  assert.deepEqual(
+    controlPlaneReachability(
+      'admin-full',
+      { status: 404, body: { error: 'User not found' } },
+      proof,
+    ),
+    {
+      adminAuthenticationAccepted: true,
+      handlerReached: true,
+      decisionBoundary: 'resource',
+    },
+  );
+  assert.deepEqual(controlPlaneReachability('unauthenticated', { status: 401 }), {
     adminAuthenticationAccepted: false,
     handlerReached: false,
     decisionBoundary: 'handler',
   });
+  assert.throws(
+    () => controlPlaneReachability('admin-limited', { status: 403 }),
+    /authorized control proof/u,
+  );
+  assert.throws(
+    () =>
+      controlPlaneReachability(
+        'admin-limited',
+        { status: 403, body: { error: 'Forbidden' } },
+        proof,
+      ),
+    /expected public decision boundary/u,
+  );
+  assert.throws(
+    () =>
+      controlPlaneReachability('admin-full', { status: 404, body: { error: 'ambiguous' } }, proof),
+    /expected public decision boundary/u,
+  );
 });
 
 test('should derive target-state and prohibited-side-effect evidence independently', () => {
@@ -151,15 +218,103 @@ test('should derive target-state and prohibited-side-effect evidence independent
   assert.notEqual(before, after);
   assert.deepEqual(
     mapObservedSideEffects(
-      ['cross-target-mutation', 'target-disclosure', 'stale-token-acceptance', 'cache-reuse'],
-      { targetChanged: true, targetDisclosed: false, unauthorizedAccepted: true },
+      [
+        'foreign-state-mutation',
+        'foreign-data-disclosure',
+        'foreign-token-acceptance',
+        'foreign-session-renewal',
+        'cross-target-cache-reuse',
+        'sensitive-audit-content',
+      ],
+      {
+        targetChanged: true,
+        targetDisclosed: false,
+        unauthorizedAccepted: true,
+        sessionRenewed: false,
+        crossTargetCacheReuse: true,
+        sensitiveAuditContent: false,
+      },
     ),
     {
-      'cross-target-mutation': true,
-      'target-disclosure': false,
-      'stale-token-acceptance': true,
-      'cache-reuse': true,
+      'foreign-state-mutation': true,
+      'foreign-data-disclosure': false,
+      'foreign-token-acceptance': true,
+      'foreign-session-renewal': false,
+      'cross-target-cache-reuse': true,
+      'sensitive-audit-content': false,
     },
+  );
+  assert.throws(
+    () =>
+      mapObservedSideEffects(['foreign-session-renewal'], {
+        targetChanged: false,
+        targetDisclosed: false,
+        unauthorizedAccepted: false,
+      }),
+    /session renewal observation is required/u,
+  );
+  assert.throws(
+    () =>
+      mapObservedSideEffects(['undeclared-side-effect'], {
+        targetChanged: false,
+        targetDisclosed: false,
+        unauthorizedAccepted: false,
+      }),
+    /unsupported tenant\/admin side-effect observation/u,
+  );
+});
+
+test('should distinguish session renewal from activity and revocation', () => {
+  const before = [{ identity: 'session-a', renewalFingerprint: 'expiry-a' }];
+  assert.equal(sessionRenewalObserved(before, []), false);
+  assert.equal(sessionRenewalObserved(before, before), false);
+  assert.equal(
+    sessionRenewalObserved(before, [
+      { identity: 'session-a', renewalFingerprint: 'expiry-extended' },
+    ]),
+    true,
+  );
+  assert.equal(
+    sessionRenewalObserved(before, [
+      ...before,
+      { identity: 'session-b', renewalFingerprint: 'expiry-b' },
+    ]),
+    true,
+  );
+});
+
+test('should require real overlap and preserve independent tenant identity mismatches', () => {
+  assert.equal(
+    concurrentJourneysOverlap([
+      { startedAt: 1, completedAt: 5 },
+      { startedAt: 2, completedAt: 4 },
+    ]),
+    true,
+  );
+  assert.equal(
+    concurrentJourneysOverlap([
+      { startedAt: 1, completedAt: 2 },
+      { startedAt: 2, completedAt: 3 },
+    ]),
+    false,
+  );
+  assert.throws(
+    () => concurrentJourneysOverlap([{ startedAt: 1, completedAt: 1 }]),
+    /intervals are invalid/u,
+  );
+  assert.equal(
+    tenantCrossTalkDetected([
+      {
+        requestOrganization: 'alpha',
+        issuerOrganization: 'alpha',
+        cacheOrganization: 'bravo',
+        sessionOrganization: 'alpha',
+        responseOrganization: 'alpha',
+        cacheKeyFingerprint: 'cache-observation',
+        sessionFingerprint: 'session-observation',
+      },
+    ]),
+    true,
   );
 });
 
