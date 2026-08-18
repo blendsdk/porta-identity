@@ -56,19 +56,41 @@ export interface PackedSurfaceResult {
   readonly distOnly: boolean;
 }
 
+/** Closed failure stages emitted by the packed-client command without raw diagnostics. */
+export type PackedCompatibilityFailureStage =
+  | 'preparation'
+  | 'surfaces'
+  | 'credentials'
+  | 'protocol-cli-request'
+  | 'protocol-cli-browser'
+  | 'protocol-cli-process'
+  | 'protocol-cli-credentials'
+  | 'protocol-cli-observation'
+  | 'protocol-sdk-refresh'
+  | 'protocol-sdk-retry'
+  | 'cleanup'
+  | 'provenance';
+
 /** Stable compatibility-process failure that preserves root exit precedence without diagnostics. */
 export class PackedCompatibilityExecutionError extends Error {
   /** Root assurance exit code represented by this sanitized failure. */
   public readonly exitCode: 30 | 60 | 70 | 130 | 143;
   /** Exact bounded cleanup command when this failure retained owned residue. */
   public readonly recoveryCommand?: string;
+  /** Closed non-secret stage where execution stopped. */
+  public readonly stage?: PackedCompatibilityFailureStage;
 
   /** Creates one non-secret terminal failure. */
-  public constructor(exitCode: 30 | 60 | 70 | 130 | 143, recoveryCommand?: string) {
+  public constructor(
+    exitCode: 30 | 60 | 70 | 130 | 143,
+    recoveryCommand?: string,
+    stage?: PackedCompatibilityFailureStage,
+  ) {
     super('packed compatibility execution failed');
     this.name = 'PackedCompatibilityExecutionError';
     this.exitCode = exitCode;
     this.recoveryCommand = recoveryCommand;
+    this.stage = stage;
   }
 }
 

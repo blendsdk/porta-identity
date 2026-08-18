@@ -7,7 +7,11 @@ import { request } from '@playwright/test';
 import { z } from 'zod';
 
 import { runManagedChild } from '../scripts/managed-child.js';
-import type { PreparedPackedConsumer } from './model.js';
+import {
+  PackedCompatibilityExecutionError,
+  type PackedCompatibilityFailureStage,
+  type PreparedPackedConsumer,
+} from './model.js';
 import {
   packedProtocolCredentialFingerprint,
   type PackedProtocolEndpoints,
@@ -64,6 +68,7 @@ export async function executePackedProtocolSdkRefresh(
     }),
     { flag: 'wx', mode: 0o600 },
   );
+  let failureStage: PackedCompatibilityFailureStage = 'protocol-sdk-refresh';
   try {
     const result = await runManagedChild(process.execPath, [probePath, inputPath], {
       cwd: consumer.consumerPath,
@@ -85,6 +90,7 @@ export async function executePackedProtocolSdkRefresh(
       throw new Error('packed SDK refresh probe failed');
     }
     const probe = probeSchema.parse(JSON.parse(result.stdout));
+    failureStage = 'protocol-sdk-retry';
     const api = await request.newContext({ ignoreHTTPSErrors: true });
     try {
       const retry = await api.post(`${credentials.server}/${credentials.orgSlug}/token`, {
@@ -113,6 +119,10 @@ export async function executePackedProtocolSdkRefresh(
     } finally {
       await api.dispose();
     }
+  } catch (error) {
+    throw error instanceof PackedCompatibilityExecutionError
+      ? error
+      : new PackedCompatibilityExecutionError(30, undefined, failureStage);
   } finally {
     rmSync(inputPath, { force: true });
     rmSync(probePath, { force: true });

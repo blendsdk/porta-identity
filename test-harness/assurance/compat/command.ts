@@ -16,7 +16,11 @@ import {
 import { createPackedTenantAdminRunContext, runPackedTenantAdminAdjunct } from './tenant-admin.js';
 import { createPackedProtocolLiveDriver, type PackedProtocolLiveDriver } from './protocol-live.js';
 import { createPackedProtocolRunContext, runPackedProtocolAdjunct } from './protocol.js';
-import { PackedCompatibilityExecutionError, type PreparedPackedConsumer } from './model.js';
+import {
+  PackedCompatibilityExecutionError,
+  type PackedCompatibilityFailureStage,
+  type PreparedPackedConsumer,
+} from './model.js';
 
 /** Selectors currently implemented by the packed-client foundation command. */
 export const packedCompatibilitySelectors = [
@@ -154,7 +158,7 @@ export async function runPackedCompatibilityFoundation(
   const commandRunId = randomUUID();
   let evidence: object | undefined;
   let exitCode: PackedCompatibilityResult['exitCode'] = 0;
-  let stage: 'preparation' | 'surfaces' | 'credentials' | 'cleanup' | 'provenance' = 'preparation';
+  let stage: PackedCompatibilityFailureStage = 'preparation';
   let recoveryCommand: string | undefined;
   let tenantAdminDriver: PackedTenantAdminLiveDriver | undefined;
   let protocolDriver: PackedProtocolLiveDriver | undefined;
@@ -223,6 +227,9 @@ export async function runPackedCompatibilityFoundation(
     }
   } catch (error) {
     exitCode = error instanceof PackedCompatibilityExecutionError ? error.exitCode : 30;
+    if (error instanceof PackedCompatibilityExecutionError && error.stage !== undefined) {
+      stage = error.stage;
+    }
     recoveryCommand =
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {

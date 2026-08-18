@@ -24,6 +24,7 @@ import {
 import { verifyIndependentIdToken } from '../tests/protocol-live-jose.js';
 import {
   PackedCompatibilityExecutionError,
+  type PackedCompatibilityFailureStage,
   type PackedSurfaceResult,
   type PreparedPackedConsumer,
 } from './model.js';
@@ -229,8 +230,18 @@ async function runInteractiveCli(
   let primaryError: unknown;
   let cleanupSucceeded: boolean;
   try {
-    const authorizationUrl = await waitForAuthorizationUrl(child, () => output);
-    const callbackUrl = await completeAuthorization(authorizationUrl, email, password);
+    let authorizationUrl: URL;
+    try {
+      authorizationUrl = await waitForAuthorizationUrl(child, () => output);
+    } catch {
+      throw new PackedCompatibilityExecutionError(30, undefined, 'protocol-cli-request');
+    }
+    let callbackUrl: URL;
+    try {
+      callbackUrl = await completeAuthorization(authorizationUrl, email, password);
+    } catch {
+      throw new PackedCompatibilityExecutionError(30, undefined, 'protocol-cli-browser');
+    }
     child.stdin?.end(`${callbackUrl.toString()}\n`);
     const exitCode = await closed;
     result = {
@@ -291,6 +302,7 @@ export async function executePackedProtocolCliLogin(
   let session: PackedProtocolLoginSession | undefined;
   let primaryError: unknown;
   let homeCleanupFailed = false;
+  let failureStage: PackedCompatibilityFailureStage = 'protocol-cli-process';
   try {
     const result = await runInteractiveCli(
       consumer,
@@ -305,12 +317,14 @@ export async function executePackedProtocolCliLogin(
     if (result.timedOut || result.cleanupFailed) {
       throw new PackedCompatibilityExecutionError(result.cleanupFailed ? 60 : 70);
     }
+    failureStage = 'protocol-cli-credentials';
     if (result.exitCode !== 0 || !existsSync(credentialPath)) {
       throw new Error('packed CLI login did not complete');
     }
     const credentials = credentialsSchema.parse(JSON.parse(readFileSync(credentialPath, 'utf8')));
     copyFileSync(credentialPath, retainedCredentialPath, 0);
     chmodSync(retainedCredentialPath, 0o600);
+    failureStage = 'protocol-cli-observation';
     const api = await request.newContext({ ignoreHTTPSErrors: true });
     try {
       const metadataResponse = await api.get(`${endpoints.porta}/api/admin/metadata`);
@@ -378,7 +392,10 @@ export async function executePackedProtocolCliLogin(
       await api.dispose();
     }
   } catch (error) {
-    primaryError = error;
+    primaryError =
+      error instanceof PackedCompatibilityExecutionError
+        ? error
+        : new PackedCompatibilityExecutionError(30, undefined, failureStage);
   } finally {
     try {
       rmSync(home, { recursive: true, force: true });

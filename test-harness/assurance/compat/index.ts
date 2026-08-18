@@ -51,6 +51,7 @@ export {
 export type {
   CurrentTripletIdentity,
   PackedArchiveIdentity,
+  PackedCompatibilityFailureStage,
   PackedConsumerCleanupResult,
   PackedConsumerProvenance,
   PackedSurfaceResult,

@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 22:25
+> **Last Updated**: 2026-08-18 22:48
 > **Progress**: 64/101 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
@@ -728,7 +728,12 @@ has current green plus its own independently detected local control check.
       `PACKED_PROTOCOL_CAPABILITY_UNAVAILABLE`; final packed protocol passed 13/13, JOSE passed 6/6,
       governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233 server files /
       3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No clean live packed
-      evidence was claimed. ✅ (completed: 2026-08-18 22:25)
+      evidence was claimed. Reopened after the first clean 7.5d run failed safely at the coarse
+      credential stage: the capability now emits only a closed non-secret CLI/SDK substage so a
+      later clean run can distinguish request, browser, process, credential, observation, refresh,
+      and consumed-token retry failures. The refined implementation suite passed 14/14 and the
+      unchanged full verification passed all 3,382 server tests after one isolated timing-test
+      rerun confirmed the first run's pre-existing threshold noise. ✅ (completed: 2026-08-18 22:48)
 - [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
       evidence. The protocol slice cannot close before this checkpoint is green.

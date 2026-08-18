@@ -10,6 +10,7 @@ import {
 } from '../compat/protocol.js';
 import { extractPackedCliAuthorizationUrl } from '../compat/protocol-cli-login.js';
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
+import { PackedCompatibilityExecutionError } from '../compat/model.js';
 import type { PackedCliSdkResolution } from '../compat/resolution.js';
 import { completePackedProtocolEvidence } from './packed-protocol-spec-fixtures.js';
 
@@ -125,4 +126,11 @@ test('should use only the packed SDK Node entry and emit sanitized refresh facts
   assert.match(probe, /refreshedAccessTokenChanged/u);
   assert.match(probe, /refreshedAccessTokenAcceptedByRawObserver/u);
   assert.doesNotMatch(probe, /(?:accessToken|refreshToken)\s*:/u);
+});
+
+test('should preserve only a closed non-secret packed protocol failure stage', () => {
+  const failure = new PackedCompatibilityExecutionError(30, undefined, 'protocol-cli-browser');
+  assert.equal(failure.exitCode, 30);
+  assert.equal(failure.stage, 'protocol-cli-browser');
+  assert.equal(failure.message, 'packed compatibility execution failed');
 });
