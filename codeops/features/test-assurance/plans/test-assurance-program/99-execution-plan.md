@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 18:55
-> **Progress**: 59/97 tasks (60%)
+> **Last Updated**: 2026-08-18 19:06
+> **Progress**: 60/97 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -676,8 +676,13 @@ has current green plus its own independently detected local control check.
       suite passed 5/5, protocol specifications passed 20/20, assurance typecheck/lint/formatting
       passed, and `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and
       29 CLI files / 355 tests. ✅ (completed: 2026-08-18 18:55)
-- [ ] 7.4b From the clean pushed capability revision, run the exact baseline command, validate its
-      owner-only natural-RED evidence, and record the protocol claim classifications.
+- [x] 7.4b From the clean pushed capability revision, run the exact baseline command, validate its
+      owner-only natural-RED evidence, and record the protocol claim classifications. Clean
+      revision `e8870770` recorded run `dc7ddf31-73e6-4e49-bff9-1e05add43f78`: all 20 protocol
+      specifications passed before the `ST-33` artifact was admitted, classification is exact
+      natural RED for `CLAIM-R5-04`, both audited candidates remain ineligible, no sentinel or
+      product failure was inferred, provenance binds the full commit/tree/tool identities, and the
+      artifact is mode `0600`. ✅ (completed: 2026-08-18 19:06)
 - [ ] 7.5 Add missing black-box probes and applicable packed-client journeys; validate issued ID
       tokens independently and never parse opaque access tokens as JWTs.
 - [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with
