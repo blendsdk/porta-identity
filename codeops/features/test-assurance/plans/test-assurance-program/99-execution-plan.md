@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 23:23
+> **Last Updated**: 2026-08-18 23:37
 > **Progress**: 64/101 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
@@ -747,6 +747,13 @@ has current green plus its own independently detected local control check.
       packed protocol selector passed 17/17, governance passed 55/55, and `yarn verify` passed 68
       structure tests, 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files /
       355 tests. No clean live packed evidence was claimed. ✅ (completed: 2026-08-18 23:23)
+      Reopened when the clean run reached `protocol-cli-credentials`: the packed CLI exited zero
+      with every required token, but its published optional-email fallback was an empty string and
+      the harness parser incorrectly required a non-empty value. The parser now matches the CLI
+      credential type while retaining exact subject and token requirements. The packed protocol
+      selector passed 18/18, governance passed 55/55, and `yarn verify` passed 68 structure tests,
+      233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No clean
+      live packed evidence was claimed. ✅ (completed: 2026-08-18 23:37)
 - [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
       evidence. The protocol slice cannot close before this checkpoint is green.

@@ -41,7 +41,7 @@ const credentialsSchema = z
     idToken: z.string().min(1),
     expiresAt: z.string().datetime(),
     userInfo: z
-      .object({ sub: z.string().min(1), email: z.string().min(1), name: z.string().optional() })
+      .object({ sub: z.string().min(1), email: z.string(), name: z.string().optional() })
       .strict(),
   })
   .strict();
@@ -52,6 +52,16 @@ const discoverySchema = z.object({ jwks_uri: z.string().url() }).passthrough();
 const manualCallbackPort = 11_111;
 const maximumCallbackUrlBytes = 8 * 1024;
 const allowedManualCallbackKeys = new Set(['code', 'state', 'iss']);
+
+/**
+ * Parses the distributed CLI's credential file without requiring optional identity claims.
+ *
+ * OIDC guarantees the subject, while the CLI intentionally represents an omitted email claim as
+ * an empty string. Tokens and the subject remain mandatory and are verified independently later.
+ */
+export function parsePackedProtocolCredentials(value: unknown): z.infer<typeof credentialsSchema> {
+  return credentialsSchema.parse(value);
+}
 
 /** Owner-bound observer for the CLI's fixed manual loopback redirect. */
 export interface PackedManualCallbackCapture {
@@ -459,7 +469,9 @@ export async function executePackedProtocolCliLogin(
     if (result.exitCode !== 0 || !existsSync(credentialPath)) {
       throw new Error('packed CLI login did not complete');
     }
-    const credentials = credentialsSchema.parse(JSON.parse(readFileSync(credentialPath, 'utf8')));
+    const credentials = parsePackedProtocolCredentials(
+      JSON.parse(readFileSync(credentialPath, 'utf8')),
+    );
     copyFileSync(credentialPath, retainedCredentialPath, 0);
     chmodSync(retainedCredentialPath, 0o600);
     failureStage = 'protocol-cli-observation';

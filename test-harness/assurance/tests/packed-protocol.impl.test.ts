@@ -10,6 +10,7 @@ import {
 } from '../compat/protocol.js';
 import {
   extractPackedCliAuthorizationUrl,
+  parsePackedProtocolCredentials,
   startPackedManualCallbackCapture,
 } from '../compat/protocol-cli-login.js';
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
@@ -179,4 +180,22 @@ test('should reject non-callback requests without consuming the callback observe
     await capture.close();
     await capture.close();
   }
+});
+
+test('should accept the published CLI credential shape without inventing an email claim', () => {
+  const credentials = {
+    server: 'https://porta.example',
+    orgSlug: 'porta-admin',
+    clientId: 'client-id',
+    accessToken: 'opaque-access',
+    refreshToken: 'opaque-refresh',
+    idToken: 'signed.id.token',
+    expiresAt: '2026-08-19T00:00:00.000Z',
+    userInfo: { sub: 'subject-id', email: '' },
+  };
+  assert.equal(parsePackedProtocolCredentials(credentials).userInfo.email, '');
+  assert.throws(
+    () => parsePackedProtocolCredentials({ ...credentials, userInfo: { sub: '', email: '' } }),
+    /sub/u,
+  );
 });

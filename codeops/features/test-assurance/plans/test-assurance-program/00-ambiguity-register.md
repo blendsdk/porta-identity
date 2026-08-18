@@ -1402,3 +1402,23 @@ then the owner-bound listener completed that same redirect without changing Port
 CLI. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-G`. **Reopen trigger**:
 the CLI changes its manual redirect, starts its own callback listener in manual mode, or the
 provider's successful authorization response parameters change.
+
+### AR-78 — Packed CLI optional email claim
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: correction of a harness-only
+credential parser that was stricter than the distributed CLI contract; no product behavior or
+assurance requirement changes. **Objective**: admit a successful packed login when the admin ID
+token legitimately omits the optional email claim, without weakening subject or token evidence.
+**Decision**: accept the CLI's published string representation for `userInfo.email`, including its
+documented empty-string fallback, while continuing to require a non-empty subject, access token,
+refresh token, ID token, expiry, server, organization, and client. Independent JOSE verification
+still requires the exact fixture subject; email is not an assurance oracle. **Rejected
+alternative**: requiring Porta to emit an email solely for this test would turn a harness defect
+into a product change; deleting identity validation would weaken the public contract. **Strongest
+counterargument**: an empty email is less informative, but the CLI's credential type permits it and
+the tested authorization identity is the OIDC `sub`, not an optional profile claim. **Confidence**:
+High. **Hardening**: a live packed-equivalent login exited zero with every required token and an
+empty email only; the new regression accepts that exact shape and rejects an empty subject.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-H`. **Reopen trigger**: the
+CLI credential contract makes email mandatory or the protocol adjunct begins claiming email
+identity assurance.
