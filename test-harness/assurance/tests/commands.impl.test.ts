@@ -8,11 +8,13 @@ import test from 'node:test';
 
 import {
   assuranceCommandActions,
+  commandContractVersion,
   commandContracts,
   exitPrecedence,
   exitTaxonomy,
   rootAliasForAction,
 } from '../commands.js';
+import { validateCommandContractRegistry } from '../scripts/foundation-artifacts.js';
 import { runManagedChild } from '../scripts/managed-child.js';
 
 /** Repository-relative shared dispatcher used by root assurance aliases. */
@@ -28,6 +30,23 @@ test('should map every allowlisted action to one complete root contract', () => 
     assert.notEqual(contract.artifactSubdirectory, '');
     assert.ok(contract.prerequisites.length > 0);
   }
+});
+
+test('should require the validation registry to match every dispatcher action exactly', () => {
+  const aliases = Object.keys(commandContracts);
+
+  assert.doesNotThrow(() =>
+    validateCommandContractRegistry(assuranceCommandActions, aliases, commandContractVersion),
+  );
+  assert.throws(
+    () =>
+      validateCommandContractRegistry(
+        assuranceCommandActions,
+        aliases.filter((alias) => alias !== 'assurance:control-check'),
+        commandContractVersion,
+      ),
+    /root assurance command contract is incomplete/i,
+  );
 });
 
 test('should retain distinct stable exits in documented precedence order', () => {

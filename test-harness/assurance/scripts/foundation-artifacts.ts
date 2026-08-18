@@ -10,7 +10,13 @@ import {
 } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
-import { commandContracts, commandContractVersion } from '../commands.js';
+import {
+  assuranceCommandActions,
+  commandContracts,
+  commandContractVersion,
+  rootAliasForAction,
+} from '../commands.js';
+import type { AssuranceCommandAction } from '../commands.js';
 import {
   foundationManifestSchema,
   foundationValidationResultSchema,
@@ -108,6 +114,29 @@ function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+/**
+ * Verifies that every dispatcher action has exactly one root command contract.
+ *
+ * Comparing the complete alias sets prevents a newly registered command from being omitted from
+ * validation and also rejects stale contracts whose dispatcher action no longer exists.
+ *
+ * @param actions - Closed dispatcher actions accepted by the command-line entry point.
+ * @param aliases - Root command aliases declared by the machine-readable command contracts.
+ * @param version - Command-contract schema version understood by foundation validation.
+ * @throws {Error} When the version is unsupported or either alias set is incomplete.
+ */
+export function validateCommandContractRegistry(
+  actions: readonly AssuranceCommandAction[],
+  aliases: readonly string[],
+  version: number,
+): void {
+  const expectedAliases = actions.map((action) => rootAliasForAction(action)).sort();
+  const actualAliases = [...aliases].sort();
+  if (version !== 1 || JSON.stringify(actualAliases) !== JSON.stringify(expectedAliases)) {
+    throw new Error('root assurance command contract is incomplete');
+  }
+}
+
 /** Executes foundation validation and returns the generated owned run UUID. */
 export function runFoundationValidation(repositoryRoot: string): string {
   const canonicalRoot = realpathSync(repositoryRoot);
@@ -129,9 +158,11 @@ export function runFoundationValidation(repositoryRoot: string): string {
   const signatures = redSignatureRegistrySchema.parse(readJson(signaturesPath));
   validateRedSignatureRegistry(signatures);
   testInventorySchema.parse(readJson(inventoryPath));
-  if (commandContractVersion !== 1 || Object.keys(commandContracts).length !== 11) {
-    throw new Error('root assurance command contract is incomplete');
-  }
+  validateCommandContractRegistry(
+    assuranceCommandActions,
+    Object.keys(commandContracts),
+    commandContractVersion,
+  );
 
   const dependencyLockDigest = digestRepositoryFile(lockPath);
   const definitionDigests = {
