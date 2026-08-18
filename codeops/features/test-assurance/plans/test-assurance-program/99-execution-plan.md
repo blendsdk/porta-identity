@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 18:07
-> **Progress**: 57/96 tasks (59%)
+> **Last Updated**: 2026-08-18 18:29
+> **Progress**: 58/96 tasks (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -652,8 +652,17 @@ has current green plus its own independently detected local control check.
       Focused specifications passed 10/10, assurance typecheck/lint/formatting passed, and
       `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files /
       355 tests. ✅ (completed: 2026-08-18 18:07)
-- [ ] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
+- [x] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
       before/after-commit failure, timeout unknown outcome/retry, and fresh-process replay.
+      Added an artifact-neutral observation contract, closed Phase 7 bindings, transparent
+      non-evidentiary rig, fail-closed adapter, and ten deterministic scenarios across authorization
+      codes and refresh tokens. The oracle requires named barrier acknowledgements, real interval
+      overlap, exact commit-stage evidence, independent durable-state decisions, owned-process
+      identity change, privacy-safe logs, recovery, and zero retained secrets. Setup, timeout,
+      barrier, and infrastructure failures are explicitly invalid evidence. Focused specifications
+      passed 5/5, assurance typecheck/lint/formatting passed, and `yarn verify` passed 227 server
+      files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-18 18:29)
 - [ ] 7.4 Record natural RED or legacy green claim by claim; audit OIDC E2E/pentest cases and reject
       broad statuses, conditional exits, and implementation-derived expectations as sentinels.
 - [ ] 7.5 Add missing black-box probes and applicable packed-client journeys; validate issued ID
