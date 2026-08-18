@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 15:39
-> **Progress**: 55/96 tasks (57%)
+> **Last Updated**: 2026-08-18 17:42
+> **Progress**: 56/96 tasks (58%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -626,9 +626,23 @@ has current green plus its own independently detected local control check.
 
 > **Scope**: protocol claims, independent JOSE/HTTP client, distributed replay orchestration
 > **References**: ST-33–ST-41/ST-50–ST-51/ST-63, RD-04/RD-05
+> **Phase baseline tree**: `bf2c74d955cbcce7dac09eb0ceda407b7c078a12`
+> **Expected modification set**: `test-harness/assurance/`, harness-owned protocol specs/fixtures/
+> scripts, protocol-specific packed-client and control-check assets, and this feature's plan/
+> roadmap/review evidence. Product files remain excluded unless a separately authorized confirmed
+> defect correction is recorded.
+> **Scope mode**: strict — OIDC, ID-token, opaque-token, rotation, replay, and distributed-boundary
+> assurance only; no production test hooks, CI changes, certification claims, or later auth/P1 work
 
-- [ ] 7.1 [spec-author] Define versioned slice profiles/claims for redirect/PKCE, code binding,
+- [x] 7.1 [spec-author] Define versioned slice profiles/claims for redirect/PKCE, code binding,
       state/nonce/consent/client authentication, ID tokens, opaque-token separation, rotation/replay.
+      Added six versioned protocol risk profiles and ten immutable claim requirements spanning
+      SPA, BFF, and raw HTTP/independent JOSE boundaries. The catalog includes complete threat,
+      exact-outcome, privacy-safe log, recovery, and version-qualified standards data while
+      explicitly forbidding Porta token helpers and JWT treatment of opaque access tokens. Focused
+      specifications passed 5/5, structure passed 68/68, assurance typecheck/lint/formatting passed,
+      and `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI
+      files / 355 tests. ✅ (completed: 2026-08-18 17:42)
 - [ ] 7.2 [spec-author] Write exact ST-33–ST-41 raw HTTP and independent ID-token/JWKS cases,
       including unknown `kid`, attacker JOSE key-location headers, and concurrent issuer separation.
 - [ ] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
