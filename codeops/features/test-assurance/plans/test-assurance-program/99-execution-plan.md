@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 19:06
-> **Progress**: 60/97 tasks (61%)
+> **Last Updated**: 2026-08-18 19:22
+> **Progress**: 61/100 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -35,13 +35,13 @@ workflow.
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
-|     7 | OIDC, ID-token, and token lifecycle                 |     9 |
+|     7 | OIDC, ID-token, and token lifecycle                 |    12 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 97 tasks across 11 release-safe phases.**
+**Total: 100 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -95,7 +95,10 @@ text, but it cannot substitute another command for this binding.
 | 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
 | 7.4a      | `yarn assurance:test --select protocol-specs` plus protocol baseline specification/implementation tests                                                     |
 | 7.4b      | `yarn assurance:baseline --case ST-33`                                                                                                                       |
-| 7.5–7.6   | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.5a      | `yarn assurance:test --select protocol-jose`                                                                                                                  |
+| 7.5b, 7.6 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
+| 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
 | 7.7       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
 | 7.8       | `yarn assurance:test --select protocol-all`                                                                                                                  |
 | 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
@@ -683,8 +686,24 @@ has current green plus its own independently detected local control check.
       natural RED for `CLAIM-R5-04`, both audited candidates remain ineligible, no sentinel or
       product failure was inferred, provenance binds the full commit/tree/tool identities, and the
       artifact is mode `0600`. ✅ (completed: 2026-08-18 19:06)
-- [ ] 7.5 Add missing black-box probes and applicable packed-client journeys; validate issued ID
-      tokens independently and never parse opaque access tokens as JWTs.
+- [x] 7.5a Implement the independent ES256/P-256 trusted-JWKS ID-token verifier and explicit
+      opaque-access-token no-parse boundary, with malformed, untrusted-key-location, signature,
+      issuer, audience, subject, nonce, expiry, and not-before implementation cases. The verifier
+      uses Node cryptography directly, selects exactly one trusted P-256 JWK by `kid`, rejects
+      remote or embedded key-location headers before key selection, checks the complete ID-token
+      claim/lifetime contract, and exposes a separate opaque-token rejection path that performs no
+      JWT decode. The registered five-case `protocol-jose` selector and assurance typecheck/lint/
+      formatting gates passed. ✅ (completed: 2026-08-18 19:22)
+- [ ] 7.5b Add the missing live black-box adapter behind the immutable ST-33–ST-41 specifications,
+      using raw HTTP and the independent JOSE verifier. Run it inside the lifecycle-owned protocol
+      stack and preserve exact log, recovery, and prohibited-side-effect observations.
+- [ ] 7.5c Add immutable packed-protocol adjunct specifications and implement the capability for
+      browser-assisted CLI authorization-code/PKCE login and SDK refresh-token use. Reuse the
+      established local-archive, isolated-HOME, independent raw/JOSE observation, cleanup,
+      redaction, and fail-closed provenance boundaries; do not claim clean live evidence yet.
+- [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
+      owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
+      evidence. The protocol slice cannot close before this checkpoint is green.
 - [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with
       acknowledgements, correlation IDs, bounded waits, and durable-state observation; no product hook.
 - [ ] 7.7 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-

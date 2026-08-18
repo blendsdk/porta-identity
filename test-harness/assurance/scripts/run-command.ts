@@ -243,6 +243,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
   ],
   'protocol-specs': protocolSpecificationFiles,
+  'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',

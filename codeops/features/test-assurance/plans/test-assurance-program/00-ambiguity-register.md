@@ -53,6 +53,7 @@ Porta product contract.
 | 58  | Packed evidence checkpoints | How can Task 6.5 commit verified raw/product changes and later execute packed clients from the mandatory clean revision? | Split the task into raw/product, packed-capability, and clean-live-evidence checkpoints; never synthesize or stash a dirty-tree revision | User (runtime) | ✅     |
 | 59  | Live fault execution | How can tenant/admin sentinels challenge real Porta controls without admitting arbitrary production patches or unrelated failures? | Use one reviewed fault ID per semantic production patch, a code-owned target/sub-sentinel registry, lifecycle-owned disposable stacks, and separate specification, capability, and clean-campaign checkpoints | AI (runtime) | ✅     |
 | 70  | Phase 6 quality correction | How are provenance, signal/recovery, traceability, and live-observation review defects corrected without production hooks or weaker claims? | Use evidence-backed public observation proofs, a persistent owner-fenced control-check run record, and executable Markdown/JSON traceability consistency | AI (runtime) | ✅     |
+| 72  | Protocol live evidence | How can Task 7.5 add raw/JOSE and packed-client evidence while preserving clean packed provenance and one authoritative oracle? | Split independent JOSE, raw live observation, packed capability, and clean packed evidence; raw HTTP/independent JOSE remains authoritative and packed journeys cover only public SDK/CLI protocol surfaces | AI (runtime) | ✅     |
 | 42  | Fixture spec verification | How can Tasks 3.1–3.2 verify before commit when attributed validation requires a clean tree? | Use structure, assurance TypeScript, and harness ESLint as the pre-commit gate; keep runtime specs outside required collection until the exact RED checkpoint, and retain clean-tree validation for committed roll-ups | AI (runtime)   | ✅     |
 | 43  | Fixture association oracle | How are shared OIDC vocabulary, global app purposes, and an unprivileged admin control represented without false contradictions? | Treat scopes as shared allowlisted protocol vocabulary, never tenant identity; type applications as OIDC/RBAC/mixed; require purpose-matched client/role associations; permit exactly the typed unprivileged admin role to have zero permissions | AI (runtime)   | ✅     |
 | 44  | Product defect remediation | May Phase 3 fix the confirmed organization-scoped user-route exposure that blocks its immutable oracle? | Yes; audit every user-specific route under an organization prefix, add cross-tenant read/write/status sentinels, enforce organization membership after authentication and permission checks, and keep standalone global-admin routes unchanged | User (runtime) | ✅     |
@@ -1256,3 +1257,33 @@ the evidence. **Confidence**: High. **Hardening**: this follows the already veri
 and live-evidence checkpoint pattern and changes only execution order. **Policy version**: 1.
 **Root Invocation ID**: `AD-TA-EXEC-20260818-P7`. **Reopen trigger**: the baseline command can safely
 bind an explicitly approved non-commit source identity, or clean provenance is no longer required.
+
+### AR-72 — Protocol live and packed evidence checkpoints
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal test implementation and
+verification sequencing inside the approved protocol task; no Porta product contract, acceptance
+criterion, or external interface changes. **Objective**: make the immutable protocol oracle live
+without duplicating it in Playwright, while keeping packed SDK/CLI evidence bound to a clean
+reachable revision. **Decision**: split Task 7.5 into four independently verifiable checkpoints.
+Task 7.5a implements and verifies the independent ES256/P-256 trusted-JWKS verifier and the explicit
+opaque-token no-parse boundary. Task 7.5b replaces the non-evidentiary adapter with raw HTTP and
+those independent JOSE observations and runs the same immutable specifications inside the owned
+protocol stack. Task 7.5c adds immutable packed-protocol adjunct specifications and capability for
+only the public client surfaces that directly participate in the slice: browser-assisted CLI
+authorization-code/PKCE login and SDK refresh-token use. Raw HTTP/JOSE observations independently
+verify their effects; packed clients never replace malicious-input probes. Task 7.5d starts from
+the clean pushed capability revision, runs the packed adjunct, validates server/archive/fixture
+identities and cleanup, and admits its evidence. **Rejected alternatives**: running packed evidence
+from a dirty tree weakens the existing provenance boundary; duplicating the protocol oracle in
+Playwright creates two sources of truth;
+treating every SDK/CLI administration operation as protocol evidence expands this slice into the
+later compatibility phase; omitting applicable login/refresh journeys leaves current public client
+behavior mock-only. **Strongest counterargument**: four checkpoints add three verification cycles,
+but each boundary has a distinct completion oracle and implementation cannot truthfully share a
+commit with clean-revision package evidence. **Confidence**: High. **Hardening**: the split reuses
+the verified Phase 6 packed checkpoint architecture and the current swappable immutable adapter;
+no new runner or provenance
+class is introduced. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260818-P7-B`. **Reopen trigger**: another public packed protocol surface becomes
+required for this slice, or compatibility evidence can safely bind a separately approved source
+identity.
