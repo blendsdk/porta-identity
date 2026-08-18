@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 23:37
-> **Progress**: 64/101 tasks (63%)
+> **Last Updated**: 2026-08-18 23:47
+> **Progress**: 65/101 tasks (64%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -754,9 +754,18 @@ has current green plus its own independently detected local control check.
       selector passed 18/18, governance passed 55/55, and `yarn verify` passed 68 structure tests,
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No clean
       live packed evidence was claimed. ✅ (completed: 2026-08-18 23:37)
-- [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
+- [x] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
-      evidence. The protocol slice cannot close before this checkpoint is green.
+      evidence. The protocol slice cannot close before this checkpoint is green. Clean revision
+      `dc951151` produced admitted result `efdbd89b-a0a2-42ab-8406-f22278a52b20`: packed SDK and
+      CLI archives were installed from local deterministic archives, every public SDK entry
+      resolved to package `dist`, the CLI completed authorization-code/PKCE with exact state and an
+      independently verified ID token, the raw observer accepted its opaque access token, the SDK
+      refreshed through `@portaidentity/sdk/node`, and retrying the consumed refresh token returned
+      exact `400 invalid_grant`. The mode-`0600` artifact is revision/image/fixture/archive-bound,
+      redacted, primary-tree unchanged, and reports no owned consumer or lifecycle residue.
+      `yarn verify` then passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files /
+      404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 23:47)
 - [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with
       acknowledgements, correlation IDs, bounded waits, and durable-state observation; no product hook.
 - [ ] 7.7 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
