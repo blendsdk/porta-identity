@@ -1236,3 +1236,23 @@ abstractions. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260818-P6-Q`. **Reopen trigger**: any retained check lacks one required identity,
 an upstream denial can satisfy reachability, an unobserved side effect maps to false, overlap is
 inferred rather than measured, or recovery can succeed while an owned resource remains.
+
+### AR-71 — Clean-revision protocol baseline checkpoint
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal verification sequencing
+inside the approved protocol baseline task; no product behavior, acceptance criterion, or scope
+changes. **Objective**: preserve the baseline command's clean-source provenance boundary while
+still implementing and testing its protocol registry before evidence is recorded. **Decision**:
+split the baseline task into a capability checkpoint and a clean-revision evidence checkpoint. The
+first checkpoint installs the closed protocol selector, candidate audit, schemas, persistence, and
+tests, then commits only after full verification. The second starts from that clean pushed revision,
+runs the exact baseline command, validates its owner-only artifact, updates the execution record,
+and commits the evidence record. **Rejected alternatives**: bypassing the clean-tree check weakens a
+security boundary; a synthetic Git snapshot introduces an unapproved provenance class; marking the
+task complete without executing the documented root command leaves its contract unverified.
+**Strongest counterargument**: the extra checkpoint adds one verification cycle, but it is required
+to prove that the recorded commit, tree, and tool digest identify the implementation that produced
+the evidence. **Confidence**: High. **Hardening**: this follows the already verified packed-client
+and live-evidence checkpoint pattern and changes only execution order. **Policy version**: 1.
+**Root Invocation ID**: `AD-TA-EXEC-20260818-P7`. **Reopen trigger**: the baseline command can safely
+bind an explicitly approved non-commit source identity, or clean provenance is no longer required.

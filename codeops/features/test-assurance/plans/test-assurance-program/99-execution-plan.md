@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 18:29
-> **Progress**: 58/96 tasks (60%)
+> **Last Updated**: 2026-08-18 18:55
+> **Progress**: 59/97 tasks (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -35,13 +35,13 @@ workflow.
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
-|     7 | OIDC, ID-token, and token lifecycle                 |     8 |
+|     7 | OIDC, ID-token, and token lifecycle                 |     9 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 96 tasks across 11 release-safe phases.**
+**Total: 97 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -93,7 +93,8 @@ text, but it cannot substitute another command for this binding.
 | 6.12      | `yarn assurance:test --select tenant-admin-all`                                                                                                              |
 | 7.1       | `yarn assurance:validate`                                                                                                                                    |
 | 7.2–7.3   | `yarn assurance:test --select protocol-specs`                                                                                                                |
-| 7.4       | `yarn assurance:baseline --case ST-33`                                                                                                                       |
+| 7.4a      | `yarn assurance:test --select protocol-specs` plus protocol baseline specification/implementation tests                                                     |
+| 7.4b      | `yarn assurance:baseline --case ST-33`                                                                                                                       |
 | 7.5–7.6   | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
 | 7.7       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
 | 7.8       | `yarn assurance:test --select protocol-all`                                                                                                                  |
@@ -641,15 +642,17 @@ has current green plus its own independently detected local control check.
       exact-outcome, privacy-safe log, recovery, and version-qualified standards data while
       explicitly forbidding Porta token helpers and JWT treatment of opaque access tokens. Focused
       specifications passed 5/5, structure passed 68/68, assurance typecheck/lint/formatting passed,
-      and `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI
-      files / 355 tests. ✅ (completed: 2026-08-18 17:42)
+      `yarn assurance:validate` passed from the clean checkpoint, and `yarn verify` passed 227 server
+      files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-18 17:42)
 - [x] 7.2 [spec-author] Write exact ST-33–ST-41 raw HTTP and independent ID-token/JWKS cases,
       including unknown `kid`, attacker JOSE key-location headers, and concurrent issuer separation.
       Added a stable observation contract, closed case catalog, transparent non-evidentiary
       requirements rig, fail-closed adapter seam, and ten immutable specifications. Every negative
       probe links an exact positive control and checks exact facts, prohibited effects, privacy-safe
       log fields, and recovery; observation types remain broad enough to report live defects.
-      Focused specifications passed 10/10, assurance typecheck/lint/formatting passed, and
+      Focused specifications passed 10/10, the registered `protocol-specs` selector passed 20/20,
+      assurance typecheck/lint/formatting passed, and
       `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files /
       355 tests. ✅ (completed: 2026-08-18 18:07)
 - [x] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
@@ -660,11 +663,21 @@ has current green plus its own independently detected local control check.
       overlap, exact commit-stage evidence, independent durable-state decisions, owned-process
       identity change, privacy-safe logs, recovery, and zero retained secrets. Setup, timeout,
       barrier, and infrastructure failures are explicitly invalid evidence. Focused specifications
-      passed 5/5, assurance typecheck/lint/formatting passed, and `yarn verify` passed 227 server
+      passed 5/5, the registered `protocol-specs` selector passed 20/20, assurance typecheck/lint/
+      formatting passed, and `yarn verify` passed 227 server
       files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-18 18:29)
-- [ ] 7.4 Record natural RED or legacy green claim by claim; audit OIDC E2E/pentest cases and reject
-      broad statuses, conditional exits, and implementation-derived expectations as sentinels.
+- [x] 7.4a Implement the closed protocol baseline registry and audit OIDC E2E/pentest candidates
+      claim by claim, rejecting broad statuses, conditional exits, fake artifacts, and
+      implementation-derived expectations as exact sentinels. Added nine registered cases, exact
+      claim mappings, canonical candidate/title validation, explicit ineligibility reasons,
+      owner-only atomic artifacts, and a `protocol-specs` selector. All cases classify as natural
+      RED without a product verdict; current tests remain corroboration only. The focused baseline
+      suite passed 5/5, protocol specifications passed 20/20, assurance typecheck/lint/formatting
+      passed, and `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and
+      29 CLI files / 355 tests. ✅ (completed: 2026-08-18 18:55)
+- [ ] 7.4b From the clean pushed capability revision, run the exact baseline command, validate its
+      owner-only natural-RED evidence, and record the protocol claim classifications.
 - [ ] 7.5 Add missing black-box probes and applicable packed-client journeys; validate issued ID
       tokens independently and never parse opaque access tokens as JWTs.
 - [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with

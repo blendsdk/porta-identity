@@ -37,7 +37,12 @@ import {
   recoverPackedConsumerRun,
   runPackedCompatibilityFoundation,
 } from '../compat/index.js';
-import { isTenantAdminBaselineCaseId, recordTenantAdminBaseline } from '../baseline/index.js';
+import {
+  isProtocolBaselineCaseId,
+  isTenantAdminBaselineCaseId,
+  recordProtocolBaseline,
+  recordTenantAdminBaseline,
+} from '../baseline/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -156,6 +161,13 @@ const tenantAdminFaultSpecificationFiles = [
   'test-harness/assurance/tests/admin-permission-rbac-fault.spec.test.ts',
 ] as const;
 
+/** Immutable OIDC, token, and distributed-consumption protocol specifications. */
+const protocolSpecificationFiles = [
+  'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/protocol-interleavings.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -230,6 +242,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     ...tenantAdminFaultSpecificationFiles,
     'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
   ],
+  'protocol-specs': protocolSpecificationFiles,
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',
@@ -727,7 +740,7 @@ async function runRedCommand(options: readonly string[]): Promise<void> {
   }
 }
 
-/** Records strict RED evidence only after the immutable tenant/admin specifications remain green. */
+/** Records strict RED evidence only after the owning immutable specifications remain green. */
 async function runBaselineCommand(options: readonly string[]): Promise<void> {
   if (options.length !== 2 || options[0] !== '--case') {
     process.stderr.write('ASSURANCE_SELECTOR_INVALID: expected --case <ST-ID>\n');
@@ -735,13 +748,17 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
     return;
   }
   const caseId = options[1] ?? '';
-  if (!isTenantAdminBaselineCaseId(caseId)) {
+  const tenantAdminCase = isTenantAdminBaselineCaseId(caseId);
+  const protocolCase = isProtocolBaselineCaseId(caseId);
+  if (!tenantAdminCase && !protocolCase) {
     process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${caseId}\n`);
     process.exitCode = setupFailureExit;
     return;
   }
 
-  const specifications = await runNodeSuite(tenantAdminSpecificationFiles);
+  const specifications = await runNodeSuite(
+    tenantAdminCase ? tenantAdminSpecificationFiles : protocolSpecificationFiles,
+  );
   const specificationExit = managedChildExit(specifications, testFailureExit);
   if (specificationExit !== 0) {
     process.exitCode = specificationExit;
@@ -749,10 +766,12 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
   }
 
   try {
-    const recorded = recordTenantAdminBaseline(process.cwd(), caseId);
+    const recorded = tenantAdminCase
+      ? recordTenantAdminBaseline(process.cwd(), caseId)
+      : recordProtocolBaseline(process.cwd(), caseId);
     const artifact = `test-harness/.assurance-results/${recorded.result.runId}/baseline/${caseId}/result.json`;
     process.stdout.write(
-      `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=natural-red reason=missing-live-sentinel artifact=${artifact}\n`,
+      `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=${recorded.result.classification} reason=${recorded.result.reason} artifact=${artifact}\n`,
     );
   } catch {
     process.stderr.write('ASSURANCE_BASELINE_FAILED: stage=evidence\n');
