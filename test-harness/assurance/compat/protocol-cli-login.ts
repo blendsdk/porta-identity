@@ -11,6 +11,7 @@ import {
   statSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
+import { createServer, type Server } from 'node:http';
 import { resolve } from 'node:path';
 import process from 'node:process';
 
@@ -48,6 +49,130 @@ const metadataSchema = z
   .object({ issuer: z.string().url(), orgSlug: z.string().min(1), clientId: z.string().min(1) })
   .strict();
 const discoverySchema = z.object({ jwks_uri: z.string().url() }).passthrough();
+const manualCallbackPort = 11_111;
+const maximumCallbackUrlBytes = 8 * 1024;
+const allowedManualCallbackKeys = new Set(['code', 'state', 'iss']);
+
+/** Owner-bound observer for the CLI's fixed manual loopback redirect. */
+export interface PackedManualCallbackCapture {
+  /** Exact loopback origin bound before the packed CLI starts. */
+  readonly origin: string;
+  /** Waits a bounded interval for one well-formed authorization callback. */
+  readonly waitForCallback: (timeoutMilliseconds?: number) => Promise<string>;
+  /** Stops the exact listener and resolves only after its socket closes. */
+  readonly close: () => Promise<void>;
+}
+
+/** Responds to one local callback without reflecting query values or retaining them on disk. */
+function acceptManualCallback(server: Server, callback: (url: string) => boolean): void {
+  server.on('request', (incoming, response) => {
+    const address = server.address();
+    const port = typeof address === 'object' && address !== null ? address.port : undefined;
+    const origin = port === undefined ? undefined : `http://127.0.0.1:${port}`;
+    const rawUrl = incoming.url ?? '';
+    const requestUrl = origin === undefined ? undefined : new URL(rawUrl, origin);
+    const keys = requestUrl === undefined ? [] : [...requestUrl.searchParams.keys()];
+    const codes = requestUrl?.searchParams.getAll('code') ?? [];
+    const states = requestUrl?.searchParams.getAll('state') ?? [];
+    const accepted =
+      incoming.method === 'GET' &&
+      incoming.headers.host === `127.0.0.1:${port ?? ''}` &&
+      Buffer.byteLength(rawUrl) <= maximumCallbackUrlBytes &&
+      requestUrl?.pathname === '/callback' &&
+      codes.length === 1 &&
+      codes[0]?.length !== 0 &&
+      states.length === 1 &&
+      states[0]?.length !== 0 &&
+      requestUrl.searchParams.getAll('iss').length <= 1 &&
+      keys.every((key) => allowedManualCallbackKeys.has(key));
+    if (!accepted || requestUrl === undefined) {
+      response.writeHead(404, {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'text/plain; charset=utf-8',
+      });
+      response.end('not found');
+      return;
+    }
+    if (!callback(requestUrl.toString())) {
+      response.writeHead(409, {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'text/plain; charset=utf-8',
+      });
+      response.end('callback already received');
+      return;
+    }
+    response.writeHead(200, {
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy': "default-src 'none'",
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Referrer-Policy': 'no-referrer',
+    });
+    response.end('callback received');
+  });
+}
+
+/**
+ * Binds the CLI's manual callback before login and captures only an exact loopback response.
+ *
+ * Port zero is accepted solely so implementation tests can ask the kernel for an isolated port;
+ * live packed execution always uses the CLI's fixed port 11111.
+ */
+export async function startPackedManualCallbackCapture(
+  port: 0 | 11111 = manualCallbackPort,
+): Promise<PackedManualCallbackCapture> {
+  let resolveCallback: (url: string) => void = () => undefined;
+  const observed = new Promise<string>((resolveObserved) => {
+    resolveCallback = resolveObserved;
+  });
+  let settled = false;
+  const server = createServer();
+  acceptManualCallback(server, (url) => {
+    if (settled) return false;
+    settled = true;
+    resolveCallback(url);
+    return true;
+  });
+  try {
+    await new Promise<void>((resolveListening, rejectListening) => {
+      server.once('error', rejectListening);
+      server.listen(port, '127.0.0.1', resolveListening);
+    });
+  } catch (error) {
+    server.close();
+    throw error;
+  }
+  const address = server.address();
+  if (typeof address !== 'object' || address === null) {
+    server.close();
+    throw new Error('manual callback listener address is unavailable');
+  }
+  const origin = `http://127.0.0.1:${address.port}`;
+  return Object.freeze({
+    origin,
+    async waitForCallback(timeoutMilliseconds = 20_000): Promise<string> {
+      let timeout: NodeJS.Timeout | undefined;
+      try {
+        return await Promise.race([
+          observed,
+          new Promise<string>((_resolve, reject) => {
+            timeout = setTimeout(
+              () => reject(new Error('manual callback was not observed')),
+              timeoutMilliseconds,
+            );
+          }),
+        ]);
+      } finally {
+        if (timeout !== undefined) clearTimeout(timeout);
+      }
+    },
+    async close(): Promise<void> {
+      if (!server.listening) return;
+      await new Promise<void>((resolveClosed, rejectClosed) => {
+        server.close((error) => (error === undefined ? resolveClosed() : rejectClosed(error)));
+      });
+    },
+  });
+}
 
 /** Active harness endpoints required by the packed protocol login owner. */
 export interface PackedProtocolEndpoints {
@@ -156,14 +281,12 @@ async function completeAuthorization(
   authorizationUrl: URL,
   email: string,
   password: string,
+  callbackCapture: PackedManualCallbackCapture,
 ): Promise<URL> {
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
     const page = await context.newPage();
-    await page.route('http://127.0.0.1:11111/callback**', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'text/plain', body: 'callback received' });
-    });
     await page.goto(authorizationUrl.toString(), { waitUntil: 'domcontentloaded' });
     await page.locator('input#email').fill(email);
     await page.locator('input#password').fill(password);
@@ -172,8 +295,7 @@ async function completeAuthorization(
       'button[type="submit"][name="consent"], button:has-text("Allow"), button:has-text("Authorize")',
     );
     if (await consent.isVisible({ timeout: 1_000 }).catch(() => false)) await consent.click();
-    await page.waitForURL('http://127.0.0.1:11111/callback**', { timeout: 20_000 });
-    return new URL(page.url());
+    return new URL(await callbackCapture.waitForCallback());
   } finally {
     await browser.close();
   }
@@ -188,6 +310,12 @@ async function runInteractiveCli(
   email: string,
   password: string,
 ): Promise<InteractiveCliResult> {
+  let callbackCapture: PackedManualCallbackCapture;
+  try {
+    callbackCapture = await startPackedManualCallbackCapture();
+  } catch {
+    throw new PackedCompatibilityExecutionError(30, undefined, 'protocol-cli-browser');
+  }
   const child = spawn(
     process.execPath,
     [surfaces.cliBinPath, 'login', '--server', endpoints.porta, '--insecure'],
@@ -243,7 +371,7 @@ async function runInteractiveCli(
     }
     let callbackUrl: URL;
     try {
-      callbackUrl = await completeAuthorization(authorizationUrl, email, password);
+      callbackUrl = await completeAuthorization(authorizationUrl, email, password, callbackCapture);
     } catch {
       throw new PackedCompatibilityExecutionError(30, undefined, 'protocol-cli-browser');
     }
@@ -266,6 +394,11 @@ async function runInteractiveCli(
     process.off('SIGTERM', onSigterm);
     terminateProcessGroup(child, 'SIGTERM');
     cleanupSucceeded = await awaitProcessGroupExit(child);
+    try {
+      await callbackCapture.close();
+    } catch {
+      cleanupSucceeded = false;
+    }
     if (!cleanupSucceeded) await closed.catch(() => undefined);
   }
   if (!cleanupSucceeded) throw new PackedCompatibilityExecutionError(60);

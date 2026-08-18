@@ -1380,3 +1380,25 @@ authorization request, while direct code inspection confirmed `PORTA_CONTAINER=1
 override. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-F`.
 **Reopen trigger**: the CLI removes the environment override, repairs and tests `--no-browser`, or
 manual mode stops using the same authorization-code/PKCE path.
+
+### AR-77 — Packed manual callback observation
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal assurance observation
+mechanism within the approved packed CLI flow; no product or acceptance-criterion change.
+**Objective**: observe the CLI's fixed manual callback deterministically after real browser login
+without importing CLI internals or retaining authorization material. **Decision**: bind an owner-
+local IPv4 HTTP listener to `127.0.0.1:11111` before the packed process starts, accept one bounded
+GET to the exact `/callback` path with only `code`, `state`, and optional `iss`, return a no-store
+text response, retain the URL in memory only, and close the listener under the same cleanup
+precedence as the CLI process. Port zero is available only to implementation tests. The existing
+state parser and token exchange remain the authoritative callback validation. **Rejected
+alternative**: Playwright route fulfillment was attempted twice against a live owned stack and
+still produced `ERR_CONNECTION_REFUSED`; reading a failed browser URL is browser-dependent, while
+changing the CLI's redirect is a product change. **Strongest counterargument**: a loopback listener
+briefly owns a fixed local port, but early exclusive binding, a closed request grammar, one-response
+semantics, bounded waiting, and mandatory close make that ownership explicit and recoverable.
+**Confidence**: High. **Hardening**: live diagnosis observed the provider's exact callback request,
+then the owner-bound listener completed that same redirect without changing Porta or the packed
+CLI. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-G`. **Reopen trigger**:
+the CLI changes its manual redirect, starts its own callback listener in manual mode, or the
+provider's successful authorization response parameters change.

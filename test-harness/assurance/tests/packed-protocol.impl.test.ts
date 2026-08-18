@@ -8,7 +8,10 @@ import {
   runPackedProtocolAdjunct,
   type PackedProtocolJourneyDriver,
 } from '../compat/protocol.js';
-import { extractPackedCliAuthorizationUrl } from '../compat/protocol-cli-login.js';
+import {
+  extractPackedCliAuthorizationUrl,
+  startPackedManualCallbackCapture,
+} from '../compat/protocol-cli-login.js';
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
 import { PackedCompatibilityExecutionError } from '../compat/model.js';
 import type { PackedCliSdkResolution } from '../compat/resolution.js';
@@ -142,4 +145,38 @@ test('should select the supported manual-mode environment without the broken neg
   );
   assert.match(driver, /PORTA_CONTAINER:\s*'1'/u);
   assert.doesNotMatch(driver, /['"]--no-browser['"]/u);
+});
+
+test('should capture one exact manual callback through an owner-bound loopback listener', async () => {
+  const capture = await startPackedManualCallbackCapture(0);
+  try {
+    const callback = `${capture.origin}/callback?code=code-value&state=state-value&iss=https%3A%2F%2Fissuer.example`;
+    const response = await fetch(callback);
+    assert.equal(response.status, 200);
+    assert.equal(await capture.waitForCallback(), callback);
+  } finally {
+    await capture.close();
+  }
+});
+
+test('should reject non-callback requests without consuming the callback observer', async () => {
+  const capture = await startPackedManualCallbackCapture(0);
+  try {
+    assert.equal((await fetch(`${capture.origin}/not-callback`)).status, 404);
+    assert.equal(
+      (
+        await fetch(
+          `${capture.origin}/callback?code=one&code=two&state=state-value&unexpected=value`,
+        )
+      ).status,
+      404,
+    );
+    const callback = `${capture.origin}/callback?code=code-value&state=state-value`;
+    assert.equal((await fetch(callback)).status, 200);
+    assert.equal((await fetch(callback)).status, 409);
+    assert.equal(await capture.waitForCallback(), callback);
+  } finally {
+    await capture.close();
+    await capture.close();
+  }
 });

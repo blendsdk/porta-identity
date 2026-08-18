@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 23:03
+> **Last Updated**: 2026-08-18 23:23
 > **Progress**: 64/101 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
@@ -740,7 +740,13 @@ has current green plus its own independently detected local control check.
       unchanged. The packed protocol selector passed 15/15, governance passed 55/55, and the final
       `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. No clean live packed evidence was claimed. ✅ (completed:
-      2026-08-18 23:03)
+      2026-08-18 23:03) Reopened after the clean run reached `protocol-cli-browser`: Playwright
+      observed the correct provider redirect but could not fulfill the fixed manual loopback URL.
+      The harness now owns a bounded `127.0.0.1:11111` callback listener with exact request,
+      single-response, timeout, and cleanup rules; the packed CLI and Porta remain unchanged. The
+      packed protocol selector passed 17/17, governance passed 55/55, and `yarn verify` passed 68
+      structure tests, 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files /
+      355 tests. No clean live packed evidence was claimed. ✅ (completed: 2026-08-18 23:23)
 - [ ] 7.5d From the clean pushed capability revision, run the packed protocol adjunct against one
       owned stack, validate server/archive/fixture identity and zero residue, and admit the packed
       evidence. The protocol slice cannot close before this checkpoint is green.
