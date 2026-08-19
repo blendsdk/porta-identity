@@ -94,6 +94,12 @@ never intentionally made wrong merely to manufacture red.
 | ST-40 | Run concurrent alpha/bravo issuer requests and fetch discovery/JWKS                                      | Each issuer and cache context remains request-scoped with no cross-talk                                             | R5.3–R5.5       |
 | ST-41 | UserInfo, consent, and logout use wrong client/session/tenant context                                    | No identity, consent, or session state crosses context                                                              | R4.1, R5.4–R5.5 |
 
+Phase 7 quality review classified the live ST-35 consent substitution, ST-40 JWKS-key separation,
+and ST-41 consent/logout/client-context observations as corroboration only. The adapter did not
+independently prove those exact state transitions. Its per-probe prohibited-side-effect, recovery,
+and correlated-log fields are likewise non-evidentiary. These subclaims remain incomplete under
+DEF-6; a passing live command cannot close them.
+
 ### Human authentication, recovery, and distributed consumption
 
 | ID    | Scenario                                                                                                                                 | Exact expected behavior                                                                                                                                       | Source                                 |

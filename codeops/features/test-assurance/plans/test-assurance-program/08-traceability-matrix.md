@@ -91,3 +91,7 @@ Must, source mismatch, dangling ID, or unregistered extra edge.
 | R7.10       | ST-18A, ST-75, ST-76       | 1.4, 2.4–2.8, 10.3–10.4                  | CLAIM-R7-10 |
 | R7.11       | ST-78                      | 1.5, 10.7–10.8                           | CLAIM-R7-11 |
 | R7.12       | ST-79                      | 11.1–11.6                                | CLAIM-R7-12 |
+
+The mappings above establish ownership, not completion. For Phase 7, ST-35 consent substitution,
+ST-40 JWKS-key separation, ST-41 consent/logout/client-context, and the affected R5.2 log/recovery/
+side-effect edges are incomplete under DEF-6 and cannot close CLAIM-R5-02/03/04/05.

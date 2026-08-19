@@ -90,6 +90,9 @@ additional external evidence rather than replacing them (AR #4, AR #18).
   disposable source variants, and exact pre/post-commit interruption simulation in the ordinary
   assurance lane. Those advanced resilience cases require a separately authorized product-
   remediation and resilience campaign and remain named gaps until then.
+- New consent/session-context orchestration, JWKS-key-set separation observation, durable per-probe
+  side-effect/recovery inspection, and structured log-correlation implementation in Phase 7. The
+  current live adapter output is corroboration only for these subclaims and cannot close them.
 
 ## Technical Requirements
 
@@ -99,7 +102,7 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 | ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Tenant/admin        | Raw HTTP, packed SDK/CLI where supported | Cross-tenant IDs, stale cache, missing membership, role escalation, unauthenticated/admin-token substitution           |
 | OIDC/token          | SPA, BFF, raw HTTP/JOSE                  | Redirect manipulation, missing/wrong PKCE, code replay, JWT substitution, refresh replay, wrong client/issuer/audience |
-| Human auth/recovery | Browser, HTTP, MailHog                   | Enumeration, fixation, CSRF, token replay/expiry, concurrent consumption, 2FA/recovery bypass                          |
+| Human auth/recovery | Browser, HTTP, MailHog                   | Enumeration, fixation, CSRF, token replay/expiry, sequential reuse, 2FA/recovery bypass                               |
 | Injection/exposure  | Raw HTTP and browser                     | SQL/XSS/header/template/prototype/path/host/method/oversize, CORS/CSP and error leakage                                |
 | Admin data          | Raw HTTP, packed clients, fixture state  | Cross-tenant export/import/bulk, secret export, partial failure, unauthorized configuration/key/session action         |
 
@@ -126,6 +129,12 @@ behavior are not executed by this program. The deferred consistency catalog keep
 outcomes explicit, but its requirements-only rig is not product evidence. A code-grounded review
 confirmed that the authorization-code Redis adapter currently uses a non-atomic read/modify/write
 sequence; that affected claim remains blocked pending separately authorized product remediation.
+
+The Phase 7 live adapter also does not independently establish consent/session context state,
+JWKS-key separation, every prohibited side effect/recovery outcome, or one exact correlated log
+record. Those subclaims remain incomplete and receive no claim-transition credit. The remaining
+independent JOSE, public protocol, packed-client, coverage, and pentest evidence is evaluated
+separately rather than discarded.
 
 ## Integration Points
 

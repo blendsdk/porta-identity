@@ -1506,3 +1506,50 @@ only removed activity is disposable source variation. **Policy version**: 1. **R
 ID**: `AD-TA-EXEC-20260819-P7-K`. **Reopen trigger**: the user separately authorizes a bounded
 non-production sensitivity campaign or adopts an external review mechanism with equivalent exact
 claim-to-check evidence.
+
+### AR-82 — Protocol roll-up uses the existing closed selectors
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: command-binding correction
+within the approved ordinary protocol roll-up; no product behavior, acceptance criterion, or scope
+changes. **Objective**: make Task 7.9 executable without adding an unnecessary aggregate command.
+**Decision**: replace the unregistered `protocol-all` binding with the three existing closed
+selectors `protocol-specs`, `protocol-jose`, and `protocol-packed`. The live harness, packed
+compatibility, coverage, and pentest commands remain explicit Task 7.9 evidence and are not hidden
+inside the selector list. **Evidence**: the dispatcher registers those three exact selectors and
+rejects `protocol-all` with `ASSURANCE_SELECTOR_UNREGISTERED`; the three selectors already partition
+the protocol specification, independent JOSE, and packed-client implementation suites. **Rejected
+alternative**: adding a fourth aggregate selector would enlarge command code and its contract tests
+without producing new evidence. **Strongest counterargument**: one aggregate alias is shorter to
+type, but explicit selectors make the evidence composition reviewable and reuse the current
+allowlist. **Confidence**: High. **Hardening**: direct comparison of the execution-plan binding and
+the dispatcher's closed selector map. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260819-P7-L`. **Reopen trigger**: a durable registered protocol aggregate selector is
+introduced for another independently justified consumer.
+
+### AR-83 — Unproven protocol observations receive no assurance credit
+
+**Authority**: User — explicitly authorized avoiding the current tests when they require the
+problematic mechanics, with taxonomy/settings changes that remain truthful. **Eligibility**: the
+user owns the acceptance-state correction; `--auto-design` selects the smallest safe response to
+the Phase 7 quality findings. **Objective**: prevent green harness output from being mistaken for
+evidence where the adapter did not independently observe the claimed state. **Decision**: keep the
+current live checks only as corroboration and mark the exact consent/session context, JWKS-key
+separation, per-probe prohibited-side-effect/recovery, and correlated-log subclaims incomplete as
+DEF-6. They do not transition CLAIM-R5-03/04/05 or CLAIM-R5-02 to assured. Do not add real-session
+substitution orchestration, durable-state inspection, or new product logging in this checkpoint.
+The sound redirect/PKCE, code-binding, independent JOSE, token-type, refresh, packed-client,
+coverage, and existing pentest evidence remains admitted. **Evidence**: independent Phase 7
+reviewers found expectation-derived recovery/effect fields, synthetic consent/session identifiers,
+JWKS URL inference without key-set verification, and aggregate log substring correlation. The
+command runner does not persist an assured claim transition for the live harness, so explicit
+non-admission corrects the roll-up without deleting useful corroboration. **Rejected alternative**:
+implementing new interaction/session orchestration and internal state observers would recreate the
+large test subproject the user asked to avoid; silently accepting the green results would be false.
+**Strongest counterargument**: retaining non-evidentiary checks can confuse future maintainers, so
+the testing strategy, traceability note, phase gate, quality review, and roadmap all carry the same
+explicit limitation. **Confidence**: High. **Hardening**: independent correctness and security
+reviews converged on the same four observation gaps and both accepted truthful incompleteness as
+the fallback when independent observation is unavailable. **Policy version**: 1. **Root Invocation
+ID**: `AD-TA-EXEC-20260819-P7-M`. **Reopen trigger**: an ordinary public-boundary implementation
+independently proves one of the deferred observations without source variation, forced races, or
+production-only hooks.

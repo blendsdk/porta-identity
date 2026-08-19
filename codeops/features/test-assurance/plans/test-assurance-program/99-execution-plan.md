@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 19:53
-> **Progress**: 68/102 tasks (67%)
+> **Last Updated**: 2026-08-19 20:38
+> **Progress**: 69/102 tasks (68%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -104,7 +104,7 @@ text, but it cannot substitute another command for this binding.
 | 7.7–7.8   | `yarn assurance:test --select protocol-specs` and `yarn assurance:test --select assurance-governance`                                                       |
 | 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
 | 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
-| 7.9       | `yarn assurance:test --select protocol-all`                                                                                                                  |
+| 7.9       | `yarn assurance:test --select protocol-specs`; `yarn assurance:test --select protocol-jose`; `yarn assurance:test --select protocol-packed`; `yarn assurance:harness --project protocol --profile operational`; `yarn assurance:compat --select protocol`; `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
 | 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
@@ -788,13 +788,32 @@ has current green plus its own independently detected local control check.
       20/20, governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-19 20:04)
-- [ ] 7.9 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
-      and `yarn verify`.
+- [x] 7.9 Run protocol/packed journeys, attributed coverage, all pentests, and `yarn verify`; assess
+      audit/log/recovery observations and record unsupported edges as incomplete. The ordinary live
+      protocol journey passed
+      15/15 with owned cleanup; protocol specifications passed 20/20, independent JOSE passed 6/6,
+      and packed protocol tests passed 18/18. Packed SDK/CLI run
+      `bc0be995-30bf-4447-bdd5-aa8061cba8af` admitted clean current-revision evidence with exact
+      archive resolution, unchanged caller credentials/source tree, and zero residue. Attributed
+      coverage run `c0f9e1ee-3849-4eaa-9ff1-a7fe6ac1e485` completed with exact image, fixture,
+      lock, source-tree, compiled-output, and process identities. Both retained evidence files are
+      mode `0600`, passed the bounded redaction scan, and the unchanged pentest suite passed 35
+      files / 224 tests. The advanced consistency and source-variation campaigns remain deferred
+      and are not part of this roll-up. The final `yarn verify` passed 68 structure tests,
+      233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      The live adapter result is corroboration only for consent/session context, JWKS-key
+      separation, per-probe prohibited-side-effect/recovery, and correlated-log subclaims because
+      the Phase 7 quality review found those observations were not independently established.
+      Those exact subclaims remain incomplete under DEF-6 and receive no assurance credit.
+      ✅ (completed: 2026-08-19 20:22)
 
-**Phase gate:** ordinary protocol/token claims have exact positive, negative, and sequential-reuse
-evidence at a real consuming boundary. Concurrent consistency and protocol sensitivity remain named
-gaps, and the authorization-code atomicity claim remains blocked; Phase 7 may complete but cannot be
-presented as concurrent-consistency or fault-sensitivity assurance.
+**Phase gate:** ordinary redirect/PKCE, code binding, independent ID-token verification,
+token-type, refresh rotation/replay, and packed-client claims have external evidence. Consent/session
+context, JWKS-key separation, per-probe side-effect/recovery, and correlated-log subclaims remain
+incomplete under DEF-6. Concurrent consistency and protocol sensitivity remain named gaps, and the
+authorization-code atomicity claim remains blocked. Phase 7 may complete only as a truthful partial
+protocol assessment; it is not complete protocol, concurrent-consistency, or fault-sensitivity
+assurance.
 
 ## Phase 8: Human Authentication and Recovery
 
