@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 00:13
-> **Progress**: 74/103 tasks (72%)
+> **Last Updated**: 2026-08-20 00:23
+> **Progress**: 75/103 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -889,9 +889,15 @@ assurance.
       and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
       files / 355 tests. No product behavior or live baseline evidence changed in this checkpoint.
       ✅ (completed: 2026-08-20 00:13)
-- [ ] 8.6b From the clean pushed capability revision, record ST-42 natural RED or legacy green with
+- [x] 8.6b From the clean pushed capability revision, record ST-42 natural RED or legacy green with
       exact provenance. The baseline artifact must preserve partial password-reset/invitation
-      consumption scope without closing issuance, delivery, binding, or the broader slice.
+      consumption scope without closing issuance, delivery, binding, or the broader slice. Clean
+      revision `cbfa5856` produced mode-`0600` result
+      `0f2431b6-4286-4bae-86fb-6a3205a50f22`: all 19 prerequisite specifications passed, ST-42 is
+      `natural-red` because both audited candidates lack the complete status/body/header and fatal-
+      prerequisite observation contract, and no product failure or selected sentinel was recorded.
+      `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 00:23)
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
       mail polling, consistency-observation, clock-window,
       distribution, and secret-free diagnostic implementation tests afterward.
