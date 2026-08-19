@@ -1454,3 +1454,30 @@ store-ordering evidence informed the retained consistency cases. **Policy versio
 Invocation ID**: `AD-TA-EXEC-20260819-P7-I`. **Reopen trigger**: the user separately authorizes an
 advanced resilience campaign, the lifecycle gains a production-safe transactional observation
 boundary, or protocol storage moves away from the current Redis/PostgreSQL adapters.
+
+### AR-80 — Ordinary-lane consistency campaign discontinued
+
+**Authority**: User — explicitly authorized changing the wording, settings, and taxonomy again and
+avoiding these tests when they cannot be performed as ordinary defensive verification.
+**Eligibility**: the user owns this acceptance-criterion reduction; `--auto-design` records the
+smallest truthful downstream plan correction. **Objective**: continue the assurance program without
+source variants, race campaigns, response-loss simulation, forced termination, or a new live
+consistency harness. **Decision**: do not implement the Task 7.7 live adapter. Keep ST-49–ST-51 as
+a requirements-only deferred consistency catalog, retain existing sequential public replay tests
+as the ordinary lane, and move all concurrency/response-loss/restart/commit-boundary claims to
+DEF-3. Record the authorization-code Redis adapter's non-atomic read/modify/write behavior as
+blocked product defect DEF-4; do not weaken its expected one-winner contract and do not fix product
+code inside this assurance task. Phase 8 follows the same sequential-only boundary. **Evidence**:
+the discarded local implementation run observed two accepted authorization-code store consumes and
+two accepted public code exchanges, matching the current Redis adapter's separate GET/TTL/SET
+sequence. The experimental live adapter and all response-loss/restart additions were removed before
+this checkpoint; the retained branch contains no such executable machinery. **Rejected
+alternatives**: renaming the same mechanics would not honor the user's request; treating the Redis
+result as green would make the claim false; automatically changing product code would violate the
+plan's separate-authorization boundary. **Strongest counterargument**: sequential reuse cannot
+establish atomicity, so the program must not claim it does; DEF-3 and DEF-4 preserve that limitation
+prominently. **Confidence**: High. **Hardening**: the decision follows direct live observation,
+source review, complete cleanup, and restoration of the clean pre-experiment implementation tree.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260819-P7-J`. **Reopen trigger**: the
+user separately authorizes the product fix and a bounded defensive concurrency regression, or the
+storage implementation becomes atomic through another authorized change.

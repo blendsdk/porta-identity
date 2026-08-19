@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 15:27
-> **Progress**: 66/102 tasks (65%)
+> **Last Updated**: 2026-08-19 19:40
+> **Progress**: 67/102 tasks (66%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -772,17 +772,23 @@ has current green plus its own independently detected local control check.
       renamed consistency taxonomy, exact traceability, governance, typecheck, lint, formatting,
       and structure gates passed; `yarn verify` passed 68 structure tests, 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-19 15:27)
-- [ ] 7.7 Implement the live ST-49–ST-51 consistency adapter through the retained owned harness,
-      real Redis/PostgreSQL state, and the existing graceful Porta restart capability. A discovered
-      non-atomic product boundary blocks its claim and is recorded rather than hidden by test logic.
+- [x] 7.7 Close the ordinary-lane consistency assessment without a live race, response-loss, or
+      restart campaign. Keep the requirements-only ST-49–ST-51 catalog explicitly non-evidentiary,
+      preserve the existing public sequential replay coverage, and record the confirmed non-atomic
+      Redis authorization-code boundary as a blocked product claim for separate remediation. No
+      live consistency adapter is added. The experimental live files were removed, no owned runtime
+      residue remained, protocol specifications passed 20/20, governance passed 55/55, structure
+      passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-19 19:52)
 - [ ] 7.8 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
       type, rotation, and replay fault tuples; block survivors or defects.
 - [ ] 7.9 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
       and `yarn verify`.
 
-**Phase gate:** every protocol/token claim has exact positive, negative, single-use consistency,
-and sensitivity evidence at a real consuming boundary. Deferred interruption cases remain named
-gaps and cannot be presented as completed evidence.
+**Phase gate:** ordinary protocol/token claims have exact positive, negative, sequential-reuse, and
+sensitivity evidence at a real consuming boundary. Concurrent-consume and restart-consistency
+claims remain named gaps, and the authorization-code atomicity claim remains blocked; Phase 7 may
+complete but cannot be presented as concurrent-consistency assurance.
 
 ## Phase 8: Human Authentication and Recovery
 
@@ -798,9 +804,9 @@ gaps and cannot be presented as completed evidence.
       single/concurrent use, exposure, session renewal/revocation, and exact non-mutation.
 - [ ] 8.4 Add repeated enumeration samples using the approved pre-measurement statistical contract
       and equivalent limit-key variants; one sample or a post-observation threshold cannot pass.
-- [ ] 8.5 Reuse ST-49–ST-51 single-use consistency cases for supported recovery artifacts through
-      public concurrency, real-store conditional consumption, committed-response-loss retry, and
-      graceful fresh-process replay. Record unsupported interruption boundaries as named gaps.
+- [ ] 8.5 Verify supported recovery artifacts reject sequential reuse through their public
+      boundaries. Keep concurrent-consume, response-loss, and restart-consistency cases in the
+      deferred catalog and record unsupported artifact families as named gaps.
 - [ ] 8.6 Record natural RED or legacy green; audit/select exact E2E/pentest/UI sentinels and require
       fatal email prerequisites plus independent cookie/state observations.
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
@@ -811,8 +817,9 @@ gaps and cannot be presented as completed evidence.
 - [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/
       recovery evidence, all pentests, and `yarn verify`.
 
-**Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound under
-concurrency and restart, and production controls are proven only in production-security mode.
+**Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound for the
+ordinary sequential contract, production controls are proven only in production-security mode, and
+all deferred concurrency/restart gaps remain visible.
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
 

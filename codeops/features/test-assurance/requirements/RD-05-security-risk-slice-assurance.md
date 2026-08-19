@@ -62,8 +62,10 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       Porta-specific stricter invariants prevail (AR #24).
 - [ ] **R5.11 (M)** Negative tests shall use raw requests where browser/client libraries would
       normalize or refuse the malicious input before it reaches Porta.
-- [ ] **R5.12 (M)** Concurrent duplicate-use tests shall distinguish exactly one successful durable
-      consumption from rejected competitors for single-use artifacts.
+- [ ] **R5.12 (M)** Ordinary assurance shall prove sequential reuse rejection at the public
+      authorization-code and refresh-token boundaries. Concurrent-consume, response-loss, and
+      restart consistency remain explicit deferred claims and shall never be inferred from a
+      sequential pass.
 - [ ] **R5.13 (M)** No current pentest assertion may be deleted, skipped, relaxed, or replaced merely
       because a new harness claim overlaps it.
 - [ ] **R5.14 (M)** Every verified invariant violation shall block the affected slice and be routed
@@ -83,9 +85,10 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 - Automatic product fixes.
 - Removal or consolidation of existing pentests.
 - External AI scanner integration (AR #5).
-- Forced process termination, disposable source variants, and exact pre/post-commit interruption
-  simulation in the ordinary assurance lane. Those advanced resilience cases require a separately
-  authorized campaign and remain named gaps until then.
+- Concurrent-consume, committed-response-loss, restart-consistency, forced process termination,
+  disposable source variants, and exact pre/post-commit interruption simulation in the ordinary
+  assurance lane. Those advanced resilience cases require a separately authorized product-
+  remediation and resilience campaign and remain named gaps until then.
 
 ## Technical Requirements
 
@@ -111,17 +114,17 @@ Otherwise assert Porta's approved stable status and public error code. Always as
 state, token, email, session, audit-secret, or cross-tenant data was not created or disclosed
 (AR #17).
 
-### Single-Use Consistency Assurance
+### Sequential Reuse Assurance and Deferred Consistency
 
-For replay-sensitive controls, cover concurrent duplicate requests through public boundaries,
-atomic conditional consumption against the real Redis or PostgreSQL store, retry after a committed
-response is lost, and replay after a graceful restart of the owned Porta process. Durable state
-shall be observed independently from the client under test, and tests shall not assume synchronized
-clocks beyond configured tolerance.
+The ordinary lane verifies that a completed authorization code and a rotated refresh predecessor
+cannot be reused through their public endpoints. Existing raw HTTP, browser, SDK, CLI, and provider
+integration tests remain the evidence for those supported sequential contracts.
 
-The ordinary assurance lane shall not patch Porta source, force process termination, or claim exact
-pre/post-commit interruption evidence. Those resilience cases remain explicit deferred gaps rather
-than being simulated or inferred from ordinary request timing.
+Concurrent consumption, committed-response loss, restart persistence, and exact commit-boundary
+behavior are not executed by this program. The deferred consistency catalog keeps their expected
+outcomes explicit, but its requirements-only rig is not product evidence. A code-grounded review
+confirmed that the authorization-code Redis adapter currently uses a non-atomic read/modify/write
+sequence; that affected claim remains blocked pending separately authorized product remediation.
 
 ## Integration Points
 
@@ -185,7 +188,7 @@ than being simulated or inferred from ordinary request timing.
 11. [ ] Each slice's executable profile records its actor/action/resource/result matrix, asset,
         entry point, trust boundary, abuse case, rejection, prohibited side effect, privacy-safe
         audit/log expectation, and recovery expectation; schema validation rejects omissions.
-12. [ ] Replay-sensitive controls exercise public concurrent duplicates, real-store conditional
-        consumption, committed-response-loss retry, and replay after a graceful fresh Porta process.
-        Exact pre/post-commit interruption and uncommitted-timeout branches are reported as deferred
-        resilience gaps and cannot be credited as completed evidence.
+12. [ ] Replay-sensitive controls reject sequential reuse through the public boundary. Concurrent
+        consumption, committed-response loss, graceful-restart replay, pre/post-commit interruption,
+        and uncommitted-timeout branches are reported as deferred gaps and cannot be credited as
+        completed evidence.
