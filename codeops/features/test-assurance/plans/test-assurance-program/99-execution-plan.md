@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 23:35
-> **Progress**: 72/102 tasks (71%)
+> **Last Updated**: 2026-08-19 23:52
+> **Progress**: 73/102 tasks (72%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -862,9 +862,21 @@ assurance.
       sample-size/power rule, or environment/noise contract. Do not collect timing samples or infer
       a threshold from Porta behavior. Functional status/body/header enumeration and equivalent
       limit-key checks remain in Tasks 8.2–8.3 and 8.6–8.9.
-- [ ] 8.5 Verify supported recovery artifacts reject sequential reuse through their public
-      boundaries. Keep concurrent-consume, response-loss, and restart-consistency cases in the
-      deferred catalog and record unsupported artifact families as named gaps.
+- [x] 8.5 Inventory which supported recovery artifacts currently reject sequential reuse through
+      a real public boundary, without treating invalid-token probes or conditional assertions as
+      consumed-artifact evidence. Keep concurrent-consume, response-loss, and restart-consistency
+      cases in the deferred catalog; record every missing public observation and unresolved TOTP
+      replay contract as a named gap for Task 8.7 or separate product authority. Existing UI
+      journeys corroborate password-reset and invitation consumption, but their directly inserted
+      values do not prove issuance, delivery, or binding. Magic-link's second-use oracle is
+      ambiguous; email OTP has no same-code retry; recovery code has no public sequential journey;
+      and the retained fake-token penetration cases receive no replay credit. DEF-8 records those
+      evidence gaps. DEF-9 records that current stateless TOTP verification cannot enforce the
+      catalog's same-window reuse expectation without a separately authorized contract/product
+      decision. Focused human-auth specifications passed 15/15, governance passed 55/55, and the
+      independent challenge confirmed the non-admission boundary. `yarn verify` passed 68
+      structure tests, 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files /
+      355 tests. ✅ (completed: 2026-08-19 23:52)
 - [ ] 8.6 Record natural RED or legacy green; audit/select exact E2E/pentest/UI sentinels and require
       fatal email prerequisites plus independent cookie/state observations.
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add

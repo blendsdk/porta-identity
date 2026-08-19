@@ -1591,3 +1591,38 @@ simpler, but it would still need a new input/source contract and add no product 
 provenance guard. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260819-P8-B`. **Reopen trigger**: a dedicated claim-ledger validator becomes the
 authoritative reader of requirements decisions.
+
+### AR-86 — Sequential-reuse inventory does not substitute invalid-token checks for consumption
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: task interpretation and evidence
+classification that preserves every approved product expectation. **Objective**: separate the
+current public-boundary inventory from the live proof added later in Phase 8. **Decision**: Task 8.5
+is an exact current-state assessment and gap checkpoint. It gives no assurance credit to a request
+that starts with a nonexistent token, a test whose decisive branch is conditional, or a status-only
+assertion that cannot distinguish success content from the rejection page. Existing UI journeys do
+prove password-reset and invitation consumption followed by public rejection of the same value,
+but create those values directly in the database and therefore do not prove public issuance,
+delivery, recipient/tenant binding, or the rest of the slice. Magic-link has a delivered-token
+first/second-use E2E journey but still needs an exact second-use rejection oracle. The retained
+penetration replay file uses nonexistent magic/reset/invitation values, and its invitation URL does
+not match the public `accept-invite` route. Email OTP has a real public success journey but no
+same-code retry, while recovery code has repository/service coverage but no public sequential-use
+journey. These missing observations are DEF-8 and remain owned by Tasks 8.6–8.7; Task 8.9 alone may
+roll up admitted live evidence. TOTP verification checks
+the current cryptographic window without recording an accepted time step, so its sequential-reuse
+expectation is DEF-9 pending separate product/security authority rather than being silently called
+green or fixed inside this assurance-only phase. Advanced concurrent consumption, response loss,
+and restart consistency remain deferred and receive no ordinary-lane credit. **Evidence**:
+`packages/server/tests/e2e/auth/magic-link.test.ts`,
+`packages/server/tests/e2e/auth/forgot-password.test.ts`,
+`packages/server/tests/pentest/magic-link-attacks/token-replay.test.ts`,
+`packages/server/src/routes/invitation.ts`, and `packages/server/src/two-factor/service.ts`.
+**Rejected alternatives**: accepting invalid-token checks as replay proof would be vacuous;
+implementing all live journeys in Task 8.5 would duplicate Task 8.7 and bypass its production-
+security harness boundary; changing the TOTP expectation from current code would recreate an
+implementation-derived oracle. **Strongest counterargument**: a current-state inventory does not
+prove product behavior, so the affected claims remain blocked and the later live task cannot be
+skipped. **Confidence**: High. **Hardening**: direct route/test/service inspection plus an
+independent challenge of the task boundary. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260819-P8-C`. **Reopen trigger**: exact live sequential-use observations are admitted
+or product/security authority resolves the TOTP replay contract.

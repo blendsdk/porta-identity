@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-19 19:53
+> **Last Updated**: 2026-08-19 23:42
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -29,5 +29,7 @@
 | ↳ DEF-5 | Protocol control sensitivity campaign           | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 19:53 | no disposable protocol source variations in this program                 |
 | ↳ DEF-6 | Protocol observation completeness               | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 20:22 | consent/session, JWKS keys, side effects/recovery, correlated logs       |
 | ↳ DEF-7 | Enumeration timing-distribution contract        | —                                                                                   | —                                                                           | Blocked   | ⛔     | 2026-08-19 22:38 | no independent hypothesis/effect/power/noise authority                   |
+| ↳ DEF-8 | Recovery sequential-reuse public evidence       | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-19 23:42 | magic/OTP/recovery and complete binding evidence remain for 8.6–8.7      |
+| ↳ DEF-9 | TOTP sequential-reuse contract                  | —                                                                                   | —                                                                           | Blocked   | ⛔     | 2026-08-19 23:42 | current verifier has no accepted-step replay state; authority required   |
 | RD-06   | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                           |
 | RD-07   | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                   |
