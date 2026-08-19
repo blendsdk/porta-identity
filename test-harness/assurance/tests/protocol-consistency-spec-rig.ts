@@ -1,43 +1,51 @@
 import type {
-  InterleavingParticipantObservation,
-  InterleavingScenarioObservation,
-  InterleavingScenarioRequirement,
-  ProtocolInterleavingContract,
-} from './protocol-interleaving-contract.js';
+  ConsistencyParticipantObservation,
+  ProtocolConsistencyContract,
+  SingleUseConsistencyObservation,
+  SingleUseConsistencyRequirement,
+} from './protocol-consistency-contract.js';
 
 /**
- * Transparent requirements-only interleaving rig.
+ * Transparent requirements-only consistency rig.
  *
- * It performs no requests, barriers, failures, timeouts, or restarts and is never Porta evidence.
+ * It performs no requests, datastore operations, response loss, or restarts and is never Porta
+ * evidence. It exists only to prove that the specification itself is complete and coherent.
  */
-export function createProtocolInterleavingSpecRig(): ProtocolInterleavingContract {
+export function createProtocolConsistencySpecRig(): ProtocolConsistencyContract {
   return Object.freeze({
-    observeScenario: async (requirement: InterleavingScenarioRequirement) =>
+    observeScenario: async (requirement: SingleUseConsistencyRequirement) =>
       observeScenario(requirement),
   });
 }
 
-/** Mirrors one participant requirement without performing real synchronization. */
+/** Mirrors one participant requirement without performing a real operation. */
 function participantObservation(
-  requirement: InterleavingScenarioRequirement,
+  requirement: SingleUseConsistencyRequirement,
   index: number,
-): InterleavingParticipantObservation {
+): ConsistencyParticipantObservation {
   const participant = requirement.participants[index];
   if (participant === undefined) throw new Error(`missing participant ${index}`);
   return Object.freeze({
     id: participant.id,
     correlationId: participant.correlationId,
-    acknowledgedStages: Object.freeze([...participant.requiredStages]),
-    requestStartedAtMs: 1_000 + index * 10,
-    requestEndedAtMs: 1_100 + index * 10,
+    observedCheckpoints: Object.freeze([...participant.requiredObservations]),
+    operationStartedAtMs: 1_000 + index * 10,
+    operationEndedAtMs: 1_100 + index * 10,
   });
 }
 
-/** Mirrors one scenario while preserving the broad observation contract. */
+/** Mirrors one scenario while preserving the broad live observation contract. */
 function observeScenario(
-  requirement: InterleavingScenarioRequirement,
-): InterleavingScenarioObservation {
+  requirement: SingleUseConsistencyRequirement,
+): SingleUseConsistencyObservation {
   const restart = requirement.sentinelId === 'ST-51';
+  const securityLog =
+    requirement.requiredLogEvent === null
+      ? null
+      : Object.freeze({
+          event: requirement.requiredLogEvent,
+          fields: Object.freeze([...requirement.requiredLogFields]),
+        });
   return Object.freeze({
     id: requirement.id,
     sentinelId: requirement.sentinelId,
@@ -52,10 +60,7 @@ function observeScenario(
     prohibitedSideEffects: Object.freeze(
       Object.fromEntries(requirement.prohibitedSideEffects.map((effect) => [effect, false])),
     ),
-    securityLog: Object.freeze({
-      event: requirement.requiredLogEvent,
-      fields: Object.freeze([...requirement.requiredLogFields]),
-    }),
+    securityLog,
     retainedSecretCount: 0,
     recoveryObserved: requirement.recoveryExpectation,
     processIdentityBefore: restart ? `owned-porta-before-${requirement.id}` : null,

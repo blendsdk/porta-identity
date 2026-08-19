@@ -83,6 +83,9 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 - Automatic product fixes.
 - Removal or consolidation of existing pentests.
 - External AI scanner integration (AR #5).
+- Forced process termination, disposable source variants, and exact pre/post-commit interruption
+  simulation in the ordinary assurance lane. Those advanced resilience cases require a separately
+  authorized campaign and remain named gaps until then.
 
 ## Technical Requirements
 
@@ -108,11 +111,17 @@ Otherwise assert Porta's approved stable status and public error code. Always as
 state, token, email, session, audit-secret, or cross-tenant data was not created or disclosed
 (AR #17).
 
-### Distributed Interleavings
+### Single-Use Consistency Assurance
 
-For replay-sensitive controls, cover concurrent duplicate requests, read during consumption,
-failure immediately before/after durable commit, retry after timeout, and processing on a fresh
-server process. Tests shall not assume synchronized clocks beyond configured tolerance.
+For replay-sensitive controls, cover concurrent duplicate requests through public boundaries,
+atomic conditional consumption against the real Redis or PostgreSQL store, retry after a committed
+response is lost, and replay after a graceful restart of the owned Porta process. Durable state
+shall be observed independently from the client under test, and tests shall not assume synchronized
+clocks beyond configured tolerance.
+
+The ordinary assurance lane shall not patch Porta source, force process termination, or claim exact
+pre/post-commit interruption evidence. Those resilience cases remain explicit deferred gaps rather
+than being simulated or inferred from ordinary request timing.
 
 ## Integration Points
 
@@ -176,6 +185,7 @@ server process. Tests shall not assume synchronized clocks beyond configured tol
 11. [ ] Each slice's executable profile records its actor/action/resource/result matrix, asset,
         entry point, trust boundary, abuse case, rejection, prohibited side effect, privacy-safe
         audit/log expectation, and recovery expectation; schema validation rejects omissions.
-12. [ ] Replay-sensitive controls exercise read-during-consumption, failure immediately before and
-        after durable commit, timeout with unknown outcome followed by retry, and replay after a fresh
-        Porta process, using harness/disposable-build barriers rather than production test hooks.
+12. [ ] Replay-sensitive controls exercise public concurrent duplicates, real-store conditional
+        consumption, committed-response-loss retry, and replay after a graceful fresh Porta process.
+        Exact pre/post-commit interruption and uncommitted-timeout branches are reported as deferred
+        resilience gaps and cannot be credited as completed evidence.

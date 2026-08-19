@@ -165,7 +165,7 @@ const tenantAdminFaultSpecificationFiles = [
 const protocolSpecificationFiles = [
   'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
   'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
-  'test-harness/assurance/tests/protocol-interleavings.spec.test.ts',
+  'test-harness/assurance/tests/protocol-consistency.spec.test.ts',
 ] as const;
 
 /** Protocol specifications that currently have a live public-boundary adapter. */

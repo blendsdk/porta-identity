@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-18 23:47
-> **Progress**: 65/101 tasks (64%)
+> **Last Updated**: 2026-08-19 15:27
+> **Progress**: 66/102 tasks (65%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -36,13 +36,13 @@ edits the read-only CI workflow.
 |     4 | Attributed server-process coverage                  |     8 |
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
-|     7 | OIDC, ID-token, and token lifecycle                 |    13 |
+|     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |     9 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 101 tasks across 11 release-safe phases.**
+**Total: 102 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -98,11 +98,12 @@ text, but it cannot substitute another command for this binding.
 | 7.4b      | `yarn assurance:baseline --case ST-33`                                                                                                                       |
 | 7.5a      | `yarn assurance:test --select protocol-jose`                                                                                                                  |
 | 7.5b1      | Focused server protocol-rejection observation specifications and implementation tests                                                                       |
-| 7.5b2, 7.6 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.5b2, 7.7 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.6       | `yarn assurance:test --select protocol-specs`                                                                                                                |
 | 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
 | 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
-| 7.7       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
-| 7.8       | `yarn assurance:test --select protocol-all`                                                                                                                  |
+| 7.8       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
+| 7.9       | `yarn assurance:test --select protocol-all`                                                                                                                  |
 | 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
 | 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
@@ -630,7 +631,7 @@ has current green plus its own independently detected local control check.
 
 ## Phase 7: OIDC, ID-Token, and Token Lifecycle
 
-> **Scope**: protocol claims, independent JOSE/HTTP client, distributed replay orchestration
+> **Scope**: protocol claims, independent JOSE/HTTP client, and single-use consistency assurance
 > **References**: ST-33–ST-41/ST-50–ST-51/ST-63, RD-04/RD-05
 > **Phase baseline tree**: `bf2c74d955cbcce7dac09eb0ceda407b7c078a12`
 > **Expected modification set**: `test-harness/assurance/`, harness-owned protocol specs/fixtures/
@@ -660,16 +661,13 @@ has current green plus its own independently detected local control check.
       assurance typecheck/lint/formatting passed, and
       `yarn verify` passed 227 server files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files /
       355 tests. ✅ (completed: 2026-08-18 18:07)
-- [x] 7.3 [spec-author] Write deterministic barrier cases ST-49–ST-51 for read-during-consume,
-      before/after-commit failure, timeout unknown outcome/retry, and fresh-process replay.
-      Added an artifact-neutral observation contract, closed Phase 7 bindings, transparent
-      non-evidentiary rig, fail-closed adapter, and ten deterministic scenarios across authorization
-      codes and refresh tokens. The oracle requires named barrier acknowledgements, real interval
-      overlap, exact commit-stage evidence, independent durable-state decisions, owned-process
-      identity change, privacy-safe logs, recovery, and zero retained secrets. Setup, timeout,
-      barrier, and infrastructure failures are explicitly invalid evidence. Focused specifications
-      passed 5/5, the registered `protocol-specs` selector passed 20/20, assurance typecheck/lint/
-      formatting passed, and `yarn verify` passed 227 server
+- [x] 7.3 [spec-author] Write the initial ST-49–ST-51 single-use scenario specification. The
+      original interruption-oriented version was completed and verified, then explicitly
+      superseded by the user-authorized defensive specification reset in Task 7.6. Its retained
+      reusable work is the artifact-neutral observation seam, independent durable-state decision,
+      owned-process identity, privacy-safe logging, recovery, and zero-secret evidence contract.
+      Focused specifications passed 5/5, the registered `protocol-specs` selector passed 20/20,
+      assurance typecheck/lint/formatting passed, and `yarn verify` passed 227 server
       files / 3,359 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-18 18:29)
 - [x] 7.4a Implement the closed protocol baseline registry and audit OIDC E2E/pentest candidates
@@ -766,15 +764,25 @@ has current green plus its own independently detected local control check.
       redacted, primary-tree unchanged, and reports no owned consumer or lifecycle residue.
       `yarn verify` then passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-18 23:47)
-- [ ] 7.6 Implement barrier orchestration only through harness proxies/disposable patches with
-      acknowledgements, correlation IDs, bounded waits, and durable-state observation; no product hook.
-- [ ] 7.7 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
+- [x] 7.6 Replace the interruption-oriented ST-49–ST-51 specification with defensive single-use
+      consistency cases. Keep public concurrency, real-store conditional consumption, committed-
+      response-loss retry, and graceful restart; record exact pre/post-commit interruption and the
+      uncommitted-timeout branch as deferred resilience gaps. No source variant, forced termination,
+      request-holding proxy, or production hook is permitted. The six-case defensive catalog,
+      renamed consistency taxonomy, exact traceability, governance, typecheck, lint, formatting,
+      and structure gates passed; `yarn verify` passed 68 structure tests, 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-19 15:27)
+- [ ] 7.7 Implement the live ST-49–ST-51 consistency adapter through the retained owned harness,
+      real Redis/PostgreSQL state, and the existing graceful Porta restart capability. A discovered
+      non-atomic product boundary blocks its claim and is recorded rather than hidden by test logic.
+- [ ] 7.8 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
       type, rotation, and replay fault tuples; block survivors or defects.
-- [ ] 7.8 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
+- [ ] 7.9 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
       and `yarn verify`.
 
-**Phase gate:** every protocol/token claim has exact positive, negative, distributed replay, and
-fault-sensitivity evidence at a real consuming boundary.
+**Phase gate:** every protocol/token claim has exact positive, negative, single-use consistency,
+and sensitivity evidence at a real consuming boundary. Deferred interruption cases remain named
+gaps and cannot be presented as completed evidence.
 
 ## Phase 8: Human Authentication and Recovery
 
@@ -790,12 +798,13 @@ fault-sensitivity evidence at a real consuming boundary.
       single/concurrent use, exposure, session renewal/revocation, and exact non-mutation.
 - [ ] 8.4 Add repeated enumeration samples using the approved pre-measurement statistical contract
       and equivalent limit-key variants; one sample or a post-observation threshold cannot pass.
-- [ ] 8.5 Reuse ST-50–ST-51 barriers for every replay-sensitive recovery artifact at before/after
-      commit, timeout/retry, and fresh-process boundaries.
+- [ ] 8.5 Reuse ST-49–ST-51 single-use consistency cases for supported recovery artifacts through
+      public concurrency, real-store conditional consumption, committed-response-loss retry, and
+      graceful fresh-process replay. Record unsupported interruption boundaries as named gaps.
 - [ ] 8.6 Record natural RED or legacy green; audit/select exact E2E/pentest/UI sentinels and require
       fatal email prerequisites plus independent cookie/state observations.
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
-      mail polling, barrier, clock-window,
+      mail polling, consistency-observation, clock-window,
       distribution, and secret-free diagnostic implementation tests afterward.
 - [ ] 8.8 Add/execute enumeration, login-method, session, CSRF/cookie, rate-limit, recovery, 2FA,
       single-use, and exposure fault tuples; route defects and block survivors.

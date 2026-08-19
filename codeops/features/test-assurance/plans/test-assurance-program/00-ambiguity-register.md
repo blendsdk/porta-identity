@@ -1422,3 +1422,35 @@ empty email only; the new regression accepts that exact shape and rejects an emp
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260818-P7-H`. **Reopen trigger**: the
 CLI credential contract makes email mandatory or the protocol adjunct begins claiming email
 identity assurance.
+
+### AR-79 — Defensive single-use consistency scope
+
+**Authority**: User — explicitly authorized redefining the current work to avoid source-changing,
+process-interruption, and offensive-testing mechanics; implementation details refined under
+`--auto-design`. **Eligibility**: the user owns the acceptance-criterion change; the delegated
+decision chooses the smallest truthful defensive test architecture inside that boundary.
+**Objective**: preserve useful evidence that authorization codes and refresh tokens remain
+single-use under ordinary concurrency, response loss, retry, and graceful restart without making
+disposable Porta variants or terminating processes at storage boundaries. **Decision**: replace the
+ten barrier/interruption scenarios with six single-use consistency scenarios: one public concurrent
+duplicate case, one real-store conditional-consume case, and one committed-response-loss plus
+graceful-restart case for each artifact family. Use the retained owned harness, real Redis or
+PostgreSQL state, and the existing graceful `restart-porta` capability. Exact pre/post-commit
+interruption and the uncommitted-timeout branch are named deferred resilience gaps and receive no
+assurance credit. Task 7.6 owns the revised specification checkpoint; Task 7.6b owns live delivery.
+**Evidence**: the current authorization-code adapter performs a Redis read/modify/write sequence,
+the refresh-token adapter performs a conditional PostgreSQL update, and the lifecycle already owns
+a graceful store-preserving Porta restart. The prior architecture required source variants,
+coordination barriers, response-holding proxies, and forced process termination, which are no
+longer within the user-approved task. **Rejected alternatives**: retaining the prior mechanics under
+softer terminology would be cosmetic and contradict the request; deleting concurrency and restart
+coverage would discard meaningful defensive evidence; treating missing interruption cases as green
+would make the assurance report false. **Strongest counterargument**: omitting exact commit-boundary
+interruption leaves a real resilience blind spot, so it remains visible as deferred work rather than
+being erased. **Confidence**: High. **Hardening**: an independent challenge confirmed the prior
+design genuinely depended on disposable source changes and process termination; its recommendation
+was rejected because those mechanisms are precisely what the user removed from scope, while its
+store-ordering evidence informed the retained consistency cases. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260819-P7-I`. **Reopen trigger**: the user separately authorizes an
+advanced resilience campaign, the lifecycle gains a production-safe transactional observation
+boundary, or protocol storage moves away from the current Redis/PostgreSQL adapters.

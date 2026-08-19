@@ -73,7 +73,7 @@ test('should reject human traceability task drift from executable mappings', () 
   assert.throws(
     () =>
       validateDocumentedTraceabilityTasks(
-        matrix.replace('6.1–6.12, 7.2, 7.8', '6.1–6.10, 7.2, 7.8'),
+        matrix.replace('6.1–6.12, 7.2, 7.9', '6.1–6.10, 7.2, 7.9'),
         graph,
       ),
     /R5\.3/u,
