@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 00:54
-> **Progress**: 76/107 tasks (71%)
+> **Last Updated**: 2026-08-20 01:57
+> **Progress**: 77/107 tasks (72%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -912,9 +912,16 @@ assurance.
       protected session, and then proved reachability with one same-origin delivery. Lifecycle
       tests passed 266/266, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 00:54)
-- [ ] 8.7b Add functional status/body/header enumeration, login-method, failure/lockout/limit, and
+- [x] 8.7b Add functional status/body/header enumeration, login-method, failure/lockout/limit, and
       session renewal/expiry/logout/revocation black-box cases. Every email prerequisite is fatal
-      and every session result has an independent public state observation.
+      and every session result has an independent public state observation. Added immutable
+      ST-42–ST-44 requirements and live observation contracts, an owner-fenced production-security
+      adapter, fatal MailHog controls, raw stale-form login-method probes, equivalent-key lockout/
+      throttle cases, and public `prompt=none` plus admin-inventory session observations. The
+      authoritative production-security run `31384e38-15a2-465c-82df-b2ee283c8f6b` passed the new 7/7
+      functional block before the retained tenant/admin block passed 17/17. Static checks and
+      structure passed 68/68; `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files /
+      404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 01:57)
 - [ ] 8.7c Add transient MailHog acquisition and exact sequential-use journeys for magic link,
       password reset, and invitation. Verify intended recipient/tenant, configured lifetime,
       second-use rejection, protected-state nonmutation, and exposure redaction without retaining

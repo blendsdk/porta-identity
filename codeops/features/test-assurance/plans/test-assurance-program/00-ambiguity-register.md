@@ -1651,3 +1651,31 @@ grounded against the lifecycle manifest, SPA listener, certificate generation, a
 project orchestration. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P8-D`. **Reopen trigger**: one checkpoint proves inseparable from another or an
 independently approved timing/consistency contract is added later.
+
+### AR-88 — Functional session evidence follows the observable OIDC boundary
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: testing strategy and execution
+sequencing within the approved session-security behavior. **Objective**: prove session fixation
+resistance, expiry, logout, and revocation without inventing client-side effects that those server
+operations do not promise. **Decision**: accept either absence of a pre-authentication `_session`
+cookie or rotation of an existing one, while requiring a new authenticated cookie after login.
+Observe active session reuse through a successful `prompt=none` authorization. After configured
+expiry, public logout, or administrative revocation, require `prompt=none` to return an
+authorization error with no code. Corroborate expiry and revocation through the authenticated
+administrative session inventory; public logout must additionally leave the retained SPA
+anonymous. Execute the new functional block before the existing tenant/admin regression block so
+task-specific failures return promptly, with a deterministic reset between them. **Evidence**: the
+live retained harness creates no anonymous `_session` cookie before authentication, while Porta
+creates a distinct authenticated session and exposes active/revoked state through the existing
+session API. The SPA retains issued tokens independently of the server session, so expiry or admin
+revocation cannot truthfully be inferred from local-storage deletion. **Rejected alternatives**:
+requiring two cookie values would reject the safer no-pre-auth-cookie design; treating SPA local
+storage as revoked would claim behavior the server cannot enforce; a new test hook would weaken the
+public-boundary oracle. **Strongest counterargument**: `prompt=none` adds protocol setup compared
+with a direct protected-resource check, but it is the standard public observation of whether the
+login session can silently authorize again. **Confidence**: High. **Hardening**: exercised against
+the production-security retained harness with configured one-second expiry, public logout, admin
+revocation, inventory checks, fixture restoration, and the unchanged tenant/admin live suite.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-E`. **Reopen trigger**: Porta
+introduces an anonymous login-session cookie or documents immediate client-token invalidation on
+session expiry/revocation.

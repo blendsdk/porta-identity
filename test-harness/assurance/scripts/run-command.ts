@@ -151,6 +151,11 @@ const tenantAdminImplementationFiles = [
   'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
 ] as const;
 
+/** Functional human-auth specifications executed only through the live security harness. */
+const humanAuthFunctionalSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+] as const;
+
 /** Independently selectable invariant-specific tenant/admin fault specifications. */
 const tenantAdminFaultSpecificationFiles = [
   'test-harness/assurance/tests/tenant-admin-fault-requirements.spec.test.ts',
@@ -267,6 +272,9 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'human-auth-specs': humanAuthSpecificationFiles,
   'human-auth-cross-site-specs': [
     'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+  ],
+  'human-auth-functional-specs': [
+    'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
   ],
   'human-auth-baseline': [
     'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
@@ -560,15 +568,32 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
     if (resetExit !== 0) return resetExit;
 
     const active = readActiveCoverageRun(process.cwd());
-    const liveSpecifications = await runNodeSuite(
-      tenantAdminSpecificationFiles,
+    const functionalSpecifications = await runNodeSuite(
+      humanAuthFunctionalSpecificationFiles,
       undefined,
       Object.freeze({
         ...environmentForManifest(active.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER: 'live',
+      }),
+    );
+    const functionalExit = managedChildExit(functionalSpecifications, testFailureExit);
+    if (functionalExit !== 0) return functionalExit;
+
+    const tenantAdminReset = await runLifecycleAction('reset');
+    const tenantAdminResetExit = managedChildExit(tenantAdminReset, setupFailureExit);
+    if (tenantAdminResetExit !== 0) return tenantAdminResetExit;
+    const tenantAdminActive = readActiveCoverageRun(process.cwd());
+    const tenantAdminSpecifications = await runNodeSuite(
+      tenantAdminSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(tenantAdminActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
         PORTA_ASSURANCE_TENANT_ADMIN_ADAPTER: 'live',
       }),
     );
-    return managedChildExit(liveSpecifications, testFailureExit);
+    return managedChildExit(tenantAdminSpecifications, testFailureExit);
   });
 }
 
