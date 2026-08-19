@@ -38,8 +38,10 @@ import {
   runPackedCompatibilityFoundation,
 } from '../compat/index.js';
 import {
+  isHumanAuthBaselineCaseId,
   isProtocolBaselineCaseId,
   isTenantAdminBaselineCaseId,
+  recordHumanAuthBaseline,
   recordProtocolBaseline,
   recordTenantAdminBaseline,
 } from '../baseline/index.js';
@@ -180,6 +182,12 @@ const humanAuthSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-boundaries.spec.test.ts',
 ] as const;
 
+/** Human-authentication specifications and candidate audit required before baseline evidence. */
+const humanAuthBaselineSpecificationFiles = [
+  ...humanAuthSpecificationFiles,
+  'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -257,6 +265,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-specs': protocolSpecificationFiles,
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
+  'human-auth-baseline': [
+    'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
+    'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
+  ],
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',
@@ -787,15 +799,19 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
   const caseId = options[1] ?? '';
   const tenantAdminCase = isTenantAdminBaselineCaseId(caseId);
   const protocolCase = isProtocolBaselineCaseId(caseId);
-  if (!tenantAdminCase && !protocolCase) {
+  const humanAuthCase = isHumanAuthBaselineCaseId(caseId);
+  if (!tenantAdminCase && !protocolCase && !humanAuthCase) {
     process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${caseId}\n`);
     process.exitCode = setupFailureExit;
     return;
   }
 
-  const specifications = await runNodeSuite(
-    tenantAdminCase ? tenantAdminSpecificationFiles : protocolSpecificationFiles,
-  );
+  const specificationFiles = tenantAdminCase
+    ? tenantAdminSpecificationFiles
+    : protocolCase
+      ? protocolSpecificationFiles
+      : humanAuthBaselineSpecificationFiles;
+  const specifications = await runNodeSuite(specificationFiles);
   const specificationExit = managedChildExit(specifications, testFailureExit);
   if (specificationExit !== 0) {
     process.exitCode = specificationExit;
@@ -805,7 +821,9 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
   try {
     const recorded = tenantAdminCase
       ? recordTenantAdminBaseline(process.cwd(), caseId)
-      : recordProtocolBaseline(process.cwd(), caseId);
+      : protocolCase
+        ? recordProtocolBaseline(process.cwd(), caseId)
+        : recordHumanAuthBaseline(process.cwd(), caseId);
     const artifact = `test-harness/.assurance-results/${recorded.result.runId}/baseline/${caseId}/result.json`;
     process.stdout.write(
       `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=${recorded.result.classification} reason=${recorded.result.reason} artifact=${artifact}\n`,

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 23:52
-> **Progress**: 73/102 tasks (72%)
+> **Last Updated**: 2026-08-20 00:13
+> **Progress**: 74/103 tasks (72%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -107,7 +107,8 @@ text, but it cannot substitute another command for this binding.
 | 7.9       | `yarn assurance:test --select protocol-specs`; `yarn assurance:test --select protocol-jose`; `yarn assurance:test --select protocol-packed`; `yarn assurance:harness --project protocol --profile operational`; `yarn assurance:compat --select protocol`; `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 8.1       | `yarn assurance:test --select assurance-governance` and `yarn test:structure`                                                                                 |
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
-| 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
+| 8.6a      | `yarn assurance:test --select human-auth-baseline`                                                                                                           |
+| 8.6b      | `yarn assurance:baseline --case ST-42`                                                                                                                       |
 | 8.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 8.8       | `yarn assurance:test --select human-auth-specs` and `yarn assurance:test --select assurance-governance`                                                      |
 | 8.9       | `yarn assurance:test --select human-auth-all`                                                                                                                |
@@ -877,8 +878,20 @@ assurance.
       independent challenge confirmed the non-admission boundary. `yarn verify` passed 68
       structure tests, 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files /
       355 tests. ✅ (completed: 2026-08-19 23:52)
-- [ ] 8.6 Record natural RED or legacy green; audit/select exact E2E/pentest/UI sentinels and require
-      fatal email prerequisites plus independent cookie/state observations.
+- [x] 8.6a Implement the human-auth baseline capability and audit/select exact E2E/pentest/UI
+      candidates. Require fatal email prerequisites plus independent cookie/state observations;
+      invalid, pre-consumed, conditional, status-only, and mock/service-only cases cannot receive
+      exact sentinel credit. Added the closed ST-42–ST-48 model, rich prerequisite/observation/scope
+      candidate audit, provenance-bound owner-only evidence writer, dispatcher registration, four
+      immutable specifications, and four implementation checks. The required RED was the sole
+      `HUMAN_AUTH_BASELINE_CAPABILITY_MISSING` failure. The completed selector passed 8/8,
+      governance passed 55/55, structure passed 68/68, assurance typecheck/lint/formatting passed,
+      and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
+      files / 355 tests. No product behavior or live baseline evidence changed in this checkpoint.
+      ✅ (completed: 2026-08-20 00:13)
+- [ ] 8.6b From the clean pushed capability revision, record ST-42 natural RED or legacy green with
+      exact provenance. The baseline artifact must preserve partial password-reset/invitation
+      consumption scope without closing issuance, delivery, binding, or the broader slice.
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
       mail polling, consistency-observation, clock-window,
       distribution, and secret-free diagnostic implementation tests afterward.

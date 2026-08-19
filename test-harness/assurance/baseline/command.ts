@@ -12,14 +12,21 @@ import { isAbsolute, relative, resolve } from 'node:path';
 
 import { renderJson } from '../scripts/render-summary.js';
 import { inspectFoundationProvenance } from '../scripts/source-provenance.js';
-import { baselineCandidatesForCase, protocolBaselineCandidatesForCase } from './catalog.js';
 import {
+  baselineCandidatesForCase,
+  humanAuthBaselineCandidatesForCase,
+  protocolBaselineCandidatesForCase,
+} from './catalog.js';
+import {
+  humanAuthBaselineResultSchema,
+  isHumanAuthBaselineCaseId,
   isProtocolBaselineCaseId,
   isTenantAdminBaselineCaseId,
   protocolBaselineResultSchema,
   tenantAdminBaselineResultSchema,
   type BaselineProvenance,
-  type BaselineCandidate,
+  type HumanAuthBaselineCaseId,
+  type HumanAuthBaselineResult,
   type ProtocolBaselineCaseId,
   type ProtocolBaselineResult,
   type TenantAdminBaselineResult,
@@ -51,6 +58,14 @@ export interface RecordedProtocolBaseline {
   readonly artifactPath: string;
 }
 
+/** Successful human-authentication baseline recording with its exact owned artifact path. */
+export interface RecordedHumanAuthBaseline {
+  /** Validated human-authentication baseline evidence. */
+  readonly result: HumanAuthBaselineResult;
+  /** Absolute canonical path of the owner-only JSON artifact. */
+  readonly artifactPath: string;
+}
+
 /** Default fail-closed runtime dependencies used by the root command. */
 const defaultRuntimeDependencies: BaselineRuntimeDependencies = {
   inspectProvenance: inspectFoundationProvenance,
@@ -68,7 +83,7 @@ function requireCanonicalDirectory(path: string): void {
 /** Verifies every audited candidate is a canonical regular file inside the repository. */
 function verifyCandidatePaths(
   repositoryRoot: string,
-  candidates: readonly BaselineCandidate[],
+  candidates: readonly { readonly path: string; readonly testTitle: string }[],
 ): void {
   for (const candidate of candidates) {
     const candidatePath = resolve(repositoryRoot, candidate.path);
@@ -94,6 +109,15 @@ function protocolClaimIds(
     return ['CLAIM-R5-04'];
   }
   return ['CLAIM-R5-05'];
+}
+
+/** Maps one human-authentication case to its requirement-owned claim. */
+function humanAuthClaimIds(
+  caseId: HumanAuthBaselineCaseId,
+): readonly ('CLAIM-R5-06' | 'CLAIM-R5-07')[] {
+  return caseId === 'ST-42' || caseId === 'ST-43' || caseId === 'ST-44' || caseId === 'ST-45'
+    ? ['CLAIM-R5-06']
+    : ['CLAIM-R5-07'];
 }
 
 /** Writes one rendered artifact atomically with owner-only permissions. */
@@ -199,6 +223,36 @@ export function createProtocolBaselineResult(
   });
 }
 
+/** Creates strict natural-RED evidence for one registered human-authentication case. */
+export function createHumanAuthBaselineResult(
+  caseId: string,
+  runId: string,
+  recordedAt: string,
+  provenance: BaselineProvenance,
+): HumanAuthBaselineResult {
+  if (!isHumanAuthBaselineCaseId(caseId)) {
+    throw new Error('expected a registered human-authentication baseline case');
+  }
+  const candidates = humanAuthBaselineCandidatesForCase(caseId);
+  return humanAuthBaselineResultSchema.parse({
+    version: 1,
+    runId,
+    caseId,
+    claimIds: humanAuthClaimIds(caseId),
+    classification: 'natural-red',
+    reason: 'missing-exact-human-auth-sentinel',
+    productFailureObserved: false,
+    oracleChanged: false,
+    selectedSentinel: null,
+    candidates,
+    candidateAbsence: candidates.length === 0 ? 'no-exact-e2e-pentest-or-ui-candidate' : null,
+    recordedAt,
+    buildIdentity: provenance.commitIdentity,
+    treeIdentity: provenance.treeIdentity,
+    assuranceToolDigest: provenance.assuranceToolDigest,
+  });
+}
+
 /**
  * Records one provenance-bound tenant/admin baseline beneath the ignored assurance result root.
  *
@@ -246,6 +300,33 @@ export function recordProtocolBaseline(
   verifyCandidatePaths(canonicalRoot, protocolBaselineCandidatesForCase(caseId));
   const runId = dependencies.createRunId();
   const result = createProtocolBaselineResult(
+    caseId,
+    runId,
+    dependencies.now().toISOString(),
+    provenance,
+  );
+  return { result, artifactPath: writeBaselineResult(canonicalRoot, result) };
+}
+
+/**
+ * Records one provenance-bound human-authentication baseline beneath the ignored result root.
+ *
+ * @throws When provenance is dirty, the selector is unknown, a candidate changed, or persistence
+ * fails.
+ */
+export function recordHumanAuthBaseline(
+  repositoryRoot: string,
+  caseId: string,
+  dependencies: BaselineRuntimeDependencies = defaultRuntimeDependencies,
+): RecordedHumanAuthBaseline {
+  const canonicalRoot = realpathSync(repositoryRoot);
+  if (!isHumanAuthBaselineCaseId(caseId)) {
+    throw new Error('expected a registered human-authentication baseline case');
+  }
+  const provenance = dependencies.inspectProvenance(canonicalRoot);
+  verifyCandidatePaths(canonicalRoot, humanAuthBaselineCandidatesForCase(caseId));
+  const runId = dependencies.createRunId();
+  const result = createHumanAuthBaselineResult(
     caseId,
     runId,
     dependencies.now().toISOString(),

@@ -1607,7 +1607,7 @@ first/second-use E2E journey but still needs an exact second-use rejection oracl
 penetration replay file uses nonexistent magic/reset/invitation values, and its invitation URL does
 not match the public `accept-invite` route. Email OTP has a real public success journey but no
 same-code retry, while recovery code has repository/service coverage but no public sequential-use
-journey. These missing observations are DEF-8 and remain owned by Tasks 8.6–8.7; Task 8.9 alone may
+journey. These missing observations are DEF-8 and remain owned by Tasks 8.6a–8.7; Task 8.9 alone may
 roll up admitted live evidence. TOTP verification checks
 the current cryptographic window without recording an accepted time step, so its sequential-reuse
 expectation is DEF-9 pending separate product/security authority rather than being silently called
