@@ -1553,3 +1553,41 @@ the fallback when independent observation is unavailable. **Policy version**: 1.
 ID**: `AD-TA-EXEC-20260819-P7-M`. **Reopen trigger**: an ordinary public-boundary implementation
 independently proves one of the deferred observations without source variation, forced races, or
 production-only hooks.
+
+### AR-84 — Enumeration timing distribution remains blocked
+
+**Authority**: User — explicitly directed the program to avoid tests that require unsupported or
+problematic mechanics and then authorized execution until completion. **Eligibility**: reserved
+security-acceptance authority was exercised by the user; auto-design only records the dependent
+plan state. **Objective**: preserve useful enumeration assurance without deriving a pass threshold
+from the implementation under test. **Decision**: approve no timing-distribution measurement in
+this program. Record DEF-7 for the missing hypothesis, material effect-size bound, sample-size/power
+rule, clock/environment controls, and noise/invalid-run rule. Functional status, body, header,
+recipient, and rate-limit equivalence remains mandatory. Task 8.4 is blocked and skipped; the rest
+of Phase 8 continues. **Evidence**: the governing requirement already forbids a post-observation
+threshold, and no independent product/security contract supplies the missing statistical values.
+**Rejected alternative**: inventing thresholds from current Porta measurements would recreate the
+implementation-derived oracle this program is intended to eliminate. **Strongest counterargument**:
+response timing can reveal identity existence, so the gap remains blocked and prominent rather
+than being described as safe. **Confidence**: High. **Hardening**: the preflight and RD independently
+require the same fail-closed outcome when authority is absent. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260819-P8-A`. **Reopen trigger**: product/security authority supplies
+a pre-measurement hypothesis, bound, power/sample rule, environment controls, and invalid-run rule.
+
+### AR-85 — Timing-gate validation uses governance tests
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: verification-command correction
+with no product or acceptance change. **Objective**: verify the recorded blocked-claim decision
+without requiring a clean-tree evidence run that cannot encode the decision. **Decision**: bind
+Task 8.1 to the existing governance and structure suites. `assurance:validate` remains the clean-
+revision foundation-evidence command, but it does not read or record the timing authority decision.
+**Evidence**: the dispatcher implements `assurance:validate` as committed foundation validation and
+enforces a clean tree; claim/gap state semantics are tested by `assurance-governance`, while
+structure validates the plan/traceability surface. **Rejected alternative**: adding timing-policy
+semantics to the foundation validator would conflate repository provenance evidence with a
+requirements decision. **Strongest counterargument**: one validator command is operationally
+simpler, but it would still need a new input/source contract and add no product evidence.
+**Confidence**: High. **Hardening**: direct inspection of the closed command dispatcher and
+provenance guard. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260819-P8-B`. **Reopen trigger**: a dedicated claim-ledger validator becomes the
+authoritative reader of requirements decisions.

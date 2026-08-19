@@ -45,6 +45,8 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       product/security authority shall approve the hypothesis, material effect-size bound, sample-
       size/power rule, clock/environment controls, and noise/invalid-run rule; otherwise the timing
       claim remains blocked rather than deriving a threshold from observed Porta behavior.
+      This program records that timing-distribution edge as DEF-7; functional status/body/header
+      equivalence and absence of identity disclosure remain required.
 - [ ] **R5.7 (L)** Magic-link, reset, invitation, email OTP, TOTP, and recovery-code claims shall
       cover unpredictability, intended recipient/tenant, configured expiry boundary, single use,
       sequential replay, throttling, and absence of secret/token exposure outside the allowlisted

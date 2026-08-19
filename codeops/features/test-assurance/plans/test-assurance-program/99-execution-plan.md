@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 20:38
-> **Progress**: 69/102 tasks (68%)
+> **Last Updated**: 2026-08-19 22:48
+> **Progress**: 70/102 tasks (69%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -105,7 +105,7 @@ text, but it cannot substitute another command for this binding.
 | 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
 | 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
 | 7.9       | `yarn assurance:test --select protocol-specs`; `yarn assurance:test --select protocol-jose`; `yarn assurance:test --select protocol-packed`; `yarn assurance:harness --project protocol --profile operational`; `yarn assurance:compat --select protocol`; `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
-| 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
+| 8.1       | `yarn assurance:test --select assurance-governance` and `yarn test:structure`                                                                                 |
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
 | 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
 | 8.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
@@ -819,16 +819,32 @@ assurance.
 
 > **Scope**: browser/HTTP/MailHog auth, recovery, session, 2FA, and timing claims
 > **References**: ST-42–ST-51/ST-63, RD-05
+> **Phase baseline tree**: `b47843aaf4c8b1273ded8a74c06796844e95d8cd`
+> **Expected modification set**: `test-harness/assurance/`, harness-owned human-auth/recovery
+> specs/fixtures/scripts, the exact repository test-inventory contract, and this feature's plan,
+> requirements, roadmap, and review evidence. Product files remain excluded unless a separately
+> authorized confirmed defect correction is recorded.
+> **Scope mode**: strict — ordinary authentication/recovery behavior only; no source variants,
+> forced races/crashes, production test hooks, timing thresholds derived from observed Porta data,
+> CI changes, or unrelated product work
 
-- [ ] 8.1 [security-authority gate] Before timing measurements, approve the enumeration hypothesis,
+- [x] 8.1 [security-authority gate] Before timing measurements, approve the enumeration hypothesis,
       material effect-size bound, sample-size/power rule, clock/environment controls, and noise/
       invalid-run rule. If no defensible independent bound is approved, block only the timing claim.
+      The user chose not to create the unsupported timing campaign. No threshold, sample rule, or
+      measurement is inferred from current Porta behavior; only the timing-distribution edge is
+      blocked as DEF-7 while status/body/header enumeration checks continue. Governance passed
+      55/55, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-19 22:48)
 - [ ] 8.2 [spec-author] Define profiles/claims for enumeration, login-method enforcement, lockout/
       limits, sessions/cookies/CSRF, magic/reset/invitation/email-OTP/TOTP/recovery artifacts.
 - [ ] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
       sequential single use, exposure, session renewal/revocation, and exact non-mutation.
-- [ ] 8.4 Add repeated enumeration samples using the approved pre-measurement statistical contract
-      and equivalent limit-key variants; one sample or a post-observation threshold cannot pass.
+- [!] 8.4 Blocked: DEF-7 has no independently approved enumeration hypothesis, effect-size bound,
+      sample-size/power rule, or environment/noise contract. Do not collect timing samples or infer
+      a threshold from Porta behavior. Functional status/body/header enumeration and equivalent
+      limit-key checks remain in Tasks 8.2–8.3 and 8.6–8.9.
 - [ ] 8.5 Verify supported recovery artifacts reject sequential reuse through their public
       boundaries. Keep concurrent-consume, response-loss, and restart-consistency cases in the
       deferred catalog and record unsupported artifact families as named gaps.
@@ -844,7 +860,9 @@ assurance.
 
 **Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound for the
 ordinary sequential contract, production controls are proven only in production-security mode, and
-all deferred concurrency/restart gaps remain visible.
+all deferred concurrency/restart gaps remain visible. Functional enumeration behavior is required;
+the statistical timing-distribution edge remains blocked under DEF-7 and cannot receive assurance
+credit.
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
 
