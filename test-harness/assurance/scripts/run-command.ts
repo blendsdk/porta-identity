@@ -174,6 +174,11 @@ const protocolLiveSpecificationFiles = [
   'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
 ] as const;
 
+/** Immutable human-authentication and recovery specifications. */
+const humanAuthSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-slice-profiles.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -250,6 +255,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   ],
   'protocol-specs': protocolSpecificationFiles,
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
+  'human-auth-specs': humanAuthSpecificationFiles,
   'tenant-admin-packed': [
     'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
     'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',

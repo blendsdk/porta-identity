@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 22:48
-> **Progress**: 70/102 tasks (69%)
+> **Last Updated**: 2026-08-19 23:14
+> **Progress**: 71/102 tasks (70%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -837,8 +837,17 @@ assurance.
       55/55, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-19 22:48)
-- [ ] 8.2 [spec-author] Define profiles/claims for enumeration, login-method enforcement, lockout/
+- [x] 8.2 [spec-author] Define profiles/claims for enumeration, login-method enforcement, lockout/
       limits, sessions/cookies/CSRF, magic/reset/invitation/email-OTP/TOTP/recovery artifacts.
+      Added a stable model plus eleven versioned requirements-only slice profiles and eight claim
+      bindings. The catalog includes complete actor/asset/action/resource/entry/trust/abuse/
+      rejection/side-effect/privacy-log/recovery fields, keeps timing measurement forbidden under
+      the semantic blocked-policy key, and covers every ordinary R5.6/R5.7 artifact invariant.
+      The catalog is split below the repository file-size ceiling and is registered through the
+      existing `human-auth-specs` selector. Focused specifications passed 6/6, structure passed
+      68/68, assurance typecheck/lint/formatting passed, and `yarn verify` passed 233 server files /
+      3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-19 23:14)
 - [ ] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
       sequential single use, exposure, session renewal/revocation, and exact non-mutation.
 - [!] 8.4 Blocked: DEF-7 has no independently approved enumeration hypothesis, effect-size bound,
