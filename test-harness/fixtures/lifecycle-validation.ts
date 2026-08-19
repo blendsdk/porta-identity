@@ -11,6 +11,13 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const namePattern = /^[a-z][a-z0-9-]{0,62}$/u;
 const unsafePathPattern = /[\p{Cc}`$;&|<>]/u;
 
+/** Exact IP subject alternative names required by harness browser origins. */
+export const harnessCertificateIpSans = Object.freeze(['127.0.0.1'] as const);
+
+/** Complete OpenSSL subject alternative name value for the retained harness certificate. */
+export const harnessCertificateSubjectAltName =
+  'subjectAltName=DNS:porta-harness.ci.portaidentity.com,DNS:app-harness.ci.portaidentity.com,DNS:localhost,IP:127.0.0.1';
+
 /** Returns the short owner-only Unix-socket directory for one validated run UUID. */
 export function lifecycleSocketDirectory(runId: string): string {
   if (!uuidPattern.test(runId)) throw new Error('socket run identifier is invalid');
@@ -71,6 +78,7 @@ export function createEndpointManifest(
   const urls = Object.freeze({
     porta: `https://porta-harness.ci.portaidentity.com:${ports.porta}`,
     app: `https://app-harness.ci.portaidentity.com:${ports.app}`,
+    attacker: `https://127.0.0.1:${ports.app}`,
     bff: `http://app-harness.ci.portaidentity.com:${ports.bff}`,
     postgres: `tcp://127.0.0.1:${ports.postgres}`,
     redis: `redis://127.0.0.1:${ports.redis}`,

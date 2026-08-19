@@ -243,6 +243,7 @@ export function activeEndpoints(): ActiveFixtureEndpoints {
       urls: z.object({
         porta: z.string().url(),
         app: z.string().url(),
+        attacker: z.string().url(),
         bff: z.string().url(),
         mailhog: z.string().url(),
       }),

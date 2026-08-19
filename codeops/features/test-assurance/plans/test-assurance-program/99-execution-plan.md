@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 00:23
-> **Progress**: 75/103 tasks (73%)
+> **Last Updated**: 2026-08-20 00:54
+> **Progress**: 76/107 tasks (71%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -109,7 +109,9 @@ text, but it cannot substitute another command for this binding.
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
 | 8.6a      | `yarn assurance:test --select human-auth-baseline`                                                                                                           |
 | 8.6b      | `yarn assurance:baseline --case ST-42`                                                                                                                       |
-| 8.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 8.7a      | `yarn assurance:test --select human-auth-cross-site-specs` and `yarn assurance:harness --project security --profile production-security`                    |
+| 8.7b–8.7d | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 8.7e      | `yarn assurance:test --select human-auth-live`                                                                                                               |
 | 8.8       | `yarn assurance:test --select human-auth-specs` and `yarn assurance:test --select assurance-governance`                                                      |
 | 8.9       | `yarn assurance:test --select human-auth-all`                                                                                                                |
 | 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
@@ -898,9 +900,31 @@ assurance.
       prerequisite observation contract, and no product failure or selected sentinel was recorded.
       `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 00:23)
-- [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
-      mail polling, consistency-observation, clock-window,
-      distribution, and secret-free diagnostic implementation tests afterward.
+- [x] 8.7a [spec-author] Freeze and implement the manifest-owned loopback-IP HTTPS attacker site,
+      distinct-site preflight, production cookie metadata, and state-changing CSRF nonmutation
+      oracle. Reuse the existing SPA listener and certificate; add no new service or port. The
+      endpoint manifest now owns `https://127.0.0.1:<SPA port>`, projects it through the lifecycle
+      environment, and validates the generated certificate's loopback IP SAN. The Node topology
+      selector passed 4/4 without manufacturing browser evidence. Production-security harness run
+      `b84c98c2-c952-47f0-857e-dd44dfacd4f7` passed the retained security project and 17/17 live
+      tenant/admin checks; the browser case authenticated, verified the exact host-only `_session`
+      attributes, proved the cross-site password-reset request changed neither MailHog nor the
+      protected session, and then proved reachability with one same-origin delivery. Lifecycle
+      tests passed 266/266, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 00:54)
+- [ ] 8.7b Add functional status/body/header enumeration, login-method, failure/lockout/limit, and
+      session renewal/expiry/logout/revocation black-box cases. Every email prerequisite is fatal
+      and every session result has an independent public state observation.
+- [ ] 8.7c Add transient MailHog acquisition and exact sequential-use journeys for magic link,
+      password reset, and invitation. Verify intended recipient/tenant, configured lifetime,
+      second-use rejection, protected-state nonmutation, and exposure redaction without retaining
+      delivered values.
+- [ ] 8.7d Add email-OTP and recovery-code public sequential-use journeys plus TOTP enforcement.
+      Preserve DEF-9 for same-window TOTP replay until separate product/security authority resolves
+      that contract; do not manufacture a passing expectation from the stateless verifier.
+- [ ] 8.7e Add mail polling, public state observers, configured clock-window checks, and secret-free
+      diagnostic implementation tests for the admitted ordinary cases. Do not add timing-
+      distribution measurement or advanced concurrent/restart mechanics.
 - [ ] 8.8 Record human-auth source-variation sensitivity as deferred. Preserve every black-box
       expectation and pentest, and keep the slice explicitly not-sensitivity-proven.
 - [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/

@@ -64,6 +64,7 @@ const activeRunSchema = z.object({
     urls: z.object({
       porta: z.string().url(),
       app: z.string().url(),
+      attacker: z.string().url(),
       bff: z.string().url(),
       postgres: z.string().url(),
       redis: z.string().url(),

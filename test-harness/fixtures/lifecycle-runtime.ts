@@ -1,5 +1,14 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, realpathSync, rmSync } from 'node:fs';
+import { X509Certificate } from 'node:crypto';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 import type {
@@ -31,6 +40,7 @@ import {
   createRuntimeResetDependencies,
   runOwnerOnlyBootstrap,
 } from './lifecycle-runtime-reset.js';
+import { harnessCertificateSubjectAltName } from './lifecycle-validation.js';
 export { RuntimeCommandRunner } from './lifecycle-runtime-command.js';
 
 /** Stable runtime environment derived only from one validated endpoint manifest. */
@@ -51,6 +61,7 @@ export function environmentForManifest(
     HARNESS_MAILHOG_PORT: String(manifest.ports.mailhog),
     HARNESS_PORTA_URL: manifest.urls.porta,
     HARNESS_APP_URL: manifest.urls.app,
+    HARNESS_ATTACKER_URL: manifest.urls.attacker,
     HARNESS_BFF_URL: manifest.urls.bff,
     HARNESS_MAILHOG_URL: manifest.urls.mailhog,
     HARNESS_CERT_DIR: dirname(manifest.certificatePath),
@@ -431,30 +442,35 @@ function currentEnvironment(): Readonly<Record<string, string>> {
 class CertificateConsumer implements ManifestConsumerAdapter {
   /** Creates an owner-only key/certificate pair with the exact harness SANs. */
   public async apply(manifest: EndpointManifest): Promise<void> {
-    if (existsSync(manifest.certificatePath)) return;
-    const runner = new RuntimeCommandRunner();
-    mkdirSync(dirname(manifest.certificatePath), { recursive: true, mode: 0o700 });
-    await runner.checked(
-      'openssl',
-      [
-        'req',
-        '-x509',
-        '-nodes',
-        '-days',
-        '2',
-        '-newkey',
-        'rsa:2048',
-        '-keyout',
-        resolve(dirname(manifest.certificatePath), 'server.key'),
-        '-out',
-        manifest.certificatePath,
-        '-subj',
-        '/CN=porta-harness.ci.portaidentity.com',
-        '-addext',
-        'subjectAltName=DNS:porta-harness.ci.portaidentity.com,DNS:app-harness.ci.portaidentity.com,DNS:localhost,IP:127.0.0.1',
-      ],
-      { cwd: manifest.worktreePath, environment: environmentForManifest(manifest) },
-    );
+    if (!existsSync(manifest.certificatePath)) {
+      const runner = new RuntimeCommandRunner();
+      mkdirSync(dirname(manifest.certificatePath), { recursive: true, mode: 0o700 });
+      await runner.checked(
+        'openssl',
+        [
+          'req',
+          '-x509',
+          '-nodes',
+          '-days',
+          '2',
+          '-newkey',
+          'rsa:2048',
+          '-keyout',
+          resolve(dirname(manifest.certificatePath), 'server.key'),
+          '-out',
+          manifest.certificatePath,
+          '-subj',
+          '/CN=porta-harness.ci.portaidentity.com',
+          '-addext',
+          harnessCertificateSubjectAltName,
+        ],
+        { cwd: manifest.worktreePath, environment: environmentForManifest(manifest) },
+      );
+    }
+    const certificate = new X509Certificate(readFileSync(manifest.certificatePath));
+    if (!certificate.subjectAltName?.includes('IP Address:127.0.0.1')) {
+      throw new Error('harness certificate is missing the required loopback IP identity');
+    }
   }
 }
 

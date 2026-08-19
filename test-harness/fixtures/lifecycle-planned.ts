@@ -36,6 +36,9 @@ export type PrerequisiteName =
 /** Endpoint names that form one indivisible allocation block. */
 export type EndpointName = 'porta' | 'app' | 'bff' | 'postgres' | 'redis' | 'mailhog';
 
+/** URL names include the cross-site browser origin that reuses the SPA listener. */
+export type EndpointUrlName = EndpointName | 'attacker';
+
 /** Presence result that distinguishes absence from an unsafe probe failure. */
 export type Presence = 'present' | 'absent' | 'unreadable';
 
@@ -70,7 +73,7 @@ export interface EndpointManifest {
   /** Complete port assignment for this run. */
   readonly ports: Readonly<Record<EndpointName, number>>;
   /** Complete public and infrastructure endpoint assignment. */
-  readonly urls: Readonly<Record<EndpointName, string>>;
+  readonly urls: Readonly<Record<EndpointUrlName, string>>;
   /** Canonical path to the generated certificate. */
   readonly certificatePath: string;
 }

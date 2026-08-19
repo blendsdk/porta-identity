@@ -64,7 +64,11 @@ test('should verify both harness names resolve only to IPv4 loopback before star
 // The generated test certificate must name both browser-visible harness hosts.
 test('should generate a TLS certificate for both CI loopback names', () => {
   const lifecycleRuntime = readRepositoryFile('test-harness/fixtures/lifecycle-runtime.ts');
+  const lifecycleValidation = readRepositoryFile('test-harness/fixtures/lifecycle-validation.ts');
+  const certificateSources = `${lifecycleRuntime}\n${lifecycleValidation}`;
 
-  assert.match(lifecycleRuntime, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
-  assert.match(lifecycleRuntime, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, /IP:127\.0\.0\.1/);
+  assert.match(lifecycleRuntime, /subjectAltName\?\.includes\('IP Address:127\.0\.0\.1'\)/);
 });

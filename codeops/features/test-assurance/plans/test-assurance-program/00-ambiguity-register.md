@@ -1626,3 +1626,28 @@ skipped. **Confidence**: High. **Hardening**: direct route/test/service inspecti
 independent challenge of the task boundary. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260819-P8-C`. **Reopen trigger**: exact live sequential-use observations are admitted
 or product/security authority resolves the TOTP replay contract.
+
+### AR-87 — Human-auth live delivery is split by observable public boundary
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: execution sequencing and stale-
+wording correction that preserves the approved ordinary functional scope. **Objective**: keep the
+large live human-auth implementation reviewable and prevent previously deferred mechanics from
+returning through Task 8.7 wording. **Decision**: split Task 8.7 into five verified checkpoints:
+manifest-owned cross-site topology/cookie/CSRF; functional auth/session behavior; delivered-link
+recovery artifacts; email OTP/recovery-code/TOTP enforcement; and observer/diagnostic hardening.
+The attacker site reuses the existing HTTPS SPA listener through literal IPv4 loopback and its
+existing IP certificate SAN, so no new service or port is introduced. Remove timing-distribution
+measurement and advanced concurrent/restart consistency from this task because DEF-7 and DEF-3
+already block/defer them. Configured expiry/window boundaries remain ordinary functional checks.
+DEF-9 remains authoritative for same-window TOTP replay. **Evidence**: the endpoint manifest already
+owns the SPA port, the SPA server binds IPv4 loopback, and the generated certificate already carries
+the `127.0.0.1` IP SAN; the missing piece is an explicit validated attacker URL and its black-box
+use. **Rejected alternatives**: one monolithic checkpoint would combine topology, browser, mail,
+session, and 2FA failure modes; a second attacker service would duplicate the retained harness;
+retaining “distribution” would contradict the approved timing block. **Strongest counterargument**:
+more checkpoints increase commits and full verification runs, but they keep each security boundary
+independently reviewable and preserve clean rollback points. **Confidence**: High. **Hardening**:
+grounded against the lifecycle manifest, SPA listener, certificate generation, and current security
+project orchestration. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P8-D`. **Reopen trigger**: one checkpoint proves inseparable from another or an
+independently approved timing/consistency contract is added later.

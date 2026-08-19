@@ -58,6 +58,7 @@ function endpointManifest(root: string): EndpointManifest {
     urls: {
       porta: 'https://porta-harness.ci.portaidentity.com:3443',
       app: 'https://app-harness.ci.portaidentity.com:5173',
+      attacker: 'https://127.0.0.1:5173',
       bff: 'https://app-harness.ci.portaidentity.com:4000',
       postgres: 'postgres://127.0.0.1:5432',
       redis: 'redis://127.0.0.1:6379',

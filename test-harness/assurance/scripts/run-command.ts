@@ -265,6 +265,9 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-specs': protocolSpecificationFiles,
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
+  'human-auth-cross-site-specs': [
+    'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+  ],
   'human-auth-baseline': [
     'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
     'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',

@@ -64,6 +64,7 @@ const manifestSchema = z.object({
   urls: z.object({
     porta: z.url(),
     app: z.url(),
+    attacker: z.url(),
     bff: z.url(),
     postgres: z.url(),
     redis: z.url(),

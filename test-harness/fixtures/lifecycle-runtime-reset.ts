@@ -86,6 +86,7 @@ export function hostPortaEnvironment(manifest: EndpointManifest): Readonly<Recor
     HARNESS_MAILHOG_PORT: String(manifest.ports.mailhog),
     HARNESS_PORTA_URL: manifest.urls.porta,
     HARNESS_APP_URL: manifest.urls.app,
+    HARNESS_ATTACKER_URL: manifest.urls.attacker,
     HARNESS_BFF_URL: manifest.urls.bff,
     HARNESS_MAILHOG_URL: manifest.urls.mailhog,
     HARNESS_CERT_DIR: dirname(manifest.certificatePath),
