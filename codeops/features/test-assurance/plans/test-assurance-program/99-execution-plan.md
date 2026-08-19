@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 23:14
-> **Progress**: 71/102 tasks (70%)
+> **Last Updated**: 2026-08-19 23:35
+> **Progress**: 72/102 tasks (71%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -848,8 +848,16 @@ assurance.
       68/68, assurance typecheck/lint/formatting passed, and `yarn verify` passed 233 server files /
       3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-19 23:14)
-- [ ] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
-      sequential single use, exposure, session renewal/revocation, and exact non-mutation.
+- [x] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
+      sequential single use, exposure, session renewal/revocation, and exact non-mutation. Added a
+      stable broad observation contract, split requirements catalogs, transparent non-evidentiary
+      rig, fail-closed live adapter seam, and nine immutable boundary specifications. Functional
+      ST-42–ST-48 cases require exact positive controls, public outcomes, protected-state and
+      non-effect observations, privacy-safe logs, and recovery; ST-49 remains an explicitly
+      requirements-only deferred entry with no evidence path. Focused specifications passed 15/15,
+      structure passed 68/68, assurance typecheck/lint/formatting passed, and `yarn verify` passed
+      233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-19 23:35)
 - [!] 8.4 Blocked: DEF-7 has no independently approved enumeration hypothesis, effect-size bound,
       sample-size/power rule, or environment/noise contract. Do not collect timing samples or infer
       a threshold from Porta behavior. Functional status/body/header enumeration and equivalent

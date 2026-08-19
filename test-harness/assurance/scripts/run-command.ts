@@ -177,6 +177,7 @@ const protocolLiveSpecificationFiles = [
 /** Immutable human-authentication and recovery specifications. */
 const humanAuthSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-boundaries.spec.test.ts',
 ] as const;
 
 /** Registered selector-to-specification mappings for internal Node suites. */
