@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-19 19:40
-> **Progress**: 67/102 tasks (66%)
+> **Last Updated**: 2026-08-19 19:53
+> **Progress**: 68/102 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -16,7 +16,8 @@ For a RED task, success means the isolated target exits non-zero with the exact 
 assertion/signature while every previously required lane and `yarn verify` stays green. Syntax,
 collection, setup, timeout, cleanup, or unrelated failures never count as RED. A new red spec stays
 outside required collection until its owning green task, but the red evidence is committed with the
-task. Existing behavior that starts green uses its exact curated-fault tuple for sensitivity proof.
+task. Existing behavior that starts green uses its exact curated-fault tuple only for slices whose
+sensitivity campaign remains in scope; deferred slices stay explicitly not-sensitivity-proven.
 
 Tasks 1.1–1.4 use the exact bootstrap commands below. From Task 1.5 onward, every task runs the
 alias/selector in the Targeted Verification Bindings table and then `yarn verify`. Product defects
@@ -98,23 +99,23 @@ text, but it cannot substitute another command for this binding.
 | 7.4b      | `yarn assurance:baseline --case ST-33`                                                                                                                       |
 | 7.5a      | `yarn assurance:test --select protocol-jose`                                                                                                                  |
 | 7.5b1      | Focused server protocol-rejection observation specifications and implementation tests                                                                       |
-| 7.5b2, 7.7 | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
+| 7.5b2      | `yarn assurance:harness --project protocol --profile operational`                                                                                            |
 | 7.6       | `yarn assurance:test --select protocol-specs`                                                                                                                |
+| 7.7–7.8   | `yarn assurance:test --select protocol-specs` and `yarn assurance:test --select assurance-governance`                                                       |
 | 7.5c      | `yarn assurance:test --select protocol-packed`                                                                                                                |
 | 7.5d      | `yarn assurance:compat --select protocol`                                                                                                                     |
-| 7.8       | `yarn assurance:fault --fault protocol-slice --claim CLAIM-R5-04 --sentinel ST-33`                                                                           |
 | 7.9       | `yarn assurance:test --select protocol-all`                                                                                                                  |
 | 8.1       | `yarn assurance:validate` (records approved timing authority or a blocked timing claim)                                                                      |
 | 8.2–8.5   | `yarn assurance:test --select human-auth-specs`                                                                                                              |
 | 8.6       | `yarn assurance:baseline --case ST-42`                                                                                                                       |
 | 8.7       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
-| 8.8       | `yarn assurance:fault --fault human-auth-slice --claim CLAIM-R5-06 --sentinel ST-42`                                                                         |
+| 8.8       | `yarn assurance:test --select human-auth-specs` and `yarn assurance:test --select assurance-governance`                                                      |
 | 8.9       | `yarn assurance:test --select human-auth-all`                                                                                                                |
 | 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
 | 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
 | 9.5       | `yarn assurance:baseline --case ST-52`                                                                                                                       |
 | 9.6–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
-| 9.9       | `yarn assurance:fault --fault p1-slice --claim CLAIM-R5-08 --sentinel ST-52`                                                                                 |
+| 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
 | 10.2      | `yarn assurance:test --select mutation-pilot`                                                                                                                |
@@ -780,15 +781,20 @@ has current green plus its own independently detected local control check.
       residue remained, protocol specifications passed 20/20, governance passed 55/55, structure
       passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-19 19:52)
-- [ ] 7.8 Add/execute redirect, PKCE, code-binding, ID-token validation, issuer cross-talk, token-
-      type, rotation, and replay fault tuples; block survivors or defects.
+- [x] 7.8 Record redirect/PKCE, code-binding, ID-token, issuer, token-type, rotation, and replay
+      sensitivity as a deferred protocol campaign. Keep every black-box expectation and existing
+      pentest intact, but do not create or execute disposable protocol source variations in this
+      program and do not call the protocol slice sensitivity-proven. Protocol specifications passed
+      20/20, governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233 server
+      files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-19 20:04)
 - [ ] 7.9 Run protocol/packed journeys, attributed coverage, audit/log/recovery checks, all pentests,
       and `yarn verify`.
 
-**Phase gate:** ordinary protocol/token claims have exact positive, negative, sequential-reuse, and
-sensitivity evidence at a real consuming boundary. Concurrent-consume and restart-consistency
-claims remain named gaps, and the authorization-code atomicity claim remains blocked; Phase 7 may
-complete but cannot be presented as concurrent-consistency assurance.
+**Phase gate:** ordinary protocol/token claims have exact positive, negative, and sequential-reuse
+evidence at a real consuming boundary. Concurrent consistency and protocol sensitivity remain named
+gaps, and the authorization-code atomicity claim remains blocked; Phase 7 may complete but cannot be
+presented as concurrent-consistency or fault-sensitivity assurance.
 
 ## Phase 8: Human Authentication and Recovery
 
@@ -801,7 +807,7 @@ complete but cannot be presented as concurrent-consistency assurance.
 - [ ] 8.2 [spec-author] Define profiles/claims for enumeration, login-method enforcement, lockout/
       limits, sessions/cookies/CSRF, magic/reset/invitation/email-OTP/TOTP/recovery artifacts.
 - [ ] 8.3 [spec-author] Write ST-42–ST-49 for recipient/tenant binding, unpredictability, expiry,
-      single/concurrent use, exposure, session renewal/revocation, and exact non-mutation.
+      sequential single use, exposure, session renewal/revocation, and exact non-mutation.
 - [ ] 8.4 Add repeated enumeration samples using the approved pre-measurement statistical contract
       and equivalent limit-key variants; one sample or a post-observation threshold cannot pass.
 - [ ] 8.5 Verify supported recovery artifacts reject sequential reuse through their public
@@ -812,8 +818,8 @@ complete but cannot be presented as concurrent-consistency assurance.
 - [ ] 8.7 Add a loopback-IP HTTPS attacker site and missing black-box cases; reach green, then add
       mail polling, consistency-observation, clock-window,
       distribution, and secret-free diagnostic implementation tests afterward.
-- [ ] 8.8 Add/execute enumeration, login-method, session, CSRF/cookie, rate-limit, recovery, 2FA,
-      single-use, and exposure fault tuples; route defects and block survivors.
+- [ ] 8.8 Record human-auth source-variation sensitivity as deferred. Preserve every black-box
+      expectation and pentest, and keep the slice explicitly not-sensitivity-proven.
 - [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/
       recovery evidence, all pentests, and `yarn verify`.
 
@@ -843,8 +849,8 @@ all deferred concurrency/restart gaps remain visible.
       test trusted/untrusted proxy profiles without production config changes.
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
       lifecycle, and redacted-error implementation tests after specs are green.
-- [ ] 9.9 Add/execute applicable injection, proxy, validation, exposure, admin authorization,
-      audit/key/session/config and approved workflow fault tuples; block survivors/defects.
+- [ ] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation
+      and pentest, and keep the slice explicitly not-sensitivity-proven.
 - [ ] 9.10 Run P1 projects/profiles, applicable packed clients, coverage, all pentests, evidence/
       redaction/recovery checks, and `yarn verify`.
 

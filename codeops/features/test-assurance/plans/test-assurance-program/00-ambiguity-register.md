@@ -1481,3 +1481,28 @@ source review, complete cleanup, and restoration of the clean pre-experiment imp
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260819-P7-J`. **Reopen trigger**: the
 user separately authorizes the product fix and a bounded defensive concurrency regression, or the
 storage implementation becomes atomic through another authorized change.
+
+### AR-81 — Protocol source-variation sensitivity deferred
+
+**Authority**: User — authorized avoiding the current tests and replacing the wording, settings,
+and taxonomy where the execution mechanism is mistaken for offensive activity. **Eligibility**:
+the user owns removal of the protocol sensitivity acceptance criterion from this program;
+`--auto-design` records the dependent requirement and task changes. **Objective**: preserve all
+ordinary black-box protocol checks without introducing another disposable-source campaign under a
+different name. **Decision**: Task 7.8 records the redirect/PKCE, code-binding, ID-token, issuer,
+token-type, rotation, and replay sensitivity campaign as DEF-5 and executes no source variation.
+The immutable black-box specifications, existing pentests, baseline classifications, and ordinary
+live/packed protocol evidence remain required. The protocol slice is explicitly
+`not-sensitivity-proven`; green behavior must not be described as mutation or control-sensitivity
+evidence. RD-06 retains the already completed tenant/admin checks as historical evidence but no
+longer requires protocol, human-auth, or P1 source-variation campaigns in this program. **Rejected
+alternatives**: merely replacing “fault” with “control check” would preserve the same mechanism;
+deleting black-box security expectations would weaken actual functional assurance; treating the
+campaign as completed without execution would be false. **Strongest counterargument**: the ordinary
+suite can be implementation-coupled and sensitivity checks are useful, so the gap remains prominent
+rather than waived. **Confidence**: High. **Hardening**: the retained protocol suite already uses
+independent JOSE, raw HTTP, packed clients, exact public outcomes, and existing pentests, while the
+only removed activity is disposable source variation. **Policy version**: 1. **Root Invocation
+ID**: `AD-TA-EXEC-20260819-P7-K`. **Reopen trigger**: the user separately authorizes a bounded
+non-production sensitivity campaign or adopts an external review mechanism with equivalent exact
+claim-to-check evidence.

@@ -29,14 +29,12 @@ scores as the initial objective (AR #15, AR #16).
 - [ ] **R6.3 (M)** A fault is killed only when at least one designated exact assertion fails for the
       intended behavior; compilation, startup, fixture, timeout, unrelated test, or cleanup failure
       is an invalid run, not a kill.
-- [ ] **R6.4 (L)** Initial P0 faults shall represent: missing tenant scope on one read and one write;
-      removed admin authentication/membership/RBAC; relaxed redirect matching; missing/wrong PKCE
-      acceptance; invalid emitted ID-token profile/signing (`alg`, key/`kid`, issuer, audience,
-      subject, nonce, expiry/not-before) and wrong-token-type/opaque-lookup acceptance at actual
-      consumers; authorization-code, refresh, magic-link or reset replay; weakened CSRF/cookies;
-      disabled rate limit/lockout; and sensitive error disclosure.
-- [ ] **R6.5 (M)** Every P0 risk slice shall kill its applicable curated faults before it can become
-      `assured` (AR #25).
+- [ ] **R6.4 (L)** The delivered tenant/admin control checks represent missing tenant scope on one
+      read and one write plus removed admin authentication/membership/RBAC. Protocol, human-auth,
+      and P1 source-variation campaigns are deferred and receive no sensitivity credit.
+- [ ] **R6.5 (M)** A risk slice may be described as fault-sensitive only after it kills its
+      applicable curated checks. Slices whose campaigns are deferred remain explicitly
+      `not-sensitivity-proven` even when their ordinary black-box behavior is green (AR #25).
 - [ ] **R6.6 (M)** Legacy specification tests that are naturally green before test implementation
       shall record that result and use an applicable curated fault or controlled mutation as their
       red/sensitivity proof (AR #16).
@@ -62,6 +60,7 @@ scores as the initial objective (AR #15, AR #16).
 
 - Whole-repository mutation as an initial gate.
 - Fault injection through production environment variables or endpoints.
+- Protocol, human-auth, and P1 disposable source-variation campaigns in this assurance program.
 - Counting setup/build crashes as killed mutants.
 - Changing specification expectations because a mutation survives.
 
@@ -129,10 +128,11 @@ interaction fault. Patch target mismatches fail closed.
 1. [ ] The curated manifest validates stable IDs, explicit claim–sentinel–expected-signature tuples,
        target preconditions, patch existence, designated tests, and cleanup instructions; a shared
        fault cannot close a claim whose own tuple was not independently killed.
-2. [ ] At least one representative fault from tenant scope, RBAC, redirect/PKCE, ID-token emission/
-       signing, wrong-token-type/opaque-token consumption, replay, CSRF/cookies, rate limiting, and
-       disclosure builds successfully and is killed by its designated black-box sentinel for the
-       intended reason; no JWT access-token consumer is assumed.
+2. [ ] Tenant-scope and RBAC checks build successfully and are detected by their designated
+       black-box sentinels for the intended reason. Redirect/PKCE, ID-token emission/signing,
+       wrong-token-type/opaque-token consumption, replay, CSRF/cookies, rate limiting, and
+       disclosure sensitivity remain named deferred campaigns; no JWT access-token consumer is
+       assumed and no deferred slice is called sensitivity-proven.
 3. [ ] A deliberately broken build, startup, fixture, and unrelated-test case is reported `invalid`,
        never `killed`.
 4. [ ] A sentinel that passes under its governing fault produces a survivor, blocks the claim, and

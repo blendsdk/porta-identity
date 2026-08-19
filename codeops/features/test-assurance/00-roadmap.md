@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-19 19:40
+> **Last Updated**: 2026-08-19 19:53
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -26,5 +26,6 @@
 | RD-05   | Security risk-slice assurance                   | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-19 19:40 | ordinary protocol lane continues with named gaps                         |
 | ↳ DEF-3 | Advanced protocol consistency campaign          | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 19:40 | concurrency, response loss, restart, commit boundaries                   |
 | ↳ DEF-4 | Authorization-code atomic consumption           | —                                                                                   | —                                                                           | Blocked   | ⛔     | 2026-08-19 19:40 | Redis consume is read/modify/write; product fix needs separate authority |
+| ↳ DEF-5 | Protocol control sensitivity campaign           | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 19:53 | no disposable protocol source variations in this program                 |
 | RD-06   | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                           |
 | RD-07   | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                   |

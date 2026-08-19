@@ -47,9 +47,10 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       claim remains blocked rather than deriving a threshold from observed Porta behavior.
 - [ ] **R5.7 (L)** Magic-link, reset, invitation, email OTP, TOTP, and recovery-code claims shall
       cover unpredictability, intended recipient/tenant, configured expiry boundary, single use,
-      replay, concurrent duplicate consumption, throttling, and absence of secret/token exposure
-      outside the allowlisted synthetic delivery/verification channel. Delivered values must be
-      absent from wrong mailboxes, responses, redirects, logs, audit events, traces, reports,
+      sequential replay, throttling, and absence of secret/token exposure outside the allowlisted
+      synthetic delivery/verification channel. Concurrent duplicate consumption remains part of
+      the deferred consistency catalog and receives no ordinary-lane credit. Delivered values must
+      be absent from wrong mailboxes, responses, redirects, logs, audit events, traces, reports,
       referrers, and browser history, and must be redacted from retained evidence.
 - [ ] **R5.8 (L)** Injection/exposure claims shall cover SQL, header/CRLF, XSS/template, prototype,
       command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversized input,
@@ -175,8 +176,8 @@ sequence; that affected claim remains blocked pending separately authorized prod
 5. [ ] Refresh-token rotation produces a different token and rejects reuse of the predecessor
        without issuing another valid token.
 6. [ ] Magic-link, reset, invitation, OTP, and recovery artifacts are accepted only for their
-       intended tenant/user and within configured lifetime; exactly one of two concurrent consumes
-       succeeds, and subsequent replay fails.
+       intended tenant/user and within configured lifetime; sequential replay fails, while
+       concurrent duplicate consumption remains a named deferred gap.
 7. [ ] Authentication enumeration pairs use the same public status/body schema and disclose no user
        existence; timing tests record distributions and defined tolerance rather than one sample.
 8. [ ] Representative SQL, XSS/template, header/CRLF, prototype, redirect, slug, host/proxy, method,

@@ -1,7 +1,7 @@
 # Testing Strategy: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Method**: independent specification → observed red or controlled-fault red → green → implementation tests → full verification
+> **Method**: independent specification → observed red or recorded sensitivity deferral → green → implementation tests → full verification
 
 ## Oracle Policy
 
@@ -10,9 +10,10 @@ version-qualified standards. They do not derive expectations from Porta producti
 imports are permitted only in fixture arrangement tests and live in `*.impl.test.ts`; black-box
 sentinels observe HTTP, browser, cookie, email, packed SDK, or CLI behavior.
 
-For an already-correct legacy implementation, the first specification run may be green. The task
-records that result and obtains red evidence by executing the designated curated fault. Expectations
-are never intentionally made wrong merely to manufacture red.
+For an already-correct legacy implementation, the first specification run may be green. A slice
+whose sensitivity campaign remains in scope records that result and obtains red evidence through
+its designated curated check. A deferred slice records no sensitivity credit. Expectations are
+never intentionally made wrong merely to manufacture red.
 
 ## Specification Test Cases
 
@@ -103,7 +104,7 @@ are never intentionally made wrong merely to manufacture red.
 | ST-45 | Same-origin, cross-origin/same-site, and loopback-IP cross-site browser requests vary CSRF tokens while production cookies are inspected | Mutation is denied where required; cross-site sending is exact; cookies are Secure/HttpOnly/SameSite/host-only                                                | R2.8, R5.6                             |
 | ST-46 | Magic-link/reset/invitation artifacts vary recipient, tenant, expiry, reuse, and exposure channels                                       | Intended synthetic mailbox/tenant within lifetime succeeds once; value appears nowhere outside the allowlisted delivery channel and is redacted from evidence | R5.7                                   |
 | ST-47 | Email OTP varies recipient/tenant/expiry/reuse and delivery rate                                                                         | Intended synthetic mailbox only; expiry/single-use/throttling exact; code appears nowhere outside delivery and redacted verification                          | R5.7                                   |
-| ST-48 | TOTP enforcement and recovery-code concurrent reuse                                                                                      | 2FA cannot be bypassed; exactly one recovery consume succeeds                                                                                                 | R5.7, R5.12                            |
+| ST-48 | TOTP enforcement and recovery-code sequential reuse                                                                                      | 2FA cannot be bypassed; a consumed recovery code cannot be reused                                                                                             | R5.7, R5.12                            |
 | ST-49 | Deferred catalog: submit concurrent duplicate consumes and inspect durable state after both settle                                               | Expected one durable success and one rejected competitor; no ordinary-lane product evidence is claimed                                                        | R5.7, R5.12, Deferred Consistency   |
 | ST-50 | Deferred catalog: exercise the real Redis/PostgreSQL conditional-consume boundary concurrently                                                  | Expected one durable transition and one rejected competitor; the current Redis authorization-code boundary is a named blocked defect                          | R5.7, R5.12, Deferred Consistency   |
 | ST-51 | Deferred catalog: discard a committed response, retry, gracefully restart owned Porta, and replay                                                | Expected replay rejection before/after restart; no ordinary-lane product evidence is claimed                                                                  | R5.7, R5.12, Deferred Consistency   |
