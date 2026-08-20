@@ -132,6 +132,46 @@ test('should reject every non-success terminal outcome and retained residue', ()
   );
 });
 
+test('should reject changed page order, metadata, or protected cardinality', () => {
+  const complete = completePackedP1ReadEvidence();
+  const first = complete.journeys[0];
+  assert.ok(first);
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...complete,
+        journeys: [
+          {
+            ...first,
+            independentRawResult: {
+              ...first.independentRawResult,
+              orderedItemIdentities: ['changed-page-identity'],
+            },
+          },
+          ...complete.journeys.slice(1),
+        ],
+      }),
+    /independent raw observation/u,
+  );
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...complete,
+        journeys: [
+          {
+            ...first,
+            stateFingerprintsAfter: {
+              ...first.stateFingerprintsAfter,
+              'target-cardinality': `sha256:${'0'.repeat(64)}`,
+            },
+          },
+          ...complete.journeys.slice(1),
+        ],
+      }),
+    /protected state changed/u,
+  );
+});
+
 test('should bind provenance to the exact local archives and packed SDK resolution', () => {
   const sdkContent = 'f'.repeat(64);
   const consumer: PreparedPackedConsumer = {

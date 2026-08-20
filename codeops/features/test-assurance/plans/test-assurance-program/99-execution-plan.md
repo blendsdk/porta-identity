@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 10:32
-> **Progress**: 93/116 tasks (80%)
+> **Last Updated**: 2026-08-20 10:47
+> **Progress**: 94/116 tasks (81%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -127,7 +127,7 @@ text, but it cannot substitute another command for this binding.
 | 9.7a      | `yarn assurance:test --select validation-exposure-specs`                                                                                                    |
 | 9.7b      | `yarn assurance:test --select p1-production-exposure`                                                                                                       |
 | 9.7c      | `yarn assurance:harness --project security --profile production-security`; `yarn assurance:harness --project security --profile operational`                 |
-| 9.8       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.8       | `yarn assurance:test --select p1-implementation`                                                                                                             |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
@@ -1135,8 +1135,16 @@ independent phase review and completed corrections are recorded in
       disclosure and lacks two independent state observations. Correlated-log credit remains false
       under DEF-13. `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
       and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:32)
-- [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
-      lifecycle, and redacted-error implementation tests after specs are green.
+- [x] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
+      lifecycle, and redacted-error implementation tests after specs are green. Added a bounded
+      non-networking request materializer that preserves controlled raw octets, generates an exact
+      configured-limit-plus-one JSON body, validates closed fixture substitution, and rejects
+      transport-framing overrides. Public headers now normalize case and reject ambiguous
+      collisions. The closed implementation selector also verifies page/result equivalence,
+      cardinality nonmutation, exact dependency lifecycle ownership, Porta recovery targeting, and
+      secret-free failure records. Focused tests pass 21/21; assurance typecheck/lint/formatting and
+      68 structure tests pass. `yarn verify` passes 233 server files / 3,382 tests, 31 SDK files /
+      404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:47)
 - [ ] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation
       and pentest, and keep the slice explicitly not-sensitivity-proven.
 - [ ] 9.10 Run P1 projects/profiles, applicable packed clients, coverage, all pentests, evidence/

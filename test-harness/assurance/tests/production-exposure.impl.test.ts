@@ -10,12 +10,16 @@ import {
   exposesBodyInternalDetail,
   exposesInternalDetail,
   headerContractObserved,
+  normalizePublicHeaders,
 } from '../production-exposure/response-classifier.js';
 import {
   OwnedDependencyController,
   type ProductionExposureCommandRunner,
 } from '../production-exposure/service-controller.js';
-import { productionExposureCaseEvidence } from '../production-exposure/evidence.js';
+import {
+  productionExposureCaseEvidence,
+  productionExposureExecutionFailure,
+} from '../production-exposure/evidence.js';
 import { validationExposureProductionCases } from './validation-exposure-production-case-requirements.js';
 
 const containerId = 'a'.repeat(64);
@@ -126,6 +130,16 @@ test('should derive CORS policy checks from concrete response headers', () => {
   assert.equal(
     headerContractObserved('access-control-allow-methods-does-not-contain-trace', response),
     true,
+  );
+});
+
+test('should normalize public header names and reject case-colliding duplicates', () => {
+  assert.deepEqual(normalizePublicHeaders({ 'Content-Type': 'application/json' }), {
+    'content-type': 'application/json',
+  });
+  assert.throws(
+    () => normalizePublicHeaders({ Server: 'nginx', server: 'porta' }),
+    /ambiguous duplicate/u,
   );
 });
 
@@ -252,6 +266,15 @@ test('should classify an unobserved required state as incomplete evidence', () =
   });
   assert.equal(evidence.outcome, 'incomplete');
   assert.deepEqual(evidence.unobservedStateObservations, requirement.independentStateObservations);
+});
+
+test('should create a closed execution-failure record without retaining raw diagnostics', () => {
+  const requirement = validationExposureProductionCases[0];
+  assert.ok(requirement);
+  const serialized = JSON.stringify(productionExposureExecutionFailure(requirement));
+  assert.equal(serialized.includes('/private/worktree'), false);
+  assert.equal(serialized.includes('synthetic-secret-canary'), false);
+  assert.match(serialized, /"outcome":"execution-failure"/u);
 });
 
 test('should restart only the exact lease-owned Porta container for recovery', async () => {

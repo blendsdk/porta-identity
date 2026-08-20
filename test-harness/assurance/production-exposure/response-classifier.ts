@@ -11,6 +11,25 @@ export interface BoundedPublicResponse {
   readonly body: string;
 }
 
+/** Lowercases concrete response header names and rejects ambiguous case-colliding fields. */
+export function normalizePublicHeaders(
+  headers: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  const normalized: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const lowerName = name.toLowerCase();
+    if (!headerNamePattern.test(lowerName))
+      throw new Error('public response header name is invalid');
+    if (normalized[lowerName] !== undefined) {
+      throw new Error('public response contains ambiguous duplicate headers');
+    }
+    normalized[lowerName] = value;
+  }
+  return Object.freeze(normalized);
+}
+
+const headerNamePattern = /^[!#$%&'*+.^_`|~0-9a-z-]+$/u;
+
 /** Rejects response bodies that exceed the in-process evidence bound. */
 export function boundedPublicResponse(
   status: number,
@@ -20,7 +39,7 @@ export function boundedPublicResponse(
   if (Buffer.byteLength(body, 'utf8') > maximumBodyBytes) {
     throw new Error('production exposure response exceeded the evidence bound');
   }
-  return Object.freeze({ status, headers: Object.freeze({ ...headers }), body });
+  return Object.freeze({ status, headers: normalizePublicHeaders(headers), body });
 }
 
 /** Returns whether the public response contains internal or protected implementation detail. */
