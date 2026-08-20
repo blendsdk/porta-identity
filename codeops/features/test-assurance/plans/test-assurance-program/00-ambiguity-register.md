@@ -2057,3 +2057,47 @@ aggregate design challenge explicitly required truthful residue and bounded reco
 this correction implements that invariant. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P10-A`. **Reopen trigger**: the runner gains an owner-validated automatic
 recovery operation that proves absence before aggregate publication.
+
+### AR-104 — Finish only Must/Should assurance work
+
+**Authority**: User — explicitly requested on 2026-08-20. **Eligibility**: user-owned program
+priority, acceptance scope, and deferment authority. **Objective**: preserve the security and
+functional findings already established while returning engineering capacity to new Porta feature
+development as soon as possible. **Decision**: retain one combined Must/Should closeout checkpoint
+covering traceability, inventory/ADR, the defect and gap ledger, protected-scope proof, the clean
+fault-catalog result, the retained harness, and authoritative repository verification. Defer the
+mutation-tool pilot, exhaustive command×outcome/signal qualification, 100-run stability campaign,
+local ratchets, exhaustive aggregate/UI reruns, and CI-promotion proposal under DEF-20. Deferred
+work receives no success, reliability, fault-sensitivity, or promotion credit. Consolidate the
+former Phase 11 closeout tasks into one checkpoint to avoid repeated full-suite runs that add no
+distinct evidence. **Evidence**: the delivered program already has immutable specifications,
+owner-fenced harness lifecycle, attributed coverage, packed-client boundaries, risk-slice evidence,
+known-defect routing, and a clean aggregate curated-fault result. The remaining 100-run and
+promotion work qualifies the assurance machinery rather than implementing Porta functionality.
+**Rejected alternatives**: silently marking optional tasks complete would fabricate evidence;
+continuing the full plan conflicts with the user's explicit delivery priority; stopping without a
+final inventory would risk losing security findings. **Strongest counterargument**: deferred
+stability and signal qualification reduces confidence that the assurance commands are ready for CI
+promotion, which is why no such promotion is authorized or claimed. **Confidence**: High.
+**Hardening**: every deferment remains individually visible in the execution plan and roadmap, and
+the retained closeout must preserve all product defects and incomplete claims. **Policy version**:
+1. **Root Invocation ID**: `USER-TA-CLOSEOUT-20260820`. **Reopen trigger**: Porta is ready to
+qualify these assurance commands for CI/policy promotion or the user resumes DEF-20.
+
+### AR-105 — Closeout documents precede clean final evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: verification sequencing inside
+the user-approved Must/Should closeout; no scope or acceptance change. **Objective**: let the clean
+assurance validator bind its result to the exact traceability and closeout documentation it checks.
+**Decision**: split the combined closeout into 11.1a, which implements and verifies the
+traceability/inventory/ADR/deferment record, and 11.1b, which runs clean validation plus the retained
+harness and final repository verification from the pushed 11.1a revision. **Evidence**: the
+validator intentionally rejects dirty source, and its first clean attempt exposed a real missing
+`7.9` authority node that is now corrected. **Rejected alternatives**: weakening clean provenance
+would invalidate the evidence; committing a partially verified task would violate the execution
+contract; omitting validation would leave the final graph unaudited. **Strongest counterargument**:
+the split adds one checkpoint, but it prevents the final report from attesting to different bytes
+than those actually validated. **Confidence**: High. **Hardening**: this reuses the already
+challenged clean-evidence architecture and retains the user's narrowed command set. **Policy
+version**: 1. **Root Invocation ID**: `USER-TA-CLOSEOUT-20260820`. **Reopen trigger**: the validator
+adopts an approved content-addressed snapshot model that can attest to reviewed uncommitted bytes.

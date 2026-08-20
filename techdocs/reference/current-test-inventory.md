@@ -1,7 +1,8 @@
 # Current Test Inventory
 
 > **Inventory snapshot date**: 2026-08-10
-> **Assurance architecture update**: 2026-08-12
+> **Latest verification checkpoint**: 2026-08-20
+> **Assurance architecture update**: 2026-08-20
 > **Scope**: All test projects executed by the branch CI workflow
 > **Purpose**: Describe what the current suite exercises before any test-trust audit or rewrite
 
@@ -22,6 +23,30 @@ layers are also present.
 
 This inventory describes test subjects and execution boundaries. It does not assert that every
 test has an independent or sufficiently strict oracle.
+
+## Assurance Closeout Checkpoint
+
+The latest authoritative `yarn verify` checkpoint collected **233 server test files / 3,382
+cases**, **31 SDK files / 404 cases**, and **29 CLI files / 355 cases**, in addition to 68
+repository-structure cases. The assurance tree contains 99 explicitly selected specification and
+implementation files with 399 static top-level cases; service-backed journeys and parameterized
+subtests make that static count unsuitable as a runtime total.
+
+Delivered assurance commands now cover typed governance and traceability, fenced lifecycle and
+fixtures, operational and production-security harness profiles, assembled-server V8 attribution,
+curated fault tuples and their aggregate catalog campaign, clean packed SDK/CLI consumers, and
+risk-sliced tenant/admin, protocol, human-authentication, validation/exposure, and administrative
+data observations. Evidence is clean-revision bound, owner-only, redacted, and admitted only when
+the applicable lifecycle and cleanup checks succeed.
+
+This checkpoint is deliberately **not** certification and does not claim that Porta has no exploit
+paths. Product defects and unresolved contracts remain separately recorded, including cross-tenant
+magic-link acceptance, TOTP replay semantics, bulk/import/export semantics, incomplete correlated
+decision logs, public nginx version disclosure, dependency reconnection behavior, SDK cursor
+pagination mismatch, and administrative session-identifier exposure. The optional mutation-tool
+pilot, exhaustive command/signal matrix, 100-run stability qualification, local ratchets,
+exhaustive aggregate/UI reruns, and CI-promotion proposal are deferred. Consequently the assurance
+commands are not qualified or authorized for new blocking CI, release, or merge-policy use.
 
 ## Inventory Totals
 

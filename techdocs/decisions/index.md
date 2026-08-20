@@ -260,8 +260,8 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## ADR-014: Independent Test Assurance
 
-**Status**: Proposed. The governance foundation is implemented; the full assurance program remains
-in progress, so this decision is not yet promoted to Accepted.
+**Status**: Accepted for local/on-demand assurance. Reliability qualification and any CI, release,
+or merge-policy promotion remain deferred and require separate approval.
 
 **Context**: Porta has broad automated test coverage, but most tests were written after the
 implementation and many isolate dependencies with mocks. Passing tests and line coverage show that
@@ -281,7 +281,7 @@ coverage ratchets stay in separate staged lanes until reproducibility and flake 
 promotion. Findings that require product changes are reproduced and routed to separately authorized
 work; the assurance program does not silently change product behavior.
 
-The implemented foundation now provides root-owned typed claim/evidence schemas, exact
+The implemented program now provides root-owned typed claim/evidence schemas, exact
 requirement-to-case-to-task-to-claim validation, immutable specification boundaries, canonical
 test inventory, clean-tree provenance, sanitized owner-only evidence, and managed child-process
 cleanup. The retained harness also has collision-fenced lifecycle ownership, deterministic fixture
@@ -290,13 +290,25 @@ Coverage capture is accepted only when the exact leased container, image labels,
 dependency lock, compiled output, fixture digest, and runtime dependency inventory agree. Later
 phases still own black-box risk slices and reliability qualification.
 
-Curated faults now run only from a versioned catalog with exact target bytes, one declared target,
+Risk-sliced black-box observations now cover tenant/admin boundaries, protocol and ID-token
+behavior, human authentication and recovery, validation/exposure, and administrative data through
+operational and production-security profiles. Packed SDK/CLI journeys execute installed archives
+from clean committed source and verify selected effects independently. Every detected product
+failure or unresolved contract remains explicit rather than being converted into a passing oracle.
+
+Curated faults run only from a versioned catalog with exact target bytes, one declared target,
 closed command identifiers, exact claim/sentinel signatures, and run-owned disposable worktrees.
+The aggregate catalog command snapshots clean provenance and the validated catalog once, then runs
+every tuple independently in a fresh detached worktree with complete terminal accounting.
 Packed-client evidence now builds the current SDK and CLI from a clean detached source worktree,
 installs both local archives into an isolated consumer, derives SDK `dist` evidence from actual
 package resolution, and isolates every CLI subprocess from developer credentials. These foundations
-do not yet claim that SDK or CLI product journeys work; each later risk slice must supply its own
-public-boundary sentinel and sensitivity evidence.
+do not imply certification or the absence of exploitable behavior.
+
+The mutation-tool pilot, exhaustive command/signal matrix, 100-run stability campaign, local
+ratchets, exhaustive aggregate/UI reruns, and CI-promotion proposal are intentionally deferred so
+feature development can resume. Until those are completed, these commands remain local/on-demand
+evidence tools and must not become blocking CI, release, or merge gates.
 
 **Consequences**:
 
@@ -304,8 +316,12 @@ public-boundary sentinel and sensitivity evidence.
 - ✅ The existing harness and fast unit suites remain useful; no competing test platform is added.
 - ✅ Coverage becomes attributable evidence instead of a proxy for correctness.
 - ✅ Curated faults expose assertions that pass without detecting the intended control failure.
+- ✅ Known defects, incomplete observers, and deferred qualification remain visible and receive no
+  assurance credit.
 - ⚠️ Deterministic resets, process coverage, and live package tests add infrastructure complexity.
 - ⚠️ Assurance closes risk slices progressively and cannot prove the absolute absence of exploits.
+- ⚠️ Deferred stability and signal qualification means the assurance commands are not approved as
+  new blocking automation.
 
 ---
 

@@ -79,18 +79,18 @@ Must, source mismatch, dangling ID, or unregistered extra edge.
 | R6.8        | ST-67                      | 5.3–5.4, 10.1–10.2                       | CLAIM-R6-08 |
 | R6.9        | ST-66, ST-67               | 5.4, 10.1–10.2                           | CLAIM-R6-09 |
 | R6.10       | ST-68                      | 5.3–5.4, 5.10–5.11, 10.1                 | CLAIM-R6-10 |
-| R7.1        | ST-79                      | 1.4, 11.3–11.5                           | CLAIM-R7-01 |
-| R7.2        | ST-79                      | 11.3–11.5                                | CLAIM-R7-02 |
+| R7.1        | ST-79                      | 1.4, 11.1                                | CLAIM-R7-01 |
+| R7.2        | ST-79                      | 11.1                                     | CLAIM-R7-02 |
 | R7.3        | ST-78                      | 1.1–1.7, 10.8                            | CLAIM-R7-03 |
 | R7.4        | ST-66                      | 5.1–5.4, 6.4–6.12, 7.1–9.9               | CLAIM-R7-04 |
 | R7.5        | ST-74                      | 10.5–10.6                                | CLAIM-R7-05 |
-| R7.6        | ST-79                      | 11.3–11.4                                | CLAIM-R7-06 |
+| R7.6        | ST-79                      | 11.1                                     | CLAIM-R7-06 |
 | R7.7        | ST-75                      | 1.4, 10.3–10.4                           | CLAIM-R7-07 |
-| R7.8        | ST-77                      | 10.7–11.2                                | CLAIM-R7-08 |
-| R7.9        | ST-77                      | 1.6–1.8, 10.8, 11.5                      | CLAIM-R7-09 |
+| R7.8        | ST-77                      | 10.7–10.8, 11.1                          | CLAIM-R7-08 |
+| R7.9        | ST-77                      | 1.6–1.8, 10.8, 11.1                      | CLAIM-R7-09 |
 | R7.10       | ST-18A, ST-75, ST-76       | 1.4, 2.4–2.8, 10.3–10.4                  | CLAIM-R7-10 |
 | R7.11       | ST-78                      | 1.5, 10.7–10.8                           | CLAIM-R7-11 |
-| R7.12       | ST-79                      | 11.1–11.6                                | CLAIM-R7-12 |
+| R7.12       | ST-79                      | 11.1                                     | CLAIM-R7-12 |
 
 The mappings above establish ownership, not completion. For Phase 7, ST-35 consent substitution,
 ST-40 JWKS-key separation, ST-41 consent/logout/client-context, and the affected R5.2 log/recovery/
