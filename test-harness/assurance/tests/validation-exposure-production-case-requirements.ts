@@ -342,7 +342,7 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
         {
           family: 'cache-error-exposure',
           arrangement: 'owned-cache-unavailable',
-          path: '/alpha/authorize?client_id={alphaClientId}&redirect_uri={registeredRedirect}&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
+          path: '/alpha/auth?client_id={alphaClientId}&redirect_uri={registeredRedirect}&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
           method: 'GET',
           body: null,
           healthyStatus: 303,

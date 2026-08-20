@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 08:56
-> **Progress**: 91/116 tasks (78%)
+> **Last Updated**: 2026-08-20 09:24
+> **Progress**: 92/116 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1102,10 +1102,16 @@ independent phase review and completed corrections are recorded in
       The focused selector, assurance typecheck/lint/formatting, 68 structure tests, and full
       verification passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
       files / 355 tests. ✅ (completed: 2026-08-20 08:56)
-- [ ] 9.7b Implement the owner-fenced production-exposure capability: bounded raw TLS/plaintext,
+- [x] 9.7b Implement the owner-fenced production-exposure capability: bounded raw TLS/plaintext,
       independent cookie/state/cache observers, unchanged-ingress trusted/untrusted forwarding
       probes, and serialized run-owned PostgreSQL/Redis/MailHog interruption with unconditional
-      restoration and recovery precedence. Commit and push before live evidence.
+      restoration and recovery precedence. Commit and push before live evidence. The capability
+      now uses the active durable lease, exact container IDs and labels, cancellation-independent
+      restoration, bounded concrete response classifiers, a real browser for HTML/cookie/CSRF
+      observations, and an explicit unobserved state instead of synthesized safety. Focused tests
+      passed 7/7, assurance typecheck/lint/formatting and 68 structure tests passed, and full
+      verification passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
+      files / 355 tests. ✅ (completed: 2026-08-20 09:24)
 - [ ] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
       production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
       response/state/recovery facts; preserve DEF-13 and record every observed product failure.

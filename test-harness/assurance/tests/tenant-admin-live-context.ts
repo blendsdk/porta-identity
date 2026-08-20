@@ -217,6 +217,11 @@ export class LiveTenantAdminContext {
     return this.apiPromise;
   }
 
+  /** Releases the request context owned by this live observer. */
+  public async close(): Promise<void> {
+    if (this.apiPromise !== undefined) await (await this.apiPromise).dispose();
+  }
+
   /** Resolves one required generated identifier without exposing it in an error. */
   public entity(alias: string): string {
     const value = this.entities.get(alias);

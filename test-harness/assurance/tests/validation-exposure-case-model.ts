@@ -97,7 +97,11 @@ export interface ValidationExposureRawCase {
   readonly executionProfiles: readonly ValidationExposureExecutionProfile[];
   readonly proxyTrust: 'not-applicable' | 'trusted' | 'untrusted';
   readonly harnessArrangement:
-    'none' | 'owned-database-unavailable' | 'owned-cache-unavailable' | 'owned-mail-unavailable';
+    | 'none'
+    | 'real-oidc-interaction'
+    | 'owned-database-unavailable'
+    | 'owned-cache-unavailable'
+    | 'owned-mail-unavailable-with-acquired-csrf-browser';
   readonly actor: string;
   readonly asset: string;
   readonly entryPoint: string;

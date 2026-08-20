@@ -218,6 +218,11 @@ const p1PackedReadSpecificationFiles = [
   'test-harness/assurance/tests/p1-packed-read.spec.test.ts',
 ] as const;
 
+/** Production policy and dependency specifications executed only by the owned security harness. */
+const productionExposureSpecificationFiles = [
+  'test-harness/assurance/tests/production-exposure.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -296,6 +301,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
   'validation-exposure-specs': validationExposureSpecificationFiles,
+  'p1-production-exposure': ['test-harness/assurance/tests/production-exposure.impl.test.ts'],
   'p1-baseline': [
     ...p1BaselineSpecificationFiles,
     'test-harness/assurance/tests/p1-baseline.impl.test.ts',
@@ -596,6 +602,30 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
     const projectResult = await runLifecycleAction('project', project);
     const projectExit = managedChildExit(projectResult, testFailureExit);
     if (projectExit !== 0) return projectExit;
+
+    if (project === 'security') {
+      const productionExposureReset = await runLifecycleAction('reset');
+      const productionExposureResetExit = managedChildExit(
+        productionExposureReset,
+        setupFailureExit,
+      );
+      if (productionExposureResetExit !== 0) return productionExposureResetExit;
+      const productionExposureActive = readActiveCoverageRun(process.cwd());
+      const productionExposureSpecifications = await runNodeSuite(
+        productionExposureSpecificationFiles,
+        undefined,
+        Object.freeze({
+          ...environmentForManifest(productionExposureActive.lease.manifest),
+          PORTA_ASSURANCE_PROJECT: 'security',
+          PORTA_ASSURANCE_PRODUCTION_EXPOSURE_ADAPTER: 'live',
+        }),
+      );
+      const productionExposureExit = managedChildExit(
+        productionExposureSpecifications,
+        testFailureExit,
+      );
+      if (productionExposureExit !== 0) return productionExposureExit;
+    }
 
     if (project === 'protocol') {
       const reset = await runLifecycleAction('reset');
