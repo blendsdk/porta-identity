@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 06:23
-> **Progress**: 86/110 tasks (78%)
+> **Last Updated**: 2026-08-20 06:33
+> **Progress**: 87/110 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1040,8 +1040,14 @@ independent phase review and completed corrections are recorded in
       focused selector passed 24/24, assurance typecheck/lint/formatting and structure passed, and
       `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files
       / 355 tests. ✅ (completed: 2026-08-20 06:23)
-- [ ] 9.5b From the clean pushed capability revision, record the exact ST-52 natural-RED baseline
+- [x] 9.5b From the clean pushed capability revision, record the exact ST-52 natural-RED baseline
       evidence. No passing legacy candidate may receive exact sentinel or product-assurance credit.
+      Clean revision `23e1b290` produced owner-only run
+      `aa132c8d-b9a9-4b38-accf-f8612bb455c6`, classified `natural-red` with reason
+      `missing-exact-p1-sentinel`, no product failure, no selected sentinel, and only narrow
+      corroboration for the two audited legacy candidates. `yarn verify` then passed 233 server
+      files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-20 06:33)
 - [ ] 9.6 Add missing raw/browser/packed-client probes, authorized handler controls, independent
       non-mutation/cardinality checks, and exact audit/log/recovery observations.
 - [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
