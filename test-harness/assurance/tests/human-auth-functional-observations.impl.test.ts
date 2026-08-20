@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { assembleFunctionalCaseObservation } from './human-auth-functional-observations.js';
+import {
+  assembleFunctionalCaseObservation,
+  functionalBodyFingerprint,
+  functionalHeaderFingerprint,
+} from './human-auth-functional-observations.js';
 
 import type {
   HumanAuthFunctionalCaseRequirement,
@@ -76,5 +80,32 @@ test('should reject missing or undeclared live observations', () => {
         ]),
       ),
     /incomplete or undeclared/u,
+  );
+});
+
+test('should preserve identity-revealing body and public-header differences', () => {
+  assert.notEqual(
+    functionalBodyFingerprint('Invalid credentials'),
+    functionalBodyFingerprint('No account exists for absent@example.test'),
+  );
+  assert.equal(
+    functionalBodyFingerprint(' Invalid\n credentials '),
+    functionalBodyFingerprint('Invalid credentials'),
+  );
+  assert.notEqual(
+    functionalHeaderFingerprint({ 'cache-control': 'no-store' }),
+    functionalHeaderFingerprint({ 'cache-control': 'private' }),
+  );
+  assert.equal(
+    functionalHeaderFingerprint({
+      location: '/volatile-one',
+      'set-cookie': 'secret-one',
+      'content-type': 'text/html',
+    }),
+    functionalHeaderFingerprint({
+      location: '/volatile-two',
+      'set-cookie': 'secret-two',
+      'content-type': 'text/html',
+    }),
   );
 });

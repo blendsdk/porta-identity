@@ -7,6 +7,8 @@ import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
 import { functionalAuthorizationUrl } from './human-auth-functional-authorization.js';
 import {
   assembleFunctionalCaseObservation,
+  functionalBodyFingerprint,
+  functionalHeaderFingerprint,
   observedFunctionalResponse as observedResponse,
   observedFunctionalState as observedState,
   observedFunctionalStep as observedStep,
@@ -25,6 +27,8 @@ const mailInventorySchema = z.object({ total: z.number().int().nonnegative() }).
 interface PasswordAttempt {
   readonly accepted: boolean;
   readonly response: HumanAuthFunctionalStepObservation['response'];
+  readonly bodyFingerprint: string;
+  readonly headerFingerprint: string;
 }
 
 interface PasswordlessAttempt {
@@ -34,6 +38,8 @@ interface PasswordlessAttempt {
 
 interface RecoveryAttempt {
   readonly response: HumanAuthFunctionalStepObservation['response'];
+  readonly bodyFingerprint: string;
+  readonly headerFingerprint: string;
 }
 
 /** Confirms the stable public security headers without retaining their values. */
@@ -78,6 +84,7 @@ async function passwordAttempt(
         },
       );
       const headers = raw.headers();
+      const body = await raw.text();
       return Object.freeze({
         accepted: false,
         response: observedResponse(
@@ -85,6 +92,8 @@ async function passwordAttempt(
           raw.status() === 403 ? 'method-disabled' : null,
           hasPublicSecurityHeaders(headers) ? 'login-public' : null,
         ),
+        bodyFingerprint: functionalBodyFingerprint(body),
+        headerFingerprint: functionalHeaderFingerprint(headers),
       });
     }
     await page.locator('input#password').fill(password);
@@ -106,6 +115,7 @@ async function passwordAttempt(
       .locator('input#email')
       .isVisible({ timeout: 500 })
       .catch(() => false);
+    const body = accepted ? new URL(page.url()).search : await page.locator('body').innerText();
     const bodySchemaId = accepted
       ? 'authorization-callback'
       : status === 403
@@ -127,15 +137,21 @@ async function passwordAttempt(
     return Object.freeze({
       accepted,
       response: observedResponse(accepted ? 'redirect' : status, bodySchemaId, headerSetId),
+      bodyFingerprint: functionalBodyFingerprint(body),
+      headerFingerprint: functionalHeaderFingerprint(headers),
     });
   } finally {
     await browser.close();
   }
 }
 
-/** Returns the exact count of messages captured by the owned synthetic mailbox. */
-async function mailCount(context: LiveTenantAdminContext): Promise<number> {
-  const response = await fetch(`${context.endpoints.mailhog}/api/v2/messages`);
+/** Returns the exact global or recipient-specific count from the owned synthetic mailbox. */
+async function mailCount(context: LiveTenantAdminContext, recipient?: string): Promise<number> {
+  const suffix =
+    recipient === undefined
+      ? '/api/v2/messages'
+      : `/api/v2/search?kind=to&query=${encodeURIComponent(recipient)}`;
+  const response = await fetch(`${context.endpoints.mailhog}${suffix}`);
   if (!response.ok) throw new Error('functional MailHog inventory is unavailable');
   return mailInventorySchema.parse(await response.json()).total;
 }
@@ -153,17 +169,34 @@ async function clearMail(context: LiveTenantAdminContext): Promise<void> {
 /** Polls until one exact delivery appears and rejects duplicates. */
 async function waitForMailDelta(
   context: LiveTenantAdminContext,
-  before: number,
+  recipient: string,
+  recipientBefore: number,
+  globalBefore: number,
   expectedDelta: 0 | 1,
 ): Promise<void> {
   const deadline = Date.now() + (expectedDelta === 1 ? 10_000 : 1_000);
   do {
-    const current = await mailCount(context);
-    if (current > before + expectedDelta) throw new Error('unexpected duplicate mail delivery');
-    if (current === before + expectedDelta && expectedDelta === 1) return;
+    const currentRecipient = await mailCount(context, recipient);
+    const currentGlobal = await mailCount(context);
+    if (
+      currentRecipient > recipientBefore + expectedDelta ||
+      currentGlobal > globalBefore + expectedDelta
+    ) {
+      throw new Error('unexpected or misrouted mail delivery');
+    }
+    if (
+      currentRecipient === recipientBefore + expectedDelta &&
+      currentGlobal === globalBefore + expectedDelta &&
+      expectedDelta === 1
+    ) {
+      return;
+    }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 200));
   } while (Date.now() < deadline);
-  if ((await mailCount(context)) !== before + expectedDelta) {
+  if (
+    (await mailCount(context, recipient)) !== recipientBefore + expectedDelta ||
+    (await mailCount(context)) !== globalBefore + expectedDelta
+  ) {
     throw new Error('synthetic mailbox cardinality did not match the expected public effect');
   }
 }
@@ -188,12 +221,15 @@ async function recoveryRequest(
       .isVisible({ timeout: 1_000 })
       .catch(() => false);
     const headers = response?.headers() ?? {};
+    const body = await page.locator('body').innerText();
     return Object.freeze({
       response: observedResponse(
         response?.status() ?? 0,
         successVisible ? 'generic-recovery' : null,
         hasPublicSecurityHeaders(headers) ? 'recovery-public' : null,
       ),
+      bodyFingerprint: functionalBodyFingerprint(body),
+      headerFingerprint: functionalHeaderFingerprint(headers),
     });
   } finally {
     await browser.close();
@@ -255,8 +291,8 @@ async function passwordlessAttempt(
       headers = response.headers();
       responseBodySchemaObserved = /class=["']flash-error["']/u.test(await response.text());
     }
-    await waitForMailDelta(context, 0, enabled ? 1 : 0);
-    const delivered = (await mailCount(context)) === 1;
+    await waitForMailDelta(context, email, 0, 0, enabled ? 1 : 0);
+    const delivered = (await mailCount(context, email)) === 1 && (await mailCount(context)) === 1;
     return Object.freeze({
       response: observedResponse(
         status,
@@ -293,13 +329,19 @@ async function observeEnumeration(
   assert.equal(existing.accepted, false);
   assert.equal(absent.accepted, false);
   assert.deepEqual(existing.response, absent.response);
+  assert.equal(existing.bodyFingerprint, absent.bodyFingerprint);
+  assert.equal(existing.headerFingerprint, absent.headerFingerprint);
 
+  const recoveryRecipient = 'alpha-user-active@test-harness.local';
   const recoveryBefore = await mailCount(context);
+  const recoveryRecipientBefore = await mailCount(context, recoveryRecipient);
   const recoveryExisting = await recoveryRequest(context, 'alpha-user-active@test-harness.local');
-  await waitForMailDelta(context, recoveryBefore, 1);
+  await waitForMailDelta(context, recoveryRecipient, recoveryRecipientBefore, recoveryBefore, 1);
   const recoveryAfter = await mailCount(context);
-  const recoveryAbsent = await recoveryRequest(context, 'absent-user@test-harness.local');
-  await waitForMailDelta(context, recoveryAfter, 0);
+  const absentRecipient = 'absent-user@test-harness.local';
+  const absentBefore = await mailCount(context, absentRecipient);
+  const recoveryAbsent = await recoveryRequest(context, absentRecipient);
+  await waitForMailDelta(context, absentRecipient, absentBefore, recoveryAfter, 0);
   assert.deepEqual(recoveryAbsent, recoveryExisting);
 
   return assembleFunctionalCaseObservation(

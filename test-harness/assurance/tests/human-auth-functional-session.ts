@@ -14,6 +14,7 @@ import {
 import type {
   HumanAuthFunctionalCaseObservation,
   HumanAuthFunctionalCaseRequirement,
+  HumanAuthFunctionalStepObservation,
 } from './human-auth-functional-contract.js';
 import type { LiveTenantAdminContext } from './tenant-admin-live-context.js';
 
@@ -33,12 +34,37 @@ interface AuthenticatedBrowserSession {
   readonly anonymousCookie: string;
   readonly authenticatedCookie: string;
   readonly sessionId: string;
+  readonly authenticationResponse: HumanAuthFunctionalStepObservation['response'];
 }
 
 /** Public result of attempting silent authorization with an existing browser session. */
 interface SilentAuthorizationObservation {
   readonly codePresent: boolean;
   readonly errorPresent: boolean;
+  readonly response: HumanAuthFunctionalStepObservation['response'];
+}
+
+/** Classifies a completed public navigation only from its observed destination and result. */
+function observedRedirect(
+  destination: URL,
+  expectedOrigin: string,
+  bodySchemaId: string,
+): HumanAuthFunctionalStepObservation['response'] {
+  const reachedExpectedOrigin = destination.origin === expectedOrigin;
+  return observedResponse(
+    reachedExpectedOrigin ? 'redirect' : null,
+    reachedExpectedOrigin ? bodySchemaId : null,
+    reachedExpectedOrigin ? 'redirect' : null,
+  );
+}
+
+/** Confirms the stable public response headers without retaining their values. */
+function hasPublicHeaders(headers: Readonly<Record<string, string>>): boolean {
+  return (
+    headers['content-security-policy'] !== undefined &&
+    headers['referrer-policy'] !== undefined &&
+    headers['x-content-type-options'] === 'nosniff'
+  );
 }
 
 /** Lists exact active session identifiers for the synthetic active account. */
@@ -95,6 +121,11 @@ async function createBrowserSession(
     if (created.length !== 1 || created[0] === undefined) {
       throw new Error('new authenticated session is absent or ambiguous');
     }
+    const authenticationResponse = observedRedirect(
+      new URL(page.url()),
+      new URL(context.endpoints.app).origin,
+      'authorization-callback',
+    );
     return {
       browser,
       browserContext,
@@ -102,6 +133,7 @@ async function createBrowserSession(
       anonymousCookie,
       authenticatedCookie,
       sessionId: created[0],
+      authenticationResponse,
     };
   } catch (error) {
     await browser.close();
@@ -128,9 +160,15 @@ async function promptNone(
     });
     await page.waitForURL((url) => url.origin === new URL(redirectUri).origin, { timeout: 10_000 });
     const result = new URL(page.url()).searchParams;
+    const bodySchemaId = result.has('code')
+      ? 'authorization-callback'
+      : result.has('error')
+        ? 'authorization-error'
+        : 'unknown-authorization-result';
     return Object.freeze({
       codePresent: result.has('code'),
       errorPresent: result.has('error'),
+      response: observedRedirect(new URL(page.url()), new URL(redirectUri).origin, bodySchemaId),
     });
   } finally {
     await page.close();
@@ -153,6 +191,7 @@ export async function observeFunctionalSessions(
 
   const loggedOut = await createBrowserSession(context);
   let loggedOutUse: SilentAuthorizationObservation;
+  let logoutResponse: HumanAuthFunctionalStepObservation['response'];
   try {
     await loggedOut.page.locator('[data-testid="logout-btn"]').click();
     await loggedOut.page.locator('button:has-text("Sign out")').click();
@@ -161,6 +200,11 @@ export async function observeFunctionalSessions(
       .locator('[data-testid="status"]')
       .filter({ hasText: 'NOT LOGGED IN' })
       .waitFor();
+    logoutResponse = observedRedirect(
+      new URL(loggedOut.page.url()),
+      new URL(context.endpoints.app).origin,
+      'logged-out-client',
+    );
     loggedOutUse = await promptNone(context, loggedOut.browserContext);
     assert.equal(loggedOutUse.codePresent, false);
     assert.equal(loggedOutUse.errorPresent, true);
@@ -170,16 +214,21 @@ export async function observeFunctionalSessions(
 
   const revoked = await createBrowserSession(context);
   let revokedUse: SilentAuthorizationObservation;
-  let revocationStatus: number;
+  let revocationResponse: HumanAuthFunctionalStepObservation['response'];
   let revokedListed: boolean;
   try {
-    const response = await context.rawRequest(
-      'DELETE',
-      `/api/admin/sessions/${encodeURIComponent(revoked.sessionId)}`,
-      'admin-full',
+    const response = await revoked.browserContext.request.delete(
+      `${context.endpoints.porta}/api/admin/sessions/${encodeURIComponent(revoked.sessionId)}`,
+      { headers: context.adminHeaders('admin-full'), maxRedirects: 0 },
     );
-    revocationStatus = response.status;
-    assert.equal(revocationStatus, 204);
+    const body = await response.text();
+    revocationResponse = observedResponse(
+      response.status(),
+      body.length === 0 ? 'empty' : null,
+      hasPublicHeaders(response.headers()) ? 'admin-public' : null,
+    );
+    assert.equal(response.status(), 204);
+    assert.equal(body.length, 0);
     revokedListed = (await activeSessionIds(context)).has(revoked.sessionId);
     assert.equal(revokedListed, false);
     revokedUse = await promptNone(context, revoked.browserContext);
@@ -217,101 +266,73 @@ export async function observeFunctionalSessions(
     new Map([
       [
         'anonymous-authentication-renewal-control',
-        observedStep(
-          'anonymous-authentication-renewal-control',
-          observedResponse('redirect', 'authorization-callback', 'redirect'),
-          [
-            observedState('session-cookie-renewed', 'browser-cookie-identity', {
-              anonymousAbsentOrAuthenticatedDiffers:
-                active.anonymousCookie === '<absent-before-authentication>' ||
-                active.anonymousCookie !== active.authenticatedCookie,
-            }),
-            observedState('authenticated-resource-allowed', 'protected-resource-response', {
-              accessAllowed: activeUse.codePresent,
-            }),
-          ],
-        ),
+        observedStep('anonymous-authentication-renewal-control', active.authenticationResponse, [
+          observedState('session-cookie-renewed', 'browser-cookie-identity', {
+            anonymousAbsentOrAuthenticatedDiffers:
+              active.anonymousCookie === '<absent-before-authentication>' ||
+              active.anonymousCookie !== active.authenticatedCookie,
+          }),
+          observedState('authenticated-resource-allowed', 'protected-resource-response', {
+            accessAllowed: activeUse.codePresent,
+          }),
+        ]),
       ],
       [
         'active-session-control',
-        observedStep(
-          'active-session-control',
-          observedResponse('redirect', 'authorization-callback', 'redirect'),
-          [
-            observedState('active-resource-allowed', 'protected-resource-response', {
-              accessAllowed: activeUse.codePresent,
-            }),
-          ],
-        ),
+        observedStep('active-session-control', activeUse.response, [
+          observedState('active-resource-allowed', 'protected-resource-response', {
+            accessAllowed: activeUse.codePresent,
+          }),
+        ]),
       ],
       [
         'public-logout-control',
-        observedStep(
-          'public-logout-control',
-          observedResponse('redirect', 'logged-out-client', 'redirect'),
-          [
-            observedState('client-reports-logged-out', 'spa-authentication-status', {
-              authenticated: loggedOutUse.codePresent,
-            }),
-          ],
-        ),
+        observedStep('public-logout-control', logoutResponse, [
+          observedState('client-reports-logged-out', 'spa-authentication-status', {
+            authenticated: loggedOutUse.codePresent,
+          }),
+        ]),
       ],
       [
         'authorized-session-revoke-control',
-        observedStep(
-          'authorized-session-revoke-control',
-          observedResponse(revocationStatus, 'empty', 'admin-public'),
-          [
-            observedState('revocation-confirmed', 'admin-api-resource-state', {
-              sessionListed: revokedListed,
-            }),
-          ],
-        ),
+        observedStep('authorized-session-revoke-control', revocationResponse, [
+          observedState('revocation-confirmed', 'admin-api-resource-state', {
+            sessionListed: revokedListed,
+          }),
+        ]),
       ],
       [
         'expired-session-reuse',
-        observedStep(
-          'expired-session-reuse',
-          observedResponse('redirect', 'authorization-error', 'redirect'),
-          [
-            observedState('expired-authorization-denied', 'authorization-callback', {
-              codePresent: expiredUse.codePresent,
-            }),
-            observedState('expired-session-inactive', 'admin-api-resource-state', {
-              sessionListed: expiredListed,
-            }),
-          ],
-        ),
+        observedStep('expired-session-reuse', expiredUse.response, [
+          observedState('expired-authorization-denied', 'authorization-callback', {
+            codePresent: expiredUse.codePresent,
+          }),
+          observedState('expired-session-inactive', 'admin-api-resource-state', {
+            sessionListed: expiredListed,
+          }),
+        ]),
       ],
       [
         'logged-out-session-reuse',
-        observedStep(
-          'logged-out-session-reuse',
-          observedResponse('redirect', 'authorization-error', 'redirect'),
-          [
-            observedState('logged-out-authorization-denied', 'authorization-callback', {
-              codePresent: loggedOutUse.codePresent,
-            }),
-            observedState('logged-out-client-anonymous', 'spa-authentication-status', {
-              authenticated: loggedOutUse.codePresent,
-            }),
-          ],
-        ),
+        observedStep('logged-out-session-reuse', loggedOutUse.response, [
+          observedState('logged-out-authorization-denied', 'authorization-callback', {
+            codePresent: loggedOutUse.codePresent,
+          }),
+          observedState('logged-out-client-anonymous', 'spa-authentication-status', {
+            authenticated: loggedOutUse.codePresent,
+          }),
+        ]),
       ],
       [
         'revoked-session-reuse',
-        observedStep(
-          'revoked-session-reuse',
-          observedResponse('redirect', 'authorization-error', 'redirect'),
-          [
-            observedState('revoked-authorization-denied', 'authorization-callback', {
-              codePresent: revokedUse.codePresent,
-            }),
-            observedState('revoked-session-inactive', 'admin-api-resource-state', {
-              sessionListed: revokedListed,
-            }),
-          ],
-        ),
+        observedStep('revoked-session-reuse', revokedUse.response, [
+          observedState('revoked-authorization-denied', 'authorization-callback', {
+            codePresent: revokedUse.codePresent,
+          }),
+          observedState('revoked-session-inactive', 'admin-api-resource-state', {
+            sessionListed: revokedListed,
+          }),
+        ]),
       ],
     ]),
   );

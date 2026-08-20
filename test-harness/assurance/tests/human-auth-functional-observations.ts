@@ -68,3 +68,37 @@ export function observedFunctionalStep(
 ): HumanAuthFunctionalStepObservation {
   return Object.freeze({ id, response, publicState: Object.freeze(publicState) });
 }
+
+/**
+ * Digests normalized public text without retaining the response body.
+ *
+ * Whitespace is the only discarded dimension. Submitted identities and every visible error word
+ * remain in the digest, so enumeration comparisons fail if Porta discloses different content.
+ */
+export function functionalBodyFingerprint(body: string): string {
+  const normalized = body.normalize('NFKC').replace(/\s+/gu, ' ').trim();
+  return `sha256:${createHash('sha256').update(normalized).digest('hex')}`;
+}
+
+/**
+ * Digests the bounded public header contract while excluding volatile cookies and locations.
+ *
+ * Header names are normalized and sorted before hashing so transport ordering cannot affect the
+ * result. Values remain exact because an identity-dependent security header is observable leakage.
+ */
+export function functionalHeaderFingerprint(headers: Readonly<Record<string, string>>): string {
+  const allowed = new Set([
+    'cache-control',
+    'content-security-policy',
+    'content-type',
+    'referrer-policy',
+    'retry-after',
+    'x-content-type-options',
+  ]);
+  const normalized = Object.entries(headers)
+    .map(([name, value]) => [name.toLowerCase(), value] as const)
+    .filter(([name]) => allowed.has(name))
+    .sort(([left], [right]) => left.localeCompare(right));
+  return `sha256:${createHash('sha256').update(JSON.stringify(normalized)).digest('hex')}`;
+}
+import { createHash } from 'node:crypto';

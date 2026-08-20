@@ -1769,3 +1769,23 @@ defect; the corrections receive one bounded independent re-review. **Policy vers
 Invocation ID**: `AD-TA-EXEC-20260820-P8-I`. **Reopen trigger**: the public login-method status
 contract changes or a required observation cannot be obtained through the retained public/admin
 boundaries.
+
+### AR-93 — Public response equality uses bounded live fingerprints
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: evidence normalization inside
+the approved functional human-authentication boundary. **Objective**: close the Phase 8 re-review
+residual without retaining response bodies, authentication values, or mailbox contents.
+**Decision**: compare normalized visible public-response text and an allowlisted set of stable
+public headers by SHA-256 digest; retain neither raw input. Require recipient-specific MailHog
+counts to agree with the global count so misdelivery cannot look like success. Derive session
+response classifications from the actual browser destination/query or raw administrative
+response. **Evidence**: the bounded re-review showed that broad semantic labels and global counts
+could hide identity-dependent content, misrouted delivery, and wrong session response shapes.
+**Rejected alternative**: storing raw bodies or headers would create unnecessary sensitive
+evidence and unstable artifacts. **Strongest counterargument**: visible-text normalization does
+not preserve hidden form values, but it intentionally keeps every visible word and pairs it with
+the immutable structural classification while avoiding CSRF/session material. **Confidence**:
+High. **Hardening**: both required reviewers independently identified the same residual; focused
+implementation tests and a fresh production-security run validate the correction. **Policy
+version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-J`. **Reopen trigger**: the public
+response contract requires a new stable header or non-visible disclosure channel.

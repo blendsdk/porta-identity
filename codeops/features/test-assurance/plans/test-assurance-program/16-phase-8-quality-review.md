@@ -3,7 +3,7 @@
 > **Date**: 2026-08-20
 > **Phase baseline tree**: `b47843aaf4c8b1273ded8a74c06796844e95d8cd`
 > **Reviewed completion commit**: `db4ac6ba`
-> **Disposition**: Corrections implemented; bounded re-review pending
+> **Disposition**: Complete after bounded re-review and residual correction
 
 ## Review Result
 
@@ -36,7 +36,15 @@ probes.
 
 ## Re-review
 
-Pending one bounded re-review of the correction diff. The correction passed the focused
-human-authentication suite (49 passed, 2 live-only skips), all 68 structure tests, assurance
-typechecking and linting, the retained production-security live command, and full `yarn verify`
-(233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests).
+The one bounded correctness/security re-review confirmed SA-802 and RV-802 corrected, but both
+reviewers found that SA-801/RV-801 remained partial: broad response labels and global mailbox
+counts could still hide body/header differences, wrong-recipient delivery, or session response
+regressions. Auto-design accepted the residual as a required correction rather than waiving it.
+
+The residual correction compares secret-free normalized public-body and bounded-header digests,
+requires recipient-specific and global MailHog cardinality to agree, and derives every session
+response from its completed browser or raw HTTP observation. Focused typecheck, lint, and all 51
+human-authentication cases pass. Production-security run
+`9e6659f3-ff0d-448a-83a4-8d0b97711673` passed every live block and cleaned its owned stack. Full
+`yarn verify` passed after the final correction (233 server files / 3,382 tests, 31 SDK files / 404
+tests, and 29 CLI files / 355 tests). Per the quality protocol, no third review was requested.
