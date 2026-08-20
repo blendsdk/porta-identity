@@ -33,12 +33,22 @@ export function exposesInternalDetail(response: BoundedPublicResponse): boolean 
   );
 }
 
+/** Returns whether bounded public body bytes disclose internal implementation detail. */
+export function exposesBodyInternalDetail(response: BoundedPublicResponse): boolean {
+  return /(?:postgres(?:ql)?:\/\/|redis:\/\/|smtp:\/\/|ECONN(?:REFUSED|RESET)|node_modules|\/app\/|\bat\s+[\w.<>]+\s*\(|select\s+.+\s+from|password=|bearer\s+[a-z0-9._~-]+|nginx\/\d|porta\/\d)/isu.test(
+    response.body,
+  );
+}
+
 /** Classifies one response body from observed bytes without consulting Porta implementation code. */
 export function classifyBody(response: BoundedPublicResponse): string {
   const contentType = response.headers['content-type'] ?? '';
   const trimmed = response.body.trim();
   if (trimmed.length === 0) return 'empty-preflight-body';
-  if (exposesInternalDetail(response)) return 'public-response-exposes-internal-detail';
+  if (response.headers['x-assurance-observation'] === 'transport-failure') {
+    return 'transport-failure-before-public-response';
+  }
+  if (exposesBodyInternalDetail(response)) return 'public-response-exposes-internal-detail';
   if (contentType.includes('text/html')) {
     if (/<form\b/iu.test(trimmed) && /<html\b/iu.test(trimmed)) {
       return 'real-login-interaction-without-secret-or-product-version';

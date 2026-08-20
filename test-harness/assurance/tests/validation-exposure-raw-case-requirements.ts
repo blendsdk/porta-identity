@@ -378,12 +378,12 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
         accept: 'application/json',
       }),
       expected: {
-        result: family === 'forwarded-client-ip' ? 'accepted-control' : 'validation-rejected',
-        status: family === 'forwarded-client-ip' ? 200 : 400,
+        result: 'accepted-control',
+        status: 200,
         bodyContract:
           family === 'forwarded-client-ip'
             ? 'normal-health-body-with-direct-peer-rate-limit-identity'
-            : 'generic-bad-request-without-attacker-origin',
+            : 'normal-health-body-with-approved-ingress-context',
         headerContract: ['attacker-forwarded-value-not-reflected'],
       },
       independentStateObservations: [

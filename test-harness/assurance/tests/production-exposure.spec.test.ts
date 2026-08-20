@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createProductionExposureContract } from './production-exposure-adapter.js';
+import {
+  productionExposureCaseEvidence,
+  productionExposureExecutionFailure,
+  writeProductionExposureEvidence,
+  type ProductionExposureCaseEvidence,
+} from '../production-exposure/evidence.js';
 import { validationExposureProductionCases } from './validation-exposure-production-case-requirements.js';
 import { validationExposureRawCases } from './validation-exposure-raw-case-requirements.js';
 
@@ -23,10 +29,18 @@ const applicableCases = [
 
 test('observes every applicable production policy and dependency case without log overclaim', async (context) => {
   const observer = await createProductionExposureContract();
+  const records: ProductionExposureCaseEvidence[] = [];
   try {
     for (const requirement of applicableCases) {
       await context.test(requirement.id, async () => {
-        const observation = await observer.observe(requirement);
+        let observation;
+        try {
+          observation = await observer.observe(requirement);
+        } catch {
+          records.push(productionExposureExecutionFailure(requirement));
+          assert.fail(`PRODUCTION_EXPOSURE_CASE_EXECUTION_FAILED: ${requirement.id}`);
+        }
+        records.push(productionExposureCaseEvidence(requirement, observation));
         assert.equal(observation.caseId, requirement.id);
         assert.equal(observation.profile, profile);
         assert.equal(observation.control.status, requirement.control.expectedStatus);
@@ -55,5 +69,7 @@ test('observes every applicable production policy and dependency case without lo
     }
   } finally {
     await observer.close();
+    const evidencePath = writeProductionExposureEvidence(records);
+    process.stdout.write(`PRODUCTION_EXPOSURE_EVIDENCE=${evidencePath}\n`);
   }
 });

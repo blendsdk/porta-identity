@@ -1893,3 +1893,30 @@ case in the current middleware, routes, nginx, and lifecycle implementation and 
 same split. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-D`.
 **Reopen trigger**: the admin CORS scope, response CSP split, dependency lifecycle, or public
 forgot-password contract changes.
+
+### AR-98 — Live production evidence separates secure denial, incomplete proof, and product failure
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: executable oracle mechanics and
+evidence taxonomy inside the approved production-exposure scope; no product behavior or risk is
+waived. **Objective**: retain only provenance-bound observations that distinguish an unsafe public
+result from a secure but incompletely observed boundary. **Decision**: accept complete omission of
+CORS allow headers as the exact unsupported-method/header denial while keeping the configured-origin
+positive control separate. Treat ignored forwarding headers as a valid 200 only when independent
+origin, cookie, and rate-limit observations prove they did not affect trusted context; absent
+observers remain `incomplete`, never passing. Resolve catalog absolute URLs through the active leased
+origin, classify transport timeouts as status 599 without retaining raw errors, and write a closed
+mode-0600 evidence record with separate `product-failure`, `incomplete`, and `execution-failure`
+outcomes. **Evidence**: the first clean run showed the CORS implementation omits all allow headers for
+the unsupported preflight, hard-coded no-port URLs bypassed the leased endpoint, a database outage
+timed out before a public response, and the forwarding probes returned 200 without the independent
+context proof required by the claim. **Rejected alternatives**: treating every 200 forwarding
+response as a defect would confuse safe header ignoring with trust; marking unobserved state false
+would manufacture safety; retaining raw child errors would leak paths and infrastructure detail into
+evidence. **Strongest counterargument**: a timeout-specific synthetic 599 is not an HTTP response,
+but it is explicitly an observer classification outside the HTTP status range and preserves the
+critical fact that no bounded public response arrived. **Confidence**: High. **Hardening**: the
+existing independent security challenge required the same fail-closed distinction and prohibited
+rate-limit credit without a Redis observer. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P9-D`. **Reopen trigger**: the CORS library starts returning partial allow
+headers, an approved forwarding-context observer becomes available, or the public dependency timeout
+contract changes.

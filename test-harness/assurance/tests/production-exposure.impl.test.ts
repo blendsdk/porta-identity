@@ -14,6 +14,8 @@ import {
   OwnedDependencyController,
   type ProductionExposureCommandRunner,
 } from '../production-exposure/service-controller.js';
+import { productionExposureCaseEvidence } from '../production-exposure/evidence.js';
+import { validationExposureProductionCases } from './validation-exposure-production-case-requirements.js';
 
 const containerId = 'a'.repeat(64);
 
@@ -202,4 +204,34 @@ test('should restore an owned dependency after the caller signal is aborted', as
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('should classify an unobserved required state as incomplete evidence', () => {
+  const requirement = validationExposureProductionCases.find(
+    (entry) => entry.id === 'st55-unconfigured-cors-origin',
+  );
+  assert.ok(requirement);
+  const evidence = productionExposureCaseEvidence(requirement, {
+    caseId: requirement.id,
+    profile: 'production-security',
+    control: { status: 200, bodyContract: 'control', headerContracts: {} },
+    probe: {
+      status: requirement.expected.status,
+      bodyContract: requirement.expected.bodyContract,
+      headerContracts: Object.fromEntries(
+        requirement.expected.headerContract.map((name) => [name, true]),
+      ),
+    },
+    independentStateObservations: Object.fromEntries(
+      requirement.independentStateObservations.map((name) => [name, 'unobserved']),
+    ),
+    prohibitedSideEffects: Object.fromEntries(
+      requirement.prohibitedSideEffects.map((name) => [name, false]),
+    ),
+    recoveryPassed: true,
+    correlatedLogCredit: false,
+    correlatedLogGap: 'correlated-security-decision-event-unavailable',
+  });
+  assert.equal(evidence.outcome, 'incomplete');
+  assert.deepEqual(evidence.unobservedStateObservations, requirement.independentStateObservations);
 });

@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 09:24
+> **Last Updated**: 2026-08-20 09:39
 > **Progress**: 92/116 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
@@ -1111,7 +1111,10 @@ independent phase review and completed corrections are recorded in
       observations, and an explicit unobserved state instead of synthesized safety. Focused tests
       passed 7/7, assurance typecheck/lint/formatting and 68 structure tests passed, and full
       verification passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
-      files / 355 tests. ✅ (completed: 2026-08-20 09:24)
+      files / 355 tests. A first clean run then hardened the capability with leased-origin
+      resolution, timeout classification, secure full-preflight denial, incomplete-versus-defect
+      taxonomy, and atomic sanitized evidence; focused tests now pass 8/8. ✅ (completed: 2026-08-20
+      09:39)
 - [ ] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
       production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
       response/state/recovery facts; preserve DEF-13 and record every observed product failure.

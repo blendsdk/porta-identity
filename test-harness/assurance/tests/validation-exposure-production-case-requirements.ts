@@ -151,7 +151,7 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
       status: 204,
       bodyContract: 'empty-preflight-body',
       headerContract: [
-        'access-control-allow-origin-exactly-echoes-the-configured-origin',
+        'access-control-allow-origin-absent',
         'access-control-allow-methods-does-not-contain-trace',
         'access-control-allow-headers-does-not-contain-x-assurance-unconfigured',
       ],

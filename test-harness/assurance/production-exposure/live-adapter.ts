@@ -364,17 +364,24 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
   ): Promise<BoundedPublicResponse> {
     const api = await this.api();
     const path = replacePathPlaceholders(raw.path, this.admin, this.protocol);
-    const target = /^https?:\/\//u.test(path)
-      ? path
-      : new URL(path, this.admin.endpoints.porta).toString();
-    const response = await api.fetch(target, {
-      method: raw.method,
-      headers: concreteHeaders(raw.headers, this.admin),
-      data: raw.body ?? undefined,
-      maxRedirects: 0,
-      timeout: requirement.harnessArrangement === 'none' ? 30_000 : 10_000,
-    });
-    return boundedResponse(response);
+    const candidate = new URL(path, this.admin.endpoints.porta);
+    const activeOrigin = new URL(this.admin.endpoints.porta);
+    if (candidate.hostname === activeOrigin.hostname) {
+      candidate.protocol = activeOrigin.protocol;
+      candidate.port = activeOrigin.port;
+    }
+    try {
+      const response = await api.fetch(candidate.toString(), {
+        method: raw.method,
+        headers: concreteHeaders(raw.headers, this.admin),
+        data: raw.body ?? undefined,
+        maxRedirects: 0,
+        timeout: requirement.harnessArrangement === 'none' ? 30_000 : 10_000,
+      });
+      return boundedResponse(response);
+    } catch {
+      return boundedPublicResponse(599, { 'x-assurance-observation': 'transport-failure' }, '');
+    }
   }
 
   /** Reads one stable administrative state fingerprint without trusting the probe response. */
@@ -476,9 +483,17 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       return 'generic-stable-response-without-dependency-or-product-detail';
     }
     if (requirement.family === 'forwarded-host' || requirement.family === 'forwarded-proto') {
-      return response.status === 400 && !/attacker\.invalid/u.test(response.body)
-        ? 'generic-bad-request-without-attacker-origin'
+      return response.status === 200 &&
+        classifyBody(response) === 'stable-health-response-without-product-version'
+        ? 'normal-health-body-with-approved-ingress-context'
         : general;
+    }
+    if (
+      requirement.family === 'forwarded-client-ip' &&
+      response.status === 200 &&
+      classifyBody(response) === 'stable-health-response-without-product-version'
+    ) {
+      return 'normal-health-body-with-direct-peer-rate-limit-identity';
     }
     return general;
   }
