@@ -1724,3 +1724,23 @@ and clean evidence. **Confidence**: High. **Hardening**: follows the existing cl
 and protocol evidence checkpoint pattern. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P8-G`. **Reopen trigger**: assurance coverage safely supports a declared,
 content-addressed non-HEAD source snapshot.
+
+### AR-91 — Operational security does not execute production-only live blocks
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: harness routing and profile
+admission within the already approved two-profile evidence matrix. **Objective**: keep operational
+browser evidence distinct from production-security control evidence. **Decision**: the operational
+security command executes its registered Playwright project and returns after owned cleanup. The
+functional-auth, second-factor, and tenant/admin Node blocks remain mandatory only for
+`production-security`, where their immutable specifications explicitly require that profile. Split
+the correction from clean roll-up evidence so coverage provenance remains clean. **Evidence**: the
+operational Playwright project completed, then the functional specification rejected the observed
+`operational` profile because its contract requires `production-security`; the dispatcher routed
+both profiles through the same post-project blocks. **Rejected alternative**: weakening the
+production-profile assertion would admit security-control evidence under a profile that does not
+promise those controls. **Strongest counterargument**: operational runs fewer Node cases, but those
+same cases are requirements-bound to the production profile and still run in the mandatory
+production-security command. **Confidence**: High. **Hardening**: exact profile gate plus both
+profile commands in the final clean campaign. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P8-H`. **Reopen trigger**: a live human-auth specification explicitly declares
+operational-profile eligibility.

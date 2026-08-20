@@ -52,6 +52,7 @@ import {
   runFoundationValidation,
 } from './foundation-artifacts.js';
 import { runManagedChild } from './managed-child.js';
+import { shouldRunProductionSecurityBlocks } from './harness-profile-admission.js';
 import { matchRedSignature } from './validate-assurance.js';
 import { environmentForManifest } from '../../fixtures/lifecycle-runtime.js';
 
@@ -285,6 +286,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
   ],
   'human-auth-live': [
+    'test-harness/assurance/tests/harness-profile-admission.impl.test.ts',
     'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
     'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
   ],
@@ -582,7 +584,7 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       return managedChildExit(liveSpecifications, testFailureExit);
     }
 
-    if (project !== 'security') return projectExit;
+    if (!shouldRunProductionSecurityBlocks(project, profile)) return projectExit;
 
     const reset = await runLifecycleAction('reset');
     const resetExit = managedChildExit(reset, setupFailureExit);

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 03:28
-> **Progress**: 81/108 tasks (75%)
+> **Last Updated**: 2026-08-20 03:40
+> **Progress**: 82/109 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -38,12 +38,12 @@ edits the read-only CI workflow.
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
-|     8 | Human authentication and recovery                   |    10 |
+|     8 | Human authentication and recovery                   |    16 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 102 tasks across 11 release-safe phases.**
+**Total: 109 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -114,7 +114,8 @@ text, but it cannot substitute another command for this binding.
 | 8.7e      | `yarn assurance:test --select human-auth-live`                                                                                                               |
 | 8.8       | `yarn assurance:test --select human-auth-specs` and `yarn assurance:test --select assurance-governance`                                                      |
 | 8.9a      | `yarn assurance:test --select human-auth-all`                                                                                                                |
-| 8.9b      | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
+| 8.9b      | `yarn assurance:harness --project security --profile operational` plus focused dispatcher implementation tests |
+| 8.9c      | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
 | 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
 | 9.5       | `yarn assurance:baseline --case ST-52`                                                                                                                       |
@@ -964,7 +965,14 @@ assurance.
       formatting passed, and `yarn verify` passed 68 structure tests, 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-20 03:28)
-- [ ] 8.9b From the clean pushed selector revision, run operational and production-security
+- [x] 8.9b Correct security-profile orchestration so operational runs only its Playwright project
+      while production-security additionally owns the live functional, second-factor, and tenant/
+      admin Node blocks. Verify and push this admission correction before evidence collection.
+      The profile admission regression passed 3/3, the operational security harness completed its
+      Playwright project and owned cleanup without entering production-only Node suites, and
+      `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 03:40)
+- [ ] 8.9c From the clean pushed orchestration revision, run operational and production-security
       browser/security projects, attributed security coverage, audit/log/recovery evidence, all
       pentests, and `yarn verify`. Keep DEF-7, DEF-9, DEF-10, and DEF-11 explicit; the roll-up may
       report partial assurance but cannot close their affected claims.
