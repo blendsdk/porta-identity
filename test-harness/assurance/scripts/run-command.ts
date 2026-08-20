@@ -281,6 +281,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/stability-campaign.spec.test.ts',
     'test-harness/assurance/tests/stability-campaign.impl.test.ts',
   ],
+  'assurance-ratchets': [
+    'test-harness/assurance/tests/assurance-ratchets.spec.test.ts',
+    'test-harness/assurance/tests/assurance-ratchets.impl.test.ts',
+  ],
   'stability-coverage-probe': ['test-harness/assurance/tests/coverage-classification.impl.test.ts'],
   'stability-compat-probe': ['test-harness/assurance/tests/packed-tenant-admin.impl.test.ts'],
   'packed-consumer': [

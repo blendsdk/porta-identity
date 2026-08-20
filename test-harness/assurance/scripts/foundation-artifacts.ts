@@ -36,6 +36,7 @@ import {
   digestRepositoryFile,
   inspectFoundationProvenance,
 } from './source-provenance.js';
+import { requireCurrentAssuranceInputs } from '../ratchets/index.js';
 
 /** UUID format used to isolate one generated assurance run. */
 const runIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -250,6 +251,7 @@ export function runFoundationValidation(repositoryRoot: string): string {
 /** Renders sanitized JSON and Markdown summaries for one owned validation run. */
 export function renderFoundationReport(repositoryRoot: string, runId: string): string {
   const canonicalRoot = realpathSync(repositoryRoot);
+  requireCurrentAssuranceInputs(canonicalRoot);
   const runDirectory = resolveRunDirectory(canonicalRoot, runId);
   const manifestPath = resolve(runDirectory, 'manifest.json');
   if (!lstatSync(manifestPath).isFile() || realpathSync(manifestPath) !== manifestPath) {

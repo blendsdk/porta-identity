@@ -2213,3 +2213,26 @@ challenge already required this protocol-versus-handler boundary. **Policy versi
 Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: any candidate stops
 exercising its registered subsystem, evidence is used to claim live-handler reliability, or a CI
 promotion decision requires command-level rather than protocol-level qualification.
+
+### AR-110 — Commit ratchet capability before governed report evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: verification sequencing and
+clean-provenance mechanics inside the approved local ratchet task; no product, claim, baseline,
+acceptance, or policy change. **Objective**: prove that governed reporting enforces the exact
+versioned staleness identities without weakening the existing clean-source boundary. **Decision**:
+split Task 10.7 into capability checkpoint 10.7a and clean-evidence checkpoint 10.7b. The first
+commits the immutable specifications, reviewed local baseline metadata, exact ratchet evaluator,
+and report admission gate. The second starts from that clean pushed revision, creates a fresh
+foundation validation run, and executes `assurance:report` against its UUID. **Evidence**:
+foundation validation intentionally rejects every staged, unstaged, or untracked path, so the
+new report cannot be provenance-bound to uncommitted ratchet code. The same capability-then-clean-
+evidence sequence already protects coverage, packed-client, and mutation evidence in this plan.
+**Rejected alternatives**: using an older validation UUID would report different source bytes;
+weakening clean provenance would invalidate the evidence; a hidden synthetic commit would create
+an unsupported provenance class. **Strongest counterargument**: the split adds one small commit
+and another full verification, but it is the only existing mechanism that lets the report attest
+to the exact ratchet implementation being evaluated. **Confidence**: High. **Hardening**: the
+decision reuses an already challenged clean-evidence pattern and changes sequencing only. **Policy
+version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**:
+foundation evidence adopts an approved content-addressed snapshot model for reviewed uncommitted
+bytes.

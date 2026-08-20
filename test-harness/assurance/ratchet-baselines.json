@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "coverage": {
+    "sourceRevision": "c347b1363a182335e77f40735e28e191e314eb03",
+    "sourceRunId": "1ca88f05-8501-4a15-bdde-d0b2f33e762c",
+    "summaryDigest": "sha256:489254a6735e87e10c7e2d86e0d26e4af69a74a5673e8e07e0e24683071b9128",
+    "normalizedPathCount": 139,
+    "counts": {
+      "statements": { "covered": 1483, "total": 6442 },
+      "branches": { "covered": 399, "total": 3118 },
+      "functions": { "covered": 243, "total": 939 },
+      "lines": { "covered": 1462, "total": 6203 }
+    },
+    "enforcement": "local-observation-only",
+    "promotionAuthorized": false
+  },
+  "monitoredInputs": {
+    "requirement-r5": {
+      "paths": [
+        "codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md"
+      ],
+      "digest": "sha256:30ded17a2bfbc8aab6200836ae9e2992a68b16a87fd7d25a68db47e5704c6f42",
+      "affectedRequirementPrefix": "R5"
+    },
+    "fixture": {
+      "paths": [
+        "test-harness/fixtures/fixture-definition.ts",
+        "test-harness/fixtures/seed-arrangement.ts"
+      ],
+      "digest": "sha256:08c5e9634ea2fc605d18c65050e2edebad5949aa09295b7d11a08784f9ebaab6",
+      "affectedRequirementPrefix": "*"
+    },
+    "dependency": {
+      "paths": ["yarn.lock"],
+      "digest": "sha256:b35d279fd3d199436eeb59658b8e44ab3eb3a9140ae90cd7094b17ed27478dd9",
+      "affectedRequirementPrefix": "*"
+    },
+    "sentinel": {
+      "paths": ["test-harness/assurance/test-inventory.json"],
+      "digest": "sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c",
+      "affectedRequirementPrefix": "*"
+    }
+  },
+  "review": {
+    "reviewId": "local-observation-baseline-2026-08-20",
+    "reviewedAt": "2026-08-20T20:05:00+02:00",
+    "reviewedBy": "authorized-test-assurance-execution",
+    "reason": "Establish exact local observation counts and staleness identities without changing CI policy.",
+    "sourceArtifact": "test-harness/.assurance-results/1ca88f05-8501-4a15-bdde-d0b2f33e762c/coverage/security/operational/report/coverage-summary.json",
+    "promotionAuthorized": false
+  }
+}

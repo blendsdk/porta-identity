@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 20:01
-> **Progress**: 109/118 tasks (92%)
+> **Last Updated**: 2026-08-20 20:18
+> **Progress**: 110/119 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -141,7 +141,8 @@ text, but it cannot substitute another command for this binding.
 | 10.4      | `yarn assurance:test --select assurance-command-signals` plus the registered command×signal campaign                                                     |
 | 10.5      | `yarn assurance:test --select stability-campaign`                                                                                                           |
 | 10.6      | Every registered `yarn assurance:stability --command <command> --seed-set <registered-set>` candidate                                                       |
-| 10.7      | `yarn assurance:test --select assurance-ratchets` and `yarn assurance:report --run <task-run-uuid>`                                                         |
+| 10.7a     | `yarn assurance:test --select assurance-ratchets`                                                                                                           |
+| 10.7b     | `yarn assurance:validate`; `yarn assurance:report --run <task-run-uuid>`                                                                                     |
 | 10.8      | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <aggregate-run-uuid>`                                                                     |
 | 11.1a     | `yarn assurance:test --select assurance-governance`; `yarn test:structure`                                                                                   |
 | 11.1b     | `yarn assurance:validate`; `yarn assurance:test --select fault-catalog-campaign`; `yarn harness:test`; `yarn verify`                                                |
@@ -1315,10 +1316,20 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       ms for compatibility. Evidence remains mode 0600 and explicitly grants no CI promotion or
       live-handler credit. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 20:01)
-- [ ] 10.7 Implement local observation-only coverage/assurance no-regression ratchets and ST-78
+- [x] 10.7a Implement local observation-only coverage/assurance no-regression ratchets and ST-78
       staleness triggers. Exact baseline changes require reviewed metadata; affected claims become
       stale before reporting succeeds. Do not edit CI, release, merge, publishing, or deployment
-      policy.
+      policy. Per AR-110, this checkpoint implements the capability only: an exact reviewed
+      security-coverage baseline, covered-count and total-change decisions, sensitivity-gated slice
+      floors, versioned requirement/fixture/dependency/sentinel identities, exact traceability claim
+      mapping, and fail-closed report admission. Focused specifications and implementation tests
+      passed 10/10; assurance typecheck/lint/formatting, governance, and 68 structure tests passed,
+      and the authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. Clean governed-report evidence follows after commit in
+      Task 10.7b. ✅ (completed: 2026-08-20 20:18)
+- [ ] 10.7b From the clean pushed ratchet-capability revision, create a new foundation validation
+      run and prove the governed report succeeds only while every monitored identity remains
+      current. Retain local observation-only and no-promotion metadata.
 - [ ] 10.8 Run the complete registered local assurance aggregate, UI suite, pentests, redaction and
       residue scans, traceability/report validation, and authoritative `yarn verify`. Publish a
       truthful roll-up of assured, blocked, incomplete, survived, and unqualified items without
