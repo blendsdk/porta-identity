@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 10:17
-> **Progress**: 92/116 tasks (79%)
+> **Last Updated**: 2026-08-20 10:32
+> **Progress**: 93/116 tasks (80%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1121,9 +1121,20 @@ independent phase review and completed corrections are recorded in
       contract. Focused tests pass 10/10 and full verification passes 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20
       10:17)
-- [ ] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
+- [x] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
       production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
       response/state/recovery facts; preserve DEF-13 and record every observed product failure.
+      Clean revision `2e4f678a` produced mode-0600, provenance-bound production-security run
+      `b0662134-7668-4b79-a2dd-46e4dccb4b8d` and operational run
+      `547c3dbe-2ec0-4d59-ba2a-d93cf668b6b1`; both removed their active-run records and all labelled
+      containers. CORS origin/method/header controls and production session-cookie policy passed.
+      DEF-14 records the incomplete forwarding-context observer, DEF-15 records nginx product
+      version disclosure, and DEF-16 records dependency timeout/reconnection failures. Database
+      and cache interruption returned no bounded public response; database restoration required an
+      exact Porta restart. Mail returned the stable acquired-CSRF form but retained the version
+      disclosure and lacks two independent state observations. Correlated-log credit remains false
+      under DEF-13. `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
+      and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:32)
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
       lifecycle, and redacted-error implementation tests after specs are green.
 - [ ] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation

@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 09:39
+> **Last Updated**: 2026-08-20 10:22
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -35,5 +35,8 @@
 | ↳ DEF-11 | Human-auth control-sensitivity campaign         | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-20 03:09 | no disposable human-auth source variations in this program                                            |
 | ↳ DEF-12 | Bulk/import/export product contract             | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 05:32 | product authority required for duplicate, rollback, partial-result, and export-sensitivity semantics  |
 | ↳ DEF-13 | Correlated P1 rejection events                  | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 06:48 | malformed requests and admin denials lack one complete privacy-safe correlated decision event         |
+| ↳ DEF-14 | Forwarding-context observation completeness     | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Deferred  | ⏸️     | 2026-08-20 10:22 | cookie and rate-limit identity observers are unavailable; forwarding claims remain incomplete         |
+| ↳ DEF-15 | Public product-version disclosure               | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | production and operational ingress expose the nginx version in public response headers                |
+| ↳ DEF-16 | Dependency failure and reconnection behavior    | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | database/cache probes time out; database recovery requires an exact Porta restart                     |
 | RD-06    | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                                                        |
 | RD-07    | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                                                |
