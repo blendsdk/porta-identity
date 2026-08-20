@@ -25,6 +25,7 @@ export const assuranceCommandActions = [
   'harness',
   'coverage',
   'fault',
+  'mutation',
   'control-check',
   'compat',
   'report',
@@ -119,6 +120,20 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
     signalContract: 'SIGINT and SIGTERM trigger common signal cleanup',
     cleanupContract:
       'owned resources are removed or exact recovery is reported; primary tree immutable',
+  },
+  'assurance:mutation': {
+    selectorGrammar: '--select bounded-pilot | --recover <run-uuid>',
+    timeout: '900s',
+    artifactSubdirectory: 'mutation/bounded-pilot/',
+    prerequisites: [
+      'clean baseline',
+      'exact StrykerJS packages installed',
+      'disposable worktree support',
+      'registered include-only targets',
+    ],
+    signalContract: 'SIGINT and SIGTERM trigger common signal cleanup',
+    cleanupContract:
+      'owned worktree and runtime are removed or exact recovery is reported; primary tree immutable',
   },
   'assurance:control-check': {
     selectorGrammar:

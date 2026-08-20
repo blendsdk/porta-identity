@@ -200,6 +200,12 @@ export function registerEvidenceAndCommandCases(
         'fault/<fault>/<claim>/<sentinel>/',
         /clean baseline.*registered tuple.*Docker.*disposable worktree/i,
       ],
+      'assurance:mutation': [
+        '--select bounded-pilot | --recover <run-uuid>',
+        '900s',
+        'mutation/bounded-pilot/',
+        /clean baseline.*StrykerJS.*disposable worktree.*include-only targets/i,
+      ],
       'assurance:control-check': [
         '--check <tenant-read-scope|tenant-write-scope|issuer-separation|organization-cache-scope|stale-authority-recheck|admin-organization-membership|admin-permission-rbac> | --recover <run-uuid>',
         '3600s',

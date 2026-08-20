@@ -5,6 +5,9 @@
 > **Authority**: User-prioritized Must/Should closeout
 > **CodeOps Artifact Schema**: 1
 
+> **Historical checkpoint**: The user resumed DEF-20 on 2026-08-20. This document remains the
+> verified Must/Should checkpoint; current execution state is owned by the execution plan.
+
 ## Scope and conclusion
 
 This closeout preserves the assurance capabilities and findings already delivered while deferring
@@ -49,12 +52,13 @@ items are:
 No blocked or deferred item receives assured status. Product remediation remains separate from this
 structural/assurance branch.
 
-## User-authorized deferment
+## User-authorized deferment at this checkpoint
 
 DEF-20 defers the mutation-tool pilot, exhaustive command×outcome/signal matrix, 100-run stability
 campaign, local ratchets, exhaustive aggregate/UI reruns, and CI-promotion proposal. These are not
 required to continue local Porta feature implementation. They are required before claiming that the
 new assurance commands are stable enough for additional blocking CI, release, or merge-policy use.
+The later resumption does not retroactively change the evidence or conclusions recorded here.
 
 ## Protected-scope proof
 

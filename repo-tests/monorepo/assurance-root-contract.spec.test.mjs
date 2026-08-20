@@ -12,6 +12,7 @@ const assuranceAliases = [
   'coverage',
   'fault',
   'harness',
+  'mutation',
   'red',
   'report',
   'stability',
@@ -52,7 +53,7 @@ test('should compose root static checks across assurance tooling and active pack
   );
 });
 
-test('should expose the eleven approved aliases while leaving verify unchanged', () => {
+test('should expose the approved aliases while leaving verify unchanged', () => {
   const scripts = readRepositoryJson('package.json').scripts ?? {};
 
   for (const action of assuranceAliases) {

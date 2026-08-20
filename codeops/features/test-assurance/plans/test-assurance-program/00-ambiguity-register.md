@@ -2101,3 +2101,53 @@ than those actually validated. **Confidence**: High. **Hardening**: this reuses 
 challenged clean-evidence architecture and retains the user's narrowed command set. **Policy
 version**: 1. **Root Invocation ID**: `USER-TA-CLOSEOUT-20260820`. **Reopen trigger**: the validator
 adopts an approved content-addressed snapshot model that can attest to reviewed uncommitted bytes.
+
+### AR-106 — Resume deferred assurance qualification
+
+**Authority**: User — explicitly requested on 2026-08-20. **Eligibility**: user-owned program
+priority and deferment authority. **Objective**: continue the remaining assurance work on this
+isolated branch while Porta feature development proceeds independently in another branch or
+worktree. **Decision**: reopen DEF-20 Tasks 10.2–10.8 and 11.2. The resumed scope covers the bounded
+mutation-tool evaluation, command/outcome and signal qualification, 100-run stability evidence,
+local observation-only ratchets, exhaustive local roll-up, and a non-enforcing CI proposal. It does
+not authorize edits to Porta product behavior, the read-only CI workflow, release or merge policy,
+publishing, or deployment. Existing product defects and product-authority gaps remain blocked and
+must be remediated through separate branches and plans. **Evidence**: the assurance worktree is
+clean, tracks `origin/feat/test-surface`, and is independent from new feature work performed in
+another worktree. **Rejected alternatives**: mixing product fixes into this structural branch
+violates the active migration constraint; silently converting prior deferments to completed work
+would fabricate evidence; leaving DEF-20 deferred contradicts the user's explicit resumption.
+**Strongest counterargument**: these campaigns are time-consuming and do not implement Porta
+features, but running them independently avoids blocking feature development and determines which
+assurance commands are reliable enough to propose for later adoption. **Confidence**: High.
+**Hardening**: every reopened task retains its original no-promotion boundary and must produce
+clean-revision evidence before receiving credit. **Policy version**: 1. **Root Invocation ID**:
+`USER-TA-RESUME-20260820`. **Reopen trigger**: the user reprioritizes or separately authorizes
+product/workflow-policy changes.
+
+### AR-107 — Use StrykerJS for the bounded test-sensitivity pilot
+
+**Authority**: User — approved on 2026-08-20 after reviewing the pilot's purpose and safety
+boundary. **Eligibility**: approved local development dependency and test-only evaluation; no
+product behavior, security policy, external target, or CI promotion change. **Objective**: determine
+whether an established TypeScript mutation runner adds useful sensitivity evidence beyond Porta's
+curated checks. **Decision**: evaluate StrykerJS 9.6.1 with its official Vitest runner against only
+`packages/server/src/lib/cursor.ts` and
+`packages/server/src/middleware/require-permission.ts`. The first target establishes compatibility
+on pure deterministic logic; the second tests a focused authorization predicate. The command runs
+from a clean disposable worktree, selects only the exact existing unit specifications, persists no
+modified product source, and returns a truthful `go` or `no-go` rather than enforcing a score.
+**Evidence**: Porta uses Node 22, TypeScript ESM, and Vitest 4.1.10. StrykerJS 9.6.1 requires Node
+22 or newer, and its official Vitest runner supports Vitest 2 or newer and explicitly covers Vitest
+4.1 behavior. Both selected modules have direct focused unit tests, avoiding indirect-test
+discovery ambiguity. **Rejected alternatives**: a custom mutation engine would duplicate the
+curated runner and increase maintenance; repository-wide mutation violates the include-only scope;
+skipping the pilot remains acceptable only if the approved runner proves incompatible or
+operationally disproportionate. **Strongest counterargument**: Stryker adds development
+dependencies and may still be slow on a large monorepo, which is why the evaluation is bounded to
+two files and may conclude `no-go`. **Confidence**: High. **Hardening**: exact version, targets,
+tests, clean provenance, cleanup, and result taxonomy are frozen before implementation; broadening
+any of them reopens this decision. **Policy version**: 1. **Root Invocation ID**:
+`USER-TA-RESUME-20260820`. **Reopen trigger**: incompatible dependency resolution, inability to
+produce machine-readable bounded results, primary-tree mutation, or runtime beyond the documented
+pilot timeout.

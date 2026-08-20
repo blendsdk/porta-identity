@@ -12,6 +12,7 @@ const supportedScripts = [
   'assurance:coverage',
   'assurance:fault',
   'assurance:harness',
+  'assurance:mutation',
   'assurance:red',
   'assurance:report',
   'assurance:stability',

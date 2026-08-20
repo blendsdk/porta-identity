@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Blocked/Deferred after Must/Should closeout
-> **Last Updated**: 2026-08-20 13:58
-> **Progress**: 103/117 tasks (88%)
+> **Status**: Executing — deferred assurance qualification resumed
+> **Last Updated**: 2026-08-20 15:10
+> **Progress**: 103/118 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -40,10 +40,10 @@ edits the read-only CI workflow.
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
 |     9 | P1 validation, exposure, and administrative data    |    18 |
-|    10 | Mutation pilot and reliability qualification        |    11 |
-|    11 | Must/Should closeout and deferred-work ledger        |     3 |
+|    10 | Mutation pilot and reliability qualification        |    12 |
+|    11 | Must/Should closeout and promotion proposal           |     3 |
 
-**Total: 117 tasks across 11 release-safe phases.**
+**Total: 118 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -135,10 +135,17 @@ text, but it cannot substitute another command for this binding.
 | 10.1b     | `yarn assurance:test --select fault-catalog-campaign` (expected exact RED marker)                                                                            |
 | 10.1c     | `yarn assurance:test --select fault-catalog-campaign`                                                                                                       |
 | 10.1d     | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
-| 10.2–10.8 | Deferred under DEF-20; no execution or assurance credit                                                                                                     |
+| 10.2a     | `yarn assurance:test --select mutation-pilot`                                                                                                               |
+| 10.2b     | `yarn assurance:mutation --select bounded-pilot`                                                                                                            |
+| 10.3      | `yarn assurance:test --select command-outcome-matrix`                                                                                                      |
+| 10.4      | `yarn assurance:test --select assurance-command-signals` plus the registered command×signal campaign                                                     |
+| 10.5      | `yarn assurance:test --select stability-campaign`                                                                                                           |
+| 10.6      | Every registered `yarn assurance:stability --command <command> --seed-set <registered-set>` candidate                                                       |
+| 10.7      | `yarn assurance:test --select assurance-ratchets` and `yarn assurance:report --run <task-run-uuid>`                                                         |
+| 10.8      | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <aggregate-run-uuid>`                                                                     |
 | 11.1a     | `yarn assurance:test --select assurance-governance`; `yarn test:structure`                                                                                   |
 | 11.1b     | `yarn assurance:validate`; `yarn assurance:test --select fault-catalog-campaign`; `yarn harness:test`; `yarn verify`                                                |
-| 11.2      | Deferred under DEF-20; no execution or promotion authority                                                                                                  |
+| 11.2      | `yarn assurance:test --select assurance-governance`; `yarn assurance:validate`; `yarn verify`                                                               |
 
 ## Phase 1: Claim, Command, and Traceability Foundation
 
@@ -1226,22 +1233,55 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       primary-tree and cleanup checks passed, no recovery was required, and the artifact redaction
       scan passed. The authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK
       files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 13:32)
-- [!] 10.2 Blocked: DEF-20 defers the optional mutation-tool pilot so Porta feature delivery can
-      resume; the curated-fault catalog remains the delivered sensitivity mechanism.
-- [!] 10.3 Blocked: DEF-20 defers the exhaustive command×outcome specification matrix.
-- [!] 10.4 Blocked: DEF-20 defers forced exit/signal/cleanup qualification for every assurance
-      alias; existing per-command contracts and tests remain, without full qualification credit.
-- [!] 10.5 Blocked: DEF-20 defers the 100-consecutive-run promotion campaign.
-- [!] 10.6 Blocked: DEF-20 defers percentile, retry, flake, and invalid-run qualification evidence.
-- [!] 10.7 Blocked: DEF-20 defers local coverage/assurance ratchets and staleness triggers; no CI,
-      release, or merge policy is promoted.
-- [!] 10.8 Blocked: DEF-20 replaces the unavailable exhaustive aggregate roll-up with the bounded
-      Must/Should closeout in Task 11.1; deferred commands receive no assurance credit.
+- [x] 10.2a Write immutable ST-68A specifications, record the exact missing-capability RED, and
+      implement a closed `assurance:mutation --select bounded-pilot` capability for StrykerJS
+      9.6.1. Allowlist only `packages/server/src/lib/cursor.ts` and
+      `packages/server/src/middleware/require-permission.ts` with their exact unit specifications.
+      Require a clean disposable worktree, machine-readable killed/survived/invalid/no-coverage
+      classifications, target refusal, primary-tree immutability, bounded diagnostics, cleanup,
+      and a truthful `go` or `no-go` result. Implementation tests use controlled local fixtures and
+      cannot claim live tool evidence. The isolated RED produced the sole expected
+      `MUTATION_PILOT_CAPABILITY_MISSING` marker. The implemented capability pins StrykerJS and its
+      official Vitest runner to 9.6.1, directly owns compatible Vitest tooling at the root, rejects
+      every unregistered selector and target, and retains only count evidence from a detached
+      worktree. Focused pilot tests passed 11/11, governance passed 55/55, structure passed 68/68,
+      and the authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. No clean live pilot evidence was claimed. ✅ (completed:
+      2026-08-20 15:36)
+- [ ] 10.2b From the clean pushed 10.2a revision, execute the exact bounded pilot and publish its
+      owner-only result. Verify both allowlisted targets, dependency/tool/source identities,
+      survivor classification, primary-tree immutability, redaction, and zero owned residue. A
+      compatibility or usefulness failure records `no-go` and retains curated faults as the
+      required sensitivity mechanism; it does not weaken tests or broaden targets.
+- [ ] 10.3 Write an exhaustive, table-driven ST-75 specification matrix for every registered
+      assurance alias and every documented product, assertion/test, setup, coverage, fault,
+      timeout, cleanup, and invalid-evidence outcome. Require one stable stage-aware exit class,
+      sanitized bounded evidence, and explicit precedence for simultaneous terminal conditions.
+- [ ] 10.4 Implement the closed command-outcome and ST-76 signal campaign. Force each supported
+      outcome plus SIGINT and SIGTERM at every resource-owning command stage, prove exact cleanup or
+      bounded recovery without cross-worktree mutation, and keep unsupported/non-resource-owning
+      combinations explicit rather than silently passing them.
+- [ ] 10.5 Write and implement the ST-74 stability campaign with versioned registered candidate
+      sets, deterministic shuffled seeds, visible retries, invalid/incomplete sequence reset,
+      per-attempt deadlines, the 125-attempt cap, and owner-only atomic evidence. No candidate is
+      qualified by implementation tests alone.
+- [ ] 10.6 From clean pushed revisions, run 100 consecutive completed executions for every selected
+      promotion candidate, requiring zero flakes and no hidden retry. Record p50/p95 runtime,
+      invalid-run rate, failure ownership, cleanup/recovery, exact source/tool/seed identities, and
+      reset the sequence after every invalid, cancelled, incomplete, or flaky attempt.
+- [ ] 10.7 Implement local observation-only coverage/assurance no-regression ratchets and ST-78
+      staleness triggers. Exact baseline changes require reviewed metadata; affected claims become
+      stale before reporting succeeds. Do not edit CI, release, merge, publishing, or deployment
+      policy.
+- [ ] 10.8 Run the complete registered local assurance aggregate, UI suite, pentests, redaction and
+      residue scans, traceability/report validation, and authoritative `yarn verify`. Publish a
+      truthful roll-up of assured, blocked, incomplete, survived, and unqualified items without
+      treating known product defects or unsupported observers as success.
 
 **Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
 evidence; this evidence grants no promotion authority.
 
-## Phase 11: Must/Should Closeout and Deferred-Work Ledger
+## Phase 11: Must/Should Closeout and Promotion Proposal
 
 > **Scope**: truthful traceability/status roll-up, inventory/ADR, scope proof, and representative
 > final verification only
@@ -1263,14 +1303,16 @@ evidence; this evidence grants no promotion authority.
       container, disposable worktree, or run-owned runtime residue remained; and `yarn verify`
       passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-20 13:58)
-- [!] 11.2 Blocked: DEF-20 defers the CI-promotion proposal, exhaustive `assurance:all`/UI rerun,
-      stability qualification, and any future ratchet/fault scheduling. Separate user and policy
-      authority remain required before adoption.
+- [ ] 11.2 Produce a verified, non-enforcing CI-promotion proposal from the completed reliability
+      evidence. Name exact candidate commands, runtimes, ownership, recovery, retention, and
+      required workflow changes, but do not edit the read-only workflow or authorize scheduled,
+      PR-targeted, release, merge, mutation, or fault enforcement.
 
-**Final gate:** Task 11.1 records every delivered, blocked, incomplete, and DEF-20-deferred item
-without granting deferred assurance or promotion authority; ordinary development remains usable,
-and this plan made no workflow-policy, publishing, deployment, scanner, or certification change.
+**Final gate:** Task 11.1 preserves the verified Must/Should checkpoint. Resumed DEF-20 work earns
+credit only through Tasks 10.2–10.8, and Task 11.2 may produce only a non-enforcing proposal.
+Ordinary development remains usable, and this plan makes no workflow-policy, publishing,
+deployment, scanner, or certification change.
 
-**Bounded closeout review:** [Phase 10–11 Review](19-phase-10-11-quality-review.md) records no
-unresolved Critical or Major correction in the retained surface and explicitly grants no credit to
-DEF-20 work.
+**Historical bounded closeout review:** [Phase 10–11 Review](19-phase-10-11-quality-review.md)
+records no unresolved Critical or Major correction in the retained Must/Should checkpoint. Resumed
+DEF-20 work requires its own Phase 10 quality review before final completion.

@@ -51,6 +51,7 @@
     "assurance:harness": "tsx test-harness/assurance/scripts/run-command.ts harness",
     "assurance:coverage": "tsx test-harness/assurance/scripts/run-command.ts coverage",
     "assurance:fault": "tsx test-harness/assurance/scripts/run-command.ts fault",
+    "assurance:mutation": "tsx test-harness/assurance/scripts/run-command.ts mutation",
     "assurance:control-check": "tsx test-harness/assurance/scripts/run-command.ts control-check",
     "assurance:compat": "tsx test-harness/assurance/scripts/run-command.ts compat",
     "assurance:report": "tsx test-harness/assurance/scripts/run-command.ts report",
@@ -67,6 +68,8 @@
     "@eslint/js": "10.0.1",
     "@koa/router": "^15.7.0",
     "@playwright/test": "1.62.1",
+    "@stryker-mutator/core": "9.6.1",
+    "@stryker-mutator/vitest-runner": "9.6.1",
     "@types/koa": "^3.0.3",
     "@types/koa-session": "^6.4.5",
     "@types/koa-static": "^4.0.4",
@@ -92,6 +95,7 @@
     "typescript-eslint": "8.66.0",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
+    "vitest": "4.1.10",
     "zod": "4.4.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

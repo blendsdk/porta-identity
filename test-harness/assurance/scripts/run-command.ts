@@ -29,6 +29,7 @@ import {
   type CoverageFailureStage,
 } from './coverage-orchestration.js';
 import { isFullCatalogSelection, runCuratedFault, runCuratedFaultCatalog } from '../fault/index.js';
+import { recoverMutationPilotRun, runMutationPilot } from '../mutation/index.js';
 import { runTenantAdminControlSensitivity } from '../control-sensitivity/command.js';
 import { recoverLocalControlSensitivityRun } from '../control-sensitivity/local-runtime.js';
 import { isTenantAdminControlCheckId } from '../control-sensitivity/registry.js';
@@ -265,6 +266,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'fault-catalog-campaign': [
     'test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts',
     'test-harness/assurance/tests/fault-catalog-campaign.impl.test.ts',
+  ],
+  'mutation-pilot': [
+    'test-harness/assurance/tests/mutation-pilot.spec.test.ts',
+    'test-harness/assurance/tests/mutation-pilot.impl.test.ts',
   ],
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
@@ -1120,6 +1125,47 @@ async function runCompatibilityCommand(options: readonly string[]): Promise<void
   });
 }
 
+/** Executes or recovers the one closed local mutation-pilot command. */
+async function runMutationCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover') {
+    const runId = options[1] ?? '';
+    if (!recoverMutationPilotRun(process.cwd(), runId)) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
+  if (options.length !== 2 || options[0] !== '--select' || options[1] !== 'bounded-pilot') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --select bounded-pilot or --recover <run-uuid>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  let result;
+  try {
+    result = await runMutationPilot(process.cwd());
+  } catch {
+    process.stderr.write('ASSURANCE_MUTATION_FAILED: stage=preflight\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  process.exitCode = result.exitCode;
+  if (result.exitCode === 0) {
+    process.stdout.write(
+      `ASSURANCE_MUTATION_RESULT: run=${result.runId} decision=${result.decision} artifact=${result.artifactPath}\n`,
+    );
+  } else if (result.recoveryCommand !== undefined) {
+    process.stderr.write(
+      `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+    );
+  } else {
+    process.stderr.write(`ASSURANCE_MUTATION_FAILED: run=${result.runId}\n`);
+  }
+}
+
 /** Returns a minimal diagnostic message without serializing an exception or stack. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown assurance command failure';
@@ -1210,6 +1256,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'fault') {
     await runFaultCommand(options);
+    return;
+  }
+  if (action === 'mutation') {
+    await runMutationCommand(options);
     return;
   }
   if (action === 'control-check') {
