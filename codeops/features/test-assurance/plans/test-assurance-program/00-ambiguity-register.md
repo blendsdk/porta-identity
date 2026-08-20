@@ -2293,3 +2293,32 @@ continue only after safe known-product outcomes, and rejected generic assertion 
 `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: the collector stops using the shared
 admission/evidence path, an exit other than `0` or `20` is allowed to continue, or product findings
 can produce aggregate exit `0`.
+
+### AR-113 — Continue only after an evidence-bound known observer gap
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: fail-closed assurance
+orchestration and evidence admission inside the approved aggregate; no observer, product,
+requirement, acceptance, claim, or policy change. **Objective**: complete the registered local
+collection while keeping the already-approved forwarding observer gap explicitly unqualified and
+globally non-successful. **Decision**: exit `40` remains terminal by default. The two registered
+security-harness invocations may continue only when their emitted production-exposure artifact is
+canonical beneath the owner results root; its path UUID equals its schema-validated run UUID; its
+profile, clean source commit/tree/tool identities, and exact profile case set match the current
+invocation; every incomplete case is one of the three forwarding-context cases with the exact
+registered missing observations; no other incomplete or execution-failure case exists; and child
+cleanup completed. The invocation remains `evidence-incomplete`, the forwarding gap remains
+`unqualified`, and the aggregate remains exit `50`. **Evidence**: clean run
+`7a05dad5-e641-450a-a2ae-66af677ef8db` reached operational security and correctly produced three
+known forwarding observer incompletions plus three known product failures, but unconditional exit
+`40` termination made the mandated full roll-up impossible. **Rejected alternatives**: continuing
+after every exit `40` would admit unexpected coverage or observer gaps; requiring unconditional
+termination would make the complete aggregate structurally impossible; marking the cases passed
+would fabricate evidence. **Strongest counterargument**: interpreting a failed child artifact
+weakens the simple nonzero-stop rule. The exception is narrower than the existing product-exit
+continuation and fails closed on every identity, schema, provenance, case, observation, or cleanup
+mismatch. **Confidence**: High. **Hardening**: an independent blind challenge selected the same
+artifact-bound exception and required every listed guard; it rejected a generic exit-`40`
+continuation. **Policy version**: 1. **Root Invocation ID**:
+`574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: forwarding observations become
+available, the production-exposure case set changes, another invocation seeks exit-`40`
+continuation, or the final aggregate can return success while this gap remains.

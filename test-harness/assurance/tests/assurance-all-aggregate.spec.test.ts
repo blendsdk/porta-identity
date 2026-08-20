@@ -11,6 +11,7 @@ import {
   assuranceAllChildRegistry,
   assuranceAllForbiddenEvidencePatterns,
   assuranceAllKnownGapRegistry,
+  assuranceAllKnownIncompleteCollectorRegistry,
   assuranceAllRetainedFieldNames,
   assuranceAllTerminalPrecedence,
   classifyAssuranceAllExit,
@@ -102,6 +103,39 @@ test('deduplicates overlapping internal selectors by canonical file in first-see
       ]),
     /ASSURANCE_ALL_INTERNAL_FILE_NOT_CANONICAL/,
   );
+});
+
+test('admits continuation only for the exact registered forwarding observer gap', () => {
+  assert.deepEqual(
+    assuranceAllKnownIncompleteCollectorRegistry.map((entry) => [
+      entry.invocationId,
+      entry.profile,
+      entry.gapId,
+    ]),
+    [
+      ['harness-security-operational', 'operational', 'forwarding-context-observer-incomplete'],
+      [
+        'harness-security-production-security',
+        'production-security',
+        'forwarding-context-observer-incomplete',
+      ],
+    ],
+  );
+  for (const entry of assuranceAllKnownIncompleteCollectorRegistry) {
+    assert.deepEqual(entry.incompleteCaseIds, [
+      'st53-untrusted-forwarded-host',
+      'st53-untrusted-forwarded-proto',
+      'st53-untrusted-forwarded-client-ip',
+    ]);
+    assert.deepEqual(entry.unobservedStateObservations, [
+      'configured-public-origin-unchanged',
+      'cookie-policy-unchanged',
+      'rate-limit-key-uses-direct-peer-not-spoofed-value',
+    ]);
+    assert.deepEqual(entry.unobservedProhibitedEffects, ['rate-limit-budget-split-by-spoofed-ip']);
+    assert.equal(entry.continuedConclusion, 'incomplete');
+    assert.equal(entry.finalExitRemainsNonzero, true);
+  }
 });
 
 test('rolls up every item exactly once without laundering defects or authority gaps', () => {

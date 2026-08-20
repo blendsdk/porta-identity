@@ -6,6 +6,47 @@ import type {
   AssuranceAllKnownGapRegistration,
 } from '../tests/assurance-all-aggregate-contract.js';
 
+/** Exact missing observations allowed for the registered forwarding-context gap. */
+const forwardingIncompleteObservation = Object.freeze({
+  unobservedStateObservations: Object.freeze([
+    'configured-public-origin-unchanged',
+    'cookie-policy-unchanged',
+    'rate-limit-key-uses-direct-peer-not-spoofed-value',
+  ]),
+  unobservedProhibitedEffects: Object.freeze(['rate-limit-budget-split-by-spoofed-ip']),
+});
+
+/** One fail-closed rule that may continue after a known incomplete collector. */
+export interface AggregateKnownIncompleteCollectorRegistration {
+  readonly invocationId: string;
+  readonly profile: 'operational' | 'production-security';
+  readonly gapId: 'forwarding-context-observer-incomplete';
+  readonly incompleteCases: Readonly<
+    Record<
+      string,
+      {
+        readonly unobservedStateObservations: readonly string[];
+        readonly unobservedProhibitedEffects: readonly string[];
+      }
+    >
+  >;
+}
+
+/** Closed continuation rules for known, non-executable observer gaps. */
+export const aggregateKnownIncompleteCollectors: readonly AggregateKnownIncompleteCollectorRegistration[] =
+  Object.freeze(
+    (['operational', 'production-security'] as const).map((profile) => ({
+      invocationId: `harness-security-${profile}`,
+      profile,
+      gapId: 'forwarding-context-observer-incomplete' as const,
+      incompleteCases: Object.freeze({
+        'st53-untrusted-forwarded-host': forwardingIncompleteObservation,
+        'st53-untrusted-forwarded-proto': forwardingIncompleteObservation,
+        'st53-untrusted-forwarded-client-ip': forwardingIncompleteObservation,
+      }),
+    })),
+  );
+
 /** Builds one immutable, shell-free child invocation. */
 function invocation(
   id: string,
@@ -187,5 +228,5 @@ export const aggregateKnownGaps: readonly AssuranceAllKnownGapRegistration[] = O
 
 /** Stable digest binding aggregate evidence to the exact executable registry and known gaps. */
 export function aggregateRegistryDigest(): string {
-  return `sha256:${createHash('sha256').update(JSON.stringify({ aggregateChildRegistry, aggregateKnownGaps })).digest('hex')}`;
+  return `sha256:${createHash('sha256').update(JSON.stringify({ aggregateChildRegistry, aggregateKnownGaps, aggregateKnownIncompleteCollectors })).digest('hex')}`;
 }

@@ -9,4 +9,10 @@ export {
   type AggregateRunnerDependencies,
   type AggregateRunResult,
 } from './runner.js';
-export { aggregateChildRegistry, aggregateKnownGaps, aggregateRegistryDigest } from './registry.js';
+export { admitKnownIncompleteCollector } from './incomplete-admission.js';
+export {
+  aggregateChildRegistry,
+  aggregateKnownGaps,
+  aggregateKnownIncompleteCollectors,
+  aggregateRegistryDigest,
+} from './registry.js';

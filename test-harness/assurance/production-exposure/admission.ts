@@ -1,7 +1,10 @@
 import type { ProductionExposureProfile } from '../tests/production-exposure-contract.js';
 import type { ValidationExposureRawCase } from '../tests/validation-exposure-case-model.js';
 
-const exactCaseIds: Readonly<Record<ProductionExposureProfile, readonly string[]>> = Object.freeze({
+/** Exact production-exposure case identities admitted for each lifecycle profile. */
+export const productionExposureCaseIdsByProfile: Readonly<
+  Record<ProductionExposureProfile, readonly string[]>
+> = Object.freeze({
   operational: Object.freeze([
     'st53-untrusted-forwarded-host',
     'st53-untrusted-forwarded-proto',
@@ -30,7 +33,7 @@ export function admitProductionExposureCases(
   profile: ProductionExposureProfile,
   candidates: readonly ValidationExposureRawCase[],
 ): readonly ValidationExposureRawCase[] {
-  const expectedIds = exactCaseIds[profile];
+  const expectedIds = productionExposureCaseIdsByProfile[profile];
   const byId = new Map<string, ValidationExposureRawCase>();
   for (const candidate of candidates) {
     if (byId.has(candidate.id)) throw new Error('production exposure case identity is duplicated');

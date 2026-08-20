@@ -29,6 +29,7 @@ import {
   aggregateRetainedFields,
   validateAggregateEvidence,
 } from './evidence.js';
+import { admitKnownIncompleteCollector } from './incomplete-admission.js';
 import { aggregateChildRegistry, aggregateKnownGaps, aggregateRegistryDigest } from './registry.js';
 
 /** Bounded result returned to the root dispatcher. */
@@ -297,9 +298,22 @@ export async function runAssuranceAggregate(
         effective,
         Math.min(invocationTimeout(effective), remaining),
       );
-      const terminal = childTerminal(outcome);
-      exits.push(terminal.exitCode);
       const observedReference = observedArtifactReference(effective, outcome.stdout);
+      const initialTerminal = childTerminal(outcome);
+      const knownIncompleteAdmitted =
+        initialTerminal.exitCode === 40 &&
+        admitKnownIncompleteCollector({
+          repositoryRoot: root,
+          invocation: effective,
+          artifactReference: observedReference,
+          provenance: before,
+          cleanupComplete: !outcome.cleanupFailed,
+        });
+      const terminal = {
+        exitCode: initialTerminal.exitCode,
+        stop: knownIncompleteAdmitted ? false : initialTerminal.stop,
+      };
+      exits.push(terminal.exitCode);
       if (registered.command === 'assurance:validate') {
         validationRunId = /^ASSURANCE_RUN_ID=([0-9a-f-]{36})$/m.exec(outcome.stdout)?.[1];
         if (terminal.exitCode === 0 && validationRunId === undefined) {
@@ -343,18 +357,22 @@ export async function runAssuranceAggregate(
             ? 'passed'
             : terminal.exitCode === 20
               ? 'product-defect-observed'
-              : terminal.exitCode === 21 && registeredChild.id === 'fault'
-                ? 'fault-survived'
-                : 'assertion-failed',
+              : terminal.exitCode === 40
+                ? 'evidence-incomplete'
+                : terminal.exitCode === 21 && registeredChild.id === 'fault'
+                  ? 'fault-survived'
+                  : 'assertion-failed',
         notRunReason: null,
         conclusion:
           terminal.exitCode === 0
             ? 'assured'
             : terminal.exitCode === 20
               ? 'blocked'
-              : terminal.exitCode === 21 && registeredChild.id === 'fault'
-                ? 'survived'
-                : 'incomplete',
+              : terminal.exitCode === 40
+                ? 'incomplete'
+                : terminal.exitCode === 21 && registeredChild.id === 'fault'
+                  ? 'survived'
+                  : 'incomplete',
       });
       if (terminal.stop) stopped = true;
     }
@@ -364,7 +382,8 @@ export async function runAssuranceAggregate(
     const notRun = invocations.length - completed.length;
     const childExitCodes = completed.map((invocation) => invocation.exitCode ?? 30);
     const knownDefect = childExitCodes.includes(20);
-    const failed = childExitCodes.some((code) => code !== 0 && code !== 20);
+    const incomplete = childExitCodes.includes(40) || notRun > 0;
+    const failed = childExitCodes.some((code) => code !== 0 && code !== 20 && code !== 40);
     children.push({
       id: registeredChild.id,
       ordinal: registeredChild.ordinal,
@@ -375,10 +394,10 @@ export async function runAssuranceAggregate(
           ? null
           : failed
             ? 'assertion-failed'
-            : knownDefect
-              ? 'known-product-defect'
-              : notRun > 0
-                ? 'incomplete'
+            : incomplete
+              ? 'incomplete'
+              : knownDefect
+                ? 'known-product-defect'
                 : 'passed',
       notRunReason: notRun === invocations.length ? 'EARLIER_CHILD_TERMINATED' : null,
       cleanupComplete: completed.every((invocation) => invocation.cleanupComplete),

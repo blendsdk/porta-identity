@@ -199,6 +199,30 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
     },
   ]);
 
+/** Exact known incomplete collector rules that may continue without receiving assurance credit. */
+export const assuranceAllKnownIncompleteCollectorRegistry = Object.freeze(
+  (['operational', 'production-security'] as const).map((profile) =>
+    Object.freeze({
+      invocationId: `harness-security-${profile}`,
+      profile,
+      gapId: 'forwarding-context-observer-incomplete',
+      incompleteCaseIds: Object.freeze([
+        'st53-untrusted-forwarded-host',
+        'st53-untrusted-forwarded-proto',
+        'st53-untrusted-forwarded-client-ip',
+      ]),
+      unobservedStateObservations: Object.freeze([
+        'configured-public-origin-unchanged',
+        'cookie-policy-unchanged',
+        'rate-limit-key-uses-direct-peer-not-spoofed-value',
+      ]),
+      unobservedProhibitedEffects: Object.freeze(['rate-limit-budget-split-by-spoofed-ip']),
+      continuedConclusion: 'incomplete',
+      finalExitRemainsNonzero: true,
+    }),
+  ),
+);
+
 /** Closed artifact fields allowed to survive evidence sanitization. */
 export const assuranceAllRetainedFieldNames = Object.freeze([
   'schemaVersion',

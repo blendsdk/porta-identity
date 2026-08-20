@@ -45,6 +45,14 @@ const evidenceSchema = z
 /** Sanitized evidence for one live production-exposure case. */
 export type ProductionExposureCaseEvidence = z.infer<typeof caseEvidenceSchema>;
 
+/** Complete schema-validated live production-exposure evidence document. */
+export type ProductionExposureEvidence = z.infer<typeof evidenceSchema>;
+
+/** Parses an untrusted production-exposure artifact through the closed evidence schema. */
+export function parseProductionExposureEvidence(value: unknown): ProductionExposureEvidence {
+  return evidenceSchema.parse(value);
+}
+
 /** Chooses the collector exit without converting product failures into assertion failures. */
 export function productionExposureCollectorExit(
   records: readonly ProductionExposureCaseEvidence[],
