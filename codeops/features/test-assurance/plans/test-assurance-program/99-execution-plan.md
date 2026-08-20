@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 13:19
-> **Progress**: 100/120 tasks (83%)
+> **Last Updated**: 2026-08-20 13:32
+> **Progress**: 101/120 tasks (84%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1224,9 +1224,13 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       diff checks passed, and the authoritative `yarn verify` passed 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20
       13:19)
-- [ ] 10.1d Run every catalog tuple independently from the same clean pushed baseline snapshot and
+- [x] 10.1d Run every catalog tuple independently from the same clean pushed baseline snapshot and
       publish one strict mode-0600 aggregate artifact proving exact classification, primary-tree
-      immutability, zero owned residue, and redaction.
+      immutability, zero owned residue, and redaction. Clean revision `522bb05c` produced owner-only
+      run `3b79f1ed-c3e6-4508-ad25-98b837443623`: both exact tuples were independently killed,
+      primary-tree and cleanup checks passed, no recovery was required, and the artifact redaction
+      scan passed. The authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK
+      files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 13:32)
 - [ ] 10.2 Evaluate one bounded TypeScript ESM mutation pilot on approved small modules; retain a
       no-go result without weakening curated faults if compatibility/runtime criteria fail.
 - [ ] 10.3 [spec-author] Add a table-driven command×outcome matrix for product, test, setup,
