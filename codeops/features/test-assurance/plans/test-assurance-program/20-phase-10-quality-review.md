@@ -34,3 +34,10 @@ The first clean aggregate attempt, run `7737ff7a-239c-4083-89b8-43dc8615cad5`, s
 after validation because the internal command-contract fixture still expected the former one-run
 report selector. No resource-owning child ran. The fixture now uses the same explicit validation
 and coverage run selectors as the registered command; the focused foundation suite passes 10/10.
+
+The next clean attempt, run `4d602cab-0ee6-471f-854d-9e1c5eccf924`, completed both harness
+profiles and both coverage captures, then stopped before fault and compatibility work because the
+new handoff accepted only a repository-relative coverage manifest while the coverage command
+truthfully emits its canonical absolute path. Every completed child cleaned up. The parser now
+admits only the exact canonical repository-owned absolute or relative manifest form; aggregate
+specification and implementation tests pass 16/16.

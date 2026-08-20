@@ -179,6 +179,32 @@ function observedArtifactDigest(repositoryRoot: string, reference: string | null
   return digest(readFileSync(absolute));
 }
 
+/**
+ * Extracts the exact production-security coverage run owned by this repository.
+ *
+ * Coverage prints a canonical absolute path in normal execution, while injected tests may use
+ * the equivalent repository-relative form. Both forms must resolve to the one registered result
+ * location; normalized traversal aliases and duplicate declarations fail closed.
+ */
+function coverageRunIdentity(repositoryRoot: string, output: string): string | undefined {
+  const prefix = 'ASSURANCE_COVERAGE_CAPTURE=';
+  const values = output
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith(prefix))
+    .map((line) => line.slice(prefix.length));
+  if (values.length !== 1 || values[0] === '') return undefined;
+
+  const value = values[0]!;
+  const absolute = resolve(repositoryRoot, value);
+  const repositoryRelative = relative(repositoryRoot, absolute);
+  const canonicalInput = value.startsWith('/') ? absolute : repositoryRelative;
+  if (value !== canonicalInput) return undefined;
+
+  return /^test-harness\/\.assurance-results\/([0-9a-f-]{36})\/coverage\/security\/production-security\/capture-manifest\.json$/u.exec(
+    repositoryRelative,
+  )?.[1];
+}
+
 /** Chooses one stable exit and stop decision from a managed child result. */
 function childTerminal(outcome: ManagedChildOutcome): {
   readonly exitCode: number;
@@ -328,10 +354,7 @@ export async function runAssuranceAggregate(
         }
       }
       if (registered.id === 'coverage-security-production-security') {
-        coverageRunId =
-          /^ASSURANCE_COVERAGE_CAPTURE=test-harness\/\.assurance-results\/([0-9a-f-]{36})\/coverage\/security\/production-security\/capture-manifest\.json$/m.exec(
-            outcome.stdout,
-          )?.[1];
+        coverageRunId = coverageRunIdentity(root, outcome.stdout);
         if (terminal.exitCode === 0 && coverageRunId === undefined) {
           exits.push(50);
           stopped = true;
