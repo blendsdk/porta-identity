@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 02:55
-> **Progress**: 78/107 tasks (73%)
+> **Last Updated**: 2026-08-20 03:08
+> **Progress**: 79/107 tasks (74%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -939,9 +939,16 @@ assurance.
       the unchanged tenant/admin block, cleanup completed, focused static checks passed, and
       `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 02:55)
-- [ ] 8.7e Add mail polling, public state observers, configured clock-window checks, and secret-free
+- [x] 8.7e Add mail polling, public state observers, configured clock-window checks, and secret-free
       diagnostic implementation tests for the admitted ordinary cases. Do not add timing-
       distribution measurement or advanced concurrent/restart mechanics.
+      Added a shared bounded observer for exact mailbox cardinality/value extraction, canonical
+      public-state digest comparisons, predeclared lifetime tolerances, independent RFC 6238
+      values, and closed diagnostics. The admitted second-factor adapter now uses the shared mail
+      and TOTP observers. The `human-auth-live` selector passed 17/17, static documentation/type/
+      lint/format gates passed, and `yarn verify` passed 68 structure tests, 233 server files /
+      3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-20 03:08)
 - [ ] 8.8 Record human-auth source-variation sensitivity as deferred. Preserve every black-box
       expectation and pentest, and keep the slice explicitly not-sensitivity-proven.
 - [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/

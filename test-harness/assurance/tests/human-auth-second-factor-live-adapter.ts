@@ -1,7 +1,10 @@
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { Secret, TOTP } from 'otpauth';
 import { z } from 'zod';
 
+import {
+  independentTotpValue,
+  pollForExactHumanAuthMailValue,
+} from './human-auth-live-observers.js';
 import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
 
 import type {
@@ -56,20 +59,19 @@ async function readMail(context: LiveTenantAdminContext): Promise<z.infer<typeof
 
 /** Extracts exactly one delivered six-digit code only into transient memory. */
 async function waitForOtp(context: LiveTenantAdminContext): Promise<string> {
-  const deadline = Date.now() + 10_000;
-  let inventory = await readMail(context);
-  while (inventory.total === 0 && Date.now() < deadline) {
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 200));
-    inventory = await readMail(context);
-  }
-  if (inventory.total !== 1 || inventory.items.length !== 1) {
-    throw new Error('second-factor delivery cardinality is not exactly one');
-  }
-  const body = inventory.items[0]?.Content?.Body ?? inventory.items[0]?.Raw?.Data ?? '';
-  const matches = [...body.matchAll(/\b(\d{6})\b/gu)].map((match) => match[1]);
-  const codes = [...new Set(matches.filter((value): value is string => value !== undefined))];
-  if (codes.length !== 1) throw new Error('second-factor delivery value is absent or ambiguous');
-  return codes[0] ?? '';
+  const result = await pollForExactHumanAuthMailValue({
+    timeoutMilliseconds: 10_000,
+    intervalMilliseconds: 200,
+    read: async () => {
+      const inventory = await readMail(context);
+      return {
+        count: inventory.total,
+        bodies: inventory.items.map((entry) => entry.Content?.Body ?? entry.Raw?.Data ?? ''),
+      };
+    },
+    extract: (body) => [...body.matchAll(/\b(\d{6})\b/gu)].flatMap((match) => match[1] ?? []),
+  });
+  return result.value;
 }
 
 /** Starts a password login and stops at the public second-factor page. */
@@ -127,16 +129,6 @@ async function recoveryCount(context: LiveTenantAdminContext): Promise<number> {
   return z
     .object({ data: z.object({ recoveryCodesRemaining: z.number().int().nonnegative() }) })
     .parse(response.body).data.recoveryCodesRemaining;
-}
-
-/** Generates one authenticator value without importing Porta verification logic. */
-function totpValue(secret: string, timestamp = Date.now()): string {
-  return new TOTP({
-    algorithm: 'SHA1',
-    digits: 6,
-    period: 30,
-    secret: Secret.fromBase32(secret),
-  }).generate({ timestamp });
 }
 
 /** Runs the email OTP first-use and same-value rejection journey. */
@@ -197,9 +189,9 @@ async function observeTotp(
   const wrongSecret = context.credential('credential:bravo:totp:two-factor');
   const attempts: SecondFactorAttemptObservation[] = [];
   for (const [id, code, expected] of [
-    ['totp-wrong-account', totpValue(wrongSecret), false],
-    ['totp-expired-window', totpValue(secret, Date.now() - 120_000), false],
-    ['totp-current-window', totpValue(secret), true],
+    ['totp-wrong-account', independentTotpValue(wrongSecret, Date.now()), false],
+    ['totp-expired-window', independentTotpValue(secret, Date.now() - 120_000), false],
+    ['totp-current-window', independentTotpValue(secret, Date.now()), true],
   ] as const) {
     const pending = await pendingLogin(
       context,

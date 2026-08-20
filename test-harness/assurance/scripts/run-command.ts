@@ -284,6 +284,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'human-auth-second-factor-specs': [
     'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
   ],
+  'human-auth-live': [
+    'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+    'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
+  ],
   'human-auth-baseline': [
     'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
     'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
