@@ -1248,11 +1248,19 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       and the authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. No clean live pilot evidence was claimed. ✅ (completed:
       2026-08-20 15:36)
-- [ ] 10.2b From the clean pushed 10.2a revision, execute the exact bounded pilot and publish its
+- [x] 10.2b From the clean pushed 10.2a revision, execute the exact bounded pilot and publish its
       owner-only result. Verify both allowlisted targets, dependency/tool/source identities,
       survivor classification, primary-tree immutability, redaction, and zero owned residue. A
       compatibility or usefulness failure records `no-go` and retains curated faults as the
-      required sensitivity mechanism; it does not weaken tests or broaden targets.
+      required sensitivity mechanism; it does not weaken tests or broaden targets. Clean revision
+      `8514bc4d` produced owner-only run `47f18354-e4e8-480e-8f57-e45ad3b2f3db` with the truthful
+      `runner-incompatible` no-go decision. The mode-0600 artifact binds the exact commit, tree,
+      assurance-tool, dependency-lock, core-runner, and Vitest-runner identities; it retains no
+      variation/source diagnostics, reports the primary tree unchanged, and proves zero owned
+      worktree/runtime residue. No mutation or sensitivity claim was awarded, and the independently
+      killed curated-fault catalog remains authoritative. The authoritative `yarn verify` passed
+      233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
+      (completed: 2026-08-20 16:21)
 - [ ] 10.3 Write an exhaustive, table-driven ST-75 specification matrix for every registered
       assurance alias and every documented product, assertion/test, setup, coverage, fault,
       timeout, cleanup, and invalid-evidence outcome. Require one stable stage-aware exit class,

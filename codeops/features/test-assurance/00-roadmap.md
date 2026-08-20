@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: Executing — assurance reliability qualification resumed
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 15:36
+> **Last Updated**: 2026-08-20 16:21
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -44,4 +44,4 @@
 | ↳ QG-9   | Phase 9 independent quality findings            | —                                                                                   | [review](plans/test-assurance-program/17-phase-9-quality-review.md)         | Done      | ✅     | 2026-08-20 12:11 | all findings corrected; clean evidence regenerated; verification green                                |
 | RD-06    | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                                                        |
 | RD-07    | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                                                |
-| ↳ DEF-20 | Assurance reliability and promotion extras      | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Executing | 🔄     | 2026-08-20 15:36 | mutation capability verified; clean pilot evidence and reliability qualification remain               |
+| ↳ DEF-20 | Assurance reliability and promotion extras      | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Executing | 🔄     | 2026-08-20 16:21 | bounded mutation pilot recorded no-go; command and stability qualification remain                     |
