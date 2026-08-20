@@ -1704,3 +1704,23 @@ High. **Hardening**: grounded in the public routes and retained lifecycle owners
 fails closed if any wrong-tenant, reuse, protected-state, or exposure observation is unavailable.
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-F`. **Reopen trigger**: a
 publicly controllable invitation lifetime or independently authorized clock mechanism is added.
+
+### AR-90 — Human-auth roll-up separates selector delivery from clean evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: implementation sequencing and
+clean-provenance mechanics within the unchanged roll-up scope. **Objective**: make the final
+human-auth selector reproducible without bypassing the coverage command's clean-tree gate.
+**Decision**: split the roll-up into a verified selector-capability checkpoint and a subsequent
+clean-revision evidence checkpoint. The first checkpoint adds and fully verifies the closed
+`human-auth-all` composition, then commits and pushes it. The second starts from that clean revision
+and runs both security profiles, attributed coverage, all penetration tests, and full verification.
+Blocked/deferred claims remain explicit and cannot be closed by the roll-up. **Evidence**: the
+coverage command intentionally rejects staged, unstaged, and untracked source state, while the new
+selector must exist before it can be invoked from a clean revision. **Rejected alternative**:
+bypassing or weakening clean provenance would make coverage attribution untrustworthy; a synthetic
+snapshot revision would create a second unsupported provenance class. **Strongest counterargument**:
+the split adds one task and commit, but it is the smallest way to preserve both task truthfulness
+and clean evidence. **Confidence**: High. **Hardening**: follows the existing clean packed-client
+and protocol evidence checkpoint pattern. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P8-G`. **Reopen trigger**: assurance coverage safely supports a declared,
+content-addressed non-HEAD source snapshot.

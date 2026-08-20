@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 03:17
-> **Progress**: 80/107 tasks (75%)
+> **Last Updated**: 2026-08-20 03:28
+> **Progress**: 81/108 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -38,7 +38,7 @@ edits the read-only CI workflow.
 |     5 | Fault runner and packed-client foundations          |    11 |
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
-|     8 | Human authentication and recovery                   |     9 |
+|     8 | Human authentication and recovery                   |    10 |
 |     9 | P1 validation, exposure, and administrative data    |    10 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
@@ -113,7 +113,8 @@ text, but it cannot substitute another command for this binding.
 | 8.7b–8.7d | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 8.7e      | `yarn assurance:test --select human-auth-live`                                                                                                               |
 | 8.8       | `yarn assurance:test --select human-auth-specs` and `yarn assurance:test --select assurance-governance`                                                      |
-| 8.9       | `yarn assurance:test --select human-auth-all`                                                                                                                |
+| 8.9a      | `yarn assurance:test --select human-auth-all`                                                                                                                |
+| 8.9b      | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
 | 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
 | 9.5       | `yarn assurance:baseline --case ST-52`                                                                                                                       |
@@ -957,8 +958,16 @@ assurance.
       55/55, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-20 03:17)
-- [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/
-      recovery evidence, all pentests, and `yarn verify`.
+- [x] 8.9a Add the closed human-auth roll-up selector and verify its static/specification/
+      implementation composition before clean-revision evidence collection.
+      The selector passed 49 tests with two intentional live-only skips, assurance typecheck and
+      formatting passed, and `yarn verify` passed 68 structure tests, 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-20 03:28)
+- [ ] 8.9b From the clean pushed selector revision, run operational and production-security
+      browser/security projects, attributed security coverage, audit/log/recovery evidence, all
+      pentests, and `yarn verify`. Keep DEF-7, DEF-9, DEF-10, and DEF-11 explicit; the roll-up may
+      report partial assurance but cannot close their affected claims.
 
 **Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound for the
 ordinary sequential contract, production controls are proven only in production-security mode, and
