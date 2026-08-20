@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 07:48
-> **Progress**: 89/114 tasks (78%)
+> **Last Updated**: 2026-08-20 08:27
+> **Progress**: 90/114 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1082,9 +1082,16 @@ independent phase review and completed corrections are recorded in
       failed closed before admission because the public cursor wire response uses `nextCursor`;
       the adapter now obtains that exact opaque wire value and passes it through the packed SDK
       request without changing the product or oracle. ✅ (completed: 2026-08-20 07:48)
-- [ ] 9.6e From the clean pushed capability revision, run the packed P1 adjunct and admit evidence
+- [x] 9.6e From the clean pushed capability revision, run the packed P1 adjunct and admit evidence
       only when server, fixture, archive, compiled-entry, CLI SDK-resolution, credential-isolation,
-      primary-tree, cleanup, redaction, and zero-residue identities all validate.
+      primary-tree, cleanup, redaction, and zero-residue identities all validate. Clean revision
+      `85a83ea0` produced owner-only run `0058a5d8-04f2-41ce-bc40-ba8d8a0677f7`: all six journeys
+      matched independent raw results and fixture ownership, all protected-state fingerprints were
+      unchanged, all forbidden-output classes were absent, packed CLI homes were mode 0700 and
+      removed, caller credentials were unchanged, compiled entry and archive identifiers were
+      path-sanitized, cleanup removed every owned runtime resource, and correlated-log credit
+      remained explicitly false under DEF-13. `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 08:27)
 - [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
       test trusted/untrusted proxy profiles without production config changes.
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
