@@ -196,6 +196,7 @@ const humanAuthSpecificationFiles = [
 /** Immutable validation and exposure requirement specifications. */
 const validationExposureSpecificationFiles = [
   'test-harness/assurance/tests/validation-exposure.spec.test.ts',
+  'test-harness/assurance/tests/admin-data.spec.test.ts',
 ] as const;
 
 /** Human-authentication specifications and candidate audit required before baseline evidence. */

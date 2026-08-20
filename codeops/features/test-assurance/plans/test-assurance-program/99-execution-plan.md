@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 05:52
-> **Progress**: 84/109 tasks (77%)
+> **Last Updated**: 2026-08-20 06:11
+> **Progress**: 85/109 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1018,8 +1018,16 @@ independent phase review and completed corrections are recorded in
       68/68, and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and
       29 CLI files / 355 tests. No live or product behavior is claimed. ✅ (completed: 2026-08-20
       05:52)
-- [ ] 9.3 [spec-author] Write ST-57–ST-61 for pagination isolation, audit read/cleanup/integrity/
+- [x] 9.3 [spec-author] Write ST-57–ST-61 for pagination isolation, audit read/cleanup/integrity/
       redaction, key lifecycle, session administration/cascade, and configuration authorization.
+      Added 18 immutable specification-only cases across the five surfaces with exact full/limited/
+      unprivileged actors, same-action/same-target controls, public outcomes, independent state and
+      lifecycle observations, prohibited effects, privacy-safe logs, and recovery. Route grounding
+      uses global audit retention with dry-run controls and the actual filtered session-list plus
+      permission-gated detail/revoke surfaces. The combined Phase 9 selector passed 16/16,
+      assurance typecheck/lint/formatting passed, structure passed 68/68, and `yarn verify` passed
+      233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No live
+      or product behavior is claimed. ✅ (completed: 2026-08-20 06:11)
 - [ ] 9.4 [spec-author] Once 9.1 has authority, write ST-62 exact bulk/import/export matrices; otherwise
       preserve their blocked claims and continue independent P1 work.
 - [ ] 9.5 Record natural RED or legacy green; audit/select existing pentest/integration sentinels
