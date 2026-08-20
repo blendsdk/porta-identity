@@ -2322,3 +2322,29 @@ continuation. **Policy version**: 1. **Root Invocation ID**:
 `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: forwarding observations become
 available, the production-exposure case set changes, another invocation seeks exit-`40`
 continuation, or the final aggregate can return success while this gap remains.
+
+### AR-114 — Keep shared-suite signing-key state decryptable
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test-fixture consistency and
+verification sequencing inside the approved final local assurance gate; no product behavior,
+cryptographic policy, assertion, or external environment change. **Objective**: let the repository's
+UI and penetration suites run sequentially against their shared test database without one suite
+leaving signing-key state that the next suite cannot decrypt. **Decision**: import and use the
+existing repository-wide signing-key encryption test constant in UI global setup, retain the UI
+setup's complete table truncation before signing-key generation, and add a repository structure
+contract that rejects a suite-specific signing-key value or reversed setup order. Re-run UI
+immediately before penetration evidence. **Evidence**: UI setup currently assigns a unique
+`fedcba…` key, while every other repository suite imports `TEST_SIGNING_KEY_ENCRYPTION_KEY`; the UI
+setup then persists new signing keys and the next penetration setup reads them without truncating,
+causing `SigningKeyCryptoError: Decryption failed`. **Rejected alternatives**: deleting signing
+keys in shared E2E or penetration setup could race their concurrently configured projects;
+recording the failure would leave the required penetration gate non-executable; weakening signing-
+key encryption would violate the security contract. **Strongest counterargument**: an externally
+contaminated shared database can still contain rows encrypted with an arbitrary key, but the
+repository-owned UI setup already creates a clean slate and this correction guarantees consistency
+for the supported suite-to-suite sequence without expanding database ownership. **Confidence**:
+High. **Hardening**: an independent challenge selected the shared constant plus setup-order
+contract as the smallest safe correction and rejected broader shared-database deletion. **Policy
+version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**:
+the suites move to isolated databases or signing-key setup becomes transactionally owned by a new
+common fixture lifecycle.

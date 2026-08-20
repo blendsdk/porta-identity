@@ -30,6 +30,7 @@ import {
   TEST_SMTP_PORT,
   TEST_SMTP_FROM,
   TEST_COOKIE_KEYS,
+  TEST_SIGNING_KEY_ENCRYPTION_KEY,
   DEFAULT_TEST_PASSWORD,
 } from '../../helpers/constants.js';
 
@@ -110,11 +111,9 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.SMTP_FROM = TEST_SMTP_FROM;
   process.env.COOKIE_KEYS = TEST_COOKIE_KEYS;
   process.env.ISSUER_BASE_URL = `http://localhost:${UI_TEST_PORT}`;
-  // 64 hex chars = 32-byte key for AES-256-GCM signing key encryption.
-  // Must be set explicitly — the DB may contain signing keys encrypted
-  // with a different key from a prior test suite run.
-  process.env.SIGNING_KEY_ENCRYPTION_KEY =
-    'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+  // All suites sharing this database use one key so persisted test signing keys remain readable
+  // when repository commands run sequentially. This setup still truncates before generating keys.
+  process.env.SIGNING_KEY_ENCRYPTION_KEY = TEST_SIGNING_KEY_ENCRYPTION_KEY;
 
   // ── Step 2: Dynamic imports ────────────────────────────────────────
   // Import after env vars are set so modules read correct config

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 21:52
-> **Progress**: 114/122 tasks (93%)
+> **Last Updated**: 2026-08-20 22:29
+> **Progress**: 115/123 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -143,7 +143,7 @@ text, but it cannot substitute another command for this binding.
 | 10.6      | Every registered `yarn assurance:stability --command <command> --seed-set <registered-set>` candidate                                                       |
 | 10.7a     | `yarn assurance:test --select assurance-ratchets`                                                                                                           |
 | 10.7b     | `yarn assurance:validate`; `yarn assurance:report --run <task-run-uuid>`                                                                                     |
-| 10.8a–10.8a2 | `yarn assurance:test --select assurance-all-aggregate`; `yarn assurance:test --select p1-production-exposure`                                           |
+| 10.8a–10.8a3 | `yarn assurance:test --select assurance-all-aggregate`; `yarn assurance:test --select p1-production-exposure`; `yarn test:structure`                    |
 | 10.8b     | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <validation-child-run-uuid>`                                                               |
 | 11.1a     | `yarn assurance:test --select assurance-governance`; `yarn test:structure`                                                                                   |
 | 11.1b     | `yarn assurance:validate`; `yarn assurance:test --select fault-catalog-campaign`; `yarn harness:test`; `yarn verify`                                                |
@@ -1367,6 +1367,17 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       passed 16/16, TypeScript, ESLint, formatting, and 68/68 structure tests passed, and the
       authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
       and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 21:52)
+- [x] 10.8a3 Make the UI setup use the repository-wide signing-key encryption test constant so a
+      completed UI run cannot leave signing-key rows that the immediately following penetration
+      suite cannot decrypt. Add a structure contract that rejects a suite-specific signing-key
+      value and preserves the UI setup's truncate-before-key-generation ordering. Re-run UI before
+      penetration evidence; preserve the five consent-flow UI failures as a named product/contract
+      gap rather than weakening tenant binding or consent assertions. The two-case repository
+      contract and all 70 structure tests passed. UI retained the exact five consent-contract
+      failures with 129/134 tests passing; the immediately following penetration suite passed
+      35 files / 224 tests, E2E passed 20 files / 128 tests, and `yarn verify` passed 233 server
+      files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-20 22:29)
 - [ ] 10.8b From the clean pushed capability revision, run the complete registered local assurance
       aggregate, UI suite, pentests, redaction and residue scans, traceability/report validation,
       and authoritative `yarn verify`. Publish a truthful roll-up without treating known product
