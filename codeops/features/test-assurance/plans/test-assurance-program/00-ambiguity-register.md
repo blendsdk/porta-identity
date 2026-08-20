@@ -1808,3 +1808,24 @@ and the established clean-evidence boundary. **Confidence**: High. **Hardening**
 existing packed-client, coverage, and human-auth clean-evidence checkpoint pattern. **Policy
 version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-A`. **Reopen trigger**: the baseline
 command gains a separately specified content-addressed snapshot provenance contract.
+
+### AR-95 — P1 live delivery uses specification-first boundary checkpoints
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: implementation sequencing and
+test architecture within the already approved P1 case catalogs. **Objective**: make every P1
+observation executable and independently reviewable without combining immutable oracles, raw
+transport, administrative lifecycle state, and packed-client provenance in one unverifiable task.
+**Decision**: split the live-probe task into four checkpoints: immutable executable contracts with
+exact RED; operational raw-boundary implementation; administrative-data implementation; and
+packed-client adjuncts with independent effect verification. Production-security cases remain in
+their existing following task. **Evidence**: the current ST-52–ST-61 files define complete
+requirements but deliberately contain no live adapter, while the retained harness already separates
+Node specification blocks, lifecycle resets, and packed-consumer provenance. **Rejected
+alternative**: one large implementation checkpoint would obscure the required red phase and make a
+failure impossible to attribute to transport, state observation, or package provenance.
+**Strongest counterargument**: four checkpoints add commits and repeated verification, but each has
+one coherent done criterion and preserves the mandated specification-first order. **Confidence**:
+High. **Hardening**: follows the established tenant/admin and human-auth adapter seams while keeping
+raw observations broad enough to report product defects honestly. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260820-P9-B`. **Reopen trigger**: an existing reviewed adapter is
+shown to cover all four boundaries with identical provenance and failure taxonomy.

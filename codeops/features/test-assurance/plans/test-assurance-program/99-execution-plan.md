@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 06:33
-> **Progress**: 87/110 tasks (79%)
+> **Last Updated**: 2026-08-20 06:45
+> **Progress**: 88/113 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -39,11 +39,11 @@ edits the read-only CI workflow.
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
-|     9 | P1 validation, exposure, and administrative data    |    11 |
+|     9 | P1 validation, exposure, and administrative data    |    14 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 110 tasks across 11 release-safe phases.**
+**Total: 113 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -120,7 +120,8 @@ text, but it cannot substitute another command for this binding.
 | 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
 | 9.5a      | `yarn assurance:test --select p1-baseline`                                                                                                                  |
 | 9.5b      | `yarn assurance:baseline --case ST-52`                                                                                                                       |
-| 9.6–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.6a      | Isolated RED: executable P1 boundary spec; exact `P1_LIVE_BOUNDARY_CAPABILITY_MISSING` is the only failure                                                 |
+| 9.6b–9.8  | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
@@ -1048,8 +1049,20 @@ independent phase review and completed corrections are recorded in
       corroboration for the two audited legacy candidates. `yarn verify` then passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 06:33)
-- [ ] 9.6 Add missing raw/browser/packed-client probes, authorized handler controls, independent
-      non-mutation/cardinality checks, and exact audit/log/recovery observations.
+- [x] 9.6a [spec-author] Add the immutable executable observation contract for operational raw
+      validation and administrative-data cases; record only the exact missing-live-adapter RED.
+      The single isolated case failed only with `P1_LIVE_BOUNDARY_CAPABILITY_MISSING`, zero passes,
+      and no setup or collection error. The contract requires concrete raw response, independent
+      state/effect, correlated-log, forbidden-field, and recovery observations for every case while
+      retaining broad result types. Static gates and structure passed, and `yarn verify` passed 233
+      server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
+      (completed: 2026-08-20 06:45)
+- [ ] 9.6b Implement operational raw/browser probes with authorized controls, raw transport,
+      independent non-mutation/cardinality, and exact audit/log/recovery observations.
+- [ ] 9.6c Implement administrative pagination, audit, signing-key, session, and configuration
+      probes with permission-bound controls and independently observed lifecycle effects.
+- [ ] 9.6d Add packed SDK/CLI adjuncts only for supported P1 boundaries and verify every effect
+      independently through raw public or fixture-state observations.
 - [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
       test trusted/untrusted proxy profiles without production config changes.
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
