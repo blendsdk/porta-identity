@@ -21,7 +21,7 @@ import type { ValidationExposureRawCase } from '../tests/validation-exposure-cas
 import {
   boundedPublicResponse,
   classifyBody,
-  exposesInternalDetail,
+  exposesBodyInternalDetail,
   headerContractObserved,
   type BoundedPublicResponse,
 } from './response-classifier.js';
@@ -448,7 +448,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         headerContractObserved(contract, probeResponse),
       ]),
     );
-    const internalDetail = exposesInternalDetail(probeResponse);
+    const bodyInternalDetail = exposesBodyInternalDetail(probeResponse);
     const secretMaterial = /(?:bearer\s+[a-z0-9._~-]+|[?&](?:token|code|secret)=)/iu.test(
       `${probeResponse.body}\n${Object.values(probeResponse.headers).join('\n')}`,
     );
@@ -472,7 +472,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         if (/version/u.test(name)) return [name, versionMaterial];
         if (/secret|token/u.test(name)) return [name, secretMaterial];
         if (/stack|sql|filesystem|infrastructure|dependency-error/u.test(name)) {
-          return [name, internalDetail];
+          return [name, bodyInternalDetail];
         }
         if (/policy-weakened|insecure-cookie|domain-cookie/u.test(name)) {
           return [name, !expectedHeadersPassed];
@@ -504,7 +504,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     response: BoundedPublicResponse,
   ): string {
     const general = classifyBody(response);
-    if (requirement.family === 'mail-error-exposure' && !exposesInternalDetail(response)) {
+    if (requirement.family === 'mail-error-exposure' && !exposesBodyInternalDetail(response)) {
       return 'generic-stable-response-without-dependency-or-product-detail';
     }
     if (requirement.family === 'forwarded-host' || requirement.family === 'forwarded-proto') {

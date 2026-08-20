@@ -7,6 +7,7 @@ import test from 'node:test';
 import type { ActiveCoverageRun } from '../coverage/index.js';
 import {
   boundedPublicResponse,
+  exposesBodyInternalDetail,
   exposesInternalDetail,
   headerContractObserved,
 } from '../production-exposure/response-classifier.js';
@@ -139,6 +140,16 @@ test('should detect dependency addresses and stack material in public responses'
     ),
     true,
   );
+});
+
+test('should keep a version header separate from body-internal-detail findings', () => {
+  const response = boundedPublicResponse(
+    200,
+    { server: 'nginx/1.31.0', 'content-type': 'text/html' },
+    '<html><form method="post"></form></html>',
+  );
+  assert.equal(exposesInternalDetail(response), true);
+  assert.equal(exposesBodyInternalDetail(response), false);
 });
 
 test('should restore the exact owned dependency when the probe fails', async () => {

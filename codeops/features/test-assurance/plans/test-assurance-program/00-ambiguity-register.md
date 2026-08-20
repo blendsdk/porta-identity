@@ -1913,10 +1913,16 @@ context proof required by the claim. A later clean run showed that restarting th
 container can leave Porta disconnected even after the dependency reports healthy. In that case the
 observer restarts only the exact lease-owned Porta container, verifies the same-handler control, and
 records `porta-restart-required` as a product failure rather than converting the run to a pass.
+The clean rerun also showed that a public server-version header must not be reused as evidence of
+stack, SQL, filesystem, infrastructure-address, or dependency-error disclosure. Those classes are
+now derived from bounded response-body bytes, while version disclosure remains a separate header
+observation. The acquired-CSRF mail response retains its generic no-dependency-detail contract even
+when its concrete representation is HTML.
 **Rejected alternatives**: treating every 200 forwarding
 response as a defect would confuse safe header ignoring with trust; marking unobserved state false
 would manufacture safety; retaining raw child errors would leak paths and infrastructure detail into
-evidence; treating an eventual post-restart control as ordinary recovery would hide the missing
+evidence; treating a version-bearing header as proof of unrelated body disclosures would overstate
+the defect; treating an eventual post-restart control as ordinary recovery would hide the missing
 automatic reconnection behavior. **Strongest counterargument**: a timeout-specific synthetic 599 is not an HTTP response,
 but it is explicitly an observer classification outside the HTTP status range and preserves the
 critical fact that no bounded public response arrived. **Confidence**: High. **Hardening**: the
