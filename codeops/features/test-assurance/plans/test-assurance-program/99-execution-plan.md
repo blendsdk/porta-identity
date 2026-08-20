@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 20:18
-> **Progress**: 110/119 tasks (92%)
+> **Last Updated**: 2026-08-20 20:30
+> **Progress**: 111/119 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1327,9 +1327,14 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       and the authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. Clean governed-report evidence follows after commit in
       Task 10.7b. ✅ (completed: 2026-08-20 20:18)
-- [ ] 10.7b From the clean pushed ratchet-capability revision, create a new foundation validation
+- [x] 10.7b From the clean pushed ratchet-capability revision, create a new foundation validation
       run and prove the governed report succeeds only while every monitored identity remains
-      current. Retain local observation-only and no-promotion metadata.
+      current. Retain local observation-only and no-promotion metadata. Clean revision `3f30b3a9`
+      produced validation/report run `44bea21f-cdcd-4f8a-9ee4-ebe75c079806`; all four retained files
+      are mode 0600, the monitored identities remained current, the report contained no bounded
+      secret canary, and both coverage and review metadata retain `promotionAuthorized: false`.
+      The authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 20:30)
 - [ ] 10.8 Run the complete registered local assurance aggregate, UI suite, pentests, redaction and
       residue scans, traceability/report validation, and authoritative `yarn verify`. Publish a
       truthful roll-up of assured, blocked, incomplete, survived, and unqualified items without
