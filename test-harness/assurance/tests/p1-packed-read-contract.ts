@@ -5,9 +5,11 @@ export interface PackedP1ReadResultObservation {
   /** Public outcome classified from the actual response. */
   readonly result: 'allowed' | 'forbidden' | 'not-found' | 'unexpected-error';
   /** Actual public status represented by the observation. */
-  readonly status: number;
+  readonly status: number | null;
   /** Stable ordered identities returned by the selected page or filter. */
   readonly orderedItemIdentities: readonly string[];
+  /** Explicit public total, or null when the selected surface does not report one. */
+  readonly observedTotal: number | null;
   /** Digest of the observed page and filter metadata. */
   readonly pageOrFilterMetadataDigest: string;
   /** Digest of the bounded public fields returned for all selected items. */
@@ -24,10 +26,14 @@ export interface PackedP1ReadJourneyEvidence {
   readonly clientResult: PackedP1ReadResultObservation;
   /** Result independently observed through raw HTTP. */
   readonly independentRawResult: PackedP1ReadResultObservation;
+  /** Truthful classification derived from the client/raw/fixture observations. */
+  readonly outcome: 'passed' | 'product-failure' | 'incomplete';
   /** Whether runtime fixture ownership and masking facts were satisfied. */
   readonly fixtureOracleSatisfied: boolean;
   /** Independently resolved identities expected in the client result. */
   readonly fixtureResolvedIdentities: readonly string[];
+  /** Independently derived tenant/filter total, when applicable. */
+  readonly fixtureExpectedTotal: number | null;
   /** Protected-state fingerprints captured before the client read. */
   readonly stateFingerprintsBefore: Readonly<Record<string, string>>;
   /** Protected-state fingerprints captured after the client read. */

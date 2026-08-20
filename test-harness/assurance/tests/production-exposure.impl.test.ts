@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import test from 'node:test';
 
 import type { ActiveCoverageRun } from '../coverage/index.js';
+import { admitProductionExposureCases } from '../production-exposure/admission.js';
 import {
   boundedPublicResponse,
   exposesBodyInternalDetail,
@@ -17,10 +18,15 @@ import {
   type ProductionExposureCommandRunner,
 } from '../production-exposure/service-controller.js';
 import {
+  createdSessionIds,
+  logoutInvalidatedCreatedSession,
+} from '../production-exposure/session-observer.js';
+import {
   productionExposureCaseEvidence,
   productionExposureExecutionFailure,
 } from '../production-exposure/evidence.js';
 import { validationExposureProductionCases } from './validation-exposure-production-case-requirements.js';
+import { validationExposureRawCases } from './validation-exposure-raw-case-requirements.js';
 
 const containerId = 'a'.repeat(64);
 
@@ -110,6 +116,37 @@ test('should reject version-bearing public server headers', () => {
   assert.equal(headerContractObserved('server-version-header-absent', response), false);
 });
 
+test('should admit only the exact production-exposure case set for each profile', () => {
+  const candidates = [...validationExposureRawCases, ...validationExposureProductionCases];
+  assert.equal(admitProductionExposureCases('operational', candidates).length, 6);
+  assert.equal(admitProductionExposureCases('production-security', candidates).length, 11);
+  assert.throws(
+    () =>
+      admitProductionExposureCases(
+        'production-security',
+        candidates.filter((candidate) => candidate.id !== 'st53-untrusted-forwarded-host'),
+      ),
+    /exact profile case set is incomplete/u,
+  );
+  assert.throws(
+    () => admitProductionExposureCases('operational', [...candidates, candidates[0]!]),
+    /identity is duplicated/u,
+  );
+});
+
+test('should require one new server session plus public logout and rejected cookie reuse', () => {
+  const before = new Set(['fixture-session']);
+  const created = createdSessionIds(before, new Set(['fixture-session', 'new-session']));
+  assert.deepEqual(created, ['new-session']);
+  assert.equal(logoutInvalidatedCreatedSession(created, before, true), true);
+  assert.equal(
+    logoutInvalidatedCreatedSession(created, new Set(['fixture-session', 'new-session']), true),
+    false,
+  );
+  assert.equal(logoutInvalidatedCreatedSession(created, before, false), false);
+  assert.equal(logoutInvalidatedCreatedSession([], before, true), false);
+});
+
 test('should derive CORS policy checks from concrete response headers', () => {
   const response = boundedPublicResponse(
     204,
@@ -117,6 +154,9 @@ test('should derive CORS policy checks from concrete response headers', () => {
       'access-control-allow-origin': 'https://app-harness.ci.portaidentity.com',
       'access-control-allow-methods': 'GET,POST',
       'access-control-allow-headers': 'content-type',
+      'access-control-allow-credentials': 'true',
+      'access-control-max-age': '86400',
+      vary: 'Accept-Encoding, Origin',
     },
     '',
   );
@@ -131,6 +171,9 @@ test('should derive CORS policy checks from concrete response headers', () => {
     headerContractObserved('access-control-allow-methods-does-not-contain-trace', response),
     true,
   );
+  assert.equal(headerContractObserved('access-control-allow-credentials:true', response), true);
+  assert.equal(headerContractObserved('access-control-max-age:86400', response), true);
+  assert.equal(headerContractObserved('vary-includes-origin', response), true);
 });
 
 test('should normalize public header names and reject case-colliding duplicates', () => {
@@ -245,7 +288,13 @@ test('should classify an unobserved required state as incomplete evidence', () =
   const evidence = productionExposureCaseEvidence(requirement, {
     caseId: requirement.id,
     profile: 'production-security',
-    control: { status: 200, bodyContract: 'control', headerContracts: {} },
+    control: {
+      status: 200,
+      bodyContract: 'control',
+      headerContracts: Object.fromEntries(
+        requirement.control.requiredObservations.map((name) => [name, true]),
+      ),
+    },
     probe: {
       status: requirement.expected.status,
       bodyContract: requirement.expected.bodyContract,
@@ -266,6 +315,37 @@ test('should classify an unobserved required state as incomplete evidence', () =
   });
   assert.equal(evidence.outcome, 'incomplete');
   assert.deepEqual(evidence.unobservedStateObservations, requirement.independentStateObservations);
+});
+
+test('should reject a CORS case whose positive control omits an exact response contract', () => {
+  const requirement = validationExposureProductionCases.find(
+    (entry) => entry.id === 'st55-unconfigured-cors-origin',
+  );
+  assert.ok(requirement);
+  const evidence = productionExposureCaseEvidence(requirement, {
+    caseId: requirement.id,
+    profile: 'production-security',
+    control: { status: 200, bodyContract: 'control', headerContracts: {} },
+    probe: {
+      status: requirement.expected.status,
+      bodyContract: requirement.expected.bodyContract,
+      headerContracts: Object.fromEntries(
+        requirement.expected.headerContract.map((name) => [name, true]),
+      ),
+    },
+    independentStateObservations: Object.fromEntries(
+      requirement.independentStateObservations.map((name) => [name, true]),
+    ),
+    prohibitedSideEffects: Object.fromEntries(
+      requirement.prohibitedSideEffects.map((name) => [name, false]),
+    ),
+    recoveryPassed: true,
+    recoveryMode: 'none',
+    correlatedLogCredit: false,
+    correlatedLogGap: 'correlated-security-decision-event-unavailable',
+  });
+  assert.equal(evidence.outcome, 'product-failure');
+  assert.deepEqual(evidence.failedControlObservations, requirement.control.requiredObservations);
 });
 
 test('should create a closed execution-failure record without retaining raw diagnostics', () => {

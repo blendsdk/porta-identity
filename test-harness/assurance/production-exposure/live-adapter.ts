@@ -6,12 +6,13 @@ import {
   request,
   type APIRequestContext,
   type APIResponse,
+  type Browser,
   type BrowserContext,
 } from '@playwright/test';
 
 import { LiveProtocolContext, livePkceChallenge } from '../tests/protocol-live-http.js';
 import { LiveTenantAdminContext } from '../tests/tenant-admin-live-context.js';
-import { loginWithPassword } from '../../tests/helpers.js';
+import { handleSignOutConfirmation, loginWithPassword } from '../../tests/helpers.js';
 import type {
   ProductionExposureContract,
   ProductionExposureObservation,
@@ -26,6 +27,7 @@ import {
   type BoundedPublicResponse,
 } from './response-classifier.js';
 import { OwnedDependencyController, type InterruptibleService } from './service-controller.js';
+import { createdSessionIds, logoutInvalidatedCreatedSession } from './session-observer.js';
 
 /** Observation state that is explicitly not available from the selected public boundary. */
 const unobserved = 'unobserved' as const;
@@ -64,9 +66,13 @@ function concreteHeaders(
 ): Readonly<Record<string, string>> {
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(requirementHeaders)) {
-    headers[name] = value.includes('{synthetic-full-authority-token}')
-      ? (context.adminHeaders('admin-full').Authorization ?? '')
-      : value;
+    if (value.includes('{synthetic-full-authority-token}')) {
+      headers[name] = context.adminHeaders('admin-full').Authorization ?? '';
+    } else if (value === 'https://app-harness.ci.portaidentity.com') {
+      headers[name] = new URL(context.endpoints.app).origin;
+    } else {
+      headers[name] = value;
+    }
   }
   return Object.freeze(headers);
 }
@@ -76,13 +82,17 @@ function publicObservation(
   response: BoundedPublicResponse,
   requiredHeaders: readonly string[],
   bodyContract = classifyBody(response),
+  configuredOrigin?: string,
 ): ProductionExposureResponse {
   return Object.freeze({
     status: response.status,
     bodyContract,
     headerContracts: Object.freeze(
       Object.fromEntries(
-        requiredHeaders.map((contract) => [contract, headerContractObserved(contract, response)]),
+        requiredHeaders.map((contract) => [
+          contract,
+          headerContractObserved(contract, response, configuredOrigin),
+        ]),
       ),
     ),
   });
@@ -199,12 +209,13 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     ) {
       provenAbsentEffects.add('plaintext-session-created');
     }
+    const unchanged = before === after;
     return this.buildObservation(
       requirement,
       controlResponse,
       probeResponse,
-      before === after,
-      recovery.status === requirement.control.expectedStatus,
+      this.rawStateObservations(requirement, unchanged),
+      this.controlPassed(requirement, recovery),
       undefined,
       provenAbsentEffects,
     );
@@ -214,6 +225,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
   protected async observeHtmlPolicy(
     requirement: ValidationExposureRawCase,
   ): Promise<ProductionExposureObservation> {
+    const before = await this.stateFingerprint();
     const client = this.protocol.client('alpha', 'public');
     const verifier = randomBytes(48).toString('base64url');
     const authorization = new URL(`${this.admin.endpoints.porta}/alpha/auth`);
@@ -240,7 +252,20 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     }
     const controlResponse = await boundedResponse(await api.get(interactionUrl.toString()));
     const probeResponse = await boundedResponse(await api.get(interactionUrl.toString()));
-    return this.buildObservation(requirement, controlResponse, probeResponse, true, true);
+    const after = await this.stateFingerprint();
+    const interactionBound =
+      controlResponse.status === probeResponse.status &&
+      responseDigest(controlResponse) === responseDigest(probeResponse);
+    return this.buildObservation(
+      requirement,
+      controlResponse,
+      probeResponse,
+      this.namedStateObservations(requirement, {
+        'interaction-identity-remains-bound-to-the-created-authorization-request': interactionBound,
+        'no-production-config-mutated': before === after,
+      }),
+      interactionBound,
+    );
   }
 
   /** Authenticates in a real browser and observes exact session-cookie response metadata. */
@@ -249,6 +274,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
   ): Promise<ProductionExposureObservation> {
     const browser = await chromium.launch({ headless: true });
     try {
+      const priorSessionIds = await this.admin.observeActiveSessionIds('alpha');
       const context = await browser.newContext({ ignoreHTTPSErrors: true });
       const page = await context.newPage();
       const sessionHeaders: string[] = [];
@@ -274,12 +300,31 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         cookie.httpOnly &&
         cookie.sameSite === 'Lax' &&
         !/(?:^|;)\s*domain=/iu.test(setCookie);
+      const activeSessionIds = await this.admin.observeActiveSessionIds('alpha');
+      const newSessionIds = createdSessionIds(priorSessionIds, activeSessionIds);
+      const sessionRecordCountIsOne = newSessionIds.length === 1;
+
+      await page.locator('[data-testid="logout-btn"]').click();
+      await handleSignOutConfirmation(page);
+      await page.waitForURL((url) => url.origin === new URL(this.admin.endpoints.app).origin);
+      await page.locator('[data-testid="status"]').filter({ hasText: 'NOT LOGGED IN' }).waitFor();
+      const sessionsAfterLogout = await this.admin.observeActiveSessionIds('alpha');
+      const cookieReuseRejected =
+        cookie !== undefined && (await this.sessionCookieReuseRejected(browser, cookie.value));
+      const logoutInvalidatedSession = logoutInvalidatedCreatedSession(
+        newSessionIds,
+        sessionsAfterLogout,
+        cookieReuseRejected,
+      );
       return this.buildObservation(
         requirement,
         response,
         response,
-        metadataObserved,
-        metadataObserved,
+        this.namedStateObservations(requirement, {
+          'browser-cookie-metadata-read-independently': metadataObserved,
+          'session-record-count-is-one': sessionRecordCountIsOne,
+        }),
+        logoutInvalidatedSession,
         'empty-redirect-response-without-session-identifier',
         new Set(['session-cookie-in-response-body']),
       );
@@ -315,7 +360,10 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       requirement,
       controlResponse,
       probeResponse,
-      before === after,
+      this.namedStateObservations(requirement, {
+        'protected-state-fingerprint-after-equals-before': before === after,
+        'no-partial-durable-effect': before === after,
+      }),
       recovery.status === requirement.control.expectedStatus,
       undefined,
       new Set(),
@@ -339,7 +387,10 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         requirement,
         healthy,
         probe,
-        unobserved,
+        this.namedStateObservations(requirement, {
+          'protected-state-fingerprint-after-equals-before': unobserved,
+          'no-partial-durable-effect': unobserved,
+        }),
         recovery.status === requirement.control.expectedStatus,
         undefined,
         new Set(),
@@ -370,6 +421,48 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       );
     } finally {
       await page.close();
+    }
+  }
+
+  /** Replays the captured cookie in a fresh browser and requires prompt-none rejection. */
+  protected async sessionCookieReuseRejected(
+    browser: Browser,
+    cookieValue: string,
+  ): Promise<boolean> {
+    const context = await browser.newContext({ ignoreHTTPSErrors: true });
+    try {
+      await context.addCookies([
+        {
+          name: '_session',
+          value: cookieValue,
+          url: this.admin.endpoints.porta,
+          secure: true,
+          httpOnly: true,
+          sameSite: 'Lax',
+        },
+      ]);
+      const client = this.protocol.client('alpha', 'public');
+      const verifier = randomBytes(48).toString('base64url');
+      const authorization = new URL(`${this.admin.endpoints.porta}/alpha/auth`);
+      authorization.search = new URLSearchParams({
+        client_id: client.clientId,
+        redirect_uri: client.redirectUri,
+        response_type: 'code',
+        scope: 'openid profile email',
+        state: randomBytes(18).toString('base64url'),
+        nonce: randomBytes(18).toString('base64url'),
+        code_challenge: livePkceChallenge(verifier),
+        code_challenge_method: 'S256',
+        prompt: 'none',
+      }).toString();
+      const api = context.request;
+      const replay = await api.get(authorization.toString(), { maxRedirects: 0 });
+      const location = replay.headers().location;
+      if (replay.status() !== 303 || location === undefined) return false;
+      const result = new URL(location, this.admin.endpoints.porta).searchParams;
+      return result.get('error') === 'login_required' && !result.has('code');
+    } finally {
+      await context.close();
     }
   }
 
@@ -436,7 +529,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     requirement: ValidationExposureRawCase,
     controlResponse: BoundedPublicResponse,
     probeResponse: BoundedPublicResponse,
-    stateUnchanged: boolean | typeof unobserved,
+    independentStateObservations: Readonly<Record<string, boolean | typeof unobserved>>,
     recoveryPassed: boolean,
     bodyContract = this.classifyCaseBody(requirement, probeResponse),
     provenAbsentEffects: ReadonlySet<string> = new Set(),
@@ -445,7 +538,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     const headerContracts = Object.fromEntries(
       requirement.expected.headerContract.map((contract) => [
         contract,
-        headerContractObserved(contract, probeResponse),
+        headerContractObserved(contract, probeResponse, new URL(this.admin.endpoints.app).origin),
       ]),
     );
     const bodyInternalDetail = exposesBodyInternalDetail(probeResponse);
@@ -456,15 +549,6 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       /(?:nginx|porta)\/\d/iu.test(value),
     );
     const expectedHeadersPassed = Object.values(headerContracts).every(Boolean);
-    const independent = Object.fromEntries(
-      requirement.independentStateObservations.map((name) => {
-        if (/rate-limit-key|cookie-policy-unchanged/u.test(name)) return [name, unobserved];
-        if (/request-completed-on-https-origin/u.test(name)) {
-          return [name, this.admin.endpoints.porta.startsWith('https://')];
-        }
-        return [name, stateUnchanged];
-      }),
-    );
     const prohibited = Object.fromEntries(
       requirement.prohibitedSideEffects.map((name) => {
         if (provenAbsentEffects.has(name)) return [name, false];
@@ -480,22 +564,91 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         if (/origin|credentials-authorized|method-admitted|header-admitted/u.test(name)) {
           return [name, !expectedHeadersPassed];
         }
-        if (/mutated|partial-durable/u.test(name)) return [name, stateUnchanged !== true];
+        if (/mutated|partial-durable/u.test(name)) {
+          const unchanged = Object.values(independentStateObservations).every(
+            (value) => value === true,
+          );
+          return [name, !unchanged];
+        }
         return [name, unobserved];
       }),
     );
     return Object.freeze({
       caseId: requirement.id,
       profile: this.profile,
-      control: publicObservation(controlResponse, []),
-      probe: publicObservation(probeResponse, requirement.expected.headerContract, bodyContract),
-      independentStateObservations: Object.freeze(independent),
+      control: publicObservation(
+        controlResponse,
+        requirement.family === 'cors-policy' ? requirement.control.requiredObservations : [],
+        undefined,
+        new URL(this.admin.endpoints.app).origin,
+      ),
+      probe: publicObservation(
+        probeResponse,
+        requirement.expected.headerContract,
+        bodyContract,
+        new URL(this.admin.endpoints.app).origin,
+      ),
+      independentStateObservations,
       prohibitedSideEffects: Object.freeze(prohibited),
       recoveryPassed,
       recoveryMode,
       correlatedLogCredit: false,
       correlatedLogGap: 'correlated-security-decision-event-unavailable',
     });
+  }
+
+  /** Requires callers to supply every named state fact and forbids undeclared substitutions. */
+  protected namedStateObservations(
+    requirement: ValidationExposureRawCase,
+    observations: Readonly<Record<string, boolean | typeof unobserved>>,
+  ): Readonly<Record<string, boolean | typeof unobserved>> {
+    const expected = [...requirement.independentStateObservations].sort();
+    const actual = Object.keys(observations).sort();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error('production exposure independent state observation set is not exact');
+    }
+    return Object.freeze({ ...observations });
+  }
+
+  /** Maps ordinary raw cases through their explicitly named independent observers. */
+  protected rawStateObservations(
+    requirement: ValidationExposureRawCase,
+    stateUnchanged: boolean,
+  ): Readonly<Record<string, boolean | typeof unobserved>> {
+    const observations: Record<string, boolean | typeof unobserved> = {};
+    for (const name of requirement.independentStateObservations) {
+      switch (name) {
+        case 'configured-public-origin-unchanged':
+        case 'cookie-policy-unchanged':
+        case 'rate-limit-key-uses-direct-peer-not-spoofed-value':
+          observations[name] = unobserved;
+          break;
+        case 'request-completed-on-https-origin':
+          observations[name] = this.admin.endpoints.porta.startsWith('https://');
+          break;
+        case 'server-state-fingerprint-after-equals-before':
+        case 'target-cardinality-after-equals-before':
+        case 'no-production-config-mutated':
+          observations[name] = stateUnchanged;
+          break;
+        default:
+          throw new Error('production exposure raw state observer is unsupported');
+      }
+    }
+    return this.namedStateObservations(requirement, observations);
+  }
+
+  /** Validates the exact positive-control status and CORS response headers. */
+  protected controlPassed(
+    requirement: ValidationExposureRawCase,
+    response: BoundedPublicResponse,
+  ): boolean {
+    if (response.status !== requirement.control.expectedStatus) return false;
+    if (requirement.family !== 'cors-policy') return true;
+    const origin = new URL(this.admin.endpoints.app).origin;
+    return requirement.control.requiredObservations.every((contract) =>
+      headerContractObserved(contract, response, origin),
+    );
   }
 
   /** Classifies the small set of case-specific public body shapes from concrete bytes. */

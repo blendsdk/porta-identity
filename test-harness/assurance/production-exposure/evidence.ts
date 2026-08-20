@@ -16,6 +16,7 @@ const caseEvidenceSchema = z
     observedStatus: z.number().int().min(100).max(599).optional(),
     expectedBodyContract: z.string().min(1),
     observedBodyContract: z.string().min(1).optional(),
+    failedControlObservations: z.array(z.string().min(1)),
     failedHeaderContracts: z.array(z.string().min(1)),
     failedStateObservations: z.array(z.string().min(1)),
     unobservedStateObservations: z.array(z.string().min(1)),
@@ -49,6 +50,12 @@ export function productionExposureCaseEvidence(
   requirement: ValidationExposureRawCase,
   observation: ProductionExposureObservation,
 ): ProductionExposureCaseEvidence {
+  const failedControlObservations =
+    requirement.family === 'cors-policy'
+      ? requirement.control.requiredObservations.filter(
+          (name) => observation.control.headerContracts[name] !== true,
+        )
+      : [];
   const failedHeaderContracts = requirement.expected.headerContract.filter(
     (name) => observation.probe.headerContracts[name] !== true,
   );
@@ -68,6 +75,7 @@ export function productionExposureCaseEvidence(
     observation.control.status !== requirement.control.expectedStatus ||
     observation.probe.status !== requirement.expected.status ||
     observation.probe.bodyContract !== requirement.expected.bodyContract ||
+    failedControlObservations.length > 0 ||
     failedHeaderContracts.length > 0 ||
     failedStateObservations.length > 0 ||
     observedProhibitedEffects.length > 0 ||
@@ -82,6 +90,7 @@ export function productionExposureCaseEvidence(
     observedStatus: observation.probe.status,
     expectedBodyContract: requirement.expected.bodyContract,
     observedBodyContract: observation.probe.bodyContract,
+    failedControlObservations,
     failedHeaderContracts,
     failedStateObservations,
     unobservedStateObservations,
@@ -101,6 +110,7 @@ export function productionExposureExecutionFailure(
     outcome: 'execution-failure',
     expectedStatus: requirement.expected.status,
     expectedBodyContract: requirement.expected.bodyContract,
+    failedControlObservations: [],
     failedHeaderContracts: [],
     failedStateObservations: [],
     unobservedStateObservations: [],

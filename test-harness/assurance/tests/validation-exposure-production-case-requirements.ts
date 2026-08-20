@@ -68,6 +68,10 @@ const corsControl = control(
   }),
   200,
   'access-control-allow-origin-exactly-echoes-the-configured-origin',
+  'access-control-allow-credentials:true',
+  'access-control-allow-methods:GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'access-control-allow-headers:Authorization, Content-Type',
+  'access-control-max-age:86400',
   'vary-includes-origin',
 );
 const productionControl = control(
@@ -85,8 +89,12 @@ const preflightControl = control(
     'access-control-request-headers': 'content-type',
   }),
   204,
-  'configured-preflight-reached',
-  'configured-method-and-header-admitted',
+  'access-control-allow-origin-exactly-echoes-the-configured-origin',
+  'access-control-allow-credentials:true',
+  'access-control-allow-methods:GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'access-control-allow-headers:Authorization, Content-Type',
+  'access-control-max-age:86400',
+  'vary-includes-origin',
 );
 
 const standardProductionLogFields = validationExposureRequiredLogFields;
@@ -151,7 +159,8 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
       status: 204,
       bodyContract: 'empty-preflight-body',
       headerContract: [
-        'access-control-allow-origin-absent',
+        'access-control-allow-origin-exactly-echoes-the-configured-origin',
+        'access-control-allow-credentials:true',
         'access-control-allow-methods-does-not-contain-trace',
         'access-control-allow-headers-does-not-contain-x-assurance-unconfigured',
       ],

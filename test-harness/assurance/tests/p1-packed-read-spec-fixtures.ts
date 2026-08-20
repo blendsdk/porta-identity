@@ -14,6 +14,7 @@ function result(identity: string): PackedP1ReadResultObservation {
     result: 'allowed',
     status: 200,
     orderedItemIdentities: [identity],
+    observedTotal: 1,
     pageOrFilterMetadataDigest: `sha256:${digestA}`,
     publicFieldDigest: `sha256:${digestB}`,
   };
@@ -32,8 +33,10 @@ function journey(
     client: requirement.client,
     clientResult: result(identity),
     independentRawResult: result(identity),
+    outcome: 'passed',
     fixtureOracleSatisfied: true,
     fixtureResolvedIdentities: [identity],
+    fixtureExpectedTotal: 1,
     stateFingerprintsBefore: state,
     stateFingerprintsAfter: { ...state },
     forbiddenOutputObserved: Object.fromEntries(

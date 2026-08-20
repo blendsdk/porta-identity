@@ -38,6 +38,7 @@ services:
       DATABASE_URL: postgres://porta:harness_pr0d_s3cret@postgres:5432/porta
       REDIS_URL: redis://redis:6379
       ISSUER_BASE_URL: '${HARNESS_PORTA_URL:?HARNESS_PORTA_URL is required}'
+      ADMIN_CORS_ORIGINS: '${HARNESS_APP_URL:?HARNESS_APP_URL is required}'
       TRUST_PROXY: 'true'
       # ⚠️ TEST HARNESS ONLY — hardcoded secrets for ephemeral local services
       COOKIE_KEYS: Xk9mQ2vR7pW4tY6bN8cF3jH5sA0dL1eZq,Rm4nT8wK2xJ6yP0qB3vG5fC7hD9sA1eUp

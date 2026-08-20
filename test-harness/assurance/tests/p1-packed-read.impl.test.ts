@@ -9,6 +9,11 @@ import {
   type PackedP1ReadJourneyDriver,
   type PackedP1ReadResult,
 } from '../compat/p1-read.js';
+import {
+  containsPrivateSigningKeyMaterial,
+  outputContainsProtectedCanary,
+  publicSigningKeyRecordsAreStrict,
+} from '../compat/p1-read-live.js';
 import { isPackedCompatibilitySelector } from '../compat/command.js';
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
 import type { PackedCliSdkResolution } from '../compat/resolution.js';
@@ -22,6 +27,7 @@ function result(identity: string): PackedP1ReadResult {
     result: 'allowed',
     status: 200,
     orderedItemIdentities: [identity],
+    observedTotal: 1,
     pageOrFilterMetadataDigest: stableDigest,
     publicFieldDigest: stableDigest,
   };
@@ -62,11 +68,15 @@ function recordingDriver(events: string[]): PackedP1ReadJourneyDriver {
       events.push(`raw:${requirement.id}`);
       return result(requirement.id);
     },
-    async verifyFixtureIdentities(requirement, identities) {
+    async verifyFixtureIdentities(requirement, observed) {
       events.push(`fixture:${requirement.id}`);
-      return { satisfied: true, resolvedIdentities: identities };
+      return {
+        satisfied: true,
+        resolvedIdentities: observed.orderedItemIdentities,
+        expectedTotal: observed.observedTotal,
+      };
     },
-    async scanForbiddenOutput(output) {
+    async scanForbiddenOutput(_requirement, output) {
       events.push(`scan:${output}`);
       return {
         'opaque-access-or-refresh-token': false,
@@ -136,23 +146,21 @@ test('should reject changed page order, metadata, or protected cardinality', () 
   const complete = completePackedP1ReadEvidence();
   const first = complete.journeys[0];
   assert.ok(first);
-  assert.throws(
-    () =>
-      validatePackedP1ReadEvidence({
-        ...complete,
-        journeys: [
-          {
-            ...first,
-            independentRawResult: {
-              ...first.independentRawResult,
-              orderedItemIdentities: ['changed-page-identity'],
-            },
-          },
-          ...complete.journeys.slice(1),
-        ],
-      }),
-    /independent raw observation/u,
-  );
+  const mismatch = validatePackedP1ReadEvidence({
+    ...complete,
+    journeys: [
+      {
+        ...first,
+        outcome: 'product-failure',
+        independentRawResult: {
+          ...first.independentRawResult,
+          orderedItemIdentities: ['changed-page-identity'],
+        },
+      },
+      ...complete.journeys.slice(1),
+    ],
+  });
+  assert.equal(mismatch.journeys[0]?.outcome, 'product-failure');
   assert.throws(
     () =>
       validatePackedP1ReadEvidence({
@@ -169,6 +177,106 @@ test('should reject changed page order, metadata, or protected cardinality', () 
         ],
       }),
     /protected state changed/u,
+  );
+});
+
+test('should record an SDK cursor incompatibility as a product failure', async () => {
+  const events: string[] = [];
+  const base = recordingDriver(events);
+  const driver: PackedP1ReadJourneyDriver = {
+    ...base,
+    async executeClient(requirement) {
+      if (requirement.id !== 'packed-sdk-tenant-users-pagination') {
+        return base.executeClient(requirement);
+      }
+      return {
+        result: {
+          result: 'unexpected-error',
+          status: null,
+          orderedItemIdentities: [],
+          observedTotal: null,
+          pageOrFilterMetadataDigest: stableDigest,
+          publicFieldDigest: stableDigest,
+        },
+        boundedOutput: 'bounded-sdk-error',
+      };
+    },
+  };
+  const journeys = await collectPackedP1ReadJourneys(driver);
+  assert.equal(journeys[0]?.outcome, 'product-failure');
+  assert.equal(journeys[0]?.independentRawResult.result, 'allowed');
+});
+
+test('should reject unknown, nested, JWK-private, and encrypted signing-key fields', () => {
+  const publicKey = {
+    id: 'key-id',
+    kid: 'kid',
+    algorithm: 'ES256',
+    status: 'active',
+    createdAt: '2026-08-20T00:00:00.000Z',
+    retiredAt: null,
+  };
+  assert.equal(publicSigningKeyRecordsAreStrict([publicKey]), true);
+  for (const leaked of [
+    { ...publicKey, encryptedPrivateKey: 'ciphertext' },
+    { ...publicKey, jwk: { kty: 'EC', d: 'private-coordinate' } },
+    { ...publicKey, nested: { private_key: 'secret' } },
+  ]) {
+    assert.equal(publicSigningKeyRecordsAreStrict([leaked]), false);
+    assert.equal(containsPrivateSigningKeyMaterial(JSON.stringify(leaked)), true);
+  }
+  assert.equal(containsPrivateSigningKeyMaterial('-----BEGIN PRIVATE KEY-----'), true);
+});
+
+test('should scan exact protected token, cookie, and credential canaries', () => {
+  assert.equal(outputContainsProtectedCanary('safe public output', ['opaque-token']), false);
+  assert.equal(outputContainsProtectedCanary('value=opaque-token', ['opaque-token']), true);
+  assert.equal(outputContainsProtectedCanary('cookie=session-canary', ['session-canary']), true);
+  assert.equal(
+    outputContainsProtectedCanary('credential=client-secret-canary', ['client-secret-canary']),
+    true,
+  );
+});
+
+test('should reject foreign totals even when returned identities remain tenant-owned', () => {
+  const complete = completePackedP1ReadEvidence();
+  const first = complete.journeys[0];
+  assert.ok(first);
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...complete,
+        journeys: [
+          {
+            ...first,
+            clientResult: { ...first.clientResult, observedTotal: 6 },
+            independentRawResult: { ...first.independentRawResult, observedTotal: 6 },
+          },
+          ...complete.journeys.slice(1),
+        ],
+      }),
+    /outcome.*independent observations/i,
+  );
+});
+
+test('should reject a missing total when the fixture oracle defines cardinality', () => {
+  const complete = completePackedP1ReadEvidence();
+  const first = complete.journeys[0];
+  assert.ok(first);
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...complete,
+        journeys: [
+          {
+            ...first,
+            clientResult: { ...first.clientResult, observedTotal: null },
+            independentRawResult: { ...first.independentRawResult, observedTotal: null },
+          },
+          ...complete.journeys.slice(1),
+        ],
+      }),
+    /outcome.*independent observations/i,
   );
 });
 

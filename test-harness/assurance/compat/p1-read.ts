@@ -34,9 +34,11 @@ export interface PackedP1ReadResult {
   /** Public outcome classified from the actual response. */
   readonly result: 'allowed' | 'forbidden' | 'not-found' | 'unexpected-error';
   /** Actual HTTP status represented by the observation. */
-  readonly status: number;
+  readonly status: number | null;
   /** Stable ordered identifiers returned by the selected page or filter. */
   readonly orderedItemIdentities: readonly string[];
+  /** Explicit total reported by the public surface, or null when that surface reports no total. */
+  readonly observedTotal: number | null;
   /** SHA-256 digest of pagination and filter metadata. */
   readonly pageOrFilterMetadataDigest: string;
   /** SHA-256 digest of the bounded public fields. */
@@ -53,10 +55,14 @@ export interface PackedP1ReadJourneyEvidence {
   readonly clientResult: PackedP1ReadResult;
   /** Result observed independently through raw HTTP. */
   readonly independentRawResult: PackedP1ReadResult;
+  /** Truthful aggregate classification; product incompatibilities remain admissible evidence. */
+  readonly outcome: 'passed' | 'product-failure' | 'incomplete';
   /** Whether every returned identity satisfies the fixture-owned oracle. */
   readonly fixtureOracleSatisfied: boolean;
   /** Independently resolved identities expected in the client result. */
   readonly fixtureResolvedIdentities: readonly string[];
+  /** Independently derived tenant/filter total, when the fixture can provide one. */
+  readonly fixtureExpectedTotal: number | null;
   /** Protected-state fingerprints captured before the read. */
   readonly stateFingerprintsBefore: Readonly<Record<string, string>>;
   /** Protected-state fingerprints captured after the read. */
@@ -92,10 +98,19 @@ export interface PackedP1ReadJourneyDriver {
   /** Resolves the selected result identities against deterministic fixture state. */
   verifyFixtureIdentities(
     requirement: PackedP1ReadJourneyRequirement,
-    identities: readonly string[],
-  ): Promise<{ readonly satisfied: boolean; readonly resolvedIdentities: readonly string[] }>;
+    result: PackedP1ReadResult,
+  ): Promise<{
+    readonly satisfied: boolean;
+    readonly resolvedIdentities: readonly string[];
+    readonly expectedTotal: number | null;
+  }>;
   /** Scans bounded client output without retaining protected values in evidence. */
-  scanForbiddenOutput(boundedOutput: string): Promise<Readonly<Record<string, boolean>>>;
+  scanForbiddenOutput(
+    requirement: PackedP1ReadJourneyRequirement,
+    boundedOutput: string,
+    result: PackedP1ReadResult,
+    fixtureExpectedTotal: number | null,
+  ): Promise<Readonly<Record<string, boolean>>>;
 }
 
 /** Complete protected-state fingerprint vocabulary shared by every journey. */
@@ -139,8 +154,9 @@ const compiledEntrypointSchema = z
 const resultSchema = z
   .object({
     result: z.enum(['allowed', 'forbidden', 'not-found', 'unexpected-error']),
-    status: z.number().int(),
+    status: z.number().int().min(100).max(599).nullable(),
     orderedItemIdentities: z.array(z.string().min(1)),
+    observedTotal: z.number().int().nonnegative().nullable(),
     pageOrFilterMetadataDigest: digestSchema,
     publicFieldDigest: digestSchema,
   })
@@ -164,8 +180,10 @@ const journeySchema = z
     client: z.enum(['sdk', 'cli']),
     clientResult: resultSchema,
     independentRawResult: resultSchema,
+    outcome: z.enum(['passed', 'product-failure', 'incomplete']),
     fixtureOracleSatisfied: z.boolean(),
     fixtureResolvedIdentities: z.array(z.string().min(1)),
+    fixtureExpectedTotal: z.number().int().nonnegative().nullable(),
     stateFingerprintsBefore: stateSchema,
     stateFingerprintsAfter: stateSchema,
     forbiddenOutputObserved: forbiddenOutputSchema,
@@ -268,15 +286,32 @@ function validateJourney(
   journey: z.infer<typeof journeySchema>,
   requirement: PackedP1ReadJourneyRequirement,
 ): void {
-  if (JSON.stringify(journey.clientResult) !== JSON.stringify(journey.independentRawResult)) {
-    throw new Error('packed P1 client result differs from independent raw observation');
-  }
   if (
-    !journey.fixtureOracleSatisfied ||
-    JSON.stringify(journey.clientResult.orderedItemIdentities) !==
-      JSON.stringify(journey.fixtureResolvedIdentities)
+    ['tenant-users-page', 'users-page-search', 'audit-filter', 'tenant-session-page'].includes(
+      requirement.surface,
+    ) &&
+    journey.fixtureExpectedTotal === null
   ) {
-    throw new Error('packed P1 fixture identity oracle failed');
+    throw new Error('packed P1 tenant/filter cardinality oracle is absent');
+  }
+  const resultsMatch =
+    JSON.stringify(journey.clientResult) === JSON.stringify(journey.independentRawResult);
+  const identitiesMatch =
+    JSON.stringify(journey.clientResult.orderedItemIdentities) ===
+    JSON.stringify(journey.fixtureResolvedIdentities);
+  const totalMatches =
+    journey.fixtureExpectedTotal === null ||
+    journey.clientResult.observedTotal === journey.fixtureExpectedTotal;
+  const expectedOutcome =
+    journey.clientResult.result === 'unexpected-error' &&
+    journey.clientResult.status === null &&
+    journey.independentRawResult.result === 'allowed'
+      ? 'product-failure'
+      : resultsMatch && journey.fixtureOracleSatisfied && identitiesMatch && totalMatches
+        ? 'passed'
+        : 'product-failure';
+  if (journey.outcome !== expectedOutcome) {
+    throw new Error('packed P1 journey outcome is not derived from independent observations');
   }
   if (
     JSON.stringify(journey.stateFingerprintsBefore) !==
@@ -317,19 +352,35 @@ export async function collectPackedP1ReadJourneys(
     const before = await driver.observeState();
     const client = await driver.executeClient(requirement);
     const independent = await driver.executeIndependentRaw(requirement);
-    const fixture = await driver.verifyFixtureIdentities(
+    const fixture = await driver.verifyFixtureIdentities(requirement, client.result);
+    const forbidden = await driver.scanForbiddenOutput(
       requirement,
-      client.result.orderedItemIdentities,
+      client.boundedOutput,
+      client.result,
+      fixture.expectedTotal,
     );
-    const forbidden = await driver.scanForbiddenOutput(client.boundedOutput);
     const after = await driver.observeState();
+    const resultsMatch = JSON.stringify(client.result) === JSON.stringify(independent);
+    const identitiesMatch =
+      JSON.stringify(client.result.orderedItemIdentities) ===
+      JSON.stringify(fixture.resolvedIdentities);
+    const outcome =
+      client.result.result === 'unexpected-error' &&
+      client.result.status === null &&
+      independent.result === 'allowed'
+        ? 'product-failure'
+        : resultsMatch && fixture.satisfied && identitiesMatch
+          ? 'passed'
+          : 'product-failure';
     evidence.push({
       requirementId: requirement.id,
       client: requirement.client,
       clientResult: client.result,
       independentRawResult: independent,
+      outcome,
       fixtureOracleSatisfied: fixture.satisfied,
       fixtureResolvedIdentities: fixture.resolvedIdentities,
+      fixtureExpectedTotal: fixture.expectedTotal,
       stateFingerprintsBefore: before,
       stateFingerprintsAfter: after,
       forbiddenOutputObserved: forbidden,

@@ -36,6 +36,11 @@ test('freezes exactly six approved packed SDK and CLI read journeys', () => {
     );
     assert.doesNotMatch(requirement.id, /st-?62|bulk|import|export/i);
   }
+  const cursor = packedP1ReadRequirements[0];
+  assert.ok(cursor);
+  assert.match(cursor.clientInvocation, /pageSize: 2/u);
+  assert.match(cursor.independentRawRequest, /[?&]limit=2(?:&|$)/u);
+  assert.doesNotMatch(cursor.independentRawRequest, /[?&]pageSize=/u);
 });
 
 test('requires independent comparison, nonmutation, scanning, provenance, and actual-run cleanup', () => {
@@ -109,11 +114,25 @@ test('validates complete packed evidence and rejects expectation-shaped defects'
     ...complete,
     journeys: complete.journeys.map((journey, index) =>
       index === 1
-        ? { ...journey, independentRawResult: { ...journey.independentRawResult, status: 500 } }
+        ? {
+            ...journey,
+            outcome: 'product-failure' as const,
+            independentRawResult: { ...journey.independentRawResult, status: 500 },
+          }
         : journey,
     ),
   };
-  assert.throws(() => validatePackedP1ReadEvidence(mismatchedRaw), /independent raw/i);
+  assert.equal(validatePackedP1ReadEvidence(mismatchedRaw).journeys[1]?.outcome, 'product-failure');
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...mismatchedRaw,
+        journeys: mismatchedRaw.journeys.map((journey, index) =>
+          index === 1 ? { ...journey, outcome: 'passed' as const } : journey,
+        ),
+      }),
+    /outcome.*independent observations/i,
+  );
 
   const leakedOutput = {
     ...complete,

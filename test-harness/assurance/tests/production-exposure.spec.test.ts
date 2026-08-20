@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createProductionExposureContract } from './production-exposure-adapter.js';
+import { admitProductionExposureCases } from '../production-exposure/admission.js';
 import {
   productionExposureCaseEvidence,
   productionExposureExecutionFailure,
@@ -16,16 +17,10 @@ if (profile !== 'operational' && profile !== 'production-security') {
   throw new Error('PRODUCTION_EXPOSURE_PROFILE_REQUIRED');
 }
 
-const applicableCases = [
+const applicableCases = admitProductionExposureCases(profile, [
   ...validationExposureRawCases,
   ...validationExposureProductionCases,
-].filter(
-  (requirement) =>
-    requirement.executionProfiles.includes(profile) &&
-    (requirement.sentinelId === 'ST-53' ||
-      requirement.sentinelId === 'ST-55' ||
-      requirement.sentinelId === 'ST-56'),
-);
+]);
 
 test('observes every applicable production policy and dependency case without log overclaim', async (context) => {
   const observer = await createProductionExposureContract();
@@ -44,6 +39,15 @@ test('observes every applicable production policy and dependency case without lo
         assert.equal(observation.caseId, requirement.id);
         assert.equal(observation.profile, profile);
         assert.equal(observation.control.status, requirement.control.expectedStatus);
+        if (requirement.family === 'cors-policy') {
+          for (const controlObservation of requirement.control.requiredObservations) {
+            assert.equal(
+              observation.control.headerContracts[controlObservation],
+              true,
+              controlObservation,
+            );
+          }
+        }
         assert.equal(observation.probe.status, requirement.expected.status);
         assert.equal(observation.probe.bodyContract, requirement.expected.bodyContract);
         for (const expectedHeader of requirement.expected.headerContract) {

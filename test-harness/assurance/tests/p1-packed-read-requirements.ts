@@ -55,6 +55,7 @@ export interface PackedP1ReadRequirement {
 
 const comparisonFields = [
   'ordered-item-identities',
+  'observed-total',
   'page-or-filter-metadata',
   'public-field-digests',
 ] as const;
@@ -119,7 +120,7 @@ const journeys: readonly JourneyDefinition[] = [
     invocation:
       'sdk.users.list(alphaOrgId, { cursor: alphaCursor, pageSize: 2, search: alphaMarker })',
     rawRequest:
-      'GET /api/admin/organizations/{alphaOrgId}/users?cursor={alphaCursor}&pageSize=2&search={alphaMarker}',
+      'GET /api/admin/organizations/{alphaOrgId}/users?cursor={alphaCursor}&limit=2&search={alphaMarker}',
     fixtureOracleRequirements: [
       'retained-alias:alpha-user-active',
       'all-resolved-user-organization-ids-equal-alpha',

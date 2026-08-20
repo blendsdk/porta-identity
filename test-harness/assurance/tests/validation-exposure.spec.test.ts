@@ -203,10 +203,26 @@ test('freezes tenant, proxy, parser, and production-security outcomes exactly', 
   const corsSimple = byId.get('st55-unconfigured-cors-origin');
   assert.equal(corsSimple?.request.path, '/api/admin/organizations');
   assert.equal(corsSimple?.control.request.path, '/api/admin/organizations');
+  assert.deepEqual(corsSimple?.control.requiredObservations, [
+    'access-control-allow-origin-exactly-echoes-the-configured-origin',
+    'access-control-allow-credentials:true',
+    'access-control-allow-methods:GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'access-control-allow-headers:Authorization, Content-Type',
+    'access-control-max-age:86400',
+    'vary-includes-origin',
+  ]);
 
   const corsPreflight = byId.get('st55-unconfigured-cors-method-and-header');
   assert.equal(corsPreflight?.request.headers.origin, 'https://app-harness.ci.portaidentity.com');
   assert.equal(corsPreflight?.request.headers['access-control-request-method'], 'TRACE');
+  assert.ok(
+    corsPreflight?.expected.headerContract.includes(
+      'access-control-allow-origin-exactly-echoes-the-configured-origin',
+    ),
+  );
+  assert.ok(
+    corsPreflight?.expected.headerContract.includes('access-control-allow-credentials:true'),
+  );
   assert.ok(
     corsPreflight?.expected.headerContract.includes(
       'access-control-allow-methods-does-not-contain-trace',

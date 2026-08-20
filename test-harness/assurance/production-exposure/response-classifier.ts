@@ -98,7 +98,11 @@ export function classifyBody(response: BoundedPublicResponse): string {
 }
 
 /** Evaluates one immutable header contract against concrete response headers. */
-export function headerContractObserved(contract: string, response: BoundedPublicResponse): boolean {
+export function headerContractObserved(
+  contract: string,
+  response: BoundedPublicResponse,
+  configuredOrigin = 'https://app-harness.ci.portaidentity.com',
+): boolean {
   const headers = response.headers;
   const corsOrigin = headers['access-control-allow-origin'];
   const corsMethods = headers['access-control-allow-methods'] ?? '';
@@ -111,7 +115,19 @@ export function headerContractObserved(contract: string, response: BoundedPublic
     case 'access-control-allow-credentials-absent':
       return headers['access-control-allow-credentials'] === undefined;
     case 'access-control-allow-origin-exactly-echoes-the-configured-origin':
-      return corsOrigin === 'https://app-harness.ci.portaidentity.com';
+      return corsOrigin === configuredOrigin;
+    case 'access-control-allow-credentials:true':
+      return headers['access-control-allow-credentials'] === 'true';
+    case 'access-control-allow-methods:GET, POST, PUT, PATCH, DELETE, OPTIONS':
+      return corsMethods === 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+    case 'access-control-allow-headers:Authorization, Content-Type':
+      return corsHeaders === 'Authorization, Content-Type';
+    case 'access-control-max-age:86400':
+      return headers['access-control-max-age'] === '86400';
+    case 'vary-includes-origin':
+      return (headers.vary ?? '')
+        .split(',')
+        .some((value) => value.trim().toLowerCase() === 'origin');
     case 'access-control-allow-methods-does-not-contain-trace':
       return !corsMethods.split(',').some((value) => value.trim().toUpperCase() === 'TRACE');
     case 'access-control-allow-headers-does-not-contain-x-assurance-unconfigured':

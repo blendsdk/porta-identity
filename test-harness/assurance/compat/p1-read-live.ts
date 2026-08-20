@@ -18,7 +18,7 @@ import { request, type APIRequestContext } from '@playwright/test';
 import { z } from 'zod';
 
 import { activeEndpoints } from '../../fixtures/fixture-assurance.js';
-import { alphaFixture } from '../../fixtures/fixture-definition.js';
+import { alphaFixture, protectedCredentialDescriptors } from '../../fixtures/fixture-definition.js';
 import {
   readProtectedRuntimeCredential,
   readPublicRuntimeFixtureManifest,
@@ -54,6 +54,53 @@ const publicListEnvelopeSchema = z
     hasMore: z.boolean().optional(),
   })
   .passthrough();
+
+const publicSigningKeySchema = z
+  .object({
+    id: z.string().min(1),
+    kid: z.string().min(1),
+    algorithm: z.string().min(1),
+    status: z.string().min(1),
+    createdAt: z.string().min(1),
+    retiredAt: z.string().nullable(),
+  })
+  .strict();
+
+/** Rejects every signing-key field outside the public metadata contract. */
+export function publicSigningKeyRecordsAreStrict(
+  records: readonly Record<string, unknown>[],
+): boolean {
+  return records.every((record) => publicSigningKeySchema.safeParse(record).success);
+}
+
+/** Detects common encoded private-key representations in bounded transient output. */
+export function containsPrivateSigningKeyMaterial(output: string): boolean {
+  if (/BEGIN [A-Z0-9 ]*PRIVATE KEY/iu.test(output)) return true;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(output);
+  } catch {
+    return /"(?:d|private[_-]?key|encrypted[_-]?private[_-]?key|ciphertext)"\s*:/iu.test(output);
+  }
+  const visit = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(visit);
+    if (typeof value !== 'object' || value === null) return false;
+    return Object.entries(value).some(
+      ([key, child]) =>
+        /^(?:d|private[_-]?key(?:pem)?|encrypted[_-]?private[_-]?key|ciphertext)$/iu.test(key) ||
+        visit(child),
+    );
+  };
+  return visit(parsed);
+}
+
+/** Compares transient output with runtime-only canaries without retaining them in evidence. */
+export function outputContainsProtectedCanary(
+  output: string,
+  canaries: readonly string[],
+): boolean {
+  return canaries.some((canary) => canary.length > 0 && output.includes(canary));
+}
 
 /** Returns a deterministic digest of bounded public data. */
 function digest(value: unknown): string {
@@ -108,6 +155,8 @@ function normalizeResult(
     result: 'allowed',
     status: 200,
     orderedItemIdentities: identities,
+    observedTotal:
+      envelope.total ?? (envelope.nextCursor === undefined ? envelope.data.length : null),
     pageOrFilterMetadataDigest: digest(metadata),
     publicFieldDigest: digest(envelope.data),
   };
@@ -123,6 +172,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
   private selectedAuditEvent: string | undefined;
   private selectedUserCursor: string | undefined;
   private sensitiveConfigurationExposed = false;
+  private signingKeySchemaViolation = false;
   private auditPrerequisiteReady = false;
 
   /** Resolves only owner-fenced fixture identities and public endpoints. */
@@ -186,12 +236,20 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
   /** Verifies result identities against raw response ownership and masking facts. */
   public async verifyFixtureIdentities(
     requirement: PackedP1ReadJourneyRequirement,
-    identities: readonly string[],
-  ): Promise<{ readonly satisfied: boolean; readonly resolvedIdentities: readonly string[] }> {
+    result: PackedP1ReadResult,
+  ): Promise<{
+    readonly satisfied: boolean;
+    readonly resolvedIdentities: readonly string[];
+    readonly expectedTotal: number | null;
+  }> {
     const raw = this.lastRawEnvelope;
     if (raw === undefined) throw new Error('packed P1 raw fixture observation is absent');
     const resolved = raw.data.map((item) => itemIdentity(requirement.surface, item));
-    let satisfied = JSON.stringify(resolved) === JSON.stringify(identities);
+    const expectedTotal = await this.fixtureExpectedTotal(requirement);
+    let satisfied = JSON.stringify(resolved) === JSON.stringify(result.orderedItemIdentities);
+    if (expectedTotal !== null) {
+      satisfied = satisfied && result.observedTotal === expectedTotal;
+    }
     if (requirement.surface === 'tenant-users-page') {
       satisfied =
         satisfied && raw.data.every((item) => item.organizationId === this.entity('alpha'));
@@ -205,12 +263,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
         satisfied && raw.data.every((item) => item.organizationId === this.entity('alpha'));
     }
     if (requirement.surface === 'signing-key-list') {
-      satisfied =
-        satisfied &&
-        raw.data.every(
-          (item) =>
-            !('privateKey' in item) && !('private_key' in item) && !('privateKeyPem' in item),
-        );
+      satisfied = satisfied && publicSigningKeyRecordsAreStrict(raw.data);
     }
     if (requirement.surface === 'tenant-session-page') {
       satisfied =
@@ -220,29 +273,42 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
       satisfied =
         satisfied && raw.data.every((item) => item.isSensitive !== true || item.value === '***');
     }
-    return { satisfied, resolvedIdentities: resolved };
+    return { satisfied, resolvedIdentities: resolved, expectedTotal };
   }
 
   /** Scans transient client output against protected values and foreign fixture identities. */
-  public async scanForbiddenOutput(output: string): Promise<Readonly<Record<string, boolean>>> {
-    const fullToken = this.token();
-    const protectedClient = alphaFixture.clients.find(
-      (client) => client.kind === 'confidential' && client.validity === 'valid',
-    );
-    if (protectedClient?.clientSecretCredentialRef === undefined) {
-      throw new Error('packed P1 protected client reference is absent');
-    }
-    const protectedCredential = readProtectedRuntimeCredential(
-      this.endpoints.credentialManifestPath,
-      protectedClient.clientSecretCredentialRef,
-    );
+  public async scanForbiddenOutput(
+    requirement: PackedP1ReadJourneyRequirement,
+    output: string,
+    result: PackedP1ReadResult,
+    fixtureExpectedTotal: number | null,
+  ): Promise<Readonly<Record<string, boolean>>> {
+    const canaries = protectedCredentialDescriptors.map((descriptor) => ({
+      kind: descriptor.kind,
+      value: readProtectedRuntimeCredential(this.endpoints.credentialManifestPath, descriptor.ref),
+    }));
+    const tokenCanaries = canaries
+      .filter((entry) => entry.kind === 'token')
+      .map((entry) => entry.value);
+    const credentialCanaries = canaries
+      .filter((entry) => entry.kind !== 'token')
+      .map((entry) => entry.value);
     const bravo = [this.entity('bravo'), this.entity('bravo-user-active')];
+    const foreignCountObserved =
+      fixtureExpectedTotal !== null &&
+      result.observedTotal !== null &&
+      result.observedTotal !== fixtureExpectedTotal;
     return {
-      'opaque-access-or-refresh-token': output.includes(fullToken),
-      'session-cookie-or-credential': output.includes(protectedCredential),
+      'opaque-access-or-refresh-token':
+        outputContainsProtectedCanary(output, tokenCanaries) ||
+        /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u.test(output),
+      'session-cookie-or-credential': outputContainsProtectedCanary(output, credentialCanaries),
       'protected-configuration-value': this.sensitiveConfigurationExposed,
-      'private-signing-key-material': /BEGIN (?:EC |)PRIVATE KEY/u.test(output),
-      'foreign-tenant-identity-or-count': bravo.some((value) => output.includes(value)),
+      'private-signing-key-material':
+        (requirement.surface === 'signing-key-list' && this.signingKeySchemaViolation) ||
+        containsPrivateSigningKeyMaterial(output),
+      'foreign-tenant-identity-or-count':
+        foreignCountObserved || bravo.some((value) => output.includes(value)),
     };
   }
 
@@ -281,7 +347,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
       const api = await this.apiPromise;
       const firstPage = await this.getEnvelope(
         api,
-        `/api/admin/organizations/${this.entity('alpha')}/users?limit=1&search=alpha`,
+        `/api/admin/organizations/${this.entity('alpha')}/users?limit=2&search=alpha`,
         this.headers(),
       );
       if (firstPage.nextCursor === undefined || firstPage.nextCursor === null) {
@@ -310,12 +376,33 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
         terminationGraceMilliseconds: 2_000,
         cleanup: () => undefined,
       });
-      if (child.code !== 0 || child.signal !== null || child.outputTruncated) {
+      if (
+        child.signal !== null ||
+        child.outputTruncated ||
+        child.setupFailed ||
+        child.cleanupFailed
+      ) {
         throw new Error('packed P1 SDK read failed');
       }
       this.lastClientOutput = `${child.stdout}${child.stderr}`;
+      if (child.code !== 0) {
+        return {
+          result: {
+            result: 'unexpected-error' as const,
+            status: null,
+            orderedItemIdentities: [],
+            observedTotal: null,
+            pageOrFilterMetadataDigest: digest({ unavailable: true }),
+            publicFieldDigest: digest([]),
+          },
+          boundedOutput: this.lastClientOutput,
+        };
+      }
       const envelope = listEnvelope(JSON.parse(child.stdout));
       this.sensitiveConfigurationExposed = false;
+      this.signingKeySchemaViolation =
+        requirement.surface === 'signing-key-list' &&
+        !publicSigningKeyRecordsAreStrict(envelope.data);
       return {
         result: normalizeResult(requirement, envelope),
         boundedOutput: this.lastClientOutput,
@@ -376,6 +463,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
     this.sensitiveConfigurationExposed =
       requirement.surface === 'configuration-list' &&
       envelope.data.some((item) => item.isSensitive === true && item.value !== '***');
+    this.signingKeySchemaViolation = false;
     return {
       result: normalizeResult(requirement, envelope),
       boundedOutput: this.lastClientOutput,
@@ -436,7 +524,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
       if (this.selectedUserCursor === undefined) {
         throw new Error('packed P1 cursor prerequisite was not independently selected');
       }
-      return `/api/admin/organizations/${this.entity('alpha')}/users?cursor=${encodeURIComponent(this.selectedUserCursor)}&pageSize=2&search=alpha`;
+      return `/api/admin/organizations/${this.entity('alpha')}/users?cursor=${encodeURIComponent(this.selectedUserCursor)}&limit=2&search=alpha`;
     }
     if (requirement.surface === 'users-page-search') {
       return `/api/admin/organizations/${this.entity('alpha')}/users?page=1&pageSize=2&search=alpha`;
@@ -463,6 +551,32 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
     const response = await api.get(`${this.endpoints.porta}${path}`, { headers });
     if (response.status() !== 200) throw new Error('packed P1 independent read failed');
     return listEnvelope(await response.json());
+  }
+
+  /** Derives tenant/filter cardinality without trusting the selected filtered response. */
+  private async fixtureExpectedTotal(
+    requirement: PackedP1ReadJourneyRequirement,
+  ): Promise<number | null> {
+    if (
+      requirement.surface === 'tenant-users-page' ||
+      requirement.surface === 'users-page-search'
+    ) {
+      return alphaFixture.users.length;
+    }
+    if (requirement.surface === 'tenant-session-page') {
+      return alphaFixture.sessions.filter((session) => session.userId === 'alpha-user-active')
+        .length;
+    }
+    if (requirement.surface === 'audit-filter' && this.selectedAuditEvent !== undefined) {
+      const api = await this.apiPromise;
+      const full = await this.getEnvelope(
+        api,
+        `/api/admin/audit?org=${this.entity('alpha')}&limit=500`,
+        this.headers(),
+      );
+      return full.data.filter((item) => item.eventType === this.selectedAuditEvent).length;
+    }
+    return null;
   }
 
   /** Creates one synthetic audit row before any before-state fingerprint is admitted. */
