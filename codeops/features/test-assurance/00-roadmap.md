@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 02:17
+> **Last Updated**: 2026-08-20 03:09
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -32,5 +32,6 @@
 | ↳ DEF-8  | Recovery sequential-reuse public evidence       | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-19 23:42 | magic/OTP/recovery and binding evidence remain for 8.6a–8.7                |
 | ↳ DEF-9  | TOTP sequential-reuse contract                  | —                                                                                   | —                                                                           | Blocked   | ⛔     | 2026-08-19 23:42 | current verifier has no accepted-step replay state; authority required     |
 | ↳ DEF-10 | Cross-tenant delivered-artifact acceptance      | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 02:17 | Alpha magic-link accepted through Bravo route; product correction required |
+| ↳ DEF-11 | Human-auth control-sensitivity campaign         | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-20 03:09 | no disposable human-auth source variations in this program                 |
 | RD-06    | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                             |
 | RD-07    | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                     |

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 03:08
-> **Progress**: 79/107 tasks (74%)
+> **Last Updated**: 2026-08-20 03:17
+> **Progress**: 80/107 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -949,8 +949,14 @@ assurance.
       lint/format gates passed, and `yarn verify` passed 68 structure tests, 233 server files /
       3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-20 03:08)
-- [ ] 8.8 Record human-auth source-variation sensitivity as deferred. Preserve every black-box
+- [x] 8.8 Record human-auth source-variation sensitivity as deferred. Preserve every black-box
       expectation and pentest, and keep the slice explicitly not-sensitivity-proven.
+      DEF-11 owns the deferred source-variation campaign. No existing specification, live journey,
+      or penetration assertion is removed, skipped, or weakened, and no ordinary green result is
+      treated as sensitivity evidence. Human-auth specifications passed 15/15, governance passed
+      55/55, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-20 03:17)
 - [ ] 8.9 Run operational and production-security browser/security projects, coverage, audit/log/
       recovery evidence, all pentests, and `yarn verify`.
 
