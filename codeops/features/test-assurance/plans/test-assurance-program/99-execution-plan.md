@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 11:08
-> **Progress**: 96/117 tasks (82%)
+> **Last Updated**: 2026-08-20 11:25
+> **Progress**: 97/117 tasks (83%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1162,10 +1162,21 @@ independent phase review and completed corrections are recorded in
       typecheck/lint/formatting and 68 structure tests passed, and `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 11:08)
-- [ ] 9.10b From the clean pushed roll-up capability revision, run P1 projects/profiles,
+- [x] 9.10b From the clean pushed roll-up capability revision, run P1 projects/profiles,
       applicable packed clients, coverage, all pentests, evidence/redaction/recovery checks, and
       `yarn verify`. Preserve every named blocked/deferred/product-failure outcome without awarding
-      assurance credit.
+      assurance credit. Clean revision `c347b136` passed the 48-case static P1 roll-up and produced
+      packed run `62e41fb0-ceac-4d03-a933-aa9eae0177ce` with six independently matched journeys,
+      exact local archive/compiled identities, unchanged caller credentials/tree, and zero residue.
+      Attributed coverage run `1ca88f05-8501-4a15-bdde-d0b2f33e762c` completed with one server
+      process identity, two raw fragments from that PID, complete flush, mapped report, and zero
+      lifecycle residue. Operational run `b09422ea-fe6d-4d80-ba37-fee1223a1c3d` retained three
+      incomplete and three product-failure cases; production-security run
+      `52a1a995-523b-4089-b7df-605707a12963` retained three passed, three incomplete, and five
+      product-failure cases. Both mode-0600 live artifacts preserved false correlated-log credit,
+      exact recovery modes, absent active-run state, and zero labelled containers. All 35 pentest
+      files / 224 tests passed unchanged. `yarn verify` passed 233 server files / 3,382 tests, 31
+      SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 11:25)
 
 **Phase gate:** every named P1 surface is assured, blocked by a named product-authority/defect gap,
 or incomplete with explicit evidence; nothing is silently treated as safe.
