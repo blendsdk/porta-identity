@@ -1,9 +1,9 @@
 # Roadmap: Test Assurance
 
 > **Feature-Set**: Test Assurance
-> **Status**: In Progress
+> **Status**: Blocked/Deferred after Must/Should closeout
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 13:36
+> **Last Updated**: 2026-08-20 13:58
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 

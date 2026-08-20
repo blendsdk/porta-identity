@@ -1,7 +1,7 @@
 # Test Assurance Must/Should Closeout
 
 > **Date**: 2026-08-20
-> **Status**: Verification pending
+> **Status**: Must/Should closeout complete; blocked/deferred ledger retained
 > **Authority**: User-prioritized Must/Should closeout
 > **CodeOps Artifact Schema**: 1
 
@@ -68,11 +68,13 @@ is limited to traceability authority and maintainer documentation.
 | Check | Result |
 | --- | --- |
 | Clean aggregate catalog campaign | Passed: run `3b79f1ed-c3e6-4508-ad25-98b837443623`, 2 killed, 0 survived/invalid/infrastructure/timeout/not-run, mode 0600, zero residue |
-| Traceability validation | Pending clean committed closeout revision |
-| Structure tests | Pending |
-| Aggregate campaign specification/implementation suite | Pending |
-| Retained SPA/BFF harness | Pending |
-| `yarn verify` | Pending |
+| Traceability validation | Passed: clean revision `00e4a6f2`, run `922dea63-bae5-4852-9375-155997af9cbe`, owner-only manifest/result |
+| Structure tests | Passed: 68/68 through final `yarn verify` |
+| Aggregate campaign specification/implementation suite | Passed: 12/12 |
+| Retained SPA/BFF harness | Passed: run `4a028f1c-ce14-43dc-b105-575e975549c4`, 6/6, no labelled container residue |
+| `yarn verify` | Passed: 233 server files / 3,382 cases; 31 SDK files / 404 cases; 29 CLI files / 355 cases; four Turbo tasks successful |
 
-The final execution-plan task may close only after every pending row passes. Any nonzero result must
-remain visible and cannot be converted into success by narrowing an oracle.
+All retained rows passed. Empty owner directories may remain under the ignored assurance-runtime
+root, but no run record, disposable worktree, labelled container, leased port, or recovery command
+remains. Deferred and blocked rows above remain open and cannot be converted into success by
+narrowing an oracle.

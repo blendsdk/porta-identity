@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: In Progress
-> **Last Updated**: 2026-08-20 13:48
-> **Progress**: 102/117 tasks (87%)
+> **Status**: Blocked/Deferred after Must/Should closeout
+> **Last Updated**: 2026-08-20 13:58
+> **Progress**: 103/117 tasks (88%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1255,9 +1255,14 @@ evidence; this evidence grants no promotion authority.
       Governance passed 55/55, structure passed 68/68, formatting and diff checks passed, and the
       authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
       and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 13:48)
-- [ ] 11.1b From the clean pushed closeout revision, run the bounded retained command set, replace
+- [x] 11.1b From the clean pushed closeout revision, run the bounded retained command set, replace
       pending verification rows with exact evidence, and close only when traceability, the retained
-      harness, repository verification, cleanup, and redaction all pass.
+      harness, repository verification, cleanup, and redaction all pass. Clean revision `00e4a6f2`
+      produced validation run `922dea63-bae5-4852-9375-155997af9cbe`; the aggregate suite passed
+      12/12; retained harness run `4a028f1c-ce14-43dc-b105-575e975549c4` passed 6/6; no labelled
+      container, disposable worktree, or run-owned runtime residue remained; and `yarn verify`
+      passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
+      ✅ (completed: 2026-08-20 13:58)
 - [!] 11.2 Blocked: DEF-20 defers the CI-promotion proposal, exhaustive `assurance:all`/UI rerun,
       stability qualification, and any future ratchet/fault scheduling. Separate user and policy
       authority remain required before adoption.
@@ -1265,3 +1270,7 @@ evidence; this evidence grants no promotion authority.
 **Final gate:** Task 11.1 records every delivered, blocked, incomplete, and DEF-20-deferred item
 without granting deferred assurance or promotion authority; ordinary development remains usable,
 and this plan made no workflow-policy, publishing, deployment, scanner, or certification change.
+
+**Bounded closeout review:** [Phase 10–11 Review](19-phase-10-11-quality-review.md) records no
+unresolved Critical or Major correction in the retained surface and explicitly grants no credit to
+DEF-20 work.
