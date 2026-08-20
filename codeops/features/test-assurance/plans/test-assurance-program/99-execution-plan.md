@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 03:40
-> **Progress**: 82/109 tasks (75%)
+> **Last Updated**: 2026-08-20 04:04
+> **Progress**: 83/109 tasks (76%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -972,16 +972,23 @@ assurance.
       Playwright project and owned cleanup without entering production-only Node suites, and
       `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 03:40)
-- [ ] 8.9c From the clean pushed orchestration revision, run operational and production-security
+- [x] 8.9c From the clean pushed orchestration revision, run operational and production-security
       browser/security projects, attributed security coverage, audit/log/recovery evidence, all
       pentests, and `yarn verify`. Keep DEF-7, DEF-9, DEF-10, and DEF-11 explicit; the roll-up may
       report partial assurance but cannot close their affected claims.
+      Clean revision `8c42d0fa` passed operational run
+      `19a7d550-7a29-4719-862e-4864cf01bf9c`, production-security run
+      `348fb710-d552-4e9f-ac0f-bdf9540cbb20`, attributed security coverage run
+      `0b4da01b-8b8a-4b28-aa10-043a0764abfe`, and all 35 penetration-test files / 224 tests.
+      `yarn verify` then passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files /
+      404 tests, and 29 CLI files / 355 tests. The roll-up remains partial and awards no credit to
+      the four named blocked/deferred claim groups. ✅ (completed: 2026-08-20 04:04)
 
-**Phase gate:** every human-auth/recovery artifact is tenant/recipient/time/single-use bound for the
-ordinary sequential contract, production controls are proven only in production-security mode, and
-all deferred concurrency/restart gaps remain visible. Functional enumeration behavior is required;
-the statistical timing-distribution edge remains blocked under DEF-7 and cannot receive assurance
-credit.
+**Phase gate:** admitted functional, session, cookie/CSRF, email-OTP, recovery-code, and TOTP
+enforcement claims have public-boundary evidence, and production controls are proven only in
+production-security mode. Magic-link tenant binding remains blocked under DEF-10, same-window TOTP
+replay remains blocked under DEF-9, the timing-distribution edge remains blocked under DEF-7, and
+source-variation sensitivity remains deferred under DEF-11. None receives assurance credit.
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
 
