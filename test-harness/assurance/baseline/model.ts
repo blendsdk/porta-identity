@@ -36,6 +36,61 @@ export const humanAuthBaselineCaseIds = [
 /** One human-authentication case accepted by the baseline command. */
 export type HumanAuthBaselineCaseId = (typeof humanAuthBaselineCaseIds)[number];
 
+/** P1 validation, exposure, and administrative-data cases accepted by the baseline command. */
+export const p1BaselineCaseIds = [
+  'ST-52',
+  'ST-53',
+  'ST-54',
+  'ST-55',
+  'ST-56',
+  'ST-57',
+  'ST-58',
+  'ST-59',
+  'ST-60',
+  'ST-61',
+] as const;
+
+/** One P1 case accepted by the baseline command. */
+export type P1BaselineCaseId = (typeof p1BaselineCaseIds)[number];
+
+/** Closed reasons that keep a legacy P1 test at corroboration status. */
+export const p1CandidateRejectionReasons = [
+  'broad-smoke',
+  'conditional-prerequisite',
+  'status-only-oracle',
+  'service-or-repository-only',
+  'missing-exact-authorized-control',
+  'missing-independent-nonmutation',
+  'missing-cardinality-observation',
+  'missing-audit-log-observation',
+  'missing-recovery-control',
+  'missing-production-profile',
+  'missing-proxy-profile-pair',
+  'missing-privacy-redaction-observation',
+  'missing-lifecycle-effect',
+  'incomplete-case-family',
+] as const;
+
+/** One exact reason a legacy P1 candidate cannot close its sentinel. */
+export type P1CandidateRejectionReason = (typeof p1CandidateRejectionReasons)[number];
+
+/** Narrow behaviors retained as corroboration when the complete sentinel is absent. */
+export const p1CandidateScopes = [
+  'input-rejection',
+  'output-escaping',
+  'host-header-handling',
+  'security-response-policy',
+  'generic-error-surface',
+  'pagination-storage-behavior',
+  'audit-storage-behavior',
+  'signing-key-storage-behavior',
+  'session-storage-behavior',
+  'configuration-storage-behavior',
+] as const;
+
+/** One partial behavior genuinely observed by a legacy P1 test. */
+export type P1CandidateScope = (typeof p1CandidateScopes)[number];
+
 /** Closed reasons that prevent a current human-auth test from receiving exact sentinel credit. */
 export const humanAuthCandidateRejectionReasons = [
   'conditional-or-nonfatal-prerequisite',
@@ -240,6 +295,58 @@ export interface HumanAuthBaselineResult {
   readonly assuranceToolDigest: string;
 }
 
+/** One audited legacy P1 test that remains ineligible as an exact sentinel. */
+export interface P1BaselineCandidate {
+  /** Canonical repository-relative test path. */
+  readonly path: string;
+  /** Exact test title verified before evidence persistence. */
+  readonly testTitle: string;
+  /** Boundary exercised by the decisive assertion. */
+  readonly boundary: 'public-http' | 'service-or-repository';
+  /** Whether unavailable infrastructure fails instead of skipping the test. */
+  readonly prerequisite: 'fatal' | 'conditional-or-nonfatal';
+  /** Independent observations made by the legacy test. */
+  readonly independentObservations: readonly string[];
+  /** Narrow behaviors retained as corroboration only. */
+  readonly corroboratedScopes: readonly P1CandidateScope[];
+  /** Exact sentinel eligibility stays false while required observations are absent. */
+  readonly exactSentinelEligible: false;
+  /** Closed reasons why complete sentinel credit is rejected. */
+  readonly rejectionReasons: readonly P1CandidateRejectionReason[];
+}
+
+/** Sanitized natural-RED evidence for one P1 baseline audit. */
+export interface P1BaselineResult {
+  /** Artifact schema version. */
+  readonly version: 1;
+  /** UUID that owns this evidence directory. */
+  readonly runId: string;
+  /** Exact selected P1 case. */
+  readonly caseId: P1BaselineCaseId;
+  /** Claims supported by the selected P1 case. */
+  readonly claimIds: readonly ('CLAIM-R5-08' | 'CLAIM-R5-09' | 'CLAIM-R5-10')[];
+  /** Incomplete legacy evidence is recorded as natural RED. */
+  readonly classification: 'natural-red';
+  /** Stable explanation for the missing exact external sentinel. */
+  readonly reason: 'missing-exact-p1-sentinel';
+  /** Missing evidence is never interpreted as a product failure. */
+  readonly productFailureObserved: false;
+  /** The immutable P1 oracle remained unchanged during selection. */
+  readonly oracleChanged: false;
+  /** No legacy candidate is selected as an exact sentinel. */
+  readonly selectedSentinel: null;
+  /** Legacy candidates audited for the selected case. */
+  readonly candidates: readonly P1BaselineCandidate[];
+  /** ISO timestamp at which the evidence was recorded. */
+  readonly recordedAt: string;
+  /** Clean commit identity that produced the evidence. */
+  readonly buildIdentity: string;
+  /** Clean tree identity that produced the evidence. */
+  readonly treeIdentity: string;
+  /** Assurance-tool digest that produced the evidence. */
+  readonly assuranceToolDigest: string;
+}
+
 /** Runtime-validated candidate schema used before evidence persistence. */
 export const baselineCandidateSchema = z.object({
   path: z.string().regex(/^packages\/server\/tests\/(?:e2e|pentest)\/[a-z0-9./_-]+\.test\.ts$/u),
@@ -319,6 +426,40 @@ export const humanAuthBaselineResultSchema = z.object({
   assuranceToolDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
 });
 
+/** Runtime-validated candidate schema for P1 baseline evidence. */
+export const p1BaselineCandidateSchema = z.object({
+  path: z
+    .string()
+    .regex(
+      /^packages\/server\/tests\/(?:e2e|pentest|integration)\/[a-z0-9./_-]+\.(?:test|spec)\.ts$/u,
+    ),
+  testTitle: z.string().trim().min(1).max(200),
+  boundary: z.enum(['public-http', 'service-or-repository']),
+  prerequisite: z.enum(['fatal', 'conditional-or-nonfatal']),
+  independentObservations: z.array(z.string().trim().min(1).max(80)),
+  corroboratedScopes: z.array(z.enum(p1CandidateScopes)),
+  exactSentinelEligible: z.literal(false),
+  rejectionReasons: z.array(z.enum(p1CandidateRejectionReasons)).min(1),
+});
+
+/** Runtime-validated schema for one strict P1 baseline artifact. */
+export const p1BaselineResultSchema = z.object({
+  version: z.literal(1),
+  runId: z.uuid(),
+  caseId: z.enum(p1BaselineCaseIds),
+  claimIds: z.array(z.enum(['CLAIM-R5-08', 'CLAIM-R5-09', 'CLAIM-R5-10'])).min(1),
+  classification: z.literal('natural-red'),
+  reason: z.literal('missing-exact-p1-sentinel'),
+  productFailureObserved: z.literal(false),
+  oracleChanged: z.literal(false),
+  selectedSentinel: z.null(),
+  candidates: z.array(p1BaselineCandidateSchema).min(1),
+  recordedAt: z.iso.datetime(),
+  buildIdentity: z.string().regex(/^commit:[0-9a-f]{40}$/u),
+  treeIdentity: z.string().regex(/^tree:[0-9a-f]{40}$/u),
+  assuranceToolDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
+});
+
 /** Returns whether an untrusted selector is an exact tenant/admin baseline case. */
 export function isTenantAdminBaselineCaseId(value: string): value is TenantAdminBaselineCaseId {
   return tenantAdminBaselineCaseIds.some((caseId) => caseId === value);
@@ -332,4 +473,9 @@ export function isProtocolBaselineCaseId(value: string): value is ProtocolBaseli
 /** Returns whether an untrusted selector is an exact human-authentication baseline case. */
 export function isHumanAuthBaselineCaseId(value: string): value is HumanAuthBaselineCaseId {
   return humanAuthBaselineCaseIds.some((caseId) => caseId === value);
+}
+
+/** Returns whether an untrusted selector is an exact P1 baseline case. */
+export function isP1BaselineCaseId(value: string): value is P1BaselineCaseId {
+  return p1BaselineCaseIds.some((caseId) => caseId === value);
 }

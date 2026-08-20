@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 06:11
-> **Progress**: 85/109 tasks (78%)
+> **Last Updated**: 2026-08-20 06:23
+> **Progress**: 86/110 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -39,11 +39,11 @@ edits the read-only CI workflow.
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
-|     9 | P1 validation, exposure, and administrative data    |    10 |
+|     9 | P1 validation, exposure, and administrative data    |    11 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 109 tasks across 11 release-safe phases.**
+**Total: 110 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -118,7 +118,8 @@ text, but it cannot substitute another command for this binding.
 | 8.9c      | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 9.1       | `yarn assurance:validate` (records approved workflow authority or blocked ST-62 claims)                                                                      |
 | 9.2–9.4   | `yarn assurance:validate`                                                                                                                                    |
-| 9.5       | `yarn assurance:baseline --case ST-52`                                                                                                                       |
+| 9.5a      | `yarn assurance:test --select p1-baseline`                                                                                                                  |
+| 9.5b      | `yarn assurance:baseline --case ST-52`                                                                                                                       |
 | 9.6–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
@@ -1028,10 +1029,19 @@ independent phase review and completed corrections are recorded in
       assurance typecheck/lint/formatting passed, structure passed 68/68, and `yarn verify` passed
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No live
       or product behavior is claimed. ✅ (completed: 2026-08-20 06:11)
-- [ ] 9.4 [spec-author] Once 9.1 has authority, write ST-62 exact bulk/import/export matrices; otherwise
-      preserve their blocked claims and continue independent P1 work.
-- [ ] 9.5 Record natural RED or legacy green; audit/select existing pentest/integration sentinels
-      and classify broad smoke/conditional-prerequisite cases as corroboration only.
+- [!] 9.4 Blocked: DEF-12 — product authority has not approved the ST-62 bulk/import/export
+      duplicate, collision, provenance/version, rollback, partial-result, and export-sensitivity
+      contracts. The affected claims remain blocked and independent P1 work continues.
+- [x] 9.5a Implement the closed P1 baseline registry and provenance-bound evidence capability;
+      audit existing pentest/integration candidates and classify broad smoke,
+      conditional-prerequisite, status-only, and service/repository cases as corroboration only.
+      The immutable audit covers ST-52–ST-61, grants only narrow corroboration scopes, rejects every
+      candidate from exact sentinel credit, and persists clean-provenance owner-only evidence. The
+      focused selector passed 24/24, assurance typecheck/lint/formatting and structure passed, and
+      `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files
+      / 355 tests. ✅ (completed: 2026-08-20 06:23)
+- [ ] 9.5b From the clean pushed capability revision, record the exact ST-52 natural-RED baseline
+      evidence. No passing legacy candidate may receive exact sentinel or product-assurance credit.
 - [ ] 9.6 Add missing raw/browser/packed-client probes, authorized handler controls, independent
       non-mutation/cardinality checks, and exact audit/log/recovery observations.
 - [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;

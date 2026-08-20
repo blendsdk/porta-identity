@@ -39,9 +39,11 @@ import {
 } from '../compat/index.js';
 import {
   isHumanAuthBaselineCaseId,
+  isP1BaselineCaseId,
   isProtocolBaselineCaseId,
   isTenantAdminBaselineCaseId,
   recordHumanAuthBaseline,
+  recordP1Baseline,
   recordProtocolBaseline,
   recordTenantAdminBaseline,
 } from '../baseline/index.js';
@@ -205,6 +207,12 @@ const humanAuthBaselineSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
 ] as const;
 
+/** P1 specifications and candidate audit required before baseline evidence. */
+const p1BaselineSpecificationFiles = [
+  ...validationExposureSpecificationFiles,
+  'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -283,6 +291,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
   'validation-exposure-specs': validationExposureSpecificationFiles,
+  'p1-baseline': [
+    ...p1BaselineSpecificationFiles,
+    'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+  ],
   'human-auth-cross-site-specs': [
     'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
   ],
@@ -875,7 +887,8 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
   const tenantAdminCase = isTenantAdminBaselineCaseId(caseId);
   const protocolCase = isProtocolBaselineCaseId(caseId);
   const humanAuthCase = isHumanAuthBaselineCaseId(caseId);
-  if (!tenantAdminCase && !protocolCase && !humanAuthCase) {
+  const p1Case = isP1BaselineCaseId(caseId);
+  if (!tenantAdminCase && !protocolCase && !humanAuthCase && !p1Case) {
     process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${caseId}\n`);
     process.exitCode = setupFailureExit;
     return;
@@ -885,7 +898,9 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
     ? tenantAdminSpecificationFiles
     : protocolCase
       ? protocolSpecificationFiles
-      : humanAuthBaselineSpecificationFiles;
+      : humanAuthCase
+        ? humanAuthBaselineSpecificationFiles
+        : p1BaselineSpecificationFiles;
   const specifications = await runNodeSuite(specificationFiles);
   const specificationExit = managedChildExit(specifications, testFailureExit);
   if (specificationExit !== 0) {
@@ -898,7 +913,9 @@ async function runBaselineCommand(options: readonly string[]): Promise<void> {
       ? recordTenantAdminBaseline(process.cwd(), caseId)
       : protocolCase
         ? recordProtocolBaseline(process.cwd(), caseId)
-        : recordHumanAuthBaseline(process.cwd(), caseId);
+        : humanAuthCase
+          ? recordHumanAuthBaseline(process.cwd(), caseId)
+          : recordP1Baseline(process.cwd(), caseId);
     const artifact = `test-harness/.assurance-results/${recorded.result.runId}/baseline/${caseId}/result.json`;
     process.stdout.write(
       `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=${recorded.result.classification} reason=${recorded.result.reason} artifact=${artifact}\n`,

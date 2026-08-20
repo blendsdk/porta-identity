@@ -1789,3 +1789,22 @@ High. **Hardening**: both required reviewers independently identified the same r
 implementation tests and a fresh production-security run validate the correction. **Policy
 version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-J`. **Reopen trigger**: the public
 response contract requires a new stable header or non-visible disclosure channel.
+
+### AR-94 — P1 baseline capability precedes clean evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: implementation sequencing and
+clean-provenance mechanics within the unchanged P1 baseline scope. **Objective**: persist an honest
+legacy-test audit without weakening the baseline command's clean-tree identity. **Decision**: split
+the checkpoint into a verified baseline capability task and a subsequent clean-revision evidence
+task. The capability task registers the closed P1 selectors, immutable candidate audit, schemas,
+and owner-only artifact writer, then commits and pushes after full verification. The evidence task
+starts from that clean revision and runs the exact ST-52 root command; no legacy test receives exact
+sentinel credit. **Evidence**: the baseline recorder intentionally rejects staged, unstaged, and
+untracked source state, while its new selector and audit must exist before the command can run.
+**Rejected alternative**: bypassing clean provenance or using a synthetic snapshot would introduce
+an unsupported evidence identity and could misattribute candidate contents. **Strongest
+counterargument**: the split adds one task and commit, but it preserves both crash-safe task truth
+and the established clean-evidence boundary. **Confidence**: High. **Hardening**: follows the
+existing packed-client, coverage, and human-auth clean-evidence checkpoint pattern. **Policy
+version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-A`. **Reopen trigger**: the baseline
+command gains a separately specified content-addressed snapshot provenance contract.

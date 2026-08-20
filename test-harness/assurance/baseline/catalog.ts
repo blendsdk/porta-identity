@@ -2,11 +2,15 @@ import {
   baselineCandidateSchema,
   humanAuthBaselineCandidateSchema,
   humanAuthBaselineCaseIds,
+  p1BaselineCandidateSchema,
+  p1BaselineCaseIds,
   protocolBaselineCaseIds,
   tenantAdminBaselineCaseIds,
   type BaselineCandidate,
   type HumanAuthBaselineCandidate,
   type HumanAuthBaselineCaseId,
+  type P1BaselineCandidate,
+  type P1BaselineCaseId,
   type ProtocolBaselineCaseId,
   type TenantAdminBaselineCaseId,
 } from './model.js';
@@ -440,4 +444,235 @@ export function humanAuthBaselineCandidatesForCase(
   caseId: HumanAuthBaselineCaseId,
 ): readonly HumanAuthBaselineCandidate[] {
   return humanAuthCandidatesByCase[caseId];
+}
+
+/** Audited legacy tests retained as corroboration for P1 validation and administrative cases. */
+const p1CandidatesByCase: Readonly<Record<P1BaselineCaseId, readonly P1BaselineCandidate[]>> = {
+  'ST-52': [
+    {
+      path: 'packages/server/tests/pentest/injection/sql-injection-comprehensive.test.ts',
+      testTitle: 'should reject classic OR injection across admin endpoints',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-status'],
+      corroboratedScopes: ['input-rejection'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'broad-smoke',
+        'status-only-oracle',
+        'missing-exact-authorized-control',
+        'missing-independent-nonmutation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+    {
+      path: 'packages/server/tests/pentest/injection/template-injection.test.ts',
+      testTitle: 'should reject prototype pollution via JSON body',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-status', 'global-prototype-property'],
+      corroboratedScopes: ['input-rejection'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'missing-exact-authorized-control',
+        'missing-independent-nonmutation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+  ],
+  'ST-53': [
+    {
+      path: 'packages/server/tests/pentest/magic-link-attacks/host-header-injection.test.ts',
+      testTitle: 'should ignore X-Forwarded-Host header for URL generation',
+      boundary: 'public-http',
+      prerequisite: 'conditional-or-nonfatal',
+      independentObservations: ['mail-message-body'],
+      corroboratedScopes: ['host-header-handling'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'conditional-prerequisite',
+        'missing-proxy-profile-pair',
+        'missing-independent-nonmutation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+  ],
+  'ST-54': [
+    {
+      path: 'packages/server/tests/pentest/infrastructure/method-tampering.test.ts',
+      testTitle: 'should reject PUT on token endpoint',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-status'],
+      corroboratedScopes: ['input-rejection'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'status-only-oracle',
+        'missing-exact-authorized-control',
+        'missing-independent-nonmutation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+  ],
+  'ST-55': [
+    {
+      path: 'packages/server/tests/pentest/infrastructure/http-security-headers.test.ts',
+      testTitle: 'should include X-Content-Type-Options: nosniff',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-header'],
+      corroboratedScopes: ['security-response-policy'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'missing-production-profile',
+        'missing-independent-nonmutation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+    {
+      path: 'packages/server/tests/pentest/infrastructure/cors-misconfiguration.test.ts',
+      testTitle: 'should not reflect arbitrary origin',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-header'],
+      corroboratedScopes: ['security-response-policy'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'missing-production-profile',
+        'missing-exact-authorized-control',
+        'missing-independent-nonmutation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+  ],
+  'ST-56': [
+    {
+      path: 'packages/server/tests/pentest/infrastructure/information-disclosure.test.ts',
+      testTitle: 'should not expose stack traces in error responses',
+      boundary: 'public-http',
+      prerequisite: 'fatal',
+      independentObservations: ['response-body-pattern'],
+      corroboratedScopes: ['generic-error-surface'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'broad-smoke',
+        'missing-production-profile',
+        'missing-privacy-redaction-observation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+        'incomplete-case-family',
+      ],
+    },
+  ],
+  'ST-57': [
+    {
+      path: 'packages/server/tests/integration/repositories/cursor-pagination.test.ts',
+      testTitle: 'should return paginated users scoped to organization',
+      boundary: 'service-or-repository',
+      prerequisite: 'fatal',
+      independentObservations: ['repository-page-membership'],
+      corroboratedScopes: ['pagination-storage-behavior'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'service-or-repository-only',
+        'missing-exact-authorized-control',
+        'missing-cardinality-observation',
+        'missing-independent-nonmutation',
+        'missing-recovery-control',
+      ],
+    },
+  ],
+  'ST-58': [
+    {
+      path: 'packages/server/tests/integration/repositories/audit-log.repo.test.ts',
+      testTitle: 'should query audit logs by organization ID',
+      boundary: 'service-or-repository',
+      prerequisite: 'fatal',
+      independentObservations: ['repository-result-membership'],
+      corroboratedScopes: ['audit-storage-behavior'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'service-or-repository-only',
+        'missing-exact-authorized-control',
+        'missing-privacy-redaction-observation',
+        'missing-lifecycle-effect',
+        'missing-recovery-control',
+      ],
+    },
+  ],
+  'ST-59': [
+    {
+      path: 'packages/server/tests/integration/services/signing-key.service.test.ts',
+      testTitle: 'should generate a valid ES256 key pair and store in DB',
+      boundary: 'service-or-repository',
+      prerequisite: 'fatal',
+      independentObservations: ['stored-key-row', 'public-jwk'],
+      corroboratedScopes: ['signing-key-storage-behavior'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'service-or-repository-only',
+        'missing-exact-authorized-control',
+        'missing-privacy-redaction-observation',
+        'missing-lifecycle-effect',
+        'missing-recovery-control',
+      ],
+    },
+  ],
+  'ST-60': [
+    {
+      path: 'packages/server/tests/integration/services/session-tracking.test.ts',
+      testTitle: 'should mark a session as revoked',
+      boundary: 'service-or-repository',
+      prerequisite: 'fatal',
+      independentObservations: ['stored-session-status'],
+      corroboratedScopes: ['session-storage-behavior'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'service-or-repository-only',
+        'missing-exact-authorized-control',
+        'missing-independent-nonmutation',
+        'missing-lifecycle-effect',
+        'missing-recovery-control',
+      ],
+    },
+  ],
+  'ST-61': [
+    {
+      path: 'packages/server/tests/integration/services/config.service.test.ts',
+      testTitle: 'should update an existing config value',
+      boundary: 'service-or-repository',
+      prerequisite: 'fatal',
+      independentObservations: ['stored-configuration-value'],
+      corroboratedScopes: ['configuration-storage-behavior'],
+      exactSentinelEligible: false,
+      rejectionReasons: [
+        'service-or-repository-only',
+        'missing-exact-authorized-control',
+        'missing-privacy-redaction-observation',
+        'missing-audit-log-observation',
+        'missing-recovery-control',
+      ],
+    },
+  ],
+};
+
+for (const caseId of p1BaselineCaseIds) {
+  for (const candidate of p1CandidatesByCase[caseId]) p1BaselineCandidateSchema.parse(candidate);
+}
+
+/** Returns the frozen legacy-candidate audit for one registered P1 case. */
+export function p1BaselineCandidatesForCase(
+  caseId: P1BaselineCaseId,
+): readonly P1BaselineCandidate[] {
+  return p1CandidatesByCase[caseId];
 }
