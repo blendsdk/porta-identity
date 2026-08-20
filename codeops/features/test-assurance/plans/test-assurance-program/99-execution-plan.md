@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 20:30
-> **Progress**: 112/120 tasks (93%)
+> **Last Updated**: 2026-08-20 21:27
+> **Progress**: 113/121 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -40,10 +40,10 @@ edits the read-only CI workflow.
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
 |     9 | P1 validation, exposure, and administrative data    |    18 |
-|    10 | Mutation pilot and reliability qualification        |    12 |
+|    10 | Mutation pilot and reliability qualification        |    15 |
 |    11 | Must/Should closeout and promotion proposal           |     3 |
 
-**Total: 118 tasks across 11 release-safe phases.**
+**Total: 121 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -143,7 +143,8 @@ text, but it cannot substitute another command for this binding.
 | 10.6      | Every registered `yarn assurance:stability --command <command> --seed-set <registered-set>` candidate                                                       |
 | 10.7a     | `yarn assurance:test --select assurance-ratchets`                                                                                                           |
 | 10.7b     | `yarn assurance:validate`; `yarn assurance:report --run <task-run-uuid>`                                                                                     |
-| 10.8      | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <aggregate-run-uuid>`                                                                     |
+| 10.8a–10.8a1 | `yarn assurance:test --select assurance-all-aggregate`; `yarn assurance:test --select p1-production-exposure`                                           |
+| 10.8b     | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <validation-child-run-uuid>`                                                               |
 | 11.1a     | `yarn assurance:test --select assurance-governance`; `yarn test:structure`                                                                                   |
 | 11.1b     | `yarn assurance:validate`; `yarn assurance:test --select fault-catalog-campaign`; `yarn harness:test`; `yarn verify`                                                |
 | 11.2      | `yarn assurance:test --select assurance-governance`; `yarn assurance:validate`; `yarn verify`                                                               |
@@ -1347,6 +1348,16 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       passed 55/55, and structure passed 68/68. The authoritative `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 21:04)
+- [x] 10.8a1 Preserve production-exposure collection taxonomy after the first clean aggregate
+      proved that immutable assertion execution converted already-recorded product findings into
+      generic test failures. Keep the immutable specifications unchanged; add a dedicated
+      owner-fenced collector that records passed/product-failure/incomplete/execution-failure
+      outcomes and returns exact exits 0/20/40/30 so the aggregate can continue after safe known
+      product findings without laundering them. The focused aggregate selector passed 11/11, the
+      production-exposure selector passed 16/16, TypeScript, ESLint, formatting, and 68/68
+      structure tests passed, and the authoritative `yarn verify` passed 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20
+      21:27)
 - [ ] 10.8b From the clean pushed capability revision, run the complete registered local assurance
       aggregate, UI suite, pentests, redaction and residue scans, traceability/report validation,
       and authoritative `yarn verify`. Publish a truthful roll-up without treating known product

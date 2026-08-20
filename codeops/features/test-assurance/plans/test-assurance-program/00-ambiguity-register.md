@@ -2264,3 +2264,32 @@ managed-child ownership, capability/evidence split, and nonzero known-defect con
 version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`.
 **Reopen trigger**: the command composition changes, clean snapshot provenance is separately
 approved, or an authority decision resolves the known blocked/product-failure items.
+
+### AR-112 — Preserve known product findings as collector outcomes
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test-only execution taxonomy
+and orchestration inside the approved aggregate; no product behavior, assertion, claim, acceptance,
+or policy change. **Objective**: allow the complete aggregate to collect later evidence while
+preserving already-known production-exposure failures as non-successful product outcomes.
+**Decision**: keep the immutable production-exposure specifications unchanged and add a separate
+live collector that evaluates the same admitted cases, writes the same sanitized case evidence,
+and returns the closed outcome exits: passed `0`, product failure `20`, incomplete observation
+`40`, and execution failure `30`. The security harness may continue only after `0` or `20`; every
+other result stops through the existing cleanup and terminal precedence. A retained product exit
+is returned after later production-security blocks finish successfully, so a known defect can
+never become an aggregate pass. **Evidence**: clean aggregate run
+`568de5c4-cd09-4993-8849-beea0f8c24dd` stopped at the operational security child because six
+previously recorded production-exposure findings were emitted as Node assertion exit `21`, while
+the aggregate registry already defines exit `20` as the safe, non-successful collector outcome.
+**Rejected alternatives**: weakening the immutable assertions would corrupt the oracle; treating
+exit `21` as a known product outcome would also accept unrelated assertion failures; skipping the
+cases would lose evidence. **Strongest counterargument**: a second execution path can drift from
+the immutable specs. The collector reuses the same admitted requirement objects, live adapter,
+case-evidence evaluator, schema, and artifact writer; focused tests freeze the exit taxonomy while
+the immutable specifications remain in the internal suite. **Confidence**: High. **Hardening**:
+the prior independent aggregate challenge explicitly required taxonomy-preserving collectors that
+continue only after safe known-product outcomes, and rejected generic assertion conversion.
+**Policy version**: 1. **Root Invocation ID**:
+`574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: the collector stops using the shared
+admission/evidence path, an exit other than `0` or `20` is allowed to continue, or product findings
+can produce aggregate exit `0`.

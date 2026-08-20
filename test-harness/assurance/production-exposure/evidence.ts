@@ -45,6 +45,16 @@ const evidenceSchema = z
 /** Sanitized evidence for one live production-exposure case. */
 export type ProductionExposureCaseEvidence = z.infer<typeof caseEvidenceSchema>;
 
+/** Chooses the collector exit without converting product failures into assertion failures. */
+export function productionExposureCollectorExit(
+  records: readonly ProductionExposureCaseEvidence[],
+): 0 | 20 | 30 | 40 {
+  if (records.some((record) => record.outcome === 'execution-failure')) return 30;
+  if (records.some((record) => record.outcome === 'incomplete')) return 40;
+  if (records.some((record) => record.outcome === 'product-failure')) return 20;
+  return 0;
+}
+
 /** Converts one live observation into a closed, secret-free case record. */
 export function productionExposureCaseEvidence(
   requirement: ValidationExposureRawCase,

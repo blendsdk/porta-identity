@@ -221,11 +221,6 @@ const p1PackedReadSpecificationFiles = [
   'test-harness/assurance/tests/p1-packed-read.spec.test.ts',
 ] as const;
 
-/** Production policy and dependency specifications executed only by the owned security harness. */
-const productionExposureSpecificationFiles = [
-  'test-harness/assurance/tests/production-exposure.spec.test.ts',
-] as const;
-
 /** Internal governance files referenced by ordinary and aggregate selectors without duplication. */
 const governanceTestFiles = [
   'test-harness/assurance/tests/assurance.spec.test.ts',
@@ -273,6 +268,7 @@ const assuranceAllInternalFiles = [
   'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
   'test-harness/assurance/tests/p1-request-material.impl.test.ts',
   'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
   'test-harness/assurance/tests/assurance-all-aggregate.spec.test.ts',
   'test-harness/assurance/tests/assurance-all-aggregate.impl.test.ts',
 ] as const;
@@ -379,7 +375,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'human-auth-specs': humanAuthSpecificationFiles,
   'validation-exposure-specs': validationExposureSpecificationFiles,
   'p1-specs': [...validationExposureSpecificationFiles, ...p1PackedReadSpecificationFiles],
-  'p1-production-exposure': ['test-harness/assurance/tests/production-exposure.impl.test.ts'],
+  'p1-production-exposure': [
+    'test-harness/assurance/tests/production-exposure.impl.test.ts',
+    'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
+  ],
   'p1-implementation': [
     'test-harness/assurance/tests/p1-request-material.impl.test.ts',
     'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
@@ -441,6 +440,11 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-protocol.impl.test.ts',
   ],
   'assurance-governance': governanceTestFiles,
+  'assurance-all-aggregate': [
+    'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
+    'test-harness/assurance/tests/assurance-all-aggregate.spec.test.ts',
+    'test-harness/assurance/tests/assurance-all-aggregate.impl.test.ts',
+  ],
   'assurance-all-internal-v1': [...new Set(assuranceAllInternalFiles)],
 };
 
@@ -464,7 +468,7 @@ function managedChildExit(
   if (result.timedOut) return timeoutExit;
   if (result.setupFailed) return setupFailureExit;
   if (result.code === 0) return 0;
-  if (result.code !== null && [20, 21, 30, 60, 70, 130, 143].includes(result.code)) {
+  if (result.code !== null && [20, 21, 30, 40, 50, 60, 70, 130, 143].includes(result.code)) {
     return result.code;
   }
   return nonzeroExit;
@@ -687,6 +691,7 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
   }
 
   process.exitCode = await withHarnessStack(profile, async () => {
+    let retainedProductExit = 0;
     const projectResult = await runLifecycleAction('project', project);
     const projectExit = managedChildExit(projectResult, testFailureExit);
     if (projectExit !== 0) return projectExit;
@@ -699,20 +704,20 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       );
       if (productionExposureResetExit !== 0) return productionExposureResetExit;
       const productionExposureActive = readActiveCoverageRun(process.cwd());
-      const productionExposureSpecifications = await runNodeSuite(
-        productionExposureSpecificationFiles,
-        undefined,
+      const productionExposureResult = await runProductionExposureCollector(
         Object.freeze({
           ...environmentForManifest(productionExposureActive.lease.manifest),
           PORTA_ASSURANCE_PROJECT: 'security',
           PORTA_ASSURANCE_PRODUCTION_EXPOSURE_ADAPTER: 'live',
         }),
       );
-      const productionExposureExit = managedChildExit(
-        productionExposureSpecifications,
-        testFailureExit,
-      );
-      if (productionExposureExit !== 0) return productionExposureExit;
+      const productionExposureExit = managedChildExit(productionExposureResult, testFailureExit);
+      if (productionExposureExit !== 0 && productionExposureExit !== 20) {
+        return productionExposureExit;
+      }
+      retainedProductExit = productionExposureExit;
+
+      if (!shouldRunProductionSecurityBlocks(project, profile)) return productionExposureExit;
     }
 
     if (project === 'protocol') {
@@ -779,7 +784,8 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
         PORTA_ASSURANCE_TENANT_ADMIN_ADAPTER: 'live',
       }),
     );
-    return managedChildExit(tenantAdminSpecifications, testFailureExit);
+    const tenantAdminExit = managedChildExit(tenantAdminSpecifications, testFailureExit);
+    return tenantAdminExit === 0 ? retainedProductExit : tenantAdminExit;
   });
 }
 
@@ -799,6 +805,22 @@ function runNodeSuite(
       ...(testNamePattern === undefined ? [] : [`--test-name-pattern=${testNamePattern}`]),
       ...files,
     ],
+    {
+      cwd: process.cwd(),
+      env: environment,
+      stdio: 'inherit',
+      timeoutMilliseconds: 900_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
+
+/** Runs the taxonomy-preserving production-exposure collector in one managed child. */
+function runProductionExposureCollector(environment: NodeJS.ProcessEnv) {
+  return runManagedChild(
+    process.execPath,
+    ['--import', 'tsx', 'test-harness/assurance/production-exposure/run-collector.ts'],
     {
       cwd: process.cwd(),
       env: environment,
