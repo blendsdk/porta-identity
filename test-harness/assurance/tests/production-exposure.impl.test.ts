@@ -66,6 +66,7 @@ function fakeRunner(options?: {
   readonly root?: string;
 }): { readonly runner: ProductionExposureCommandRunner; readonly calls: string[][] } {
   const calls: string[][] = [];
+  let selectedService = 'redis';
   return {
     calls,
     runner: {
@@ -73,12 +74,17 @@ function fakeRunner(options?: {
         calls.push([command, ...args]);
         if (command !== 'docker') throw new Error('unexpected executable');
         if (args[0] === 'ps') {
+          selectedService =
+            args
+              .find((value) => value.startsWith('label=com.docker.compose.service='))
+              ?.split('=')
+              .at(-1) ?? 'redis';
           return { exitCode: 0, stdout: `${options?.listedId ?? containerId}\n`, stderr: '' };
         }
         if (args[0] === 'inspect' && args[1] === '--format' && args[2]?.includes('run-id')) {
           return {
             exitCode: 0,
-            stdout: `11111111-1111-4111-8111-111111111111|${options?.root ?? ''}|porta_assurance_test|redis\n`,
+            stdout: `11111111-1111-4111-8111-111111111111|${options?.root ?? ''}|porta_assurance_test|${selectedService}\n`,
             stderr: '',
           };
         }
@@ -229,9 +235,22 @@ test('should classify an unobserved required state as incomplete evidence', () =
       requirement.prohibitedSideEffects.map((name) => [name, false]),
     ),
     recoveryPassed: true,
+    recoveryMode: 'none',
     correlatedLogCredit: false,
     correlatedLogGap: 'correlated-security-decision-event-unavailable',
   });
   assert.equal(evidence.outcome, 'incomplete');
   assert.deepEqual(evidence.unobservedStateObservations, requirement.independentStateObservations);
+});
+
+test('should restart only the exact lease-owned Porta container for recovery', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'porta-production-exposure-'));
+  try {
+    const fake = fakeRunner({ root });
+    const controller = new OwnedDependencyController(root, activeRun(root), fake.runner);
+    await controller.restartPorta();
+    assert.ok(fake.calls.some((call) => call[1] === 'restart' && call.at(-1) === containerId));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

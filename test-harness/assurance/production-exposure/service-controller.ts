@@ -6,6 +6,9 @@ import { RuntimeCommandRunner } from '../../fixtures/lifecycle-runtime.js';
 /** Dependency services that may be interrupted inside an owned disposable harness run. */
 export type InterruptibleService = 'postgres' | 'redis' | 'mailhog';
 
+/** Every exact Compose service identity used by dependency recovery. */
+type OwnedService = InterruptibleService | 'porta';
+
 /** Shell-free command result used by the dependency controller. */
 export interface ProductionExposureCommandResult {
   /** Process exit code. */
@@ -116,11 +119,19 @@ export class OwnedDependencyController {
     return result;
   }
 
+  /** Restarts only the exact lease-owned Porta container when dependency reconnection requires it. */
+  public async restartPorta(): Promise<void> {
+    const containerId = await this.resolveContainer('porta');
+    await this.runner.checked('docker', ['restart', '--time', '10', '--', containerId], {
+      cwd: this.repositoryRoot,
+      environment: this.environment,
+      timeoutMilliseconds: 60_000,
+    });
+    await this.waitUntilHealthy(containerId, 'porta');
+  }
+
   /** Resolves and verifies one exact service container from active-run labels and lease IDs. */
-  protected async resolveContainer(
-    service: InterruptibleService,
-    signal?: AbortSignal,
-  ): Promise<string> {
+  protected async resolveContainer(service: OwnedService, signal?: AbortSignal): Promise<string> {
     const listed = await this.runner.checked(
       'docker',
       [
@@ -191,6 +202,15 @@ export class OwnedDependencyController {
       timeoutMilliseconds: 30_000,
       signal,
     });
+    await this.waitUntilHealthy(containerId, service, signal);
+  }
+
+  /** Waits for one exact restarted service to become running and, where declared, healthy. */
+  protected async waitUntilHealthy(
+    containerId: string,
+    service: OwnedService,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const deadline = Date.now() + 45_000;
     while (Date.now() < deadline) {
       const inspected = await this.runner.checked(

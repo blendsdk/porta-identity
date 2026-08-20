@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 09:39
+> **Last Updated**: 2026-08-20 10:03
 > **Progress**: 92/116 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
@@ -1113,8 +1113,12 @@ independent phase review and completed corrections are recorded in
       verification passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
       files / 355 tests. A first clean run then hardened the capability with leased-origin
       resolution, timeout classification, secure full-preflight denial, incomplete-versus-defect
-      taxonomy, and atomic sanitized evidence; focused tests now pass 8/8. ✅ (completed: 2026-08-20
-      09:39)
+      taxonomy, and atomic sanitized evidence. A second clean run then showed that a healthy
+      restarted dependency may leave Porta disconnected; recovery now restarts only the exact
+      lease-owned Porta container, proves the same-handler control, and records that escalation as
+      a product failure. Focused tests pass 9/9 and the authoritative verification passes 233
+      server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
+      (completed: 2026-08-20 10:03)
 - [ ] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
       production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
       response/state/recovery facts; preserve DEF-13 and record every observed product failure.

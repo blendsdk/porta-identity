@@ -29,6 +29,8 @@ export interface ProductionExposureObservation {
   readonly prohibitedSideEffects: Readonly<Record<string, boolean | 'unobserved'>>;
   /** Whether an exact fresh control passed after restoration or policy probing. */
   readonly recoveryPassed: boolean;
+  /** Strongest recovery action required before the fresh control passed. */
+  readonly recoveryMode: 'none' | 'dependency-only' | 'porta-restart-required' | 'failed';
   /** Correlated decision-log credit is unavailable until Porta emits one complete event. */
   readonly correlatedLogCredit: false;
   /** Stable gap explaining why this observation cannot close the log subclaim. */

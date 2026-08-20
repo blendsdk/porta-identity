@@ -22,6 +22,7 @@ const caseEvidenceSchema = z
     observedProhibitedEffects: z.array(z.string().min(1)),
     unobservedProhibitedEffects: z.array(z.string().min(1)),
     recoveryPassed: z.boolean(),
+    recoveryMode: z.enum(['none', 'dependency-only', 'porta-restart-required', 'failed']),
   })
   .strict();
 
@@ -70,6 +71,7 @@ export function productionExposureCaseEvidence(
     failedHeaderContracts.length > 0 ||
     failedStateObservations.length > 0 ||
     observedProhibitedEffects.length > 0 ||
+    observation.recoveryMode === 'porta-restart-required' ||
     !observation.recoveryPassed;
   const incomplete =
     unobservedStateObservations.length > 0 || unobservedProhibitedEffects.length > 0;
@@ -86,6 +88,7 @@ export function productionExposureCaseEvidence(
     observedProhibitedEffects,
     unobservedProhibitedEffects,
     recoveryPassed: observation.recoveryPassed,
+    recoveryMode: observation.recoveryMode,
   });
 }
 
@@ -104,6 +107,7 @@ export function productionExposureExecutionFailure(
     observedProhibitedEffects: [],
     unobservedProhibitedEffects: [],
     recoveryPassed: false,
+    recoveryMode: 'failed',
   });
 }
 

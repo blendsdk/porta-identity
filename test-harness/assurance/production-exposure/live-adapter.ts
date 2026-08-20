@@ -108,8 +108,10 @@ function plaintextTlsRejected(port: number): Promise<boolean> {
     const request = plainHttpRequest(
       { host: '127.0.0.1', port, path: '/health', method: 'GET', timeout: 5_000 },
       (response) => {
+        const rejectedWithoutCookie =
+          (response.statusCode ?? 0) >= 400 && response.headers['set-cookie'] === undefined;
         response.resume();
-        resolveProbe(false);
+        resolveProbe(rejectedWithoutCookie);
       },
     );
     request.once('error', () => resolveProbe(true));
@@ -299,7 +301,15 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       dependencyService(requirement),
       () => this.executeRequest(requirement.request, requirement),
     );
-    const recovery = await this.waitForControl(requirement);
+    let recoveryMode: ProductionExposureObservation['recoveryMode'] = 'dependency-only';
+    let recovery: BoundedPublicResponse;
+    try {
+      recovery = await this.waitForControl(requirement, 15_000);
+    } catch {
+      await this.dependencies.restartPorta();
+      recoveryMode = 'porta-restart-required';
+      recovery = await this.waitForControl(requirement, 45_000);
+    }
     const after = await this.stateFingerprint();
     return this.buildObservation(
       requirement,
@@ -307,6 +317,9 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       probeResponse,
       before === after,
       recovery.status === requirement.control.expectedStatus,
+      undefined,
+      new Set(),
+      recoveryMode,
     );
   }
 
@@ -328,6 +341,9 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         probe,
         unobserved,
         recovery.status === requirement.control.expectedStatus,
+        undefined,
+        new Set(),
+        'dependency-only',
       );
     } finally {
       await browser.close();
@@ -400,8 +416,9 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
   /** Repeats a healthy control until the restored service and Porta are ready. */
   protected async waitForControl(
     requirement: ValidationExposureRawCase,
+    timeoutMilliseconds: number,
   ): Promise<BoundedPublicResponse> {
-    const deadline = Date.now() + 45_000;
+    const deadline = Date.now() + timeoutMilliseconds;
     while (Date.now() < deadline) {
       try {
         const response = await this.executeRequest(requirement.control.request, requirement);
@@ -423,6 +440,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     recoveryPassed: boolean,
     bodyContract = this.classifyCaseBody(requirement, probeResponse),
     provenAbsentEffects: ReadonlySet<string> = new Set(),
+    recoveryMode: ProductionExposureObservation['recoveryMode'] = 'none',
   ): ProductionExposureObservation {
     const headerContracts = Object.fromEntries(
       requirement.expected.headerContract.map((contract) => [
@@ -431,6 +449,12 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       ]),
     );
     const internalDetail = exposesInternalDetail(probeResponse);
+    const secretMaterial = /(?:bearer\s+[a-z0-9._~-]+|[?&](?:token|code|secret)=)/iu.test(
+      `${probeResponse.body}\n${Object.values(probeResponse.headers).join('\n')}`,
+    );
+    const versionMaterial = Object.values(probeResponse.headers).some((value) =>
+      /(?:nginx|porta)\/\d/iu.test(value),
+    );
     const expectedHeadersPassed = Object.values(headerContracts).every(Boolean);
     const independent = Object.fromEntries(
       requirement.independentStateObservations.map((name) => {
@@ -445,9 +469,9 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       requirement.prohibitedSideEffects.map((name) => {
         if (provenAbsentEffects.has(name)) return [name, false];
         if (/rate-limit-budget/u.test(name)) return [name, unobserved];
-        if (
-          /version|stack|sql|filesystem|infrastructure|secret|token|dependency-error/u.test(name)
-        ) {
+        if (/version/u.test(name)) return [name, versionMaterial];
+        if (/secret|token/u.test(name)) return [name, secretMaterial];
+        if (/stack|sql|filesystem|infrastructure|dependency-error/u.test(name)) {
           return [name, internalDetail];
         }
         if (/policy-weakened|insecure-cookie|domain-cookie/u.test(name)) {
@@ -468,6 +492,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       independentStateObservations: Object.freeze(independent),
       prohibitedSideEffects: Object.freeze(prohibited),
       recoveryPassed,
+      recoveryMode,
       correlatedLogCredit: false,
       correlatedLogGap: 'correlated-security-decision-event-unavailable',
     });

@@ -66,7 +66,7 @@ export function classifyBody(response: BoundedPublicResponse): string {
       typeof parsed === 'object' &&
       parsed !== null &&
       'status' in parsed &&
-      parsed.status === 'ok'
+      (parsed.status === 'ok' || parsed.status === 'healthy')
     ) {
       return 'stable-health-response-without-product-version';
     }

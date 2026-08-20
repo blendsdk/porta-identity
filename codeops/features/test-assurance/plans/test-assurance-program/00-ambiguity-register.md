@@ -1909,14 +1909,19 @@ mode-0600 evidence record with separate `product-failure`, `incomplete`, and `ex
 outcomes. **Evidence**: the first clean run showed the CORS implementation omits all allow headers for
 the unsupported preflight, hard-coded no-port URLs bypassed the leased endpoint, a database outage
 timed out before a public response, and the forwarding probes returned 200 without the independent
-context proof required by the claim. **Rejected alternatives**: treating every 200 forwarding
+context proof required by the claim. A later clean run showed that restarting the exact dependency
+container can leave Porta disconnected even after the dependency reports healthy. In that case the
+observer restarts only the exact lease-owned Porta container, verifies the same-handler control, and
+records `porta-restart-required` as a product failure rather than converting the run to a pass.
+**Rejected alternatives**: treating every 200 forwarding
 response as a defect would confuse safe header ignoring with trust; marking unobserved state false
 would manufacture safety; retaining raw child errors would leak paths and infrastructure detail into
-evidence. **Strongest counterargument**: a timeout-specific synthetic 599 is not an HTTP response,
+evidence; treating an eventual post-restart control as ordinary recovery would hide the missing
+automatic reconnection behavior. **Strongest counterargument**: a timeout-specific synthetic 599 is not an HTTP response,
 but it is explicitly an observer classification outside the HTTP status range and preserves the
 critical fact that no bounded public response arrived. **Confidence**: High. **Hardening**: the
 existing independent security challenge required the same fail-closed distinction and prohibited
 rate-limit credit without a Redis observer. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P9-D`. **Reopen trigger**: the CORS library starts returning partial allow
 headers, an approved forwarding-context observer becomes available, or the public dependency timeout
-contract changes.
+or automatic reconnection contract changes.
