@@ -1978,3 +1978,36 @@ previous independently challenged clean-checkpoint architecture and preserves it
 rules. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-D`. **Reopen trigger**:
 the packed, coverage, and live commands adopt an approved content-addressed dirty-tree provenance
 model.
+
+### AR-101 — Full-catalog is a reserved aggregate selector
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal assurance command,
+evidence, failure-precedence, and specification-first sequencing inside the approved curated-fault
+scope; no product behavior, acceptance criterion, source-variation scope, or policy promotion
+changes. **Objective**: execute every versioned curated-fault tuple reproducibly and account for
+every terminal outcome without opening arbitrary command, path, or wildcard execution. **Decision**:
+reserve only the exact selector `--fault full-catalog --claim catalog --sentinel all`; it is an
+aggregate command and never a catalog fault ID. Snapshot the validated catalog plus clean baseline
+commit/tree/tool identities once, expand every tuple in deterministic order, and execute each tuple
+sequentially in its own fresh detached worktree through the same primitive used by single-tuple
+execution. Publish one strict atomic mode-0600 aggregate artifact containing the catalog digest,
+complete expected tuple list, completed/not-run accounting, sanitized per-tuple outcomes, primary-
+tree checks, residue, and bounded recovery identity. Cleanup failure or tree drift stops execution
+with exit 60; a signal stops after cleanup with 130/143; otherwise timeout 70, invalid 50,
+infrastructure 30, survivor 21, and success 0 follow explicit precedence. Split Task 10.1 into
+specification, exact RED, and implementation/evidence checkpoints. **Evidence**: the plan already
+binds this literal selector, but the dispatcher currently accepts only one exact registered tuple;
+the catalog currently contains one fault with two independent tuples. The existing runner already
+owns closed command IDs, exact patch/path validation, detached worktrees, classification, and
+sanitized single-tuple evidence. **Rejected alternatives**: an external loop fragments provenance,
+signals, completeness, and cleanup and would recreate an aggregate command less safely; adding a
+pseudo-fault or wildcard to the catalog confuses executable aggregation with one semantic source
+variation; reusing one patched worktree across tuples weakens independent sensitivity evidence.
+**Strongest counterargument**: fresh worktrees repeat patch/build work and increase runtime, but the
+catalog is deliberately bounded and tuple independence is more important than optimizing an
+on-demand campaign. **Confidence**: High. **Hardening**: an independent blind challenge selected
+the same reserved aggregate, required global tuple uniqueness and explicit not-run entries, and
+identified primary-tree drift as residue that must stop the campaign without destructive recovery.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P10-A`. **Reopen trigger**: the
+catalog grows enough that sequential runtime exceeds the documented campaign timeout, or a future
+catalog schema natively defines aggregate execution without weakening exact tuple independence.

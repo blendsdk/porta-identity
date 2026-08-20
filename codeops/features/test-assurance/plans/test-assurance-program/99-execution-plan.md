@@ -3,7 +3,7 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
 > **Last Updated**: 2026-08-20 12:11
-> **Progress**: 97/117 tasks (83%)
+> **Progress**: 98/119 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -39,11 +39,11 @@ edits the read-only CI workflow.
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
-|     9 | P1 validation, exposure, and administrative data    |    17 |
-|    10 | Mutation pilot and reliability qualification        |     8 |
+|     9 | P1 validation, exposure, and administrative data    |    18 |
+|    10 | Mutation pilot and reliability qualification        |    10 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 116 tasks across 11 release-safe phases.**
+**Total: 119 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -131,7 +131,9 @@ text, but it cannot substitute another command for this binding.
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10a     | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 9.10b     | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:compat --select p1-admin`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
-| 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
+| 10.1a     | `yarn test:structure`                                                                                                                                       |
+| 10.1b     | `yarn assurance:test --select fault-catalog-campaign` (expected exact RED marker)                                                                            |
+| 10.1c     | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
 | 10.2      | `yarn assurance:test --select mutation-pilot`                                                                                                                |
 | 10.3–10.4 | `yarn assurance:test --select command-outcome-matrix`                                                                                                        |
 | 10.5–10.6 | `yarn assurance:stability --command harness --seed-set representative-v1`                                                                                    |
@@ -1196,9 +1198,24 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
 
 > **Scope**: bounded mutation, command matrix, 100-run evidence, observation baselines
 > **References**: ST-64–ST-78, RD-03/RD-06/RD-07
+> **Phase baseline tree**: `deebff7278862348f732a347f4e971a73cb8ea3e`
+> **Scope mode**: strict — assurance tooling, local evidence, and observation policy only; no
+> product, CI, release, merge-policy, publishing, or deployment changes
+> **Expected modification set**: `test-harness/assurance/**`, root assurance scripts,
+> `codeops/features/test-assurance/**`, and sanitized ignored assurance-result artifacts
 
-- [ ] 10.1 Run the full curated catalog against a clean baseline; verify every claim tuple,
-      survivor/invalid classification, primary-tree immutability, cleanup, and redaction.
+- [x] 10.1a [spec-author] Write immutable aggregate-catalog specifications for exact selector
+      admission, deterministic complete tuple expansion, global tuple uniqueness, baseline/catalog
+      provenance, outcome precedence, not-run accounting, redaction, and cleanup. The four-file
+      requirement-owned packet defines a fail-closed adapter seam without registering or
+      implementing the command. Assurance typecheck/lint/formatting, 68 structure tests, and the
+      authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
+      and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 12:53)
+- [ ] 10.1b Register the closed campaign selector and record the exact missing-capability RED while
+      every previously required lane and `yarn verify` remain green.
+- [ ] 10.1c Implement the reserved `full-catalog/catalog/all` campaign, run every catalog tuple
+      independently from the same clean baseline snapshot, publish one strict mode-0600 aggregate
+      artifact, and verify classification, tree immutability, cleanup, and redaction.
 - [ ] 10.2 Evaluate one bounded TypeScript ESM mutation pilot on approved small modules; retain a
       no-go result without weakening curated faults if compatibility/runtime criteria fail.
 - [ ] 10.3 [spec-author] Add a table-driven command×outcome matrix for product, test, setup,
