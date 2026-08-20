@@ -193,6 +193,11 @@ const humanAuthSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-boundaries.spec.test.ts',
 ] as const;
 
+/** Immutable validation and exposure requirement specifications. */
+const validationExposureSpecificationFiles = [
+  'test-harness/assurance/tests/validation-exposure.spec.test.ts',
+] as const;
+
 /** Human-authentication specifications and candidate audit required before baseline evidence. */
 const humanAuthBaselineSpecificationFiles = [
   ...humanAuthSpecificationFiles,
@@ -276,6 +281,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-specs': protocolSpecificationFiles,
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
+  'validation-exposure-specs': validationExposureSpecificationFiles,
   'human-auth-cross-site-specs': [
     'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
   ],

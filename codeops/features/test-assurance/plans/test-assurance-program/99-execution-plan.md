@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 04:04
-> **Progress**: 83/109 tasks (76%)
+> **Last Updated**: 2026-08-20 05:52
+> **Progress**: 84/109 tasks (77%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -988,18 +988,36 @@ assurance.
 enforcement claims have public-boundary evidence, and production controls are proven only in
 production-security mode. Magic-link tenant binding remains blocked under DEF-10, same-window TOTP
 replay remains blocked under DEF-9, the timing-distribution edge remains blocked under DEF-7, and
-source-variation sensitivity remains deferred under DEF-11. None receives assurance credit.
+source-variation sensitivity remains deferred under DEF-11. None receives assurance credit. The
+independent phase review and completed corrections are recorded in
+[16-phase-8-quality-review.md](16-phase-8-quality-review.md).
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
 
 > **Scope**: raw attack probes, production profile, admin data, bulk/import/export oracle gate
 > **References**: ST-52–ST-63, RD-04/RD-05
+> **Phase baseline tree**: `21560f04704061ba5afa0bf708da79a76a3fd85c`
+> **Expected modification set**: `test-harness/assurance/`, retained security-project P1 specs and
+> helpers, the exact repository test-inventory contract, and this feature's plan, roadmap, and
+> review evidence. Product files remain excluded unless a separately authorized confirmed defect
+> correction is recorded.
+> **Scope mode**: strict — validation, exposure, and administrative-data assurance only; no product
+> feature changes, scanner adoption, production hooks, CI changes, or unrelated remediation
 
-- [ ] 9.1 [product-authority gate] Resolve and record approved bulk/import/export contracts for
-      duplicate/collision, provenance/version, rollback, partial outcomes, and export sensitivity.
-      Until decided, ST-62 and only its claims remain blocked; never infer the oracle from code.
-- [ ] 9.2 [spec-author] Write ST-52–ST-56 raw cases for SQL, CRLF/header, XSS/template, prototype,
-      command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversize, and exposure.
+- [!] 9.1 Blocked: DEF-12 has no product-authority decision for bulk/import/export duplicate,
+      collision, provenance/version, rollback, partial-outcome, and export-sensitivity contracts.
+      ST-62 and only its claims remain blocked; the oracle is not inferred from current code or
+      documentation, and independent P1 work continues.
+- [x] 9.2 [spec-author] Write ST-52–ST-56 raw cases for SQL, CRLF/header, XSS/template, prototype,
+      command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversize, and
+      exposure. Added five versioned threat profiles and 25 immutable specification-only cases
+      across 20 closed raw-input, proxy, production-policy, and dependency-exposure families. Every
+      negative has an exact reachable control, raw transport, result/status/body/header contract,
+      independent non-effect, privacy-safe log fields, recovery, and profile/proxy context. The
+      focused selector passed 7/7, assurance typecheck/lint/formatting passed, structure passed
+      68/68, and `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and
+      29 CLI files / 355 tests. No live or product behavior is claimed. ✅ (completed: 2026-08-20
+      05:52)
 - [ ] 9.3 [spec-author] Write ST-57–ST-61 for pagination isolation, audit read/cleanup/integrity/
       redaction, key lifecycle, session administration/cascade, and configuration authorization.
 - [ ] 9.4 [spec-author] Once 9.1 has authority, write ST-62 exact bulk/import/export matrices; otherwise

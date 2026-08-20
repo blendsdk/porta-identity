@@ -1,0 +1,298 @@
+import type {
+  ValidationExposureReference,
+  ValidationExposureSliceProfile,
+} from './validation-exposure-case-model.js';
+import {
+  validationExposureForbiddenFields,
+  validationExposureRequiredLogFields,
+  validationExposureRequirementVersion,
+} from './validation-exposure-case-model.js';
+
+/** Version-qualified sources governing the validation and exposure catalog. */
+export const validationExposureReferences: readonly ValidationExposureReference[] = [
+  { id: 'rd-05-r5.2', authority: 'RD-05', version: '2026-08-19', sectionOrControl: 'R5.2' },
+  { id: 'rd-05-r5.8', authority: 'RD-05', version: '2026-08-19', sectionOrControl: 'R5.8' },
+  { id: 'rd-05-r5.10', authority: 'RD-05', version: '2026-08-19', sectionOrControl: 'R5.10' },
+  { id: 'rd-05-r5.11', authority: 'RD-05', version: '2026-08-19', sectionOrControl: 'R5.11' },
+  {
+    id: 'testing-strategy-st52-st56',
+    authority: 'test-assurance testing strategy',
+    version: '2026-08-19',
+    sectionOrControl: 'ST-52 through ST-56',
+  },
+  { id: 'asvs-5.0.0-1.1.1', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.1.1' },
+  { id: 'asvs-5.0.0-1.2.1', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.2.1' },
+  { id: 'asvs-5.0.0-1.2.2', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.2.2' },
+  { id: 'asvs-5.0.0-1.2.3', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.2.3' },
+  { id: 'asvs-5.0.0-1.2.4', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.2.4' },
+  { id: 'asvs-5.0.0-1.2.5', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.2.5' },
+  { id: 'asvs-5.0.0-1.5.3', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '1.5.3' },
+  { id: 'asvs-5.0.0-2.2.2', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '2.2.2' },
+  { id: 'asvs-5.0.0-3.4.1', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.1' },
+  { id: 'asvs-5.0.0-3.4.2', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.2' },
+  { id: 'asvs-5.0.0-3.4.3', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.3' },
+  { id: 'asvs-5.0.0-3.4.4', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.4' },
+  { id: 'asvs-5.0.0-3.4.5', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.5' },
+  { id: 'asvs-5.0.0-3.4.6', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.4.6' },
+  { id: 'asvs-5.0.0-3.7.2', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '3.7.2' },
+  { id: 'asvs-5.0.0-4.1.1', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '4.1.1' },
+  { id: 'asvs-5.0.0-4.1.3', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '4.1.3' },
+  { id: 'asvs-5.0.0-4.1.4', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '4.1.4' },
+  { id: 'asvs-5.0.0-4.2.4', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '4.2.4' },
+  { id: 'asvs-5.0.0-4.2.5', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '4.2.5' },
+  { id: 'asvs-5.0.0-5.3.2', authority: 'OWASP ASVS', version: '5.0.0', sectionOrControl: '5.3.2' },
+  {
+    id: 'asvs-5.0.0-15.3.4',
+    authority: 'OWASP ASVS',
+    version: '5.0.0',
+    sectionOrControl: '15.3.4',
+  },
+  {
+    id: 'asvs-5.0.0-15.3.6',
+    authority: 'OWASP ASVS',
+    version: '5.0.0',
+    sectionOrControl: '15.3.6',
+  },
+  {
+    id: 'asvs-5.0.0-16.3.3',
+    authority: 'OWASP ASVS',
+    version: '5.0.0',
+    sectionOrControl: '16.3.3',
+  },
+  {
+    id: 'asvs-5.0.0-16.5.1',
+    authority: 'OWASP ASVS',
+    version: '5.0.0',
+    sectionOrControl: '16.5.1',
+  },
+];
+
+const commonActors = [
+  'unauthenticated-remote-attacker',
+  'authenticated-alpha-principal',
+  'authenticated-bravo-principal',
+  'trusted-reverse-proxy',
+  'untrusted-direct-client',
+] as const;
+
+const commonEffects = [
+  'protected-state-mutated-after-rejection',
+  'cross-tenant-read-or-write',
+  'payload-executed-or-rendered',
+  'global-prototype-polluted',
+  'unapproved-redirect-followed',
+  'secret-or-internal-detail-disclosed',
+] as const;
+
+function profile(
+  value: Omit<ValidationExposureSliceProfile, 'schemaVersion' | 'profileVersion'>,
+): ValidationExposureSliceProfile {
+  return {
+    schemaVersion: 1,
+    profileVersion: validationExposureRequirementVersion,
+    ...value,
+  };
+}
+
+/** Complete threat profiles for the five validation and exposure sentinels. */
+export const validationExposureSliceProfiles: readonly ValidationExposureSliceProfile[] = [
+  profile({
+    sentinelId: 'ST-52',
+    actors: commonActors,
+    assets: ['tenant-owned-data', 'process-integrity', 'response-integrity', 'redirect-integrity'],
+    entryPoints: [
+      'raw-public-json',
+      'raw-public-path',
+      'raw-public-header',
+      'raw-redirect-parameter',
+    ],
+    trustBoundaries: [
+      'untrusted-wire-bytes-to-request-parser',
+      'validated-public-input-to-database-template-and-path-consumers',
+      'alpha-organization-context-to-tenant-owned-resource',
+    ],
+    abuseCases: [
+      'query-injection',
+      'response-header-splitting',
+      'active-content-or-template-execution',
+      'prototype-pollution',
+      'command-or-path-escape',
+      'open-redirect',
+      'cross-tenant-slug-or-id-substitution',
+    ],
+    exactRejections: ['validation-rejected:400', 'cross-tenant-resource:not-found:404'],
+    prohibitedSideEffects: commonEffects,
+    privacySafeRequiredLogFields: validationExposureRequiredLogFields,
+    privacyForbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: [
+      'the-exact-positive-control-remains-reachable-after-each-rejection',
+      'the-target-fingerprint-and-cardinality-remain-unchanged',
+    ],
+    referenceIds: [
+      'rd-05-r5.8',
+      'rd-05-r5.10',
+      'rd-05-r5.11',
+      'testing-strategy-st52-st56',
+      'asvs-5.0.0-1.2.1',
+      'asvs-5.0.0-1.2.2',
+      'asvs-5.0.0-1.2.3',
+      'asvs-5.0.0-1.2.4',
+      'asvs-5.0.0-1.2.5',
+      'asvs-5.0.0-3.7.2',
+      'asvs-5.0.0-4.2.4',
+      'asvs-5.0.0-5.3.2',
+      'asvs-5.0.0-15.3.6',
+      'asvs-5.0.0-16.3.3',
+    ],
+  }),
+  profile({
+    sentinelId: 'ST-53',
+    actors: commonActors,
+    assets: ['public-origin', 'secure-cookie-policy', 'rate-limit-identity'],
+    entryPoints: ['raw-forwarded-host', 'raw-forwarded-proto', 'raw-forwarded-client-ip'],
+    trustBoundaries: [
+      'direct-client-forwarding-headers-to-origin-resolution',
+      'approved-reverse-proxy-forwarding-headers-to-origin-resolution',
+    ],
+    abuseCases: ['host-poisoning', 'https-downgrade-confusion', 'rate-limit-identity-spoofing'],
+    exactRejections: [
+      'untrusted-forwarding-input:validation-rejected:400',
+      'trusted-forwarding-input:accepted-only-from-approved-proxy',
+    ],
+    prohibitedSideEffects: [
+      'attacker-origin-used-in-response-or-redirect',
+      'secure-cookie-issued-from-untrusted-http-claim',
+      'rate-limit-budget-split-by-spoofed-client-ip',
+    ],
+    privacySafeRequiredLogFields: validationExposureRequiredLogFields,
+    privacyForbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: [
+      'a-valid-request-after-header-rejection-uses-the-configured-public-origin',
+    ],
+    referenceIds: [
+      'rd-05-r5.8',
+      'rd-05-r5.10',
+      'rd-05-r5.11',
+      'testing-strategy-st52-st56',
+      'asvs-5.0.0-4.1.3',
+      'asvs-5.0.0-15.3.4',
+      'asvs-5.0.0-16.3.3',
+    ],
+  }),
+  profile({
+    sentinelId: 'ST-54',
+    actors: commonActors,
+    assets: ['request-parser-integrity', 'bounded-resource-use', 'tenant-owned-data'],
+    entryPoints: ['raw-method-line', 'raw-json-body', 'raw-oversized-body', 'raw-encoded-path'],
+    trustBoundaries: ['untrusted-wire-bytes-to-http-parser-and-route-dispatch'],
+    abuseCases: [
+      'unsupported-method-bypass',
+      'malformed-json-parser-failure',
+      'request-size-exhaustion',
+      'double-encoding-or-case-normalization-bypass',
+    ],
+    exactRejections: [
+      'unsupported-method:method-not-allowed:405',
+      'malformed-json:validation-rejected:400',
+      'configured-limit-plus-one:payload-too-large:413',
+    ],
+    prohibitedSideEffects: [
+      'route-handler-mutation-after-parser-rejection',
+      'unbounded-body-retention',
+      'parser-stack-or-internal-detail-disclosed',
+    ],
+    privacySafeRequiredLogFields: validationExposureRequiredLogFields,
+    privacyForbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: ['the-bounded-parser-accepts-the-exact-control-after-each-rejection'],
+    referenceIds: [
+      'rd-05-r5.8',
+      'rd-05-r5.10',
+      'rd-05-r5.11',
+      'testing-strategy-st52-st56',
+      'asvs-5.0.0-1.1.1',
+      'asvs-5.0.0-1.5.3',
+      'asvs-5.0.0-2.2.2',
+      'asvs-5.0.0-4.1.4',
+      'asvs-5.0.0-4.2.5',
+      'asvs-5.0.0-16.5.1',
+    ],
+  }),
+  profile({
+    sentinelId: 'ST-55',
+    actors: commonActors,
+    assets: ['browser-origin-policy', 'transport-security', 'session-cookie', 'response-policy'],
+    entryPoints: [
+      'production-https-response',
+      'production-cors-preflight',
+      'production-session-cookie',
+    ],
+    trustBoundaries: ['production-public-origin-to-browser-security-enforcement'],
+    abuseCases: [
+      'unapproved-cross-origin-read',
+      'transport-downgrade',
+      'cookie-cross-site-leakage',
+    ],
+    exactRejections: [
+      'unconfigured-origin:cors-denied',
+      'unconfigured-method-or-header:cors-denied',
+      'plaintext-production-request:no-security-downgrade',
+    ],
+    prohibitedSideEffects: [
+      'attacker-origin-allowed',
+      'security-header-weakened-or-omitted',
+      'session-cookie-issued-without-secure-httponly-samesite-host-only-policy',
+    ],
+    privacySafeRequiredLogFields: validationExposureRequiredLogFields,
+    privacyForbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: ['configured-origin-and-https-control-remain-available-after-denial'],
+    referenceIds: [
+      'rd-05-r5.8',
+      'rd-05-r5.10',
+      'testing-strategy-st52-st56',
+      'asvs-5.0.0-3.4.1',
+      'asvs-5.0.0-3.4.2',
+      'asvs-5.0.0-3.4.3',
+      'asvs-5.0.0-3.4.4',
+      'asvs-5.0.0-3.4.5',
+      'asvs-5.0.0-3.4.6',
+      'asvs-5.0.0-4.1.1',
+    ],
+  }),
+  profile({
+    sentinelId: 'ST-56',
+    actors: commonActors,
+    assets: ['public-error-contract', 'security-log-privacy', 'dependency-topology', 'secrets'],
+    entryPoints: [
+      'database-backed-public-handler',
+      'cache-backed-public-handler',
+      'mail-backed-public-handler',
+    ],
+    trustBoundaries: ['dependency-failure-to-public-response-and-retained-security-evidence'],
+    abuseCases: ['induce-dependency-failure-to-enumerate-internals-or-extract-secrets'],
+    exactRejections: ['dependency-unavailable:503:generic-stable-body'],
+    prohibitedSideEffects: [
+      'stack-sql-path-infrastructure-secret-token-or-version-disclosed',
+      'partial-protected-state-committed',
+      'sensitive-dependency-error-retained-in-evidence',
+    ],
+    privacySafeRequiredLogFields: [
+      ...validationExposureRequiredLogFields,
+      'dependency-class',
+      'recovery-outcome',
+    ],
+    privacyForbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: [
+      'owned-dependency-is-restored',
+      'the-same-control-succeeds-after-restoration',
+      'target-fingerprint-confirms-no-partial-write',
+    ],
+    referenceIds: [
+      'rd-05-r5.2',
+      'rd-05-r5.8',
+      'rd-05-r5.10',
+      'testing-strategy-st52-st56',
+      'asvs-5.0.0-16.3.3',
+      'asvs-5.0.0-16.5.1',
+    ],
+  }),
+];
