@@ -24,7 +24,10 @@ function result(identity: string): PackedP1ReadResultObservation {
 function journey(
   requirement: (typeof packedP1ReadRequirements)[number],
 ): PackedP1ReadJourneyEvidence {
-  const identity = `fixture-resolved:${requirement.id}`;
+  const identity =
+    requirement.surface === 'tenant-session-page'
+      ? `sha256:${digestB}`
+      : `fixture-resolved:${requirement.id}`;
   const state = Object.fromEntries(
     requirement.stateFingerprintKeys.map((key) => [key, `sha256:${digestA}`]),
   );

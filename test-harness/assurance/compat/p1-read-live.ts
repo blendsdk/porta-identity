@@ -107,6 +107,27 @@ function digest(value: unknown): string {
   return `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
 }
 
+/**
+ * Converts a public item identity into its safe evidence representation.
+ *
+ * Session identifiers can authorize or correlate a live session, so evidence stores only a
+ * domain-separated digest bound to the active harness run. Other selected identities are public
+ * administrative resource identifiers and remain directly comparable.
+ */
+export function sanitizePackedP1Identity(
+  surface: PackedP1ReadJourneyRequirement['surface'],
+  identity: string,
+  runId: string,
+): string {
+  if (surface !== 'tenant-session-page') return identity;
+  const hash = createHash('sha256');
+  hash.update('porta-packed-p1-session-identity\0');
+  hash.update(runId);
+  hash.update('\0');
+  hash.update(identity);
+  return `sha256:${hash.digest('hex')}`;
+}
+
 /** Returns a content-and-metadata fingerprint without exposing credential bytes. */
 function credentialFingerprint(path: string): string {
   if (!existsSync(path)) return 'absent';
@@ -142,8 +163,11 @@ function itemIdentity(
 function normalizeResult(
   requirement: PackedP1ReadJourneyRequirement,
   envelope: PublicListEnvelope,
+  runId: string,
 ): PackedP1ReadResult {
-  const identities = envelope.data.map((item) => itemIdentity(requirement.surface, item));
+  const identities = envelope.data.map((item) =>
+    sanitizePackedP1Identity(requirement.surface, itemIdentity(requirement.surface, item), runId),
+  );
   const metadata = {
     total: envelope.total ?? envelope.data.length,
     page: envelope.page ?? null,
@@ -230,7 +254,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
     const api = await this.apiPromise;
     const envelope = await this.getEnvelope(api, await this.rawPath(requirement), this.headers());
     this.lastRawEnvelope = envelope;
-    return normalizeResult(requirement, envelope);
+    return normalizeResult(requirement, envelope, this.endpoints.runId);
   }
 
   /** Verifies result identities against raw response ownership and masking facts. */
@@ -244,7 +268,13 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
   }> {
     const raw = this.lastRawEnvelope;
     if (raw === undefined) throw new Error('packed P1 raw fixture observation is absent');
-    const resolved = raw.data.map((item) => itemIdentity(requirement.surface, item));
+    const resolved = raw.data.map((item) =>
+      sanitizePackedP1Identity(
+        requirement.surface,
+        itemIdentity(requirement.surface, item),
+        this.endpoints.runId,
+      ),
+    );
     const expectedTotal = await this.fixtureExpectedTotal(requirement);
     let satisfied = JSON.stringify(resolved) === JSON.stringify(result.orderedItemIdentities);
     if (expectedTotal !== null) {
@@ -404,7 +434,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
         requirement.surface === 'signing-key-list' &&
         !publicSigningKeyRecordsAreStrict(envelope.data);
       return {
-        result: normalizeResult(requirement, envelope),
+        result: normalizeResult(requirement, envelope, this.endpoints.runId),
         boundedOutput: this.lastClientOutput,
       };
     } finally {
@@ -465,7 +495,7 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
       envelope.data.some((item) => item.isSensitive === true && item.value !== '***');
     this.signingKeySchemaViolation = false;
     return {
-      result: normalizeResult(requirement, envelope),
+      result: normalizeResult(requirement, envelope, this.endpoints.runId),
       boundedOutput: this.lastClientOutput,
       cliIsolation: {
         temporaryHomeMode: mode,

@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 11:25
+> **Last Updated**: 2026-08-20 12:11
 > **Progress**: 97/117 tasks (83%)
 > **CodeOps Artifact Schema**: 1
 
@@ -1089,13 +1089,12 @@ independent phase review and completed corrections are recorded in
 - [x] 9.6e From the clean pushed capability revision, run the packed P1 adjunct and admit evidence
       only when server, fixture, archive, compiled-entry, CLI SDK-resolution, credential-isolation,
       primary-tree, cleanup, redaction, and zero-residue identities all validate. Clean revision
-      `85a83ea0` produced owner-only run `0058a5d8-04f2-41ce-bc40-ba8d8a0677f7`: all six journeys
-      matched independent raw results and fixture ownership, all protected-state fingerprints were
-      unchanged, all forbidden-output classes were absent, packed CLI homes were mode 0700 and
-      removed, caller credentials were unchanged, compiled entry and archive identifiers were
-      path-sanitized, cleanup removed every owned runtime resource, and correlated-log credit
-      remained explicitly false under DEF-13. `yarn verify` passed 233 server files / 3,382 tests,
-      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 08:27)
+      `85a83ea0` produced the initially admitted owner-only run
+      `0058a5d8-04f2-41ce-bc40-ba8d8a0677f7`. The Phase 9 quality review invalidated its broad
+      pagination/cardinality and output-exposure conclusions. Corrected clean-revision evidence is
+      recorded under Task 9.10b and routes the two detected product failures through DEF-18 and
+      DEF-19 without changing product behavior. ✅ (completed: 2026-08-20 08:27; evidence
+      superseded: 2026-08-20 12:11)
 - [x] 9.7a [spec-author] Correct the immutable production-exposure oracles before implementation:
       use authenticated admin CORS controls, a configured-origin unsupported method/header probe,
       separate JSON and HTML CSP contracts, and an acquired-CSRF rendered mail-failure contract.
@@ -1125,17 +1124,20 @@ independent phase review and completed corrections are recorded in
 - [x] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
       production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
       response/state/recovery facts; preserve DEF-13 and record every observed product failure.
-      Clean revision `2e4f678a` produced mode-0600, provenance-bound production-security run
-      `b0662134-7668-4b79-a2dd-46e4dccb4b8d` and operational run
-      `547c3dbe-2ec0-4d59-ba2a-d93cf668b6b1`; both removed their active-run records and all labelled
-      containers. CORS origin/method/header controls and production session-cookie policy passed.
+      The initially admitted runs were superseded when the quality review found vacuous CORS and
+      session-cookie observations. Corrected clean revision `c1752c32` produced mode-0600,
+      provenance-bound production-security run `88482aa5-bcb8-45e4-9cd4-69964d8ac71d` and
+      operational run `eb20d958-800e-4ca0-8e6f-5ff10c6227ab`; both removed their active-run records
+      and all labelled containers. Exact configured CORS origin/method/header controls and the
+      independently observed production session-cookie lifecycle passed.
       DEF-14 records the incomplete forwarding-context observer, DEF-15 records nginx product
       version disclosure, and DEF-16 records dependency timeout/reconnection failures. Database
       and cache interruption returned no bounded public response; database restoration required an
       exact Porta restart. Mail returned the stable acquired-CSRF form but retained the version
       disclosure and lacks two independent state observations. Correlated-log credit remains false
       under DEF-13. `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
-      and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:32)
+      and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:32; evidence corrected: 2026-08-20
+      12:11)
 - [x] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
       lifecycle, and redacted-error implementation tests after specs are green. Added a bounded
       non-networking request materializer that preserves controlled raw octets, generates an exact
@@ -1165,18 +1167,24 @@ independent phase review and completed corrections are recorded in
 - [x] 9.10b From the clean pushed roll-up capability revision, run P1 projects/profiles,
       applicable packed clients, coverage, all pentests, evidence/redaction/recovery checks, and
       `yarn verify`. Preserve every named blocked/deferred/product-failure outcome without awarding
-      assurance credit. Clean revision `c347b136` passed the 48-case static P1 roll-up and produced
-      packed run `62e41fb0-ceac-4d03-a933-aa9eae0177ce` with six independently matched journeys,
-      exact local archive/compiled identities, unchanged caller credentials/tree, and zero residue.
+      assurance credit. The original clean revision `c347b136` evidence was superseded by the
+      Phase 9 quality corrections. Clean revision `559c7606` produced packed run
+      `178cc0f3-240e-4d25-9793-b57f1e6c524c`: four journeys passed, SDK cursor pagination was a
+      product failure because `pageSize=2` returned three records while the independent raw
+      `limit=2` control returned two, and SDK session listing was a product failure because a
+      protected session identifier was present. Exact archive/compiled identities, unchanged caller
+      credentials/tree, state nonmutation, sanitized mode-0600 evidence, and zero residue remained
+      valid. DEF-18 and DEF-19 own the product failures.
       Attributed coverage run `1ca88f05-8501-4a15-bdde-d0b2f33e762c` completed with one server
       process identity, two raw fragments from that PID, complete flush, mapped report, and zero
-      lifecycle residue. Operational run `b09422ea-fe6d-4d80-ba37-fee1223a1c3d` retained three
-      incomplete and three product-failure cases; production-security run
-      `52a1a995-523b-4089-b7df-605707a12963` retained three passed, three incomplete, and five
+      lifecycle residue. Corrected operational run `eb20d958-800e-4ca0-8e6f-5ff10c6227ab`
+      retained three incomplete and three product-failure cases; corrected production-security run
+      `88482aa5-bcb8-45e4-9cd4-69964d8ac71d` retained three passed, three incomplete, and five
       product-failure cases. Both mode-0600 live artifacts preserved false correlated-log credit,
       exact recovery modes, absent active-run state, and zero labelled containers. All 35 pentest
-      files / 224 tests passed unchanged. `yarn verify` passed 233 server files / 3,382 tests, 31
-      SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 11:25)
+      files / 224 tests passed unchanged. The authoritative `yarn verify` passed after both
+      correction commits (233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
+      files / 355 tests). ✅ (completed: 2026-08-20 11:25; evidence corrected: 2026-08-20 12:11)
 
 **Phase gate:** every named P1 surface is assured, blocked by a named product-authority/defect gap,
 or incomplete with explicit evidence; nothing is silently treated as safe.

@@ -13,6 +13,7 @@ import {
   containsPrivateSigningKeyMaterial,
   outputContainsProtectedCanary,
   publicSigningKeyRecordsAreStrict,
+  sanitizePackedP1Identity,
 } from '../compat/p1-read-live.js';
 import { isPackedCompatibilitySelector } from '../compat/command.js';
 import type { PreparedPackedConsumer, PackedSurfaceResult } from '../compat/model.js';
@@ -235,6 +236,48 @@ test('should scan exact protected token, cookie, and credential canaries', () =>
   assert.equal(
     outputContainsProtectedCanary('credential=client-secret-canary', ['client-secret-canary']),
     true,
+  );
+});
+
+test('should retain only run-scoped digests for session identities', () => {
+  const rawSessionId = 'active-session-credential';
+  const firstRun = sanitizePackedP1Identity(
+    'tenant-session-page',
+    rawSessionId,
+    '00000000-0000-4000-8000-000000000001',
+  );
+  const secondRun = sanitizePackedP1Identity(
+    'tenant-session-page',
+    rawSessionId,
+    '00000000-0000-4000-8000-000000000002',
+  );
+  assert.match(firstRun, /^sha256:[a-f0-9]{64}$/u);
+  assert.notEqual(firstRun, secondRun);
+  assert.equal(firstRun.includes(rawSessionId), false);
+
+  const complete = completePackedP1ReadEvidence();
+  const sessionIndex = complete.journeys.findIndex(
+    (journey) => journey.requirementId === 'packed-sdk-filtered-session-pagination',
+  );
+  assert.ok(sessionIndex >= 0);
+  const session = complete.journeys[sessionIndex];
+  assert.ok(session);
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...complete,
+        journeys: complete.journeys.map((journey, index) =>
+          index === sessionIndex
+            ? {
+                ...session,
+                clientResult: result(rawSessionId),
+                independentRawResult: result(rawSessionId),
+                fixtureResolvedIdentities: [rawSessionId],
+              }
+            : journey,
+        ),
+      }),
+    /session identity.*redaction/iu,
   );
 });
 

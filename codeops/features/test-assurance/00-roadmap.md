@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 10:48
+> **Last Updated**: 2026-08-20 12:11
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -39,5 +39,8 @@
 | ↳ DEF-15 | Public product-version disclosure               | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | production and operational ingress expose the nginx version in public response headers                |
 | ↳ DEF-16 | Dependency failure and reconnection behavior    | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | database/cache probes time out; database recovery requires an exact Porta restart                     |
 | ↳ DEF-17 | P1 source-variation sensitivity campaign        | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-20 10:48 | no disposable P1 source variations execute in this program; black-box expectations remain unchanged   |
+| ↳ DEF-18 | SDK cursor pagination contract                  | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 12:11 | packed SDK `pageSize=2` returns three records while the raw `limit=2` control returns two             |
+| ↳ DEF-19 | Administrative session identifier exposure      | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 12:11 | packed SDK session listing exposes a fixture-protected session identifier                             |
+| ↳ QG-9   | Phase 9 independent quality findings            | —                                                                                   | [review](plans/test-assurance-program/17-phase-9-quality-review.md)         | Executing | 🔄     | 2026-08-20 12:11 | bounded re-review found one residual evidence-redaction defect; final verification pending            |
 | RD-06    | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                                                        |
 | RD-07    | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                                                |

@@ -287,6 +287,16 @@ function validateJourney(
   requirement: PackedP1ReadJourneyRequirement,
 ): void {
   if (
+    requirement.surface === 'tenant-session-page' &&
+    [
+      ...journey.clientResult.orderedItemIdentities,
+      ...journey.independentRawResult.orderedItemIdentities,
+      ...journey.fixtureResolvedIdentities,
+    ].some((identity) => !digestSchema.safeParse(identity).success)
+  ) {
+    throw new Error('packed P1 session identity was retained without redaction');
+  }
+  if (
     ['tenant-users-page', 'users-page-search', 'audit-filter', 'tenant-session-page'].includes(
       requirement.surface,
     ) &&
