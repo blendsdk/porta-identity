@@ -1,8 +1,8 @@
 # Current Test Inventory
 
 > **Inventory snapshot date**: 2026-08-10
-> **Latest verification checkpoint**: 2026-08-20
-> **Assurance architecture update**: 2026-08-20
+> **Latest verification checkpoint**: 2026-08-21
+> **Assurance architecture update**: 2026-08-21
 > **Scope**: All test projects executed by the branch CI workflow
 > **Purpose**: Describe what the current suite exercises before any test-trust audit or rewrite
 
@@ -27,7 +27,7 @@ test has an independent or sufficiently strict oracle.
 ## Assurance Closeout Checkpoint
 
 The latest authoritative `yarn verify` checkpoint collected **233 server test files / 3,382
-cases**, **31 SDK files / 404 cases**, and **29 CLI files / 355 cases**, in addition to 68
+cases**, **31 SDK files / 404 cases**, and **29 CLI files / 355 cases**, in addition to 70
 repository-structure cases. The assurance tree contains 99 explicitly selected specification and
 implementation files with 399 static top-level cases; service-backed journeys and parameterized
 subtests make that static count unsuitable as a runtime total.
@@ -73,7 +73,7 @@ static declarations and 3,348 runtime-collected server cases.
 
 | Command or job                                                                              | What it executes                                                                                                      |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                                                               | 68 structure tests, all 3,348 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
+| `yarn verify`                                                                               | 70 structure tests, all 3,382 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
 | `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
 | `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
 | `yarn test:ui`                                                                              | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |

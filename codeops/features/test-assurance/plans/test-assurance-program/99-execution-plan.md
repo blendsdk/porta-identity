@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 23:05
-> **Progress**: 115/123 tasks (93%)
+> **Last Updated**: 2026-08-21 00:34
+> **Progress**: 116/123 tasks (94%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1376,7 +1376,7 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       35 files / 224 tests, E2E passed 20 files / 128 tests, and `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 22:29)
-- [~] 10.8b Reopened by Phase 10 quality review: harden aggregate evidence validation, connect
+- [x] 10.8b Reopened by Phase 10 quality review: harden aggregate evidence validation, connect
       coverage ratchets to governed reporting, and classify the command-outcome campaign as
       protocol-model evidence before regenerating the clean aggregate. From the corrected clean
       pushed capability revision, run the complete registered local assurance
@@ -1393,10 +1393,25 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       command remains. Historical run `a3a80c26-3e6f-4d05-9650-7488e7553b53` matched its stated
       facts but is superseded because the validator did not independently bind every conclusion to
       child invocation facts. The replacement run must use the corrected validator and governed
-      ratchet path.
+      ratchet path. Clean revision `460eb1aa` produced replacement aggregate run
+      `74ab9ba2-ba86-469f-92ae-44c1fd192a63`; all 16 invocations completed with 14 assured, 3
+      blocked, 2 incomplete, 0 survived, and 4 explicitly unqualified items. Governed report run
+      `5cd74d53-964e-4966-b5cb-d6531a097f4c` admitted production-security coverage run
+      `9d7e9351-552f-4d32-8414-5172d7b81506` through the local ratchet without granting promotion
+      authority. Every child cleaned up, the tree remained unchanged, artifacts are mode 0600,
+      and redaction/residue checks passed. The final UI run retained only the exact five DEF-21
+      failures (129/134 passed), and the immediately following pentest run passed 35 files / 224
+      cases. The bounded security re-review was clean. The correctness re-review's two residual
+      statement/accounting findings were corrected: the gate no longer overclaims live-stage
+      signal evidence, and every stopped invocation is represented in the incomplete roll-up.
+      Aggregate tests passed 16/16, and the final `yarn verify` passed 233 server files / 3,382
+      cases, 31 SDK files / 404 cases, and 29 CLI files / 355 cases. ✅ (completed: 2026-08-21
+      00:34)
 
-**Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
-evidence; this evidence grants no promotion authority.
+**Phase gate:** the terminal reducer and isolated signal probe have exact semantics, and the
+qualified protocol candidate has zero-flake 100-run evidence. Actual registered command-stage
+signal behavior remains explicitly unqualified under DEF-22; this evidence grants no promotion
+authority.
 
 ## Phase 11: Must/Should Closeout and Promotion Proposal
 

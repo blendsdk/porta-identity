@@ -416,7 +416,7 @@ export function validateAggregateEvidence(value: unknown): AssuranceAllAggregate
       ) {
         throw new Error('ASSURANCE_ALL_INVOCATION_FACTS_INVALID');
       }
-      if (completed) derivedItems.push(invocationItem(child.id, observed));
+      derivedItems.push(invocationItem(child.id, observed));
     }
     if (
       !exact(childOutcome(child), {

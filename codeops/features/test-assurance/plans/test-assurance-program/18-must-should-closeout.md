@@ -82,6 +82,9 @@ release, merge-policy, or Porta product runtime behavior.
 | Aggregate campaign specification/implementation suite | Passed: 12/12 |
 | Retained SPA/BFF harness | Passed: run `4a028f1c-ce14-43dc-b105-575e975549c4`, 6/6, no labelled container residue |
 | `yarn verify` | Passed: 233 server files / 3,382 cases; 31 SDK files / 404 cases; 29 CLI files / 355 cases; four Turbo tasks successful |
+| Corrected aggregate roll-up | Passed structurally: clean revision `460eb1aa`, run `74ab9ba2-ba86-469f-92ae-44c1fd192a63`, all 16 invocations completed; 14 assured, 3 blocked, 2 incomplete, 0 survived, 4 unqualified; zero residue |
+| Governed coverage ratchet | Passed: report run `5cd74d53-964e-4966-b5cb-d6531a097f4c` admitted security coverage run `9d7e9351-552f-4d32-8414-5172d7b81506`; no promotion authority granted |
+| Final UI → penetration sequence | UI 129/134 with only the five recorded consent-contract failures; penetration 35 files / 224 cases passed |
 
 All retained rows passed. Empty owner directories may remain under the ignored assurance-runtime
 root, but no run record, disposable worktree, labelled container, leased port, or recovery command

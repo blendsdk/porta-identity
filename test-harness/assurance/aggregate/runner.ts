@@ -301,7 +301,7 @@ export async function runAssuranceAggregate(
       if (stopped || Date.now() - started >= aggregateDeadlineMilliseconds) {
         if (Date.now() - started >= aggregateDeadlineMilliseconds) exits.push(70);
         stopped = true;
-        invocations.push({
+        const notRunInvocation: AssuranceAllInvocationEvidence = {
           ...registered,
           executionStatus: 'not-run',
           exitCode: null,
@@ -313,6 +313,16 @@ export async function runAssuranceAggregate(
           toolDigest: provenance.toolDigest,
           cleanupComplete: false,
           notRunReason: 'EARLIER_CHILD_TERMINATED',
+        };
+        invocations.push(notRunInvocation);
+        items.push({
+          id: `invocation:${registered.id}`,
+          childId: registeredChild.id,
+          authority: 'eligible',
+          executionStatus: 'not-run',
+          observation: null,
+          notRunReason: notRunInvocation.notRunReason,
+          conclusion: 'incomplete',
         });
         continue;
       }

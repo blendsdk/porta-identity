@@ -277,10 +277,20 @@ test('stops after a terminal child and accounts for every remaining invocation',
     assert.equal(calls.at(-1)?.id, 'harness-protocol-operational');
     const parsed: unknown = JSON.parse(readFileSync(join(root, result.artifactPath), 'utf8'));
     const evidence = validateAggregateEvidence(parsed);
-    assert.ok(
-      evidence.children
-        .flatMap((child) => child.invocations)
-        .some((invocation) => invocation.executionStatus === 'not-run'),
+    const nestedNotRunIds = evidence.children
+      .flatMap((child) => child.invocations)
+      .filter((invocation) => invocation.executionStatus === 'not-run')
+      .map((invocation) => `invocation:${invocation.id}`)
+      .sort();
+    const itemNotRunIds = evidence.items
+      .filter((item) => item.executionStatus === 'not-run' && item.id.startsWith('invocation:'))
+      .map((item) => item.id)
+      .sort();
+    assert.ok(nestedNotRunIds.length > 0);
+    assert.deepEqual(itemNotRunIds, nestedNotRunIds);
+    assert.deepEqual(
+      evidence.rollup.incomplete.filter((id) => nestedNotRunIds.includes(id)).sort(),
+      nestedNotRunIds,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

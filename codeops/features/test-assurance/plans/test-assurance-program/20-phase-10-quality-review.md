@@ -1,9 +1,9 @@
 # Resumed Phase 10 Quality Review
 
-> **Date**: 2026-08-20
+> **Date**: 2026-08-21
 > **Phase baseline tree**: `deebff7278862348f732a347f4e971a73cb8ea3e`
 > **Reviewed completion commit**: `33655696`
-> **Disposition**: Major corrections implemented; clean-revision evidence pending
+> **Disposition**: Complete — accepted corrections verified
 
 ## Review Result
 
@@ -41,3 +41,31 @@ new handoff accepted only a repository-relative coverage manifest while the cove
 truthfully emits its canonical absolute path. Every completed child cleaned up. The parser now
 admits only the exact canonical repository-owned absolute or relative manifest form; aggregate
 specification and implementation tests pass 16/16.
+
+Clean revision `460eb1aa` produced replacement aggregate run
+`74ab9ba2-ba86-469f-92ae-44c1fd192a63`. All 16 registered invocations completed: 14 were
+assured, three authority-owned gaps remained blocked, two security observations remained
+incomplete, zero fault checks survived, and four items remained explicitly unqualified. Governed
+report run `5cd74d53-964e-4966-b5cb-d6531a097f4c` admitted production-security coverage run
+`9d7e9351-552f-4d32-8414-5172d7b81506`; the local ratchet accepted the exact reviewed baseline
+and granted no promotion authority. Every child cleaned up, the source tree remained unchanged,
+all aggregate/report artifacts are mode 0600, the bounded redaction scan passed, and no labelled
+Docker container, runtime file, disposable worktree, or recovery command remains.
+
+The final UI-to-pentest sequence retained only the five recorded consent-contract failures
+(129/134 UI cases passed), then passed all 35 penetration files / 224 cases. The final full
+repository verification remains the last local gate before the task checkpoint is committed.
+
+The bounded correctness re-review found two residual statement/accounting defects. The Phase 10
+gate still overstated live command-stage signal coverage, and stopped invocations were present in
+the nested child evidence but absent from the five-way item roll-up. Auto-design accepted both
+corrections without changing the completed 16/16 evidence: the gate now limits qualification to
+the reducer/isolated probe, and every stopped registered invocation becomes one explicit
+incomplete item. The stop-path implementation test now compares nested and roll-up identities
+exactly.
+
+The bounded security re-review was clean. The two correctness residuals were corrected and the
+focused aggregate suite passed 16/16. The final authoritative `yarn verify` passed 233 server
+files / 3,382 cases, 31 SDK files / 404 cases, and 29 CLI files / 355 cases. No third review cycle
+was opened; the accepted residual corrections are covered by their focused specifications and the
+full repository gate.
