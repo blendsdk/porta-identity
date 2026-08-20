@@ -1261,10 +1261,19 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       killed curated-fault catalog remains authoritative. The authoritative `yarn verify` passed
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
       (completed: 2026-08-20 16:21)
-- [ ] 10.3 Write an exhaustive, table-driven ST-75 specification matrix for every registered
+- [x] 10.3 Write an exhaustive, table-driven ST-75 specification matrix for every registered
       assurance alias and every documented product, assertion/test, setup, coverage, fault,
       timeout, cleanup, and invalid-evidence outcome. Require one stable stage-aware exit class,
       sanitized bounded evidence, and explicit precedence for simultaneous terminal conditions.
+      The immutable requirements define the exact 13-alias × 11-scenario cross-product as 143
+      unique rows. Every executable pair owns one exit code, class, stage, artifact condition, and
+      cleanup condition; every unsupported pair is explicit and cannot receive evidence credit.
+      The requirements independently freeze cleanup/signal/timeout/invalid/coverage/setup/product/
+      test precedence and the forbidden evidence fields. Focused specifications passed 6/6,
+      assurance typecheck/lint/formatting, governance, and 68 structure tests passed, and the
+      authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
+      and 29 CLI files / 355 tests. No runtime outcome or signal campaign evidence was claimed. ✅
+      (completed: 2026-08-20 16:51)
 - [ ] 10.4 Implement the closed command-outcome and ST-76 signal campaign. Force each supported
       outcome plus SIGINT and SIGTERM at every resource-owning command stage, prove exact cleanup or
       bounded recovery without cross-worktree mutation, and keep unsupported/non-resource-owning
