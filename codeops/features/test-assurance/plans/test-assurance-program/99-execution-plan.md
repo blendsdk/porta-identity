@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-21 00:34
-> **Progress**: 116/123 tasks (94%)
+> **Status**: Blocked — all authorized executable tasks complete; 6 named gaps remain
+> **Last Updated**: 2026-08-21 00:53
+> **Progress**: 117/123 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1435,10 +1435,17 @@ authority.
       container, disposable worktree, or run-owned runtime residue remained; and `yarn verify`
       passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-20 13:58)
-- [ ] 11.2 Produce a verified, non-enforcing CI-promotion proposal from the completed reliability
+- [x] 11.2 Produce a verified, non-enforcing CI-promotion proposal from the completed reliability
       evidence. Name exact candidate commands, runtimes, ownership, recovery, retention, and
       required workflow changes, but do not edit the read-only workflow or authorize scheduled,
-      PR-targeted, release, merge, mutation, or fault enforcement.
+      PR-targeted, release, merge, mutation, or fault enforcement. The verified proposal is
+      recorded in [Non-Enforcing Assurance CI Promotion Proposal](21-ci-promotion-proposal.md).
+      It recommends no promotion while DEF-22 leaves real alias-stage signal handling unqualified,
+      lists exact future command/timeout/ownership/recovery/retention contracts, and keeps faults,
+      mutation, schedules, pull-request targeting, and blocking policy outside this program. The
+      read-only workflow blob remained `e596521a704348b244d7597926aba3cd7bef2467`; formatting and
+      diff checks passed, and `yarn verify` passed 233 server files / 3,382 cases, 31 SDK files /
+      404 cases, and 29 CLI files / 355 cases. ✅ (completed: 2026-08-21 00:53)
 
 **Final gate:** Task 11.1 preserves the verified Must/Should checkpoint. Resumed DEF-20 work earns
 credit only through Tasks 10.2–10.8, and Task 11.2 may produce only a non-enforcing proposal.

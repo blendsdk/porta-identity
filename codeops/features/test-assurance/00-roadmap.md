@@ -1,9 +1,9 @@
 # Roadmap: Test Assurance
 
 > **Feature-Set**: Test Assurance
-> **Status**: Executing — assurance reliability qualification resumed
+> **Status**: Blocked — authorized executable work complete; named product/authority gaps remain
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-21 00:24
+> **Last Updated**: 2026-08-21 00:53
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -45,5 +45,5 @@
 | ↳ QG-9   | Phase 9 independent quality findings                 | —                                                                                   | [review](plans/test-assurance-program/17-phase-9-quality-review.md)         | Done      | ✅     | 2026-08-20 12:11 | all findings corrected; clean evidence regenerated; verification green                                 |
 | RD-06    | Fault sensitivity and mutation                       | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                                                         |
 | RD-07    | Continuous assurance and NFRs                        | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                                                 |
-| ↳ DEF-20 | Assurance reliability and promotion extras           | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Executing | 🔄     | 2026-08-21 00:34 | corrected aggregate and Phase 10 review complete; non-enforcing CI proposal remains                    |
+| ↳ DEF-20 | Assurance reliability and promotion extras           | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Done      | ✅     | 2026-08-21 00:53 | aggregate/review/proposal complete; proposal recommends no promotion while DEF-22 remains              |
 | ↳ DEF-22 | Real command-stage signal observation                | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Deferred  | ⏸️     | 2026-08-20 23:05 | current campaign proves reducer and isolated process-owner behavior, not actual alias stages           |
