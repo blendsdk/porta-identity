@@ -1956,3 +1956,25 @@ the prior independent review's requirements for raw bytes, closed execution, and
 transport while avoiding a second harness. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P9-D`. **Reopen trigger**: Task 9.8 gains a live product-evidence acceptance
 criterion or the retained harness adopts this renderer as an owner-fenced transport.
+
+### AR-100 — P1 roll-up capability precedes clean evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: implementation sequencing and
+command binding inside the approved P1 roll-up; no claim, product behavior, or acceptance criterion
+changes. **Objective**: make the complete P1 roll-up reproducible while retaining clean-revision
+provenance for packed clients, coverage, and live harness evidence. **Decision**: split the original
+Task 9.10 into 9.10a, which installs and verifies the closed `p1-all` selector, and 9.10b, which runs
+the complete evidence matrix from that clean pushed checkpoint. Treat the already named live
+product failures and incomplete proofs as truthful evidence outcomes, not successful sentinels or
+setup failures. **Evidence**: packed-client and coverage commands reject dirty source provenance;
+adding the selector necessarily dirties the tree. The program already uses separate capability and
+clean-evidence checkpoints for packed and production-exposure work. **Rejected alternatives**:
+running evidence before committing the selector would bind it to the previous capability revision;
+using a synthetic Git snapshot would violate the clean reachable-revision contract; omitting the
+live nonzero results would hide DEF-14 through DEF-16. **Strongest counterargument**: the split adds
+one task and another full verify, but it is the smallest way to preserve both crash-safe plan state
+and current-revision provenance. **Confidence**: High. **Hardening**: the decision follows the
+previous independently challenged clean-checkpoint architecture and preserves its fail-closed
+rules. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-D`. **Reopen trigger**:
+the packed, coverage, and live commands adopt an approved content-addressed dirty-tree provenance
+model.

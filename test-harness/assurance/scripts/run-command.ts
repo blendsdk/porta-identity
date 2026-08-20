@@ -308,6 +308,15 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
     'test-harness/assurance/tests/production-exposure.impl.test.ts',
   ],
+  'p1-all': [
+    ...validationExposureSpecificationFiles,
+    'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+    'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+    ...p1PackedReadSpecificationFiles,
+    'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+    'test-harness/assurance/tests/p1-request-material.impl.test.ts',
+    'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  ],
   'p1-baseline': [
     ...p1BaselineSpecificationFiles,
     'test-harness/assurance/tests/p1-baseline.impl.test.ts',

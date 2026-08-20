@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 10:58
-> **Progress**: 95/116 tasks (82%)
+> **Last Updated**: 2026-08-20 11:08
+> **Progress**: 96/117 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -129,7 +129,8 @@ text, but it cannot substitute another command for this binding.
 | 9.7c      | `yarn assurance:harness --project security --profile production-security`; `yarn assurance:harness --project security --profile operational`                 |
 | 9.8       | `yarn assurance:test --select p1-implementation`                                                                                                             |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
-| 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
+| 9.10a     | `yarn assurance:test --select p1-all`                                                                                                                        |
+| 9.10b     | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:compat --select p1-admin`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
 | 10.2      | `yarn assurance:test --select mutation-pilot`                                                                                                                |
 | 10.3–10.4 | `yarn assurance:test --select command-outcome-matrix`                                                                                                        |
@@ -1153,8 +1154,18 @@ independent phase review and completed corrections are recorded in
       passed 19/19, governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233
       server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
       (completed: 2026-08-20 10:58)
-- [ ] 9.10 Run P1 projects/profiles, applicable packed clients, coverage, all pentests, evidence/
-      redaction/recovery checks, and `yarn verify`.
+- [x] 9.10a Install the closed P1 roll-up selector before current-revision evidence. The selector
+      collects immutable validation/exposure and administrative-data specs, baseline audit,
+      packed-read specs and implementation checks, exact request material, pagination/cardinality,
+      lifecycle ownership, and sanitized production-exposure evidence mechanics. Commit and push
+      before running live, packed, or coverage evidence. The selector passed 48/48, assurance
+      typecheck/lint/formatting and 68 structure tests passed, and `yarn verify` passed 233 server
+      files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-20 11:08)
+- [ ] 9.10b From the clean pushed roll-up capability revision, run P1 projects/profiles,
+      applicable packed clients, coverage, all pentests, evidence/redaction/recovery checks, and
+      `yarn verify`. Preserve every named blocked/deferred/product-failure outcome without awarding
+      assurance credit.
 
 **Phase gate:** every named P1 surface is assured, blocked by a named product-authority/defect gap,
 or incomplete with explicit evidence; nothing is silently treated as safe.
