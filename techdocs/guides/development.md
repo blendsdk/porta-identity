@@ -1,6 +1,6 @@
 # Development Workflow
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-21
 
 ## Coding Conventions
 
@@ -12,14 +12,14 @@
 
 ### Naming Conventions
 
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Files | kebab-case | `tenant-resolver.ts` |
-| Functions | camelCase | `createOrganization()` |
-| Types / Interfaces | PascalCase | `Organization`, `CreateOrganizationInput` |
-| Constants (true) | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| Constants (config) | camelCase | `defaultLocale` |
-| Classes | PascalCase | `OrganizationNotFoundError` |
+| Element            | Convention       | Example                                   |
+| ------------------ | ---------------- | ----------------------------------------- |
+| Files              | kebab-case       | `tenant-resolver.ts`                      |
+| Functions          | camelCase        | `createOrganization()`                    |
+| Types / Interfaces | PascalCase       | `Organization`, `CreateOrganizationInput` |
+| Constants (true)   | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`                         |
+| Constants (config) | camelCase        | `defaultLocale`                           |
+| Classes            | PascalCase       | `OrganizationNotFoundError`               |
 
 ### Import Style
 
@@ -109,13 +109,13 @@ graph TB
     CACHE -->|Get/Set/Invalidate| REDIS[(Redis)]
 ```
 
-| Layer | Responsibility | Rules |
-|-------|---------------|-------|
-| **Route** | HTTP concerns, request/response | Validate with Zod, call service, return JSON |
-| **Service** | Business logic, orchestration | No HTTP awareness, no SQL, coordinate repo+cache+audit |
-| **Repository** | Data access | Parameterized SQL only, return domain types (not rows) |
-| **Cache** | Performance optimization | Graceful degradation (cache miss = DB fallback), never block |
-| **Types** | Domain model | Immutable interfaces, row-to-domain mapping functions |
+| Layer          | Responsibility                  | Rules                                                        |
+| -------------- | ------------------------------- | ------------------------------------------------------------ |
+| **Route**      | HTTP concerns, request/response | Validate with Zod, call service, return JSON                 |
+| **Service**    | Business logic, orchestration   | No HTTP awareness, no SQL, coordinate repo+cache+audit       |
+| **Repository** | Data access                     | Parameterized SQL only, return domain types (not rows)       |
+| **Cache**      | Performance optimization        | Graceful degradation (cache miss = DB fallback), never block |
+| **Types**      | Domain model                    | Immutable interfaces, row-to-domain mapping functions        |
 
 ### Barrel Export Pattern
 
@@ -123,15 +123,8 @@ Every module's `index.ts` controls what's accessible to other modules:
 
 ```typescript
 // packages/server/src/organizations/index.ts
-export type {
-  Organization,
-  CreateOrganizationInput,
-  UpdateOrganizationInput,
-} from './types.js';
-export {
-  OrganizationNotFoundError,
-  OrganizationValidationError,
-} from './errors.js';
+export type { Organization, CreateOrganizationInput, UpdateOrganizationInput } from './types.js';
+export { OrganizationNotFoundError, OrganizationValidationError } from './errors.js';
 export {
   createOrganization,
   getOrganizationById,
@@ -193,21 +186,32 @@ yarn test:ui
 
 # Full verification (lint + build + test:all)
 yarn verify
+
+# Retained external SPA/BFF OIDC harness
+yarn harness:test
 ```
+
+The root assurance aliases are local/on-demand evidence tools. Start with
+`yarn assurance:validate`; use the exact registered selectors documented in
+[Current Test Inventory](../reference/current-test-inventory.md). They are not new required CI,
+release, or merge gates.
 
 ### Testing Conventions
 
 **Unit tests** (no external dependencies):
+
 - Mock database and Redis at the module boundary
 - Test service logic, validation rules, and error handling
 - One `describe` block per function, `it` blocks per behavior
 
 **Integration tests** (require Docker):
+
 - Test actual database queries and Redis operations
 - Use test database (`porta_test`)
 - Clean up test data between runs
 
 **Pentest tests** (security baseline):
+
 - Test security properties: injection prevention, auth bypass, header security
 - Must always pass — failures indicate security regression
 - Never weaken or skip these tests
@@ -216,13 +220,14 @@ yarn verify
 
 Current coverage:
 
-| Suite | Tests | Files |
-|-------|-------|-------|
-| **Porta unit tests** | 3,100+ | 150+ |
-| **Integration** | 9 suites | — |
-| **E2E** | 20+ files | — |
-| **Pentest** | 32+ files | 11 categories |
-| **UI (Playwright)** | 20+ specs | — |
+| Suite                      | Tests | Files |
+| -------------------------- | ----: | ----: |
+| **Server Vitest projects** | 3,382 |   233 |
+| **SDK Vitest**             |   404 |    31 |
+| **CLI Vitest**             |   355 |    29 |
+| **Penetration subset**     |   224 |    35 |
+| **UI (Playwright)**        |   134 |    24 |
+| **Repository structure**   |    70 |    14 |
 
 ## Database Migrations
 
@@ -257,6 +262,7 @@ CREATE INDEX IF NOT EXISTS idx_my_table_org_id ON my_table(organization_id);
 ```
 
 **Rules:**
+
 - Always include `created_at` / `updated_at` timestamps
 - Always add `set_updated_at` trigger
 - Always use UUID primary keys
@@ -307,11 +313,11 @@ This runs lint → build → test:all. All checks must pass.
 
 ## Environment Modes
 
-| Mode | `NODE_ENV` | Logger | Config |
-|------|-----------|--------|--------|
-| Development | `development` | pino-pretty (human-readable) | `.env` file |
-| Test | `test` | Silent | Test-specific `.env` |
-| Production | `production` | JSON structured | Environment variables |
+| Mode        | `NODE_ENV`    | Logger                       | Config                |
+| ----------- | ------------- | ---------------------------- | --------------------- |
+| Development | `development` | pino-pretty (human-readable) | `.env` file           |
+| Test        | `test`        | Silent                       | Test-specific `.env`  |
+| Production  | `production`  | JSON structured              | Environment variables |
 
 ## Related Documentation
 

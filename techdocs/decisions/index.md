@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-08-12
+> **Last Updated**: 2026-08-21
 
 ## Overview
 
@@ -305,10 +305,13 @@ installs both local archives into an isolated consumer, derives SDK `dist` evide
 package resolution, and isolates every CLI subprocess from developer credentials. These foundations
 do not imply certification or the absence of exploitable behavior.
 
-The mutation-tool pilot, exhaustive command/signal matrix, 100-run stability campaign, local
-ratchets, exhaustive aggregate/UI reruns, and CI-promotion proposal are intentionally deferred so
-feature development can resume. Until those are completed, these commands remain local/on-demand
-evidence tools and must not become blocking CI, release, or merge gates.
+The bounded mutation-tool pilot, protocol-model command/outcome campaign, 100-run protocol-candidate
+stability campaign, local coverage ratchet, complete local aggregate/UI reruns, and a non-enforcing
+CI-promotion proposal are now complete. The campaign did not execute SIGINT/SIGTERM through every
+real registered command stage, so that behavior remains explicitly unqualified. The verified
+proposal recommends no workflow promotion until the real stages prove signal cleanup and receive a
+separate user-approved workflow decision. These commands therefore remain local/on-demand evidence
+tools and are not blocking CI, release, or merge gates.
 
 **Consequences**:
 
@@ -320,8 +323,8 @@ evidence tools and must not become blocking CI, release, or merge gates.
   assurance credit.
 - ⚠️ Deterministic resets, process coverage, and live package tests add infrastructure complexity.
 - ⚠️ Assurance closes risk slices progressively and cannot prove the absolute absence of exploits.
-- ⚠️ Deferred stability and signal qualification means the assurance commands are not approved as
-  new blocking automation.
+- ⚠️ Real command-stage signal qualification remains incomplete, so the assurance commands are not
+  approved as new CI automation or blocking policy.
 
 ---
 

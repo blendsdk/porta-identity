@@ -1,6 +1,6 @@
 # Infrastructure
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-21
 
 ## Overview
 
@@ -25,11 +25,11 @@ graph LR
     APP --> MH
 ```
 
-| Service | Image | Port | Purpose |
-|---------|-------|------|---------|
-| PostgreSQL | `postgres:16-alpine` | 5432 | Primary data store |
-| Redis | `redis:7-alpine` | 6379 | Cache, sessions, rate limiting |
-| MailHog | `mailhog/mailhog` | 1025 (SMTP) / 8025 (UI) | Email capture for development |
+| Service    | Image                | Port                    | Purpose                        |
+| ---------- | -------------------- | ----------------------- | ------------------------------ |
+| PostgreSQL | `postgres:16-alpine` | 5432                    | Primary data store             |
+| Redis      | `redis:7-alpine`     | 6379                    | Cache, sessions, rate limiting |
+| MailHog    | `mailhog/mailhog`    | 1025 (SMTP) / 8025 (UI) | Email capture for development  |
 
 The dev server runs on the host via `tsx watch` (not in Docker).
 
@@ -50,11 +50,11 @@ graph LR
     PORTA --> RD
 ```
 
-| Service | Image | Port | Notes |
-|---------|-------|------|-------|
-| Porta | `blendsdk/porta:latest` | 3000 | Multi-stage Alpine build |
-| PostgreSQL | `postgres:16-alpine` | 5432 | With `init-test-db.sql` for test DB |
-| Redis | `redis:7-alpine` | 6379 | Ephemeral (appendonly off) |
+| Service    | Image                   | Port | Notes                               |
+| ---------- | ----------------------- | ---- | ----------------------------------- |
+| Porta      | `blendsdk/porta:latest` | 3000 | Multi-stage Alpine build            |
+| PostgreSQL | `postgres:16-alpine`    | 5432 | With `init-test-db.sql` for test DB |
+| Redis      | `redis:7-alpine`        | 6379 | Ephemeral (appendonly off)          |
 
 ## Container Build
 
@@ -90,6 +90,7 @@ graph TB
 ```
 
 **Key decisions:**
+
 - Native modules (argon2) require build tools in stages 1 and 2
 - Stage 3 has NO build tools — minimal attack surface
 - Final image runs as non-root user (`node:node`, UID 1000)
@@ -115,22 +116,29 @@ docker exec -it porta porta <command>
 
 ### GitHub Actions Workflows
 
-Three workflow files in `.github/workflows/`:
+Four workflow files exist in `.github/workflows/`:
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `build-and-test.yml` | Push/PR to `main` | Lint, build, test (unit + integration) |
-| `docker.yml` | Release tags | Build + push Docker image to Docker Hub |
-| `docs.yml` | Push to `main` (docs changes) | Build + deploy VitePress docs to GitHub Pages |
+| Workflow             | Trigger                                    | Purpose                                                                                                    |
+| -------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `build-and-test.yml` | Push/PR to any branch                      | Verify the monorepo, UI, retained OIDC harness, public docs, production image, and production dependencies |
+| `docker.yml`         | Manual, successful main CI, or version tag | Build and publish the Docker image                                                                         |
+| `docs.yml`           | Main documentation changes or manual       | Build and deploy public VitePress docs to GitHub Pages                                                     |
+| `release.yml`        | Successful main CI                         | Run semantic release and npm publication                                                                   |
+
+The branch workflow is read-only for the test-assurance program. New assurance commands remain
+local/on-demand; their verified proposal recommends no CI adoption until real command-stage signal
+cleanup is qualified and a separate workflow-policy change is approved.
 
 ### Build & Test Pipeline
 
 ```mermaid
 graph LR
-    PUSH[Push / PR] --> LINT[yarn lint]
-    LINT --> BUILD[yarn build]
-    BUILD --> TEST[yarn test:all]
-    TEST --> VERIFY[✅ Pass]
+    PUSH[Push / PR] --> VERIFY[yarn verify]
+    PUSH --> UI[yarn test:ui]
+    PUSH --> HARNESS[yarn harness:test]
+    VERIFY --> PASS[✅ Branch checks]
+    UI --> PASS
+    HARNESS --> PASS
 ```
 
 ### Docker Release Pipeline
@@ -146,13 +154,13 @@ graph LR
 
 ### Port Mapping
 
-| Port | Service | Protocol |
-|------|---------|----------|
-| 3000 | Porta HTTP server | HTTP/1.1 |
-| 5432 | PostgreSQL | PostgreSQL wire protocol |
-| 6379 | Redis | RESP (Redis Serialization Protocol) |
-| 1025 | MailHog SMTP (dev only) | SMTP |
-| 8025 | MailHog UI (dev only) | HTTP |
+| Port | Service                 | Protocol                            |
+| ---- | ----------------------- | ----------------------------------- |
+| 3000 | Porta HTTP server       | HTTP/1.1                            |
+| 5432 | PostgreSQL              | PostgreSQL wire protocol            |
+| 6379 | Redis                   | RESP (Redis Serialization Protocol) |
+| 1025 | MailHog SMTP (dev only) | SMTP                                |
+| 8025 | MailHog UI (dev only)   | HTTP                                |
 
 ### TLS Termination
 
@@ -203,11 +211,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ## Scaling Considerations
 
-| Component | Scaling Strategy |
-|-----------|-----------------|
-| Porta Server | Horizontal (multiple containers behind load balancer) |
-| PostgreSQL | Vertical (single primary), read replicas possible |
-| Redis | Vertical (single instance), Redis Cluster for high availability |
+| Component    | Scaling Strategy                                                |
+| ------------ | --------------------------------------------------------------- |
+| Porta Server | Horizontal (multiple containers behind load balancer)           |
+| PostgreSQL   | Vertical (single primary), read replicas possible               |
+| Redis        | Vertical (single instance), Redis Cluster for high availability |
 
 **Stateless server**: Porta stores no in-memory state between requests (except the 60-second system config cache). Multiple instances can run behind a load balancer.
 

@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-08-11
+> **Last Updated**: 2026-08-21
 
 ## Overview
 
@@ -329,7 +329,8 @@ Audit writes are **fire-and-forget** — they do not block the main request flow
 
 ## Penetration Test Coverage
 
-The `packages/server/tests/pentest/` directory contains 32+ test files across 11 categories covering:
+The `packages/server/tests/pentest/` directory currently collects 35 files / 224 cases across the
+following security categories:
 
 | Category       | What's Tested                                                    |
 | -------------- | ---------------------------------------------------------------- |
