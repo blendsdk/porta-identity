@@ -29,3 +29,8 @@ The focused correction gate is green: aggregate evidence validation passed 16 ca
 command-outcome protocol model passed 13 cases, the governed ratchet/report contract passed 10
 cases, assurance TypeScript passed, and the repository structure suite passed 70 cases. The
 authoritative full verification and clean-revision evidence run remain before closure.
+
+The first clean aggregate attempt, run `7737ff7a-239c-4083-89b8-43dc8615cad5`, stopped safely
+after validation because the internal command-contract fixture still expected the former one-run
+report selector. No resource-owning child ran. The fixture now uses the same explicit validation
+and coverage run selectors as the registered command; the focused foundation suite passes 10/10.

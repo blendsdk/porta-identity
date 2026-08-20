@@ -218,7 +218,12 @@ export function registerEvidenceAndCommandCases(
         'compat/<selector>/',
         /SDK.*CLI.*archives.*clean consumer.*temporary HOME.*healthy harness/i,
       ],
-      'assurance:report': ['--run <run-uuid>', '120s', 'summary/', /sanitized.*run manifest/i],
+      'assurance:report': [
+        '--run <run-uuid> --coverage-run <coverage-run-uuid>',
+        '120s',
+        'summary/',
+        /sanitized.*run manifest/i,
+      ],
       'assurance:stability': [
         '--command <test|harness|coverage|fault|compat> --seed-set <registered-set>',
         'child-timeout+300s; campaign<=125-attempts',
