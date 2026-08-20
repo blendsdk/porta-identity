@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 19:40
-> **Progress**: 108/118 tasks (92%)
+> **Last Updated**: 2026-08-20 20:01
+> **Progress**: 109/118 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1304,10 +1304,17 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       structure tests passed, and the authoritative `yarn verify` passed 233 server files / 3,382
       tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No candidate received
       qualification credit from implementation tests. ✅ (completed: 2026-08-20 19:40)
-- [ ] 10.6 From clean pushed revisions, run 100 consecutive completed executions for every selected
+- [x] 10.6 From clean pushed revisions, run 100 consecutive completed executions for every selected
       promotion candidate, requiring zero flakes and no hidden retry. Record p50/p95 runtime,
       invalid-run rate, failure ownership, cleanup/recovery, exact source/tool/seed identities, and
-      reset the sequence after every invalid, cancelled, incomplete, or flaky attempt.
+      reset the sequence after every invalid, cancelled, incomplete, or flaky attempt. Clean pushed
+      revision `03dfddb9` qualified all five AR-109 protocol candidates with 100/100 consecutive
+      completed attempts, zero resets, zero flakes, zero invalid runs, no hidden retry, unchanged
+      source provenance, and zero owned residue. The recorded p50/p95 runtimes were 274/652 ms for
+      test, 1,022/1,246 ms for harness, 474/533 ms for coverage, 385/430 ms for fault, and 364/400
+      ms for compatibility. Evidence remains mode 0600 and explicitly grants no CI promotion or
+      live-handler credit. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 20:01)
 - [ ] 10.7 Implement local observation-only coverage/assurance no-regression ratchets and ST-78
       staleness triggers. Exact baseline changes require reviewed metadata; affected claims become
       stale before reporting succeeds. Do not edit CI, release, merge, publishing, or deployment
