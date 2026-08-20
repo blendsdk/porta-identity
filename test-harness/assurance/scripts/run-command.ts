@@ -48,6 +48,7 @@ import {
   recordProtocolBaseline,
   recordTenantAdminBaseline,
 } from '../baseline/index.js';
+import { isStabilityCommand, runStabilityCampaign } from '../stability/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -276,6 +277,12 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/command-outcome-matrix.spec.test.ts',
     'test-harness/assurance/tests/command-outcome-campaign.impl.test.ts',
   ],
+  'stability-campaign': [
+    'test-harness/assurance/tests/stability-campaign.spec.test.ts',
+    'test-harness/assurance/tests/stability-campaign.impl.test.ts',
+  ],
+  'stability-coverage-probe': ['test-harness/assurance/tests/coverage-classification.impl.test.ts'],
+  'stability-compat-probe': ['test-harness/assurance/tests/packed-tenant-admin.impl.test.ts'],
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
     'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
@@ -1220,6 +1227,33 @@ function runReportCommand(options: readonly string[]): void {
   }
 }
 
+/** Runs one exact versioned stability candidate without recursive command selection. */
+async function runStabilityCommand(options: readonly string[]): Promise<void> {
+  const selectedCommand = options[1] ?? '';
+  if (
+    options.length !== 4 ||
+    options[0] !== '--command' ||
+    options[2] !== '--seed-set' ||
+    !isStabilityCommand(selectedCommand)
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --command <test|harness|coverage|fault|compat> --seed-set <registered-set>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const result = await runStabilityCampaign(process.cwd(), selectedCommand, options[3] ?? '');
+    process.stdout.write(
+      `ASSURANCE_STABILITY_RESULT: run=${result.runId} candidate=${result.candidateId} qualified=${String(result.qualified)} artifact=${result.artifactPath}\n`,
+    );
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_STABILITY_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
 /** Runs the root dispatcher without interpreting untrusted input as code or shell syntax. */
 async function main(arguments_: readonly string[]): Promise<void> {
   const [action, ...options] = arguments_;
@@ -1281,6 +1315,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'report') {
     runReportCommand(options);
+    return;
+  }
+  if (action === 'stability') {
+    await runStabilityCommand(options);
     return;
   }
 

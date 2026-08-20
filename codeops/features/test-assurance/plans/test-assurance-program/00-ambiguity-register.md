@@ -2183,3 +2183,33 @@ closed campaign and rejected hidden normal-command controls; it required explici
 handler evidence boundaries. **Policy version**: 1. **Root Invocation ID**:
 `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: a normal command gains or removes a
 resource-owning stage, or campaign evidence is proposed as live handler/product proof.
+
+### AR-109 — Qualify bounded representative assurance protocols
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: testing strategy and execution
+mechanics inside the already-approved local stability campaign; no product behavior, acceptance
+criterion, CI policy, or external target changes. **Objective**: obtain useful 100-run reliability
+evidence quickly enough to finish the assurance program without falsely claiming that expensive
+live Porta stacks or every handler path ran 100 times. **Decision**: register one versioned
+service-free protocol candidate for each allowed command category: the command-outcome matrix for
+`test`, Playwright project collection for `harness`, coverage classification for `coverage`, the
+fault-catalog campaign model for `fault`, and packed tenant/admin contract execution for `compat`.
+Every attempt receives a deterministic registered seed and runs the exact code-owned selector in a
+fresh child process. Evidence labels the scope `assurance-protocol-candidate`, grants no promotion
+authority, and cannot substitute for the live aggregate in Task 10.8. **Evidence**: the selected
+files exercise the actual dispatcher contracts and subsystem models without Docker or package
+rebuilds; local measurements were approximately 0.28–1.38 seconds per execution, while the full
+packed consumer alone took about 9.5 seconds and would add no distinct reliability claim beyond
+the selected packed contract. **Rejected alternatives**: running 100 full live stacks per category
+would be disproportionate, repeat product evidence already owned by Task 10.8, and still would not
+authorize CI promotion; a synthetic no-op probe would test only the campaign itself rather than
+the five subsystem protocols. **Strongest counterargument**: representative protocol candidates
+do not qualify every live handler or external dependency. That limitation is explicit in the
+artifact, and Task 10.8 remains the live end-to-end gate. **Confidence**: High — the candidate set
+is deterministic, reversible, code-owned, and directly measurable. **Hardening**: forced
+reframing retained a real subsystem selector for every allowed category and rejected both a
+no-op-only campaign and repeated live-stack overclaiming; the preceding independent termination
+challenge already required this protocol-versus-handler boundary. **Policy version**: 1. **Root
+Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: any candidate stops
+exercising its registered subsystem, evidence is used to claim live-handler reliability, or a CI
+promotion decision requires command-level rather than protocol-level qualification.

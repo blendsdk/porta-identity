@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 15:10
-> **Progress**: 103/118 tasks (87%)
+> **Last Updated**: 2026-08-20 19:40
+> **Progress**: 108/118 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1291,10 +1291,19 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       55/55, structure passed 68/68, and the authoritative `yarn verify` passed 233 server files /
       3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 19:19)
-- [ ] 10.5 Write and implement the ST-74 stability campaign with versioned registered candidate
+- [x] 10.5 Write and implement the ST-74 stability campaign with versioned registered candidate
       sets, deterministic shuffled seeds, visible retries, invalid/incomplete sequence reset,
       per-attempt deadlines, the 125-attempt cap, and owner-only atomic evidence. No candidate is
-      qualified by implementation tests alone.
+      qualified by implementation tests alone. Per AR-109, the initial versioned set contains one
+      service-free existing assurance protocol candidate for each allowed command category and
+      explicitly grants neither live-handler evidence nor CI promotion authority. Immutable specs,
+      a deterministic 125-seed permutation, the exact sequence reducer, shell-free child execution,
+      stable terminal ownership, clean-source provenance, and mode-0600 atomic evidence are
+      implemented; clean 100-run qualification remains Task 10.6. Focused specifications and
+      implementation tests passed 9/9, assurance typecheck/lint/formatting, governance, and 68
+      structure tests passed, and the authoritative `yarn verify` passed 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No candidate received
+      qualification credit from implementation tests. ✅ (completed: 2026-08-20 19:40)
 - [ ] 10.6 From clean pushed revisions, run 100 consecutive completed executions for every selected
       promotion candidate, requiring zero flakes and no hidden retry. Record p50/p95 runtime,
       invalid-run rate, failure ownership, cleanup/recovery, exact source/tool/seed identities, and
