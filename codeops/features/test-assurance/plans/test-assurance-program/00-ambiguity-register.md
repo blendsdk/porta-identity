@@ -1679,3 +1679,28 @@ revocation, inventory checks, fixture restoration, and the unchanged tenant/admi
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-E`. **Reopen trigger**: Porta
 introduces an anonymous login-session cookie or documents immediate client-token invalidation on
 session expiry/revocation.
+
+### AR-89 — Delivered-artifact lifetime evidence uses only controllable public clocks
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test mechanism and evidence
+admission within the approved recovery-artifact contract; no product expectation is weakened.
+**Objective**: verify configured lifetime without waiting seven days or introducing a production
+clock hook. **Decision**: use the existing public configuration API plus an owned Porta restart to
+set a one-second lifetime and observe post-expiry rejection for magic links and password-reset
+links. Invitation issuance has a fixed seven-day lifetime and no public clock or lifetime control,
+so this checkpoint verifies the exact public `expiresAt` window but does not claim post-expiry
+rejection; the seven-day wait remains a named deferred observation. All three families still
+require wrong-tenant rejection, intended first use, exact same-value second-use rejection,
+independent account/session fingerprints, and secret-free response/audit/log evidence. Continuity
+uses random evidence handles rather than hashes of delivered values. **Evidence**:
+`packages/server/src/routes/users.ts` fixes invitation lifetime at seven days, while the retained
+configuration boundary exposes short magic-link and password-reset lifetimes and the lifecycle
+already owns a bounded Porta-only restart. **Rejected alternatives**: waiting seven days is not a
+repeatable test lane; changing the system clock or adding a test hook reintroduces the expressly
+deferred advanced mechanics; hashing the delivered value creates unnecessary secret-derived
+evidence. **Strongest counterargument**: issuance metadata does not prove eventual invitation
+rejection, which is why that subclaim remains unadmitted rather than inferred. **Confidence**:
+High. **Hardening**: grounded in the public routes and retained lifecycle ownership; the design
+fails closed if any wrong-tenant, reuse, protected-state, or exposure observation is unavailable.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P8-F`. **Reopen trigger**: a
+publicly controllable invitation lifetime or independently authorized clock mechanism is added.

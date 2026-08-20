@@ -156,6 +156,11 @@ const humanAuthFunctionalSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
 ] as const;
 
+/** Second-factor specifications executed only through the live security harness. */
+const humanAuthSecondFactorSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+] as const;
+
 /** Independently selectable invariant-specific tenant/admin fault specifications. */
 const tenantAdminFaultSpecificationFiles = [
   'test-harness/assurance/tests/tenant-admin-fault-requirements.spec.test.ts',
@@ -275,6 +280,9 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   ],
   'human-auth-functional-specs': [
     'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+  ],
+  'human-auth-second-factor-specs': [
+    'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
   ],
   'human-auth-baseline': [
     'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
@@ -579,6 +587,22 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
     );
     const functionalExit = managedChildExit(functionalSpecifications, testFailureExit);
     if (functionalExit !== 0) return functionalExit;
+
+    const secondFactorReset = await runLifecycleAction('reset');
+    const secondFactorResetExit = managedChildExit(secondFactorReset, setupFailureExit);
+    if (secondFactorResetExit !== 0) return secondFactorResetExit;
+    const secondFactorActive = readActiveCoverageRun(process.cwd());
+    const secondFactorSpecifications = await runNodeSuite(
+      humanAuthSecondFactorSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(secondFactorActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_SECOND_FACTOR_ADAPTER: 'live',
+      }),
+    );
+    const secondFactorExit = managedChildExit(secondFactorSpecifications, testFailureExit);
+    if (secondFactorExit !== 0) return secondFactorExit;
 
     const tenantAdminReset = await runLifecycleAction('reset');
     const tenantAdminResetExit = managedChildExit(tenantAdminReset, setupFailureExit);

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 01:57
-> **Progress**: 77/107 tasks (72%)
+> **Last Updated**: 2026-08-20 02:55
+> **Progress**: 78/107 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -922,13 +922,23 @@ assurance.
       functional block before the retained tenant/admin block passed 17/17. Static checks and
       structure passed 68/68; `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 01:57)
-- [ ] 8.7c Add transient MailHog acquisition and exact sequential-use journeys for magic link,
+- [!] 8.7c Blocked: DEF-10 — the production-security public-boundary run accepted an Alpha-issued
+      magic-link value through Bravo's route with a 302 response instead of the required rejection.
+      Preserve the immutable tenant-binding oracle and route the product correction separately.
+      Add transient MailHog acquisition and exact sequential-use journeys for magic link,
       password reset, and invitation. Verify intended recipient/tenant, configured lifetime,
       second-use rejection, protected-state nonmutation, and exposure redaction without retaining
       delivered values.
-- [ ] 8.7d Add email-OTP and recovery-code public sequential-use journeys plus TOTP enforcement.
+- [x] 8.7d Add email-OTP and recovery-code public sequential-use journeys plus TOTP enforcement.
       Preserve DEF-9 for same-window TOTP replay until separate product/security authority resolves
       that contract; do not manufacture a passing expectation from the stateless verifier.
+      Added an owner-fenced production-security adapter for public email-OTP, TOTP, and recovery-
+      code journeys. Email OTP and recovery codes prove first use, exact same-value rejection, and
+      a fresh-value recovery control; TOTP proves wrong-account, expired-window, and current-window
+      behavior without claiming same-window replay. The live run passed 4/4 second-factor specs and
+      the unchanged tenant/admin block, cleanup completed, focused static checks passed, and
+      `yarn verify` passed 68 structure tests, 233 server files / 3,382 tests, 31 SDK files / 404
+      tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 02:55)
 - [ ] 8.7e Add mail polling, public state observers, configured clock-window checks, and secret-free
       diagnostic implementation tests for the admitted ordinary cases. Do not add timing-
       distribution measurement or advanced concurrent/restart mechanics.
