@@ -18,6 +18,7 @@ import { request, type APIRequestContext } from '@playwright/test';
 import { z } from 'zod';
 
 import { activeEndpoints } from '../../fixtures/fixture-assurance.js';
+import { alphaFixture } from '../../fixtures/fixture-definition.js';
 import {
   readProtectedRuntimeCredential,
   readPublicRuntimeFixtureManifest,
@@ -225,9 +226,15 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
   /** Scans transient client output against protected values and foreign fixture identities. */
   public async scanForbiddenOutput(output: string): Promise<Readonly<Record<string, boolean>>> {
     const fullToken = this.token();
+    const protectedClient = alphaFixture.clients.find(
+      (client) => client.kind === 'confidential' && client.validity === 'valid',
+    );
+    if (protectedClient?.clientSecretCredentialRef === undefined) {
+      throw new Error('packed P1 protected client reference is absent');
+    }
     const protectedCredential = readProtectedRuntimeCredential(
       this.endpoints.credentialManifestPath,
-      'credential:oidc:alpha:confidential-client-secret',
+      protectedClient.clientSecretCredentialRef,
     );
     const bravo = [this.entity('bravo'), this.entity('bravo-user-active')];
     return {
