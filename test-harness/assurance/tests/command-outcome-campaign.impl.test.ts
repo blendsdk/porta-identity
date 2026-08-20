@@ -89,13 +89,16 @@ test('should keep campaign forcing controls unavailable to every normal alias', 
   }
 });
 
-test('should run every registered outcome and real stage signal with exact cleanup evidence', async () => {
+test('should retain only reducer and isolated signal-probe evidence', async () => {
   const artifactPath = await runCommandOutcomeCampaign(process.cwd());
   const absolutePath = resolve(artifactPath);
   assert.equal(statSync(absolutePath).mode & 0o777, 0o600);
   const parsed: unknown = JSON.parse(readFileSync(absolutePath, 'utf8'));
   assert.ok(isRecord(parsed));
-  assert.equal(parsed.evidenceScope, 'assurance-terminal-protocol-only');
+  assert.equal(parsed.evidenceScope, 'terminal-reducer-and-isolated-signal-probe-only');
+  assert.equal(parsed.actualAliasesExecuted, false);
+  assert.equal(parsed.actualRegisteredStagesExecuted, false);
+  assert.equal(parsed.unresolvedGapId, 'real-command-stage-signal-observation-unqualified');
   assert.equal(parsed.recoveryVerified, true);
   assert.equal(parsed.foreignOwnerPreserved, true);
   assert.equal(parsed.ownedResourcesRemoved, true);

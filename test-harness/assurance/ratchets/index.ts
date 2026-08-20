@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, realpathSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 
 import { z } from 'zod';
 
@@ -12,7 +12,12 @@ import type {
   StalenessDecision,
   StalenessTrigger,
 } from '../tests/assurance-ratchets-contract.js';
-import type { AssuranceRatchetBaseline, RepositoryStalenessResult } from './model.js';
+import type {
+  AssuranceRatchetBaseline,
+  GovernedCoverageProvenance,
+  GovernedCoverageRatchetEvidence,
+  RepositoryStalenessResult,
+} from './model.js';
 
 /** Canonical versioned baseline path. */
 const baselinePath = 'test-harness/assurance/ratchet-baselines.json';
@@ -34,6 +39,7 @@ const assuranceRatchetBaselineSchema = z.object({
     sourceRunId: z.uuid(),
     summaryDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
     normalizedPathCount: z.number().int().positive(),
+    normalizedPathDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
     counts: z.object({
       statements: metricCountSchema,
       branches: metricCountSchema,
@@ -58,6 +64,31 @@ const assuranceRatchetBaselineSchema = z.object({
     reason: z.string().min(1),
     sourceArtifact: z.string().min(1),
     promotionAuthorized: z.literal(false),
+  }),
+});
+
+const captureManifestSchema = z.object({
+  version: z.literal(1),
+  runId: z.uuid(),
+  project: z.literal('security'),
+  profile: z.enum(['operational', 'production-security']),
+  revision: z.string().regex(/^[0-9a-f]{40}$/u),
+  dependencyLockDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
+  sourceTreeDigest: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
+  flushStatus: z.literal('complete'),
+});
+
+const coverageObservationSchema = z.object({
+  version: z.literal(1),
+  mode: z.literal('observation'),
+  blocking: z.literal(false),
+  ordinaryVerificationExitCode: z.literal(0),
+  normalizedPaths: z.array(z.string().min(1)).min(1),
+  totals: z.object({
+    statements: metricCountSchema,
+    branches: metricCountSchema,
+    functions: metricCountSchema,
+    lines: metricCountSchema,
   }),
 });
 
@@ -94,9 +125,6 @@ function evaluateCoverage(
   baseline: AssuranceRatchetBaseline,
   observation: RatchetCoverageObservation,
 ): RatchetCoverageDecision {
-  if (observation.sourceRevision !== baseline.coverage.sourceRevision) {
-    return { accepted: false, reason: 'stale-source-revision', promotionAuthorized: false };
-  }
   const metrics = ['statements', 'branches', 'functions', 'lines'] as const;
   for (const metric of metrics) {
     const expected = baseline.coverage.counts[metric];
@@ -126,7 +154,138 @@ function evaluateCoverage(
       promotionAuthorized: false,
     };
   }
+  if (observation.normalizedPathDigest !== baseline.coverage.normalizedPathDigest) {
+    return {
+      accepted: false,
+      reason: 'unreviewed-path-change',
+      promotionAuthorized: false,
+    };
+  }
   return { accepted: true, reason: 'exact-baseline', promotionAuthorized: false };
+}
+
+/** Produces the reviewed domain-separated identity of one ordered normalized source path set. */
+export function digestNormalizedCoveragePaths(paths: readonly string[]): string {
+  const digest = createHash('sha256');
+  digest.update('porta-assurance-normalized-paths-v1\0');
+  let previous: string | undefined;
+  for (const path of paths) {
+    if (
+      !/^[a-z0-9][a-zA-Z0-9._/-]*$/u.test(path) ||
+      path.includes('..') ||
+      (previous !== undefined && previous.localeCompare(path) >= 0)
+    ) {
+      throw new Error('coverage normalized paths must be unique canonical ordered paths');
+    }
+    digest.update(path);
+    digest.update('\0');
+    previous = path;
+  }
+  return `sha256:${digest.digest('hex')}`;
+}
+
+/** Resolves one selected run-owned file without following a symlink or escaping its UUID root. */
+function resolveCoverageFile(repositoryRoot: string, runId: string, relativePath: string): string {
+  if (!z.uuid().safeParse(runId).success) throw new Error('coverage run ID must be a UUID');
+  const resultsRoot = resolve(repositoryRoot, 'test-harness/.assurance-results');
+  const runRoot = resolve(resultsRoot, runId);
+  const path = resolve(runRoot, relativePath);
+  const relation = relative(runRoot, path);
+  if (relation.startsWith('..') || isAbsolute(relation)) {
+    throw new Error('coverage evidence escapes its selected run');
+  }
+  if (!lstatSync(path).isFile() || realpathSync(path) !== path) {
+    throw new Error('coverage evidence must be a canonical regular file');
+  }
+  return path;
+}
+
+/** Loads, provenance-checks, and evaluates one explicitly selected coverage observation. */
+export function evaluateGovernedCoverageObservation(
+  repositoryRoot: string,
+  coverageRunId: string,
+  expected: GovernedCoverageProvenance,
+): GovernedCoverageRatchetEvidence {
+  const root = realpathSync(repositoryRoot);
+  const baseline = loadAssuranceRatchetBaseline(root);
+  const candidateRoots = ['coverage/security/operational', 'coverage/security/production-security'];
+  const existingRoots = candidateRoots.filter((candidate) => {
+    try {
+      resolveCoverageFile(root, coverageRunId, `${candidate}/capture-manifest.json`);
+      resolveCoverageFile(root, coverageRunId, `${candidate}/report/coverage-observation.json`);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  if (existingRoots.length !== 1) {
+    throw new Error(
+      'selected coverage run must contain exactly one registered security observation',
+    );
+  }
+  const coverageRoot = existingRoots[0] ?? '';
+  const manifestPath = resolveCoverageFile(
+    root,
+    coverageRunId,
+    `${coverageRoot}/capture-manifest.json`,
+  );
+  const observationPath = resolveCoverageFile(
+    root,
+    coverageRunId,
+    `${coverageRoot}/report/coverage-observation.json`,
+  );
+  const manifest = captureManifestSchema.parse(JSON.parse(readFileSync(manifestPath, 'utf8')));
+  if (
+    manifest.runId !== coverageRunId ||
+    coverageRoot !== `coverage/${manifest.project}/${manifest.profile}` ||
+    manifest.revision !== expected.revision ||
+    manifest.dependencyLockDigest !== expected.dependencyLockDigest ||
+    manifest.sourceTreeDigest !== expected.sourceTreeDigest
+  ) {
+    throw new Error('coverage observation provenance does not match the current clean source');
+  }
+  const observationBytes = readFileSync(observationPath);
+  const observation = coverageObservationSchema.parse(
+    JSON.parse(observationBytes.toString('utf8')),
+  );
+  const normalizedPathDigest = digestNormalizedCoveragePaths(observation.normalizedPaths);
+  const decision = evaluateCoverage(baseline, {
+    sourceRevision: manifest.revision,
+    normalizedPathCount: observation.normalizedPaths.length,
+    normalizedPathDigest,
+    counts: observation.totals,
+  });
+  return Object.freeze({
+    baseline: Object.freeze({
+      sourceRunId: baseline.coverage.sourceRunId,
+      sourceRevision: baseline.coverage.sourceRevision,
+      summaryDigest: baseline.coverage.summaryDigest,
+    }),
+    observation: Object.freeze({
+      sourceRunId: coverageRunId,
+      project: manifest.project,
+      profile: manifest.profile,
+      sourceRevision: manifest.revision,
+      sourceTreeDigest: manifest.sourceTreeDigest,
+      dependencyLockDigest: manifest.dependencyLockDigest,
+      summaryDigest: `sha256:${createHash('sha256').update(observationBytes).digest('hex')}`,
+    }),
+    decision,
+    promotionAuthorized: false,
+  });
+}
+
+/** Requires an accepted decision while returning the sanitized evidence for report retention. */
+export function requireAcceptedGovernedCoverageObservation(
+  repositoryRoot: string,
+  coverageRunId: string,
+  expected: GovernedCoverageProvenance,
+): GovernedCoverageRatchetEvidence {
+  const evidence = evaluateGovernedCoverageObservation(repositoryRoot, coverageRunId, expected);
+  if (!evidence.decision.accepted) {
+    throw new Error(`coverage ratchet rejected observation: ${evidence.decision.reason}`);
+  }
+  return evidence;
 }
 
 /** Maps traceability requirements to exact claim identifiers. */

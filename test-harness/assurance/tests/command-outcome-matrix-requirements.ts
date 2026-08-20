@@ -268,3 +268,11 @@ export const commandOutcomeForbiddenEvidenceFields = Object.freeze([
   'clientSecret',
   'privateKey',
 ] as const);
+
+/** Exact evidence boundary for the bounded terminal-protocol campaign. */
+export const commandOutcomeEvidenceBoundary = Object.freeze({
+  scope: 'terminal-reducer-and-isolated-signal-probe-only' as const,
+  actualAliasesExecuted: false,
+  actualRegisteredStagesExecuted: false,
+  unresolvedGapId: 'real-command-stage-signal-observation-unqualified' as const,
+});

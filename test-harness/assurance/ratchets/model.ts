@@ -23,6 +23,7 @@ export interface AssuranceRatchetBaseline {
     readonly sourceRunId: string;
     readonly summaryDigest: string;
     readonly normalizedPathCount: number;
+    readonly normalizedPathDigest: string;
     readonly counts: RatchetCoverageCounts;
     readonly enforcement: 'local-observation-only';
     readonly promotionAuthorized: false;
@@ -38,6 +39,33 @@ export interface AssuranceRatchetBaseline {
     readonly sourceArtifact: string;
     readonly promotionAuthorized: false;
   };
+}
+
+/** Clean source identities required to admit one selected coverage observation. */
+export interface GovernedCoverageProvenance {
+  readonly revision: string;
+  readonly dependencyLockDigest: string;
+  readonly sourceTreeDigest: string;
+}
+
+/** Sanitized, provenance-bound ratchet evidence retained by governed reporting. */
+export interface GovernedCoverageRatchetEvidence {
+  readonly baseline: {
+    readonly sourceRunId: string;
+    readonly sourceRevision: string;
+    readonly summaryDigest: string;
+  };
+  readonly observation: {
+    readonly sourceRunId: string;
+    readonly project: 'security';
+    readonly profile: 'operational' | 'production-security';
+    readonly sourceRevision: string;
+    readonly sourceTreeDigest: string;
+    readonly dependencyLockDigest: string;
+    readonly summaryDigest: string;
+  };
+  readonly decision: import('../tests/assurance-ratchets-contract.js').RatchetCoverageDecision;
+  readonly promotionAuthorized: false;
 }
 
 /** Complete current-state result checked before governed reporting. */

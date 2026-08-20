@@ -11,8 +11,9 @@ Every alias routes through one allowlisted TypeScript dispatcher. Until a comman
 installs its handler, a normal invocation fails closed with exit `30` (`setup-failure`). Use
 `--help` to inspect a registered alias without starting services or creating artifacts.
 Running `assurance:test` without a selector executes the complete registered governance suite.
-`assurance:validate` prints its generated run UUID, which can be passed unchanged to
-`assurance:report --run <run-uuid>`.
+`assurance:validate` and `assurance:coverage` print their generated run UUIDs. A governed report
+requires both exact identities through
+`assurance:report --run <run-uuid> --coverage-run <coverage-run-uuid>`.
 
 | Alias                     | Selector                                                                                               |                                                           Timeout | Artifact subdirectory               |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------: | ----------------------------------- |
@@ -26,7 +27,7 @@ Running `assurance:test` without a selector executes the complete registered gov
 | `assurance:mutation`      | `--select bounded-pilot` or `--recover <run-uuid>`                                                     |                                                             900 s | `mutation/bounded-pilot/`           |
 | `assurance:control-check` | `--check <registered-check>` or `--recover <run-uuid>`                                                 |                                                           3,600 s | `control-check/<check>/`            |
 | `assurance:compat`        | `--select <ST-69\|ST-70\|ST-71\|ST-72\|ST-73\|tenant-admin\|p1-admin\|protocol\|compatibility>`        |                                                           1,800 s | `compat/<selector>/`                |
-| `assurance:report`        | `--run <run-uuid>`                                                                                     |                                                             120 s | `summary/`                          |
+| `assurance:report`        | `--run <run-uuid> --coverage-run <coverage-run-uuid>`                                                  |                                                             120 s | `summary/`                          |
 | `assurance:stability`     | `--command <test\|harness\|coverage\|fault\|compat> --seed-set <registered-set>`                       |        per attempt: child + 300 s; campaign: at most 125 attempts | `stability/<command>/<seed-set>/`   |
 | `assurance:all`           | none                                                                                                   |                                                           7,200 s | `all/`                              |
 

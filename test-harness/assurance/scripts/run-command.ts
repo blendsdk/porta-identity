@@ -1291,15 +1291,17 @@ function runValidationCommand(options: readonly string[]): void {
   }
 }
 
-/** Renders one sanitized owned run selected by an exact UUID. */
+/** Renders one sanitized validation run bound to one exact coverage run. */
 function runReportCommand(options: readonly string[]): void {
-  if (options.length !== 2 || options[0] !== '--run') {
-    process.stderr.write('ASSURANCE_SELECTOR_INVALID: expected --run <run-uuid>\n');
+  if (options.length !== 4 || options[0] !== '--run' || options[2] !== '--coverage-run') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --run <run-uuid> --coverage-run <coverage-run-uuid>\n',
+    );
     process.exitCode = setupFailureExit;
     return;
   }
   try {
-    const reportPath = renderFoundationReport(process.cwd(), options[1] ?? '');
+    const reportPath = renderFoundationReport(process.cwd(), options[1] ?? '', options[3] ?? '');
     process.stdout.write(`ASSURANCE_REPORT=${reportPath}\n`);
   } catch (error) {
     process.stderr.write(`ASSURANCE_REPORT_FAILED: ${errorMessage(error)}\n`);

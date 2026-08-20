@@ -36,7 +36,11 @@ import {
   digestRepositoryFile,
   inspectFoundationProvenance,
 } from './source-provenance.js';
-import { requireCurrentAssuranceInputs } from '../ratchets/index.js';
+import { readCleanSourceProvenance } from '../coverage/capture.js';
+import {
+  requireAcceptedGovernedCoverageObservation,
+  requireCurrentAssuranceInputs,
+} from '../ratchets/index.js';
 
 /** UUID format used to isolate one generated assurance run. */
 const runIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -248,8 +252,12 @@ export function runFoundationValidation(repositoryRoot: string): string {
   }
 }
 
-/** Renders sanitized JSON and Markdown summaries for one owned validation run. */
-export function renderFoundationReport(repositoryRoot: string, runId: string): string {
+/** Renders sanitized JSON and Markdown summaries for one provenance-bound governed run pair. */
+export function renderFoundationReport(
+  repositoryRoot: string,
+  runId: string,
+  coverageRunId: string,
+): string {
   const canonicalRoot = realpathSync(repositoryRoot);
   requireCurrentAssuranceInputs(canonicalRoot);
   const runDirectory = resolveRunDirectory(canonicalRoot, runId);
@@ -258,9 +266,30 @@ export function renderFoundationReport(repositoryRoot: string, runId: string): s
     throw new Error('assurance manifest must be a canonical regular file');
   }
   const manifest = foundationManifestSchema.parse(readJson(manifestPath));
+  const foundationProvenance = inspectFoundationProvenance(canonicalRoot);
+  const coverageProvenance = readCleanSourceProvenance(canonicalRoot);
+  if (
+    manifest.buildIdentity !== foundationProvenance.commitIdentity ||
+    manifest.treeIdentity !== foundationProvenance.treeIdentity ||
+    manifest.assuranceToolDigest !== foundationProvenance.assuranceToolDigest ||
+    manifest.buildIdentity !== `commit:${coverageProvenance.revision}` ||
+    manifest.dependencyLockDigest !== coverageProvenance.dependencyLockDigest
+  ) {
+    throw new Error('foundation evidence provenance does not match the current clean source');
+  }
+  const coverageRatchet = requireAcceptedGovernedCoverageObservation(
+    canonicalRoot,
+    coverageRunId,
+    coverageProvenance,
+  );
+  const reportEvidence = Object.freeze({
+    version: 1,
+    foundation: manifest,
+    coverageRatchet,
+  });
 
-  const renderedJson = renderJson(manifest);
-  const renderedMarkdown = renderSummary(manifest);
+  const renderedJson = renderJson(reportEvidence);
+  const renderedMarkdown = renderSummary(reportEvidence);
 
   const summaryDirectory = resolve(runDirectory, 'summary');
   mkdirSync(summaryDirectory, { recursive: true, mode: 0o700 });

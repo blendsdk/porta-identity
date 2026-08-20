@@ -165,10 +165,13 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
     cleanupContract: 'owned resources are removed and the real credential store remains unchanged',
   },
   'assurance:report': {
-    selectorGrammar: '--run <run-uuid>',
+    selectorGrammar: '--run <run-uuid> --coverage-run <coverage-run-uuid>',
     timeout: '120s',
     artifactSubdirectory: 'summary/',
-    prerequisites: ['sanitized completed or incomplete run manifest exists'],
+    prerequisites: [
+      'sanitized completed or incomplete run manifest exists',
+      'matching provenance-bound security coverage observation exists',
+    ],
     signalContract: 'SIGINT and SIGTERM use common signal cleanup',
     cleanupContract: 'no service ownership; only the selected owned run is read',
   },

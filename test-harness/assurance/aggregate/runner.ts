@@ -266,6 +266,7 @@ export async function runAssuranceAggregate(
   const exits: number[] = [];
   let stopped = false;
   let validationRunId: string | undefined;
+  let coverageRunId: string | undefined;
   const started = Date.now();
 
   for (const registeredChild of aggregateChildRegistry) {
@@ -290,8 +291,13 @@ export async function runAssuranceAggregate(
         continue;
       }
       const effective =
-        registered.command === 'assurance:report' && validationRunId !== undefined
-          ? { ...registered, arguments: ['--run', validationRunId] }
+        registered.command === 'assurance:report' &&
+        validationRunId !== undefined &&
+        coverageRunId !== undefined
+          ? {
+              ...registered,
+              arguments: ['--run', validationRunId, '--coverage-run', coverageRunId],
+            }
           : registered;
       const remaining = Math.max(1, aggregateDeadlineMilliseconds - (Date.now() - started));
       const outcome = await dependencies.execute(
@@ -317,6 +323,16 @@ export async function runAssuranceAggregate(
       if (registered.command === 'assurance:validate') {
         validationRunId = /^ASSURANCE_RUN_ID=([0-9a-f-]{36})$/m.exec(outcome.stdout)?.[1];
         if (terminal.exitCode === 0 && validationRunId === undefined) {
+          exits.push(50);
+          stopped = true;
+        }
+      }
+      if (registered.id === 'coverage-security-production-security') {
+        coverageRunId =
+          /^ASSURANCE_COVERAGE_CAPTURE=test-harness\/\.assurance-results\/([0-9a-f-]{36})\/coverage\/security\/production-security\/capture-manifest\.json$/m.exec(
+            outcome.stdout,
+          )?.[1];
+        if (terminal.exitCode === 0 && coverageRunId === undefined) {
           exits.push(50);
           stopped = true;
         }

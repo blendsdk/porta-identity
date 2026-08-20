@@ -153,6 +153,8 @@ export const assuranceAllChildRegistry: readonly AssuranceAllChildRegistration[]
       invocation('report-aggregate-run', 'assurance:report', 'aggregate-run-id', null, [
         '--run',
         '<aggregate-run-id>',
+        '--coverage-run',
+        '<aggregate-coverage-run-id>',
       ]),
     ]),
   },
@@ -193,6 +195,12 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
     },
     {
       id: 'source-variation-campaign-not-executed',
+      authority: 'stale-or-no-go-evidence',
+      statusSource: 'approved-program-gap-register',
+      conclusion: 'unqualified',
+    },
+    {
+      id: 'real-command-stage-signal-observation-unqualified',
       authority: 'stale-or-no-go-evidence',
       statusSource: 'approved-program-gap-register',
       conclusion: 'unqualified',
@@ -367,11 +375,66 @@ export function classifyAssuranceAllExit(
   return 0;
 }
 
+/** Returns the requirement-owned outcome assigned to one fixture invocation. */
+function fixtureInvocationExit(invocationId: string, childId: string): number {
+  if (childId === 'harness:operational') return 20;
+  if (invocationId === 'coverage-protocol-operational') return 40;
+  if (invocationId === 'fault-full-catalog') return 21;
+  return 0;
+}
+
+/** Complete exact fixture items derived from registered invocations and approved gaps. */
+const assuranceAllAggregateItemsFixture: readonly AssuranceAllItemEvidence[] = Object.freeze([
+  ...assuranceAllChildRegistry.flatMap((child) =>
+    child.invocations.map((registered) => {
+      const exitCode = fixtureInvocationExit(registered.id, child.id);
+      return Object.freeze({
+        id: `invocation:${registered.id}`,
+        childId: child.id,
+        authority:
+          exitCode === 20 ? ('known-product-defect-collector' as const) : ('eligible' as const),
+        executionStatus: 'completed' as const,
+        observation:
+          exitCode === 0
+            ? ('passed' as const)
+            : exitCode === 20
+              ? ('product-defect-observed' as const)
+              : exitCode === 40
+                ? ('evidence-incomplete' as const)
+                : ('fault-survived' as const),
+        notRunReason: null,
+        conclusion:
+          exitCode === 0
+            ? ('assured' as const)
+            : exitCode === 20
+              ? ('blocked' as const)
+              : exitCode === 40
+                ? ('incomplete' as const)
+                : ('survived' as const),
+      });
+    }),
+  ),
+  ...assuranceAllKnownGapRegistry.map((gap) =>
+    Object.freeze({
+      id: gap.id,
+      childId: 'report' as const,
+      authority: gap.authority,
+      executionStatus: 'not-run' as const,
+      observation: null,
+      notRunReason:
+        gap.authority === 'authority-blocked'
+          ? 'AUTHORITY_CONTRACT_UNAVAILABLE'
+          : 'OBSERVATION_UNQUALIFIED',
+      conclusion: gap.conclusion,
+    }),
+  ),
+]);
+
 /** Requirement-owned fixture containing every conclusion without claiming product evidence. */
 export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence = Object.freeze({
   schemaVersion: 1,
   registryVersion: 1,
-  registryDigest: `sha256:${'a'.repeat(64)}`,
+  registryDigest: 'sha256:636cb651f8b2610df46d3c361261372585f1521a2c6995581edea6d89a22cca1',
   baselineRevision: 'b'.repeat(40),
   baselineTreeDigest: `sha256:${'c'.repeat(64)}`,
   children: Object.freeze(
@@ -381,10 +444,13 @@ export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence
         ordinal: child.ordinal,
         executionStatus: 'completed' as const,
         processOwnership: 'managed-child' as const,
-        outcome:
-          child.id === 'harness:operational'
+        outcome: child.invocations.some((entry) => fixtureInvocationExit(entry.id, child.id) !== 0)
+          ? child.id === 'harness:operational'
             ? ('known-product-defect' as const)
-            : ('passed' as const),
+            : child.id === 'coverage'
+              ? ('incomplete' as const)
+              : ('assertion-failed' as const)
+          : ('passed' as const),
         notRunReason: null,
         cleanupComplete: true,
         invocations: Object.freeze(
@@ -392,7 +458,7 @@ export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence
             Object.freeze({
               ...registered,
               executionStatus: 'completed' as const,
-              exitCode: child.id === 'harness:operational' ? 20 : 0,
+              exitCode: fixtureInvocationExit(registered.id, child.id),
               artifactReference: `all/requirement-run/children/${registered.id}.json`,
               artifactDigest: `sha256:${'d'.repeat(64)}`,
               sourceRevision: 'b'.repeat(40),
@@ -407,81 +473,22 @@ export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence
       }),
     ),
   ),
-  items: Object.freeze<AssuranceAllItemEvidence[]>([
-    {
-      id: 'qualified-control',
-      childId: 'harness:production-security',
-      authority: 'eligible',
-      executionStatus: 'completed',
-      observation: 'passed',
-      notRunReason: null,
-      conclusion: 'assured',
-    },
-    {
-      id: 'known-product-defect',
-      childId: 'harness:operational',
-      authority: 'known-product-defect-collector',
-      executionStatus: 'completed',
-      observation: 'product-defect-observed',
-      notRunReason: null,
-      conclusion: 'blocked',
-    },
-    {
-      id: 'insufficient-observation',
-      childId: 'coverage',
-      authority: 'eligible',
-      executionStatus: 'completed',
-      observation: 'evidence-incomplete',
-      notRunReason: null,
-      conclusion: 'incomplete',
-    },
-    {
-      id: 'surviving-fault',
-      childId: 'fault',
-      authority: 'eligible',
-      executionStatus: 'completed',
-      observation: 'fault-survived',
-      notRunReason: null,
-      conclusion: 'survived',
-    },
-    {
-      id: 'authority-blocked-contract',
-      childId: 'report',
-      authority: 'authority-blocked',
-      executionStatus: 'not-run',
-      observation: null,
-      notRunReason: 'AUTHORITY_CONTRACT_UNAVAILABLE',
-      conclusion: 'blocked',
-    },
-    {
-      id: 'unsupported-observation',
-      childId: 'report',
-      authority: 'stale-or-no-go-evidence',
-      executionStatus: 'not-run',
-      observation: null,
-      notRunReason: 'OBSERVATION_UNQUALIFIED',
-      conclusion: 'unqualified',
-    },
-  ]),
-  rollup: Object.freeze({
-    assured: Object.freeze(['qualified-control']),
-    blocked: Object.freeze(['authority-blocked-contract', 'known-product-defect']),
-    incomplete: Object.freeze(['insufficient-observation']),
-    survived: Object.freeze(['surviving-fault']),
-    unqualified: Object.freeze(['unsupported-observation']),
-  }),
+  items: assuranceAllAggregateItemsFixture,
+  rollup: rollUpAssuranceAllItems(
+    assuranceAllAggregateItemsFixture.map(({ conclusion: _conclusion, ...item }) => item),
+  ),
   terminal: Object.freeze({
     cleanupOrPrimaryTreeDrift: false,
     signal: null,
     timedOut: false,
-    invalidEvidence: false,
-    coverageIncomplete: false,
+    invalidEvidence: true,
+    coverageIncomplete: true,
     infrastructureFailed: false,
     productDefectObserved: true,
     assertionFailedOrFaultSurvived: true,
   }),
-  exitCode: 20,
-  terminalReason: 'KNOWN_PRODUCT_DEFECT_RETAINED',
+  exitCode: 50,
+  terminalReason: 'BLOCKED_OR_UNQUALIFIED_ITEMS_RETAINED',
   artifactMode: 0o600,
   atomicWrite: true,
   cleanup: Object.freeze({

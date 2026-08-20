@@ -2,9 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  commandOutcomeEvidenceBoundary,
   commandOutcomeForbiddenEvidenceFields,
   commandOutcomeMatrixRequirement,
 } from './command-outcome-matrix-requirements.js';
+
+test('limits campaign credit to reducer and isolated probe behavior', () => {
+  assert.deepEqual(commandOutcomeEvidenceBoundary, {
+    scope: 'terminal-reducer-and-isolated-signal-probe-only',
+    actualAliasesExecuted: false,
+    actualRegisteredStagesExecuted: false,
+    unresolvedGapId: 'real-command-stage-signal-observation-unqualified',
+  });
+});
 
 test('defines every alias and terminal scenario exactly once', () => {
   const matrix = commandOutcomeMatrixRequirement;

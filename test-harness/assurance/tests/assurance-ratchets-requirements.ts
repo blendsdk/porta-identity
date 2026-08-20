@@ -6,6 +6,7 @@ export const reviewedCoverageBaseline = Object.freeze({
   sourceRunId: '1ca88f05-8501-4a15-bdde-d0b2f33e762c',
   summaryDigest: 'sha256:489254a6735e87e10c7e2d86e0d26e4af69a74a5673e8e07e0e24683071b9128',
   normalizedPathCount: 139,
+  normalizedPathDigest: 'sha256:69f21de088bff6acf74b1235bd294524a40228d3afc32c51517055d037961dab',
   counts: Object.freeze<RatchetCoverageCounts>({
     statements: Object.freeze({ covered: 1483, total: 6442 }),
     branches: Object.freeze({ covered: 399, total: 3118 }),

@@ -24,6 +24,8 @@ export interface RatchetCoverageObservation {
   readonly sourceRevision: string;
   /** Exact normalized first-party source count. */
   readonly normalizedPathCount: number;
+  /** Domain-separated identity of the exact ordered normalized source paths. */
+  readonly normalizedPathDigest: string;
   /** Exact attributed counts. */
   readonly counts: RatchetCoverageCounts;
 }
@@ -37,7 +39,7 @@ export interface RatchetCoverageDecision {
     | 'exact-baseline'
     | 'covered-count-reduction'
     | 'unreviewed-total-change'
-    | 'stale-source-revision';
+    | 'unreviewed-path-change';
   /** Exact metric that triggered a count decision. */
   readonly metric?: keyof RatchetCoverageCounts;
   /** Local observation never authorizes CI or merge enforcement. */

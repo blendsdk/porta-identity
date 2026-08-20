@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 22:58
-> **Progress**: 116/123 tasks (94%)
+> **Last Updated**: 2026-08-20 23:05
+> **Progress**: 115/123 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -58,7 +58,7 @@ text, but it cannot substitute another command for this binding.
 | 1.3–1.4   | Bootstrap: `yarn test:structure` plus the task's explicit static command-schema check                                                                        |
 | 1.5–1.6   | `yarn assurance:test --select assurance-foundation`                                                                                                          |
 | 1.7       | `yarn assurance:test --select assurance-governance`                                                                                                          |
-| 1.8       | `yarn assurance:validate` and `yarn assurance:report --run <task-run-uuid>`                                                                                  |
+| 1.8       | Historical bootstrap report contract; current reports use `--run <task-run-uuid> --coverage-run <coverage-run-uuid>`                                        |
 | 2.1–2.2   | `yarn test:structure`; the new isolated specs remain statically checked but outside required runtime collection until Task 2.3 records RED                  |
 | 2.3       | `yarn assurance:red --case ST-09 --signature lifecycle-current-failure`                                                                                      |
 | 2.4–2.7   | `yarn assurance:test --select lifecycle`                                                                                                                     |
@@ -142,9 +142,9 @@ text, but it cannot substitute another command for this binding.
 | 10.5      | `yarn assurance:test --select stability-campaign`                                                                                                           |
 | 10.6      | Every registered `yarn assurance:stability --command <command> --seed-set <registered-set>` candidate                                                       |
 | 10.7a     | `yarn assurance:test --select assurance-ratchets`                                                                                                           |
-| 10.7b     | `yarn assurance:validate`; `yarn assurance:report --run <task-run-uuid>`                                                                                     |
+| 10.7b     | `yarn assurance:validate`; security coverage capture; `yarn assurance:report --run <task-run-uuid> --coverage-run <coverage-run-uuid>`                      |
 | 10.8a–10.8a3 | `yarn assurance:test --select assurance-all-aggregate`; `yarn assurance:test --select p1-production-exposure`; `yarn test:structure`                    |
-| 10.8b     | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <validation-child-run-uuid>`                                                               |
+| 10.8b     | `yarn assurance:all`; `yarn test:ui`; `yarn assurance:report --run <validation-child-run-uuid> --coverage-run <security-coverage-child-run-uuid>`           |
 | 11.1a     | `yarn assurance:test --select assurance-governance`; `yarn test:structure`                                                                                   |
 | 11.1b     | `yarn assurance:validate`; `yarn assurance:test --select fault-catalog-campaign`; `yarn harness:test`; `yarn verify`                                                |
 | 11.2      | `yarn assurance:test --select assurance-governance`; `yarn assurance:validate`; `yarn verify`                                                               |
@@ -1276,20 +1276,18 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
       and 29 CLI files / 355 tests. No runtime outcome or signal campaign evidence was claimed. ✅
       (completed: 2026-08-20 16:51)
-- [x] 10.4 Implement the closed command-outcome and ST-76 signal campaign. Force each supported
-      outcome plus SIGINT and SIGTERM at every resource-owning command stage, prove exact cleanup or
-      bounded recovery without cross-worktree mutation, and keep unsupported/non-resource-owning
-      combinations explicit rather than silently passing them. Per AR-108, this is an
-      assurance-only terminal-protocol campaign with real process-group signals and UUID-fenced
-      disposable resources; it adds no hidden forcing control to normal aliases and awards no
-      product or live-handler evidence. Normal `stability` and `all` handler readiness remains with
-      Tasks 10.5 and 10.8. The implementation registry independently matches all 143 immutable
-      rows and grounds 33 command stages in their owning modules. The campaign delivered both
-      signals to every resource-owning stage through real isolated process groups, recorded
-      non-resource stages as not applicable, verified cleanup-failure precedence and exact
-      UUID-fenced recovery, preserved a second-owner decoy and the primary fingerprint, rejected
-      campaign controls on all normal aliases, and retained only sanitized mode-0600 protocol
-      evidence. Focused specifications/implementation checks passed 12/12, governance passed
+- [x] 10.4 Implement the closed command-outcome and ST-76 protocol-model campaign. Reduce every
+      supported outcome and deliver SIGINT/SIGTERM to an isolated UUID-fenced resource owner for
+      each registered resource-owning stage category; keep unsupported/non-resource-owning
+      combinations explicit rather than silently passing them. Per AR-108 and AR-115, this
+      campaign does not invoke the actual aliases or registered stage modules. It proves reducer
+      precedence, generic process-group signal semantics, exact cleanup/recovery, foreign-owner
+      preservation, and registry grounding only. Real alias/stage signal handling remains
+      unqualified under DEF-22, and neither product, live-handler, nor CI-promotion credit is
+      awarded. Normal `stability` and `all` handler readiness remains with Tasks 10.5 and 10.8. The
+      implementation registry independently matches all 143 immutable rows and grounds 33 command
+      stages in their owning modules. Focused specifications/implementation checks passed 12/12,
+      governance passed
       55/55, structure passed 68/68, and the authoritative `yarn verify` passed 233 server files /
       3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 19:19)
@@ -1378,7 +1376,10 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       35 files / 224 tests, E2E passed 20 files / 128 tests, and `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 22:29)
-- [x] 10.8b From the clean pushed capability revision, run the complete registered local assurance
+- [~] 10.8b Reopened by Phase 10 quality review: harden aggregate evidence validation, connect
+      coverage ratchets to governed reporting, and classify the command-outcome campaign as
+      protocol-model evidence before regenerating the clean aggregate. From the corrected clean
+      pushed capability revision, run the complete registered local assurance
       aggregate, UI suite, pentests, redaction and residue scans, traceability/report validation,
       and authoritative `yarn verify`. Publish a truthful roll-up without treating known product
       defects or unsupported observers as success. Clean revision `79e8c1de` produced aggregate run
@@ -1389,8 +1390,10 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       consent-contract failures recorded as DEF-21; the immediately following penetration suite
       passed 35 files / 224 tests. Aggregate artifacts are mode 0600, the bounded redaction scan
       passed, and no labelled Docker container, runtime file, disposable worktree, or recovery
-      command remains. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
-      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 22:58)
+      command remains. Historical run `a3a80c26-3e6f-4d05-9650-7488e7553b53` matched its stated
+      facts but is superseded because the validator did not independently bind every conclusion to
+      child invocation facts. The replacement run must use the corrected validator and governed
+      ratchet path.
 
 **Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
 evidence; this evidence grants no promotion authority.
@@ -1429,4 +1432,4 @@ deployment, scanner, or certification change.
 
 **Historical bounded closeout review:** [Phase 10–11 Review](19-phase-10-11-quality-review.md)
 records no unresolved Critical or Major correction in the retained Must/Should checkpoint. Resumed
-DEF-20 work requires its own Phase 10 quality review before final completion.
+DEF-20 work is reviewed in [Resumed Phase 10 Review](20-phase-10-quality-review.md).

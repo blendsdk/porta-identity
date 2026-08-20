@@ -52,7 +52,7 @@ items are:
 No blocked or deferred item receives assured status. Product remediation remains separate from this
 structural/assurance branch.
 
-## User-authorized deferment at this checkpoint
+## User-authorized deferment at the original checkpoint
 
 DEF-20 defers the mutation-tool pilot, exhaustive command×outcome/signal matrix, 100-run stability
 campaign, local ratchets, exhaustive aggregate/UI reruns, and CI-promotion proposal. These are not
@@ -60,12 +60,17 @@ required to continue local Porta feature implementation. They are required befor
 new assurance commands are stable enough for additional blocking CI, release, or merge-policy use.
 The later resumption does not retroactively change the evidence or conclusions recorded here.
 
+The resumed Phase 10 work later completed the bounded pilot, protocol-model matrix, 100-run
+protocol-candidate qualification, local ratchets, and aggregate/UI reruns. It did not execute real
+alias-stage signal injection and grants no CI-promotion authority.
+
 ## Protected-scope proof
 
-The final Phase 10 implementation diff from its recorded baseline contains only
-`test-harness/assurance/**` and this feature's CodeOps artifacts. It does not modify the read-only CI
-workflow, publishing, deployment, release, merge-policy, or Porta product source. The closeout diff
-is limited to traceability authority and maintainer documentation.
+At this original closeout checkpoint, the Phase 10 implementation diff contained only
+`test-harness/assurance/**` and this feature's CodeOps artifacts. The later resumed Phase 10 diff
+also includes root assurance scripts and package metadata, repository test contracts, and UI test
+setup consistency. Neither checkpoint modifies the read-only CI workflow, publishing, deployment,
+release, merge-policy, or Porta product runtime behavior.
 
 ## Final verification
 

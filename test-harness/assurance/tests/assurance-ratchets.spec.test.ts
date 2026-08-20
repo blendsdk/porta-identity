@@ -23,6 +23,7 @@ test('should reject an exact covered branch reduction with unchanged totals', ()
     contract.evaluateCoverage({
       sourceRevision: reviewedCoverageBaseline.sourceRevision,
       normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount,
+      normalizedPathDigest: reviewedCoverageBaseline.normalizedPathDigest,
       counts,
     }),
     {
@@ -50,6 +51,7 @@ test('should reject unexplained executable-total and normalized-path growth', ()
     contract.evaluateCoverage({
       sourceRevision: reviewedCoverageBaseline.sourceRevision,
       normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount,
+      normalizedPathDigest: reviewedCoverageBaseline.normalizedPathDigest,
       counts,
     }),
     {
@@ -63,31 +65,43 @@ test('should reject unexplained executable-total and normalized-path growth', ()
     contract.evaluateCoverage({
       sourceRevision: reviewedCoverageBaseline.sourceRevision,
       normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount + 1,
+      normalizedPathDigest: reviewedCoverageBaseline.normalizedPathDigest,
       counts: reviewedCoverageBaseline.counts,
     }).reason,
     'unreviewed-total-change',
   );
+  assert.equal(
+    contract.evaluateCoverage({
+      sourceRevision: reviewedCoverageBaseline.sourceRevision,
+      normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount,
+      normalizedPathDigest: `sha256:${'f'.repeat(64)}`,
+      counts: reviewedCoverageBaseline.counts,
+    }).reason,
+    'unreviewed-path-change',
+  );
 });
 
-// Exact unchanged observations pass locally, while a different source revision remains stale until
-// a reviewed baseline update records its new identities.
-test('should accept only the exact reviewed source observation', () => {
+// A reviewed baseline remains the count floor across source revisions. Current-source provenance is
+// admitted by governed reporting before this evaluator receives the observation.
+test('should compare a current source observation with the reviewed count baseline', () => {
   const contract = createAssuranceRatchetsContract();
   assert.deepEqual(
     contract.evaluateCoverage({
       sourceRevision: reviewedCoverageBaseline.sourceRevision,
       normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount,
+      normalizedPathDigest: reviewedCoverageBaseline.normalizedPathDigest,
       counts: reviewedCoverageBaseline.counts,
     }),
     { accepted: true, reason: 'exact-baseline', promotionAuthorized: false },
   );
-  assert.equal(
+  assert.deepEqual(
     contract.evaluateCoverage({
-      sourceRevision: 'new-source-revision',
+      sourceRevision: 'a'.repeat(40),
       normalizedPathCount: reviewedCoverageBaseline.normalizedPathCount,
+      normalizedPathDigest: reviewedCoverageBaseline.normalizedPathDigest,
       counts: reviewedCoverageBaseline.counts,
-    }).reason,
-    'stale-source-revision',
+    }),
+    { accepted: true, reason: 'exact-baseline', promotionAuthorized: false },
   );
 });
 

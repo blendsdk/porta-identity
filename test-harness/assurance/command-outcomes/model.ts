@@ -79,8 +79,14 @@ export interface CommandOutcomeCampaignArtifact {
   readonly schemaVersion: 1;
   /** Campaign owner UUID. */
   readonly runId: string;
-  /** Explicit boundary preventing product or live-handler evidence credit. */
-  readonly evidenceScope: 'assurance-terminal-protocol-only';
+  /** Explicit boundary preventing real alias or registered-stage behavior credit. */
+  readonly evidenceScope: 'terminal-reducer-and-isolated-signal-probe-only';
+  /** Actual governed aliases are never invoked by this bounded campaign. */
+  readonly actualAliasesExecuted: false;
+  /** Signal probes own synthetic resources and never execute registered stage modules. */
+  readonly actualRegisteredStagesExecuted: false;
+  /** Named gap retained until real command stages receive independent signal evidence. */
+  readonly unresolvedGapId: 'real-command-stage-signal-observation-unqualified';
   /** Hash-only primary repository fingerprint before and after the campaign. */
   readonly primaryFingerprint: {
     readonly before: string;

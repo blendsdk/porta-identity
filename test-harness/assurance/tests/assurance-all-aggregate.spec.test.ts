@@ -61,6 +61,12 @@ test('freezes the complete aggregate child registry and sequential order', () =>
       ['security', 'production-security'],
     ],
   );
+  assert.deepEqual(assuranceAllChildRegistry[7]?.invocations[0]?.arguments, [
+    '--run',
+    '<aggregate-run-id>',
+    '--coverage-run',
+    '<aggregate-coverage-run-id>',
+  ]);
 });
 
 test('deduplicates overlapping internal selectors by canonical file in first-seen order', () => {
@@ -186,6 +192,18 @@ test('rolls up every item exactly once without laundering defects or authority g
         ((gap.authority === 'authority-blocked' && gap.conclusion === 'blocked') ||
           (gap.authority === 'stale-or-no-go-evidence' && gap.conclusion === 'unqualified')),
     ),
+  );
+  assert.deepEqual(
+    assuranceAllKnownGapRegistry.map((gap) => gap.id),
+    [
+      'protocol-independent-observation-gaps',
+      'enumeration-timing-contract-unapproved',
+      'totp-same-window-replay-authority',
+      'bulk-import-export-contract-unapproved',
+      'forwarding-context-observer-incomplete',
+      'source-variation-campaign-not-executed',
+      'real-command-stage-signal-observation-unqualified',
+    ],
   );
   assert.throws(() => rollUpAssuranceAllItems([...source, source[0]!]), /DUPLICATE_ITEM_ID/);
 });
@@ -313,4 +331,65 @@ test('validates the complete requirement-owned aggregate evidence fixture', () =
     createAssuranceAllAggregateContract().validate(assuranceAllAggregateEvidenceFixture),
     assuranceAllAggregateEvidenceFixture,
   );
+});
+
+test('rejects aggregate evidence that tampers with registry-bound or derived facts', () => {
+  const contract = createAssuranceAllAggregateContract();
+  const changed = () => structuredClone(assuranceAllAggregateEvidenceFixture);
+  const extra = { ...changed(), password: 'must-not-survive' };
+  assert.throws(() => contract.validate(extra), /ASSURANCE_ALL_SCHEMA_INVALID/);
+
+  const registry = changed();
+  Object.assign(registry, { registryDigest: `sha256:${'f'.repeat(64)}` });
+  assert.throws(() => contract.validate(registry), /ASSURANCE_ALL_REGISTRY_INVALID/);
+
+  const duplicate = changed();
+  Object.assign(duplicate.children[0]!, {
+    invocations: [...duplicate.children[0]!.invocations, duplicate.children[0]!.invocations[0]!],
+  });
+  assert.throws(() => contract.validate(duplicate), /ASSURANCE_ALL_INVOCATIONS_INVALID/);
+
+  const missing = changed();
+  Object.assign(missing.children[2]!, {
+    invocations: missing.children[2]!.invocations.slice(1),
+  });
+  assert.throws(() => contract.validate(missing), /ASSURANCE_ALL_INVOCATIONS_INVALID/);
+
+  const unexpected = changed();
+  Object.assign(unexpected.children[0]!.invocations[0]!, { id: 'unexpected-invocation' });
+  assert.throws(() => contract.validate(unexpected), /ASSURANCE_ALL_INVOCATIONS_INVALID/);
+
+  const faultExit = changed();
+  Object.assign(faultExit.children[5]!.invocations[0]!, { exitCode: 0 });
+  assert.throws(() => contract.validate(faultExit), /ASSURANCE_ALL_CHILD_OUTCOME_INVALID/);
+
+  const faultCleanup = changed();
+  Object.assign(faultCleanup.children[5]!.invocations[0]!, { cleanupComplete: false });
+  assert.throws(() => contract.validate(faultCleanup), /ASSURANCE_ALL_CHILD_OUTCOME_INVALID/);
+
+  const item = changed();
+  const faultItem = item.items.find((entry) => entry.id === 'invocation:fault-full-catalog');
+  assert.ok(faultItem);
+  Object.assign(faultItem, { conclusion: 'assured' });
+  assert.throws(() => contract.validate(item), /ASSURANCE_ALL_ITEMS_INVALID/);
+
+  const rollup = changed();
+  Object.assign(rollup.rollup, { survived: [] });
+  assert.throws(() => contract.validate(rollup), /ASSURANCE_ALL_ROLLUP_INVALID/);
+
+  const cleanup = changed();
+  Object.assign(cleanup.cleanup, { ownedResourcesRemovedOrExactlyRecovered: false });
+  assert.throws(() => contract.validate(cleanup), /ASSURANCE_ALL_CLEANUP_INVALID/);
+
+  const terminalFlag = changed();
+  Object.assign(terminalFlag.terminal, { productDefectObserved: false });
+  assert.throws(() => contract.validate(terminalFlag), /ASSURANCE_ALL_TERMINAL_INVALID/);
+
+  const terminal = changed();
+  Object.assign(terminal, { terminalReason: 'ALL_REGISTERED_ITEMS_ASSURED' });
+  assert.throws(() => contract.validate(terminal), /ASSURANCE_ALL_TERMINAL_INVALID/);
+
+  const exit = changed();
+  Object.assign(exit, { exitCode: 0 });
+  assert.throws(() => contract.validate(exit), /ASSURANCE_ALL_TERMINAL_INVALID/);
 });

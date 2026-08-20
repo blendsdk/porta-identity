@@ -43,10 +43,12 @@ This checkpoint is deliberately **not** certification and does not claim that Po
 paths. Product defects and unresolved contracts remain separately recorded, including cross-tenant
 magic-link acceptance, TOTP replay semantics, bulk/import/export semantics, incomplete correlated
 decision logs, public nginx version disclosure, dependency reconnection behavior, SDK cursor
-pagination mismatch, and administrative session-identifier exposure. The optional mutation-tool
-pilot, exhaustive command/signal matrix, 100-run stability qualification, local ratchets,
-exhaustive aggregate/UI reruns, and CI-promotion proposal are deferred. Consequently the assurance
-commands are not qualified or authorized for new blocking CI, release, or merge-policy use.
+pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
+completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
+protocol-candidate qualification, local ratchets, and exhaustive local aggregate/UI collection.
+Real alias-stage signal injection remains unqualified, and the CI-promotion output is proposal-only.
+Consequently the assurance commands are not authorized for new blocking CI, release, or
+merge-policy use.
 
 ## Inventory Totals
 

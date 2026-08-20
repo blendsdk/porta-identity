@@ -181,6 +181,8 @@ export const aggregateChildRegistry: readonly AssuranceAllChildRegistration[] = 
       invocation('report-aggregate-run', 'assurance:report', 'aggregate-run-id', null, [
         '--run',
         '<aggregate-run-id>',
+        '--coverage-run',
+        '<aggregate-coverage-run-id>',
       ]),
     ],
   },
@@ -220,6 +222,12 @@ export const aggregateKnownGaps: readonly AssuranceAllKnownGapRegistration[] = O
   },
   {
     id: 'source-variation-campaign-not-executed',
+    authority: 'stale-or-no-go-evidence',
+    statusSource: 'approved-program-gap-register',
+    conclusion: 'unqualified',
+  },
+  {
+    id: 'real-command-stage-signal-observation-unqualified',
     authority: 'stale-or-no-go-evidence',
     statusSource: 'approved-program-gap-register',
     conclusion: 'unqualified',

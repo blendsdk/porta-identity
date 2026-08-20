@@ -2348,3 +2348,31 @@ contract as the smallest safe correction and rejected broader shared-database de
 version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**:
 the suites move to isolated databases or signing-key setup becomes transactionally owned by a new
 common fixture lifecycle.
+
+### AR-115 — Correct Phase 10 assurance claims at their evidence boundaries
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: evidence validation, local
+governed-report wiring, and assurance taxonomy within the already-approved Phase 10 scope; no
+product behavior, acceptance criterion, CI policy, or external action changes. **Objective**:
+prevent synthetic protocol checks, disconnected ratchets, or internally self-consistent JSON from
+receiving stronger assurance credit than independently observed facts support. **Decision**:
+classify the command-outcome campaign as protocol-model evidence and retain real alias/stage signal
+handling as unqualified; make aggregate schemas strict and derive conclusions, terminal state,
+cleanup, reason, and exit from the exact current registry and child invocation facts; and require a
+current provenance-bound coverage observation to pass the ratchet evaluator during governed report
+admission. Supersede the prior clean aggregate and regenerate it after these corrections are
+committed. **Evidence**: independent security review demonstrated that aggregate validation
+accepted tampered invocation exits, cleanup, terminal reason, and an extra secret-bearing field;
+independent correctness review found `evaluateCoverage` reachable only from tests; the command
+campaign feeds expected events into its own reducer rather than executing resource-owning stages.
+**Rejected alternatives**: implementing every real alias/stage signal permutation would materially
+expand the approved bounded campaign and runtime; retaining the existing claims would knowingly
+overstate evidence; discarding the aggregate would lose otherwise valid complete collection.
+**Strongest counterargument**: downgrading command-stage evidence leaves an RD-07 assurance gap,
+but that is more accurate than claiming behavior the campaign never observes, and it remains
+visible for future work. **Confidence**: High. **Hardening**: two independent Phase 10 reviewers
+grounded the three defects in executable code and selected the same fail-closed correction
+boundaries. **Policy version**: 1. **Root Invocation ID**:
+`574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: the signal campaign gains real
+stage-specific adapters, the aggregate registry changes, or governed coverage obtains a different
+reviewed-baseline policy.

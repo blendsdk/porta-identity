@@ -13,6 +13,7 @@ import {
   type AggregateRunnerDependencies,
 } from '../aggregate/index.js';
 import type { AssuranceAllInvocationRegistration } from './assurance-all-aggregate-contract.js';
+import { assuranceAllAggregateEvidenceFixture } from './assurance-all-aggregate-requirements.js';
 import type { ManagedChildOutcome } from '../scripts/managed-child.js';
 
 const fixedProvenance = Object.freeze({
@@ -50,6 +51,14 @@ function dependencies(
       if (invocation.command === 'assurance:validate') {
         return Promise.resolve(
           outcome(0, 'ASSURANCE_RUN_ID=11111111-1111-4111-8111-111111111111\n'),
+        );
+      }
+      if (invocation.id === 'coverage-security-production-security') {
+        return Promise.resolve(
+          outcome(
+            0,
+            'ASSURANCE_COVERAGE_CAPTURE=test-harness/.assurance-results/33333333-3333-4333-8333-333333333333/coverage/security/production-security/capture-manifest.json\n',
+          ),
         );
       }
       return Promise.resolve(outcome());
@@ -141,6 +150,14 @@ function knownIncompleteDependencies(
           outcome(0, 'ASSURANCE_RUN_ID=11111111-1111-4111-8111-111111111111\n'),
         );
       }
+      if (invocation.id === 'coverage-security-production-security') {
+        return Promise.resolve(
+          outcome(
+            0,
+            'ASSURANCE_COVERAGE_CAPTURE=test-harness/.assurance-results/33333333-3333-4333-8333-333333333333/coverage/security/production-security/capture-manifest.json\n',
+          ),
+        );
+      }
       if (invocation.id === 'harness-security-operational') {
         const artifact = writeKnownIncompleteArtifact(root, unobservedStateObservations);
         return Promise.resolve(
@@ -210,13 +227,31 @@ test('keeps the executable registry independent and identical to the immutable c
   assert.match(aggregateRegistryDigest(), /^sha256:[a-f0-9]{64}$/);
 });
 
+test('rejects nested unknown fields and summaries that contradict invocation facts', () => {
+  const nestedUnknown = structuredClone(assuranceAllAggregateEvidenceFixture);
+  Object.assign(nestedUnknown.children[0]!.invocations[0]!, { password: 'forbidden' });
+  assert.throws(() => validateAggregateEvidence(nestedUnknown), /ASSURANCE_ALL_SCHEMA_INVALID/);
+
+  const contradicted = structuredClone(assuranceAllAggregateEvidenceFixture);
+  Object.assign(contradicted.children[5]!.invocations[0]!, { cleanupComplete: false });
+  assert.throws(
+    () => validateAggregateEvidence(contradicted),
+    /ASSURANCE_ALL_CHILD_OUTCOME_INVALID/,
+  );
+});
+
 test('executes every child sequentially and publishes a truthful owner-only roll-up', async () => {
   const root = mkdtempSync(join(tmpdir(), 'porta-assurance-all-'));
   const calls: AssuranceAllInvocationRegistration[] = [];
   try {
     const result = await runAssuranceAggregate(root, dependencies(calls));
     assert.equal(calls.length, 16);
-    assert.deepEqual(calls.at(-1)?.arguments, ['--run', '11111111-1111-4111-8111-111111111111']);
+    assert.deepEqual(calls.at(-1)?.arguments, [
+      '--run',
+      '11111111-1111-4111-8111-111111111111',
+      '--coverage-run',
+      '33333333-3333-4333-8333-333333333333',
+    ]);
     assert.equal(result.exitCode, 50);
     assert.ok(result.counts.assured > 0);
     assert.ok(result.counts.blocked > 0);

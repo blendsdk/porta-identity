@@ -15,6 +15,7 @@ import { dirname, relative, resolve } from 'node:path';
 import process from 'node:process';
 
 import {
+  commandOutcomeEvidenceBoundary,
   commandOutcomeForbiddenEvidenceFields,
   commandOutcomeMatrixRequirement,
 } from '../tests/command-outcome-matrix-requirements.js';
@@ -306,7 +307,10 @@ export async function runCommandOutcomeCampaign(repositoryRoot: string): Promise
   const artifact: CommandOutcomeCampaignArtifact = {
     schemaVersion: 1,
     runId,
-    evidenceScope: 'assurance-terminal-protocol-only',
+    evidenceScope: commandOutcomeEvidenceBoundary.scope,
+    actualAliasesExecuted: commandOutcomeEvidenceBoundary.actualAliasesExecuted,
+    actualRegisteredStagesExecuted: commandOutcomeEvidenceBoundary.actualRegisteredStagesExecuted,
+    unresolvedGapId: commandOutcomeEvidenceBoundary.unresolvedGapId,
     primaryFingerprint: { before, after, unchanged: before === after },
     outcomes,
     signals,
