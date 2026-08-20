@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
-> **Last Updated**: 2026-08-20 22:29
-> **Progress**: 115/123 tasks (93%)
+> **Last Updated**: 2026-08-20 22:58
+> **Progress**: 116/123 tasks (94%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1378,10 +1378,19 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       35 files / 224 tests, E2E passed 20 files / 128 tests, and `yarn verify` passed 233 server
       files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
       2026-08-20 22:29)
-- [ ] 10.8b From the clean pushed capability revision, run the complete registered local assurance
+- [x] 10.8b From the clean pushed capability revision, run the complete registered local assurance
       aggregate, UI suite, pentests, redaction and residue scans, traceability/report validation,
       and authoritative `yarn verify`. Publish a truthful roll-up without treating known product
-      defects or unsupported observers as success.
+      defects or unsupported observers as success. Clean revision `79e8c1de` produced aggregate run
+      `a3a80c26-3e6f-4d05-9650-7488e7553b53`: all 16 registered invocations completed with 14
+      assured, 3 blocked, 2 incomplete, 0 survived, and 3 unqualified items; every child cleanup
+      completed and the primary tree remained unchanged. Validation/report run
+      `a224e0c9-0587-405a-98d2-fbc3c56fbaaa` passed. UI passed 129/134 and retained the exact five
+      consent-contract failures recorded as DEF-21; the immediately following penetration suite
+      passed 35 files / 224 tests. Aggregate artifacts are mode 0600, the bounded redaction scan
+      passed, and no labelled Docker container, runtime file, disposable worktree, or recovery
+      command remains. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 22:58)
 
 **Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
 evidence; this evidence grants no promotion authority.
