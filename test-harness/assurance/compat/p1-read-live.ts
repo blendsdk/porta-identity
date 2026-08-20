@@ -38,6 +38,7 @@ interface PublicListEnvelope {
   readonly page?: number;
   readonly pageSize?: number;
   readonly cursor?: string;
+  readonly nextCursor?: string | null;
   readonly hasMore?: boolean;
 }
 
@@ -48,6 +49,7 @@ const publicListEnvelopeSchema = z
     page: z.number().int().optional(),
     pageSize: z.number().int().optional(),
     cursor: z.string().optional(),
+    nextCursor: z.string().nullable().optional(),
     hasMore: z.boolean().optional(),
   })
   .passthrough();
@@ -98,7 +100,7 @@ function normalizeResult(
     total: envelope.total ?? envelope.data.length,
     page: envelope.page ?? null,
     pageSize: envelope.pageSize ?? null,
-    cursor: envelope.cursor ?? null,
+    cursor: envelope.nextCursor ?? envelope.cursor ?? null,
     hasMore: envelope.hasMore ?? null,
   };
   return {
@@ -275,10 +277,10 @@ export class PackedP1ReadLiveDriver implements PackedP1ReadJourneyDriver {
         `/api/admin/organizations/${this.entity('alpha')}/users?limit=1&search=alpha`,
         this.headers(),
       );
-      if (firstPage.cursor === undefined) {
+      if (firstPage.nextCursor === undefined || firstPage.nextCursor === null) {
         throw new Error('packed P1 cursor prerequisite is absent');
       }
-      this.selectedUserCursor = firstPage.cursor;
+      this.selectedUserCursor = firstPage.nextCursor;
     }
     const input = {
       server: this.endpoints.porta,

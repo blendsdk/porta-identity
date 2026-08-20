@@ -2,7 +2,7 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 07:42
+> **Last Updated**: 2026-08-20 07:48
 > **Progress**: 89/114 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
@@ -1078,7 +1078,10 @@ independent phase review and completed corrections are recorded in
       typecheck/lint/formatting, structure, and documentation/leak checks passed. The final
       cleanup-derivation assertion is implementation-derived and selector validation rejects
       lookalike selectors. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
-      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 07:42)
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. The first clean evidence attempt then
+      failed closed before admission because the public cursor wire response uses `nextCursor`;
+      the adapter now obtains that exact opaque wire value and passes it through the packed SDK
+      request without changing the product or oracle. ✅ (completed: 2026-08-20 07:48)
 - [ ] 9.6e From the clean pushed capability revision, run the packed P1 adjunct and admit evidence
       only when server, fixture, archive, compiled-entry, CLI SDK-resolution, credential-isolation,
       primary-tree, cleanup, redaction, and zero-residue identities all validate.
