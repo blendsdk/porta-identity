@@ -43,6 +43,18 @@ export interface FaultCommandResult {
   readonly artifactPath: string;
   /** Bounded recovery command when automatic cleanup could not prove absence. */
   readonly recoveryCommand?: string;
+  /** Exact stage that produced the final tuple classification. */
+  readonly stage: FaultObservation['stage'];
+  /** Claims blocked by the final classification. */
+  readonly blockedClaims: readonly string[];
+  /** Claims killed by the exact registered signature. */
+  readonly killedClaims: readonly string[];
+  /** Whether a fresh detached worktree was created for this tuple. */
+  readonly worktreeCreated: boolean;
+  /** Whether the primary source identity remained unchanged. */
+  readonly primaryTreeUnchanged: boolean;
+  /** Sanitized resource kinds that remained after cleanup. */
+  readonly residue: readonly string[];
 }
 
 /** Internal outcome accumulated before final cleanup precedence is known. */
@@ -448,6 +460,10 @@ export async function runCuratedFault(
     pending = finalizePendingFaultOutcome(pending, undefined, cleanupComplete);
     requireOwnedDirectory(resultDirectory);
     const artifactPath = resolve(resultDirectory, 'fault-result.json');
+    const residue = [
+      ...(cleanupSucceeded ? [] : ['disposable-worktree']),
+      ...(primaryTreeUnchanged ? [] : ['primary-tree-drift']),
+    ];
     writeAtomic(artifactPath, {
       version: 1,
       runId,
@@ -463,7 +479,7 @@ export async function runCuratedFault(
       targetRevision: baseline.commitIdentity,
       targetHash: fault.target.sha256,
       primaryTreeUnchanged,
-      residue: cleanupSucceeded ? [] : ['disposable-worktree'],
+      residue,
       recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
     });
     return {
@@ -472,6 +488,12 @@ export async function runCuratedFault(
       exitCode: pending.exitCode,
       artifactPath: relative(canonicalRoot, artifactPath).split(sep).join('/'),
       recoveryCommand: cleanupSucceeded ? undefined : recoveryCommand,
+      stage: pending.stage,
+      blockedClaims: pending.blockedClaims,
+      killedClaims: pending.killedClaims,
+      worktreeCreated,
+      primaryTreeUnchanged,
+      residue,
     };
   } finally {
     process.off('SIGINT', onSigint);

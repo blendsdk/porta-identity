@@ -84,8 +84,13 @@ export interface FaultCatalogCampaignArtifact {
   readonly primaryTreeUnchanged: boolean;
   readonly ownedResourcesRemovedOrRecovered: boolean;
   readonly ownedResourceCleanup: Readonly<
-    Record<'worktree' | 'build' | 'image' | 'stack' | 'evidence', 'removed' | 'exactly-recovered'>
+    Record<
+      'worktree' | 'build' | 'image' | 'stack' | 'evidence',
+      'removed' | 'exactly-recovered' | 'recovery-required'
+    >
   >;
+  /** Bounded repository-relative cleanup command when automatic recovery is incomplete. */
+  readonly recoveryCommand?: string;
   readonly retainedFieldNames: readonly string[];
 }
 

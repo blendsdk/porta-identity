@@ -28,7 +28,7 @@ import {
   writeCoverageFailureArtifact,
   type CoverageFailureStage,
 } from './coverage-orchestration.js';
-import { runCuratedFault } from '../fault/index.js';
+import { isFullCatalogSelection, runCuratedFault, runCuratedFaultCatalog } from '../fault/index.js';
 import { runTenantAdminControlSensitivity } from '../control-sensitivity/command.js';
 import { recoverLocalControlSensitivityRun } from '../control-sensitivity/local-runtime.js';
 import { isTenantAdminControlCheckId } from '../control-sensitivity/registry.js';
@@ -262,7 +262,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
     'test-harness/assurance/tests/fault-runner.impl.test.ts',
   ],
-  'fault-catalog-campaign': ['test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts'],
+  'fault-catalog-campaign': [
+    'test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts',
+    'test-harness/assurance/tests/fault-catalog-campaign.impl.test.ts',
+  ],
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
     'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
@@ -1035,12 +1038,26 @@ async function runFaultCommand(options: readonly string[]): Promise<void> {
     return;
   }
   try {
-    const selectedId = options[1] ?? '';
-    const result = await runCuratedFault(process.cwd(), {
-      faultId: selectedId,
+    const selection = {
+      faultId: options[1] ?? '',
       claimId: options[3] ?? '',
       sentinelId: options[5] ?? '',
-    });
+    };
+    if (isFullCatalogSelection(selection)) {
+      const result = await runCuratedFaultCatalog(process.cwd());
+      const counts = result.counts;
+      process.stdout.write(
+        `ASSURANCE_FAULT_CATALOG_RESULT: run=${result.runId} killed=${counts.killed} survived=${counts.survived} invalid=${counts.invalid} infrastructure=${counts.infrastructure} timeout=${counts.timeout} notRun=${counts.notRun} artifact=${result.artifactPath}\n`,
+      );
+      if (result.recoveryCommand !== undefined) {
+        process.stderr.write(
+          `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+        );
+      }
+      process.exitCode = result.exitCode;
+      return;
+    }
+    const result = await runCuratedFault(process.cwd(), selection);
     process.stdout.write(
       `ASSURANCE_FAULT_RESULT: run=${result.runId} classification=${result.classification} artifact=${result.artifactPath}\n`,
     );

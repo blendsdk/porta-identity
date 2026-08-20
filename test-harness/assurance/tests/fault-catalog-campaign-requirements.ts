@@ -40,6 +40,7 @@ export const faultCatalogCampaignRetainedFields = Object.freeze([
   'primaryTreeUnchanged',
   'ownedResourcesRemovedOrRecovered',
   'ownedResourceCleanup',
+  'recoveryCommand',
   'retainedFieldNames',
 ]);
 

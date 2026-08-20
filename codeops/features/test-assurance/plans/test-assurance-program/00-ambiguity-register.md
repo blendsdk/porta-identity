@@ -2011,3 +2011,49 @@ identified primary-tree drift as residue that must stop the campaign without des
 **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P10-A`. **Reopen trigger**: the
 catalog grows enough that sequential runtime exceeds the documented campaign timeout, or a future
 catalog schema natively defines aggregate execution without weakening exact tuple independence.
+
+### AR-102 — Aggregate capability precedes clean catalog evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: task sequencing and command
+binding inside the approved curated-fault scope; no product behavior, assurance criterion, catalog
+content, or promotion policy changes. **Objective**: verify the aggregate implementation while
+preserving the command's clean reachable-revision provenance contract. **Decision**: split the
+implementation checkpoint from the live aggregate run. Task 10.1c installs and verifies the closed
+campaign capability through deterministic internal specifications and implementation tests; Task
+10.1d runs the exact aggregate command from the resulting clean pushed revision and admits only its
+sanitized live evidence. The Phase 10 gate remains open until 10.1d succeeds. **Evidence**: the
+aggregate command calls the same clean-tree provenance guard as every exact tuple, so its newly
+written implementation cannot execute authoritatively while those changes remain uncommitted. The
+program already uses the same capability-then-clean-evidence pattern for packed-client, coverage,
+and live assurance commands. **Rejected alternatives**: a synthetic commit or alternate index would
+create an unapproved provenance class; running against the prior revision would not test the new
+capability; weakening the clean-tree guard would invalidate existing evidence contracts.
+**Strongest counterargument**: the split adds one full verification and commit, but it is the
+smallest way to bind the evidence to the implementation that produced it. **Confidence**: High.
+**Hardening**: this applies the previously independently challenged clean-checkpoint architecture
+without changing its security boundary. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P10-A`. **Reopen trigger**: an approved content-addressed dirty-tree provenance
+model replaces the clean reachable-revision contract for both single and aggregate fault commands.
+
+### AR-103 — Incomplete cleanup is recovery-required, never already recovered
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: correction of an internally
+contradictory aggregate evidence label inside the approved fault-campaign scope; no product,
+catalog, assurance-claim, or policy change. **Objective**: prevent an aggregate failure artifact
+from claiming cleanup success merely because it can name a bounded recovery command. **Decision**:
+extend the immutable aggregate evidence vocabulary with `recovery-required` and an optional,
+strictly validated repository-relative recovery command. `exactly-recovered` remains reserved for
+cleanup that actually ran and whose absence proof succeeded. Any tuple residue or unproved primary
+tree state sets the aggregate cleanup boolean false and exit 60. **Evidence**: the implementation
+returns a recovery command when automatic worktree removal fails, but command availability does not
+prove execution or absence. The original specification allowed only `removed` and
+`exactly-recovered`, making truthful failure evidence impossible. **Rejected alternatives**:
+labeling a pending command as recovered is false; omitting the artifact on cleanup failure violates
+complete terminal accounting; automatically interpreting and executing a rendered command would
+weaken the closed code-owned cleanup boundary. **Strongest counterargument**: this adjusts a
+committed specification, but the change strengthens its fail-closed intent and is necessary to
+represent the already-required failure state. **Confidence**: High. **Hardening**: the independent
+aggregate design challenge explicitly required truthful residue and bounded recovery accounting;
+this correction implements that invariant. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-EXEC-20260820-P10-A`. **Reopen trigger**: the runner gains an owner-validated automatic
+recovery operation that proves absence before aggregate publication.

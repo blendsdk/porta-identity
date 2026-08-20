@@ -55,16 +55,28 @@ export const curatedFaultCatalogSchema = z
     faults: z.array(curatedFaultSchema).min(1),
   })
   .superRefine((catalog, context) => {
-    const identities = new Set<string>();
+    const faultIdentities = new Set<string>();
+    const tupleIdentities = new Set<string>();
     for (const [index, fault] of catalog.faults.entries()) {
-      if (identities.has(fault.id)) {
+      if (faultIdentities.has(fault.id)) {
         context.addIssue({
           code: 'custom',
           path: ['faults', index, 'id'],
           message: 'fault IDs must be unique',
         });
       }
-      identities.add(fault.id);
+      faultIdentities.add(fault.id);
+      for (const [tupleIndex, tuple] of fault.tuples.entries()) {
+        const identity = `${fault.id}\0${tuple.claimId}\0${tuple.sentinelId}`;
+        if (tupleIdentities.has(identity)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['faults', index, 'tuples', tupleIndex],
+            message: 'fault catalog tuples must have globally unique identities',
+          });
+        }
+        tupleIdentities.add(identity);
+      }
     }
   });
 

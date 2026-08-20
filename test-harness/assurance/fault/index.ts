@@ -1,4 +1,16 @@
 export { loadFaultCatalog, resolveFaultFile, selectFault } from './catalog.js';
+export {
+  classifyFaultCatalogCampaignExit,
+  expandCuratedFaultCatalog,
+  fullCatalogSelection,
+  isFullCatalogSelection,
+  runCuratedFaultCatalog,
+  type FaultCatalogCampaignArtifact,
+  type FaultCatalogCampaignCommandResult,
+  type FaultCatalogCampaignExitCode,
+  type FaultCatalogCampaignTupleEntry,
+  type FaultCatalogTupleIdentity,
+} from './campaign.js';
 export { classifyFaultTuple, type FaultClassificationRequest } from './classification.js';
 export {
   curatedFaultCatalogSchema,

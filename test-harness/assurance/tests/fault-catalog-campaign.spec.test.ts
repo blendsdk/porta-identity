@@ -232,9 +232,16 @@ test('executes the aggregate contract with complete accounting and sanitized cle
   ]);
   assert.ok(
     Object.values(artifact.ownedResourceCleanup).every(
-      (outcome) => outcome === 'removed' || outcome === 'exactly-recovered',
+      (outcome) =>
+        outcome === 'removed' || outcome === 'exactly-recovered' || outcome === 'recovery-required',
     ),
   );
+  if (!artifact.ownedResourcesRemovedOrRecovered) {
+    assert.ok(
+      Object.values(artifact.ownedResourceCleanup).includes('recovery-required'),
+      'incomplete cleanup must remain visibly recovery-required',
+    );
+  }
   assert.match(artifact.terminalReason, /^[A-Z][A-Z0-9_]{2,127}$/);
   assert.deepEqual(artifact.retainedFieldNames, faultCatalogCampaignRetainedFields);
   assert.ok(

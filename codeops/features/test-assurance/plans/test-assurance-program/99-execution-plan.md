@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 12:11
-> **Progress**: 99/119 tasks (83%)
+> **Last Updated**: 2026-08-20 13:19
+> **Progress**: 100/120 tasks (83%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -40,10 +40,10 @@ edits the read-only CI workflow.
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
 |     9 | P1 validation, exposure, and administrative data    |    18 |
-|    10 | Mutation pilot and reliability qualification        |    10 |
+|    10 | Mutation pilot and reliability qualification        |    11 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 119 tasks across 11 release-safe phases.**
+**Total: 120 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -133,7 +133,8 @@ text, but it cannot substitute another command for this binding.
 | 9.10b     | `yarn assurance:harness --project security --profile operational`; `yarn assurance:harness --project security --profile production-security`; `yarn assurance:compat --select p1-admin`; `yarn assurance:coverage --project security --profile operational --seed coverage-baseline`; `yarn test:pentest`; `yarn verify` |
 | 10.1a     | `yarn test:structure`                                                                                                                                       |
 | 10.1b     | `yarn assurance:test --select fault-catalog-campaign` (expected exact RED marker)                                                                            |
-| 10.1c     | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
+| 10.1c     | `yarn assurance:test --select fault-catalog-campaign`                                                                                                       |
+| 10.1d     | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
 | 10.2      | `yarn assurance:test --select mutation-pilot`                                                                                                                |
 | 10.3–10.4 | `yarn assurance:test --select command-outcome-matrix`                                                                                                        |
 | 10.5–10.6 | `yarn assurance:stability --command harness --seed-set representative-v1`                                                                                    |
@@ -1216,9 +1217,16 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       6 passes and exactly one failure with `FAULT_CATALOG_CAMPAIGN_CAPABILITY_MISSING` (exit 21),
       without setup or collection noise. The authoritative `yarn verify` remained green. ✅
       (completed: 2026-08-20 13:02)
-- [ ] 10.1c Implement the reserved `full-catalog/catalog/all` campaign, run every catalog tuple
-      independently from the same clean baseline snapshot, publish one strict mode-0600 aggregate
-      artifact, and verify classification, tree immutability, cleanup, and redaction.
+- [x] 10.1c Implement the reserved `full-catalog/catalog/all` campaign and verify its exact
+      selector, deterministic tuple expansion, terminal precedence, strict aggregate schema,
+      tree-immutability accounting, cleanup, and redaction without claiming live clean-revision
+      evidence. The focused campaign suite passed 12/12, assurance typecheck/lint/formatting and
+      diff checks passed, and the authoritative `yarn verify` passed 233 server files / 3,382
+      tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20
+      13:19)
+- [ ] 10.1d Run every catalog tuple independently from the same clean pushed baseline snapshot and
+      publish one strict mode-0600 aggregate artifact proving exact classification, primary-tree
+      immutability, zero owned residue, and redaction.
 - [ ] 10.2 Evaluate one bounded TypeScript ESM mutation pilot on approved small modules; retain a
       no-go result without weakening curated faults if compatibility/runtime criteria fail.
 - [ ] 10.3 [spec-author] Add a table-driven command×outcome matrix for product, test, setup,
