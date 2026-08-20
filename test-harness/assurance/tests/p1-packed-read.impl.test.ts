@@ -238,6 +238,35 @@ test('should scan exact protected token, cookie, and credential canaries', () =>
   );
 });
 
+test('should admit detected protected output only as a product failure', () => {
+  const complete = completePackedP1ReadEvidence();
+  const first = complete.journeys[0];
+  assert.ok(first);
+  const evidence = {
+    ...complete,
+    journeys: [
+      {
+        ...first,
+        outcome: 'product-failure' as const,
+        forbiddenOutputObserved: {
+          ...first.forbiddenOutputObserved,
+          'session-cookie-or-credential': true,
+        },
+      },
+      ...complete.journeys.slice(1),
+    ],
+  };
+  assert.equal(validatePackedP1ReadEvidence(evidence).journeys[0]?.outcome, 'product-failure');
+  assert.throws(
+    () =>
+      validatePackedP1ReadEvidence({
+        ...evidence,
+        journeys: [{ ...evidence.journeys[0]!, outcome: 'passed' }, ...evidence.journeys.slice(1)],
+      }),
+    /forbidden output/i,
+  );
+});
+
 test('should reject foreign totals even when returned identities remain tenant-owned', () => {
   const complete = completePackedP1ReadEvidence();
   const first = complete.journeys[0];

@@ -302,14 +302,22 @@ function validateJourney(
   const totalMatches =
     journey.fixtureExpectedTotal === null ||
     journey.clientResult.observedTotal === journey.fixtureExpectedTotal;
+  const forbiddenOutputObserved = Object.values(journey.forbiddenOutputObserved).some(Boolean);
   const expectedOutcome =
     journey.clientResult.result === 'unexpected-error' &&
     journey.clientResult.status === null &&
     journey.independentRawResult.result === 'allowed'
       ? 'product-failure'
-      : resultsMatch && journey.fixtureOracleSatisfied && identitiesMatch && totalMatches
+      : resultsMatch &&
+          journey.fixtureOracleSatisfied &&
+          identitiesMatch &&
+          totalMatches &&
+          !forbiddenOutputObserved
         ? 'passed'
         : 'product-failure';
+  if (forbiddenOutputObserved && journey.outcome !== 'product-failure') {
+    throw new Error('packed P1 forbidden output cannot be admitted as passed');
+  }
   if (journey.outcome !== expectedOutcome) {
     throw new Error('packed P1 journey outcome is not derived from independent observations');
   }
@@ -325,9 +333,6 @@ function validateJourney(
     )
   ) {
     throw new Error('packed P1 state fingerprint is invalid');
-  }
-  if (Object.values(journey.forbiddenOutputObserved).some(Boolean)) {
-    throw new Error('packed P1 forbidden output was observed');
   }
   if (requirement.client === 'cli') {
     if (
@@ -364,12 +369,13 @@ export async function collectPackedP1ReadJourneys(
     const identitiesMatch =
       JSON.stringify(client.result.orderedItemIdentities) ===
       JSON.stringify(fixture.resolvedIdentities);
+    const forbiddenOutputObserved = Object.values(forbidden).some(Boolean);
     const outcome =
       client.result.result === 'unexpected-error' &&
       client.result.status === null &&
       independent.result === 'allowed'
         ? 'product-failure'
-        : resultsMatch && fixture.satisfied && identitiesMatch
+        : resultsMatch && fixture.satisfied && identitiesMatch && !forbiddenOutputObserved
           ? 'passed'
           : 'product-failure';
     evidence.push({
