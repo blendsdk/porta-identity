@@ -75,12 +75,26 @@ export const humanAuthCrossSiteRequirement: HumanAuthCrossSiteRequest = Object.f
       expectedResult: 'allowed',
       expectedMutationDelta: 1,
     }),
-    probe: Object.freeze({
-      originContext: 'cross-site-loopback-ip',
-      csrfProof: 'missing',
-      expectedResult: 'forbidden',
-      expectedMutationDelta: 0,
-    }),
+    probes: Object.freeze([
+      Object.freeze({
+        originContext: 'cross-origin-same-site',
+        csrfProof: 'missing',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      }),
+      Object.freeze({
+        originContext: 'cross-origin-same-site',
+        csrfProof: 'wrong',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      }),
+      Object.freeze({
+        originContext: 'cross-site-loopback-ip',
+        csrfProof: 'missing',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      }),
+    ]),
     independentObservation: 'target-fingerprint-before-and-after',
   }),
 });

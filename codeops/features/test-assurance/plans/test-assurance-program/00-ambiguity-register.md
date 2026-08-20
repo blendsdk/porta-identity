@@ -1744,3 +1744,28 @@ production-security command. **Confidence**: High. **Hardening**: exact profile 
 profile commands in the final clean campaign. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-EXEC-20260820-P8-H`. **Reopen trigger**: a live human-auth specification explicitly declares
 operational-profile eligibility.
+
+### AR-92 — Phase 8 observations preserve live facts
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: evidence collection and oracle
+implementation inside the approved human-authentication slice; no product behavior, scope, or risk
+acceptance changes. **Objective**: prevent a green live suite from receiving credit when actual
+responses, protected state, or a same-site CSRF boundary contradict the immutable contract.
+**Decision**: functional adapters must return concrete normalized response and public-state facts,
+never requirement-derived values; recovery-code evidence must re-read protected state after every
+accepted value; and the retained browser case must test missing and wrong CSRF proofs from the
+same-site sibling origin as well as the existing different-site origin, followed by a fresh silent
+authorization proving server-session usability. Align disabled-method expectations to the
+independently documented public 403 contract. **Evidence**: both independent reviewers found the
+functional adapter copied the oracle, the recovery adapter subtracted one without observing state,
+and the browser case omitted the same-site sibling-origin boundary. Public login-method
+documentation and route tests require 403 for disabled methods. **Rejected alternative**: marking
+all reachable functional and CSRF evidence incomplete would be truthful but would discard evidence
+that the retained harness can directly observe with a bounded correction. **Strongest
+counterargument**: concrete step observations add adapter code and live runtime, but they remove a
+false-positive path at the exact security boundary this program exists to assess. **Confidence**:
+High. **Hardening**: independent correctness and security reviewers converged on the observation
+defect; the corrections receive one bounded independent re-review. **Policy version**: 1. **Root
+Invocation ID**: `AD-TA-EXEC-20260820-P8-I`. **Reopen trigger**: the public login-method status
+contract changes or a required observation cannot be obtained through the retained public/admin
+boundaries.

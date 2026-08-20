@@ -80,12 +80,26 @@ test('requires production cookie metadata and an independent CSRF nonmutation or
       expectedResult: 'allowed',
       expectedMutationDelta: 1,
     },
-    probe: {
-      originContext: 'cross-site-loopback-ip',
-      csrfProof: 'missing',
-      expectedResult: 'forbidden',
-      expectedMutationDelta: 0,
-    },
+    probes: [
+      {
+        originContext: 'cross-origin-same-site',
+        csrfProof: 'missing',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      },
+      {
+        originContext: 'cross-origin-same-site',
+        csrfProof: 'wrong',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      },
+      {
+        originContext: 'cross-site-loopback-ip',
+        csrfProof: 'missing',
+        expectedResult: 'forbidden',
+        expectedMutationDelta: 0,
+      },
+    ],
     independentObservation: 'target-fingerprint-before-and-after',
   });
 });

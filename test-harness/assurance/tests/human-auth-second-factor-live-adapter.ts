@@ -247,10 +247,14 @@ async function observeRecoveryCode(
     if (!(await submitCode(replay, secondCode, true))) {
       throw new Error('unused recovery-code recovery control failed');
     }
+    const afterSecond = await recoveryCount(context);
+    if (afterSecond !== afterReplay - 1) {
+      throw new Error('fresh recovery-code consumption was not observed');
+    }
     return Object.freeze([
       attempt('recovery-code-first-use', 'accepted', true, afterFirst),
       attempt('recovery-code-same-value-second-use', 'rejected', false, afterReplay),
-      attempt('recovery-code-unused-value', 'accepted', true, afterReplay - 1),
+      attempt('recovery-code-unused-value', 'accepted', true, afterSecond),
     ]);
   } finally {
     await replay.browser.close();

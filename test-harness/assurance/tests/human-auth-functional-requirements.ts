@@ -199,7 +199,7 @@ export const humanAuthFunctionalCaseRequirements: readonly HumanAuthFunctionalCa
           action: 'submit-password-login',
           target: 'alpha-policy-account',
           variation: 'password-disabled-valid-credential',
-          response: { status: 200, bodySchemaId: 'method-disabled', headerSetId: 'login-public' },
+          response: { status: 403, bodySchemaId: 'method-disabled', headerSetId: 'login-public' },
           publicState: loginRejectedState,
         }),
         step({
@@ -212,7 +212,7 @@ export const humanAuthFunctionalCaseRequirements: readonly HumanAuthFunctionalCa
           target: 'alpha-policy-account',
           variation: 'passwordless-disabled-existing-recipient',
           response: {
-            status: 200,
+            status: 403,
             bodySchemaId: 'method-disabled',
             headerSetId: 'passwordless-public',
           },

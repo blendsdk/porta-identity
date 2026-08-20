@@ -1,9 +1,15 @@
-import { expect, test } from '@playwright/test';
+/// <reference lib="dom" />
+
+import { expect, test, type Page } from '@playwright/test';
+import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 import { loginWithPassword, MAILHOG_API, TEST_USER } from '../helpers.js';
 
 const mailSummarySchema = z.object({ total: z.number().int().nonnegative() }).passthrough();
+const spaConfigSchema = z.object({
+  spa: z.object({ clientId: z.string().min(1), redirectUri: z.string().url() }),
+});
 
 /** Returns one required owner-fenced lifecycle URL. */
 function requiredOrigin(name: 'HARNESS_APP_URL' | 'HARNESS_ATTACKER_URL' | 'HARNESS_PORTA_URL') {
@@ -29,6 +35,82 @@ async function waitForOneAdditionalMessage(before: number): Promise<number> {
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
   }
   throw new Error('password-reset control did not emit one message');
+}
+
+/** Submits a real cross-origin browser form so CORS cannot hide the CSRF decision. */
+async function submitCsrfProbe(
+  page: Page,
+  sourceOrigin: string,
+  target: string,
+  csrfProof?: string,
+): Promise<number> {
+  const probe = await page.context().newPage();
+  try {
+    await probe.goto(sourceOrigin);
+    const [response] = await Promise.all([
+      probe.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      probe.evaluate(
+        ({ email, proof, requestTarget }) => {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = requestTarget;
+          for (const [name, value] of [
+            ['email', email],
+            ...(proof === undefined ? [] : [['_csrf', proof]]),
+          ]) {
+            const input = document.createElement('input');
+            input.name = name;
+            input.value = value;
+            form.append(input);
+          }
+          document.body.append(form);
+          form.submit();
+        },
+        { email: TEST_USER.email, proof: csrfProof, requestTarget: target },
+      ),
+    ]);
+    return response?.status() ?? 0;
+  } finally {
+    await probe.close();
+  }
+}
+
+/** Proves the authenticated Porta session can still authorize after rejected probes. */
+async function sessionCanAuthorizeSilently(
+  page: Page,
+  porta: string,
+  app: string,
+): Promise<boolean> {
+  const configurationResponse = await page.request.get(`${app}/config.json`);
+  if (!configurationResponse.ok()) throw new Error('SPA configuration is unavailable');
+  const configuration = spaConfigSchema.parse(await configurationResponse.json());
+  const verifier = randomBytes(32).toString('base64url');
+  const authorization = new URL(`${porta}/alpha/auth`);
+  authorization.search = new URLSearchParams({
+    client_id: configuration.spa.clientId,
+    redirect_uri: configuration.spa.redirectUri,
+    response_type: 'code',
+    scope: 'openid profile email',
+    state: randomBytes(18).toString('base64url'),
+    nonce: randomBytes(18).toString('base64url'),
+    code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+    code_challenge_method: 'S256',
+    prompt: 'none',
+  }).toString();
+  const observer = await page.context().newPage();
+  try {
+    await observer.route(`${new URL(configuration.spa.redirectUri).origin}/**`, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/plain', body: 'callback received' }),
+    );
+    await observer.goto(authorization.toString(), { waitUntil: 'domcontentloaded' });
+    await observer.waitForURL(
+      (url) => url.origin === new URL(configuration.spa.redirectUri).origin,
+      { timeout: 10_000 },
+    );
+    return new URL(observer.url()).searchParams.has('code');
+  } finally {
+    await observer.close();
+  }
 }
 
 test('enforces host-only production session cookies and cross-site CSRF nonmutation', async ({
@@ -70,29 +152,20 @@ test('enforces host-only production session cookies and cross-site CSRF nonmutat
 
   const beforeProbeMail = await mailCount();
   const protectedSessionValue = session?.value;
-  await page.goto(attacker);
-  const probeOutcome = await page.evaluate(
-    async ({ email, target }) => {
-      try {
-        const response = await fetch(target, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ email }).toString(),
-        });
-        return `status:${response.status}`;
-      } catch {
-        return 'browser-blocked';
-      }
-    },
-    { email: TEST_USER.email, target: `${porta}/alpha/auth/forgot-password` },
-  );
-  expect(['browser-blocked', 'status:403']).toContain(probeOutcome);
+
+  const sameSiteTarget = `${porta}/alpha/auth/forgot-password`;
+  expect(await submitCsrfProbe(page, app, sameSiteTarget)).toBe(403);
+  expect(await submitCsrfProbe(page, app, sameSiteTarget, 'wrong-csrf-proof')).toBe(403);
+  expect(await mailCount()).toBe(beforeProbeMail);
+  expect(await sessionCanAuthorizeSilently(page, porta, app)).toBe(true);
+
+  expect(await submitCsrfProbe(page, attacker, sameSiteTarget)).toBe(403);
   expect(await mailCount()).toBe(beforeProbeMail);
   const sessionAfterProbe = (await page.context().cookies(porta)).find(
     (cookie) => cookie.name === '_session',
   );
   expect(sessionAfterProbe?.value).toBe(protectedSessionValue);
+  expect(await sessionCanAuthorizeSilently(page, porta, app)).toBe(true);
 
   await page.goto(`${porta}/alpha/auth/forgot-password`);
   await page.locator('input[name="email"]').fill(TEST_USER.email);

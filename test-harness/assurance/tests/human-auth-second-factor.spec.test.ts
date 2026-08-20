@@ -21,12 +21,16 @@ function environment(name: string): string {
 
 /** Builds the exact production-security context without retaining credentials. */
 function liveContext(): SecondFactorLiveContext {
+  const profile = environment('HARNESS_PROFILE');
+  if (profile !== 'production-security') {
+    throw new Error('second-factor evidence requires the production-security profile');
+  }
   return Object.freeze({
     runId: environment('HARNESS_RUN_ID'),
     fixtureManifestPath: environment('HARNESS_FIXTURE_MANIFEST'),
     protectedCredentialsPath: environment('HARNESS_FIXTURE_CREDENTIALS'),
     projectAdmitted: process.env.PORTA_ASSURANCE_PROJECT === 'security',
-    profile: 'production-security',
+    profile,
   });
 }
 
@@ -83,7 +87,32 @@ test(
       assert.equal(observation.runId, context.runId);
       assert.equal(observation.secretRetained, false);
       assert.equal(observation.cleanupCompleted, true);
-      assert.ok(observation.attempts.length >= 2);
+      const expectedAttemptIds = {
+        'email-otp': [
+          'email-otp-first-use',
+          'email-otp-same-value-second-use',
+          'email-otp-fresh-value-recovery',
+        ],
+        totp: ['totp-wrong-account', 'totp-expired-window', 'totp-current-window'],
+        'recovery-code': [
+          'recovery-code-first-use',
+          'recovery-code-same-value-second-use',
+          'recovery-code-unused-value',
+        ],
+      } as const;
+      assert.deepEqual(
+        observation.attempts.map((attempt) => attempt.id),
+        expectedAttemptIds[id],
+      );
+      assert.deepEqual(
+        observation.attempts.map((attempt) => attempt.result),
+        id === 'totp' ? ['rejected', 'rejected', 'accepted'] : ['accepted', 'rejected', 'accepted'],
+      );
+      if (id === 'recovery-code') {
+        const [first, replay, fresh] = observation.attempts;
+        assert.equal(first?.remainingRecoveryCodes, replay?.remainingRecoveryCodes);
+        assert.equal(fresh?.remainingRecoveryCodes, (replay?.remainingRecoveryCodes ?? 0) - 1);
+      }
     }
   },
 );

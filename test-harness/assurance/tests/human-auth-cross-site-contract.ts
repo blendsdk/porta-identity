@@ -57,12 +57,12 @@ export interface CsrfBoundaryRequirement {
     readonly expectedResult: 'allowed';
     readonly expectedMutationDelta: 1;
   };
-  readonly probe: {
-    readonly originContext: 'cross-site-loopback-ip';
-    readonly csrfProof: 'missing';
+  readonly probes: readonly {
+    readonly originContext: 'cross-origin-same-site' | 'cross-site-loopback-ip';
+    readonly csrfProof: 'missing' | 'wrong';
     readonly expectedResult: 'forbidden';
     readonly expectedMutationDelta: 0;
-  };
+  }[];
   readonly independentObservation: 'target-fingerprint-before-and-after';
 }
 
