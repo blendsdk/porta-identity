@@ -2151,3 +2151,35 @@ any of them reopens this decision. **Policy version**: 1. **Root Invocation ID**
 `USER-TA-RESUME-20260820`. **Reopen trigger**: incompatible dependency resolution, inability to
 produce machine-readable bounded results, primary-tree mutation, or runtime beyond the documented
 pilot timeout.
+
+### AR-108 — Qualify command termination through a closed assurance-only campaign
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: internal testing architecture,
+failure/recovery mechanics, and implementation sequencing inside the already-approved command
+reliability scope; no product behavior, risk acceptance, CI policy, or external target changes.
+**Objective**: prove the stable command outcome and signal protocol without introducing a hidden
+fault switch into normal assurance commands or risking unrelated worktrees. **Decision**: add a
+closed command-outcome subsystem behind the registered internal selector. It independently matches
+the immutable 143-row matrix, uses a code-owned stage registry, sends real SIGINT/SIGTERM to
+isolated process groups after an exact ready-stage handshake, owns only UUID-fenced ignored runtime
+resources, preserves a second-owner decoy, applies one shared terminal reducer, and publishes only
+sanitized owner-only atomic evidence. Unsupported and non-resource combinations remain explicit
+and receive no evidence credit. This campaign qualifies the common terminal protocol and is bound
+to existing concrete lifecycle/fault/mutation/control/compatibility cleanup tests; it is not
+product evidence and does not by itself prove every live handler. Because the normal `stability`
+and `all` handlers are delivered by later tasks, their protocol rows may be exercised here but
+their handler readiness remains incomplete until Tasks 10.5 and 10.8. **Evidence**: the current
+dispatcher has concrete handlers through `report` but routes `stability` and `all` to
+`ASSURANCE_HANDLER_UNAVAILABLE`; current managed-child and subsystem tests already provide real
+process-group and concrete cleanup seams. **Rejected alternatives**: environment or selector fault
+injection in normal aliases would create a dangerous hidden bypass; externally corrupting real
+Docker/dependency state is slow and risks unrelated owners; pure in-process mocks cannot prove OS
+signal delivery, descendant termination, or recovery. **Strongest counterargument**: a controlled
+probe proves the shared terminal protocol rather than every live handler's cleanup implementation.
+That limitation remains explicit, is mitigated by binding stage names to concrete ownership
+modules and retained subsystem tests, and cannot be promoted to handler or product evidence.
+**Confidence**: Medium-high. **Hardening**: an independent blind challenger selected the same
+closed campaign and rejected hidden normal-command controls; it required explicit protocol-versus-
+handler evidence boundaries. **Policy version**: 1. **Root Invocation ID**:
+`574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: a normal command gains or removes a
+resource-owning stage, or campaign evidence is proposed as live handler/product proof.

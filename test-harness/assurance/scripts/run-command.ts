@@ -272,6 +272,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/mutation-pilot.impl.test.ts',
   ],
   'command-outcome-matrix': ['test-harness/assurance/tests/command-outcome-matrix.spec.test.ts'],
+  'assurance-command-signals': [
+    'test-harness/assurance/tests/command-outcome-matrix.spec.test.ts',
+    'test-harness/assurance/tests/command-outcome-campaign.impl.test.ts',
+  ],
   'packed-consumer': [
     'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
     'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',

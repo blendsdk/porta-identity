@@ -1274,10 +1274,23 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404 tests,
       and 29 CLI files / 355 tests. No runtime outcome or signal campaign evidence was claimed. ✅
       (completed: 2026-08-20 16:51)
-- [ ] 10.4 Implement the closed command-outcome and ST-76 signal campaign. Force each supported
+- [x] 10.4 Implement the closed command-outcome and ST-76 signal campaign. Force each supported
       outcome plus SIGINT and SIGTERM at every resource-owning command stage, prove exact cleanup or
       bounded recovery without cross-worktree mutation, and keep unsupported/non-resource-owning
-      combinations explicit rather than silently passing them.
+      combinations explicit rather than silently passing them. Per AR-108, this is an
+      assurance-only terminal-protocol campaign with real process-group signals and UUID-fenced
+      disposable resources; it adds no hidden forcing control to normal aliases and awards no
+      product or live-handler evidence. Normal `stability` and `all` handler readiness remains with
+      Tasks 10.5 and 10.8. The implementation registry independently matches all 143 immutable
+      rows and grounds 33 command stages in their owning modules. The campaign delivered both
+      signals to every resource-owning stage through real isolated process groups, recorded
+      non-resource stages as not applicable, verified cleanup-failure precedence and exact
+      UUID-fenced recovery, preserved a second-owner decoy and the primary fingerprint, rejected
+      campaign controls on all normal aliases, and retained only sanitized mode-0600 protocol
+      evidence. Focused specifications/implementation checks passed 12/12, governance passed
+      55/55, structure passed 68/68, and the authoritative `yarn verify` passed 233 server files /
+      3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-20 19:19)
 - [ ] 10.5 Write and implement the ST-74 stability campaign with versioned registered candidate
       sets, deterministic shuffled seeds, visible retries, invalid/incomplete sequence reset,
       per-attempt deadlines, the 125-attempt cap, and owner-only atomic evidence. No candidate is
