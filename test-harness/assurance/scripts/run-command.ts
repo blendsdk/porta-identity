@@ -301,6 +301,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
   'human-auth-specs': humanAuthSpecificationFiles,
   'validation-exposure-specs': validationExposureSpecificationFiles,
+  'p1-specs': [...validationExposureSpecificationFiles, ...p1PackedReadSpecificationFiles],
   'p1-production-exposure': ['test-harness/assurance/tests/production-exposure.impl.test.ts'],
   'p1-implementation': [
     'test-harness/assurance/tests/p1-request-material.impl.test.ts',

@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 10:47
-> **Progress**: 94/116 tasks (81%)
+> **Last Updated**: 2026-08-20 10:58
+> **Progress**: 95/116 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1145,8 +1145,14 @@ independent phase review and completed corrections are recorded in
       secret-free failure records. Focused tests pass 21/21; assurance typecheck/lint/formatting and
       68 structure tests pass. `yarn verify` passes 233 server files / 3,382 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 10:47)
-- [ ] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation
-      and pentest, and keep the slice explicitly not-sensitivity-proven.
+- [x] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation
+      and pentest, and keep the slice explicitly not-sensitivity-proven. DEF-17 now owns this exact
+      gap. The closed `p1-specs` selector collects the immutable validation/exposure,
+      administrative-data, and packed P1 read specifications without altering their expectations;
+      no source variation, product file, pentest, or production hook changed. The P1 selector
+      passed 19/19, governance passed 55/55, structure passed 68/68, and `yarn verify` passed 233
+      server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
+      (completed: 2026-08-20 10:58)
 - [ ] 9.10 Run P1 projects/profiles, applicable packed clients, coverage, all pentests, evidence/
       redaction/recovery checks, and `yarn verify`.
 

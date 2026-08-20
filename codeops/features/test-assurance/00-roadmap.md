@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: In Progress
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-20 10:22
+> **Last Updated**: 2026-08-20 10:48
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -38,5 +38,6 @@
 | ↳ DEF-14 | Forwarding-context observation completeness     | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Deferred  | ⏸️     | 2026-08-20 10:22 | cookie and rate-limit identity observers are unavailable; forwarding claims remain incomplete         |
 | ↳ DEF-15 | Public product-version disclosure               | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | production and operational ingress expose the nginx version in public response headers                |
 | ↳ DEF-16 | Dependency failure and reconnection behavior    | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Blocked   | ⛔     | 2026-08-20 10:22 | database/cache probes time out; database recovery requires an exact Porta restart                     |
+| ↳ DEF-17 | P1 source-variation sensitivity campaign        | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-20 10:48 | no disposable P1 source variations execute in this program; black-box expectations remain unchanged   |
 | RD-06    | Fault sensitivity and mutation                  | [RD-06](requirements/RD-06-fault-sensitivity-and-mutation.md)                       | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02, RD-05                                                                        |
 | RD-07    | Continuous assurance and NFRs                   | [RD-07](requirements/RD-07-continuous-assurance-and-non-functional-requirements.md) | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01–RD-06                                                                                |
