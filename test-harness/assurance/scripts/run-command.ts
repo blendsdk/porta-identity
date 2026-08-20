@@ -49,6 +49,7 @@ import {
   recordTenantAdminBaseline,
 } from '../baseline/index.js';
 import { isStabilityCommand, runStabilityCampaign } from '../stability/index.js';
+import { runAssuranceAggregate } from '../aggregate/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -225,6 +226,57 @@ const productionExposureSpecificationFiles = [
   'test-harness/assurance/tests/production-exposure.spec.test.ts',
 ] as const;
 
+/** Internal governance files referenced by ordinary and aggregate selectors without duplication. */
+const governanceTestFiles = [
+  'test-harness/assurance/tests/assurance.spec.test.ts',
+  'test-harness/assurance/tests/commands.impl.test.ts',
+  'test-harness/assurance/tests/evidence.impl.test.ts',
+  'test-harness/assurance/tests/governance.impl.test.ts',
+] as const;
+
+/** Deduplicated service-free files owned by the versioned local aggregate. */
+const assuranceAllInternalFiles = [
+  ...governanceTestFiles,
+  ...lifecycleTestFiles,
+  'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+  'test-harness/assurance/tests/assurance-project-collection.spec.test.ts',
+  'test-harness/assurance/tests/assurance-source-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/coverage-envelope-and-provenance.spec.test.ts',
+  'test-harness/assurance/tests/coverage-mapping-and-reproducibility.spec.test.ts',
+  'test-harness/assurance/tests/coverage-observation-policy.spec.test.ts',
+  'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+  'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
+  'test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts',
+  'test-harness/assurance/tests/fault-catalog-campaign.impl.test.ts',
+  'test-harness/assurance/tests/mutation-pilot.spec.test.ts',
+  'test-harness/assurance/tests/mutation-pilot.impl.test.ts',
+  'test-harness/assurance/tests/command-outcome-matrix.spec.test.ts',
+  'test-harness/assurance/tests/command-outcome-campaign.impl.test.ts',
+  'test-harness/assurance/tests/stability-campaign.spec.test.ts',
+  'test-harness/assurance/tests/stability-campaign.impl.test.ts',
+  'test-harness/assurance/tests/assurance-ratchets.spec.test.ts',
+  'test-harness/assurance/tests/assurance-ratchets.impl.test.ts',
+  ...tenantAdminSpecificationFiles,
+  ...tenantAdminImplementationFiles,
+  ...tenantAdminFaultSpecificationFiles,
+  ...protocolSpecificationFiles,
+  ...humanAuthSpecificationFiles,
+  'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+  'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
+  ...validationExposureSpecificationFiles,
+  ...p1PackedReadSpecificationFiles,
+  'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+  'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+  'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+  'test-harness/assurance/tests/p1-request-material.impl.test.ts',
+  'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  'test-harness/assurance/tests/assurance-all-aggregate.spec.test.ts',
+  'test-harness/assurance/tests/assurance-all-aggregate.impl.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -388,12 +440,8 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/packed-sdk-protocol.spec.test.ts',
     'test-harness/assurance/tests/packed-protocol.impl.test.ts',
   ],
-  'assurance-governance': [
-    'test-harness/assurance/tests/assurance.spec.test.ts',
-    'test-harness/assurance/tests/commands.impl.test.ts',
-    'test-harness/assurance/tests/evidence.impl.test.ts',
-    'test-harness/assurance/tests/governance.impl.test.ts',
-  ],
+  'assurance-governance': governanceTestFiles,
+  'assurance-all-internal-v1': [...new Set(assuranceAllInternalFiles)],
 };
 
 /** Complete fixture specification and implementation files used by the fixture rollup. */
@@ -853,7 +901,13 @@ async function runInternalTests(options: readonly string[]): Promise<void> {
   const execute = async (): Promise<number> => {
     const result = await runManagedChild(
       process.execPath,
-      ['--import', 'tsx', '--test', ...selectedTests],
+      [
+        '--import',
+        'tsx',
+        '--test',
+        ...(selector === 'assurance-all-internal-v1' ? ['--test-concurrency=1'] : []),
+        ...selectedTests,
+      ],
       {
         cwd: process.cwd(),
         env: process.env,
@@ -1258,6 +1312,25 @@ async function runStabilityCommand(options: readonly string[]): Promise<void> {
   }
 }
 
+/** Executes the complete closed local aggregate without admitting caller-selected children. */
+async function runAllCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 0) {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: assurance:all accepts no options\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const result = await runAssuranceAggregate(process.cwd());
+    process.stdout.write(
+      `ASSURANCE_ALL_RESULT: run=${result.runId} assured=${result.counts.assured} blocked=${result.counts.blocked} incomplete=${result.counts.incomplete} survived=${result.counts.survived} unqualified=${result.counts.unqualified} artifact=${result.artifactPath} summary=${result.summaryPath}\n`,
+    );
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_ALL_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
 /** Runs the root dispatcher without interpreting untrusted input as code or shell syntax. */
 async function main(arguments_: readonly string[]): Promise<void> {
   const [action, ...options] = arguments_;
@@ -1323,6 +1396,10 @@ async function main(arguments_: readonly string[]): Promise<void> {
   }
   if (action === 'stability') {
     await runStabilityCommand(options);
+    return;
+  }
+  if (action === 'all') {
+    await runAllCommand(options);
     return;
   }
 

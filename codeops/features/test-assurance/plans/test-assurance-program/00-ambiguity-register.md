@@ -2236,3 +2236,31 @@ decision reuses an already challenged clean-evidence pattern and changes sequenc
 version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**:
 foundation evidence adopts an approved content-addressed snapshot model for reviewed uncommitted
 bytes.
+
+### AR-111 — Commit aggregate capability before clean end-to-end evidence
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: assurance-only orchestration,
+evidence taxonomy, and verification sequencing inside the approved local aggregate task; no
+product behavior, claim waiver, CI policy, or external target change. **Objective**: execute the
+complete registered assurance surface without weakening clean provenance or converting known
+product defects and authority gaps into a false success. **Decision**: split Task 10.8 into a
+capability checkpoint and a clean-evidence checkpoint. The capability installs one versioned,
+code-owned sequential child registry, an explicitly deduplicated internal suite, managed child
+ownership, terminal precedence, not-run accounting, and a sanitized owner-only aggregate artifact.
+The clean checkpoint then runs that exact capability plus the separately bound UI, penetration,
+redaction, residue, report, and repository-verification gates. A successful collector may retain a
+known product failure and allow collection to continue, but the final aggregate remains nonzero;
+unsafe cleanup, signals, timeout, invalid evidence, infrastructure failure, assertion failure, or a
+surviving fault stops the sequence. **Evidence**: source validation and several live assurance
+collectors intentionally reject dirty worktrees, while the root command contract already fixes
+the aggregate composition. **Rejected alternatives**: a shell loop fragments signal, provenance,
+and cleanup ownership; using old evidence would attest to different source bytes; returning zero
+when blocked or product-failure items remain would launder incomplete assurance. **Strongest
+counterargument**: a truthful nonzero aggregate can look like an orchestration failure even when
+every collector ran correctly. The artifact's conclusion taxonomy separates collector execution
+from product assurance, while the process exit correctly refuses a global success claim.
+**Confidence**: High. **Hardening**: an independent challenger required the same closed registry,
+managed-child ownership, capability/evidence split, and nonzero known-defect conclusion. **Policy
+version**: 1. **Root Invocation ID**: `574f39b7-f979-469b-91ad-a33859d1efb7`.
+**Reopen trigger**: the command composition changes, clean snapshot provenance is separately
+approved, or an authority decision resolves the known blocked/product-failure items.

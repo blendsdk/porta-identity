@@ -3,7 +3,7 @@
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: Executing — deferred assurance qualification resumed
 > **Last Updated**: 2026-08-20 20:30
-> **Progress**: 111/119 tasks (93%)
+> **Progress**: 112/120 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -1335,10 +1335,22 @@ or incomplete with explicit evidence; nothing is silently treated as safe.
       secret canary, and both coverage and review metadata retain `promotionAuthorized: false`.
       The authoritative `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files / 404
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 20:30)
-- [ ] 10.8 Run the complete registered local assurance aggregate, UI suite, pentests, redaction and
-      residue scans, traceability/report validation, and authoritative `yarn verify`. Publish a
-      truthful roll-up of assured, blocked, incomplete, survived, and unqualified items without
-      treating known product defects or unsupported observers as success.
+- [x] 10.8a Implement the closed, versioned `assurance:all` aggregate registry, immutable
+      specifications, owner-fenced sequential dispatcher, terminal precedence, explicit not-run
+      accounting, sanitized mode-0600 evidence, and truthful assured/blocked/incomplete/survived/
+      unqualified roll-up. Verify the capability while dirty, then commit and push before live
+      aggregate evidence. The capability now owns 8 ordered groups and 16 exact shell-free
+      invocations, a serial deduplicated service-free internal suite, bounded managed-child
+      execution, per-invocation provenance and artifact digests, non-executable gap admission,
+      five-way roll-up, and atomic owner-only JSON/Markdown output. Focused aggregate tests passed
+      10/10, the internal aggregate suite passed 576 tests with 2 intentional skips, governance
+      passed 55/55, and structure passed 68/68. The authoritative `yarn verify` passed 233 server
+      files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed:
+      2026-08-20 21:04)
+- [ ] 10.8b From the clean pushed capability revision, run the complete registered local assurance
+      aggregate, UI suite, pentests, redaction and residue scans, traceability/report validation,
+      and authoritative `yarn verify`. Publish a truthful roll-up without treating known product
+      defects or unsupported observers as success.
 
 **Phase gate:** eligible commands have exact failure/signal semantics and zero-flake 100-run
 evidence; this evidence grants no promotion authority.
