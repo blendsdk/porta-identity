@@ -1168,13 +1168,16 @@ independent phase review and completed corrections are recorded in
       applicable packed clients, coverage, all pentests, evidence/redaction/recovery checks, and
       `yarn verify`. Preserve every named blocked/deferred/product-failure outcome without awarding
       assurance credit. The original clean revision `c347b136` evidence was superseded by the
-      Phase 9 quality corrections. Clean revision `559c7606` produced packed run
-      `178cc0f3-240e-4d25-9793-b57f1e6c524c`: four journeys passed, SDK cursor pagination was a
+      Phase 9 quality corrections. The bounded re-review then rejected raw session identifiers in
+      otherwise sanitized evidence. Final clean revision `814f1ac4` produced packed run
+      `7e6100e0-badd-4647-824d-949f5a95e6bd`: four journeys passed, SDK cursor pagination was a
       product failure because `pageSize=2` returned three records while the independent raw
       `limit=2` control returned two, and SDK session listing was a product failure because a
-      protected session identifier was present. Exact archive/compiled identities, unchanged caller
-      credentials/tree, state nonmutation, sanitized mode-0600 evidence, and zero residue remained
-      valid. DEF-18 and DEF-19 own the product failures.
+      protected session identifier was present in transient output. The evidence retains only one
+      domain-separated, run-scoped digest for that identifier and contains no raw session value.
+      Exact archive/compiled identities, unchanged caller credentials/tree, state nonmutation,
+      sanitized mode-0600 evidence, and zero residue remained valid. DEF-18 and DEF-19 own the
+      product failures.
       Attributed coverage run `1ca88f05-8501-4a15-bdde-d0b2f33e762c` completed with one server
       process identity, two raw fragments from that PID, complete flush, mapped report, and zero
       lifecycle residue. Corrected operational run `eb20d958-800e-4ca0-8e6f-5ff10c6227ab`

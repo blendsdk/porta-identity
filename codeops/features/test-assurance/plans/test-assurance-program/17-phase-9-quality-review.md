@@ -53,4 +53,8 @@ identities are now transformed into domain-separated, run-scoped SHA-256 digests
 construction, and validation rejects any raw session identity. The transient scanner still checks
 the original response so the product exposure remains visible as DEF-19. No third review is
 permitted by the quality protocol; focused and full verification plus regenerated clean evidence
-own the final correction gate.
+own the final correction gate. Clean revision `814f1ac4` produced replacement packed artifact
+`7e6100e0-badd-4647-824d-949f5a95e6bd`. It retains four passed journeys and the same two truthful
+product failures, stores all three session-identity observations as the same run-scoped digest,
+contains none of the prior raw session value, is mode 0600, and reports complete cleanup with zero
+residue.
