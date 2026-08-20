@@ -169,7 +169,7 @@ test('should bind provenance to the exact local archives and packed SDK resoluti
   };
   const surfaces: PackedSurfaceResult = {
     loadedSdkExports: ['.'],
-    resolvedSdkFiles: ['/tmp/owned-p1-consumer/node_modules/@portaidentity/sdk/dist/index.js'],
+    resolvedSdkFiles: ['dist/index.js'],
     cliBinPath: '/tmp/owned-p1-consumer/node_modules/@portaidentity/cli/dist/index.js',
     distOnly: true,
   };
@@ -181,6 +181,14 @@ test('should bind provenance to the exact local archives and packed SDK resoluti
   const provenance = createPackedP1ReadProvenance(consumer, surfaces, resolution);
   assert.deepEqual(provenance.packageNames, ['@portaidentity/sdk', '@portaidentity/cli']);
   assert.equal(provenance.archiveSha256['@portaidentity/sdk'], 'a'.repeat(64));
+  assert.deepEqual(provenance.compiledEntrypoints, [
+    '@portaidentity/sdk/dist/index.js',
+    '@portaidentity/cli/dist/index.js',
+  ]);
+  assert.equal(
+    provenance.compiledEntrypoints.some((path) => path.startsWith('/')),
+    false,
+  );
   assert.throws(
     () =>
       createPackedP1ReadProvenance(consumer, surfaces, {

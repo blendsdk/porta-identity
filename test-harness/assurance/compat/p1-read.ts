@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 import { z } from 'zod';
 
@@ -131,6 +132,10 @@ export const packedP1ReadJourneyRequirements: readonly PackedP1ReadJourneyRequir
 
 const digestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/u);
 const bareDigestSchema = z.string().regex(/^[a-f0-9]{64}$/u);
+const localArchiveSpecifierSchema = z.string().regex(/^file:[A-Za-z0-9._-]+\.tgz$/u);
+const compiledEntrypointSchema = z
+  .string()
+  .regex(/^@portaidentity\/(?:sdk|cli)\/dist\/(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+\.js$/u);
 const resultSchema = z
   .object({
     result: z.enum(['allowed', 'forbidden', 'not-found', 'unexpected-error']),
@@ -180,8 +185,8 @@ const evidenceSchema = z
         packageNames: z.array(z.enum(['@portaidentity/sdk', '@portaidentity/cli'])),
         packageVersions: z.record(z.string(), z.string().min(1)),
         archiveSha256: z.record(z.string(), bareDigestSchema),
-        dependencySpecifiers: z.record(z.string(), z.string().min(1)),
-        compiledEntrypoints: z.array(z.string().min(1)),
+        dependencySpecifiers: z.record(z.string(), localArchiveSpecifierSchema),
+        compiledEntrypoints: z.array(compiledEntrypointSchema).min(2),
         resolvedContentDigestsMatchArchives: z.boolean(),
         prohibitedResolutionObserved: z.boolean(),
         primaryTreeUnchanged: z.boolean(),
@@ -220,7 +225,10 @@ export function validatePackedP1ReadEvidence(value: unknown): z.infer<typeof evi
     }
   }
   if (
-    evidence.provenance.compiledEntrypoints.some((path) => !path.includes('/dist/')) ||
+    !evidence.provenance.compiledEntrypoints.includes('@portaidentity/cli/dist/index.js') ||
+    !evidence.provenance.compiledEntrypoints.some((path) =>
+      path.startsWith('@portaidentity/sdk/dist/'),
+    ) ||
     !evidence.provenance.resolvedContentDigestsMatchArchives ||
     evidence.provenance.prohibitedResolutionObserved ||
     !evidence.provenance.primaryTreeUnchanged
@@ -345,6 +353,11 @@ export function createPackedP1ReadProvenance(
   if (resolution.resolvedContentSha256 !== sdk.contentSha256) {
     throw new Error('packed P1 CLI does not resolve the prepared SDK archive');
   }
+  if (!surfaces.distOnly) throw new Error('packed P1 surfaces are not compiled-only');
+  const sdkEntrypoints = surfaces.resolvedSdkFiles.map((path) => {
+    if (!path.startsWith('dist/')) throw new Error('packed P1 SDK entry is not compiled output');
+    return `@portaidentity/sdk/${path}`;
+  });
   return {
     nodeVersion: consumer.triplet.nodeVersion,
     nodeExecutableSha256: createHash('sha256').update(readFileSync(process.execPath)).digest('hex'),
@@ -354,8 +367,11 @@ export function createPackedP1ReadProvenance(
     packageNames: ['@portaidentity/sdk', '@portaidentity/cli'],
     packageVersions: { '@portaidentity/sdk': sdk.version, '@portaidentity/cli': cli.version },
     archiveSha256: { '@portaidentity/sdk': sdk.sha256, '@portaidentity/cli': cli.sha256 },
-    dependencySpecifiers: consumer.dependencies,
-    compiledEntrypoints: [...surfaces.resolvedSdkFiles, surfaces.cliBinPath],
+    dependencySpecifiers: {
+      '@portaidentity/sdk': `file:${basename(sdk.archivePath)}`,
+      '@portaidentity/cli': `file:${basename(cli.archivePath)}`,
+    },
+    compiledEntrypoints: [...sdkEntrypoints, '@portaidentity/cli/dist/index.js'],
     resolvedContentDigestsMatchArchives: true,
     prohibitedResolutionObserved: false,
     primaryTreeUnchanged: true,

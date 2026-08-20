@@ -72,13 +72,10 @@ export function completePackedP1ReadEvidence(): PackedP1ReadEvidence {
       },
       archiveSha256: { '@portaidentity/sdk': digestA, '@portaidentity/cli': digestB },
       dependencySpecifiers: {
-        '@portaidentity/sdk': 'file:/fixture/portaidentity-sdk.tgz',
-        '@portaidentity/cli': 'file:/fixture/portaidentity-cli.tgz',
+        '@portaidentity/sdk': 'file:portaidentity-sdk.tgz',
+        '@portaidentity/cli': 'file:portaidentity-cli.tgz',
       },
-      compiledEntrypoints: [
-        '/fixture/node_modules/@portaidentity/sdk/dist/index.js',
-        '/fixture/node_modules/@portaidentity/cli/dist/index.js',
-      ],
+      compiledEntrypoints: ['@portaidentity/sdk/dist/index.js', '@portaidentity/cli/dist/index.js'],
       resolvedContentDigestsMatchArchives: true,
       prohibitedResolutionObserved: false,
       primaryTreeUnchanged: true,
