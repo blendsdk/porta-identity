@@ -14,6 +14,12 @@ import {
   type PackedTenantAdminLiveDriver,
 } from './tenant-admin-live.js';
 import { createPackedTenantAdminRunContext, runPackedTenantAdminAdjunct } from './tenant-admin.js';
+import { createPackedP1ReadLiveDriver, type PackedP1ReadLiveDriver } from './p1-read-live.js';
+import {
+  collectPackedP1ReadJourneys,
+  createPackedP1ReadProvenance,
+  validatePackedP1ReadEvidence,
+} from './p1-read.js';
 import { createPackedProtocolLiveDriver, type PackedProtocolLiveDriver } from './protocol-live.js';
 import { createPackedProtocolRunContext, runPackedProtocolAdjunct } from './protocol.js';
 import {
@@ -30,6 +36,7 @@ export const packedCompatibilitySelectors = [
   'ST-72',
   'ST-73',
   'tenant-admin',
+  'p1-admin',
   'protocol',
   'compatibility',
 ] as const;
@@ -162,6 +169,10 @@ export async function runPackedCompatibilityFoundation(
   let recoveryCommand: string | undefined;
   let tenantAdminDriver: PackedTenantAdminLiveDriver | undefined;
   let protocolDriver: PackedProtocolLiveDriver | undefined;
+  let p1ReadDriver: PackedP1ReadLiveDriver | undefined;
+  let p1ReadJourneys: Awaited<ReturnType<typeof collectPackedP1ReadJourneys>> | undefined;
+  let p1ReadProvenance: ReturnType<typeof createPackedP1ReadProvenance> | undefined;
+  let consumerRemoved = false;
   try {
     consumer = await preparePackedConsumer(canonicalRoot, {
       serverImageDigest: imageDigest,
@@ -200,6 +211,11 @@ export async function runPackedCompatibilityFoundation(
         tenantAdminDriver,
       );
       evidence = { ...commonEvidence, tenantAdmin };
+    } else if (selector === 'p1-admin') {
+      stage = 'credentials';
+      p1ReadDriver = createPackedP1ReadLiveDriver(consumer, surfaces);
+      p1ReadProvenance = createPackedP1ReadProvenance(consumer, surfaces, resolution);
+      p1ReadJourneys = await collectPackedP1ReadJourneys(p1ReadDriver);
     } else if (selector === 'protocol') {
       stage = 'credentials';
       protocolDriver = createPackedProtocolLiveDriver(consumer, surfaces);
@@ -233,6 +249,14 @@ export async function runPackedCompatibilityFoundation(
     recoveryCommand =
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
+    if (p1ReadDriver !== undefined) {
+      try {
+        await p1ReadDriver.dispose();
+      } catch {
+        exitCode = 60;
+        stage = 'cleanup';
+      }
+    }
     if (protocolDriver !== undefined) {
       try {
         protocolDriver.dispose();
@@ -251,6 +275,7 @@ export async function runPackedCompatibilityFoundation(
     }
     if (consumer !== undefined) {
       const cleanup = cleanupPackedConsumer(canonicalRoot, consumer);
+      consumerRemoved = cleanup.removed;
       if (!cleanup.removed) {
         exitCode = 60;
         stage = 'cleanup';
@@ -266,6 +291,44 @@ export async function runPackedCompatibilityFoundation(
   } catch {
     exitCode = 60;
     stage = 'provenance';
+  }
+  if (
+    selector === 'p1-admin' &&
+    exitCode === 0 &&
+    p1ReadProvenance !== undefined &&
+    p1ReadJourneys !== undefined
+  ) {
+    try {
+      evidence = validatePackedP1ReadEvidence({
+        version: 1,
+        provenance: p1ReadProvenance,
+        journeys: p1ReadJourneys,
+        cleanup: {
+          terminalOutcome: 'success',
+          callerCredentialFingerprintUnchanged: p1ReadJourneys.every(
+            (journey) =>
+              journey.cliIsolation === undefined ||
+              journey.cliIsolation.callerCredentialFingerprintUnchanged,
+          ),
+          temporaryCredentialsRemoved: p1ReadJourneys.every(
+            (journey) =>
+              journey.cliIsolation === undefined || journey.cliIsolation.temporaryHomeRemoved,
+          ),
+          temporaryHomesRemoved: p1ReadJourneys.every(
+            (journey) =>
+              journey.cliIsolation === undefined || journey.cliIsolation.temporaryHomeRemoved,
+          ),
+          consumerRemoved,
+          cacheRemoved: consumerRemoved,
+          evidenceSecretsRemoved: consumerRemoved,
+          residuePaths: consumerRemoved ? [] : ['compat-runtime-or-child'],
+        },
+        correlatedLogEvidenceCollected: false,
+      });
+    } catch {
+      exitCode = 30;
+      stage = 'surfaces';
+    }
   }
   const admittedEvidence =
     exitCode === 0 && evidence !== undefined

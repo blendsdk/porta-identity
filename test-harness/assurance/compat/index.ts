@@ -18,6 +18,19 @@ export {
 } from './credential-home.js';
 export { digestRegularTree, requireCanonicalChild, sha256Bytes } from './filesystem.js';
 export { verifyPackedCliSdkResolution, type PackedCliSdkResolution } from './resolution.js';
+export { createPackedP1ReadLiveDriver, PackedP1ReadLiveDriver } from './p1-read-live.js';
+export {
+  collectPackedP1ReadJourneys,
+  createPackedP1ReadProvenance,
+  packedP1ReadJourneyRequirements,
+  validatePackedP1ReadEvidence,
+  type PackedP1ReadClient,
+  type PackedP1ReadJourneyDriver,
+  type PackedP1ReadJourneyEvidence,
+  type PackedP1ReadJourneyRequirement,
+  type PackedP1ReadResult,
+  type PackedP1ReadSurface,
+} from './p1-read.js';
 export {
   createPackedTenantAdminLiveDriver,
   PackedTenantAdminLiveDriver,

@@ -1829,3 +1829,35 @@ High. **Hardening**: follows the established tenant/admin and human-auth adapter
 raw observations broad enough to report product defects honestly. **Policy version**: 1. **Root
 Invocation ID**: `AD-TA-EXEC-20260820-P9-B`. **Reopen trigger**: an existing reviewed adapter is
 shown to cover all four boundaries with identical provenance and failure taxonomy.
+
+### AR-96 — Packed P1 evidence uses a bounded read-only matrix and clean checkpoint
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test architecture,
+implementation sequencing, and evidence provenance inside the approved packed-client P1 boundary;
+no product behavior, acceptance criterion, or blocked log claim changes. **Objective**: exercise
+every supported P1 public-client surface without duplicating raw administrative semantics or
+creating unnecessary destructive lifecycle state. **Decision**: implement six read-only journeys:
+SDK tenant-filtered user pagination, CLI user pagination/search, CLI audit filtering, SDK signing-key
+listing, SDK filtered session pagination, and CLI configuration listing. Every client result is
+checked against an independent raw or fixture-state observation, output is scanned for protected
+values and foreign-tenant identities, and all target state must remain unchanged. The capability is
+committed first; a following clean-revision checkpoint runs the live adjunct because packed archive
+and server identities reject dirty source provenance. The CLI's exact resolution to the locally
+packed SDK is mandatory, so a full client-by-surface cross-product is not required. DEF-13 remains
+explicit and no packed journey receives correlated-log credit. **Evidence**: current SDK surfaces
+provide typed users, keys, and sessions reads; the CLI provides user, audit, and configuration reads;
+the existing compatibility owner already binds source, image, fixture, archive, compiled-entry, CLI
+SDK-resolution, temporary-home, caller-credential, cleanup, and residue evidence. **Rejected
+alternatives**: a full SDK/CLI cross-product mostly duplicates the same packed SDK transport and
+adds runtime without a distinct boundary; key generation/rotation, session revocation, and
+configuration writes add cleanup risk while raw administrative cases own their lifecycle semantics;
+audit cleanup, session detail, CLI cursor pagination, and bulk/import/export are not supported by the
+selected public clients or remain blocked. **Strongest counterargument**: adding packed writes could
+catch command-specific mutation regressions, but it would not close the blocked administrative
+sentinels and would duplicate the already verified packed tenant/admin mutation and denial
+mechanics. **Confidence**: High. **Hardening**: an independent challenger grounded the matrix in
+the current SDK/CLI and compatibility implementation and recommended the same capability/evidence
+split. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-C`.
+**Reopen trigger**: a new supported public-client P1 surface appears, CLI no longer resolves the
+locally packed SDK, or independent read-state verification cannot distinguish client output from
+server state.

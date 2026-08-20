@@ -136,7 +136,8 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
       'owned resources are removed or exact recovery is reported; primary tree immutable',
   },
   'assurance:compat': {
-    selectorGrammar: '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|protocol|compatibility>',
+    selectorGrammar:
+      '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|p1-admin|protocol|compatibility>',
     timeout: '1800s',
     artifactSubdirectory: 'compat/<selector>/',
     prerequisites: [

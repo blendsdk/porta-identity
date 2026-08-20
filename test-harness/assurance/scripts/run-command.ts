@@ -213,6 +213,11 @@ const p1BaselineSpecificationFiles = [
   'test-harness/assurance/tests/p1-baseline.spec.test.ts',
 ] as const;
 
+/** Immutable packed-client P1 read specifications. */
+const p1PackedReadSpecificationFiles = [
+  'test-harness/assurance/tests/p1-packed-read.spec.test.ts',
+] as const;
+
 /** Registered selector-to-specification mappings for internal Node suites. */
 const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
@@ -294,6 +299,10 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'p1-baseline': [
     ...p1BaselineSpecificationFiles,
     'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+  ],
+  'p1-packed': [
+    ...p1PackedReadSpecificationFiles,
+    'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
   ],
   'human-auth-cross-site-specs': [
     'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
@@ -1020,7 +1029,7 @@ async function runCompatibilityCommand(options: readonly string[]): Promise<void
     !isPackedCompatibilitySelector(selectedValue)
   ) {
     process.stderr.write(
-      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|protocol|compatibility>\n',
+      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|p1-admin|protocol|compatibility>\n',
     );
     process.exitCode = setupFailureExit;
     return;

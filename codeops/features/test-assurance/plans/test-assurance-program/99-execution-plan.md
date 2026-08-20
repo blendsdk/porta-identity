@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 06:45
-> **Progress**: 88/113 tasks (78%)
+> **Last Updated**: 2026-08-20 07:42
+> **Progress**: 89/114 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -39,11 +39,11 @@ edits the read-only CI workflow.
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
-|     9 | P1 validation, exposure, and administrative data    |    14 |
+|     9 | P1 validation, exposure, and administrative data    |    15 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 113 tasks across 11 release-safe phases.**
+**Total: 114 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -121,7 +121,10 @@ text, but it cannot substitute another command for this binding.
 | 9.5a      | `yarn assurance:test --select p1-baseline`                                                                                                                  |
 | 9.5b      | `yarn assurance:baseline --case ST-52`                                                                                                                       |
 | 9.6a      | Isolated RED: executable P1 boundary spec; exact `P1_LIVE_BOUNDARY_CAPABILITY_MISSING` is the only failure                                                 |
-| 9.6b–9.8  | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.6b–9.6c | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.6d      | `yarn assurance:test --select p1-packed`                                                                                                                     |
+| 9.6e      | `yarn assurance:compat --select p1-admin`                                                                                                                    |
+| 9.7–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
@@ -1057,12 +1060,28 @@ independent phase review and completed corrections are recorded in
       retaining broad result types. Static gates and structure passed, and `yarn verify` passed 233
       server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
       (completed: 2026-08-20 06:45)
-- [ ] 9.6b Implement operational raw/browser probes with authorized controls, raw transport,
-      independent non-mutation/cardinality, and exact audit/log/recovery observations.
-- [ ] 9.6c Implement administrative pagination, audit, signing-key, session, and configuration
-      probes with permission-bound controls and independently observed lifecycle effects.
-- [ ] 9.6d Add packed SDK/CLI adjuncts only for supported P1 boundaries and verify every effect
-      independently through raw public or fixture-state observations.
+- [!] 9.6b Blocked: DEF-13 — transport-level malformed headers and ordinary parser/Zod 400/413
+      outcomes can complete before the current request logger emits one correlated event. The
+      affected raw cases retain no log credit; observable response/state work may resume only as a
+      separately complete partial-evidence checkpoint.
+- [!] 9.6c Blocked: DEF-13 — current administrative permission denials emit neither an audit event
+      nor one structured log containing correlation ID, actor, action, target digest, and result.
+      Response/state/lifecycle evidence remains useful but cannot close the immutable sentinel.
+- [x] 9.6d [spec-author] Add the bounded packed SDK/CLI P1 read capability for tenant-filtered user
+      pagination, audit filtering, public signing-key metadata, filtered sessions, and masked
+      configuration. Verify every client result against an independent raw or fixture-state
+      observation and retain DEF-13 without awarding correlated-log credit. Added the exact
+      six-journey immutable catalog, evidence validator, injected orchestration, live packed
+      SDK/CLI driver, local-file package and resolution provenance, isolated CLI homes, independent
+      raw/fixture/state comparisons, sensitive-output scanning, cleanup admission, and the closed
+      `p1-admin` compatibility selector. The focused P1 and governance suites, assurance
+      typecheck/lint/formatting, structure, and documentation/leak checks passed. The final
+      cleanup-derivation assertion is implementation-derived and selector validation rejects
+      lookalike selectors. The authoritative `yarn verify` passed 233 server files / 3,382 tests,
+      31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 07:42)
+- [ ] 9.6e From the clean pushed capability revision, run the packed P1 adjunct and admit evidence
+      only when server, fixture, archive, compiled-entry, CLI SDK-resolution, credential-isolation,
+      primary-tree, cleanup, redaction, and zero-residue identities all validate.
 - [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
       test trusted/untrusted proxy profiles without production config changes.
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
