@@ -1861,3 +1861,35 @@ split. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-C`
 **Reopen trigger**: a new supported public-client P1 surface appears, CLI no longer resolves the
 locally packed SDK, or independent read-state verification cannot distinguish client output from
 server state.
+
+### AR-97 — Production exposure evidence uses corrected oracles and clean checkpoints
+
+**Authority**: AI — delegated by `--auto-design`. **Eligibility**: test-oracle correction,
+harness-only evidence architecture, and implementation sequencing inside the approved ST-55/ST-56
+scope; production behavior and blocked correlated-log claims remain unchanged. **Objective**:
+exercise production transport, response, proxy, and owned-dependency boundaries without admitting
+vacuous controls or implementation-derived observations. **Decision**: split Task 9.7 into oracle,
+capability, and clean-evidence checkpoints. Correct CORS controls to authenticated `/api/admin/*`
+requests because admin CORS deliberately excludes `/health`; test an unconfigured origin separately,
+and test unsupported `TRACE` plus an unconfigured header while retaining the configured origin.
+Split JSON CSP from a real HTML interaction CSP. Correct the mail interruption case to acquire a
+real CSRF proof and use the observed rendered response. Implement one owner-fenced runner that
+uses the unchanged production-security ingress for trusted and attacker-supplied forwarding
+headers, independent cookie/state/cache observations, and serialized exact-service interruption
+with unconditional restoration. Run live evidence only after the capability is committed and
+pushed. DEF-13 continues to block correlated-log credit. **Evidence**: the existing CORS control
+targets `/health`, which `adminCors` explicitly bypasses; DELETE is an allowed CORS method; JSON and
+HTML use different CSP policies; forgot-password requires CSRF and renders HTML; current lifecycle
+has no reusable dependency-interruption evidence owner. Live production observation also exposed
+`Server: nginx/1.31.0`, while `/ready` serializes dependency failure reasons and forwarded host is
+not overwritten by nginx, so the clean run must be allowed to report product failures rather than
+weakening expectations. **Rejected alternatives**: comparing `TRUST_PROXY=true` and `false` proves
+only configuration selection; direct Docker cleanup outside lifecycle ownership can strand the
+stack; preserving the current CORS/mail cases would permit vacuous or unreachable passes.
+**Strongest counterargument**: the split adds two tasks and repeated verification, but it separates
+authorized oracle repair, mutation-capable harness mechanics, and evidence from an immutable clean
+revision. **Confidence**: High. **Hardening**: an independent security challenger grounded every
+case in the current middleware, routes, nginx, and lifecycle implementation and recommended the
+same split. **Policy version**: 1. **Root Invocation ID**: `AD-TA-EXEC-20260820-P9-D`.
+**Reopen trigger**: the admin CORS scope, response CSP split, dependency lifecycle, or public
+forgot-password contract changes.

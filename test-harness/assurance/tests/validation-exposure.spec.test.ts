@@ -184,9 +184,33 @@ test('freezes tenant, proxy, parser, and production-security outcomes exactly', 
       "content-security-policy:default-src 'none'",
       'x-content-type-options:nosniff',
       'referrer-policy:strict-origin-when-cross-origin',
-      "content-security-policy-includes:frame-ancestors 'none'",
       'server-version-header-absent',
     ].every((header) => responsePolicy.expected.headerContract.includes(header)),
+  );
+
+  const htmlPolicy = byId.get('st55-production-html-csp-policy');
+  assert.ok(htmlPolicy);
+  assert.equal(htmlPolicy.harnessArrangement, 'real-oidc-interaction');
+  assert.ok(
+    [
+      "content-security-policy-includes:default-src 'none'",
+      "content-security-policy-includes:frame-ancestors 'none'",
+      'x-frame-options:DENY',
+      'server-version-header-absent',
+    ].every((header) => htmlPolicy.expected.headerContract.includes(header)),
+  );
+
+  const corsSimple = byId.get('st55-unconfigured-cors-origin');
+  assert.equal(corsSimple?.request.path, '/api/admin/organizations');
+  assert.equal(corsSimple?.control.request.path, '/api/admin/organizations');
+
+  const corsPreflight = byId.get('st55-unconfigured-cors-method-and-header');
+  assert.equal(corsPreflight?.request.headers.origin, 'https://app-harness.ci.portaidentity.com');
+  assert.equal(corsPreflight?.request.headers['access-control-request-method'], 'TRACE');
+  assert.ok(
+    corsPreflight?.expected.headerContract.includes(
+      'access-control-allow-methods-does-not-contain-trace',
+    ),
   );
 });
 
@@ -224,6 +248,15 @@ test('requires safe database, cache, and mail failures in both harness profiles'
       'same-handler-control-succeeds-after-restoration',
       'target-fingerprint-confirms-no-partial-write',
     ]);
+  }
+
+  const mailCases = dependencyCases.filter((entry) => entry.family === 'mail-error-exposure');
+  assert.equal(mailCases.length, 2);
+  for (const entry of mailCases) {
+    assert.equal(entry.harnessArrangement, 'owned-mail-unavailable-with-acquired-csrf-browser');
+    assert.equal(entry.request.body, 'email={syntheticAlphaEmail}&_csrf={acquiredCsrf}');
+    assert.equal(entry.control.expectedStatus, 200);
+    assert.equal(entry.expected.status, 200);
   }
 });
 

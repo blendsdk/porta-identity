@@ -56,9 +56,16 @@ function productionCase(
 const allowedOrigin = 'https://app-harness.ci.portaidentity.com';
 const attackerOrigin = 'https://attacker.invalid';
 const publicHeaders = { accept: 'application/json' } as const;
+const authorizedAdminHeaders = {
+  ...publicHeaders,
+  authorization: 'Bearer {synthetic-full-authority-token}',
+} as const;
 const corsControl = control(
   'control-configured-cors-origin',
-  request('GET', '/health', { ...publicHeaders, origin: allowedOrigin }),
+  request('GET', '/api/admin/organizations', {
+    ...authorizedAdminHeaders,
+    origin: allowedOrigin,
+  }),
   200,
   'access-control-allow-origin-exactly-echoes-the-configured-origin',
   'vary-includes-origin',
@@ -100,7 +107,10 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
     trustBoundary: 'untrusted-browser-origin-to-configured-origin-allowlist',
     abuseCase: 'unconfigured browser origin attempts to read a public response',
     control: corsControl,
-    request: request('GET', '/health', { ...publicHeaders, origin: attackerOrigin }),
+    request: request('GET', '/api/admin/organizations', {
+      ...authorizedAdminHeaders,
+      origin: attackerOrigin,
+    }),
     expected: {
       result: 'cors-denied',
       status: 200,
@@ -132,8 +142,8 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
     abuseCase: 'unconfigured method and header attempt preflight admission',
     control: preflightControl,
     request: request('OPTIONS', '/api/admin/organizations/{alphaOrgId}/users', {
-      origin: attackerOrigin,
-      'access-control-request-method': 'DELETE',
+      origin: allowedOrigin,
+      'access-control-request-method': 'TRACE',
       'access-control-request-headers': 'x-assurance-unconfigured',
     }),
     expected: {
@@ -141,8 +151,8 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
       status: 204,
       bodyContract: 'empty-preflight-body',
       headerContract: [
-        'access-control-allow-origin-absent',
-        'access-control-allow-methods-does-not-contain-delete',
+        'access-control-allow-origin-exactly-echoes-the-configured-origin',
+        'access-control-allow-methods-does-not-contain-trace',
         'access-control-allow-headers-does-not-contain-x-assurance-unconfigured',
       ],
     },
@@ -181,7 +191,6 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
         "content-security-policy:default-src 'none'",
         'x-content-type-options:nosniff',
         'referrer-policy:strict-origin-when-cross-origin',
-        "content-security-policy-includes:frame-ancestors 'none'",
         'server-version-header-absent',
       ],
     },
@@ -207,6 +216,58 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
       'asvs-5.0.0-3.4.6',
       'asvs-5.0.0-4.1.1',
     ],
+  }),
+  productionCase({
+    id: 'st55-production-html-csp-policy',
+    sentinelId: 'ST-55',
+    claimIds: ['CLAIM-R5-08', 'CLAIM-R5-10'],
+    family: 'https-cookie-security-headers',
+    executionProfiles: ['production-security'],
+    proxyTrust: 'not-applicable',
+    harnessArrangement: 'real-oidc-interaction',
+    actor: 'unauthenticated-remote-attacker',
+    asset: 'browser-interaction-content-and-framing-policy',
+    entryPoint: 'production-html-interaction-response',
+    trustBoundary: 'production-html-response-to-browser-security-enforcement',
+    abuseCase: 'an interaction page weakens active-content or framing restrictions',
+    control: control(
+      'control-production-html-interaction',
+      request('GET', 'https://porta-harness.ci.portaidentity.com/interaction/{realInteractionId}', {
+        accept: 'text/html',
+      }),
+      200,
+      'real-authorization-interaction-created-first',
+      'response-content-type-is-html',
+    ),
+    request: request(
+      'GET',
+      'https://porta-harness.ci.portaidentity.com/interaction/{realInteractionId}',
+      { accept: 'text/html' },
+    ),
+    expected: {
+      result: 'accepted-control',
+      status: 200,
+      bodyContract: 'real-login-interaction-without-secret-or-product-version',
+      headerContract: [
+        "content-security-policy-includes:default-src 'none'",
+        "content-security-policy-includes:frame-ancestors 'none'",
+        'x-frame-options:DENY',
+        'server-version-header-absent',
+      ],
+    },
+    independentStateObservations: [
+      'interaction-identity-remains-bound-to-the-created-authorization-request',
+      'no-production-config-mutated',
+    ],
+    prohibitedSideEffects: [
+      'response-policy-weakened',
+      'interaction-secret-disclosed',
+      'product-version-disclosed',
+    ],
+    requiredLogFields: standardProductionLogFields,
+    forbiddenLogFields: validationExposureForbiddenFields,
+    recoveryExpectations: ['a-second-read-of-the-same-interaction-retains-the-header-policy'],
+    referenceIds: ['rd-05-r5.8', 'rd-05-r5.10', 'asvs-5.0.0-3.4.3', 'asvs-5.0.0-3.4.5'],
   }),
   productionCase({
     id: 'st55-production-session-cookie-policy',
@@ -290,12 +351,12 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
         },
         {
           family: 'mail-error-exposure',
-          arrangement: 'owned-mail-unavailable',
+          arrangement: 'owned-mail-unavailable-with-acquired-csrf-browser',
           path: '/alpha/auth/forgot-password',
           method: 'POST',
-          body: 'email=synthetic-alpha%40example.invalid',
-          healthyStatus: 202,
-          failedStatus: 202,
+          body: 'email={syntheticAlphaEmail}&_csrf={acquiredCsrf}',
+          healthyStatus: 200,
+          failedStatus: 200,
           result: 'accepted-generic-response',
         },
       ] as const

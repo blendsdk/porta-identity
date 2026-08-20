@@ -2,8 +2,8 @@
 
 > **Parent**: [Plan Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-08-20 08:27
-> **Progress**: 90/114 tasks (79%)
+> **Last Updated**: 2026-08-20 08:56
+> **Progress**: 91/116 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -39,11 +39,11 @@ edits the read-only CI workflow.
 |     6 | Tenant isolation and administrative authorization   |    12 |
 |     7 | OIDC, ID-token, and token lifecycle                 |    14 |
 |     8 | Human authentication and recovery                   |    16 |
-|     9 | P1 validation, exposure, and administrative data    |    15 |
+|     9 | P1 validation, exposure, and administrative data    |    17 |
 |    10 | Mutation pilot and reliability qualification        |     8 |
 |    11 | Roll-up, documentation, and promotion proposal      |     6 |
 
-**Total: 114 tasks across 11 release-safe phases.**
+**Total: 116 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 
@@ -124,7 +124,10 @@ text, but it cannot substitute another command for this binding.
 | 9.6b–9.6c | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 9.6d      | `yarn assurance:test --select p1-packed`                                                                                                                     |
 | 9.6e      | `yarn assurance:compat --select p1-admin`                                                                                                                    |
-| 9.7–9.8   | `yarn assurance:harness --project security --profile production-security`                                                                                    |
+| 9.7a      | `yarn assurance:test --select validation-exposure-specs`                                                                                                    |
+| 9.7b      | `yarn assurance:test --select p1-production-exposure`                                                                                                       |
+| 9.7c      | `yarn assurance:harness --project security --profile production-security`; `yarn assurance:harness --project security --profile operational`                 |
+| 9.8       | `yarn assurance:harness --project security --profile production-security`                                                                                    |
 | 9.9       | `yarn assurance:test --select p1-specs` and `yarn assurance:test --select assurance-governance`                                                              |
 | 9.10      | `yarn assurance:test --select p1-all`                                                                                                                        |
 | 10.1      | `yarn assurance:fault --fault full-catalog --claim catalog --sentinel all`                                                                                   |
@@ -1092,8 +1095,20 @@ independent phase review and completed corrections are recorded in
       path-sanitized, cleanup removed every owned runtime resource, and correlated-log credit
       remained explicitly false under DEF-13. `yarn verify` passed 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 08:27)
-- [ ] 9.7 Run HTTPS/cookie/header/CORS/CSP/error/exposure cases only in production-security mode;
-      test trusted/untrusted proxy profiles without production config changes.
+- [x] 9.7a [spec-author] Correct the immutable production-exposure oracles before implementation:
+      use authenticated admin CORS controls, a configured-origin unsupported method/header probe,
+      separate JSON and HTML CSP contracts, and an acquired-CSRF rendered mail-failure contract.
+      Preserve the response, proxy, and dependency expectations and exact product-failure routing.
+      The focused selector, assurance typecheck/lint/formatting, 68 structure tests, and full
+      verification passed 233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI
+      files / 355 tests. ✅ (completed: 2026-08-20 08:56)
+- [ ] 9.7b Implement the owner-fenced production-exposure capability: bounded raw TLS/plaintext,
+      independent cookie/state/cache observers, unchanged-ingress trusted/untrusted forwarding
+      probes, and serialized run-owned PostgreSQL/Redis/MailHog interruption with unconditional
+      restoration and recovery precedence. Commit and push before live evidence.
+- [ ] 9.7c From the clean pushed capability revision, run ST-55/proxy evidence in
+      production-security and ST-56 dependency evidence in both profiles. Admit only sanitized
+      response/state/recovery facts; preserve DEF-13 and record every observed product failure.
 - [ ] 9.8 Add payload generation, raw transport, header normalization, pagination/cardinality,
       lifecycle, and redacted-error implementation tests after specs are green.
 - [ ] 9.9 Record P1 source-variation sensitivity as deferred. Preserve every black-box expectation
