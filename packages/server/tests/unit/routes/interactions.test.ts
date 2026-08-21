@@ -62,9 +62,12 @@ vi.mock('../../../src/auth/template-engine.js', () => ({
 
 vi.mock('../../../src/users/service.js', () => ({
   getUserByEmail: vi.fn(),
+  prepareUserForPasswordLogin: vi.fn(),
   verifyUserPassword: vi.fn(),
+  verifyLoginPassword: vi.fn(),
   recordLogin: vi.fn().mockResolvedValue(undefined),
   recordFailedLogin: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
+  recordPasswordFailure: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
   checkAutoUnlock: vi.fn().mockResolvedValue(false),
 }));
 
@@ -211,12 +214,14 @@ function createMockProvider() {
  * Create a minimal mock Koa context for interaction route testing.
  * Includes req/res objects needed by the provider, and organization state.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: Record<string, string>;
-  org?: Partial<Organization>;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: Record<string, string>;
+    org?: Partial<Organization>;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
   let contentType = '';
@@ -229,12 +234,24 @@ function createMockCtx(overrides: {
     req: {}, // raw Node.js IncomingMessage (mock)
     res: {}, // raw Node.js ServerResponse (mock)
     ip: '127.0.0.1',
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
-    get type() { return contentType; },
-    set type(v: string) { contentType = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
+    get type() {
+      return contentType;
+    },
+    set type(v: string) {
+      contentType = v;
+    },
     state: {
       organization: createMockOrg(overrides.org),
     },
@@ -243,7 +260,9 @@ function createMockCtx(overrides: {
       set: vi.fn(),
     },
     get: vi.fn().mockReturnValue(''), // ctx.get('Accept-Language')
-    set: vi.fn((name: string, value: string) => { headers[name] = value; }),
+    set: vi.fn((name: string, value: string) => {
+      headers[name] = value;
+    }),
     redirect: vi.fn(),
     _headers: headers,
   };
@@ -282,10 +301,23 @@ describe('interaction routes', () => {
     // vi.clearAllMocks() clears call history but does NOT reset mockReturnValue.
     vi.mocked(csrf.verifyCsrfToken).mockReturnValue(true);
     vi.mocked(csrf.generateCsrfToken).mockReturnValue('csrf-token-abc');
-    vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({ allowed: true, remaining: 4, retryAfter: 0 });
-    vi.mocked(rateLimiter.loadLoginRateLimitConfig).mockResolvedValue({ maxAttempts: 5, windowSeconds: 300 });
-    vi.mocked(rateLimiter.loadMagicLinkRateLimitConfig).mockResolvedValue({ maxAttempts: 3, windowSeconds: 600 });
+    vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({
+      allowed: true,
+      remaining: 4,
+      retryAfter: 0,
+    });
+    vi.mocked(rateLimiter.loadLoginRateLimitConfig).mockResolvedValue({
+      maxAttempts: 5,
+      windowSeconds: 300,
+    });
+    vi.mocked(rateLimiter.loadMagicLinkRateLimitConfig).mockResolvedValue({
+      maxAttempts: 3,
+      windowSeconds: 600,
+    });
     vi.mocked(templateEngine.renderPage).mockResolvedValue('<html>rendered</html>');
+    vi.mocked(userService.prepareUserForPasswordLogin).mockImplementation((organizationId, email) =>
+      userService.getUserByEmail(organizationId, email),
+    );
   });
 
   // =========================================================================
@@ -475,9 +507,14 @@ describe('interaction routes', () => {
 
   describe('POST /:uid/login — processLogin', () => {
     it('should authenticate user with valid credentials and finish interaction', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      const mockUser = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        status: 'active',
+        hasPassword: true,
+      };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
-      vi.mocked(userService.verifyUserPassword).mockResolvedValue(true);
+      vi.mocked(userService.verifyLoginPassword).mockResolvedValue(true);
 
       const provider = createMockProvider();
       const router = createInteractionRouter(provider as never);
@@ -489,7 +526,10 @@ describe('interaction routes', () => {
       await exec(layer!, ctx);
 
       // Should verify password
-      expect(userService.verifyUserPassword).toHaveBeenCalledWith('user-uuid-1', 'correct-password');
+      expect(userService.verifyLoginPassword).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'correct-password',
+      );
 
       // Should record login
       expect(userService.recordLogin).toHaveBeenCalledWith('user-uuid-1');
@@ -499,7 +539,8 @@ describe('interaction routes', () => {
 
       // Should finish interaction with account ID
       expect(provider.interactionFinished).toHaveBeenCalledWith(
-        ctx.req, ctx.res,
+        ctx.req,
+        ctx.res,
         { login: { accountId: 'user-uuid-1' } },
         { mergeWithLastSubmission: false },
       );
@@ -610,7 +651,7 @@ describe('interaction routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'login',
         expect.objectContaining({
-          flash: { error: expect.stringContaining('account_inactive') },
+          flash: { error: expect.stringContaining('error_invalid') },
         }),
       );
     });
@@ -631,7 +672,7 @@ describe('interaction routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'login',
         expect.objectContaining({
-          flash: { error: expect.stringContaining('account_suspended') },
+          flash: { error: expect.stringContaining('error_invalid') },
         }),
       );
     });
@@ -652,15 +693,20 @@ describe('interaction routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'login',
         expect.objectContaining({
-          flash: { error: expect.stringContaining('account_locked') },
+          flash: { error: expect.stringContaining('error_invalid') },
         }),
       );
     });
 
     it('should show error on wrong password', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      const mockUser = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        status: 'active',
+        hasPassword: true,
+      };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
-      vi.mocked(userService.verifyUserPassword).mockResolvedValue(false);
+      vi.mocked(userService.verifyLoginPassword).mockResolvedValue(false);
 
       const provider = createMockProvider();
       const router = createInteractionRouter(provider as never);
@@ -682,7 +728,6 @@ describe('interaction routes', () => {
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'user.login.password.failed',
-          userId: 'user-uuid-1',
         }),
       );
     });
@@ -765,7 +810,10 @@ describe('interaction routes', () => {
       await exec(layer!, ctx);
 
       // Should invalidate existing tokens
-      expect(tokenRepo.invalidateUserTokens).toHaveBeenCalledWith('magic_link_tokens', 'user-uuid-1');
+      expect(tokenRepo.invalidateUserTokens).toHaveBeenCalledWith(
+        'magic_link_tokens',
+        'user-uuid-1',
+      );
 
       // Should insert new token
       expect(tokenRepo.insertToken).toHaveBeenCalledWith(
@@ -835,10 +883,7 @@ describe('interaction routes', () => {
       expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
 
       // But SHOULD still render magic-link-sent page
-      expect(templateEngine.renderPage).toHaveBeenCalledWith(
-        'magic-link-sent',
-        expect.any(Object),
-      );
+      expect(templateEngine.renderPage).toHaveBeenCalledWith('magic-link-sent', expect.any(Object));
     });
 
     it('should reject on CSRF mismatch', async () => {
@@ -895,7 +940,7 @@ describe('interaction routes', () => {
   });
 
   // =========================================================================
-  // Login-method enforcement (RD-13 Phase 5.2)
+  // Login-method enforcement
   //
   // These tests verify that the handlers consult `urn:porta:login_methods`
   // from the OIDC client metadata and reject attempts that don't match the
@@ -905,9 +950,14 @@ describe('interaction routes', () => {
 
   describe('login method enforcement', () => {
     it('should block password login when client allows only magic_link', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      const mockUser = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        status: 'active',
+        hasPassword: true,
+      };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
-      vi.mocked(userService.verifyUserPassword).mockResolvedValue(true);
+      vi.mocked(userService.verifyLoginPassword).mockResolvedValue(true);
 
       const provider = createMockProvider();
       // Client restricted to magic_link only
@@ -980,9 +1030,14 @@ describe('interaction routes', () => {
     });
 
     it('should inherit org default when client metadata is null', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
+      const mockUser = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        status: 'active',
+        hasPassword: true,
+      };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
-      vi.mocked(userService.verifyUserPassword).mockResolvedValue(true);
+      vi.mocked(userService.verifyLoginPassword).mockResolvedValue(true);
 
       const provider = createMockProvider();
       // Client metadata is null → should inherit from org.defaultLoginMethods.
@@ -1115,7 +1170,8 @@ describe('interaction routes', () => {
       expect(provider._mockGrant.addOIDCScope).toHaveBeenCalled();
       expect(provider._mockGrant.save).toHaveBeenCalled();
       expect(provider.interactionFinished).toHaveBeenCalledWith(
-        ctx.req, ctx.res,
+        ctx.req,
+        ctx.res,
         { consent: { grantId: 'grant-id-123' } },
         { mergeWithLastSubmission: true },
       );
@@ -1198,7 +1254,8 @@ describe('interaction routes', () => {
 
       // Should finish interaction with consent grant
       expect(provider.interactionFinished).toHaveBeenCalledWith(
-        ctx.req, ctx.res,
+        ctx.req,
+        ctx.res,
         { consent: { grantId: 'grant-id-123' } },
         { mergeWithLastSubmission: true },
       );
@@ -1221,7 +1278,8 @@ describe('interaction routes', () => {
 
       // Should finish interaction with access_denied
       expect(provider.interactionFinished).toHaveBeenCalledWith(
-        ctx.req, ctx.res,
+        ctx.req,
+        ctx.res,
         { error: 'access_denied', error_description: 'User denied consent' },
         { mergeWithLastSubmission: false },
       );
@@ -1267,7 +1325,8 @@ describe('interaction routes', () => {
 
       // Should finish interaction with access_denied
       expect(provider.interactionFinished).toHaveBeenCalledWith(
-        ctx.req, ctx.res,
+        ctx.req,
+        ctx.res,
         { error: 'access_denied', error_description: 'User aborted the interaction' },
         { mergeWithLastSubmission: false },
       );

@@ -21,6 +21,7 @@ import { loadOidcTtlConfig } from './lib/system-config.js';
 import { createOidcProvider } from './oidc/provider.js';
 import { initI18n, registerHandlebarsI18nHelper } from './auth/i18n.js';
 import { initTemplateEngine } from './auth/template-engine.js';
+import { initializeDummyPasswordHash } from './users/password.js';
 
 async function main() {
   // Step 1: Connect to infrastructure services
@@ -32,6 +33,10 @@ async function main() {
   await initI18n();
   registerHandlebarsI18nHelper();
   await initTemplateEngine();
+
+  // Build the process-owned Argon2id fallback before accepting authentication requests. Startup
+  // fails closed if the production-strength hash cannot be initialized.
+  await initializeDummyPasswordHash();
 
   // Step 3: Load or auto-generate signing keys from the database.
   // If no active keys exist (e.g., fresh database), a new ES256 key pair

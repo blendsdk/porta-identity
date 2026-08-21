@@ -45,10 +45,10 @@ import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import {
   getUserByEmail,
-  verifyUserPassword,
+  prepareUserForPasswordLogin,
+  verifyLoginPassword,
   recordLogin,
-  recordFailedLogin,
-  checkAutoUnlock,
+  recordPasswordFailure,
 } from '../users/service.js';
 import { requiresTwoFactor, determineTwoFactorMethod, sendOtpCode } from '../two-factor/service.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
@@ -232,27 +232,6 @@ export async function resolveOrganizationForInteraction(
   }
 
   ctx.state.organization = org;
-}
-
-/**
- * Get an error message for a user status that prevents login.
- * Returns undefined if the status allows login (i.e., 'active').
- *
- * @param status - User status value
- * @param t - Translation function
- * @returns Error message string, or undefined if status allows login
- */
-function getStatusErrorMessage(status: string, t: (key: string) => string): string | undefined {
-  switch (status) {
-    case 'inactive':
-      return t('login.error_account_inactive');
-    case 'suspended':
-      return t('login.error_account_suspended');
-    case 'locked':
-      return t('login.error_account_locked');
-    default:
-      return undefined;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -667,17 +646,24 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       return;
     }
 
-    // Step 3: Look up user by org + email
-    const user = await getUserByEmail(org.id, email);
+    // Resolve cooldown state and verify exactly one real or dummy Argon2id hash. Only active
+    // accounts with passwords receive authentication authority; every other state follows the
+    // same verification and persistence shape.
+    const observedUser = await prepareUserForPasswordLogin(org.id, email);
+    const eligibleUser =
+      observedUser?.status === 'active' && observedUser.hasPassword ? observedUser : null;
+    const passwordValid = await verifyLoginPassword(eligibleUser?.id ?? null, password);
 
-    if (!user) {
-      // Generic error — prevent user enumeration
-      writeAuditLog({
+    if (!eligibleUser || !passwordValid) {
+      const lockResult = await recordPasswordFailure(eligibleUser);
+
+      void writeAuditLog({
         organizationId: org.id,
         eventType: 'user.login.password.failed',
         eventCategory: 'security',
-        description: `Login failed: user not found (${email})`,
+        description: 'Password login rejected',
         ipAddress: ctx.ip,
+        metadata: { failedCount: lockResult.failedCount, autoLocked: lockResult.locked },
       });
 
       await renderLoginWithError(
@@ -692,63 +678,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       return;
     }
 
-    // Step 3.5: Auto-unlock check — if the user was auto-locked and the
-    // cooldown has elapsed, unlock them so they can attempt login again.
-    // This must run BEFORE the status check so that expired lockouts
-    // don't block the user.
-    if (user.status === 'locked' && user.lockedReason === 'auto_lockout') {
-      const unlocked = await checkAutoUnlock(user);
-      if (unlocked) {
-        // Re-read user with fresh status for the status check below
-        const refreshed = await getUserByEmail(org.id, email);
-        if (refreshed) Object.assign(user, refreshed);
-      }
-    }
-
-    // Step 4: Check user status — only active users can log in
-    const statusError = getStatusErrorMessage(user.status, t);
-    if (statusError) {
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.login.password.failed',
-        eventCategory: 'security',
-        description: `Login failed: account ${user.status} (${email})`,
-        ipAddress: ctx.ip,
-      });
-
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, statusError);
-      return;
-    }
-
-    // Step 5: Verify password
-    const passwordValid = await verifyUserPassword(user.id, password);
-
-    if (!passwordValid) {
-      // Record the failed attempt and check for auto-lock threshold
-      const lockResult = await recordFailedLogin(user);
-
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.login.password.failed',
-        eventCategory: 'security',
-        description: lockResult.locked
-          ? `Login failed: account auto-locked after ${lockResult.failedCount} attempts (${email})`
-          : `Login failed: wrong password (${email})`,
-        ipAddress: ctx.ip,
-        metadata: { failedCount: lockResult.failedCount, autoLocked: lockResult.locked },
-      });
-
-      // If the account was just auto-locked, show the locked error instead
-      // of the generic "invalid credentials" so the user knows what happened.
-      const errorMsg = lockResult.locked
-        ? t('login.error_account_locked')
-        : t('login.error_invalid');
-
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, errorMsg);
-      return;
-    }
+    const user = eligibleUser;
 
     // Step 6: Password valid — check if 2FA is required
     await resetRateLimit(rateLimitKey);
