@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
 > **Last Updated**: 2026-08-21 19:21
-> **Progress**: 16/48 tasks (33%)
+> **Progress**: 17/48 tasks (35%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -75,7 +75,7 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.9f Add real concurrent-job, mid-batch crash/reclaim, superseded retry, wrong-tenant reset, and SMTP unknown-outcome implementation tests; run corrected ST-01–ST-06 green. (completed 2026-08-21 17:48 CEST; service-backed ST-01–ST-06 9/9, concurrency/SMTP 3/3, wrong-tenant reset E2E 7/7, structure 70/70, and `yarn verify` 237 files/3,416 tests green)
 - [x] 1.9g Preserve the documented assurance exit precedence across retained production-exposure and later security-block outcomes, with a complete combination matrix. ✅ (completed: 2026-08-21 18:01 CEST; complete 10×10 registered-exit matrix green, focused assurance type/lint/format checks green, and `yarn verify` passed 237 files/3,416 tests)
 - [x] 1.9h From the clean committed revision, rerun the production-security human-auth evidence, Phase 1 targeted checks, `yarn verify`, and one bounded quality re-review; close Phase 1 only if no Critical or Major remains. ✅ (completed: 2026-08-21 19:21 CEST; clean run `06cfd7f2-b732-462c-ad3d-084609e00799` completed functional 7/7, second-factor 4/4, and tenant/admin 17/17 with expected retained exit `40`; bounded re-review accepted and corrected RV-105 plus RV-106/SA-104; service-backed integration 14/14 twice, affected unit 59/59, structure 70/70, and `yarn verify` passed 237 files/3,418 tests)
-- [ ] 1.9i From the clean pushed correction revision, rerun production-security human-auth evidence, corrected ST-01–ST-06, Phase 1 targeted checks, and `yarn verify`; record exact provenance and zero residue, then close Phase 1 without another review pass.
+- [x] 1.9i From the clean pushed correction revision, rerun production-security human-auth evidence, corrected ST-01–ST-06, Phase 1 targeted checks, and `yarn verify`; record exact provenance and zero residue, then close Phase 1 without another review pass. ✅ (completed: 2026-08-21 20:00 CEST; clean production-security run `0c567504-0fb8-4bbc-9539-00a5ffaaa99b` completed with expected retained exit `40`, functional 7/7, second-factor 4/4, tenant/admin 17/17, commit `93f856326a702e2b39d1d13e848655a240fd82b4`, tree `12b3ad981686d0956bb510a00ae16a7e052fdef7`, mode `0600`, and zero active-run/Docker residue; corrected unit 11/11, integration 14/14, E2E 7/7, dispatcher 11/11, and `yarn verify` passed 237 files/3,418 tests)
 
 Deliverable: password and recovery public paths are functionally and structurally non-enumerating;
 timing remains explicitly diagnostic.
