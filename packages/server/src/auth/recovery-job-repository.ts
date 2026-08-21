@@ -130,6 +130,16 @@ export interface ClaimRecoveryJobsInput {
   readonly limit?: number;
 }
 
+/** Input for charging one processing attempt against an owned claim. */
+export interface BeginRecoveryJobAttemptInput {
+  /** Durable job identifier. */
+  readonly jobId: string;
+  /** Worker that currently owns the claim. */
+  readonly workerId: string;
+  /** Repository clock value used for the transition. */
+  readonly now: Date;
+}
+
 /** Input for returning an owned claim to the available queue. */
 export interface RetryRecoveryJobInput {
   /** Durable job identifier. */
@@ -257,6 +267,14 @@ const retrySchema = z
     path: ['availableAt'],
     message: 'retry availability cannot precede the repository clock',
   });
+
+const beginAttemptSchema = z
+  .object({
+    jobId: uuidSchema,
+    workerId: uuidSchema,
+    now: z.date(),
+  })
+  .strict();
 
 const finishSchema = z
   .object({
@@ -388,7 +406,11 @@ export class RecoveryJobRepository {
   }
 
   /**
-   * Atomically claim a bounded batch of available or lease-expired jobs.
+   * Atomically lease a bounded batch of available or lease-expired jobs.
+   *
+   * Leasing does not charge a processing attempt. The worker starts each attempt separately, just
+   * before invoking account-specific work, so a crash while walking a batch cannot consume the
+   * retry budget of jobs it never started.
    *
    * @param input - Worker identity, clock, lease cutoff, and optional bound.
    * @returns Claimed rows with an explicit fresh, reclaimed, or exhausted-lease disposition.
@@ -411,7 +433,6 @@ export class RecoveryJobRepository {
        SET status = 'claimed',
            claimed_at = $1,
            claimed_by = $4,
-           attempt_count = LEAST(job.attempt_count + 1, $5),
            last_failure_reason = NULL,
            completed_at = NULL,
            updated_at = $1
@@ -436,6 +457,29 @@ export class RecoveryJobRepository {
       ...mapRecoveryJob(row),
       claimDisposition: row.claim_disposition,
     }));
+  }
+
+  /**
+   * Charge one processing attempt immediately before an owned job is processed.
+   *
+   * @param input - Owned job identity and repository clock.
+   * @returns The updated claimed row, or null when ownership was lost or the budget is exhausted.
+   */
+  public async beginAttempt(input: BeginRecoveryJobAttemptInput): Promise<RecoveryJob | null> {
+    const parsed = beginAttemptSchema.parse(input);
+    const result = await this.database.query<RecoveryJobRow>(
+      `UPDATE auth_recovery_jobs
+       SET attempt_count = attempt_count + 1,
+           updated_at = $3
+       WHERE id = $1
+         AND claimed_by = $2
+         AND status = 'claimed'
+         AND attempt_count < $4
+       RETURNING ${JOB_COLUMNS}`,
+      [parsed.jobId, parsed.workerId, parsed.now, RECOVERY_JOB_ATTEMPT_LIMIT],
+    );
+
+    return result.rows[0] ? mapRecoveryJob(result.rows[0]) : null;
   }
 
   /**

@@ -19,6 +19,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 import * as argon2 from 'argon2';
 import {
   RecoveryJobRepository,
+  type BeginRecoveryJobAttemptInput,
   type ClaimedRecoveryJob,
   type ClaimRecoveryJobsInput,
   type FinishRecoveryJobInput,
@@ -88,10 +89,14 @@ function claimedJob(
 
 /** Controllable repository used to inspect product worker transitions. */
 class WorkerRepository implements RecoveryWorkerRepository {
+  /** Jobs leased by the latest claim operation. */
+  private claimedJobs: readonly ClaimedRecoveryJob[] = [];
   /** Batches returned by consecutive claim operations. */
   public batches: (readonly ClaimedRecoveryJob[])[] = [];
   /** Claim inputs captured from the worker. */
   public readonly claims: ClaimRecoveryJobsInput[] = [];
+  /** Attempt-start transitions captured from the worker. */
+  public readonly attempts: BeginRecoveryJobAttemptInput[] = [];
   /** Retry transitions captured from the worker. */
   public readonly retries: RetryRecoveryJobInput[] = [];
   /** Completion transitions captured from the worker. */
@@ -102,7 +107,16 @@ class WorkerRepository implements RecoveryWorkerRepository {
   /** Return the next arranged claim batch. */
   public async claimAvailable(input: ClaimRecoveryJobsInput) {
     this.claims.push(input);
-    return this.batches.shift() ?? [];
+    this.claimedJobs = this.batches.shift() ?? [];
+    return this.claimedJobs;
+  }
+
+  /** Charge one processing attempt and return the started claim. */
+  public async beginAttempt(input: BeginRecoveryJobAttemptInput) {
+    this.attempts.push(input);
+    const job = this.claimedJobs.find((candidate) => candidate.id === input.jobId);
+    if (!job || job.id !== input.jobId || job.attemptCount >= 5) return null;
+    return { ...job, attemptCount: job.attemptCount + 1, updatedAt: input.now };
   }
 
   /** Record an owned retry. */
@@ -236,7 +250,7 @@ describe('recovery job repository implementation', () => {
 describe('recovery worker implementation', () => {
   it('uses the exact lease cutoff, claim maximum, and owner-fenced completion', async () => {
     const repository = new WorkerRepository();
-    repository.batches = [[claimedJob(1)]];
+    repository.batches = [[claimedJob(0)]];
     const events: RecoveryWorkerEvent[] = [];
     const worker = new TestRecoveryWorker({
       repository,
@@ -266,7 +280,7 @@ describe('recovery worker implementation', () => {
 
   it('emits lease recovery and terminally closes an exhausted unknown outcome', async () => {
     const reclaimedRepository = new WorkerRepository();
-    reclaimedRepository.batches = [[claimedJob(2, 'lease_reclaimed')]];
+    reclaimedRepository.batches = [[claimedJob(1, 'lease_reclaimed')]];
     const reclaimedEvents: RecoveryWorkerEvent[] = [];
     await new TestRecoveryWorker({
       repository: reclaimedRepository,
@@ -296,7 +310,7 @@ describe('recovery worker implementation', () => {
 
   it('schedules four exact retries before the fifth failure becomes terminal', async () => {
     const repository = new WorkerRepository();
-    repository.batches = [1, 2, 3, 4, 5].map((attempt) => [claimedJob(attempt)]);
+    repository.batches = [0, 1, 2, 3, 4].map((attempt) => [claimedJob(attempt)]);
     const events: RecoveryWorkerEvent[] = [];
     const worker = new TestRecoveryWorker({
       repository,
@@ -323,7 +337,7 @@ describe('recovery worker implementation', () => {
 
   it('stops claiming, waits for active work, and emits settled shutdown', async () => {
     const repository = new WorkerRepository();
-    repository.batches = [[claimedJob(1)]];
+    repository.batches = [[claimedJob(0)]];
     const clock = new ManualClock();
     const events: RecoveryWorkerEvent[] = [];
     let releaseProcessor: (() => void) | undefined;
@@ -357,7 +371,7 @@ describe('recovery worker implementation', () => {
 
   it('exposes only closed reasons and never forwards raw processor diagnostics', async () => {
     const repository = new WorkerRepository();
-    repository.batches = [[claimedJob(5)]];
+    repository.batches = [[claimedJob(4)]];
     const events: RecoveryWorkerEvent[] = [];
     await new TestRecoveryWorker({
       repository,

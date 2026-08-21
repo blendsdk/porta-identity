@@ -37,7 +37,7 @@ vi.mock('../../../src/auth/tokens.js', () => ({
 
 vi.mock('../../../src/auth/token-repository.js', () => ({
   insertToken: vi.fn().mockResolvedValue(undefined),
-  findValidToken: vi.fn(),
+  findValidTokenForOrganization: vi.fn(),
   markTokenUsed: vi.fn().mockResolvedValue(undefined),
   invalidateUserTokens: vi.fn().mockResolvedValue(undefined),
 }));
@@ -327,7 +327,7 @@ describe('password reset routes', () => {
 
   describe('GET /:orgSlug/auth/reset-password/:token — showResetPassword', () => {
     it('should render reset form for valid token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue({
         id: 'tok-1',
         userId: 'user-1',
       } as never);
@@ -346,7 +346,7 @@ describe('password reset routes', () => {
     });
 
     it('should show error page for expired token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(null);
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue(null);
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'GET', 'reset-password');
@@ -375,7 +375,7 @@ describe('password reset routes', () => {
         givenName: 'Test',
         familyName: 'User',
       };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue(tokenRecord as never);
       vi.mocked(userService.getUserById).mockResolvedValue(user as never);
 
       const router = createPasswordResetRouter();
@@ -424,7 +424,7 @@ describe('password reset routes', () => {
     });
 
     it('should show error when token expired during submission', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(null);
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue(null);
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'reset-password');
@@ -442,7 +442,7 @@ describe('password reset routes', () => {
     });
 
     it('should show error when passwords do not match', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue({
         id: 'tok-1',
         userId: 'user-1',
       } as never);
@@ -463,7 +463,7 @@ describe('password reset routes', () => {
     });
 
     it('should show error when password validation fails', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue({
         id: 'tok-1',
         userId: 'user-1',
       } as never);
@@ -576,12 +576,12 @@ describe('password reset routes', () => {
         }),
       );
       // Token lookup must be skipped — we reject at the method layer
-      expect(tokenRepo.findValidToken).not.toHaveBeenCalled();
+      expect(tokenRepo.findValidTokenForOrganization).not.toHaveBeenCalled();
     });
 
     it('should block POST /reset-password/:token without setting the password', async () => {
       // Even if all other checks would pass, method enforcement must fire first.
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue({
         id: 'tok-1',
         userId: 'user-1',
       } as never);

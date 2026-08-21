@@ -34,7 +34,7 @@ import {
   loadPasswordResetRateLimitConfig,
 } from '../auth/rate-limiter.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
+import { findValidTokenForOrganization, markTokenUsed } from '../auth/token-repository.js';
 import { sendPasswordChangedEmail } from '../auth/email-service.js';
 import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
@@ -426,7 +426,11 @@ async function showResetPassword(ctx: AuthContext): Promise<void> {
 
   // Validate the token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidToken('password_reset_tokens', tokenHash);
+  const tokenRecord = await findValidTokenForOrganization(
+    'password_reset_tokens',
+    tokenHash,
+    org.id,
+  );
 
   if (!tokenRecord) {
     writeAuditLog({
@@ -505,7 +509,11 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
 
   // Step 2: Re-validate the token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidToken('password_reset_tokens', tokenHash);
+  const tokenRecord = await findValidTokenForOrganization(
+    'password_reset_tokens',
+    tokenHash,
+    org.id,
+  );
 
   if (!tokenRecord) {
     writeAuditLog({

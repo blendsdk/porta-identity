@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   RECOVERY_JOB_ATTEMPT_LIMIT,
   RECOVERY_JOB_CLAIM_LIMIT,
+  type BeginRecoveryJobAttemptInput,
   type ClaimedRecoveryJob,
   type ClaimRecoveryJobsInput,
   type FinishRecoveryJobInput,
@@ -65,7 +66,6 @@ class EnumerationRecoveryRepository implements RecoveryWorkerRepository {
         status: 'claimed',
         claimedAt: input.now,
         claimedBy: input.workerId,
-        attemptCount: Math.min(previous.attemptCount + 1, RECOVERY_JOB_ATTEMPT_LIMIT),
         lastFailureReason: null,
         completedAt: null,
         updatedAt: input.now,
@@ -74,6 +74,26 @@ class EnumerationRecoveryRepository implements RecoveryWorkerRepository {
       updateJob(this.state, stored, claimed);
       return claimed;
     });
+  }
+
+  /** Charge one attempt immediately before the synthetic processor begins. */
+  public async beginAttempt(input: BeginRecoveryJobAttemptInput): Promise<RecoveryJob | null> {
+    const stored = this.state.jobs.get(input.jobId);
+    if (
+      !stored ||
+      stored.job.status !== 'claimed' ||
+      stored.job.claimedBy !== input.workerId ||
+      stored.job.attemptCount >= RECOVERY_JOB_ATTEMPT_LIMIT
+    ) {
+      return null;
+    }
+    const started: RecoveryJob = {
+      ...stored.job,
+      attemptCount: stored.job.attemptCount + 1,
+      updatedAt: input.now,
+    };
+    updateJob(this.state, stored, started);
+    return started;
   }
 
   /** Return an owned claim to the available queue. */

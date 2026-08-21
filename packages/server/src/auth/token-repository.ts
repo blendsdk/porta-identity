@@ -60,6 +60,25 @@ export interface EnsureRecoveryTokenInput {
   readonly expiresAt: Date;
 }
 
+/** Durable artifact decision returned by idempotent recovery-token issuance. */
+export type EnsureRecoveryTokenResult = 'active' | 'superseded';
+
+/** Minimal ordering row for a durable recovery job. */
+interface RecoveryJobOrderRow {
+  created_at: Date;
+}
+
+/** Active-state observation for a job-owned recovery token. */
+interface RecoveryTokenStateRow {
+  active: boolean;
+}
+
+/** Ordering metadata for the newest active artifact owned by one user. */
+interface ActiveRecoveryTokenOrderRow {
+  recovery_job_id: string;
+  created_at: Date;
+}
+
 /** Raw database row shape (snake_case) from the token tables */
 interface TokenRow {
   id: string;
@@ -156,36 +175,85 @@ export async function insertToken(
 /**
  * Create or observe the single token artifact owned by a recovery job.
  *
- * A transaction locks the account's active token set, reuses an existing job artifact, or
- * invalidates older artifacts and inserts exactly one new row. SQL identifiers come exclusively
- * from the closed table union.
+ * A transaction locks the user row as the shared serialization authority, reuses an existing job
+ * artifact, or invalidates an older artifact and inserts exactly one new row. A retry from an older
+ * job cannot replace a newer active artifact. SQL identifiers come exclusively from the closed
+ * table union.
  *
  * @param input - Recovery-job token authority and deterministic token facts.
  */
-export async function ensureRecoveryJobToken(input: EnsureRecoveryTokenInput): Promise<void> {
+export async function ensureRecoveryJobToken(
+  input: EnsureRecoveryTokenInput,
+): Promise<EnsureRecoveryTokenResult> {
   assertValidTable(input.table);
   const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const existing = await client.query(
-      `SELECT id FROM ${input.table} WHERE recovery_job_id = $1 FOR UPDATE`,
+    const lockedUser = await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+      input.userId,
+    ]);
+    if (lockedUser.rowCount !== 1) {
+      throw new Error('Recovery artifact user disappeared before issuance');
+    }
+
+    const jobOrder = await client.query<RecoveryJobOrderRow>(
+      'SELECT created_at FROM auth_recovery_jobs WHERE id = $1',
       [input.recoveryJobId],
     );
-    if (existing.rowCount === 0) {
-      await client.query(
-        `UPDATE ${input.table}
-         SET used_at = NOW()
-         WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()`,
-        [input.userId],
-      );
-      await client.query(
-        `INSERT INTO ${input.table} (user_id, token_hash, expires_at, recovery_job_id)
-         VALUES ($1, $2, $3, $4)`,
-        [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
-      );
+    const currentJob = jobOrder.rows[0];
+    if (!currentJob) {
+      throw new Error('Recovery job disappeared before artifact issuance');
     }
+
+    const existing = await client.query<RecoveryTokenStateRow>(
+      `SELECT used_at IS NULL AND expires_at > NOW() AS active
+       FROM ${input.table}
+       WHERE recovery_job_id = $1`,
+      [input.recoveryJobId],
+    );
+    if (existing.rows[0]) {
+      await client.query('COMMIT');
+      return existing.rows[0].active ? 'active' : 'superseded';
+    }
+
+    const newestActive = await client.query<ActiveRecoveryTokenOrderRow>(
+      `SELECT token.recovery_job_id, job.created_at
+       FROM ${input.table} AS token
+       JOIN auth_recovery_jobs AS job ON job.id = token.recovery_job_id
+       WHERE token.user_id = $1
+         AND token.used_at IS NULL
+         AND token.expires_at > NOW()
+         AND token.recovery_job_id IS NOT NULL
+       ORDER BY job.created_at DESC, job.id DESC
+       LIMIT 1`,
+      [input.userId],
+    );
+    const newest = newestActive.rows[0];
+    const currentCreatedAt = currentJob.created_at.getTime();
+    const newerArtifactExists =
+      newest !== undefined &&
+      (newest.created_at.getTime() > currentCreatedAt ||
+        (newest.created_at.getTime() === currentCreatedAt &&
+          newest.recovery_job_id > input.recoveryJobId));
+    if (newerArtifactExists) {
+      await client.query('COMMIT');
+      return 'superseded';
+    }
+
+    await client.query(
+      `UPDATE ${input.table}
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [input.userId],
+    );
+    await client.query(
+      `INSERT INTO ${input.table} (user_id, token_hash, expires_at, recovery_job_id)
+       VALUES ($1, $2, $3, $4)`,
+      [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
+    );
     await client.query('COMMIT');
+    return 'active';
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -225,6 +293,39 @@ export async function findValidToken(
   }
 
   return mapRowToToken(result.rows[0]);
+}
+
+/**
+ * Find a valid token only when its user belongs to the resolved organization.
+ *
+ * Tenant binding is enforced in the lookup itself so a valid token presented under another
+ * tenant is indistinguishable from an invalid token and cannot reach account mutation.
+ *
+ * @param table - Target token table.
+ * @param tokenHash - SHA-256 token digest.
+ * @param organizationId - Tenant authority resolved from the public route.
+ * @returns The valid tenant-owned token, or null.
+ */
+export async function findValidTokenForOrganization(
+  table: TokenTable,
+  tokenHash: string,
+  organizationId: string,
+): Promise<TokenRecord | null> {
+  assertValidTable(table);
+  const pool = getPool();
+  const result = await pool.query<TokenRow>(
+    `SELECT token.id, token.user_id, token.token_hash,
+            token.expires_at, token.used_at, token.created_at
+     FROM ${table} AS token
+     JOIN users AS account ON account.id = token.user_id
+     WHERE token.token_hash = $1
+       AND account.organization_id = $2
+       AND token.used_at IS NULL
+       AND token.expires_at > NOW()`,
+    [tokenHash, organizationId],
+  );
+
+  return result.rows[0] ? mapRowToToken(result.rows[0]) : null;
 }
 
 /**

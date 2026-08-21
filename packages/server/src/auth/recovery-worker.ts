@@ -12,9 +12,11 @@ import { logger } from '../lib/logger.js';
 import {
   RECOVERY_JOB_ATTEMPT_LIMIT,
   RECOVERY_JOB_CLAIM_LIMIT,
+  type BeginRecoveryJobAttemptInput,
   type ClaimRecoveryJobsInput,
   type ClaimedRecoveryJob,
   type FinishRecoveryJobInput,
+  type RecoveryJob,
   type RetryRecoveryJobInput,
 } from './recovery-job-repository.js';
 
@@ -48,6 +50,8 @@ export type RecoveryWorkerFailureReason = (typeof RECOVERY_WORKER_FAILURE_REASON
 export interface RecoveryWorkerRepository {
   /** Atomically claim one bounded available or expired-lease batch. */
   claimAvailable(input: ClaimRecoveryJobsInput): Promise<readonly ClaimedRecoveryJob[]>;
+  /** Charge one attempt immediately before account-specific processing begins. */
+  beginAttempt(input: BeginRecoveryJobAttemptInput): Promise<RecoveryJob | null>;
   /** Return an owned transient failure to the queue. */
   scheduleRetry(input: RetryRecoveryJobInput): Promise<boolean>;
   /** Complete an owned claim. */
@@ -302,11 +306,34 @@ export class RecoveryWorker {
     });
 
     for (const job of jobs) {
-      this.emit({ event: 'claimed', jobId: job.id, attempt: job.attemptCount });
-      if (job.claimDisposition === 'lease_reclaimed') {
-        this.emit({ event: 'lease_reclaimed', jobId: job.id, attempt: job.attemptCount });
+      if (job.claimDisposition === 'lease_exhausted') {
+        this.emit({ event: 'claimed', jobId: job.id, attempt: job.attemptCount });
+        await this.finishTerminal(job, 'lease_exhausted');
+        continue;
       }
-      await this.processClaim(job);
+
+      const started = await this.repository.beginAttempt({
+        jobId: job.id,
+        workerId: this.workerId,
+        now: this.clock.now(),
+      });
+      if (!started) {
+        logger.warn({ event: 'recovery_worker_claim_lost' }, 'Recovery worker claim was lost');
+        continue;
+      }
+      const startedClaim: ClaimedRecoveryJob = {
+        ...started,
+        claimDisposition: job.claimDisposition,
+      };
+      this.emit({ event: 'claimed', jobId: startedClaim.id, attempt: startedClaim.attemptCount });
+      if (startedClaim.claimDisposition === 'lease_reclaimed') {
+        this.emit({
+          event: 'lease_reclaimed',
+          jobId: startedClaim.id,
+          attempt: startedClaim.attemptCount,
+        });
+      }
+      await this.processClaim(startedClaim);
     }
 
     if (jobs.length === RECOVERY_JOB_CLAIM_LIMIT) this.wakePending = true;
@@ -314,11 +341,6 @@ export class RecoveryWorker {
 
   /** Process one claim and finish, retry, or terminally close it. */
   protected async processClaim(job: ClaimedRecoveryJob): Promise<void> {
-    if (job.claimDisposition === 'lease_exhausted') {
-      await this.finishTerminal(job, 'lease_exhausted');
-      return;
-    }
-
     try {
       const result = await this.processor.process(job);
       const completed = await this.repository.markCompleted({

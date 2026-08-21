@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
 > **Last Updated**: 2026-08-21 16:43
-> **Progress**: 12/47 tasks (26%)
+> **Progress**: 13/47 tasks (28%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -71,7 +71,7 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.9b Preserve the exact evidence-bound forwarding-observer continuation in the direct security harness while retaining exit `40`; add dispatcher regression coverage and run Phase 1 targeted checks plus `yarn verify`. (completed 2026-08-21 16:13 CEST; focused dispatcher/admission tests 10/10, Phase 1 tests 17/17, structure 70/70, and `yarn verify` 235 files/3,409 tests green)
 - [x] 1.9c From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate. (completed 2026-08-21 16:43 CEST; clean run `70c147f6-ed38-4212-843e-f5386b119202` executed functional 7/7, second-factor 4/4, and tenant/admin 17/17 before retaining the registered exit `40`; `yarn verify` 235 files/3,409 tests green; quality review recorded six Major corrections and left Phase 1 open)
 - [x] 1.9d Correct the immutable ST-01–ST-06 oracle to exercise real password/repository/processor/token/mail boundaries and reconcile ST-05 with bounded at-least-once identical-artifact delivery; record exact RED. (completed 2026-08-21 17:09 CEST; default oracle 3/3 green, required-mode RED failed only with `ENUMERATION_RESISTANCE_CAPABILITY_MISSING`, and `yarn verify` passed 235 files/3,403 tests)
-- [ ] 1.9e Move attempt start accounting to immediately before processing; serialize recovery artifacts per user, suppress superseded job delivery, and bind password-reset GET/POST token lookup to the route organization.
+- [x] 1.9e Move attempt start accounting to immediately before processing; serialize recovery artifacts per user, suppress superseded job delivery, and bind password-reset GET/POST token lookup to the route organization. (completed 2026-08-21 17:24 CEST; focused 3 files/49 tests green, full type/lint/format gates green, and `yarn verify` passed 235 files/3,403 tests)
 - [ ] 1.9f Add real concurrent-job, mid-batch crash/reclaim, superseded retry, wrong-tenant reset, and SMTP unknown-outcome implementation tests; run corrected ST-01–ST-06 green.
 - [ ] 1.9g Preserve the documented assurance exit precedence across retained production-exposure and later security-block outcomes, with a complete combination matrix.
 - [ ] 1.9h From the clean committed revision, rerun the production-security human-auth evidence, Phase 1 targeted checks, `yarn verify`, and one bounded quality re-review; close Phase 1 only if no Critical or Major remains.

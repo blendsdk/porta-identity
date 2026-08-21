@@ -53,13 +53,14 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
         job.jobType === 'magic_link' ? 'magic_link_ttl' : 'password_reset_ttl',
         job.jobType === 'magic_link' ? 900 : 3_600,
       );
-      await ensureRecoveryJobToken({
+      const artifact = await ensureRecoveryJobToken({
         table: job.jobType === 'magic_link' ? 'magic_link_tokens' : 'password_reset_tokens',
         recoveryJobId: job.id,
         userId: user.id,
         tokenHash: hashToken(plaintext),
         expiresAt: new Date(Date.now() + ttlSeconds * 1_000),
       });
+      if (artifact === 'superseded') return 'no_op';
     } catch {
       throw new RecoveryJobProcessingError('database_unavailable', true);
     }

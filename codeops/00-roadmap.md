@@ -14,7 +14,7 @@
 | Feature            | Roadmap                                        | Stage Summary                           | Progress       | Status | Last Updated     |
 | ------------------ | ---------------------------------------------- | --------------------------------------- | -------------- | ------ | ---------------- |
 | monorepo-migration | [→](features/monorepo-migration/00-roadmap.md) | Migration complete · publishing backlog | 74 / 74 (100%) | ✅     | 2026-08-09 00:45 |
-| test-assurance     | [→](features/test-assurance/00-roadmap.md)     | Product remediation executing           | 12 / 47 (26%)  | 🔄     | 2026-08-21 17:09 |
+| test-assurance     | [→](features/test-assurance/00-roadmap.md)     | Product remediation executing           | 13 / 47 (28%)  | 🔄     | 2026-08-21 17:24 |
 
 ## Archived
 
