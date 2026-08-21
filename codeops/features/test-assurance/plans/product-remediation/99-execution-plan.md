@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 09:06
-> **Progress**: 1/40 tasks (2.5%)
+> **Last Updated**: 2026-08-21 09:15
+> **Progress**: 2/40 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -60,7 +60,7 @@ targeted command; all already-created paths remain mandatory.
 **Reference**: 03-01; ST-01–ST-06; AR-1, AR-5, AR-9, AR-10
 
 - [x] 1.1 [spec-author] Write immutable enumeration/recovery specifications — `packages/server/tests/unit/security/enumeration-resistance.spec.test.ts` (completed 2026-08-21 09:06 CEST; default 3/3 green; required-mode capability RED registered; `yarn verify` 234 files/3,385 tests green)
-- [ ] 1.2 Run the isolated specifications and record exact RED assertions for missing constant-work password and recovery-job behavior.
+- [x] 1.2 Run the isolated specifications and record exact RED assertions for missing constant-work password and recovery-job behavior. (completed 2026-08-21 09:15 CEST; exact exit 1, one failed/two passed, sole marker `ENUMERATION_RESISTANCE_CAPABILITY_MISSING`; ordinary `yarn verify` 234 files/3,385 tests green)
 - [ ] 1.3 Add the ordered recovery-job migration and typed repository/outbox API — `packages/server/migrations/`, `packages/server/src/auth/recovery-job-repository.ts`
 - [ ] 1.4 Implement the bounded idempotent recovery worker and lifecycle ownership — `packages/server/src/auth/recovery-worker.ts`, `packages/server/src/index.ts`
 - [ ] 1.5 Implement process-cached dummy Argon2id verification and fixed-shape password failure accounting — `packages/server/src/users/password.ts`, `packages/server/src/routes/interactions.ts`
