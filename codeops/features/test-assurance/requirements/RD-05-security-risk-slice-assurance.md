@@ -41,25 +41,40 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       attacker `jku`/`x5u`/embedded JWK, refresh rotation, and replay rejection.
 - [ ] **R5.6 (L)** Human-authentication claims shall cover password success/failure, enumeration
       resistance, failed-login tracking, lockout, rate limits, session renewal, expiry, logout,
-      cookie attributes, CSRF, and login-method enforcement. Before enumeration timing is measured,
-      product/security authority shall approve the hypothesis, material effect-size bound, sample-
-      size/power rule, clock/environment controls, and noise/invalid-run rule; otherwise the timing
-      claim remains blocked rather than deriving a threshold from observed Porta behavior.
-      This program records that timing-distribution edge as DEF-7; functional status/body/header
-      equivalence and absence of identity disclosure remain required.
+      cookie attributes, CSRF, and login-method enforcement. Enumeration resistance requires exact
+      public status, redirect/page schema, header, cookie, error, and rate-limit equivalence plus
+      design-level work equivalence: every structurally valid password attempt performs one
+      Argon2id verification and one fixed-shape attempt-record operation, while magic-link and
+      password-reset public requests enqueue one fixed-shape tenant-bound job without waiting for
+      account-specific token or email work. Timing distributions are diagnostic only and shall not
+      receive pass/fail security credit (product-remediation AR-1).
 - [ ] **R5.7 (L)** Magic-link, reset, invitation, email OTP, TOTP, and recovery-code claims shall
       cover unpredictability, intended recipient/tenant, configured expiry boundary, single use,
       sequential replay, throttling, and absence of secret/token exposure outside the allowlisted
       synthetic delivery/verification channel. Concurrent duplicate consumption remains part of
       the deferred consistency catalog and receives no ordinary-lane credit. Delivered values must
       be absent from wrong mailboxes, responses, redirects, logs, audit events, traces, reports,
-      referrers, and browser history, and must be redacted from retained evidence.
+      referrers, and browser history, and must be redacted from retained evidence. Magic-link
+      issuance shall bind the artifact to one organization and optional interaction. Verification
+      shall match artifact, user, route tenant, interaction, and client authority before mutation;
+      mismatch shall be generic, non-consuming, and free of account/session effects. Correct-route
+      success shall consume the database artifact and Redis continuation atomically
+      (product-remediation AR-2).
 - [ ] **R5.8 (L)** Injection/exposure claims shall cover SQL, header/CRLF, XSS/template, prototype,
       command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversized input,
       restrictive CORS/CSP, minimal errors, and version/infrastructure leakage where reachable.
 - [ ] **R5.9 (L)** P1 administrative-data claims shall cover import validation, export sensitivity,
       bulk-operation authorization/atomicity, pagination isolation, audit integrity, signing-key
-      lifecycle, session administration, and configuration authorization.
+      lifecycle, session administration, and configuration authorization. Bulk operations shall
+      validate the whole request before mutation, reject duplicate identifiers, and return ordered
+      per-item outcomes from independently tenant-scoped transactions. Imports shall prevalidate
+      their version, closed fields, duplicate natural keys, references, scopes, and authorization;
+      intentional merge skips are non-errors, while every actual error rolls back the whole import.
+      Overwrite changes only allowlisted mutable fields, dry-run uses the same planner without
+      writes or real secret generation, and secret-equivalent inputs are rejected. Exports require
+      dedicated export plus entity-read permission, exact tenant/application scope, closed field
+      allowlists, bounded cardinality, safe audit details, and CSV formula neutralization
+      (product-remediation AR-3).
 - [ ] **R5.10 (M)** Applicable OIDC Core 1.0, RFC 7636, RFC 8725, RFC 9700, and OWASP ASVS 5.0.0
       requirements shall be cited with version and section/control identifiers in the owning claim;
       Porta-specific stricter invariants prevail (AR #24).
@@ -73,6 +88,14 @@ additional external evidence rather than replacing them (AR #4, AR #18).
       because a new harness claim overlaps it.
 - [ ] **R5.14 (M)** Every verified invariant violation shall block the affected slice and be routed
       per RD-01; no test expectation may be changed to bless the observed defect (AR #19, AR #26).
+- [ ] **R5.17 (L)** Every covered malformed request and administrative authentication or
+      authorization decision shall emit exactly one `security.decision.v1` terminal event with a
+      server-created request ID, normalized route and closed decision facts, and domain-separated
+      protected references where applicable. Raw paths, queries, bodies, headers, credentials,
+      emails, identifiers, stack traces, database/infrastructure errors, network addresses, and
+      user agents are forbidden. Denial-event failure shall preserve the denial; authorized
+      state-changing administrative mutations shall retain fail-closed durable audit persistence
+      (product-remediation AR-4).
 
 ### Should Have
 
@@ -85,7 +108,7 @@ additional external evidence rather than replacing them (AR #4, AR #18).
 ### Won't Have (Out of Scope)
 
 - Formal OIDC certification or a comprehensive ASVS level claim (AR #24).
-- Automatic product fixes.
+- Product changes unrelated to the four explicitly authorized remediation contracts.
 - Removal or consolidation of existing pentests.
 - External AI scanner integration (AR #5).
 - Concurrent-consume, committed-response-loss, restart-consistency, forced process termination,
@@ -148,11 +171,15 @@ separately rather than discarded.
 
 ## Scope Decisions
 
-| Decision        | Options Considered                         | Chosen                        | Rationale                                                          | AR Ref       |
-| --------------- | ------------------------------------------ | ----------------------------- | ------------------------------------------------------------------ | ------------ |
-| Ordering        | Files / low coverage / blast-radius risk   | Blast-radius risk             | Tenant and authorization failures affect the whole platform        | AR #18       |
-| Oracle boundary | Internals / client only / layered external | Layered external              | Reaches malicious inputs while retaining interoperability evidence | AR #7, AR #9 |
-| Standards       | None / guidance / certification            | Versioned applicable guidance | Independent requirements without unsupported claim                 | AR #24       |
+| Decision                 | Options Considered                         | Chosen                          | Rationale                                                          | AR Ref                     |
+| ------------------------ | ------------------------------------------ | ------------------------------- | ------------------------------------------------------------------ | -------------------------- |
+| Ordering                 | Files / low coverage / blast-radius risk   | Blast-radius risk               | Tenant and authorization failures affect the whole platform        | AR #18                     |
+| Oracle boundary          | Internals / client only / layered external | Layered external                | Reaches malicious inputs while retaining interoperability evidence | AR #7, AR #9               |
+| Standards                | None / guidance / certification            | Versioned applicable guidance   | Independent requirements without unsupported claim                 | AR #24                     |
+| Enumeration timing       | Statistical gate / design contract         | Design contract; diagnostic data | Avoids granting security credit to noisy finite timing samples      | product-remediation AR-1   |
+| Magic-link mismatch      | Consume / preserve / allow                 | Preserve and reject             | Prevents cross-tenant use without adding a destruction primitive   | product-remediation AR-2   |
+| Administrative data     | Atomic / partial by workflow               | Partial bulk; atomic import     | Preserves bulk compatibility and import dependency integrity       | product-remediation AR-3   |
+| Correlated decision logs | Joined records / one terminal event         | One terminal event              | Each outcome is independently attributable and privacy-safe        | product-remediation AR-4   |
 
 ## Security Considerations
 
@@ -190,7 +217,8 @@ separately rather than discarded.
        intended tenant/user and within configured lifetime; sequential replay fails, while
        concurrent duplicate consumption remains a named deferred gap.
 7. [ ] Authentication enumeration pairs use the same public status/body schema and disclose no user
-       existence; timing tests record distributions and defined tolerance rather than one sample.
+       existence; password and recovery request paths satisfy the approved design-level work-
+       equivalence contract. Any retained timing distribution is explicitly non-gating.
 8. [ ] Representative SQL, XSS/template, header/CRLF, prototype, redirect, slug, host/proxy, method,
        malformed, and oversized inputs cause no execution, cross-tenant effect, internal error,
        secret, stack, SQL, path, or version disclosure.
@@ -204,3 +232,12 @@ separately rather than discarded.
         consumption, committed-response loss, graceful-restart replay, pre/post-commit interruption,
         and uncommitted-timeout branches are reported as deferred gaps and cannot be credited as
         completed evidence.
+13. [ ] Magic-link tenant or interaction mismatch produces the same public rejection as an invalid
+        artifact without consuming it or mutating user, login, token, or session state; intended-
+        tenant success remains atomic and single-use.
+14. [ ] Bulk/import/export behavior matches R5.9 for duplicate inputs, partial and not-attempted
+        outcomes, rollback, dry-run, secret-bearing fields, tenant scope, bounded export, and CSV
+        formula input.
+15. [ ] Every covered malformed/admin decision produces one independently correlated,
+        schema-valid, privacy-safe terminal event; missing, duplicate, or forbidden event fields
+        fail the affected claim.
