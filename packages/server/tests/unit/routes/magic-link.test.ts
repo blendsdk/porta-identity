@@ -22,8 +22,7 @@ vi.mock('../../../src/auth/tokens.js', () => ({
 }));
 
 vi.mock('../../../src/auth/token-repository.js', () => ({
-  findValidToken: vi.fn(),
-  markTokenUsed: vi.fn().mockResolvedValue(undefined),
+  consumeAuthorizedMagicLink: vi.fn(),
 }));
 
 vi.mock('../../../src/auth/i18n.js', () => ({
@@ -39,10 +38,8 @@ vi.mock('../../../src/auth/csrf.js', () => ({
   generateCsrfToken: vi.fn().mockReturnValue('csrf-token-abc'),
 }));
 
-vi.mock('../../../src/users/service.js', () => ({
-  getUserById: vi.fn(),
-  recordLogin: vi.fn().mockResolvedValue(undefined),
-  markEmailVerified: vi.fn().mockResolvedValue(undefined),
+vi.mock('../../../src/users/cache.js', () => ({
+  invalidateUserCache: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../src/auth/magic-link-session.js', () => ({
@@ -67,7 +64,7 @@ vi.mock('../../../src/config/index.js', () => ({
 
 import { createMagicLinkRouter } from '../../../src/routes/magic-link.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
-import * as userService from '../../../src/users/service.js';
+import * as userCache from '../../../src/users/cache.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
 import type { Organization } from '../../../src/organizations/types.js';
@@ -78,19 +75,29 @@ import type { Organization } from '../../../src/organizations/types.js';
 
 function createMockOrg(overrides: Partial<Organization> = {}): Organization {
   return {
-    id: 'org-uuid-1', name: 'Test Org', slug: 'test-org', status: 'active',
-    isSuperAdmin: false, brandingLogoUrl: null, brandingFaviconUrl: null,
-    brandingPrimaryColor: '#3B82F6', brandingCompanyName: 'Test Corp',
-    brandingCustomCss: null, defaultLocale: 'en',
-    createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01'),
+    id: 'org-uuid-1',
+    name: 'Test Org',
+    slug: 'test-org',
+    status: 'active',
+    isSuperAdmin: false,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    brandingPrimaryColor: '#3B82F6',
+    brandingCompanyName: 'Test Corp',
+    brandingCustomCss: null,
+    defaultLocale: 'en',
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
     ...overrides,
   };
 }
 
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
   let contentType = '';
@@ -99,14 +106,27 @@ function createMockCtx(overrides: {
     params: { orgSlug: 'test-org', token: 'plain-token-123', ...(overrides.params ?? {}) },
     query: overrides.query ?? { interaction: 'interaction-uid-1' },
     request: { body: {} },
-    req: {}, res: {},
+    req: {},
+    res: {},
     ip: '127.0.0.1',
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
-    get type() { return contentType; },
-    set type(v: string) { contentType = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
+    get type() {
+      return contentType;
+    },
+    set type(v: string) {
+      contentType = v;
+    },
     state: { organization: createMockOrg() },
     cookies: {
       get: vi.fn().mockReturnValue(null),
@@ -117,13 +137,18 @@ function createMockCtx(overrides: {
   };
 }
 
-function findLayer(router: ReturnType<typeof createMagicLinkRouter>, method: string, pathPattern: string) {
-  return router.stack.find(
-    (l) => l.methods.includes(method) && l.path.includes(pathPattern),
-  );
+function findLayer(
+  router: ReturnType<typeof createMagicLinkRouter>,
+  method: string,
+  pathPattern: string,
+) {
+  return router.stack.find((l) => l.methods.includes(method) && l.path.includes(pathPattern));
 }
 
-async function exec(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function exec(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   return layer.stack[layer.stack.length - 1](ctx as never, vi.fn());
 }
 
@@ -139,10 +164,10 @@ describe('magic link routes', () => {
 
   describe('GET /:orgSlug/auth/magic-link/:token — verifyMagicLink', () => {
     it('should verify valid token and create session with redirect', async () => {
-      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
-      const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
-      vi.mocked(userService.getUserById).mockResolvedValue(user as never);
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue({
+        userId: 'user-uuid-1',
+        interactionUid: 'interaction-uid-1',
+      });
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
@@ -150,27 +175,26 @@ describe('magic link routes', () => {
 
       await exec(layer!, ctx);
 
-      // Should mark token as used
-      expect(tokenRepo.markTokenUsed).toHaveBeenCalledWith('magic_link_tokens', 'token-id-1');
-      // Should mark email verified
-      expect(userService.markEmailVerified).toHaveBeenCalledWith('user-uuid-1');
-      // Should record login
-      expect(userService.recordLogin).toHaveBeenCalledWith('user-uuid-1');
+      expect(tokenRepo.consumeAuthorizedMagicLink).toHaveBeenCalledWith({
+        tokenHash: 'hashed-token-abc',
+        organizationId: 'org-uuid-1',
+        interactionUid: 'interaction-uid-1',
+        ipAddress: '127.0.0.1',
+      });
+      expect(userCache.invalidateUserCache).toHaveBeenCalledWith('user-uuid-1');
       // Should create _ml_session and redirect to interaction handler
       const { createMagicLinkSession } = await import('../../../src/auth/magic-link-session.js');
-      expect(createMagicLinkSession).toHaveBeenCalledWith(
-        ctx,
-        { userId: 'user-uuid-1', interactionUid: 'interaction-uid-1', organizationId: 'org-uuid-1' },
-      );
+      expect(createMagicLinkSession).toHaveBeenCalledWith(ctx, {
+        userId: 'user-uuid-1',
+        interactionUid: 'interaction-uid-1',
+        organizationId: 'org-uuid-1',
+      });
       expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1');
-      // Should audit log
-      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: 'user.login.magic_link' }),
-      );
+      expect(auditLog.writeAuditLog).not.toHaveBeenCalled();
     });
 
     it('should show error page for invalid/expired token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(null);
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue(null);
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
@@ -190,10 +214,8 @@ describe('magic link routes', () => {
       );
     });
 
-    it('should show error page when user not found or inactive', async () => {
-      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
-      vi.mocked(userService.getUserById).mockResolvedValue(null);
+    it('should show the same error page when stored interaction authority differs', async () => {
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue(null);
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
@@ -208,19 +230,14 @@ describe('magic link routes', () => {
       expect(ctx.status).toBe(400);
     });
 
-    it('should show error page when user is inactive', async () => {
-      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
-      const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'suspended' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
-      vi.mocked(userService.getUserById).mockResolvedValue(user as never);
-
+    it('should reject a malformed interaction query without invoking durable authority', async () => {
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
-      const ctx = createMockCtx();
+      const ctx = createMockCtx({ query: { interaction: '' } });
 
       await exec(layer!, ctx);
 
-      // Non-active user should see error
+      expect(tokenRepo.consumeAuthorizedMagicLink).not.toHaveBeenCalled();
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'error',
         expect.objectContaining({ errorMessage: expect.any(String) }),
@@ -229,10 +246,10 @@ describe('magic link routes', () => {
     });
 
     it('should show success page when no interaction UID provided', async () => {
-      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
-      const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
-      vi.mocked(userService.getUserById).mockResolvedValue(user as never);
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue({
+        userId: 'user-uuid-1',
+        interactionUid: null,
+      });
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
@@ -253,10 +270,10 @@ describe('magic link routes', () => {
     });
 
     it('should show error page when session creation fails', async () => {
-      const tokenRecord = { id: 'token-id-1', userId: 'user-uuid-1' };
-      const user = { id: 'user-uuid-1', email: 'user@test.com', status: 'active' };
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
-      vi.mocked(userService.getUserById).mockResolvedValue(user as never);
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue({
+        userId: 'user-uuid-1',
+        interactionUid: 'interaction-uid-1',
+      });
       const { createMagicLinkSession } = await import('../../../src/auth/magic-link-session.js');
       vi.mocked(createMagicLinkSession).mockRejectedValue(new Error('Redis down'));
 
@@ -266,9 +283,9 @@ describe('magic link routes', () => {
 
       await exec(layer!, ctx);
 
-      // Token is still used and login recorded
-      expect(tokenRepo.markTokenUsed).toHaveBeenCalled();
-      expect(userService.recordLogin).toHaveBeenCalled();
+      // The durable transaction remains committed even when Redis continuation creation fails.
+      expect(tokenRepo.consumeAuthorizedMagicLink).toHaveBeenCalledOnce();
+      expect(userCache.invalidateUserCache).toHaveBeenCalledWith('user-uuid-1');
       // But error page is shown (caught by outer try/catch)
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'error',
@@ -277,7 +294,7 @@ describe('magic link routes', () => {
     });
 
     it('should render generic error on unexpected exception', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockRejectedValue(new Error('DB down'));
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockRejectedValue(new Error('DB down'));
 
       const router = createMagicLinkRouter();
       const layer = findLayer(router, 'GET', 'magic-link');

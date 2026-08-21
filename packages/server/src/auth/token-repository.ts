@@ -16,6 +16,7 @@
 import type { PoolClient } from 'pg';
 import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
+import type { UserStatus } from '../users/types.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -113,6 +114,7 @@ interface TokenRow {
 interface MagicLinkAuthorityRow extends TokenRow {
   organization_id: string;
   interaction_uid: string | null;
+  account_status: UserStatus;
 }
 
 /** Magic-link artifact whose persisted authority was selected under a database row lock. */
@@ -120,6 +122,28 @@ export interface LockedMagicLinkToken extends TokenRecord {
   /** Organization persisted when the artifact was issued. */
   readonly organizationId: string;
   /** Exact persisted interaction, or null for a standalone artifact. */
+  readonly interactionUid: string | null;
+  /** Lifecycle state observed while the owning account row is locked. */
+  readonly accountStatus: UserStatus;
+}
+
+/** Inputs required to validate and consume one magic-link artifact transactionally. */
+export interface ConsumeAuthorizedMagicLinkInput {
+  /** SHA-256 digest of the presented bearer artifact. */
+  readonly tokenHash: string;
+  /** Organization resolved from the public route. */
+  readonly organizationId: string;
+  /** Exact transport interaction, or null when the public request supplied none. */
+  readonly interactionUid: string | null;
+  /** Validated request address retained only in the successful audit row. */
+  readonly ipAddress?: string;
+}
+
+/** Successful authority decision returned after the database transaction commits. */
+export interface ConsumedAuthorizedMagicLink {
+  /** Account authorized and updated by the consumed artifact. */
+  readonly userId: string;
+  /** Persisted interaction authority, or null for a standalone artifact. */
   readonly interactionUid: string | null;
 }
 
@@ -395,7 +419,8 @@ export async function findAndLockMagicLinkToken(
 ): Promise<LockedMagicLinkToken | null> {
   const result = await client.query<MagicLinkAuthorityRow>(
     `SELECT token.id, token.user_id, token.token_hash, token.expires_at, token.used_at,
-            token.created_at, token.organization_id, token.interaction_uid
+            token.created_at, token.organization_id, token.interaction_uid,
+            account.status AS account_status
      FROM magic_link_tokens AS token
      JOIN users AS account
        ON account.id = token.user_id
@@ -414,6 +439,7 @@ export async function findAndLockMagicLinkToken(
     ...mapRowToToken(row),
     organizationId: row.organization_id,
     interactionUid: row.interaction_uid,
+    accountStatus: row.account_status,
   };
 }
 
@@ -441,6 +467,83 @@ export async function consumeLockedMagicLinkToken(
     [tokenId],
   );
   return result.rowCount === 1;
+}
+
+/**
+ * Validate all durable authority and apply one magic-link login in a single transaction.
+ *
+ * The artifact and account rows remain locked from lookup through consumption, account update,
+ * and audit insertion. Every authority mismatch rolls back before mutation, including a missing,
+ * changed, or unexpectedly supplied interaction identifier. Cache and Redis continuation work
+ * deliberately happen after this durable transaction because they are separate stores.
+ *
+ * @param input - Route tenant, presented interaction, artifact digest, and safe request metadata.
+ * @returns The committed account authority, or null for every public rejection condition.
+ */
+export async function consumeAuthorizedMagicLink(
+  input: ConsumeAuthorizedMagicLinkInput,
+): Promise<ConsumedAuthorizedMagicLink | null> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const token = await findAndLockMagicLinkToken(client, input.tokenHash, input.organizationId);
+    const authorityMatches =
+      token !== null &&
+      token.accountStatus === 'active' &&
+      token.interactionUid === input.interactionUid;
+    if (!authorityMatches) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const consumed = await consumeLockedMagicLinkToken(client, token.id);
+    if (!consumed) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const accountUpdate = await client.query(
+      `UPDATE users
+       SET email_verified = TRUE,
+           last_login_at = NOW(),
+           login_count = login_count + 1,
+           failed_login_count = 0,
+           last_failed_login_at = NULL
+       WHERE id = $1
+         AND organization_id = $2
+         AND status = 'active'
+       RETURNING id`,
+      [token.userId, input.organizationId],
+    );
+    if (accountUpdate.rowCount !== 1) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    await client.query(
+      `INSERT INTO audit_log (
+         organization_id, user_id, event_type, event_category, description,
+         metadata, ip_address
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        input.organizationId,
+        token.userId,
+        'user.login.magic_link',
+        'authentication',
+        'Magic link login successful',
+        '{}',
+        input.ipAddress ?? null,
+      ],
+    );
+    await client.query('COMMIT');
+    return { userId: token.userId, interactionUid: token.interactionUid };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

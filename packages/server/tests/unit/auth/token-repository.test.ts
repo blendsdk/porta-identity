@@ -22,6 +22,7 @@ import {
   markTokenUsed,
   deleteExpiredTokens,
   consumeLockedMagicLinkToken,
+  consumeAuthorizedMagicLink,
   findAndLockMagicLinkToken,
   invalidateUserTokens,
 } from '../../../src/auth/token-repository.js';
@@ -44,9 +45,26 @@ function mockPool(rows: Record<string, unknown>[] = [], rowCount?: number) {
 /** Create a typed transaction-client boundary backed by the mocked database pool. */
 async function mockTransactionClient(rows: Record<string, unknown>[] = [], rowCount?: number) {
   const query = vi.fn().mockResolvedValue({ rows, rowCount: rowCount ?? rows.length });
-  const connect = vi.fn().mockResolvedValue({ query });
+  const release = vi.fn();
+  const connect = vi.fn().mockResolvedValue({ query, release });
   (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ connect });
   return { client: await getPool().connect(), query };
+}
+
+/** Create a transaction client that returns one declared result for every ordered query. */
+function mockScriptedTransaction(
+  results: ReadonlyArray<{ rows?: Record<string, unknown>[]; rowCount?: number }>,
+) {
+  const remaining = [...results];
+  const query = vi.fn().mockImplementation(async () => {
+    const result = remaining.shift();
+    if (!result) throw new Error('Unexpected transaction query');
+    return { rows: result.rows ?? [], rowCount: result.rowCount ?? result.rows?.length ?? 0 };
+  });
+  const release = vi.fn();
+  const connect = vi.fn().mockResolvedValue({ query, release });
+  (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ connect });
+  return { query, release };
 }
 
 /** Standard test token row as returned from the database */
@@ -180,6 +198,7 @@ describe('token-repository', () => {
       const row = createTokenRow({
         organization_id: 'organization-alpha',
         interaction_uid: 'interaction-alpha',
+        account_status: 'active',
       });
       const { client, query } = await mockTransactionClient([row], 1);
 
@@ -193,6 +212,7 @@ describe('token-repository', () => {
         id: 'token-uuid-1',
         organizationId: 'organization-alpha',
         interactionUid: 'interaction-alpha',
+        accountStatus: 'active',
       });
       expect(query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE OF token, account'), [
         'presented-token-hash',
@@ -217,6 +237,97 @@ describe('token-repository', () => {
 
       await expect(consumeLockedMagicLinkToken(client, 'token-uuid-1')).resolves.toBe(expected);
       expect(query).toHaveBeenCalledWith(expect.stringContaining('RETURNING id'), ['token-uuid-1']);
+    });
+
+    it('should commit consumption, account mutation, and audit only after exact authority matches', async () => {
+      const row = createTokenRow({
+        organization_id: 'organization-alpha',
+        interaction_uid: 'interaction-alpha',
+        account_status: 'active',
+      });
+      const { query, release } = mockScriptedTransaction([
+        {},
+        { rows: [row], rowCount: 1 },
+        { rowCount: 1 },
+        { rows: [{ id: 'user-uuid-1' }], rowCount: 1 },
+        { rowCount: 1 },
+        {},
+      ]);
+
+      await expect(
+        consumeAuthorizedMagicLink({
+          tokenHash: 'presented-token-hash',
+          organizationId: 'organization-alpha',
+          interactionUid: 'interaction-alpha',
+          ipAddress: '127.0.0.1',
+        }),
+      ).resolves.toStrictEqual({
+        userId: 'user-uuid-1',
+        interactionUid: 'interaction-alpha',
+      });
+
+      expect(
+        query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')),
+      ).toStrictEqual([
+        'BEGIN',
+        'SELECT token.id,',
+        'UPDATE magic_link_tokens',
+        'UPDATE users',
+        'INSERT INTO',
+        'COMMIT',
+      ]);
+      expect(release).toHaveBeenCalledOnce();
+    });
+
+    it('should roll back before mutation when the presented interaction differs', async () => {
+      const row = createTokenRow({
+        organization_id: 'organization-alpha',
+        interaction_uid: 'interaction-authoritative',
+        account_status: 'active',
+      });
+      const { query, release } = mockScriptedTransaction([{}, { rows: [row], rowCount: 1 }, {}]);
+
+      await expect(
+        consumeAuthorizedMagicLink({
+          tokenHash: 'presented-token-hash',
+          organizationId: 'organization-alpha',
+          interactionUid: 'interaction-changed',
+        }),
+      ).resolves.toBeNull();
+
+      expect(query).toHaveBeenCalledTimes(3);
+      expect(query.mock.calls[2][0]).toBe('ROLLBACK');
+      expect(release).toHaveBeenCalledOnce();
+    });
+
+    it('should roll back token consumption when the locked account cannot be updated', async () => {
+      const row = createTokenRow({
+        organization_id: 'organization-alpha',
+        interaction_uid: null,
+        account_status: 'active',
+      });
+      const { query, release } = mockScriptedTransaction([
+        {},
+        { rows: [row], rowCount: 1 },
+        { rowCount: 1 },
+        { rowCount: 0 },
+        {},
+      ]);
+
+      await expect(
+        consumeAuthorizedMagicLink({
+          tokenHash: 'presented-token-hash',
+          organizationId: 'organization-alpha',
+          interactionUid: null,
+        }),
+      ).resolves.toBeNull();
+
+      expect(query).toHaveBeenCalledTimes(5);
+      expect(query.mock.calls[4][0]).toBe('ROLLBACK');
+      expect(query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO audit_log'))).toBe(
+        false,
+      );
+      expect(release).toHaveBeenCalledOnce();
     });
   });
 

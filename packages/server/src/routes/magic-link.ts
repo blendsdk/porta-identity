@@ -26,15 +26,13 @@ import Router from '@koa/router';
 import type { Context } from 'koa';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
+import { consumeAuthorizedMagicLink } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { generateCsrfToken } from '../auth/csrf.js';
-import { getUserById, recordLogin, markEmailVerified } from '../users/service.js';
-import {
-  createMagicLinkSession,
-} from '../auth/magic-link-session.js';
+import { invalidateUserCache } from '../users/cache.js';
+import { createMagicLinkSession } from '../auth/magic-link-session.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -49,6 +47,14 @@ interface AuthContext extends Context {
     organization: Organization;
     [key: string]: unknown;
   };
+}
+
+/** Parsed interaction query whose validity is kept separate from standalone authority. */
+interface PresentedInteraction {
+  /** Whether the query can participate in an authority decision. */
+  readonly valid: boolean;
+  /** Exact supplied identifier, or null only when the query was absent. */
+  readonly value: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +75,20 @@ function buildBrandingFromOrg(org: Organization) {
     companyName: org.brandingCompanyName ?? org.name,
     customCss: org.brandingCustomCss,
   };
+}
+
+/**
+ * Parse the optional interaction query without normalizing malformed input into standalone use.
+ *
+ * @param value - Raw Koa query value.
+ * @returns Exact bounded interaction authority and a fail-closed validity discriminator.
+ */
+function parsePresentedInteraction(value: unknown): PresentedInteraction {
+  if (value === undefined) return { valid: true, value: null };
+  if (typeof value !== 'string' || value.length < 1 || value.length > 128) {
+    return { valid: false, value: null };
+  }
+  return { valid: true, value };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,13 +128,10 @@ export function createMagicLinkRouter(): Router {
  * Verify a magic link token and set up the `_ml_session` for flow completion.
  *
  * 1. Hashes the token from URL params for DB lookup
- * 2. Finds the valid (unused, non-expired) token record
+ * 2. Locks and validates the token, route tenant, account, and persisted interaction authority
  * 3. If invalid/expired: renders error page with "link expired" message
  * 4. If valid:
- *    a. Marks the token as used (single-use)
- *    b. Marks the user's email as verified
- *    c. Records the login (increments login count)
- *    d. Writes audit log for magic link login
+ *    a. Atomically consumes the token, updates the user, and writes the successful audit row
  *    e. Creates `_ml_session` in Redis (5-min TTL, single-use)
  *    f. Redirects to `/interaction/{uid}` where the interaction handler
  *       detects the session cookie and completes the OIDC flow (same
@@ -126,7 +143,7 @@ export function createMagicLinkRouter(): Router {
 async function verifyMagicLink(ctx: AuthContext): Promise<void> {
   const org = ctx.state.organization;
   const tokenPlaintext = ctx.params.token;
-  const interactionUid = (ctx.query.interaction as string) ?? '';
+  const presentedInteraction = parsePresentedInteraction(ctx.query.interaction);
 
   // Resolve locale for error pages
   const locale = await resolveLocale(
@@ -140,10 +157,17 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
     // Step 1: Hash the token for DB lookup
     const tokenHash = hashToken(tokenPlaintext);
 
-    // Step 2: Find valid token
-    const tokenRecord = await findValidToken('magic_link_tokens', tokenHash);
+    // Step 2: Lock and validate all durable authority before any successful mutation.
+    const authority = presentedInteraction.valid
+      ? await consumeAuthorizedMagicLink({
+          tokenHash,
+          organizationId: org.id,
+          interactionUid: presentedInteraction.value,
+          ipAddress: ctx.ip,
+        })
+      : null;
 
-    if (!tokenRecord) {
+    if (!authority) {
       // Token is invalid, expired, or already used
       writeAuditLog({
         organizationId: org.id,
@@ -157,61 +181,28 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
       return;
     }
 
-    // Step 3: Verify the user still exists and is active
-    const user = await getUserById(tokenRecord.userId);
-
-    if (!user || user.status !== 'active') {
-      writeAuditLog({
-        organizationId: org.id,
-        userId: tokenRecord.userId,
-        eventType: 'user.magic_link.failed',
-        eventCategory: 'security',
-        description: 'Magic link verification failed: user not found or inactive',
-        ipAddress: ctx.ip,
-      });
-
-      await renderErrorPageForAuth(ctx, org, locale, t, t('errors.magic_link_expired'));
-      return;
-    }
-
-    // Step 4: Mark token as used (single-use)
-    await markTokenUsed('magic_link_tokens', tokenRecord.id);
-
-    // Step 5: Mark email as verified (clicking magic link proves email ownership)
-    await markEmailVerified(user.id);
-
-    // Step 6: Record login
-    await recordLogin(user.id);
-
-    // Step 7: Audit log
-    writeAuditLog({
-      organizationId: org.id,
-      userId: user.id,
-      eventType: 'user.login.magic_link',
-      eventCategory: 'authentication',
-      description: `Magic link login successful (${user.email})`,
-      ipAddress: ctx.ip,
-    });
+    // The durable transaction has committed. Remove any stale cached account representation.
+    await invalidateUserCache(authority.userId);
 
     // Step 8: Complete the OIDC flow via _ml_session cookie.
     //
     // Create a magic link session and redirect to the interaction handler.
     // The interaction handler will detect the session cookie and complete
     // the OIDC flow (same browser) or show a success page (different browser).
-    if (interactionUid) {
+    if (authority.interactionUid) {
       await createMagicLinkSession(ctx, {
-        userId: user.id,
-        interactionUid,
+        userId: authority.userId,
+        interactionUid: authority.interactionUid,
         organizationId: org.id,
       });
-      ctx.redirect(`/interaction/${interactionUid}`);
+      ctx.redirect(`/interaction/${authority.interactionUid}`);
       return;
     }
 
     // No interaction UID — magic link opened outside an OIDC flow.
     // Show the magic link success page (standalone authentication confirmation).
     logger.info(
-      { userId: user.id },
+      { userId: authority.userId },
       'Magic link verified without interaction UID — showing success page',
     );
     await renderSuccessPageForAuth(ctx, org, locale, t);
