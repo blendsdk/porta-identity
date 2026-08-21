@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 16:13
-> **Progress**: 10/42 tasks (24%)
+> **Last Updated**: 2026-08-21 16:43
+> **Progress**: 11/47 tasks (23%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -29,13 +29,13 @@ to the exec-plan protocol.
 
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
-| 1 | Enumeration-resistant password and recovery work | 11 |
+| 1 | Enumeration-resistant password and recovery work | 16 |
 | 2 | Tenant-bound atomic magic links | 8 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 42 tasks across 5 phases.**
+**Total: 47 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -69,7 +69,12 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.8 Add repository, worker, retry, lease, shutdown, dummy-hash, and redaction implementation tests — `packages/server/tests/unit/auth/recovery-job.impl.test.ts` (completed 2026-08-21 15:39 CEST; focused 2 files/17 tests and structure 70/70 green; `yarn verify` 235 files/3,409 tests green)
 - [x] 1.9a Update affected auth/operator documentation and both roadmaps; run Phase 1 targeted checks and `yarn verify`. (completed 2026-08-21 15:56 CEST; docs build and focused 2 files/17 tests green; `yarn verify` 235 files/3,409 tests green)
 - [x] 1.9b Preserve the exact evidence-bound forwarding-observer continuation in the direct security harness while retaining exit `40`; add dispatcher regression coverage and run Phase 1 targeted checks plus `yarn verify`. (completed 2026-08-21 16:13 CEST; focused dispatcher/admission tests 10/10, Phase 1 tests 17/17, structure 70/70, and `yarn verify` 235 files/3,409 tests green)
-- [ ] 1.9c From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate.
+- [x] 1.9c From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate. (completed 2026-08-21 16:43 CEST; clean run `70c147f6-ed38-4212-843e-f5386b119202` executed functional 7/7, second-factor 4/4, and tenant/admin 17/17 before retaining the registered exit `40`; `yarn verify` 235 files/3,409 tests green; quality review recorded six Major corrections and left Phase 1 open)
+- [ ] 1.9d Correct the immutable ST-01–ST-06 oracle to exercise real password/repository/processor/token/mail boundaries and reconcile ST-05 with bounded at-least-once identical-artifact delivery; record exact RED.
+- [ ] 1.9e Move attempt start accounting to immediately before processing; serialize recovery artifacts per user, suppress superseded job delivery, and bind password-reset GET/POST token lookup to the route organization.
+- [ ] 1.9f Add real concurrent-job, mid-batch crash/reclaim, superseded retry, wrong-tenant reset, and SMTP unknown-outcome implementation tests; run corrected ST-01–ST-06 green.
+- [ ] 1.9g Preserve the documented assurance exit precedence across retained production-exposure and later security-block outcomes, with a complete combination matrix.
+- [ ] 1.9h From the clean committed revision, rerun the production-security human-auth evidence, Phase 1 targeted checks, `yarn verify`, and one bounded quality re-review; close Phase 1 only if no Critical or Major remains.
 
 Deliverable: password and recovery public paths are functionally and structurally non-enumerating;
 timing remains explicitly diagnostic.
@@ -173,7 +178,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 42 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 47 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.

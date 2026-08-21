@@ -30,6 +30,7 @@ features.
 | 03-02 | [Magic-Link Binding](03-02-magic-link-binding.md) | Tenant, interaction, transaction, and Redis binding |
 | 03-03 | [Administrative Data](03-03-administrative-data.md) | Bulk, import, and export contracts |
 | 03-04 | [Security Decisions](03-04-security-decisions.md) | Correlated terminal events and durable audit |
+| 04 | [Phase 1 Quality Review](04-phase-1-quality-review.md) | Independent correctness and security findings |
 | 07 | [Testing Strategy](07-testing-strategy.md) | Immutable specification cases and verification |
 | 99 | [Execution Plan](99-execution-plan.md) | Specification-first implementation tasks |
 
