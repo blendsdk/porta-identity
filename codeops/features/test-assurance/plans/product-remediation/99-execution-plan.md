@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 15:56
-> **Progress**: 9/41 tasks (22%)
+> **Last Updated**: 2026-08-21 16:13
+> **Progress**: 10/42 tasks (24%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -29,13 +29,13 @@ to the exec-plan protocol.
 
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
-| 1 | Enumeration-resistant password and recovery work | 10 |
+| 1 | Enumeration-resistant password and recovery work | 11 |
 | 2 | Tenant-bound atomic magic links | 8 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 41 tasks across 5 phases.**
+**Total: 42 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -68,7 +68,8 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.7 Run ST-01–ST-06 green, including public response and intended/no-op job observations. (completed 2026-08-21 15:24 CEST; live route/scheduler specification 9/9 green, focused lint/type/format/diff checks green, `yarn verify` 234 files/3,401 tests green)
 - [x] 1.8 Add repository, worker, retry, lease, shutdown, dummy-hash, and redaction implementation tests — `packages/server/tests/unit/auth/recovery-job.impl.test.ts` (completed 2026-08-21 15:39 CEST; focused 2 files/17 tests and structure 70/70 green; `yarn verify` 235 files/3,409 tests green)
 - [x] 1.9a Update affected auth/operator documentation and both roadmaps; run Phase 1 targeted checks and `yarn verify`. (completed 2026-08-21 15:56 CEST; docs build and focused 2 files/17 tests green; `yarn verify` 235 files/3,409 tests green)
-- [ ] 1.9b From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate.
+- [x] 1.9b Preserve the exact evidence-bound forwarding-observer continuation in the direct security harness while retaining exit `40`; add dispatcher regression coverage and run Phase 1 targeted checks plus `yarn verify`. (completed 2026-08-21 16:13 CEST; focused dispatcher/admission tests 10/10, Phase 1 tests 17/17, structure 70/70, and `yarn verify` 235 files/3,409 tests green)
+- [ ] 1.9c From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate.
 
 Deliverable: password and recovery public paths are functionally and structurally non-enumerating;
 timing remains explicitly diagnostic.
@@ -172,7 +173,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 41 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 42 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.

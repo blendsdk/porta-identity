@@ -49,7 +49,11 @@ import {
   recordTenantAdminBaseline,
 } from '../baseline/index.js';
 import { isStabilityCommand, runStabilityCampaign } from '../stability/index.js';
-import { runAssuranceAggregate } from '../aggregate/index.js';
+import {
+  admitKnownIncompleteCollector,
+  aggregateChildRegistry,
+  runAssuranceAggregate,
+} from '../aggregate/index.js';
 import {
   AssuranceCleanupError,
   AssuranceSetupError,
@@ -57,9 +61,13 @@ import {
   runFoundationValidation,
 } from './foundation-artifacts.js';
 import { runManagedChild } from './managed-child.js';
-import { shouldRunProductionSecurityBlocks } from './harness-profile-admission.js';
+import {
+  shouldContinueAfterProductionExposure,
+  shouldRunProductionSecurityBlocks,
+} from './harness-profile-admission.js';
 import { matchRedSignature } from './validate-assurance.js';
 import { environmentForManifest } from '../../fixtures/lifecycle-runtime.js';
+import { inspectFoundationProvenance } from './source-provenance.js';
 
 /** Exit code used when a command's owning phase has not installed its handler yet. */
 const setupFailureExit = 30;
@@ -712,7 +720,24 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
         }),
       );
       const productionExposureExit = managedChildExit(productionExposureResult, testFailureExit);
-      if (productionExposureExit !== 0 && productionExposureExit !== 20) {
+      const registeredInvocation = aggregateChildRegistry
+        .flatMap((child) => child.invocations)
+        .find((invocation) => invocation.id === `harness-security-${profile}`);
+      let knownIncompleteAdmitted = false;
+      if (productionExposureExit === 40 && registeredInvocation !== undefined) {
+        try {
+          knownIncompleteAdmitted = admitKnownIncompleteCollector({
+            repositoryRoot: process.cwd(),
+            invocation: registeredInvocation,
+            artifactReference: `test-harness/.assurance-results/${productionExposureActive.lease.manifest.runId}/production-exposure/${profile}/observation.json`,
+            provenance: inspectFoundationProvenance(process.cwd()),
+            cleanupComplete: !productionExposureResult.cleanupFailed,
+          });
+        } catch {
+          knownIncompleteAdmitted = false;
+        }
+      }
+      if (!shouldContinueAfterProductionExposure(productionExposureExit, knownIncompleteAdmitted)) {
         return productionExposureExit;
       }
       retainedProductExit = productionExposureExit;

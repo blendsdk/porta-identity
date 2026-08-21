@@ -244,3 +244,23 @@ capability-then-clean-evidence sequence is already used by the packed-client and
 assurance paths. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: production-exposure evidence adopts an equally
 strict content-addressed snapshot model that supports a dirty primary worktree.
+
+**AR-14 — Direct security-harness continuation after the registered observer gap:** **Authority**:
+AI — delegated by `--auto-design`. **Eligibility**: fail-closed test orchestration that reuses an
+existing evidence-admission rule without changing product behavior, requirements, or outcome
+taxonomy. **Objective**: let the clean production-security command reach its independent human-auth
+blocks while preserving the known forwarding-context observation gap as a non-successful result.
+**Decision**: the direct security invocation may continue after exit `40` only when the existing
+aggregate validator admits the exact `harness-security-production-security` artifact, provenance,
+case set, three registered incomplete cases, missing observations, permissions, and child cleanup.
+The command retains exit `40` after later blocks pass. Split capability implementation from the
+next clean-evidence checkpoint. **Evidence**: clean run
+`d3042114-efb7-41bf-9a89-4846d3fae848` produced only the registered three forwarding observer
+incompletions but the generic direct dispatcher stopped before human-auth execution. **Rejected
+alternative**: continuing after an arbitrary exit `40` could hide a new observer or execution gap.
+**Strongest counterargument**: this extends the continuation to direct execution, but it uses the
+same registered invocation identity and exact validator and can never convert incomplete evidence
+to success. **Confidence**: High. **Hardening**: the aggregate implementation already has focused
+tamper and unknown-incomplete rejection tests; the direct dispatcher adds a closed exit-decision
+test. **Policy version**: 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen
+trigger**: the registered incomplete cases or required observations change.
