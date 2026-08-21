@@ -125,6 +125,7 @@ export default defineConfig({
             LOG_LEVEL: 'fatal',
             SIGNING_KEY_ENCRYPTION_KEY: 'deadbeef'.repeat(8),
             PORTA_ENUMERATION_SPEC_REQUIRED: '1',
+            PORTA_MAGIC_LINK_AUTHORITY_SPEC_REQUIRED: '1',
           },
         },
       },

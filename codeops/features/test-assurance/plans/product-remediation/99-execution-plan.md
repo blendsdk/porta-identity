@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 00:23
-> **Progress**: 22/48 tasks (46%)
+> **Last Updated**: 2026-08-22 00:50
+> **Progress**: 23/48 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -94,7 +94,7 @@ timing remains explicitly diagnostic.
 - [x] 2.3 Extend the ordered migration and token repository with immutable organization/interaction authority and locked conditional consumption — `packages/server/migrations/`, `packages/server/src/auth/token-repository.ts` ✅ (completed: 2026-08-21 23:27 CEST; additive migration 023 preserves legacy rows as explicitly unbound, mandates organization authority for new rows, and adds interaction/index constraints; recovery issuance persists authority; locked lookup and conditional consume APIs added; migration up/down/reapply schema 48/48 green; server test projects now use separate lifecycle processes to prevent shared recovery-worker ownership; sequential server suites passed 238 files/3,431 tests and `yarn verify` passed)
 - [x] 2.4 Implement one verification transaction that validates all authority before token/user/audit mutation — `packages/server/src/routes/magic-link.ts`, supporting repository APIs ✅ (completed: 2026-08-21 23:53 CEST; exact tenant, active-account, and persisted-interaction authority is locked before mutation; token consumption, account verification/login state, and privacy-safe success audit commit atomically; authority mismatch and failed account mutation roll back; focused spec/unit 42/42, public magic-link E2E 6/6, lint/typecheck, and `yarn verify` passed 238 files/3,434 tests)
 - [x] 2.5 Implement tenant/interaction-bound atomic Redis continuation consume and interaction-side authority derivation — `packages/server/src/auth/magic-link-session.ts`, `packages/server/src/routes/interactions.ts` ✅ (completed: 2026-08-22 00:23 CEST; one Lua decision compares the provider-owned interaction tenant and continuation tenant/interaction before deleting, mismatches preserve key and cookie, and issuance rejects route/provider/client-tenant disagreement; focused unit/spec 54/54, service-backed enumeration 9/9, public magic-link E2E 6/6, lint/typecheck, and corrected `yarn verify` passed 238 files/3,437 tests)
-- [ ] 2.6 Run ST-07–ST-13 green through unit, integration, and public Alpha/Bravo boundaries.
+- [x] 2.6 Run ST-07–ST-13 green through unit, integration, and public Alpha/Bravo boundaries. ✅ (completed: 2026-08-22 00:50 CEST; unchanged unit oracle 3/3, service-backed PostgreSQL/Redis/MailHog integration 7/7, and public magic-link E2E 6/6 green; retained server inventory 240 files and `yarn verify` passed)
 - [ ] 2.7 Add transaction rollback, post-commit Redis failure, Lua concurrency, expiry, and privacy implementation tests — `packages/server/tests/unit/auth/magic-link-binding.impl.test.ts`
 - [ ] 2.8 Run Phase 2 targeted/human-auth/pentest checks, `yarn verify`, and update magic-link/API/architecture documentation.
 
