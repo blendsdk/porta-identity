@@ -124,6 +124,7 @@ export default defineConfig({
             NODE_ENV: 'test',
             LOG_LEVEL: 'fatal',
             SIGNING_KEY_ENCRYPTION_KEY: 'deadbeef'.repeat(8),
+            PORTA_ENUMERATION_SPEC_REQUIRED: '1',
           },
         },
       },

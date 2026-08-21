@@ -1,5 +1,6 @@
 import type { EnumerationResistanceCapability } from './enumeration-resistance-contract.js';
 import { ENUMERATION_RESISTANCE_CAPABILITY_MISSING } from './enumeration-resistance-contract.js';
+import { ProductionEnumerationResistanceDriver } from './enumeration-resistance-production-driver.js';
 
 /**
  * Test-owned swappable boundary for the immutable enumeration specifications.
@@ -9,6 +10,13 @@ import { ENUMERATION_RESISTANCE_CAPABILITY_MISSING } from './enumeration-resista
  * simulation cannot satisfy this admission point.
  */
 export function getEnumerationResistanceCapability(): EnumerationResistanceCapability {
+  if (process.env.PORTA_ENUMERATION_SPEC_REQUIRED === '1') {
+    return Object.freeze({
+      available: true,
+      evidenceBoundary: 'production-services',
+      createDriver: async () => new ProductionEnumerationResistanceDriver(),
+    });
+  }
   return Object.freeze({
     available: false,
     reason: ENUMERATION_RESISTANCE_CAPABILITY_MISSING,

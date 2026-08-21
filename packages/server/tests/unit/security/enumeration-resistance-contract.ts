@@ -184,7 +184,7 @@ export interface PasswordVerificationObservation {
   readonly algorithm: 'argon2id';
   /** Opaque fixture classification of the hash passed to the verifier. */
   readonly hashSource: 'account' | 'dummy';
-  /** Verifier result, including deliberately forced dummy matches. */
+  /** Authentication-eligible result returned by the production verifier. */
   readonly matched: boolean;
 }
 

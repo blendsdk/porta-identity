@@ -171,13 +171,12 @@ if (capability.available) {
       });
     });
 
-    it('prevents a matching dummy verification from authenticating an absent identity', async () => {
+    it('keeps the production dummy-verification path without authentication authority', async () => {
       await withDriver(async (driver) => {
         const absent = await driver.reset('absent');
         const absentAction = await driver.submitPassword({
           fixture: absent,
           password: 'fixture-valid',
-          forceDummyMatch: true,
         });
         const absentObserved = observationsForAction(await driver.observe(), absentAction.actionId);
 
@@ -185,7 +184,7 @@ if (capability.available) {
         expect(absentObserved.passwordVerifications[0]).toMatchObject({
           algorithm: 'argon2id',
           hashSource: 'dummy',
-          matched: true,
+          matched: false,
         });
         expectNoAuthenticationEffects(absentObserved);
 
