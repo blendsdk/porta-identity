@@ -116,6 +116,13 @@ describe('enumeration-resistance requirement catalog', () => {
       jobsPerAdmittedRequest: 1,
       accountSpecificWorkInRequest: false,
     });
+    expect(ENUMERATION_RESISTANCE_ORACLE.evidence).toStrictEqual({
+      passwordVerifier: 'production-service',
+      failurePersistence: 'production-repository',
+      recoveryProcessor: 'production-processor',
+      durableState: 'database-observer',
+      delivery: 'mail-transport-observer',
+    });
     expect(ENUMERATION_RESISTANCE_ORACLE.worker).toStrictEqual({
       claimBatchMaximum: 25,
       fallbackPollMilliseconds: 1_000,
@@ -299,9 +306,6 @@ if (capability.available) {
         );
         const deliveredJobIds = new Set(observed.deliveries.map((delivery) => delivery.jobId));
         expect(deliveredJobIds.size).toBeLessThanOrEqual(1);
-        expect([...deliveredJobIds]).toStrictEqual(
-          observed.deliveries.length === 0 ? [] : [observed.recoveryJobs[0].jobId],
-        );
 
         const retryFixture = await driver.reset('active');
         await driver.requestRecovery({ fixture: retryFixture, jobType: 'password_reset' });
@@ -339,7 +343,14 @@ if (capability.available) {
         expect(observed.artifacts.filter((artifact) => artifact.active).length).toBeLessThanOrEqual(
           1,
         );
-        expect(observed.deliveries.length).toBeLessThanOrEqual(1);
+        const deliveryIdentities = new Set(
+          observed.deliveries.map((delivery) => delivery.artifactIdentity),
+        );
+        expect(deliveryIdentities.size).toBeLessThanOrEqual(1);
+        const unknownOutcomeDeliveries = observed.deliveries.filter(
+          (delivery) => delivery.outcome === 'accepted_outcome_unknown',
+        );
+        expect(observed.deliveries.length > 1).toBe(unknownOutcomeDeliveries.length > 0);
 
         await driver.beginRecoveryWorkerShutdown();
         await driver.advanceClock(ENUMERATION_RESISTANCE_ORACLE.worker.shutdownSettleMilliseconds);

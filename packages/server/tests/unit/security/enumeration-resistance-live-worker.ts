@@ -244,7 +244,12 @@ export class EnumerationLiveWorkerDriver {
             this.artifacts.push({ jobId: job.id, jobType: job.jobType, active: true });
           }
           if (!this.deliveries.some((delivery) => delivery.jobId === job.id)) {
-            this.deliveries.push({ jobId: job.id, jobType: job.jobType });
+            this.deliveries.push({
+              jobId: job.id,
+              jobType: job.jobType,
+              artifactIdentity: `synthetic:${job.id}`,
+              outcome: 'accepted',
+            });
           }
           return 'completed';
         },

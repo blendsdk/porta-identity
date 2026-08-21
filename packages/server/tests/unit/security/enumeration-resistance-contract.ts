@@ -53,6 +53,19 @@ export interface EnumerationResistanceOracle {
     /** Whether account-specific work may complete in the public request. */
     readonly accountSpecificWorkInRequest: false;
   };
+  /** Production boundaries from which behavioral evidence must be observed. */
+  readonly evidence: {
+    /** Password verification uses the product Argon2id service. */
+    readonly passwordVerifier: 'production-service';
+    /** Failure accounting uses the product repository transaction. */
+    readonly failurePersistence: 'production-repository';
+    /** Recovery processing uses the concrete account-recovery processor. */
+    readonly recoveryProcessor: 'production-processor';
+    /** Jobs and artifacts are observed from durable persistence. */
+    readonly durableState: 'database-observer';
+    /** Delivery is observed at the real mail-transport boundary. */
+    readonly delivery: 'mail-transport-observer';
+  };
   /** Fixed recovery-worker lifecycle and retry bounds. */
   readonly worker: {
     /** Maximum jobs claimed by one worker pass. */
@@ -99,6 +112,13 @@ export const ENUMERATION_RESISTANCE_ORACLE = Object.freeze({
   recoveryRequest: {
     jobsPerAdmittedRequest: 1,
     accountSpecificWorkInRequest: false,
+  },
+  evidence: {
+    passwordVerifier: 'production-service',
+    failurePersistence: 'production-repository',
+    recoveryProcessor: 'production-processor',
+    durableState: 'database-observer',
+    delivery: 'mail-transport-observer',
   },
   worker: {
     claimBatchMaximum: 25,
@@ -220,6 +240,10 @@ export interface DeliveryObservation {
   readonly jobId: string;
   /** Recovery operation represented by the delivery. */
   readonly jobType: RecoveryJobType;
+  /** Domain-separated digest identifying the delivered artifact without retaining it. */
+  readonly artifactIdentity: string;
+  /** Observed SMTP outcome for this physical delivery. */
+  readonly outcome: 'accepted' | 'accepted_outcome_unknown';
 }
 
 /** Privacy-safe worker lifecycle event captured from operational output. */
@@ -326,6 +350,8 @@ export interface EnumerationResistanceSpecDriver {
 export interface LiveEnumerationResistanceCapability {
   /** Discriminator admitting behavioral specification execution. */
   readonly available: true;
+  /** Fixed admission marker excluding a test-owned behavioral simulation. */
+  readonly evidenceBoundary: 'production-services';
   /** Create an isolated driver instance. */
   createDriver(): Promise<EnumerationResistanceSpecDriver>;
 }

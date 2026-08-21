@@ -1,15 +1,16 @@
 import type { EnumerationResistanceCapability } from './enumeration-resistance-contract.js';
-import { LiveEnumerationResistanceDriver } from './enumeration-resistance-live-driver.js';
+import { ENUMERATION_RESISTANCE_CAPABILITY_MISSING } from './enumeration-resistance-contract.js';
 
 /**
  * Test-owned swappable boundary for the immutable enumeration specifications.
  *
- * A live adapter is backed by public Koa requests and independent dependency/state observers. An
- * unavailable adapter exposes no driver and therefore cannot fabricate evidence.
+ * The adapter stays unavailable until public handlers, production services, durable repositories,
+ * and the real mail-transport boundary are wired to independent observers. A test-owned behavior
+ * simulation cannot satisfy this admission point.
  */
 export function getEnumerationResistanceCapability(): EnumerationResistanceCapability {
   return Object.freeze({
-    available: true,
-    createDriver: async () => new LiveEnumerationResistanceDriver(),
+    available: false,
+    reason: ENUMERATION_RESISTANCE_CAPABILITY_MISSING,
   });
 }
