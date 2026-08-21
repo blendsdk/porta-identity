@@ -55,6 +55,14 @@ vi.mock('../../../src/auth/recovery-service.js', () => ({
   enqueueAccountRecovery: vi.fn().mockResolvedValue({ inserted: true, job: {} }),
 }));
 
+vi.mock('../../../src/organizations/service.js', () => ({
+  getOrganizationById: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/redis.js', () => ({
+  getRedis: vi.fn().mockReturnValue({ get: vi.fn().mockResolvedValue(null) }),
+}));
+
 vi.mock('../../../src/auth/i18n.js', () => ({
   resolveLocale: vi.fn().mockResolvedValue('en'),
   getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
@@ -122,6 +130,9 @@ import * as csrf from '../../../src/auth/csrf.js';
 import * as rateLimiter from '../../../src/auth/rate-limiter.js';
 import * as emailService from '../../../src/auth/email-service.js';
 import * as recoveryService from '../../../src/auth/recovery-service.js';
+import * as organizationService from '../../../src/organizations/service.js';
+import { getRedis } from '../../../src/lib/redis.js';
+import * as magicLinkSession from '../../../src/auth/magic-link-session.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as userService from '../../../src/users/service.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
@@ -202,7 +213,7 @@ function createMockProvider() {
       find: vi.fn().mockResolvedValue({
         metadata: () => ({
           client_name: 'Test App',
-          organizationId: undefined, // third-party by default
+          organizationId: 'org-uuid-1',
           // Default to null (inherit from org) — enforcement tests override
           // this to ['password'] or ['magic_link'] to exercise the guards.
           'urn:porta:login_methods': null,
@@ -320,6 +331,8 @@ describe('interaction routes', () => {
       windowSeconds: 600,
     });
     vi.mocked(templateEngine.renderPage).mockResolvedValue('<html>rendered</html>');
+    vi.mocked(magicLinkSession.hasMagicLinkSession).mockReturnValue(false);
+    vi.mocked(magicLinkSession.consumeMagicLinkSession).mockResolvedValue(null);
     vi.mocked(userService.prepareUserForPasswordLogin).mockImplementation((organizationId, email) =>
       userService.getUserByEmail(organizationId, email),
     );
@@ -330,6 +343,35 @@ describe('interaction routes', () => {
   // =========================================================================
 
   describe('GET /:uid — showLogin', () => {
+    it('should consume continuation only with provider-recorded tenant and route interaction', async () => {
+      const redis = getRedis();
+      vi.mocked(redis.get).mockResolvedValue('org-uuid-1');
+      vi.mocked(organizationService.getOrganizationById).mockResolvedValue(createMockOrg());
+      vi.mocked(magicLinkSession.hasMagicLinkSession).mockReturnValue(true);
+      vi.mocked(magicLinkSession.consumeMagicLinkSession).mockResolvedValue({
+        userId: 'user-uuid-1',
+        organizationId: 'org-uuid-1',
+        interactionUid: 'interaction-uid-123',
+      });
+      const provider = createMockProvider();
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(magicLinkSession.consumeMagicLinkSession).toHaveBeenCalledWith(ctx, {
+        organizationId: 'org-uuid-1',
+        interactionUid: 'interaction-uid-123',
+      });
+      expect(provider.interactionFinished).toHaveBeenCalledWith(
+        ctx.req,
+        ctx.res,
+        { login: { accountId: 'user-uuid-1' } },
+        { mergeWithLastSubmission: false },
+      );
+    });
+
     it('should render login page with branding and CSRF token', async () => {
       const provider = createMockProvider();
       const router = createInteractionRouter(provider as never);
@@ -358,6 +400,13 @@ describe('interaction routes', () => {
 
     it('should handle consent prompt by calling showConsent directly', async () => {
       const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'Third-Party App',
+          organizationId: undefined,
+          'urn:porta:login_methods': null,
+        }),
+      });
       provider.interactionDetails.mockResolvedValue(
         createMockInteraction({
           prompt: {
@@ -829,6 +878,42 @@ describe('interaction routes', () => {
         'magic-link-sent',
         expect.objectContaining({ email: 'user@test.com' }),
       );
+    });
+
+    it('should reject before enqueue when the route UID differs from provider authority', async () => {
+      const provider = createMockProvider();
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/magic-link');
+      const ctx = createMockCtx({
+        params: { uid: 'interaction-route-changed' },
+        body: { email: 'user@test.com', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(400);
+      expect(recoveryService.enqueueAccountRecovery).not.toHaveBeenCalled();
+    });
+
+    it('should reject before enqueue when the provider client belongs to another tenant', async () => {
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValueOnce({
+        metadata: () => ({
+          client_name: 'Foreign App',
+          organizationId: 'org-uuid-foreign',
+          'urn:porta:login_methods': ['magic_link'],
+        }),
+      });
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/magic-link');
+      const ctx = createMockCtx({
+        body: { email: 'user@test.com', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(400);
+      expect(recoveryService.enqueueAccountRecovery).not.toHaveBeenCalled();
     });
 
     it('should show check-email page even when user not found (enumeration prevention)', async () => {

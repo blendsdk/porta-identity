@@ -56,6 +56,7 @@ import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
 import type { Organization } from '../organizations/types.js';
 import { hasMagicLinkSession, consumeMagicLinkSession } from '../auth/magic-link-session.js';
+import type { MagicLinkSessionAuthority } from '../auth/magic-link-session.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
 import { purgeExpired } from '../oidc/postgres-adapter.js';
@@ -295,6 +296,64 @@ export async function resolveOrganizationForInteraction(
   ctx.state.organization = org;
 }
 
+/** Authority and branding resolved from the interaction record written by the OIDC provider. */
+interface MagicLinkContinuationAuthority {
+  /** Exact tenant and interaction input for atomic Redis consumption. */
+  readonly authority: MagicLinkSessionAuthority;
+  /** Active organization used only after the stored continuation matches. */
+  readonly organization: Organization;
+}
+
+/**
+ * Resolve continuation authority independently from the magic-link session value.
+ *
+ * The provider writes this tenant mapping when it creates the interaction. A missing, expired, or
+ * malformed mapping cannot authorize consumption and leaves the short-lived session untouched.
+ *
+ * @param interactionUid - Exact interaction selected by the public route.
+ * @returns Active interaction authority, or null when it cannot be proven.
+ */
+async function resolveMagicLinkContinuationAuthority(
+  interactionUid: string,
+): Promise<MagicLinkContinuationAuthority | null> {
+  if (interactionUid.length < 1 || interactionUid.length > 128) return null;
+  const organizationId = await getRedis().get(`interaction:org:${interactionUid}`);
+  if (!organizationId) return null;
+  const organization = await getOrganizationById(organizationId);
+  if (!organization || organization.status !== 'active') return null;
+  return { authority: { organizationId, interactionUid }, organization };
+}
+
+/**
+ * Derive recovery-job authority from the provider interaction and its persisted client owner.
+ *
+ * @param routeInteractionUid - Interaction selected by the route.
+ * @param interactionUid - Interaction identifier returned by oidc-provider.
+ * @param clientIdValue - Client identifier returned by oidc-provider.
+ * @param clientOrganizationIdValue - Tenant metadata returned by the admitted provider client.
+ * @param organization - Tenant resolved for the interaction.
+ * @returns Exact job authority, or null when route, provider, client, and tenant do not agree.
+ */
+function deriveMagicLinkRecoveryAuthority(
+  routeInteractionUid: string,
+  interactionUid: string,
+  clientIdValue: unknown,
+  clientOrganizationIdValue: unknown,
+  organization: Organization,
+): { readonly organizationId: string; readonly interactionUid: string } | null {
+  if (
+    routeInteractionUid !== interactionUid ||
+    interactionUid.length < 1 ||
+    interactionUid.length > 128 ||
+    typeof clientIdValue !== 'string' ||
+    clientIdValue.length < 1 ||
+    clientOrganizationIdValue !== organization.id
+  ) {
+    return null;
+  }
+  return { organizationId: organization.id, interactionUid };
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -413,11 +472,13 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
   // Magic link session detection
   // -----------------------------------------------------------------------
   if (hasMagicLinkSession(ctx)) {
-    const session = await consumeMagicLinkSession(ctx);
+    const continuationAuthority = await resolveMagicLinkContinuationAuthority(ctx.params.uid);
+    const session = continuationAuthority
+      ? await consumeMagicLinkSession(ctx, continuationAuthority.authority)
+      : null;
 
-    if (session) {
-      // Resolve organization from the session data for branding
-      const org = await getOrganizationById(session.organizationId);
+    if (session && continuationAuthority) {
+      const org = continuationAuthority.organization;
 
       // Try to complete the OIDC flow (same browser — interaction cookies present)
       try {
@@ -437,12 +498,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
           'Magic link: interaction cookies not present — showing success page (cross-browser)',
         );
 
-        if (org) {
-          await renderMagicLinkSuccessPage(ctx, org);
-        } else {
-          // Fallback: org not found (shouldn't happen, but be safe)
-          await renderErrorPage(ctx, 'errors.generic');
-        }
+        await renderMagicLinkSuccessPage(ctx, org);
         return;
       }
     }
@@ -956,6 +1012,29 @@ async function handleSendMagicLink(
       return;
     }
 
+    const recoveryAuthority = deriveMagicLinkRecoveryAuthority(
+      ctx.params.uid,
+      interaction.uid,
+      interaction.params.client_id,
+      oidcClientForMagicLink?.metadata().organizationId,
+      org,
+    );
+    if (!recoveryAuthority) {
+      logger.warn({ event: 'magic_link_authority_rejected' }, 'Magic link authority rejected');
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.interaction_expired'),
+        400,
+        dependencies,
+      );
+      return;
+    }
+
     // Check rate limit for magic link requests
     const rateLimitKey = dependencies.buildMagicLinkRateLimitKey(org.id, email);
     const rateLimitConfig = await dependencies.loadMagicLinkRateLimitConfig();
@@ -989,9 +1068,9 @@ async function handleSendMagicLink(
     try {
       await dependencies.enqueueAccountRecovery({
         jobType: 'magic_link',
-        organizationId: org.id,
+        organizationId: recoveryAuthority.organizationId,
         email,
-        interactionUid: interaction.uid,
+        interactionUid: recoveryAuthority.interactionUid,
         actionNonce: submittedCsrf,
       });
     } catch {

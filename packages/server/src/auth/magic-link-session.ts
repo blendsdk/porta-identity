@@ -22,7 +22,7 @@
  *   ctx.redirect(`/interaction/${interactionUid}`);
  *
  *   // In login handler (detecting session):
- *   const session = await consumeMagicLinkSession(ctx);
+ *   const session = await consumeMagicLinkSession(ctx, { organizationId, interactionUid });
  *   if (session) { interactionFinished(ctx, { login: { accountId: session.userId } }); }
  */
 
@@ -47,6 +47,37 @@ const ML_SESSION_TTL = 300;
 /** Session token length in bytes (32 bytes = 64 hex chars) */
 const SESSION_TOKEN_BYTES = 32;
 
+/**
+ * Atomically compare continuation authority and consume exactly one matching Redis value.
+ *
+ * Mismatches deliberately preserve the key so the legitimate tenant and interaction can retry.
+ * Invalid stored data is not returned and remains bounded by the original five-minute TTL.
+ */
+const CONSUME_MATCHING_SESSION_SCRIPT = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+  return -2
+end
+local interactionOrganizationId = redis.call('GET', KEYS[2])
+if not interactionOrganizationId or interactionOrganizationId ~= ARGV[1] then
+  return 0
+end
+local decoded, session = pcall(cjson.decode, raw)
+if not decoded or type(session) ~= 'table' then
+  return -1
+end
+if type(session.userId) ~= 'string' or session.userId == '' or
+   type(session.interactionUid) ~= 'string' or session.interactionUid == '' or
+   type(session.organizationId) ~= 'string' or session.organizationId == '' then
+  return -1
+end
+if session.organizationId ~= ARGV[1] or session.interactionUid ~= ARGV[2] then
+  return 0
+end
+redis.call('DEL', KEYS[1])
+return raw
+`;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -59,6 +90,14 @@ export interface MagicLinkSessionData {
   interactionUid: string;
   /** Organization ID (for branding on success page) */
   organizationId: string;
+}
+
+/** Independently derived authority required to consume one continuation. */
+export interface MagicLinkSessionAuthority {
+  /** Organization recorded by the validated OIDC interaction. */
+  readonly organizationId: string;
+  /** Exact interaction identifier selected by the public route. */
+  readonly interactionUid: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,10 +134,7 @@ export async function createMagicLinkSession(
     overwrite: true,
   });
 
-  logger.debug(
-    { interactionUid: data.interactionUid, userId: data.userId },
-    'Created magic link session',
-  );
+  logger.debug('Created tenant-bound magic link session');
 }
 
 // ---------------------------------------------------------------------------
@@ -108,53 +144,63 @@ export async function createMagicLinkSession(
 /**
  * Consume a magic link session — read and delete in one atomic operation.
  *
- * Reads the `_ml_session` cookie, looks up the session in Redis, deletes
- * the Redis key (single-use), and clears the cookie. Returns the session
- * data if valid, or null if expired/missing/invalid.
+ * Reads the `_ml_session` cookie and asks Redis to compare the stored tenant and interaction before
+ * deleting the key. The Lua operation makes the compare-and-delete decision single-use under
+ * concurrency. A mismatch preserves both the Redis value and cookie for one legitimate retry.
  *
  * @param ctx - Koa context (for cookie reading/clearing)
+ * @param authority - Tenant and interaction independently derived from the live OIDC interaction.
  * @returns Session data if valid, null otherwise
  */
 export async function consumeMagicLinkSession(
   ctx: Context,
+  authority: MagicLinkSessionAuthority,
 ): Promise<MagicLinkSessionData | null> {
   const token = ctx.cookies.get(ML_SESSION_COOKIE);
   if (!token) return null;
+  if (!authority.organizationId || !authority.interactionUid) return null;
 
   const redis = getRedis();
   const key = `${ML_SESSION_PREFIX}${token}`;
-
-  // Atomic get-and-delete: read the value then delete
-  const raw = await redis.get(key);
-  if (!raw) {
-    // Session expired or already consumed
+  const interactionAuthorityKey = `interaction:org:${authority.interactionUid}`;
+  const result = await redis.eval(
+    CONSUME_MATCHING_SESSION_SCRIPT,
+    2,
+    key,
+    interactionAuthorityKey,
+    authority.organizationId,
+    authority.interactionUid,
+  );
+  if (result === 0) return null;
+  if (typeof result !== 'string') {
     clearMagicLinkSessionCookie(ctx);
     return null;
   }
-
-  // Delete immediately — single-use enforcement
-  await redis.del(key);
-
-  // Clear the cookie
   clearMagicLinkSessionCookie(ctx);
 
   try {
-    const data = JSON.parse(raw) as MagicLinkSessionData;
+    const parsed: unknown = JSON.parse(result);
 
-    // Validate required fields
-    if (!data.userId || !data.interactionUid || !data.organizationId) {
-      logger.warn({ data }, 'Invalid magic link session data — missing required fields');
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed) ||
+      typeof Reflect.get(parsed, 'userId') !== 'string' ||
+      typeof Reflect.get(parsed, 'interactionUid') !== 'string' ||
+      typeof Reflect.get(parsed, 'organizationId') !== 'string'
+    ) {
+      logger.warn('Invalid magic link session data');
       return null;
     }
-
-    logger.debug(
-      { interactionUid: data.interactionUid, userId: data.userId },
-      'Consumed magic link session',
-    );
-
+    const data: MagicLinkSessionData = {
+      userId: Reflect.get(parsed, 'userId'),
+      interactionUid: Reflect.get(parsed, 'interactionUid'),
+      organizationId: Reflect.get(parsed, 'organizationId'),
+    };
+    logger.debug('Consumed tenant-bound magic link session');
     return data;
-  } catch (parseError) {
-    logger.warn({ parseError }, 'Failed to parse magic link session data');
+  } catch {
+    logger.warn('Failed to parse magic link session data');
     return null;
   }
 }
@@ -188,4 +234,3 @@ export function clearMagicLinkSessionCookie(ctx: Context): void {
     overwrite: true,
   });
 }
-
