@@ -66,10 +66,10 @@ construction after the product behavior is green.
 
 | Type | Planned files | Cases |
 | --- | --- | --- |
-| Specification | `packages/server/tests/spec/enumeration-resistance.spec.test.ts` | ST-01–ST-06 |
-| Specification | `packages/server/tests/spec/magic-link-tenant-binding.spec.test.ts` | ST-07–ST-13 |
-| Specification | `packages/server/tests/spec/administrative-data-contract.spec.test.ts` | ST-14–ST-24 |
-| Specification | `packages/server/tests/spec/security-decision-event.spec.test.ts` | ST-25–ST-30 |
+| Specification | `packages/server/tests/unit/security/enumeration-resistance.spec.test.ts` | ST-01–ST-06 |
+| Specification | `packages/server/tests/unit/auth/magic-link-tenant-binding.spec.test.ts` | ST-07–ST-13 |
+| Specification | `packages/server/tests/unit/admin/administrative-data-contract.spec.test.ts` | ST-14–ST-24 |
+| Specification | `packages/server/tests/unit/security/security-decision-event.spec.test.ts` | ST-25–ST-30 |
 | Implementation | Concern-specific `*.impl.test.ts` files beside existing unit/integration projects | Repository, transaction, worker, Lua, redaction, and failure internals |
 | Black box | Existing retained harness human-auth/P1/security projects | Public response, cross-tenant, MailHog, packed client, and log observations |
 

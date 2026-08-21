@@ -169,3 +169,26 @@ all deployments; configuration can be separately authorized after operational ev
 reduced to a small batch and finite schedule after considering recovery storms. **Policy version**:
 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: measured production
 load or SMTP latency exceeds the bounded policy without abuse.
+
+**AR-10 — Specification-driver admission:** **Authority**: AI — delegated by `--auto-design`.
+**Eligibility**: test architecture needed to observe the already-approved behavior; no product,
+security, or compatibility outcome changes. **Objective**: preserve an honest specification-first
+RED checkpoint even though the current route factories expose no dependency/observation boundary
+for password operation counts or recovery-job lifecycle facts. **Decision**: keep the immutable
+specification and its broad observation contract under the existing server unit project. A
+test-owned adapter initially reports the capability unavailable and may never synthesize evidence.
+The ordinary lane always validates the scenario/oracle catalog; the isolated RED command requires
+the capability and fails with one registered marker. Once a live adapter exists, ordinary runs
+automatically execute every behavioral case, so there is no permanent skip or synthetic fallback.
+The adapter must drive public Koa boundaries and use independent spies or owned database, mail, and
+worker-state observers. **Evidence**: the current factories expose only routers/providers and no
+stable way to observe the approved operation counts, job claims, leases, retries, or timing-policy
+metadata without implementation-derived module mocks. **Rejected alternatives**: a nonexistent
+static import is a collection failure, private-module mocks couple the oracle to implementation,
+and an always-skipped spec can never become a required regression test. **Strongest
+counterargument**: conditional capability admission can hide tests; automatic behavioral
+registration as soon as the adapter is live plus an explicit required-mode RED prevents that.
+**Confidence**: High. **Hardening**: the independent spec author stopped rather than fabricate an
+oracle and proposed the same swappable driver boundary. **Policy version**: 1. **Root Invocation
+ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: ordinary public route factories expose all
+required observations directly before the adapter is implemented.
