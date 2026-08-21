@@ -12,8 +12,10 @@ import { logger } from '../lib/logger.js';
 import {
   RECOVERY_JOB_ATTEMPT_LIMIT,
   RECOVERY_JOB_CLAIM_LIMIT,
+  type ClaimRecoveryJobsInput,
   type ClaimedRecoveryJob,
-  type RecoveryJobRepository,
+  type FinishRecoveryJobInput,
+  type RetryRecoveryJobInput,
 } from './recovery-job-repository.js';
 
 /** Poll interval used when no enqueue wake-up arrives. */
@@ -29,14 +31,30 @@ export const RECOVERY_WORKER_SHUTDOWN_MILLISECONDS = 30_000;
 export const RECOVERY_WORKER_RETRY_DELAYS_MILLISECONDS = [1_000, 10_000, 60_000, 300_000] as const;
 
 /** Closed privacy-safe worker failure reasons. */
-export type RecoveryWorkerFailureReason =
-  | 'database_unavailable'
-  | 'smtp_unavailable'
-  | 'smtp_outcome_unknown'
-  | 'invalid_protected_input'
-  | 'template_unavailable'
-  | 'lease_exhausted'
-  | 'processing_failed';
+export const RECOVERY_WORKER_FAILURE_REASONS = [
+  'database_unavailable',
+  'smtp_unavailable',
+  'smtp_outcome_unknown',
+  'invalid_protected_input',
+  'template_unavailable',
+  'lease_exhausted',
+  'processing_failed',
+] as const;
+
+/** Privacy-safe reason accepted by recovery retry and terminal transitions. */
+export type RecoveryWorkerFailureReason = (typeof RECOVERY_WORKER_FAILURE_REASONS)[number];
+
+/** Durable transitions required by the worker scheduler. */
+export interface RecoveryWorkerRepository {
+  /** Atomically claim one bounded available or expired-lease batch. */
+  claimAvailable(input: ClaimRecoveryJobsInput): Promise<readonly ClaimedRecoveryJob[]>;
+  /** Return an owned transient failure to the queue. */
+  scheduleRetry(input: RetryRecoveryJobInput): Promise<boolean>;
+  /** Complete an owned claim. */
+  markCompleted(input: FinishRecoveryJobInput): Promise<boolean>;
+  /** Terminally close an owned claim. */
+  markTerminalFailure(input: FinishRecoveryJobInput): Promise<boolean>;
+}
 
 /** Result returned by account-specific recovery processing. */
 export type RecoveryJobProcessingResult = 'completed' | 'no_op';
@@ -91,7 +109,7 @@ export type RecoveryWorkerObserver = (event: RecoveryWorkerEvent) => void;
 /** Construction dependencies for a recovery worker. */
 export interface RecoveryWorkerOptions {
   /** Durable repository used for every ownership transition. */
-  readonly repository: RecoveryJobRepository;
+  readonly repository: RecoveryWorkerRepository;
   /** Account-specific processor. */
   readonly processor: RecoveryJobProcessor;
   /** Stable worker-process UUID; defaults to a fresh UUID. */
@@ -143,7 +161,7 @@ export function createRecoveryWorker(options: RecoveryWorkerOptions): RecoveryWo
 /** Single-flight scheduler for durable recovery work. */
 export class RecoveryWorker {
   /** Durable transition repository. */
-  protected readonly repository: RecoveryJobRepository;
+  protected readonly repository: RecoveryWorkerRepository;
 
   /** Account-specific processing boundary. */
   protected readonly processor: RecoveryJobProcessor;

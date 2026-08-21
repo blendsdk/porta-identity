@@ -76,6 +76,70 @@ interface InteractionContext extends Context {
   };
 }
 
+/** Injectable boundaries used by enumeration-sensitive interaction handlers. */
+export interface EnumerationSensitiveInteractionDependencies {
+  /** Read the request's CSRF cookie. */
+  readonly getCsrfFromCookie: typeof getCsrfFromCookie;
+  /** Verify the submitted CSRF value. */
+  readonly verifyCsrfToken: typeof verifyCsrfToken;
+  /** Generate a response CSRF value. */
+  readonly generateCsrfToken: typeof generateCsrfToken;
+  /** Set the response CSRF cookie. */
+  readonly setCsrfCookie: typeof setCsrfCookie;
+  /** Build a tenant/IP/address login-rate key. */
+  readonly buildLoginRateLimitKey: typeof buildLoginRateLimitKey;
+  /** Build a tenant/address magic-link-rate key. */
+  readonly buildMagicLinkRateLimitKey: typeof buildMagicLinkRateLimitKey;
+  /** Load the configured login limit. */
+  readonly loadLoginRateLimitConfig: typeof loadLoginRateLimitConfig;
+  /** Load the configured magic-link limit. */
+  readonly loadMagicLinkRateLimitConfig: typeof loadMagicLinkRateLimitConfig;
+  /** Apply one admitted rate-limit operation. */
+  readonly checkRateLimit: typeof checkRateLimit;
+  /** Clear the successful-login rate-limit state. */
+  readonly resetRateLimit: typeof resetRateLimit;
+  /** Resolve a locale without exposing identity state. */
+  readonly resolveLocale: typeof resolveLocale;
+  /** Resolve the page translation function. */
+  readonly getTranslationFunction: typeof getTranslationFunction;
+  /** Render a public HTML response. */
+  readonly renderPage: typeof renderPage;
+  /** Resolve the account and fixed cooldown work. */
+  readonly prepareUserForPasswordLogin: typeof prepareUserForPasswordLogin;
+  /** Perform exactly one account or dummy Argon2id verification. */
+  readonly verifyLoginPassword: typeof verifyLoginPassword;
+  /** Execute the fixed-shape rejected-login operation. */
+  readonly recordPasswordFailure: typeof recordPasswordFailure;
+  /** Record a successful eligible login. */
+  readonly recordLogin: typeof recordLogin;
+  /** Durably enqueue account-independent recovery work. */
+  readonly enqueueAccountRecovery: typeof enqueueAccountRecovery;
+  /** Write a privacy-safe audit event. */
+  readonly writeAuditLog: typeof writeAuditLog;
+}
+
+const defaultEnumerationDependencies: EnumerationSensitiveInteractionDependencies = {
+  getCsrfFromCookie,
+  verifyCsrfToken,
+  generateCsrfToken,
+  setCsrfCookie,
+  buildLoginRateLimitKey,
+  buildMagicLinkRateLimitKey,
+  loadLoginRateLimitConfig,
+  loadMagicLinkRateLimitConfig,
+  checkRateLimit,
+  resetRateLimit,
+  resolveLocale,
+  getTranslationFunction,
+  renderPage,
+  prepareUserForPasswordLogin,
+  verifyLoginPassword,
+  recordPasswordFailure,
+  recordLogin,
+  enqueueAccountRecovery,
+  writeAuditLog,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -169,8 +233,9 @@ async function renderAndRespond(
   pageName: string,
   context: TemplateContext,
   statusCode = 200,
+  renderer: typeof renderPage = renderPage,
 ): Promise<void> {
-  const html = await renderPage(pageName, context);
+  const html = await renderer(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
   ctx.body = html;
@@ -243,7 +308,10 @@ export async function resolveOrganizationForInteraction(
  * @param provider - node-oidc-provider instance for interaction management
  * @returns Koa router with interaction routes mounted at /interaction
  */
-export function createInteractionRouter(provider: Provider): Router {
+export function createInteractionRouter(
+  provider: Provider,
+  enumerationDependencies: EnumerationSensitiveInteractionDependencies = defaultEnumerationDependencies,
+): Router {
   const router = new Router({ prefix: '/interaction' });
 
   router.use(async (ctx, next) => {
@@ -271,14 +339,14 @@ export function createInteractionRouter(provider: Provider): Router {
   // POST /interaction/:uid/login — Process password login
   // -------------------------------------------------------------------------
   router.post('/:uid/login', async (ctx) => {
-    await processLogin(ctx as InteractionContext, provider);
+    await processLogin(ctx as InteractionContext, provider, enumerationDependencies);
   });
 
   // -------------------------------------------------------------------------
   // POST /interaction/:uid/magic-link — Send magic link email
   // -------------------------------------------------------------------------
   router.post('/:uid/magic-link', async (ctx) => {
-    await handleSendMagicLink(ctx as InteractionContext, provider);
+    await handleSendMagicLink(ctx as InteractionContext, provider, enumerationDependencies);
   });
 
   // -------------------------------------------------------------------------
@@ -522,12 +590,16 @@ async function renderMagicLinkSuccessPage(
  * @param ctx - Koa context with organization state
  * @param provider - OIDC provider instance
  */
-async function processLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
+async function processLogin(
+  ctx: InteractionContext,
+  provider: Provider,
+  dependencies: EnumerationSensitiveInteractionDependencies,
+): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const storedCsrf = dependencies.getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
@@ -541,15 +613,15 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     const org = ctx.state.organization;
 
     // Resolve locale for error messages
-    const locale = await resolveLocale(
+    const locale = await dependencies.resolveLocale(
       undefined,
       ctx.get('Accept-Language') || undefined,
       org.defaultLocale,
     );
-    const t = getTranslationFunction(locale, org.slug);
+    const t = dependencies.getTranslationFunction(locale, org.slug);
 
     // Step 1: Verify CSRF token (cookie vs form field)
-    if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
+    if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
       await renderLoginWithError(
         ctx,
@@ -559,6 +631,8 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         locale,
         email,
         t('errors.csrf_invalid'),
+        200,
+        dependencies,
       );
       return;
     }
@@ -586,7 +660,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         'Password login attempted for client where method is disabled',
       );
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
@@ -608,20 +682,21 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         email,
         t('errors.login_method_disabled'),
         403,
+        dependencies,
       );
       return;
     }
 
     // Step 2: Check rate limit
-    const rateLimitKey = buildLoginRateLimitKey(org.id, ctx.ip, email);
-    const rateLimitConfig = await loadLoginRateLimitConfig();
-    const rateLimitResult = await checkRateLimit(rateLimitKey, rateLimitConfig);
+    const rateLimitKey = dependencies.buildLoginRateLimitKey(org.id, ctx.ip, email);
+    const rateLimitConfig = await dependencies.loadLoginRateLimitConfig();
+    const rateLimitResult = await dependencies.checkRateLimit(rateLimitKey, rateLimitConfig);
 
     if (!rateLimitResult.allowed) {
       ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
       // Audit: rate limit exceeded
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'rate_limit.login',
         eventCategory: 'security',
@@ -638,6 +713,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         email,
         t('errors.rate_limit_exceeded'),
         429,
+        dependencies,
       );
       return;
     }
@@ -645,15 +721,18 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     // Resolve cooldown state and verify exactly one real or dummy Argon2id hash. Only active
     // accounts with passwords receive authentication authority; every other state follows the
     // same verification and persistence shape.
-    const observedUser = await prepareUserForPasswordLogin(org.id, email);
+    const observedUser = await dependencies.prepareUserForPasswordLogin(org.id, email);
     const eligibleUser =
       observedUser?.status === 'active' && observedUser.hasPassword ? observedUser : null;
-    const passwordValid = await verifyLoginPassword(eligibleUser?.id ?? null, password);
+    const passwordValid = await dependencies.verifyLoginPassword(
+      eligibleUser?.id ?? null,
+      password,
+    );
 
     if (!eligibleUser || !passwordValid) {
-      const lockResult = await recordPasswordFailure(eligibleUser);
+      const lockResult = await dependencies.recordPasswordFailure(eligibleUser);
 
-      void writeAuditLog({
+      void dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'user.login.password.failed',
         eventCategory: 'security',
@@ -670,6 +749,8 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         locale,
         email,
         t('login.error_invalid'),
+        200,
+        dependencies,
       );
       return;
     }
@@ -677,7 +758,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     const user = eligibleUser;
 
     // Step 6: Password valid — check if 2FA is required
-    await resetRateLimit(rateLimitKey);
+    await dependencies.resetRateLimit(rateLimitKey);
 
     // Determine 2FA requirements based on org policy and user state
     const twoFactorRequired = user.twoFactorEnabled || requiresTwoFactor(org, user);
@@ -746,10 +827,10 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     }
 
     // No 2FA required — complete login normally
-    await recordLogin(user.id);
+    await dependencies.recordLogin(user.id);
 
     // Audit: successful login (no 2FA)
-    writeAuditLog({
+    dependencies.writeAuditLog({
       organizationId: org.id,
       userId: user.id,
       eventType: 'user.login.password',
@@ -782,11 +863,15 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
  * @param ctx - Koa context with organization state
  * @param provider - OIDC provider instance
  */
-async function handleSendMagicLink(ctx: InteractionContext, provider: Provider): Promise<void> {
+async function handleSendMagicLink(
+  ctx: InteractionContext,
+  provider: Provider,
+  dependencies: EnumerationSensitiveInteractionDependencies,
+): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const storedCsrf = dependencies.getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
@@ -800,15 +885,15 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     const org = ctx.state.organization;
 
     // Resolve locale for page rendering
-    const locale = await resolveLocale(
+    const locale = await dependencies.resolveLocale(
       undefined,
       ctx.get('Accept-Language') || undefined,
       org.defaultLocale,
     );
-    const t = getTranslationFunction(locale, org.slug);
+    const t = dependencies.getTranslationFunction(locale, org.slug);
 
     // Verify CSRF token (cookie vs form field)
-    if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
+    if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
       logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
       await renderLoginWithError(
         ctx,
@@ -818,6 +903,8 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         locale,
         email,
         t('errors.csrf_invalid'),
+        200,
+        dependencies,
       );
       return;
     }
@@ -842,7 +929,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         'Magic link attempted for client where method is disabled',
       );
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
@@ -864,19 +951,20 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         email,
         t('errors.login_method_disabled'),
         403,
+        dependencies,
       );
       return;
     }
 
     // Check rate limit for magic link requests
-    const rateLimitKey = buildMagicLinkRateLimitKey(org.id, email);
-    const rateLimitConfig = await loadMagicLinkRateLimitConfig();
-    const rateLimitResult = await checkRateLimit(rateLimitKey, rateLimitConfig);
+    const rateLimitKey = dependencies.buildMagicLinkRateLimitKey(org.id, email);
+    const rateLimitConfig = await dependencies.loadMagicLinkRateLimitConfig();
+    const rateLimitResult = await dependencies.checkRateLimit(rateLimitKey, rateLimitConfig);
 
     if (!rateLimitResult.allowed) {
       ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'rate_limit.magic_link',
         eventCategory: 'security',
@@ -893,12 +981,13 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         email,
         t('errors.rate_limit_exceeded'),
         429,
+        dependencies,
       );
       return;
     }
 
     try {
-      await enqueueAccountRecovery({
+      await dependencies.enqueueAccountRecovery({
         jobType: 'magic_link',
         organizationId: org.id,
         email,
@@ -916,12 +1005,13 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         email,
         t('errors.interaction_expired'),
         503,
+        dependencies,
       );
       return;
     }
 
     // Always render the "check your email" page — prevents user enumeration
-    const csrfToken = generateCsrfToken();
+    const csrfToken = dependencies.generateCsrfToken();
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
       t,
@@ -929,7 +1019,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       loginUrl: `/interaction/${interaction.uid}`,
     };
 
-    await renderAndRespond(ctx, 'magic-link-sent', context);
+    await renderAndRespond(ctx, 'magic-link-sent', context, 200, dependencies.renderPage);
   } catch {
     logger.error({ event: 'magic_link_request_failed' }, 'Magic link request failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
@@ -1230,10 +1320,11 @@ async function renderLoginWithError(
   email: string,
   errorMessage: string,
   statusCode = 200,
+  dependencies: EnumerationSensitiveInteractionDependencies = defaultEnumerationDependencies,
 ): Promise<void> {
   const org = ctx.state.organization;
-  const csrfToken = generateCsrfToken();
-  setCsrfCookie(ctx, csrfToken);
+  const csrfToken = dependencies.generateCsrfToken();
+  dependencies.setCsrfCookie(ctx, csrfToken);
 
   // Resolve human-readable client name from provider metadata.
   // Falls back to raw client_id if the client is not found.
@@ -1271,7 +1362,7 @@ async function renderLoginWithError(
     loginMethods: effectiveMethods,
   };
 
-  await renderAndRespond(ctx, 'login', context, statusCode);
+  await renderAndRespond(ctx, 'login', context, statusCode, dependencies.renderPage);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,5 @@
-import {
-  ENUMERATION_RESISTANCE_CAPABILITY_MISSING,
-  type EnumerationResistanceCapability,
-} from './enumeration-resistance-contract.js';
+import type { EnumerationResistanceCapability } from './enumeration-resistance-contract.js';
+import { LiveEnumerationResistanceDriver } from './enumeration-resistance-live-driver.js';
 
 /**
  * Test-owned swappable boundary for the immutable enumeration specifications.
@@ -11,7 +9,7 @@ import {
  */
 export function getEnumerationResistanceCapability(): EnumerationResistanceCapability {
   return Object.freeze({
-    available: false,
-    reason: ENUMERATION_RESISTANCE_CAPABILITY_MISSING,
+    available: true,
+    createDriver: async () => new LiveEnumerationResistanceDriver(),
   });
 }

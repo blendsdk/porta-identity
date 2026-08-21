@@ -60,6 +60,49 @@ interface AuthContext extends Context {
   };
 }
 
+/** Injectable boundaries used by the public recovery-request handlers. */
+export interface RecoveryRequestRouteDependencies {
+  /** Read the request CSRF cookie. */
+  readonly getCsrfFromCookie: typeof getCsrfFromCookie;
+  /** Verify the submitted CSRF value. */
+  readonly verifyCsrfToken: typeof verifyCsrfToken;
+  /** Generate a response CSRF value. */
+  readonly generateCsrfToken: typeof generateCsrfToken;
+  /** Set the response CSRF cookie. */
+  readonly setCsrfCookie: typeof setCsrfCookie;
+  /** Build the tenant/address reset-rate key. */
+  readonly buildPasswordResetRateLimitKey: typeof buildPasswordResetRateLimitKey;
+  /** Load the configured password-reset limit. */
+  readonly loadPasswordResetRateLimitConfig: typeof loadPasswordResetRateLimitConfig;
+  /** Apply one admitted rate-limit operation. */
+  readonly checkRateLimit: typeof checkRateLimit;
+  /** Resolve a locale without exposing identity state. */
+  readonly resolveLocale: typeof resolveLocale;
+  /** Resolve the page translation function. */
+  readonly getTranslationFunction: typeof getTranslationFunction;
+  /** Render one public HTML response. */
+  readonly renderPage: typeof renderPage;
+  /** Durably enqueue account-independent recovery work. */
+  readonly enqueueAccountRecovery: typeof enqueueAccountRecovery;
+  /** Write a privacy-safe audit event. */
+  readonly writeAuditLog: typeof writeAuditLog;
+}
+
+const defaultRecoveryRequestDependencies: RecoveryRequestRouteDependencies = {
+  getCsrfFromCookie,
+  verifyCsrfToken,
+  generateCsrfToken,
+  setCsrfCookie,
+  buildPasswordResetRateLimitKey,
+  loadPasswordResetRateLimitConfig,
+  checkRateLimit,
+  resolveLocale,
+  getTranslationFunction,
+  renderPage,
+  enqueueAccountRecovery,
+  writeAuditLog,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -93,8 +136,9 @@ async function renderAndRespond(
   pageName: string,
   context: TemplateContext,
   statusCode = 200,
+  renderer: typeof renderPage = renderPage,
 ): Promise<void> {
-  const html = await renderPage(pageName, context);
+  const html = await renderer(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
   ctx.body = html;
@@ -112,18 +156,20 @@ async function renderAndRespond(
  *
  * @returns Koa router with password reset routes
  */
-export function createPasswordResetRouter(): Router {
+export function createPasswordResetRouter(
+  recoveryDependencies: RecoveryRequestRouteDependencies = defaultRecoveryRequestDependencies,
+): Router {
   const router = new Router();
   const resolve = tenantResolver();
 
   // GET /:orgSlug/auth/forgot-password — Show forgot password form
   router.get('/:orgSlug/auth/forgot-password', resolve, async (ctx) => {
-    await showForgotPassword(ctx as AuthContext);
+    await showForgotPassword(ctx as AuthContext, recoveryDependencies);
   });
 
   // POST /:orgSlug/auth/forgot-password — Process forgot password request
   router.post('/:orgSlug/auth/forgot-password', resolve, async (ctx) => {
-    await processForgotPassword(ctx as AuthContext);
+    await processForgotPassword(ctx as AuthContext, recoveryDependencies);
   });
 
   // GET /:orgSlug/auth/reset-password/:token — Show reset password form
@@ -170,12 +216,13 @@ async function enforcePasswordMethod(
   ctx: AuthContext,
   t: (key: string, options?: Record<string, unknown>) => string,
   locale: string,
+  dependencies: RecoveryRequestRouteDependencies = defaultRecoveryRequestDependencies,
 ): Promise<boolean> {
   const org = ctx.state.organization;
   const effective = resolveLoginMethods(org, { loginMethods: null });
   if (effective.includes('password')) return true;
 
-  writeAuditLog({
+  dependencies.writeAuditLog({
     organizationId: org.id,
     eventType: 'security.login_method_disabled',
     eventCategory: 'security',
@@ -199,20 +246,23 @@ async function enforcePasswordMethod(
  *
  * @param ctx - Koa context with organization state
  */
-async function showForgotPassword(ctx: AuthContext): Promise<void> {
+async function showForgotPassword(
+  ctx: AuthContext,
+  dependencies: RecoveryRequestRouteDependencies,
+): Promise<void> {
   const org = ctx.state.organization;
-  const locale = await resolveLocale(
+  const locale = await dependencies.resolveLocale(
     undefined,
     ctx.get('Accept-Language') || undefined,
     org.defaultLocale,
   );
-  const t = getTranslationFunction(locale, org.slug);
+  const t = dependencies.getTranslationFunction(locale, org.slug);
 
   // Block the entire forgot-password UI when password auth is org-disabled.
-  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
+  if (!(await enforcePasswordMethod(ctx, t, locale, dependencies))) return;
 
-  const csrfToken = generateCsrfToken();
-  setCsrfCookie(ctx, csrfToken);
+  const csrfToken = dependencies.generateCsrfToken();
+  dependencies.setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
@@ -222,7 +272,7 @@ async function showForgotPassword(ctx: AuthContext): Promise<void> {
     orgSlug: org.slug,
   };
 
-  await renderAndRespond(ctx, 'forgot-password', context);
+  await renderAndRespond(ctx, 'forgot-password', context, 200, dependencies.renderPage);
 }
 
 /**
@@ -240,29 +290,32 @@ async function showForgotPassword(ctx: AuthContext): Promise<void> {
  *
  * @param ctx - Koa context with organization state
  */
-async function processForgotPassword(ctx: AuthContext): Promise<void> {
+async function processForgotPassword(
+  ctx: AuthContext,
+  dependencies: RecoveryRequestRouteDependencies,
+): Promise<void> {
   const org = ctx.state.organization;
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const storedCsrf = dependencies.getCsrfFromCookie(ctx) ?? '';
 
-  const locale = await resolveLocale(
+  const locale = await dependencies.resolveLocale(
     undefined,
     ctx.get('Accept-Language') || undefined,
     org.defaultLocale,
   );
-  const t = getTranslationFunction(locale, org.slug);
+  const t = dependencies.getTranslationFunction(locale, org.slug);
 
   // Enforce password method BEFORE CSRF to avoid revealing whether the
   // endpoint is active based on CSRF errors vs. method errors.
-  if (!(await enforcePasswordMethod(ctx, t, locale))) return;
+  if (!(await enforcePasswordMethod(ctx, t, locale, dependencies))) return;
 
   // Step 1: Verify CSRF token (cookie vs form field)
-  if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
+  if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on forgot-password');
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(ctx, csrfToken);
+    const csrfToken = dependencies.generateCsrfToken();
+    dependencies.setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -271,19 +324,19 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
       orgSlug: org.slug,
       flash: { error: t('errors.csrf_invalid') },
     };
-    await renderAndRespond(ctx, 'forgot-password', context, 403);
+    await renderAndRespond(ctx, 'forgot-password', context, 403, dependencies.renderPage);
     return;
   }
 
   // Step 2: Check rate limit
-  const rateLimitKey = buildPasswordResetRateLimitKey(org.id, email);
-  const rateLimitConfig = await loadPasswordResetRateLimitConfig();
-  const rateLimitResult = await checkRateLimit(rateLimitKey, rateLimitConfig);
+  const rateLimitKey = dependencies.buildPasswordResetRateLimitKey(org.id, email);
+  const rateLimitConfig = await dependencies.loadPasswordResetRateLimitConfig();
+  const rateLimitResult = await dependencies.checkRateLimit(rateLimitKey, rateLimitConfig);
 
   if (!rateLimitResult.allowed) {
     ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
-    writeAuditLog({
+    dependencies.writeAuditLog({
       organizationId: org.id,
       eventType: 'rate_limit.password_reset',
       eventCategory: 'security',
@@ -291,8 +344,8 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
       ipAddress: ctx.ip,
     });
 
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(ctx, csrfToken);
+    const csrfToken = dependencies.generateCsrfToken();
+    dependencies.setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
       branding: buildBrandingFromOrg(org),
       locale,
@@ -301,12 +354,12 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
       orgSlug: org.slug,
       flash: { error: t('errors.rate_limit_exceeded') },
     };
-    await renderAndRespond(ctx, 'forgot-password', context, 429);
+    await renderAndRespond(ctx, 'forgot-password', context, 429, dependencies.renderPage);
     return;
   }
 
   try {
-    await enqueueAccountRecovery({
+    await dependencies.enqueueAccountRecovery({
       jobType: 'password_reset',
       organizationId: org.id,
       email,
@@ -315,8 +368,8 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
     });
   } catch {
     logger.error({ event: 'password_reset_enqueue_failed' }, 'Failed to enqueue password reset');
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(ctx, csrfToken);
+    const csrfToken = dependencies.generateCsrfToken();
+    dependencies.setCsrfCookie(ctx, csrfToken);
     await renderAndRespond(
       ctx,
       'forgot-password',
@@ -329,13 +382,14 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
         flash: { error: t('errors.interaction_expired') },
       },
       503,
+      dependencies.renderPage,
     );
     return;
   }
 
   // Step 4: Always show "check your email" page — prevents user enumeration
-  const csrfToken = generateCsrfToken();
-  setCsrfCookie(ctx, csrfToken);
+  const csrfToken = dependencies.generateCsrfToken();
+  dependencies.setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: buildBrandingFromOrg(org),
     locale,
@@ -346,7 +400,7 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
     flash: { success: t('forgot-password.check_email') },
   };
 
-  await renderAndRespond(ctx, 'forgot-password', context);
+  await renderAndRespond(ctx, 'forgot-password', context, 200, dependencies.renderPage);
 }
 
 /**
