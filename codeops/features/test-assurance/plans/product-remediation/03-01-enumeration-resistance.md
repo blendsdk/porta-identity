@@ -33,19 +33,19 @@ validation, CSRF, and throttling. The row carries a closed job type, organizatio
 address protected for at-rest storage, interaction binding where applicable, idempotency digest,
 creation/availability timestamps, attempt count, and terminal status. It never carries a token.
 
-The public request returns after the insert and renders the exact generic response. The AR-9 worker
-claims at most 25 jobs, wakes on enqueue with a one-second fallback poll, uses five total attempts
-with delays of 1 second, 10 seconds, 60 seconds, 5 minutes, and 15 minutes, and reclaims only claims
-whose five-minute lease expired. On shutdown it stops claiming and gives active work 30 seconds to
-settle. It:
+The public request returns after the insert and renders the exact generic response. The recovery
+worker claims at most 25 jobs, wakes on enqueue with a one-second fallback poll, uses five total
+attempts with four inter-attempt delays of 1 second, 10 seconds, 60 seconds, and 5 minutes, and
+reclaims only claims whose five-minute lease expired. On shutdown it stops claiming and gives
+active work 30 seconds to settle. It:
 
 - claims rows with one transaction and `FOR UPDATE SKIP LOCKED`;
 - resolves the tenant/account only after claim;
 - no-ops for absent or ineligible accounts;
 - invalidates and creates the tenant-bound token for eligible accounts;
 - sends mail and writes the business audit event without exposing existence in worker diagnostics;
-- marks completion idempotently, retries transient dependency failures with bounded backoff, and
-  marks a closed terminal failure after the configured attempt limit.
+- marks completion idempotently, retries transient dependency failures after 1 second, 10 seconds,
+  60 seconds, and 5 minutes, and marks a closed terminal failure after the fifth attempt.
 
 Duplicate public requests remain governed by the existing tenant/address rate limit. Idempotency
 prevents one admitted request from producing more than one artifact, not multiple separately

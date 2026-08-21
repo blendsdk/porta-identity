@@ -120,7 +120,7 @@ describe('enumeration-resistance requirement catalog', () => {
       claimBatchMaximum: 25,
       fallbackPollMilliseconds: 1_000,
       totalAttempts: 5,
-      retryDelaysMilliseconds: [1_000, 10_000, 60_000, 300_000, 900_000],
+      retryDelaysMilliseconds: [1_000, 10_000, 60_000, 300_000],
       leaseMilliseconds: 300_000,
       shutdownSettleMilliseconds: 30_000,
     });
@@ -318,7 +318,7 @@ if (capability.available) {
           observed.workerEvents
             .filter((event) => event.event === 'retry_scheduled')
             .map((event) => event.delayMilliseconds),
-        ).toStrictEqual(ENUMERATION_RESISTANCE_ORACLE.worker.retryDelaysMilliseconds.slice(0, -1));
+        ).toStrictEqual(ENUMERATION_RESISTANCE_ORACLE.worker.retryDelaysMilliseconds);
         expect(
           observed.workerEvents.filter((event) => event.event === 'terminal_failure'),
         ).toHaveLength(1);

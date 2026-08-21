@@ -158,16 +158,17 @@ or cookie-key retention becomes shorter than security-event retention.
 **Eligibility**: bounded scheduling/retry mechanism inside the approved durable job contract.
 **Objective**: deliver valid recovery mail without unbounded retry, duplicate processing, or slow
 shutdown. **Decision**: claim at most 25 jobs, wake after enqueue with a one-second fallback poll,
-use five total attempts with delays of 1s, 10s, 60s, 5m, and 15m, reclaim a claim only after a
+use five total attempts with four inter-attempt delays of 1s, 10s, 60s, and 5m, reclaim a claim only after a
 five-minute lease, and stop claiming on shutdown while allowing the active job a 30-second bounded
 completion window. Terminal failures retain only closed reason codes. **Evidence**: the work is
 small, MailHog/SMTP and PostgreSQL are existing dependencies, and fixed bounds are independently
 testable. **Rejected alternative**: unrestricted operator tuning can create amplification or
 shutdown hangs before a safe policy exists. **Strongest counterargument**: fixed bounds may not fit
 all deployments; configuration can be separately authorized after operational evidence.
-**Confidence**: Medium — production volume could justify later tuning. **Hardening**: bounds were
-reduced to a small batch and finite schedule after considering recovery storms. **Policy version**:
-1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: measured production
+**Confidence**: High. **Hardening**: an independent worker-policy challenge rejected the original
+five-delay wording because five total attempts permit only four inter-attempt delays; an expired
+fifth claim closes without a sixth account-specific execution. **Policy version**: 2. **Root
+Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: measured production
 load or SMTP latency exceeds the bounded policy without abuse.
 
 **AR-10 — Specification-driver admission:** **Authority**: AI — delegated by `--auto-design`.
@@ -192,3 +193,22 @@ registration as soon as the adapter is live plus an explicit required-mode RED p
 oracle and proposed the same swappable driver boundary. **Policy version**: 1. **Root Invocation
 ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: ordinary public route factories expose all
 required observations directly before the adapter is implemented.
+
+**AR-11 — Recovery-worker activation sequencing:** **Authority**: AI — delegated by
+`--auto-design`. **Eligibility**: internal implementation sequencing inside the approved durable
+recovery-job architecture; no product behavior or acceptance criterion changes. **Objective**:
+prevent a partially implemented worker from consuming durable jobs before the protected
+account-specific processor exists. **Decision**: Task 1.4 delivers the bounded scheduler and its
+explicit start/wake/stop lifecycle boundary without activating it. Task 1.6 supplies the protected
+address decoder and concrete token/mail processor, then starts and stops the worker from the
+application entry point. **Evidence**: the current routes still perform token and mail work inline,
+and no concrete processor exists; starting a placeholder would either falsely complete or
+terminally fail durable rows. **Rejected alternative**: activate a no-op or terminal placeholder,
+because that can irreversibly consume real queued work. **Strongest counterargument**: deferring
+activation means Task 1.4 alone has no live background process; the explicit Task 1.6 activation
+gate preserves fail-closed operation while keeping the scheduler independently verifiable.
+**Confidence**: High. **Hardening**: the worker cannot be constructed by the entry point until a
+real `RecoveryJobProcessor` is supplied, so accidental placeholder activation is structurally
+excluded. **Policy version**: 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`.
+**Reopen trigger**: a separately usable concrete recovery processor exists before Task 1.6 or
+another process begins inserting recovery jobs before activation is deployed.

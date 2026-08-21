@@ -62,7 +62,7 @@ export interface EnumerationResistanceOracle {
     /** Maximum total processing attempts for one job. */
     readonly totalAttempts: 5;
     /** Fixed bounded retry-delay catalog. */
-    readonly retryDelaysMilliseconds: readonly [1_000, 10_000, 60_000, 300_000, 900_000];
+    readonly retryDelaysMilliseconds: readonly [1_000, 10_000, 60_000, 300_000];
     /** Claim age required before another worker may reclaim it. */
     readonly leaseMilliseconds: 300_000;
     /** Maximum graceful-shutdown settlement window. */
@@ -104,7 +104,7 @@ export const ENUMERATION_RESISTANCE_ORACLE = Object.freeze({
     claimBatchMaximum: 25,
     fallbackPollMilliseconds: 1_000,
     totalAttempts: 5,
-    retryDelaysMilliseconds: [1_000, 10_000, 60_000, 300_000, 900_000],
+    retryDelaysMilliseconds: [1_000, 10_000, 60_000, 300_000],
     leaseMilliseconds: 300_000,
     shutdownSettleMilliseconds: 30_000,
   },

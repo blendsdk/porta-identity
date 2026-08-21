@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 09:43
-> **Progress**: 3/40 tasks (7.5%)
+> **Last Updated**: 2026-08-21 10:01
+> **Progress**: 4/40 tasks (10%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -62,9 +62,9 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.1 [spec-author] Write immutable enumeration/recovery specifications — `packages/server/tests/unit/security/enumeration-resistance.spec.test.ts` (completed 2026-08-21 09:06 CEST; default 3/3 green; required-mode capability RED registered; `yarn verify` 234 files/3,385 tests green)
 - [x] 1.2 Run the isolated specifications and record exact RED assertions for missing constant-work password and recovery-job behavior. (completed 2026-08-21 09:15 CEST; exact exit 1, one failed/two passed, sole marker `ENUMERATION_RESISTANCE_CAPABILITY_MISSING`; ordinary `yarn verify` 234 files/3,385 tests green)
 - [x] 1.3 Add the ordered recovery-job migration and typed repository/outbox API — `packages/server/migrations/`, `packages/server/src/auth/recovery-job-repository.ts` (completed 2026-08-21 09:43 CEST; migration up/down/reapply and live repository transition smoke green; `yarn verify` 234 files/3,390 tests green)
-- [ ] 1.4 Implement the bounded idempotent recovery worker and lifecycle ownership — `packages/server/src/auth/recovery-worker.ts`, `packages/server/src/index.ts`
+- [x] 1.4 Implement the bounded idempotent recovery scheduler and lifecycle boundary — `packages/server/src/auth/recovery-worker.ts` (completed 2026-08-21 10:01 CEST; five attempts/four delays, owner-fenced transitions, single-flight wake/poll, and bounded shutdown implemented; activation remains fail-closed until Task 1.6 supplies the protected processor; `yarn verify` 234 files/3,390 tests green)
 - [ ] 1.5 Implement process-cached dummy Argon2id verification and fixed-shape password failure accounting — `packages/server/src/users/password.ts`, `packages/server/src/routes/interactions.ts`
-- [ ] 1.6 Replace account-dependent magic-link/reset request work with identical outbox enqueue and generic outcomes — `packages/server/src/routes/interactions.ts`, `packages/server/src/routes/password-reset.ts`
+- [ ] 1.6 Replace account-dependent magic-link/reset request work with identical outbox enqueue and generic outcomes, then activate the concrete recovery processor under application startup/shutdown ownership — `packages/server/src/routes/interactions.ts`, `packages/server/src/routes/password-reset.ts`, `packages/server/src/auth/recovery-job-processor.ts`, `packages/server/src/index.ts`
 - [ ] 1.7 Run ST-01–ST-06 green, including public response and intended/no-op job observations.
 - [ ] 1.8 Add repository, worker, retry, lease, shutdown, dummy-hash, and redaction implementation tests — `packages/server/tests/unit/auth/recovery-job.impl.test.ts`
 - [ ] 1.9 Run Phase 1 targeted/live checks, `yarn verify`, and update affected auth/operator documentation.
