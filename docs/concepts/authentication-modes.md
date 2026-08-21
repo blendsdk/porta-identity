@@ -6,20 +6,20 @@ Porta supports multiple authentication methods that can be configured per organi
 
 Porta provides a layered authentication system:
 
-| Layer | Methods | Description |
-|-------|---------|-------------|
-| **Primary authentication** | Password, Magic Link | How users prove their identity |
-| **Second factor (2FA)** | Email OTP, TOTP, Recovery Codes | Additional verification after primary auth |
+| Layer                      | Methods                         | Description                                |
+| -------------------------- | ------------------------------- | ------------------------------------------ |
+| **Primary authentication** | Password, Magic Link            | How users prove their identity             |
+| **Second factor (2FA)**    | Email OTP, TOTP, Recovery Codes | Additional verification after primary auth |
 
 These layers combine to create flexible, secure authentication flows tailored to each organization's needs.
 
 ### Login Method Matrix
 
-| Configuration | Login Page Shows | Use Case |
-|---------------|-----------------|----------|
+| Configuration            | Login Page Shows                                    | Use Case                      |
+| ------------------------ | --------------------------------------------------- | ----------------------------- |
 | `[password, magic_link]` | Password form + magic link button + forgot password | Default — maximum flexibility |
-| `[password]` | Password form + forgot password only | Traditional enterprise apps |
-| `[magic_link]` | Email input + magic link button only | Passwordless-first experience |
+| `[password]`             | Password form + forgot password only                | Traditional enterprise apps   |
+| `[magic_link]`           | Email input + magic link button only                | Passwordless-first experience |
 
 ---
 
@@ -58,14 +58,14 @@ sequenceDiagram
 
 ### Password Security
 
-| Feature | Implementation |
-|---------|---------------|
-| **Hashing algorithm** | Argon2id (winner of the Password Hashing Competition) |
-| **Password validation** | NIST SP 800-63B compliant |
-| **Minimum length** | 8 characters (configurable) |
-| **Breach detection** | Checks against known breached passwords |
-| **Timing-safe comparison** | Prevents timing attacks on credential verification |
-| **Rate limiting** | Redis-backed per-email rate limiting on login attempts |
+| Feature                    | Implementation                                         |
+| -------------------------- | ------------------------------------------------------ |
+| **Hashing algorithm**      | Argon2id (winner of the Password Hashing Competition)  |
+| **Password validation**    | NIST SP 800-63B compliant                              |
+| **Minimum length**         | 8 characters (configurable)                            |
+| **Breach detection**       | Checks against known breached passwords                |
+| **Timing-safe comparison** | Prevents timing attacks on credential verification     |
+| **Rate limiting**          | Redis-backed per-email rate limiting on login attempts |
 
 ### Password Reset Flow
 
@@ -132,18 +132,19 @@ sequenceDiagram
 
 ### Magic Link Security
 
-| Feature | Implementation |
-|---------|---------------|
-| **Token generation** | Cryptographically secure random tokens |
-| **Token expiry** | Configurable (default: 15 minutes) |
-| **Single use** | Tokens are invalidated after first use |
-| **Rate limiting** | Prevents email flooding attacks |
-| **User enumeration protection** | Same response regardless of whether email exists |
-| **Session binding** | Magic link is bound to the OIDC interaction session |
+| Feature                         | Implementation                                      |
+| ------------------------------- | --------------------------------------------------- |
+| **Token generation**            | Cryptographically secure random tokens              |
+| **Token expiry**                | Configurable (default: 15 minutes)                  |
+| **Single use**                  | Tokens are invalidated after first use              |
+| **Rate limiting**               | Prevents email flooding attacks                     |
+| **User enumeration protection** | Same response regardless of whether email exists    |
+| **Session binding**             | Magic link is bound to the OIDC interaction session |
 
 ### When to Use Magic Link
 
 Magic link is ideal for:
+
 - **Consumer applications** where users dislike remembering passwords
 - **Internal tools** where email access implies authorization
 - **Mobile-first** experiences where typing passwords is cumbersome
@@ -159,15 +160,16 @@ After successful primary authentication (password or magic link), Porta can requ
 
 A 6-digit one-time password sent to the user's email.
 
-| Feature | Detail |
-|---------|--------|
-| **Code format** | 6 numeric digits |
-| **Delivery** | Email via configured SMTP |
-| **Expiry** | Configurable (default: 10 minutes) |
-| **Max active codes** | 3 per user (prevents flooding) |
-| **Template** | Customizable via `emails/otp-code.hbs` |
+| Feature              | Detail                                 |
+| -------------------- | -------------------------------------- |
+| **Code format**      | 6 numeric digits                       |
+| **Delivery**         | Email via configured SMTP              |
+| **Expiry**           | Configurable (default: 10 minutes)     |
+| **Max active codes** | 3 per user (prevents flooding)         |
+| **Template**         | Customizable via `emails/otp-code.hbs` |
 
 **User flow:**
+
 1. User completes primary login (password or magic link)
 2. Porta generates a 6-digit code and stores it in the database
 3. Code is emailed to the user
@@ -179,15 +181,16 @@ A 6-digit one-time password sent to the user's email.
 
 Time-based One-Time Password using authenticator apps like Google Authenticator, Authy, Microsoft Authenticator, or any TOTP-compatible app.
 
-| Feature | Detail |
-|---------|--------|
-| **Algorithm** | TOTP (RFC 6238) |
-| **Code format** | 6 numeric digits, 30-second window |
-| **Setup** | QR code scanning or manual secret entry |
-| **Secret storage** | AES-256-GCM encrypted in PostgreSQL |
-| **Verification** | Time-window tolerance (±1 step) |
+| Feature            | Detail                                  |
+| ------------------ | --------------------------------------- |
+| **Algorithm**      | TOTP (RFC 6238)                         |
+| **Code format**    | 6 numeric digits, 30-second window      |
+| **Setup**          | QR code scanning or manual secret entry |
+| **Secret storage** | AES-256-GCM encrypted in PostgreSQL     |
+| **Verification**   | Time-window tolerance (±1 step)         |
 
 **Setup flow:**
+
 1. User navigates to 2FA setup
 2. Porta generates a TOTP secret and encrypts it with AES-256-GCM
 3. QR code is displayed for scanning with an authenticator app
@@ -195,6 +198,7 @@ Time-based One-Time Password using authenticator apps like Google Authenticator,
 5. Recovery codes are generated and displayed (one-time view)
 
 **Login flow:**
+
 1. User completes primary login
 2. Porta detects TOTP is configured for this user
 3. User enters the current 6-digit code from their authenticator app
@@ -205,14 +209,14 @@ Time-based One-Time Password using authenticator apps like Google Authenticator,
 
 One-time backup codes for account recovery when the primary 2FA method is unavailable (lost phone, no email access).
 
-| Feature | Detail |
-|---------|--------|
-| **Format** | 8-character alphanumeric codes with dash (e.g., `A1B2-C3D4`) |
-| **Count** | 10 codes generated per setup |
-| **Storage** | Argon2id hashed (not stored in plain text) |
-| **Usage** | Each code can be used exactly once |
-| **Case-insensitive** | `a1b2-c3d4` matches `A1B2-C3D4` |
-| **Dash-insensitive** | `A1B2C3D4` matches `A1B2-C3D4` |
+| Feature              | Detail                                                       |
+| -------------------- | ------------------------------------------------------------ |
+| **Format**           | 8-character alphanumeric codes with dash (e.g., `A1B2-C3D4`) |
+| **Count**            | 10 codes generated per setup                                 |
+| **Storage**          | Argon2id hashed (not stored in plain text)                   |
+| **Usage**            | Each code can be used exactly once                           |
+| **Case-insensitive** | `a1b2-c3d4` matches `A1B2-C3D4`                              |
+| **Dash-insensitive** | `A1B2C3D4` matches `A1B2-C3D4`                               |
 
 ::: warning Important
 Recovery codes are shown only once during 2FA setup. Users should save them in a secure location. If all recovery codes are used and the primary 2FA method is lost, an admin must manually disable 2FA for the user.
@@ -227,6 +231,7 @@ Each organization has a `default_login_methods` setting that controls which prim
 ### Setting Organization Login Methods
 
 **Via CLI:**
+
 ```bash
 # Enable both password and magic link (default)
 porta org update <org-id> --login-methods password,magic_link
@@ -239,6 +244,7 @@ porta org update <org-id> --login-methods magic_link
 ```
 
 **Via Admin API:**
+
 ```bash
 curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id> \
   -H "Authorization: Bearer $TOKEN" \
@@ -250,11 +256,11 @@ curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id> \
 
 2FA enforcement is configured per organization:
 
-| Policy | Behavior |
-|--------|----------|
-| **`optional`** | Users can optionally enable 2FA in their account settings |
-| **`encouraged`** | Users are prompted to set up 2FA but can skip |
-| **`required`** | All users must configure 2FA before accessing applications |
+| Policy           | Behavior                                                   |
+| ---------------- | ---------------------------------------------------------- |
+| **`optional`**   | Users can optionally enable 2FA in their account settings  |
+| **`encouraged`** | Users are prompted to set up 2FA but can skip              |
+| **`required`**   | All users must configure 2FA before accessing applications |
 
 ---
 
@@ -265,6 +271,7 @@ Individual clients can override the organization's default login methods. This a
 ### Setting Client Login Methods
 
 **Via CLI:**
+
 ```bash
 # Override to password only for this client
 porta client update <client-id> --login-methods password
@@ -277,6 +284,7 @@ porta client update <client-id> --clear-login-methods
 ```
 
 **Via Admin API:**
+
 ```bash
 # Set override
 curl -X PUT https://porta.local:3443/api/admin/clients/<client-id>/login-methods \
@@ -321,6 +329,7 @@ Login methods are enforced at **five** endpoints, **before** any user lookup or 
 5. **`POST /interaction/:uid/reset-password`** — New password submission
 
 If a user attempts to use a disabled login method, Porta responds with:
+
 - **HTTP 403** status code
 - Audit event: `security.login_method_disabled`
 - Error message explaining the method is not available
@@ -333,36 +342,40 @@ If a user attempts to use a disabled login method, Porta responds with:
 
 All authentication endpoints are rate-limited to prevent brute-force attacks:
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| Password login | Configurable | Per email + org |
-| Magic link request | Configurable | Per email + org |
-| 2FA code verification | Configurable | Per user |
-| Password reset request | Configurable | Per email |
+| Endpoint               | Limit        | Window          |
+| ---------------------- | ------------ | --------------- |
+| Password login         | Configurable | Per email + org |
+| Magic link request     | Configurable | Per email + org |
+| 2FA code verification  | Configurable | Per user        |
+| Password reset request | Configurable | Per email       |
 
 ### Audit Logging
 
 Every authentication event is logged for security monitoring:
 
-| Event | Logged Data |
-|-------|------------|
-| `auth.login.success` | User ID, method, client, org, IP |
-| `auth.login.failure` | Email attempted, failure reason, org, IP |
-| `auth.magic_link.sent` | Email, org, IP |
-| `auth.magic_link.verified` | User ID, org |
-| `auth.2fa.verified` | User ID, method (otp/totp/recovery) |
-| `auth.2fa.failed` | User ID, method, failure reason |
-| `auth.password_reset.requested` | Email, org |
-| `auth.password_reset.completed` | User ID, org |
-| `security.login_method_disabled` | Attempted method, client, org |
+| Event                            | Logged Data                              |
+| -------------------------------- | ---------------------------------------- |
+| `auth.login.success`             | User ID, method, client, org, IP         |
+| `auth.login.failure`             | Email attempted, failure reason, org, IP |
+| `auth.magic_link.sent`           | Email, org, IP                           |
+| `auth.magic_link.verified`       | User ID, org                             |
+| `auth.2fa.verified`              | User ID, method (otp/totp/recovery)      |
+| `auth.2fa.failed`                | User ID, method, failure reason          |
+| `auth.password_reset.requested`  | Email, org                               |
+| `auth.password_reset.completed`  | User ID, org                             |
+| `security.login_method_disabled` | Attempted method, client, org            |
 
-### Timing-Safe Operations
+### Enumeration-Resistant Operations
 
-Porta uses constant-time comparisons for all credential verification to prevent timing side-channel attacks:
-- Password verification via Argon2id (inherently timing-safe)
-- Magic link token comparison
-- TOTP code verification
-- Recovery code verification
+Porta does not use wall-clock timing thresholds as a security guarantee. Instead, every admitted
+password attempt performs one Argon2id verification: an eligible account hash is used when one
+exists, otherwise Porta verifies a process-cached Argon2id dummy hash. Failed attempts also use the
+same persistence-operation shape and return the same generic public response.
+
+Magic-link and password-reset requests enqueue tenant-bound recovery work before returning the
+generic response. Account lookup, token creation, and email delivery happen later in a bounded
+worker. Requests for absent or ineligible accounts complete as private no-ops, so the public
+request path does not reveal account state through account-dependent token or SMTP work.
 
 ---
 

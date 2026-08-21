@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 15:39
-> **Progress**: 8/40 tasks (20%)
+> **Last Updated**: 2026-08-21 15:56
+> **Progress**: 9/41 tasks (22%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -29,13 +29,13 @@ to the exec-plan protocol.
 
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
-| 1 | Enumeration-resistant password and recovery work | 9 |
+| 1 | Enumeration-resistant password and recovery work | 10 |
 | 2 | Tenant-bound atomic magic links | 8 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 40 tasks across 5 phases.**
+**Total: 41 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -67,7 +67,8 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.6 Replace account-dependent magic-link/reset request work with identical outbox enqueue and generic outcomes, then activate the concrete recovery processor under application startup/shutdown ownership — `packages/server/src/routes/interactions.ts`, `packages/server/src/routes/password-reset.ts`, `packages/server/src/auth/recovery-job-processor.ts`, `packages/server/src/index.ts` (completed 2026-08-21 14:55 CEST; bounded at-least-once delivery uses one deterministic job-owned artifact, focused unit 5 files/82 tests and affected E2E 2 files/12 tests green, migration 022 up/down/reapply green, `yarn verify` 234 files/3,395 tests green)
 - [x] 1.7 Run ST-01–ST-06 green, including public response and intended/no-op job observations. (completed 2026-08-21 15:24 CEST; live route/scheduler specification 9/9 green, focused lint/type/format/diff checks green, `yarn verify` 234 files/3,401 tests green)
 - [x] 1.8 Add repository, worker, retry, lease, shutdown, dummy-hash, and redaction implementation tests — `packages/server/tests/unit/auth/recovery-job.impl.test.ts` (completed 2026-08-21 15:39 CEST; focused 2 files/17 tests and structure 70/70 green; `yarn verify` 235 files/3,409 tests green)
-- [ ] 1.9 Run Phase 1 targeted/live checks, `yarn verify`, and update affected auth/operator documentation.
+- [x] 1.9a Update affected auth/operator documentation and both roadmaps; run Phase 1 targeted checks and `yarn verify`. (completed 2026-08-21 15:56 CEST; docs build and focused 2 files/17 tests green; `yarn verify` 235 files/3,409 tests green)
+- [ ] 1.9b From the clean committed revision, run the production-security human-auth harness, final Phase 1 targeted checks, `yarn verify`, and the Phase 1 quality gate.
 
 Deliverable: password and recovery public paths are functionally and structurally non-enumerating;
 timing remains explicitly diagnostic.
@@ -171,7 +172,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 40 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 41 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.

@@ -138,13 +138,33 @@ This self-authentication pattern means Porta has **no external auth dependency**
 
 Passwordless authentication via email:
 
-1. User requests magic link → token generated with `crypto.randomBytes(32)`
-2. Token SHA-256 hash stored in DB, raw token sent via email
-3. User clicks link → token validated (hash match, not expired, not used)
-4. Token marked as used (single-use enforcement)
-5. Session created, OIDC flow continues
+1. The public request validates tenant, CSRF, method, and rate-limit state, then inserts one
+   protected `auth_recovery_jobs` row.
+2. A bounded worker claims the job and resolves the account inside the recorded tenant.
+3. Eligible work creates one job-owned token artifact; absent or ineligible work completes as a
+   privacy-preserving no-op.
+4. The worker sends the link and records completion. Transient failures use five total attempts
+   with delays of 1 second, 10 seconds, 60 seconds, and 5 minutes.
+5. User clicks the link → token is validated, marked used, and the OIDC flow continues.
 
-**Security properties**: Tokens are time-limited (configurable TTL), single-use, and unpredictable (256-bit random).
+**Security properties**: Tokens are time-limited, single-use, unpredictable, and owned by one
+durable recovery job. The queue stores an encrypted normalized address and keyed idempotency
+digest, never a plaintext address or raw token. An ambiguous SMTP outcome may deliver the same
+link more than once, but it does not create a second active artifact.
+
+### Password and Recovery Enumeration Resistance
+
+- Process startup creates one Argon2id dummy hash before accepting authentication traffic.
+- Every admitted password attempt verifies exactly one account or dummy hash. A dummy match has no
+  authentication authority.
+- Failed password accounting uses one conditional, fixed-shape repository operation for eligible
+  and non-eligible identities.
+- Magic-link and password-reset routes enqueue identical-schema work and return before account
+  resolution or email delivery.
+- Workers claim at most 25 jobs, reclaim only expired five-minute leases, and settle active work
+  for at most 30 seconds during shutdown.
+- Worker diagnostics use closed reason codes and do not include addresses, tokens, SMTP errors, or
+  protected payloads.
 
 ### Login Methods Enforcement
 

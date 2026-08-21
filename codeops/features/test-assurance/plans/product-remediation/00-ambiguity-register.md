@@ -226,3 +226,21 @@ messages can confuse users, mitigated by identical content/link, one active arti
 bounded attempts. **Confidence**: High. **Hardening**: an independent security challenger
 confirmed the SMTP limitation and selected the same policy. **Reopen trigger**: Porta adopts an
 authorized provider API with durable idempotency keys.
+
+**AR-13 — Clean-provenance Phase 1 evidence checkpoint:** **Authority**: AI — delegated by
+`--auto-design`. **Eligibility**: reversible execution-plan sequencing required by an existing
+evidence-integrity boundary; no product or acceptance behavior changes. **Objective**: update the
+Phase 1 documentation and still produce service-backed evidence bound to the exact implementation
+revision. **Decision**: split the former Task 1.9 into Task 1.9a for documentation, roadmap, and
+ordinary verification, followed by Task 1.9b for the clean-revision production-security harness,
+final Phase 1 verification, and quality gate. **Evidence**: production-exposure evidence calls
+`inspectFoundationProvenance`, which intentionally rejects staged, unstaged, or untracked paths;
+the combined task therefore failed at the collector while the documentation diff was present.
+**Rejected alternative**: weakening or bypassing the clean-tree guard would let evidence describe
+source bytes other than its recorded revision. **Strongest counterargument**: the extra checkpoint
+adds one commit and verification cycle, but it preserves the repository's established provenance
+model and makes the evidence reproducible. **Confidence**: High. **Hardening**: the same
+capability-then-clean-evidence sequence is already used by the packed-client and coverage
+assurance paths. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-REMEDIATION-20260821`. **Reopen trigger**: production-exposure evidence adopts an equally
+strict content-addressed snapshot model that supports a dirty primary worktree.
