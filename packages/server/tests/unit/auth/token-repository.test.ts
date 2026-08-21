@@ -21,6 +21,8 @@ import {
   findValidToken,
   markTokenUsed,
   deleteExpiredTokens,
+  consumeLockedMagicLinkToken,
+  findAndLockMagicLinkToken,
   invalidateUserTokens,
 } from '../../../src/auth/token-repository.js';
 import type { TokenTable } from '../../../src/auth/token-repository.js';
@@ -37,6 +39,14 @@ function mockPool(rows: Record<string, unknown>[] = [], rowCount?: number) {
   });
   (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
   return mockQuery;
+}
+
+/** Create a typed transaction-client boundary backed by the mocked database pool. */
+async function mockTransactionClient(rows: Record<string, unknown>[] = [], rowCount?: number) {
+  const query = vi.fn().mockResolvedValue({ rows, rowCount: rowCount ?? rows.length });
+  const connect = vi.fn().mockResolvedValue({ query });
+  (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ connect });
+  return { client: await getPool().connect(), query };
 }
 
 /** Standard test token row as returned from the database */
@@ -76,30 +86,30 @@ describe('token-repository', () => {
 
     it('should throw for invalid table name on findValidToken', async () => {
       mockPool();
-      await expect(
-        findValidToken('bad_table' as TokenTable, 'hash'),
-      ).rejects.toThrow('Invalid token table');
+      await expect(findValidToken('bad_table' as TokenTable, 'hash')).rejects.toThrow(
+        'Invalid token table',
+      );
     });
 
     it('should throw for invalid table name on markTokenUsed', async () => {
       mockPool();
-      await expect(
-        markTokenUsed('hackers_table' as TokenTable, 'id'),
-      ).rejects.toThrow('Invalid token table');
+      await expect(markTokenUsed('hackers_table' as TokenTable, 'id')).rejects.toThrow(
+        'Invalid token table',
+      );
     });
 
     it('should throw for invalid table name on deleteExpiredTokens', async () => {
       mockPool();
-      await expect(
-        deleteExpiredTokens('drop_table' as TokenTable, new Date()),
-      ).rejects.toThrow('Invalid token table');
+      await expect(deleteExpiredTokens('drop_table' as TokenTable, new Date())).rejects.toThrow(
+        'Invalid token table',
+      );
     });
 
     it('should throw for invalid table name on invalidateUserTokens', async () => {
       mockPool();
-      await expect(
-        invalidateUserTokens('bobby_tables' as TokenTable, 'user-1'),
-      ).rejects.toThrow('Invalid token table');
+      await expect(invalidateUserTokens('bobby_tables' as TokenTable, 'user-1')).rejects.toThrow(
+        'Invalid token table',
+      );
     });
   });
 
@@ -108,20 +118,17 @@ describe('token-repository', () => {
   // -------------------------------------------------------------------------
 
   describe('insertToken', () => {
-    it.each(VALID_TABLES)(
-      'should insert into %s with correct parameters',
-      async (table) => {
-        const mockQuery = mockPool();
-        const expiresAt = new Date('2026-06-01T00:00:00Z');
+    it.each(VALID_TABLES)('should insert into %s with correct parameters', async (table) => {
+      const mockQuery = mockPool();
+      const expiresAt = new Date('2026-06-01T00:00:00Z');
 
-        await insertToken(table, 'user-uuid-1', 'hash-abc', expiresAt);
+      await insertToken(table, 'user-uuid-1', 'hash-abc', expiresAt);
 
-        expect(mockQuery).toHaveBeenCalledTimes(1);
-        const [sql, params] = mockQuery.mock.calls[0];
-        expect(sql).toContain(`INSERT INTO ${table}`);
-        expect(params).toEqual(['user-uuid-1', 'hash-abc', expiresAt]);
-      },
-    );
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      const [sql, params] = mockQuery.mock.calls[0];
+      expect(sql).toContain(`INSERT INTO ${table}`);
+      expect(params).toEqual(['user-uuid-1', 'hash-abc', expiresAt]);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -129,23 +136,20 @@ describe('token-repository', () => {
   // -------------------------------------------------------------------------
 
   describe('findValidToken', () => {
-    it.each(VALID_TABLES)(
-      'should return mapped token record from %s when found',
-      async (table) => {
-        const row = createTokenRow();
-        mockPool([row]);
+    it.each(VALID_TABLES)('should return mapped token record from %s when found', async (table) => {
+      const row = createTokenRow();
+      mockPool([row]);
 
-        const result = await findValidToken(table, 'abc123def456');
+      const result = await findValidToken(table, 'abc123def456');
 
-        expect(result).not.toBeNull();
-        expect(result!.id).toBe('token-uuid-1');
-        expect(result!.userId).toBe('user-uuid-1');
-        expect(result!.tokenHash).toBe('abc123def456');
-        expect(result!.expiresAt).toEqual(new Date('2026-12-31T00:00:00Z'));
-        expect(result!.usedAt).toBeNull();
-        expect(result!.createdAt).toEqual(new Date('2026-01-01T00:00:00Z'));
-      },
-    );
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe('token-uuid-1');
+      expect(result!.userId).toBe('user-uuid-1');
+      expect(result!.tokenHash).toBe('abc123def456');
+      expect(result!.expiresAt).toEqual(new Date('2026-12-31T00:00:00Z'));
+      expect(result!.usedAt).toBeNull();
+      expect(result!.createdAt).toEqual(new Date('2026-01-01T00:00:00Z'));
+    });
 
     it('should return null when no valid token is found', async () => {
       mockPool([]);
@@ -171,25 +175,67 @@ describe('token-repository', () => {
     });
   });
 
+  describe('magic-link authority transaction helpers', () => {
+    it('should lock only a current tenant-owned authority-bound artifact', async () => {
+      const row = createTokenRow({
+        organization_id: 'organization-alpha',
+        interaction_uid: 'interaction-alpha',
+      });
+      const { client, query } = await mockTransactionClient([row], 1);
+
+      const result = await findAndLockMagicLinkToken(
+        client,
+        'presented-token-hash',
+        'organization-alpha',
+      );
+
+      expect(result).toMatchObject({
+        id: 'token-uuid-1',
+        organizationId: 'organization-alpha',
+        interactionUid: 'interaction-alpha',
+      });
+      expect(query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE OF token, account'), [
+        'presented-token-hash',
+        'organization-alpha',
+      ]);
+      expect(query.mock.calls[0][0]).toContain('token.authority_bound = TRUE');
+    });
+
+    it('should return null when no tenant-owned magic-link authority matches', async () => {
+      const { client } = await mockTransactionClient([], 0);
+
+      await expect(
+        findAndLockMagicLinkToken(client, 'unknown-token-hash', 'organization-alpha'),
+      ).resolves.toBeNull();
+    });
+
+    it.each([
+      [1, true],
+      [0, false],
+    ] as const)('should map conditional consume row count %s to %s', async (rowCount, expected) => {
+      const { client, query } = await mockTransactionClient([], rowCount);
+
+      await expect(consumeLockedMagicLinkToken(client, 'token-uuid-1')).resolves.toBe(expected);
+      expect(query).toHaveBeenCalledWith(expect.stringContaining('RETURNING id'), ['token-uuid-1']);
+    });
+  });
+
   // -------------------------------------------------------------------------
   // markTokenUsed
   // -------------------------------------------------------------------------
 
   describe('markTokenUsed', () => {
-    it.each(VALID_TABLES)(
-      'should update used_at in %s for the given token ID',
-      async (table) => {
-        const mockQuery = mockPool();
+    it.each(VALID_TABLES)('should update used_at in %s for the given token ID', async (table) => {
+      const mockQuery = mockPool();
 
-        await markTokenUsed(table, 'token-uuid-99');
+      await markTokenUsed(table, 'token-uuid-99');
 
-        expect(mockQuery).toHaveBeenCalledTimes(1);
-        const [sql, params] = mockQuery.mock.calls[0];
-        expect(sql).toContain(`UPDATE ${table}`);
-        expect(sql).toContain('used_at = NOW()');
-        expect(params).toEqual(['token-uuid-99']);
-      },
-    );
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+      const [sql, params] = mockQuery.mock.calls[0];
+      expect(sql).toContain(`UPDATE ${table}`);
+      expect(sql).toContain('used_at = NOW()');
+      expect(params).toEqual(['token-uuid-99']);
+    });
   });
 
   // -------------------------------------------------------------------------

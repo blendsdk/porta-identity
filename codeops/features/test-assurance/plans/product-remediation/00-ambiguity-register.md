@@ -283,3 +283,24 @@ capability-then-clean-evidence sequence is already established by AR-13 and by t
 and coverage assurance paths. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: evidence collection gains an equally strict,
 reviewed content-addressed snapshot model that can bind uncommitted source safely.
+
+**AR-16 — Service-backed project lifecycle isolation:** **Authority**: AI — delegated by
+`--auto-design`. **Eligibility**: internal test-orchestration sequencing for the existing retained
+server suites; no product behavior, acceptance criterion, harness, or infrastructure scope change.
+**Objective**: prevent two Vitest projects from concurrently owning the same PostgreSQL, Redis,
+MailHog, and account-recovery worker state. **Decision**: `test:all` runs the existing unit,
+integration, E2E, and pentest aliases sequentially in separate Vitest processes. Each project keeps
+its existing configuration and file-parallelism policy, while process exit provides the required
+global-setup/global-teardown boundary. **Evidence**: the combined multi-project invocation allowed
+the E2E global server setup to claim an integration test's recovery job; the isolated integration
+command passed, and the project configurations share the same service state. **Rejected
+alternatives**: retries or relaxed counts would hide the ownership race; worker-count flags do not
+guarantee project lifecycle separation; per-project databases and Redis namespaces are stronger
+but disproportionate to this bounded correction. **Strongest counterargument**: sequential
+execution removes concurrent ownership but does not make persistent service state hermetic; the
+existing project setup and teardown contracts remain responsible for baseline cleanup.
+**Confidence**: High. **Hardening**: an independent challenger selected process-level sequencing
+and identified the same lifecycle boundary as the smallest sound correction. **Policy version**:
+1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: the service-backed
+projects gain independently owned infrastructure or Vitest provides a verified project lifecycle
+barrier.

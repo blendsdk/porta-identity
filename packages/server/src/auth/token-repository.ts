@@ -13,6 +13,7 @@
  *   5. deleteExpiredTokens()  → cleanup old rows (housekeeping)
  */
 
+import type { PoolClient } from 'pg';
 import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 
@@ -47,9 +48,8 @@ export interface InvitationTokenRecord extends TokenRecord {
 }
 
 /** Input for idempotently creating a recovery-job-owned token. */
-export interface EnsureRecoveryTokenInput {
+interface EnsureRecoveryTokenBaseInput {
   /** Token table selected by the closed recovery job type. */
-  readonly table: 'magic_link_tokens' | 'password_reset_tokens';
   /** Durable recovery job UUID. */
   readonly recoveryJobId: string;
   /** Eligible account UUID. */
@@ -59,6 +59,26 @@ export interface EnsureRecoveryTokenInput {
   /** Expiration instant fixed by the first successful artifact transaction. */
   readonly expiresAt: Date;
 }
+
+/** Recovery-token input whose durable authority belongs to one OIDC tenant and interaction. */
+export interface EnsureMagicLinkRecoveryTokenInput extends EnsureRecoveryTokenBaseInput {
+  /** Select the magic-link artifact table and its authority-aware insert path. */
+  readonly table: 'magic_link_tokens';
+  /** Organization that owns the artifact and resolved user. */
+  readonly organizationId: string;
+  /** Exact OIDC interaction authority, or null for an explicitly standalone artifact. */
+  readonly interactionUid: string | null;
+}
+
+/** Recovery-token input for password reset, which has no OIDC interaction authority. */
+export interface EnsurePasswordResetRecoveryTokenInput extends EnsureRecoveryTokenBaseInput {
+  /** Select the password-reset artifact table. */
+  readonly table: 'password_reset_tokens';
+}
+
+/** Closed recovery-token input union that prevents authority-free magic-link insertion. */
+export type EnsureRecoveryTokenInput =
+  EnsureMagicLinkRecoveryTokenInput | EnsurePasswordResetRecoveryTokenInput;
 
 /** Durable artifact decision returned by idempotent recovery-token issuance. */
 export type EnsureRecoveryTokenResult = 'active' | 'superseded';
@@ -87,6 +107,20 @@ interface TokenRow {
   expires_at: Date;
   used_at: Date | null;
   created_at: Date;
+}
+
+/** Raw authority-aware row returned while a magic-link token and user are locked. */
+interface MagicLinkAuthorityRow extends TokenRow {
+  organization_id: string;
+  interaction_uid: string | null;
+}
+
+/** Magic-link artifact whose persisted authority was selected under a database row lock. */
+export interface LockedMagicLinkToken extends TokenRecord {
+  /** Organization persisted when the artifact was issued. */
+  readonly organizationId: string;
+  /** Exact persisted interaction, or null for a standalone artifact. */
+  readonly interactionUid: string | null;
 }
 
 /** Extended row shape for invitation_tokens with details column */
@@ -245,11 +279,27 @@ export async function ensureRecoveryJobToken(
        WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()`,
       [input.userId],
     );
-    await client.query(
-      `INSERT INTO ${input.table} (user_id, token_hash, expires_at, recovery_job_id)
-       VALUES ($1, $2, $3, $4)`,
-      [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
-    );
+    if (input.table === 'magic_link_tokens') {
+      await client.query(
+        `INSERT INTO magic_link_tokens
+           (user_id, token_hash, expires_at, recovery_job_id, organization_id, interaction_uid)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          input.userId,
+          input.tokenHash,
+          input.expiresAt,
+          input.recoveryJobId,
+          input.organizationId,
+          input.interactionUid,
+        ],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, recovery_job_id)
+         VALUES ($1, $2, $3, $4)`,
+        [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
+      );
+    }
     await client.query('COMMIT');
     return 'active';
   } catch (error) {
@@ -324,6 +374,73 @@ export async function findValidTokenForOrganization(
   );
 
   return result.rows[0] ? mapRowToToken(result.rows[0]) : null;
+}
+
+/**
+ * Lock one valid magic-link artifact together with its tenant-owned user.
+ *
+ * Legacy rows without persisted organization authority do not match. The caller must keep the
+ * supplied client transaction open while validating interaction authority and applying all
+ * successful state changes.
+ *
+ * @param client - Active PostgreSQL transaction client.
+ * @param tokenHash - SHA-256 digest of the presented artifact.
+ * @param organizationId - Organization resolved from the public route.
+ * @returns The locked authority record, or null for every invalid authority state.
+ */
+export async function findAndLockMagicLinkToken(
+  client: PoolClient,
+  tokenHash: string,
+  organizationId: string,
+): Promise<LockedMagicLinkToken | null> {
+  const result = await client.query<MagicLinkAuthorityRow>(
+    `SELECT token.id, token.user_id, token.token_hash, token.expires_at, token.used_at,
+            token.created_at, token.organization_id, token.interaction_uid
+     FROM magic_link_tokens AS token
+     JOIN users AS account
+       ON account.id = token.user_id
+      AND account.organization_id = token.organization_id
+     WHERE token.token_hash = $1
+       AND token.organization_id = $2
+       AND token.authority_bound = TRUE
+       AND token.used_at IS NULL
+       AND token.expires_at > NOW()
+     FOR UPDATE OF token, account`,
+    [tokenHash, organizationId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...mapRowToToken(row),
+    organizationId: row.organization_id,
+    interactionUid: row.interaction_uid,
+  };
+}
+
+/**
+ * Conditionally consume a previously locked magic-link artifact.
+ *
+ * The predicates are repeated at mutation time so expiry or accidental prior consumption cannot
+ * be converted into a successful use. The caller must roll back when this function returns false.
+ *
+ * @param client - Active PostgreSQL transaction client that owns the artifact lock.
+ * @param tokenId - UUID of the locked magic-link artifact.
+ * @returns True only when exactly one still-valid row was consumed.
+ */
+export async function consumeLockedMagicLinkToken(
+  client: PoolClient,
+  tokenId: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE magic_link_tokens
+     SET used_at = NOW()
+     WHERE id = $1
+       AND used_at IS NULL
+       AND expires_at > NOW()
+     RETURNING id`,
+    [tokenId],
+  );
+  return result.rowCount === 1;
 }
 
 /**

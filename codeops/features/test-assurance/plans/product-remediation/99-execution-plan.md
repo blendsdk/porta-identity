@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 19:21
-> **Progress**: 19/48 tasks (40%)
+> **Last Updated**: 2026-08-21 23:27
+> **Progress**: 20/48 tasks (42%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -91,7 +91,7 @@ timing remains explicitly diagnostic.
 
 - [x] 2.1 [spec-author] Write immutable magic-link authority specifications — `packages/server/tests/unit/auth/magic-link-tenant-binding.spec.test.ts` ✅ (completed: 2026-08-21 20:28 CEST; immutable ST-07–ST-13 catalog, contract, and fail-closed adapter authored; same-artifact foreign rejection→intended success, expiry, exact consume counts, generic failure equivalence, and continuation concurrency/retry oracles included; ordinary focused spec 3/3 and `yarn verify` 238 files/3,421 tests green)
 - [x] 2.2 Run the isolated specifications and record exact RED for cross-tenant acceptance and non-atomic continuation consumption. ✅ (completed: 2026-08-21 20:49 CEST; required-mode spec exited `1` with exactly one failed/two passed and sole registered marker `MAGIC_LINK_TENANT_BINDING_CAPABILITY_MISSING`; ordinary `yarn verify` passed 238 files/3,421 tests)
-- [ ] 2.3 Extend the ordered migration and token repository with immutable organization/interaction authority and locked conditional consumption — `packages/server/migrations/`, `packages/server/src/auth/token-repository.ts`
+- [x] 2.3 Extend the ordered migration and token repository with immutable organization/interaction authority and locked conditional consumption — `packages/server/migrations/`, `packages/server/src/auth/token-repository.ts` ✅ (completed: 2026-08-21 23:27 CEST; additive migration 023 preserves legacy rows as explicitly unbound, mandates organization authority for new rows, and adds interaction/index constraints; recovery issuance persists authority; locked lookup and conditional consume APIs added; migration up/down/reapply schema 48/48 green; server test projects now use separate lifecycle processes to prevent shared recovery-worker ownership; sequential server suites passed 238 files/3,431 tests and `yarn verify` passed)
 - [ ] 2.4 Implement one verification transaction that validates all authority before token/user/audit mutation — `packages/server/src/routes/magic-link.ts`, supporting repository APIs
 - [ ] 2.5 Implement tenant/interaction-bound atomic Redis continuation consume and interaction-side authority derivation — `packages/server/src/auth/magic-link-session.ts`, `packages/server/src/routes/interactions.ts`
 - [ ] 2.6 Run ST-07–ST-13 green through unit, integration, and public Alpha/Bravo boundaries.

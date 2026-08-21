@@ -20,9 +20,7 @@ import { seedBaseData } from './helpers/database.js';
 beforeAll(async () => {
   const pool = getPool();
   // Only seed if the super-admin org is missing (avoid duplicate inserts)
-  const check = await pool.query(
-    `SELECT 1 FROM organizations WHERE slug = 'porta-admin' LIMIT 1`,
-  );
+  const check = await pool.query(`SELECT 1 FROM organizations WHERE slug = 'porta-admin' LIMIT 1`);
   if (check.rowCount === 0) {
     await seedBaseData();
   }
@@ -138,8 +136,18 @@ describe('Schema Structure', () => {
     expect(names).toContain('two_factor_method');
   });
 
-  // Migration 014 — Configurable Login Methods
-  // See: plans/client-login-methods/03-database-schema.md
+  it('magic-link tokens persist mandatory tenant authority and optional interaction authority', async () => {
+    const columns = await getColumns('magic_link_tokens');
+    const organization = columns.find((column) => column.column_name === 'organization_id');
+    const interaction = columns.find((column) => column.column_name === 'interaction_uid');
+    const authorityBound = columns.find((column) => column.column_name === 'authority_bound');
+
+    expect(organization).toMatchObject({ data_type: 'uuid', is_nullable: 'NO' });
+    expect(interaction).toMatchObject({ data_type: 'character varying', is_nullable: 'YES' });
+    expect(authorityBound).toMatchObject({ data_type: 'boolean', is_nullable: 'NO' });
+  });
+
+  // Configurable login methods retain organization defaults and optional client overrides.
   it('organizations.default_login_methods exists as NOT NULL TEXT[]', async () => {
     const columns = await getColumns('organizations');
     const col = columns.find((c) => c.column_name === 'default_login_methods');
@@ -272,14 +280,7 @@ describe('Schema Structure', () => {
     const columns = await getColumns('two_factor_otp_codes');
     const names = columns.map((c) => c.column_name);
     expect(names).toEqual(
-      expect.arrayContaining([
-        'id',
-        'user_id',
-        'code_hash',
-        'expires_at',
-        'used_at',
-        'created_at',
-      ]),
+      expect.arrayContaining(['id', 'user_id', 'code_hash', 'expires_at', 'used_at', 'created_at']),
     );
   });
 
@@ -314,9 +315,7 @@ describe('Constraints', () => {
       `INSERT INTO organizations (name, slug) VALUES ('Dup Test 1', 'dup-slug-test')`,
     );
     await expect(
-      pool.query(
-        `INSERT INTO organizations (name, slug) VALUES ('Dup Test 2', 'dup-slug-test')`,
-      ),
+      pool.query(`INSERT INTO organizations (name, slug) VALUES ('Dup Test 2', 'dup-slug-test')`),
     ).rejects.toThrow(/duplicate key|unique/i);
     // Cleanup
     await pool.query(`DELETE FROM organizations WHERE slug = 'dup-slug-test'`);
@@ -344,9 +343,7 @@ describe('Constraints', () => {
   it('enforces case-insensitive email uniqueness per org (CITEXT)', async () => {
     const pool = getPool();
     // Get the super-admin org ID for FK
-    const orgResult = await pool.query(
-      `SELECT id FROM organizations WHERE slug = 'porta-admin'`,
-    );
+    const orgResult = await pool.query(`SELECT id FROM organizations WHERE slug = 'porta-admin'`);
     const orgId = orgResult.rows[0].id;
 
     await pool.query(
@@ -396,19 +393,17 @@ describe('Cascade Behavior', () => {
     );
 
     // Verify user exists
-    const before = await pool.query(
-      `SELECT count(*) FROM users WHERE organization_id = $1`,
-      [orgId],
-    );
+    const before = await pool.query(`SELECT count(*) FROM users WHERE organization_id = $1`, [
+      orgId,
+    ]);
     expect(parseInt(before.rows[0].count, 10)).toBe(1);
 
     // Delete org — should cascade to users
     await pool.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
 
-    const after = await pool.query(
-      `SELECT count(*) FROM users WHERE organization_id = $1`,
-      [orgId],
-    );
+    const after = await pool.query(`SELECT count(*) FROM users WHERE organization_id = $1`, [
+      orgId,
+    ]);
     expect(parseInt(after.rows[0].count, 10)).toBe(0);
   });
 
@@ -466,9 +461,7 @@ describe('Triggers', () => {
       orgId,
     ]);
 
-    const updated = await pool.query(`SELECT updated_at FROM organizations WHERE id = $1`, [
-      orgId,
-    ]);
+    const updated = await pool.query(`SELECT updated_at FROM organizations WHERE id = $1`, [orgId]);
     expect(new Date(updated.rows[0].updated_at).getTime()).toBeGreaterThan(
       new Date(originalUpdatedAt).getTime(),
     );
