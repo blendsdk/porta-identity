@@ -31,3 +31,15 @@ The active-run record is absent and no run-labelled container remains.
 That evidence does not close Phase 1 because the review findings affect the implementation and the
 independence of its enumeration/recovery oracle. Correction tasks and a clean-evidence rerun own
 closure.
+
+## Bounded Re-review Result
+
+The single bounded re-review found two unique Major residuals. Auto-design accepted both as
+necessary corrections within the approved Phase 1 scope; neither finding is waived.
+
+| Finding | Severity | Accepted correction |
+| --- | --- | --- |
+| RV-105 | Major | Replace hard-coded password algorithm and failure-operation facts with pass-through observations at the production Argon2id, database, and cache boundaries; prove a raw dummy-hash match still has no authentication authority. |
+| RV-106 / SA-104 | Major | Permanently suppress an older job after any newer job-owned artifact exists, including after that newer artifact is consumed or expired; add the missing real-database ordering regression. |
+
+Phase 1 remains open until these corrections, targeted verification, and full verification pass.

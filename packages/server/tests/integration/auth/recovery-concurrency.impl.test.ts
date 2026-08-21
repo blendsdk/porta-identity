@@ -94,6 +94,57 @@ describe('recovery concurrency', () => {
     ).resolves.toBe('superseded');
   });
 
+  it.each(['consumed', 'expired'] as const)(
+    'keeps an older pre-artifact retry superseded after newer authority is %s',
+    async (newerState) => {
+      const organization = await createTestOrganization();
+      const user = await createTestUser(organization.id);
+      const olderJob = await insertRecoveryJob(
+        organization.id,
+        new Date('2026-08-21T12:00:00.000Z'),
+      );
+      const newerJob = await insertRecoveryJob(
+        organization.id,
+        new Date('2026-08-21T12:00:01.000Z'),
+      );
+
+      await expect(
+        ensureRecoveryJobToken({
+          table: 'password_reset_tokens',
+          recoveryJobId: newerJob,
+          userId: user.id,
+          tokenHash: `newer-${newerState}-token-hash`,
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+      ).resolves.toBe('active');
+      await getPool().query(
+        newerState === 'consumed'
+          ? `UPDATE password_reset_tokens
+             SET used_at = NOW()
+             WHERE recovery_job_id = $1`
+          : `UPDATE password_reset_tokens
+             SET expires_at = NOW() - INTERVAL '1 second'
+             WHERE recovery_job_id = $1`,
+        [newerJob],
+      );
+
+      await expect(
+        ensureRecoveryJobToken({
+          table: 'password_reset_tokens',
+          recoveryJobId: olderJob,
+          userId: user.id,
+          tokenHash: 'older-delayed-token-hash',
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+      ).resolves.toBe('superseded');
+      const olderArtifacts = await getPool().query(
+        'SELECT 1 FROM password_reset_tokens WHERE recovery_job_id = $1',
+        [olderJob],
+      );
+      expect(olderArtifacts.rowCount).toBe(0);
+    },
+  );
+
   it('does not charge leased batch members until each job actually starts processing', async () => {
     const organization = await createTestOrganization();
     const firstJob = await insertRecoveryJob(organization.id, new Date());

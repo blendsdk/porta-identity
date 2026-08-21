@@ -79,7 +79,12 @@ async function withDriver(
   if (!capability.available) {
     throw new Error(ENUMERATION_RESISTANCE_CAPABILITY_MISSING);
   }
-  await behavior(await capability.createDriver());
+  const driver = await capability.createDriver();
+  try {
+    await behavior(driver);
+  } finally {
+    await driver.dispose();
+  }
 }
 
 describe('enumeration-resistance requirement catalog', () => {
@@ -158,7 +163,10 @@ if (capability.available) {
           const action = await driver.submitPassword({ fixture, password: 'wrong' });
           const observed = observationsForAction(await driver.observe(), action.actionId);
 
-          expect(observed.passwordVerifications).toHaveLength(1);
+          expect(
+            observed.passwordVerifications,
+            `password verification count for ${state}`,
+          ).toHaveLength(1);
           expect(observed.passwordVerifications[0]).toMatchObject({ algorithm: 'argon2id' });
           expect(observed.failureOperations).toHaveLength(1);
           expectNoAuthenticationEffects(observed);
@@ -177,6 +185,7 @@ if (capability.available) {
         const absentAction = await driver.submitPassword({
           fixture: absent,
           password: 'fixture-valid',
+          forceDummyMatch: true,
         });
         const absentObserved = observationsForAction(await driver.observe(), absentAction.actionId);
 
@@ -184,6 +193,7 @@ if (capability.available) {
         expect(absentObserved.passwordVerifications[0]).toMatchObject({
           algorithm: 'argon2id',
           hashSource: 'dummy',
+          rawMatched: true,
           matched: false,
         });
         expectNoAuthenticationEffects(absentObserved);
@@ -199,6 +209,7 @@ if (capability.available) {
         expect(activeObserved.passwordVerifications[0]).toMatchObject({
           algorithm: 'argon2id',
           hashSource: 'account',
+          rawMatched: true,
           matched: true,
         });
         expect(activeObserved.authenticationEffects.map((effect) => effect.kind)).toContain(

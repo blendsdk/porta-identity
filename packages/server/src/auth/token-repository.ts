@@ -73,8 +73,8 @@ interface RecoveryTokenStateRow {
   active: boolean;
 }
 
-/** Ordering metadata for the newest active artifact owned by one user. */
-interface ActiveRecoveryTokenOrderRow {
+/** Ordering metadata for the newest job-owned artifact created for one user. */
+interface RecoveryTokenOrderRow {
   recovery_job_id: string;
   created_at: Date;
 }
@@ -177,8 +177,8 @@ export async function insertToken(
  *
  * A transaction locks the user row as the shared serialization authority, reuses an existing job
  * artifact, or invalidates an older artifact and inserts exactly one new row. A retry from an older
- * job cannot replace a newer active artifact. SQL identifiers come exclusively from the closed
- * table union.
+ * job cannot replace authority created by any newer job, even after that authority is consumed or
+ * expires. SQL identifiers come exclusively from the closed table union.
  *
  * @param input - Recovery-job token authority and deterministic token facts.
  */
@@ -217,19 +217,17 @@ export async function ensureRecoveryJobToken(
       return existing.rows[0].active ? 'active' : 'superseded';
     }
 
-    const newestActive = await client.query<ActiveRecoveryTokenOrderRow>(
+    const newestArtifact = await client.query<RecoveryTokenOrderRow>(
       `SELECT token.recovery_job_id, job.created_at
        FROM ${input.table} AS token
        JOIN auth_recovery_jobs AS job ON job.id = token.recovery_job_id
        WHERE token.user_id = $1
-         AND token.used_at IS NULL
-         AND token.expires_at > NOW()
          AND token.recovery_job_id IS NOT NULL
        ORDER BY job.created_at DESC, job.id DESC
        LIMIT 1`,
       [input.userId],
     );
-    const newest = newestActive.rows[0];
+    const newest = newestArtifact.rows[0];
     const currentCreatedAt = currentJob.created_at.getTime();
     const newerArtifactExists =
       newest !== undefined &&

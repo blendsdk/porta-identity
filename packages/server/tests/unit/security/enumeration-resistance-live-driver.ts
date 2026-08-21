@@ -55,6 +55,9 @@ export class LiveEnumerationResistanceDriver implements EnumerationResistanceSpe
   private readonly routes = new EnumerationLiveRouteDriver(this.state);
   private readonly worker = new EnumerationLiveWorkerDriver(this.state);
 
+  /** Release the in-memory driver; it owns no external process or connection. */
+  public async dispose(): Promise<void> {}
+
   /** Reset all owned observations and arrange one identity state. */
   public async reset(state: PasswordIdentityState): Promise<IdentityFixture> {
     this.state.fixture = createEnumerationIdentity(state);

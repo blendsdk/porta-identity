@@ -181,9 +181,11 @@ export interface PasswordVerificationObservation {
   /** Public action that caused the invocation. */
   readonly actionId: string;
   /** Password verification algorithm actually invoked. */
-  readonly algorithm: 'argon2id';
+  readonly algorithm: string;
   /** Opaque fixture classification of the hash passed to the verifier. */
   readonly hashSource: 'account' | 'dummy';
+  /** Raw result returned by the hash verifier before account authority is applied. */
+  readonly rawMatched: boolean;
   /** Authentication-eligible result returned by the production verifier. */
   readonly matched: boolean;
 }
@@ -303,6 +305,8 @@ export interface EnumerationResistanceObservations {
 
 /** Swappable test-owned driver over public actions and independent observers. */
 export interface EnumerationResistanceSpecDriver {
+  /** Release driver-owned worker isolation and restore the integration environment. */
+  dispose(): Promise<void>;
   /** Reset owned state and arrange one identity scenario. */
   reset(state: PasswordIdentityState): Promise<IdentityFixture>;
   /** Submit an admitted password attempt through the public boundary. */

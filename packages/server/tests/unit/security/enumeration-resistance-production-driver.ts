@@ -26,6 +26,9 @@ import {
   recordPasswordFailure,
   verifyLoginPassword,
 } from '../../../src/users/service.js';
+import { invalidateUserCache } from '../../../src/users/cache.js';
+import { ensureDummyPasswordHash, verifyPassword } from '../../../src/users/password.js';
+import { getPasswordHash, recordEligiblePasswordFailure } from '../../../src/users/repository.js';
 import { getPool } from '../../../src/lib/database.js';
 import { setEmailTransport } from '../../../src/auth/email-service.js';
 import { createSmtpTransport } from '../../../src/auth/email-transport.js';
@@ -160,11 +163,23 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
   private readonly actionByJob = new Map<string, string>();
   private readonly workerEvents: WorkerEventObservation[] = [];
   private readonly unknownOutcomeJobs = new Set<string>();
+  private forceDummyMatch = false;
 
-  /** Create a driver over production repositories, processor, and SMTP transport. */
-  public constructor() {
+  /**
+   * Create a driver over production repositories, processor, and SMTP transport.
+   *
+   * @param restoreEnvironment - Restarts the integration environment's background worker after
+   * the driver releases its manually controlled worker boundary.
+   */
+  public constructor(private readonly restoreEnvironment: () => void) {
     setEmailTransport(createSmtpTransport());
     this.worker = this.createWorker();
+  }
+
+  /** Restore the integration environment after manually controlled worker observations. */
+  public async dispose(): Promise<void> {
+    await this.worker.stop();
+    this.restoreEnvironment();
   }
 
   /** Reset owned rows, mailbox state, and one independently arranged identity. */
@@ -179,6 +194,7 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
     this.actionByJob.clear();
     this.workerEvents.length = 0;
     this.unknownOutcomeJobs.clear();
+    this.forceDummyMatch = false;
     this.failurePlan = [];
     this.now = new Date();
     this.workerId = randomUUID();
@@ -227,6 +243,7 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
     readonly forceDummyMatch?: boolean;
   }): Promise<PublicAction> {
     this.assertFixture(input.fixture);
+    this.forceDummyMatch = input.forceDummyMatch ?? false;
     const organization = this.requireOrganization();
     this.actionId = randomUUID();
     const request = createContext(
@@ -432,20 +449,50 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
       resetRateLimit: async () => undefined,
       prepareUserForPasswordLogin,
       verifyLoginPassword: async (userId: string | null, password: string) => {
-        const matched = await verifyLoginPassword(userId, password);
+        let algorithm = 'unobserved';
+        let hashSource: 'account' | 'dummy' = 'dummy';
+        let rawMatched = false;
+        const matched = await verifyLoginPassword(userId, password, {
+          loadAccountHash: async (selectedUserId: string) => {
+            const hash = await getPasswordHash(selectedUserId);
+            if (hash !== null) hashSource = 'account';
+            return hash;
+          },
+          loadDummyHash: async () => {
+            hashSource = 'dummy';
+            return ensureDummyPasswordHash();
+          },
+          verifyHash: async (hash: string, plaintext: string) => {
+            algorithm = hash.split('$')[1] || 'unknown';
+            const productionResult = await verifyPassword(hash, plaintext);
+            rawMatched = this.forceDummyMatch && hashSource === 'dummy' ? true : productionResult;
+            return rawMatched;
+          },
+        });
         this.passwordVerifications.push({
           actionId: this.actionId,
-          algorithm: 'argon2id',
-          hashSource: userId === null ? 'dummy' : 'account',
+          algorithm,
+          hashSource,
+          rawMatched,
           matched,
         });
         return matched;
       },
       recordPasswordFailure: async (user: User | null) => {
-        const result = await recordPasswordFailure(user);
+        const operationShape: string[] = [];
+        const result = await recordPasswordFailure(user, {
+          recordEligibleFailure: async (userId: string, maxAttempts: number) => {
+            operationShape.push('conditional-user-update');
+            return recordEligiblePasswordFailure(userId, maxAttempts);
+          },
+          invalidateCache: async (userId: string) => {
+            operationShape.push('cache-invalidation');
+            return invalidateUserCache(userId);
+          },
+        });
         this.failureOperations.push({
           actionId: this.actionId,
-          operationShape: ['conditional-user-update', 'cache-invalidation'],
+          operationShape,
         });
         return result;
       },

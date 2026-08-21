@@ -1,6 +1,10 @@
 import type { EnumerationResistanceCapability } from './enumeration-resistance-contract.js';
 import { ENUMERATION_RESISTANCE_CAPABILITY_MISSING } from './enumeration-resistance-contract.js';
 import { ProductionEnumerationResistanceDriver } from './enumeration-resistance-production-driver.js';
+import {
+  startAccountRecoveryWorker,
+  stopAccountRecoveryWorker,
+} from '../../../src/auth/recovery-service.js';
 
 /**
  * Test-owned swappable boundary for the immutable enumeration specifications.
@@ -14,7 +18,10 @@ export function getEnumerationResistanceCapability(): EnumerationResistanceCapab
     return Object.freeze({
       available: true,
       evidenceBoundary: 'production-services',
-      createDriver: async () => new ProductionEnumerationResistanceDriver(),
+      createDriver: async () => {
+        await stopAccountRecoveryWorker();
+        return new ProductionEnumerationResistanceDriver(() => startAccountRecoveryWorker());
+      },
     });
   }
   return Object.freeze({

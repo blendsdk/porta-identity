@@ -264,3 +264,22 @@ to success. **Confidence**: High. **Hardening**: the aggregate implementation al
 tamper and unknown-incomplete rejection tests; the direct dispatcher adds a closed exit-decision
 test. **Policy version**: 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen
 trigger**: the registered incomplete cases or required observations change.
+
+**AR-15 — Post-review clean-evidence checkpoint:** **Authority**: AI — delegated by
+`--auto-design`. **Eligibility**: reversible execution sequencing needed to preserve the approved
+clean-source evidence boundary; no product behavior, scope, or acceptance criterion changes.
+**Objective**: correct the bounded re-review findings and bind final Phase 1 evidence to the exact
+corrected product revision. **Decision**: Task 1.9h owns the accepted review corrections and their
+ordinary verification, then a new Task 1.9i runs the production-security harness, targeted checks,
+and full verification from the clean pushed correction commit. Phase 1 closes only after 1.9i.
+**Evidence**: the clean run recorded by Task 1.9h predates the accepted source corrections, while
+the evidence collector rejects any dirty primary tree and records immutable commit/tree identity.
+**Rejected alternatives**: retaining the earlier artifact would misattribute pre-correction bytes;
+bypassing the clean-tree guard would weaken evidence integrity; committing a verification-pending
+task would violate the execution contract. **Strongest counterargument**: the extra checkpoint
+adds another long harness and verification cycle, but it is the smallest sequence that preserves
+both task truthfulness and reproducible evidence. **Confidence**: High. **Hardening**: the same
+capability-then-clean-evidence sequence is already established by AR-13 and by the packed-client
+and coverage assurance paths. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-REMEDIATION-20260821`. **Reopen trigger**: evidence collection gains an equally strict,
+reviewed content-addressed snapshot model that can bind uncommitted source safely.

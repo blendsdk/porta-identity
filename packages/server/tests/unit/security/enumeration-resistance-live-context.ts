@@ -318,11 +318,14 @@ export class EnumerationLiveRouteDriver {
       resetRateLimit: async () => undefined,
       prepareUserForPasswordLogin: async () => createUser(this.state.fixture),
       verifyLoginPassword: async (userId: string | null) => {
-        const matched = userId !== null ? password === 'fixture-valid' : this.state.forceDummyMatch;
+        const rawMatched =
+          userId !== null ? password === 'fixture-valid' : this.state.forceDummyMatch;
+        const matched = userId !== null && rawMatched;
         this.state.passwordVerifications.push({
           actionId: this.state.actionId,
           algorithm: 'argon2id',
           hashSource: userId === null ? 'dummy' : 'account',
+          rawMatched,
           matched,
         });
         return matched;

@@ -59,6 +59,24 @@ import type {
 /** Fixed UUID that can never identify a persisted account. */
 const NON_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+/** Production boundaries used by fixed-shape password verification. */
+export interface LoginPasswordVerificationDependencies {
+  /** Load an eligible account hash without exposing it to the route. */
+  readonly loadAccountHash: typeof getPasswordHash;
+  /** Load the process-owned non-authoritative hash. */
+  readonly loadDummyHash: typeof ensureDummyPasswordHash;
+  /** Execute the password-hash verification algorithm. */
+  readonly verifyHash: typeof verifyPassword;
+}
+
+/** Production boundaries used by fixed-shape failed-login accounting. */
+export interface PasswordFailureDependencies {
+  /** Execute the conditional database update for an eligible account identifier. */
+  readonly recordEligibleFailure: typeof recordEligiblePasswordFailure;
+  /** Invalidate the selected account cache key after the database operation. */
+  readonly invalidateCache: typeof invalidateUserCache;
+}
+
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
@@ -545,12 +563,22 @@ export async function verifyUserPassword(id: string, password: string): Promise<
  *
  * @param id - Eligible active account UUID, or null for every non-eligible identity state.
  * @param password - Submitted plaintext password.
+ * @param dependencies - Production hash boundaries, replaceable by pass-through observers.
  * @returns True only when an eligible account hash matched.
  */
-export async function verifyLoginPassword(id: string | null, password: string): Promise<boolean> {
-  const hash = await getPasswordHash(id ?? NON_ACCOUNT_USER_ID);
-  const selectedHash = hash ?? (await ensureDummyPasswordHash());
-  const matched = await verifyPassword(selectedHash, password);
+export async function verifyLoginPassword(
+  id: string | null,
+  password: string,
+  dependencies?: LoginPasswordVerificationDependencies,
+): Promise<boolean> {
+  const boundaries = dependencies ?? {
+    loadAccountHash: getPasswordHash,
+    loadDummyHash: ensureDummyPasswordHash,
+    verifyHash: verifyPassword,
+  };
+  const hash = await boundaries.loadAccountHash(id ?? NON_ACCOUNT_USER_ID);
+  const selectedHash = hash ?? (await boundaries.loadDummyHash());
+  const matched = await boundaries.verifyHash(selectedHash, password);
   return id !== null && hash !== null && matched;
 }
 
@@ -706,15 +734,21 @@ export async function recordFailedLogin(
  * Execute one fixed-shape failure-accounting operation for an admitted password rejection.
  *
  * @param user - Eligible active account, or null for every other identity state.
+ * @param dependencies - Production persistence/cache boundaries, replaceable by pass-through observers.
  * @returns Neutral or real account-lock result without disclosing identity publicly.
  */
 export async function recordPasswordFailure(
   user: User | null,
+  dependencies?: PasswordFailureDependencies,
 ): Promise<{ locked: boolean; failedCount: number }> {
+  const boundaries = dependencies ?? {
+    recordEligibleFailure: recordEligiblePasswordFailure,
+    invalidateCache: invalidateUserCache,
+  };
   const maxAttempts = await getSystemConfigNumber('max_failed_logins', 5);
   const userId = user?.id ?? NON_ACCOUNT_USER_ID;
-  const result = await recordEligiblePasswordFailure(userId, maxAttempts);
-  await invalidateUserCache(userId);
+  const result = await boundaries.recordEligibleFailure(userId, maxAttempts);
+  await boundaries.invalidateCache(userId);
   const locked = result.status === 'locked' && user !== null;
 
   if (locked && user) {
