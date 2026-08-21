@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-21 16:43
-> **Progress**: 14/47 tasks (30%)
+> **Last Updated**: 2026-08-21 18:01
+> **Progress**: 15/47 tasks (32%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -73,7 +73,7 @@ targeted command; all already-created paths remain mandatory.
 - [x] 1.9d Correct the immutable ST-01–ST-06 oracle to exercise real password/repository/processor/token/mail boundaries and reconcile ST-05 with bounded at-least-once identical-artifact delivery; record exact RED. (completed 2026-08-21 17:09 CEST; default oracle 3/3 green, required-mode RED failed only with `ENUMERATION_RESISTANCE_CAPABILITY_MISSING`, and `yarn verify` passed 235 files/3,403 tests)
 - [x] 1.9e Move attempt start accounting to immediately before processing; serialize recovery artifacts per user, suppress superseded job delivery, and bind password-reset GET/POST token lookup to the route organization. (completed 2026-08-21 17:24 CEST; focused 3 files/49 tests green, full type/lint/format gates green, and `yarn verify` passed 235 files/3,403 tests)
 - [x] 1.9f Add real concurrent-job, mid-batch crash/reclaim, superseded retry, wrong-tenant reset, and SMTP unknown-outcome implementation tests; run corrected ST-01–ST-06 green. (completed 2026-08-21 17:48 CEST; service-backed ST-01–ST-06 9/9, concurrency/SMTP 3/3, wrong-tenant reset E2E 7/7, structure 70/70, and `yarn verify` 237 files/3,416 tests green)
-- [ ] 1.9g Preserve the documented assurance exit precedence across retained production-exposure and later security-block outcomes, with a complete combination matrix.
+- [x] 1.9g Preserve the documented assurance exit precedence across retained production-exposure and later security-block outcomes, with a complete combination matrix. ✅ (completed: 2026-08-21 18:01 CEST; complete 10×10 registered-exit matrix green, focused assurance type/lint/format checks green, and `yarn verify` passed 237 files/3,416 tests)
 - [ ] 1.9h From the clean committed revision, rerun the production-security human-auth evidence, Phase 1 targeted checks, `yarn verify`, and one bounded quality re-review; close Phase 1 only if no Critical or Major remains.
 
 Deliverable: password and recovery public paths are functionally and structurally non-enumerating;

@@ -224,6 +224,27 @@ export const exitTaxonomy = {
 /** Highest-to-lowest failure precedence when outcomes overlap. */
 export const exitPrecedence = [60, 130, 143, 70, 50, 40, 30, 20, 21] as const;
 
+/**
+ * Selects the highest-priority exit from one or more completed assurance stages.
+ *
+ * Numeric ordering is deliberately ignored because process exits encode categories rather than
+ * severity. Unknown exits fail closed so a newly introduced category cannot silently weaken an
+ * earlier result.
+ *
+ * @param exitCodes - Completed stage exits, including zero for success.
+ * @returns The winning registered exit, or zero when every stage succeeded.
+ * @throws {Error} When any exit is outside the registered command taxonomy.
+ */
+export function selectAssuranceExitCode(exitCodes: readonly number[]): number {
+  for (const exitCode of exitCodes) {
+    if (!Object.hasOwn(exitTaxonomy, exitCode)) {
+      throw new Error(`unregistered assurance exit code: ${exitCode}`);
+    }
+  }
+
+  return exitPrecedence.find((exitCode) => exitCodes.includes(exitCode)) ?? 0;
+}
+
 /** Returns whether an untrusted command action belongs to the frozen allowlist. */
 export function isAssuranceCommandAction(value: string): value is AssuranceCommandAction {
   return assuranceCommandActions.some((action) => action === value);

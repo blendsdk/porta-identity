@@ -13,6 +13,7 @@ import {
   exitPrecedence,
   exitTaxonomy,
   rootAliasForAction,
+  selectAssuranceExitCode,
 } from '../commands.js';
 import { validateCommandContractRegistry } from '../scripts/foundation-artifacts.js';
 import { runManagedChild } from '../scripts/managed-child.js';
@@ -56,6 +57,27 @@ test('should retain distinct stable exits in documented precedence order', () =>
   assert.equal(exitTaxonomy[30], 'setup-failure');
   assert.equal(exitTaxonomy[20], 'product-failure');
   assert.equal(exitTaxonomy[21], 'test-failure');
+});
+
+test('should preserve documented precedence for every pair of assurance exits', () => {
+  const orderedExits = [...exitPrecedence, 0] as const;
+
+  for (const first of orderedExits) {
+    for (const second of orderedExits) {
+      const expected = orderedExits.find(
+        (candidate) => candidate !== 0 && (candidate === first || candidate === second),
+      );
+      assert.equal(
+        selectAssuranceExitCode([first, second]),
+        expected ?? 0,
+        `unexpected precedence for ${first} followed by ${second}`,
+      );
+    }
+  }
+});
+
+test('should reject an exit that has no registered assurance classification', () => {
+  assert.throws(() => selectAssuranceExitCode([40, 22]), /unregistered assurance exit code: 22/);
 });
 
 test('should reject unregistered selectors without evaluating them', () => {

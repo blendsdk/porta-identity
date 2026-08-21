@@ -10,6 +10,7 @@ import {
   exitTaxonomy,
   isAssuranceCommandAction,
   rootAliasForAction,
+  selectAssuranceExitCode,
 } from '../commands.js';
 import { redSignatureRegistrySchema } from '../schema.js';
 import {
@@ -765,7 +766,7 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
 
     const reset = await runLifecycleAction('reset');
     const resetExit = managedChildExit(reset, setupFailureExit);
-    if (resetExit !== 0) return resetExit;
+    if (resetExit !== 0) return selectAssuranceExitCode([retainedProductExit, resetExit]);
 
     const active = readActiveCoverageRun(process.cwd());
     const functionalSpecifications = await runNodeSuite(
@@ -778,11 +779,15 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       }),
     );
     const functionalExit = managedChildExit(functionalSpecifications, testFailureExit);
-    if (functionalExit !== 0) return functionalExit;
+    if (functionalExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, functionalExit]);
+    }
 
     const secondFactorReset = await runLifecycleAction('reset');
     const secondFactorResetExit = managedChildExit(secondFactorReset, setupFailureExit);
-    if (secondFactorResetExit !== 0) return secondFactorResetExit;
+    if (secondFactorResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, secondFactorResetExit]);
+    }
     const secondFactorActive = readActiveCoverageRun(process.cwd());
     const secondFactorSpecifications = await runNodeSuite(
       humanAuthSecondFactorSpecificationFiles,
@@ -794,11 +799,15 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       }),
     );
     const secondFactorExit = managedChildExit(secondFactorSpecifications, testFailureExit);
-    if (secondFactorExit !== 0) return secondFactorExit;
+    if (secondFactorExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, secondFactorExit]);
+    }
 
     const tenantAdminReset = await runLifecycleAction('reset');
     const tenantAdminResetExit = managedChildExit(tenantAdminReset, setupFailureExit);
-    if (tenantAdminResetExit !== 0) return tenantAdminResetExit;
+    if (tenantAdminResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, tenantAdminResetExit]);
+    }
     const tenantAdminActive = readActiveCoverageRun(process.cwd());
     const tenantAdminSpecifications = await runNodeSuite(
       tenantAdminSpecificationFiles,
@@ -810,7 +819,7 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       }),
     );
     const tenantAdminExit = managedChildExit(tenantAdminSpecifications, testFailureExit);
-    return tenantAdminExit === 0 ? retainedProductExit : tenantAdminExit;
+    return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
   });
 }
 
