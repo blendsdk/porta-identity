@@ -1,7 +1,7 @@
 # Ambiguity Register: Assurance Product Remediation
 
 > **Status**: ✅ GATE PASSED — all 9 items resolved
-> **Last Updated**: 2026-08-21 08:21
+> **Last Updated**: 2026-08-22 01:30
 
 ## Planning boundaries
 
@@ -304,3 +304,22 @@ and identified the same lifecycle boundary as the smallest sound correction. **P
 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: the service-backed
 projects gain independently owned infrastructure or Vitest provides a verified project lifecycle
 barrier.
+
+**AR-17 — Clean-provenance Phase 2 closure:** **Authority**: AI — delegated by `--auto-design`.
+**Eligibility**: reversible verification sequencing within the approved Phase 2 evidence boundary;
+no product behavior, scope, or acceptance criterion changes. **Objective**: preserve the assurance
+collector's clean-source provenance while keeping each committed task independently verified.
+**Decision**: Task 2.8a owns documentation, targeted, pentest, documentation-build, and ordinary
+verification. Task 2.8b starts from that clean pushed commit and runs the production-security
+human-auth collector, repeated Phase 2 gates, full verification, and the phase quality review.
+Phase 2 closes only after 2.8b. **Evidence**: the owned run
+`bcf6a703-5e2b-460d-bd10-6d5b4037025e` rejected the dirty candidate at `stage=collector`, emitted no
+claim-bearing artifact, and cleaned all owned runtime state. **Rejected alternatives**: bypassing
+the provenance guard weakens evidence identity; marking the phase complete without the collector
+omits a planned boundary; committing a verification-pending task violates the execution contract.
+**Strongest counterargument**: the extra checkpoint repeats long verification, but it is the
+smallest established sequence that binds evidence to the exact documented implementation.
+**Confidence**: High. **Hardening**: this matches the already-reviewed AR-13/AR-15 clean-evidence
+pattern and introduces no new mechanism. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-REMEDIATION-20260821`. **Reopen trigger**: the collector gains a reviewed content-addressed
+snapshot mode that safely binds uncommitted source.

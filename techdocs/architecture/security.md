@@ -145,12 +145,21 @@ Passwordless authentication via email:
    privacy-preserving no-op.
 4. The worker sends the link and records completion. Transient failures use five total attempts
    with delays of 1 second, 10 seconds, 60 seconds, and 5 minutes.
-5. User clicks the link → token is validated, marked used, and the OIDC flow continues.
+5. User clicks the link through `/:orgSlug/auth/magic-link/:token`. The route locks the artifact
+   and account, then compares the route tenant, persisted tenant, current account tenant, persisted
+   interaction, and presented interaction before changing state.
+6. Exact authority consumes the artifact, updates the account, and writes the success audit row in
+   one PostgreSQL transaction. A mismatch rolls back without consuming the link.
+7. After commit, Porta creates a five-minute Redis continuation containing user, tenant, and
+   interaction authority. One Lua compare-and-delete operation permits exactly one matching
+   consumer; mismatches preserve the key for the legitimate interaction.
 
 **Security properties**: Tokens are time-limited, single-use, unpredictable, and owned by one
 durable recovery job. The queue stores an encrypted normalized address and keyed idempotency
 digest, never a plaintext address or raw token. An ambiguous SMTP outcome may deliver the same
-link more than once, but it does not create a second active artifact.
+link more than once, but it does not create a second active artifact. A Redis failure after the
+database transaction cannot make a consumed link reusable and produces only the generic recovery
+path.
 
 ### Password and Recovery Enumeration Resistance
 

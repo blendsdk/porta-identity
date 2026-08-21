@@ -1,8 +1,8 @@
 # Current Test Inventory
 
-> **Inventory snapshot date**: 2026-08-10
-> **Latest verification checkpoint**: 2026-08-21
-> **Assurance architecture update**: 2026-08-21
+> **Inventory snapshot date**: 2026-08-22
+> **Latest verification checkpoint**: 2026-08-22
+> **Assurance architecture update**: 2026-08-22
 > **Scope**: All test projects executed by the branch CI workflow
 > **Purpose**: Describe what the current suite exercises before any test-trust audit or rewrite
 
@@ -32,11 +32,12 @@ repository-structure cases. The assurance tree contains 99 explicitly selected s
 implementation files with 399 static top-level cases; service-backed journeys and parameterized
 subtests make that static count unsuitable as a runtime total.
 
-The product-remediation suite adds a rerunnable enumeration-resistance oracle plus implementation
-tests. It exercises the real public login/recovery route handlers and production recovery-worker
-scheduler over isolated PostgreSQL/SMTP boundaries, covering equal response shapes, one account or
-dummy Argon2id verification, durable job shape, active/no-op processing, retry/lease/shutdown
-limits, and privacy-safe worker output.
+The product-remediation suite adds rerunnable enumeration-resistance and magic-link authority
+oracles plus implementation tests. They exercise real public route handlers and production worker
+logic over PostgreSQL, Redis, MailHog, and SMTP boundaries. Coverage includes equal recovery
+responses, account-or-dummy Argon2id verification, durable jobs, retry/lease/shutdown limits,
+tenant/interaction-bound magic-link consumption, atomic Redis continuation use, rollback, expiry,
+post-commit dependency failure, and privacy-safe diagnostics.
 
 Delivered assurance commands now cover typed governance and traceability, fenced lifecycle and
 fixtures, operational and production-security harness profiles, assembled-server V8 attribution,
@@ -46,8 +47,8 @@ data observations. Evidence is clean-revision bound, owner-only, redacted, and a
 the applicable lifecycle and cleanup checks succeed.
 
 This checkpoint is deliberately **not** certification and does not claim that Porta has no exploit
-paths. Product defects and unresolved contracts remain separately recorded, including cross-tenant
-magic-link acceptance, TOTP replay semantics, bulk/import/export semantics, incomplete correlated
+paths. Product defects and unresolved contracts remain separately recorded, including TOTP replay
+semantics, bulk/import/export semantics, incomplete correlated
 decision logs, public nginx version disclosure, dependency reconnection behavior, SDK cursor
 pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
 completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
@@ -60,26 +61,26 @@ merge-policy use.
 
 | Suite                 |   Files |     Cases |   Test LOC | Primary boundary                                          | Required by branch CI       |
 | --------------------- | ------: | --------: | ---------: | --------------------------------------------------------- | --------------------------- |
-| Server unit           |     143 |     2,721 |     41,529 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
-| Server integration    |      26 |       275 |      5,688 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
-| Server HTTP E2E       |      20 |       128 |      2,775 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
-| Server penetration    |      35 |       224 |      5,267 | Attack-oriented HTTP requests against full Porta          | Yes, through `yarn verify`  |
+| Server unit           |     156 |     2,799 |     44,110 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
+| Server integration    |      29 |       297 |      5,952 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
+| Server HTTP E2E       |      21 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
+| Server penetration    |      35 |       224 |      5,266 | Attack-oriented HTTP requests against full Porta          | Yes, through `yarn verify`  |
 | Server browser UI     |      24 |       134 |      4,948 | Chromium against a real Porta server                      | Yes, separate `ui` job      |
 | SDK unit              |      31 |       404 |      5,875 | SDK behavior with mock transports                         | Yes, through `yarn verify`  |
 | CLI unit              |      29 |       355 |      6,032 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
 | External OIDC harness |       6 |         6 |        203 | Dockerized SPA and BFF clients using Porta over HTTP/TLS  | Yes, separate `harness` job |
-| Repository structure  |      14 |        68 |      2,844 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
-| **Total**             | **328** | **4,315** | **75,161** | —                                                         | **Yes**                     |
+| Repository structure  |      14 |        70 |      2,844 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
+| **Total**             | **345** | **4,418** | **78,351** | —                                                         | **Yes**                     |
 
 Case counts were collected through Vitest's runtime collector, Playwright's `--list` mode, and a
-fresh `yarn test:structure` run. Parameterized server tests explain the difference between 3,239
-static declarations and 3,348 runtime-collected server cases.
+fresh `yarn test:structure` run. Parameterized server tests explain why runtime case counts exceed
+static `it(...)` declarations.
 
 ## Execution Topology
 
 | Command or job                                                                              | What it executes                                                                                                      |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                                                               | 70 structure tests, all 3,409 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
+| `yarn verify`                                                                               | 70 structure tests, all 3,449 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
 | `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
 | `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
 | `yarn test:ui`                                                                              | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
@@ -93,8 +94,8 @@ not part of the local `yarn verify` command; they are separate CI jobs.
 
 ## Server Unit Tests
 
-The server unit project accounts for **2,721 cases (63% of the complete test count)**. Ninety-four
-of its 143 files directly call `vi.mock`; other files use spies, passed-in fakes, or real pure
+The server unit project accounts for **2,799 cases (63% of the complete test count)**. One hundred
+and four of its 156 files directly call `vi.mock`; other files use spies, passed-in fakes, or real pure
 objects. These tests mainly verify module-level logic, returned values, query construction,
 dependency calls, error handling, and validation.
 
@@ -233,7 +234,7 @@ of the published integration boundary than server-internal helpers do.
 
 ## Repository-Structure Tests
 
-The **68 structure tests** protect the migration result and assurance boundary rather than Porta's
+The **70 structure tests** protect the migration result and assurance boundary rather than Porta's
 product behavior. They
 cover:
 

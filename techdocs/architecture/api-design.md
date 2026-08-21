@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-08-11
+> **Last Updated**: 2026-08-22
 
 ## Overview
 
@@ -107,6 +107,19 @@ OIDC endpoints use standard OpenID Connect mechanisms:
 - **Authorization Code + PKCE** for public clients (SPAs, CLI)
 - **Client Secret Post** for confidential clients (with SHA-256 pre-hash)
 - **Client Credentials** for machine-to-machine
+
+### Magic-Link Callback Authority
+
+`GET /:orgSlug/auth/magic-link/:token` is a public authentication callback, not an Admin API
+route. The optional `interaction` query value is transport input and never replaces persisted
+authority. Before any successful mutation, Porta requires the route organization, artifact
+organization, current account organization, persisted interaction, and live OIDC client tenant to
+agree. Invalid, expired, replayed, cross-tenant, and interaction-mismatched requests share one
+generic response contract.
+
+Successful verification commits token consumption, account state, and durable audit together. A
+separate short-lived Redis continuation is created afterward and is atomically consumed only when
+its tenant and interaction match independently resolved OIDC authority.
 
 ## Request Validation
 

@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 01:11
-> **Progress**: 24/48 tasks (50%)
+> **Last Updated**: 2026-08-22 01:42
+> **Progress**: 25/49 tasks (51%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -30,12 +30,12 @@ to the exec-plan protocol.
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
 | 1 | Enumeration-resistant password and recovery work | 17 |
-| 2 | Tenant-bound atomic magic links | 8 |
+| 2 | Tenant-bound atomic magic links | 9 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 48 tasks across 5 phases.**
+**Total: 49 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -96,7 +96,8 @@ timing remains explicitly diagnostic.
 - [x] 2.5 Implement tenant/interaction-bound atomic Redis continuation consume and interaction-side authority derivation — `packages/server/src/auth/magic-link-session.ts`, `packages/server/src/routes/interactions.ts` ✅ (completed: 2026-08-22 00:23 CEST; one Lua decision compares the provider-owned interaction tenant and continuation tenant/interaction before deleting, mismatches preserve key and cookie, and issuance rejects route/provider/client-tenant disagreement; focused unit/spec 54/54, service-backed enumeration 9/9, public magic-link E2E 6/6, lint/typecheck, and corrected `yarn verify` passed 238 files/3,437 tests)
 - [x] 2.6 Run ST-07–ST-13 green through unit, integration, and public Alpha/Bravo boundaries. ✅ (completed: 2026-08-22 00:50 CEST; unchanged unit oracle 3/3, service-backed PostgreSQL/Redis/MailHog integration 7/7, and public magic-link E2E 6/6 green; retained server inventory 240 files and `yarn verify` passed)
 - [x] 2.7 Add transaction rollback, post-commit Redis failure, Lua concurrency, expiry, and privacy implementation tests — `packages/server/tests/unit/auth/magic-link-binding.impl.test.ts` ✅ (completed: 2026-08-22 01:11 CEST; five focused implementation cases cover durable-audit rollback, post-commit Redis failure, exact continuation races, expiry cleanup, and protected-value redaction; Phase 2 unit target 8/8, structure 70/70, and `yarn verify` passed)
-- [ ] 2.8 Run Phase 2 targeted/human-auth/pentest checks, `yarn verify`, and update magic-link/API/architecture documentation.
+- [x] 2.8a Update magic-link/API/architecture documentation and run Phase 2 targeted, E2E, pentest, docs-build, and `yarn verify` checks. ✅ (completed: 2026-08-22 01:42 CEST; public and maintainer docs now describe outbox issuance, durable tenant/interaction authority, transactional consume, and Redis continuation behavior; targeted 8/8, live integration 7/7, E2E 6/6, pentest 224/224, docs build, structure 70/70, and `yarn verify` passed)
+- [ ] 2.8b From the clean pushed documentation checkpoint, run the production-security human-auth collector, repeated Phase 2 targeted/pentest checks, `yarn verify`, and the Phase 2 quality gate.
 
 Deliverable: cross-tenant or wrong-interaction presentation cannot authenticate, mutate, or consume;
 intended use remains atomic and single-use.
@@ -179,7 +180,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 48 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 49 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.

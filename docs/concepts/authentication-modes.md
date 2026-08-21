@@ -113,15 +113,16 @@ sequenceDiagram
     Login->>Porta: POST /interaction/{uid}/magic-link
     Porta->>Porta: CSRF validation
     Porta->>Porta: Rate limit check
-    Porta->>DB: Find user by email + org
-    Porta->>DB: Generate secure magic link token
-    Porta->>Email: Send magic-link email
+    Porta->>DB: Enqueue tenant-bound recovery work
     Porta->>User: Render magic-link-sent.hbs ("Check your email")
+    Porta->>DB: Worker resolves eligible user in tenant
+    Porta->>DB: Persist one tenant/interaction-bound token hash
+    Porta->>Email: Send magic-link email
     Note over User: Opens email, clicks magic link
-    User->>Porta: GET /interaction/{uid}/magic-link/verify?token=...
-    Porta->>DB: Validate token (not expired, not used)
-    Porta->>DB: Mark token as used
-    Porta->>DB: Update last_login timestamp
+    User->>Porta: GET /{orgSlug}/auth/magic-link/{token}?interaction={uid}
+    Porta->>DB: Lock and validate token, tenant, user, and interaction
+    Porta->>DB: Consume token, update account, and write audit atomically
+    Porta->>Porta: Create short-lived tenant-bound continuation
     Porta->>DB: Check 2FA requirement
     alt 2FA required
         Porta->>User: Redirect to 2FA verification
@@ -132,14 +133,20 @@ sequenceDiagram
 
 ### Magic Link Security
 
-| Feature                         | Implementation                                      |
-| ------------------------------- | --------------------------------------------------- |
-| **Token generation**            | Cryptographically secure random tokens              |
-| **Token expiry**                | Configurable (default: 15 minutes)                  |
-| **Single use**                  | Tokens are invalidated after first use              |
-| **Rate limiting**               | Prevents email flooding attacks                     |
-| **User enumeration protection** | Same response regardless of whether email exists    |
-| **Session binding**             | Magic link is bound to the OIDC interaction session |
+| Feature                         | Implementation                                                      |
+| ------------------------------- | ------------------------------------------------------------------- |
+| **Token generation**            | Cryptographically secure random tokens                              |
+| **Token expiry**                | Configurable (default: 15 minutes)                                  |
+| **Single use**                  | Tokens are invalidated after first use                              |
+| **Rate limiting**               | Prevents email flooding attacks                                     |
+| **User enumeration protection** | Same response regardless of whether email exists                    |
+| **Tenant and session binding**  | Link authority is fixed to one tenant and optional OIDC interaction |
+
+The callback route treats its organization and interaction values as untrusted transport input.
+They must match the authority stored when the link was issued. A mismatch returns the same generic
+failure as an invalid or expired link and does not consume the artifact. Once the database
+transaction succeeds, the link stays consumed even if the short-lived Redis continuation cannot be
+created; the user must request a new link rather than replaying the committed one.
 
 ### When to Use Magic Link
 
