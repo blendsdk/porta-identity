@@ -51,6 +51,10 @@ vi.mock('../../../src/auth/email-service.js', () => ({
   sendMagicLinkEmail: vi.fn(),
 }));
 
+vi.mock('../../../src/auth/recovery-service.js', () => ({
+  enqueueAccountRecovery: vi.fn().mockResolvedValue({ inserted: true, job: {} }),
+}));
+
 vi.mock('../../../src/auth/i18n.js', () => ({
   resolveLocale: vi.fn().mockResolvedValue('en'),
   getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
@@ -117,6 +121,7 @@ import { createInteractionRouter } from '../../../src/routes/interactions.js';
 import * as csrf from '../../../src/auth/csrf.js';
 import * as rateLimiter from '../../../src/auth/rate-limiter.js';
 import * as emailService from '../../../src/auth/email-service.js';
+import * as recoveryService from '../../../src/auth/recovery-service.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as userService from '../../../src/users/service.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
@@ -790,7 +795,7 @@ describe('interaction routes', () => {
   // =========================================================================
 
   describe('POST /:uid/magic-link — handleSendMagicLink', () => {
-    it('should send magic link and show check-email page for active user', async () => {
+    it('should enqueue magic-link work and show the check-email page', async () => {
       const mockUser = {
         id: 'user-uuid-1',
         email: 'user@test.com',
@@ -809,37 +814,20 @@ describe('interaction routes', () => {
 
       await exec(layer!, ctx);
 
-      // Should invalidate existing tokens
-      expect(tokenRepo.invalidateUserTokens).toHaveBeenCalledWith(
-        'magic_link_tokens',
-        'user-uuid-1',
-      );
-
-      // Should insert new token
-      expect(tokenRepo.insertToken).toHaveBeenCalledWith(
-        'magic_link_tokens',
-        'user-uuid-1',
-        'token-hash-abc',
-        expect.any(Date),
-      );
-
-      // Should send magic link email
-      expect(emailService.sendMagicLinkEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'user-uuid-1', email: 'user@test.com' }),
-        expect.objectContaining({ id: 'org-uuid-1', slug: 'test-org' }),
-        expect.stringContaining('auth/magic-link/token-plain-123'),
-        'en',
-      );
+      expect(recoveryService.enqueueAccountRecovery).toHaveBeenCalledWith({
+        jobType: 'magic_link',
+        organizationId: 'org-uuid-1',
+        email: 'user@test.com',
+        interactionUid: 'interaction-uid-123',
+        actionNonce: 'tok',
+      });
+      expect(tokenRepo.insertToken).not.toHaveBeenCalled();
+      expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
 
       // Should render the magic-link-sent page
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'magic-link-sent',
         expect.objectContaining({ email: 'user@test.com' }),
-      );
-
-      // Should audit log
-      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: 'user.magic_link.sent' }),
       );
     });
 

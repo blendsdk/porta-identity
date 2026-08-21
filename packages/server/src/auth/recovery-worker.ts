@@ -32,6 +32,7 @@ export const RECOVERY_WORKER_RETRY_DELAYS_MILLISECONDS = [1_000, 10_000, 60_000,
 export type RecoveryWorkerFailureReason =
   | 'database_unavailable'
   | 'smtp_unavailable'
+  | 'smtp_outcome_unknown'
   | 'invalid_protected_input'
   | 'template_unavailable'
   | 'lease_exhausted'

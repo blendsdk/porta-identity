@@ -42,6 +42,25 @@ export interface EmailOrganization {
   brandingCompanyName?: string | null;
 }
 
+/** Closed recovery email variants sent by the durable worker. */
+export type RecoveryEmailType = 'magic_link' | 'password_reset';
+
+/** Input for strict recovery delivery with propagated transport failures. */
+export interface StrictRecoveryEmailInput {
+  /** Recovery template and subject selection. */
+  readonly type: RecoveryEmailType;
+  /** Eligible recipient account. */
+  readonly user: EmailUser;
+  /** Tenant branding and template authority. */
+  readonly organization: EmailOrganization;
+  /** Complete recovery URL containing the single-use artifact. */
+  readonly recoveryUrl: string;
+  /** Resolved locale. */
+  readonly locale: string;
+  /** Stable RFC 5322 message identity for bounded retries. */
+  readonly messageId: string;
+}
+
 // ---------------------------------------------------------------------------
 // Module-level transport (lazy-initialized)
 // ---------------------------------------------------------------------------
@@ -57,6 +76,36 @@ function getTransport(): EmailTransport {
     transport = createSmtpTransport();
   }
   return transport;
+}
+
+/**
+ * Render and deliver one recovery email while propagating template and SMTP failures.
+ *
+ * The durable worker owns retry and terminal policy. This function deliberately performs no
+ * catch-and-ignore behavior and emits no recipient, URL, or transport-error details.
+ *
+ * @param input - Recovery template, recipient, tenant, link, locale, and message identity.
+ */
+export async function sendRecoveryEmailStrict(input: StrictRecoveryEmailInput): Promise<void> {
+  const isMagicLink = input.type === 'magic_link';
+  const { html, text } = await renderEmail(
+    isMagicLink ? 'magic-link' : 'password-reset',
+    input.organization.slug,
+    {
+      userName: getUserDisplayName(input.user),
+      [isMagicLink ? 'magicLinkUrl' : 'resetUrl']: input.recoveryUrl,
+      expiresMinutes: isMagicLink ? 15 : 60,
+      branding: buildBrandingContext(input.organization),
+      locale: input.locale,
+    },
+  );
+  await getTransport().send({
+    to: input.user.email,
+    subject: isMagicLink ? 'Sign in to your account' : 'Reset your password',
+    html,
+    text,
+    messageId: input.messageId,
+  });
 }
 
 /**
@@ -199,7 +248,10 @@ export async function sendPasswordResetEmail(
 
     logger.debug({ userId: user.id, email: user.email }, 'Password reset email sent');
   } catch (error) {
-    logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send password reset email');
+    logger.warn(
+      { error, userId: user.id, email: user.email },
+      'Failed to send password reset email',
+    );
     writeAuditLog({
       organizationId: org.id,
       userId: user.id,
@@ -482,7 +534,10 @@ export async function sendPasswordChangedEmail(
 
     logger.debug({ userId: user.id, email: user.email }, 'Password changed email sent');
   } catch (error) {
-    logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send password changed email');
+    logger.warn(
+      { error, userId: user.id, email: user.email },
+      'Failed to send password changed email',
+    );
     writeAuditLog({
       organizationId: org.id,
       userId: user.id,

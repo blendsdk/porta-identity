@@ -42,6 +42,8 @@ export interface SendEmailOptions {
   text: string;
   /** Reply-to address (optional) */
   replyTo?: string;
+  /** Stable RFC 5322 message identity used for idempotent recovery retries. */
+  messageId?: string;
 }
 
 /** Result of sending an email */
@@ -110,10 +112,7 @@ export function createSmtpTransport(): EmailTransport {
     async send(options: SendEmailOptions): Promise<EmailResult> {
       const from = options.from ?? config.smtp.from;
 
-      logger.debug(
-        { to: options.to, subject: options.subject, from },
-        'Sending email via SMTP',
-      );
+      logger.debug({ event: 'smtp_send_started' }, 'Sending email via SMTP');
 
       const info = await transporter.sendMail({
         from,
@@ -122,16 +121,13 @@ export function createSmtpTransport(): EmailTransport {
         html: options.html,
         text: options.text,
         replyTo: options.replyTo,
+        ...(options.messageId ? { messageId: options.messageId } : {}),
       });
 
       return {
         messageId: info.messageId,
-        accepted: Array.isArray(info.accepted)
-          ? info.accepted.map(String)
-          : [],
-        rejected: Array.isArray(info.rejected)
-          ? info.rejected.map(String)
-          : [],
+        accepted: Array.isArray(info.accepted) ? info.accepted.map(String) : [],
+        rejected: Array.isArray(info.rejected) ? info.rejected.map(String) : [],
       };
     },
   };

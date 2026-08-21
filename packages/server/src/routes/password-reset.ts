@@ -22,24 +22,28 @@
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
-import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
+import {
+  generateCsrfToken,
+  verifyCsrfToken,
+  setCsrfCookie,
+  getCsrfFromCookie,
+} from '../auth/csrf.js';
 import {
   checkRateLimit,
   buildPasswordResetRateLimitKey,
   loadPasswordResetRateLimitConfig,
 } from '../auth/rate-limiter.js';
-import { generateToken, hashToken } from '../auth/tokens.js';
-import { insertToken, findValidToken, markTokenUsed, invalidateUserTokens } from '../auth/token-repository.js';
-import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../auth/email-service.js';
+import { hashToken } from '../auth/tokens.js';
+import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
+import { sendPasswordChangedEmail } from '../auth/email-service.js';
+import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
-import { getUserByEmail, getUserById, setUserPassword } from '../users/service.js';
+import { getUserById, setUserPassword } from '../users/service.js';
 import { validatePassword } from '../users/password.js';
-import { getSystemConfigNumber } from '../lib/system-config.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import { config } from '../config/index.js';
 import type { Organization } from '../organizations/types.js';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
@@ -184,13 +188,7 @@ async function enforcePasswordMethod(
     },
   });
 
-  await renderErrorPageForAuth(
-    ctx,
-    org,
-    locale,
-    t,
-    t('errors.login_method_disabled'),
-  );
+  await renderErrorPageForAuth(ctx, org, locale, t, t('errors.login_method_disabled'));
   return false;
 }
 
@@ -232,13 +230,13 @@ async function showForgotPassword(ctx: AuthContext): Promise<void> {
  *
  * Always shows the "check your email" confirmation page regardless of
  * whether the email exists — this prevents user enumeration attacks.
- * If the user is found, generates a reset token and sends the email.
+ * Account lookup and delivery happen asynchronously after the request is durably admitted.
  *
  * 1. Verify CSRF token
  * 2. Extract email from form body
  * 3. Check rate limit (per email)
  * 4. Always show "check your email" page
- * 5. If user found: generate token, send email, audit log
+ * 5. Durably enqueue identical account-independent work
  *
  * @param ctx - Koa context with organization state
  */
@@ -289,7 +287,7 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
       organizationId: org.id,
       eventType: 'rate_limit.password_reset',
       eventCategory: 'security',
-      description: `Password reset rate limit exceeded for ${email}`,
+      description: 'Password reset rate limit exceeded',
       ipAddress: ctx.ip,
     });
 
@@ -307,48 +305,32 @@ async function processForgotPassword(ctx: AuthContext): Promise<void> {
     return;
   }
 
-  // Step 3: Look up user (silently — never reveal whether the user exists)
-  const user = await getUserByEmail(org.id, email);
-
-  if (user) {
-    try {
-      // Invalidate existing password reset tokens for this user
-      await invalidateUserTokens('password_reset_tokens', user.id);
-
-      // Generate new token
-      const { plaintext, hash } = generateToken();
-
-      // Load TTL from system_config (default: 1 hour = 3600s)
-      const ttlSeconds = await getSystemConfigNumber('password_reset_ttl', 3600);
-      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-
-      // Store token hash in database
-      await insertToken('password_reset_tokens', user.id, hash, expiresAt);
-
-      // Build reset URL
-      const resetUrl = `${config.issuerBaseUrl}/${org.slug}/auth/reset-password/${plaintext}`;
-
-      // Send password reset email (fire-and-forget)
-      sendPasswordResetEmail(
-        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
-        resetUrl,
+  try {
+    await enqueueAccountRecovery({
+      jobType: 'password_reset',
+      organizationId: org.id,
+      email,
+      interactionUid: null,
+      actionNonce: submittedCsrf,
+    });
+  } catch {
+    logger.error({ event: 'password_reset_enqueue_failed' }, 'Failed to enqueue password reset');
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(ctx, csrfToken);
+    await renderAndRespond(
+      ctx,
+      'forgot-password',
+      {
+        branding: buildBrandingFromOrg(org),
         locale,
-      );
-
-      // Audit: password reset requested
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.password_reset.requested',
-        eventCategory: 'security',
-        description: `Password reset requested for ${email}`,
-        ipAddress: ctx.ip,
-      });
-    } catch (error) {
-      // Log the error but still show the "check your email" page
-      logger.error({ error, email }, 'Failed to process password reset token');
-    }
+        t,
+        csrfToken,
+        orgSlug: org.slug,
+        flash: { error: t('errors.interaction_expired') },
+      },
+      503,
+    );
+    return;
   }
 
   // Step 4: Always show "check your email" page — prevents user enumeration
@@ -455,7 +437,15 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
   // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on reset-password');
-    await renderResetFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.csrf_invalid'), 403);
+    await renderResetFormWithError(
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
+      t('errors.csrf_invalid'),
+      403,
+    );
     return;
   }
 
@@ -478,7 +468,14 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
 
   // Step 3: Validate passwords match
   if (password !== confirmPassword) {
-    await renderResetFormWithError(ctx, org, locale, t, tokenPlaintext, t('reset-password.error_mismatch'));
+    await renderResetFormWithError(
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
+      t('reset-password.error_mismatch'),
+    );
     return;
   }
 
@@ -501,7 +498,13 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     if (user) {
       sendPasswordChangedEmail(
         { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+        {
+          id: org.id,
+          slug: org.slug,
+          brandingLogoUrl: org.brandingLogoUrl,
+          brandingPrimaryColor: org.brandingPrimaryColor,
+          brandingCompanyName: org.brandingCompanyName,
+        },
         locale,
       );
     }

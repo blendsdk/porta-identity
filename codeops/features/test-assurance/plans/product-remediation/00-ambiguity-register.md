@@ -212,3 +212,17 @@ real `RecoveryJobProcessor` is supplied, so accidental placeholder activation is
 excluded. **Policy version**: 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`.
 **Reopen trigger**: a separately usable concrete recovery processor exists before Task 1.6 or
 another process begins inserting recovery jobs before activation is deployed.
+
+**AR-12 — Recovery-mail delivery semantics:** **Authority**: User — approved the recommended best
+option on 2026-08-21. **Objective**: preserve legitimate recovery delivery without claiming an
+impossible SMTP exactly-once guarantee. **Decision**: each durable job owns one deterministic,
+single-use recovery artifact and stable message identity. Delivery is bounded at-least-once; a
+retry after an ambiguous SMTP result may resend the identical link, but may never mint another
+active artifact. **Evidence**: an SMTP relay can accept message data before the client observes a
+connection failure, so retrying can duplicate mail while refusing retry can lose mail.
+**Rejected alternatives**: at-most-once can silently lose legitimate recovery mail; a provider
+idempotency API adds an external dependency outside scope. **Strongest counterargument**: duplicate
+messages can confuse users, mitigated by identical content/link, one active artifact, and five
+bounded attempts. **Confidence**: High. **Hardening**: an independent security challenger
+confirmed the SMTP limitation and selected the same policy. **Reopen trigger**: Porta adopts an
+authorized provider API with durable idempotency keys.

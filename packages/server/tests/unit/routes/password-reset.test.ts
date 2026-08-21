@@ -25,7 +25,9 @@ vi.mock('../../../src/auth/csrf.js', () => ({
 vi.mock('../../../src/auth/rate-limiter.js', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 4, retryAfter: 0 }),
   buildPasswordResetRateLimitKey: vi.fn().mockReturnValue('rl:reset:org:email'),
-  loadPasswordResetRateLimitConfig: vi.fn().mockResolvedValue({ maxAttempts: 5, windowSeconds: 600 }),
+  loadPasswordResetRateLimitConfig: vi
+    .fn()
+    .mockResolvedValue({ maxAttempts: 5, windowSeconds: 600 }),
 }));
 
 vi.mock('../../../src/auth/tokens.js', () => ({
@@ -43,6 +45,10 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 vi.mock('../../../src/auth/email-service.js', () => ({
   sendPasswordResetEmail: vi.fn(),
   sendPasswordChangedEmail: vi.fn(),
+}));
+
+vi.mock('../../../src/auth/recovery-service.js', () => ({
+  enqueueAccountRecovery: vi.fn().mockResolvedValue({ inserted: true, job: {} }),
 }));
 
 vi.mock('../../../src/auth/i18n.js', () => ({
@@ -89,6 +95,7 @@ import * as csrf from '../../../src/auth/csrf.js';
 import * as rateLimiter from '../../../src/auth/rate-limiter.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as emailService from '../../../src/auth/email-service.js';
+import * as recoveryService from '../../../src/auth/recovery-service.js';
 import * as userService from '../../../src/users/service.js';
 import * as passwordUtils from '../../../src/users/password.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
@@ -101,23 +108,33 @@ import type { Organization } from '../../../src/organizations/types.js';
 
 function createMockOrg(overrides: Partial<Organization> = {}): Organization {
   return {
-    id: 'org-uuid-1', name: 'Test Org', slug: 'test-org', status: 'active',
-    isSuperAdmin: false, brandingLogoUrl: null, brandingFaviconUrl: null,
-    brandingPrimaryColor: '#3B82F6', brandingCompanyName: 'Test Corp',
-    brandingCustomCss: null, defaultLocale: 'en',
+    id: 'org-uuid-1',
+    name: 'Test Org',
+    slug: 'test-org',
+    status: 'active',
+    isSuperAdmin: false,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    brandingPrimaryColor: '#3B82F6',
+    brandingCompanyName: 'Test Corp',
+    brandingCustomCss: null,
+    defaultLocale: 'en',
     // Default to both methods enabled so existing tests (which don't care
     // about login-method enforcement) keep their current behavior. Tests
     // that explicitly verify the magic-link-only case override this.
     defaultLoginMethods: ['password', 'magic_link'],
-    createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01'),
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
     ...overrides,
   };
 }
 
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  body?: Record<string, string>;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    body?: Record<string, string>;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
   let contentType = '';
@@ -127,32 +144,52 @@ function createMockCtx(overrides: {
     params: { orgSlug: 'test-org', ...(overrides.params ?? {}) },
     query: {},
     request: { body: overrides.body ?? {} },
-    req: {}, res: {},
+    req: {},
+    res: {},
     ip: '127.0.0.1',
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
-    get type() { return contentType; },
-    set type(v: string) { contentType = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
+    get type() {
+      return contentType;
+    },
+    set type(v: string) {
+      contentType = v;
+    },
     state: { organization: createMockOrg() },
     cookies: {
       get: vi.fn().mockReturnValue('csrf-token-abc'),
       set: vi.fn(),
     },
     get: vi.fn().mockReturnValue(''),
-    set: vi.fn((n: string, v: string) => { headers[n] = v; }),
+    set: vi.fn((n: string, v: string) => {
+      headers[n] = v;
+    }),
     _headers: headers,
   };
 }
 
-function findLayer(router: ReturnType<typeof createPasswordResetRouter>, method: string, pathPattern: string) {
-  return router.stack.find(
-    (l) => l.methods.includes(method) && l.path.includes(pathPattern),
-  );
+function findLayer(
+  router: ReturnType<typeof createPasswordResetRouter>,
+  method: string,
+  pathPattern: string,
+) {
+  return router.stack.find((l) => l.methods.includes(method) && l.path.includes(pathPattern));
 }
 
-async function exec(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function exec(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   return layer.stack[layer.stack.length - 1](ctx as never, vi.fn());
 }
 
@@ -165,7 +202,11 @@ describe('password reset routes', () => {
     vi.clearAllMocks();
     // Restore defaults that individual tests may override
     vi.mocked(csrf.verifyCsrfToken).mockReturnValue(true);
-    vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({ allowed: true, remaining: 4, retryAfter: 0 });
+    vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({
+      allowed: true,
+      remaining: 4,
+      retryAfter: 0,
+    });
     vi.mocked(templateEngine.renderPage).mockResolvedValue('<html>rendered</html>');
     vi.mocked(passwordUtils.validatePassword).mockReturnValue({ isValid: true });
   });
@@ -211,10 +252,22 @@ describe('password reset routes', () => {
       );
       // Should NOT send email
       expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(recoveryService.enqueueAccountRecovery).toHaveBeenCalledWith({
+        jobType: 'password_reset',
+        organizationId: 'org-uuid-1',
+        email: 'unknown@test.com',
+        interactionUid: null,
+        actionNonce: 'tok',
+      });
     });
 
-    it('should generate token and send email when user exists', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', givenName: 'Test', familyName: 'User' };
+    it('should enqueue identical durable work when user exists', async () => {
+      const mockUser = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        givenName: 'Test',
+        familyName: 'User',
+      };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
 
       const router = createPasswordResetRouter();
@@ -223,16 +276,15 @@ describe('password reset routes', () => {
 
       await exec(layer!, ctx);
 
-      // Should invalidate old tokens
-      expect(tokenRepo.invalidateUserTokens).toHaveBeenCalledWith('password_reset_tokens', 'user-uuid-1');
-      // Should insert new token
-      expect(tokenRepo.insertToken).toHaveBeenCalledWith('password_reset_tokens', 'user-uuid-1', 'token-hash-abc', expect.any(Date));
-      // Should send email
-      expect(emailService.sendPasswordResetEmail).toHaveBeenCalled();
-      // Should audit log
-      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: 'user.password_reset.requested' }),
-      );
+      expect(recoveryService.enqueueAccountRecovery).toHaveBeenCalledWith({
+        jobType: 'password_reset',
+        organizationId: 'org-uuid-1',
+        email: 'user@test.com',
+        interactionUid: null,
+        actionNonce: 'tok',
+      });
+      expect(tokenRepo.insertToken).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
     it('should reject on CSRF mismatch', async () => {
@@ -252,7 +304,11 @@ describe('password reset routes', () => {
     });
 
     it('should reject when rate limited and return 429', async () => {
-      vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({ allowed: false, remaining: 0, retryAfter: 60 });
+      vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        retryAfter: 60,
+      });
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'forgot-password');
@@ -271,7 +327,10 @@ describe('password reset routes', () => {
 
   describe('GET /:orgSlug/auth/reset-password/:token — showResetPassword', () => {
     it('should render reset form for valid token', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+      } as never);
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'GET', 'reset-password');
@@ -310,7 +369,12 @@ describe('password reset routes', () => {
   describe('POST /:orgSlug/auth/reset-password/:token — processResetPassword', () => {
     it('should reset password and render success page', async () => {
       const tokenRecord = { id: 'tok-1', userId: 'user-uuid-1' };
-      const user = { id: 'user-uuid-1', email: 'user@test.com', givenName: 'Test', familyName: 'User' };
+      const user = {
+        id: 'user-uuid-1',
+        email: 'user@test.com',
+        givenName: 'Test',
+        familyName: 'User',
+      };
       vi.mocked(tokenRepo.findValidToken).mockResolvedValue(tokenRecord as never);
       vi.mocked(userService.getUserById).mockResolvedValue(user as never);
 
@@ -378,7 +442,10 @@ describe('password reset routes', () => {
     });
 
     it('should show error when passwords do not match', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
+      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+      } as never);
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'reset-password');
@@ -396,8 +463,14 @@ describe('password reset routes', () => {
     });
 
     it('should show error when password validation fails', async () => {
-      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1' } as never);
-      vi.mocked(passwordUtils.validatePassword).mockReturnValue({ isValid: false, error: 'Password too short' });
+      vi.mocked(tokenRepo.findValidToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+      } as never);
+      vi.mocked(passwordUtils.validatePassword).mockReturnValue({
+        isValid: false,
+        error: 'Password too short',
+      });
 
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'POST', 'reset-password');
@@ -425,10 +498,12 @@ describe('password reset routes', () => {
   // =========================================================================
 
   describe('login method enforcement (password disabled)', () => {
-    function pwDisabledCtx(overrides: {
-      params?: Record<string, string>;
-      body?: Record<string, string>;
-    } = {}) {
+    function pwDisabledCtx(
+      overrides: {
+        params?: Record<string, string>;
+        body?: Record<string, string>;
+      } = {},
+    ) {
       const ctx = createMockCtx(overrides);
       ctx.state.organization = createMockOrg({ defaultLoginMethods: ['magic_link'] });
       return ctx;

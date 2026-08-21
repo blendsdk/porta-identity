@@ -46,6 +46,20 @@ export interface InvitationTokenRecord extends TokenRecord {
   invitedBy: string | null;
 }
 
+/** Input for idempotently creating a recovery-job-owned token. */
+export interface EnsureRecoveryTokenInput {
+  /** Token table selected by the closed recovery job type. */
+  readonly table: 'magic_link_tokens' | 'password_reset_tokens';
+  /** Durable recovery job UUID. */
+  readonly recoveryJobId: string;
+  /** Eligible account UUID. */
+  readonly userId: string;
+  /** Hash of the deterministic plaintext token. */
+  readonly tokenHash: string;
+  /** Expiration instant fixed by the first successful artifact transaction. */
+  readonly expiresAt: Date;
+}
+
 /** Raw database row shape (snake_case) from the token tables */
 interface TokenRow {
   id: string;
@@ -82,7 +96,9 @@ const VALID_TABLES = new Set<string>([
  */
 function assertValidTable(table: string): void {
   if (!VALID_TABLES.has(table)) {
-    throw new Error(`Invalid token table: "${table}". Must be one of: ${[...VALID_TABLES].join(', ')}`);
+    throw new Error(
+      `Invalid token table: "${table}". Must be one of: ${[...VALID_TABLES].join(', ')}`,
+    );
   }
 }
 
@@ -138,6 +154,47 @@ export async function insertToken(
 }
 
 /**
+ * Create or observe the single token artifact owned by a recovery job.
+ *
+ * A transaction locks the account's active token set, reuses an existing job artifact, or
+ * invalidates older artifacts and inserts exactly one new row. SQL identifiers come exclusively
+ * from the closed table union.
+ *
+ * @param input - Recovery-job token authority and deterministic token facts.
+ */
+export async function ensureRecoveryJobToken(input: EnsureRecoveryTokenInput): Promise<void> {
+  assertValidTable(input.table);
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const existing = await client.query(
+      `SELECT id FROM ${input.table} WHERE recovery_job_id = $1 FOR UPDATE`,
+      [input.recoveryJobId],
+    );
+    if (existing.rowCount === 0) {
+      await client.query(
+        `UPDATE ${input.table}
+         SET used_at = NOW()
+         WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()`,
+        [input.userId],
+      );
+      await client.query(
+        `INSERT INTO ${input.table} (user_id, token_hash, expires_at, recovery_job_id)
+         VALUES ($1, $2, $3, $4)`,
+        [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Find a valid (unused, not expired) token by its hash.
  *
  * Checks both `used_at IS NULL` and `expires_at > NOW()` in a single query
@@ -183,10 +240,7 @@ export async function markTokenUsed(table: TokenTable, tokenId: string): Promise
   assertValidTable(table);
   const pool = getPool();
 
-  await pool.query(
-    `UPDATE ${table} SET used_at = NOW() WHERE id = $1`,
-    [tokenId],
-  );
+  await pool.query(`UPDATE ${table} SET used_at = NOW() WHERE id = $1`, [tokenId]);
 
   logger.debug({ table, tokenId }, 'Token marked as used');
 }

@@ -297,7 +297,11 @@ if (capability.available) {
         expect(observed.artifacts.filter((artifact) => artifact.active).length).toBeLessThanOrEqual(
           1,
         );
-        expect(observed.deliveries.length).toBeLessThanOrEqual(1);
+        const deliveredJobIds = new Set(observed.deliveries.map((delivery) => delivery.jobId));
+        expect(deliveredJobIds.size).toBeLessThanOrEqual(1);
+        expect([...deliveredJobIds]).toStrictEqual(
+          observed.deliveries.length === 0 ? [] : [observed.recoveryJobs[0].jobId],
+        );
 
         const retryFixture = await driver.reset('active');
         await driver.requestRecovery({ fixture: retryFixture, jobType: 'password_reset' });

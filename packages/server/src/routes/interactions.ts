@@ -37,24 +37,20 @@ import {
   loadLoginRateLimitConfig,
   loadMagicLinkRateLimitConfig,
 } from '../auth/rate-limiter.js';
-import { generateToken } from '../auth/tokens.js';
-import { insertToken, invalidateUserTokens } from '../auth/token-repository.js';
-import { sendMagicLinkEmail, sendOtpCodeEmail } from '../auth/email-service.js';
+import { sendOtpCodeEmail } from '../auth/email-service.js';
+import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import {
-  getUserByEmail,
   prepareUserForPasswordLogin,
   verifyLoginPassword,
   recordLogin,
   recordPasswordFailure,
 } from '../users/service.js';
 import { requiresTwoFactor, determineTwoFactorMethod, sendOtpCode } from '../two-factor/service.js';
-import { getSystemConfigNumber } from '../lib/system-config.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
@@ -838,7 +834,11 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
 
     if (!effectiveMagicLinkMethods.includes('magic_link')) {
       logger.warn(
-        { uid: interaction.uid, email, clientId: interaction.params.client_id },
+        {
+          event: 'magic_link_method_disabled',
+          organizationId: org.id,
+          clientId: interaction.params.client_id,
+        },
         'Magic link attempted for client where method is disabled',
       );
 
@@ -846,7 +846,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
-        description: `Magic link attempted on client where method is disabled (${email})`,
+        description: 'Magic link attempted on client where method is disabled',
         ipAddress: ctx.ip,
         metadata: {
           clientId: interaction.params.client_id,
@@ -880,7 +880,7 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
         organizationId: org.id,
         eventType: 'rate_limit.magic_link',
         eventCategory: 'security',
-        description: `Magic link rate limit exceeded for ${email}`,
+        description: 'Magic link rate limit exceeded',
         ipAddress: ctx.ip,
       });
 
@@ -897,49 +897,27 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       return;
     }
 
-    // Look up user — but ALWAYS show the same "check your email" page
-    const user = await getUserByEmail(org.id, email);
-
-    if (user && user.status === 'active') {
-      // Invalidate any existing magic link tokens for this user
-      await invalidateUserTokens('magic_link_tokens', user.id);
-
-      // Generate new token
-      const { plaintext, hash } = generateToken();
-
-      // Load TTL from system_config (default: 15 minutes = 900s)
-      const ttlSeconds = await getSystemConfigNumber('magic_link_ttl', 900);
-      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-
-      // Store token hash in database
-      await insertToken('magic_link_tokens', user.id, hash, expiresAt);
-
-      // Build the magic link URL with the interaction UID for flow resumption
-      const magicLinkUrl = `${config.issuerBaseUrl}/${org.slug}/auth/magic-link/${plaintext}?interaction=${interaction.uid}`;
-
-      // Send the magic link email (fire-and-forget)
-      sendMagicLinkEmail(
-        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
-        magicLinkUrl,
-        locale,
-      );
-
-      // Audit: magic link sent
-      writeAuditLog({
+    try {
+      await enqueueAccountRecovery({
+        jobType: 'magic_link',
         organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.magic_link.sent',
-        eventCategory: 'authentication',
-        description: `Magic link sent to ${email}`,
-        ipAddress: ctx.ip,
+        email,
+        interactionUid: interaction.uid,
+        actionNonce: submittedCsrf,
       });
+    } catch {
+      logger.error({ event: 'magic_link_enqueue_failed' }, 'Failed to enqueue magic link');
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.interaction_expired'),
+        503,
+      );
+      return;
     }
 
     // Always render the "check your email" page — prevents user enumeration
@@ -952,8 +930,8 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
     };
 
     await renderAndRespond(ctx, 'magic-link-sent', context);
-  } catch (err) {
-    logger.error({ err, email }, 'Failed to send magic link');
+  } catch {
+    logger.error({ event: 'magic_link_request_failed' }, 'Magic link request failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }

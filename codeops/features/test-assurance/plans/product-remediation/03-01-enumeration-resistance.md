@@ -58,7 +58,7 @@ admitted requests from replacing the prior token.
 | Dummy hash initialization fails | Server readiness fails; never start with a short-circuit path | AR-1 |
 | Recovery-job insert fails | Same generic service-unavailable response for all identities; no mail/token effect | AR-1, AR-5 |
 | Worker account absent/ineligible | Successful no-op with privacy-safe terminal state | AR-1, AR-5 |
-| Worker database/mail transient failure | Bounded retry; no duplicate active artifact or duplicate delivery | AR-5 |
+| Worker database/mail transient failure | Bounded retry; one active artifact; ambiguous SMTP outcomes may resend the identical link | AR-5, AR-12 |
 | Worker terminal failure | Privacy-safe event/counter; public request remains non-enumerating | AR-1, AR-4 |
 
 ## Testing requirements

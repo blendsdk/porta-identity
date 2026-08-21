@@ -21,6 +21,7 @@ import { loadOidcTtlConfig } from './lib/system-config.js';
 import { createOidcProvider } from './oidc/provider.js';
 import { initI18n, registerHandlebarsI18nHelper } from './auth/i18n.js';
 import { initTemplateEngine } from './auth/template-engine.js';
+import { startAccountRecoveryWorker, stopAccountRecoveryWorker } from './auth/recovery-service.js';
 import { initializeDummyPasswordHash } from './users/password.js';
 
 async function main() {
@@ -53,24 +54,37 @@ async function main() {
   // Step 6: Create and start the HTTP server with OIDC provider mounted
   const app = createApp(oidcProvider);
   const server = app.listen(config.port, config.host, () => {
+    startAccountRecoveryWorker();
     logger.info({ port: config.port, host: config.host }, 'Server started');
   });
 
   // Step 7: Graceful shutdown — close connections in reverse order
+  let shutdownStarted = false;
   const shutdown = async (signal: string) => {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
     logger.info({ signal }, 'Shutdown signal received');
-    server.close(async () => {
-      await disconnectDatabase();
-      await disconnectRedis();
-      logger.info('Server shut down gracefully');
-      process.exit(0);
-    });
-
-    // Force exit after 10 seconds if graceful shutdown stalls
-    setTimeout(() => {
+    const forcedExit = setTimeout(() => {
       logger.error('Forced shutdown after timeout');
       process.exit(1);
-    }, 10_000);
+    }, 60_000);
+    forcedExit.unref();
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+      const workerSettled = await stopAccountRecoveryWorker();
+      if (!workerSettled) throw new Error('Recovery worker did not settle before shutdown');
+      await disconnectDatabase();
+      await disconnectRedis();
+      clearTimeout(forcedExit);
+      logger.info('Server shut down gracefully');
+      process.exit(0);
+    } catch {
+      logger.error({ event: 'graceful_shutdown_failed' }, 'Graceful shutdown failed');
+      process.exit(1);
+    }
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
