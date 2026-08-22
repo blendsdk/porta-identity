@@ -10,6 +10,7 @@ import type { Middleware } from 'koa';
 import { z } from 'zod';
 
 import { getUserById } from '../users/service.js';
+import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 
 const organizationUserParamsSchema = z.object({
   orgId: z.string().uuid(),
@@ -28,6 +29,12 @@ export function requireUserOrganization(): Middleware {
   return async function requireUserOrganizationMiddleware(ctx, next) {
     const parsed = organizationUserParamsSchema.safeParse(ctx.params);
     if (!parsed.success) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'resource',
+        reasonCode: 'resource-not-found',
+        outcome: 'deny',
+        detail: { resourceType: 'user' },
+      });
       ctx.status = 404;
       ctx.body = { error: 'User not found' };
       return;
@@ -35,10 +42,18 @@ export function requireUserOrganization(): Middleware {
 
     const user = await getUserById(parsed.data.userId);
     if (user === null || user.organizationId !== parsed.data.orgId) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'resource',
+        reasonCode: 'resource-not-found',
+        outcome: 'deny',
+        detail: { resourceType: 'user' },
+      });
       ctx.status = 404;
       ctx.body = { error: 'User not found' };
       return;
     }
+
+    recordSecurityReference(ctx, 'resource', parsed.data.userId);
 
     await next();
   };

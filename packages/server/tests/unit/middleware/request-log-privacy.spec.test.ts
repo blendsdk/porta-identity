@@ -31,26 +31,27 @@ function context(): Record<string, unknown> {
 }
 
 describe('request log privacy', () => {
-  it('records only the path in ordinary request logs', async () => {
+  it('records only a normalized route in ordinary request logs', async () => {
     vi.mocked(logger.info).mockClear();
     const requestContext = context();
 
     await requestLogger()(requestContext as never, vi.fn().mockResolvedValue(undefined));
 
     const serialized = JSON.stringify(vi.mocked(logger.info).mock.calls);
-    expect(serialized).toContain('/alpha/authorize');
+    expect(serialized).toContain('/unmatched');
+    expect(serialized).not.toContain('/alpha/authorize');
     expect(serialized).not.toContain('authorization-code');
     expect(serialized).not.toContain('person%40example.test');
   });
 
-  it('records only the path when an unhandled error is logged', async () => {
+  it('records no raw path when an unhandled error is logged', async () => {
     vi.mocked(logger.error).mockClear();
     const requestContext = context();
 
     await errorHandler()(requestContext as never, vi.fn().mockRejectedValue(new Error('failure')));
 
     const serialized = JSON.stringify(vi.mocked(logger.error).mock.calls);
-    expect(serialized).toContain('/alpha/authorize');
+    expect(serialized).not.toContain('/alpha/authorize');
     expect(serialized).not.toContain('authorization-code');
     expect(serialized).not.toContain('person%40example.test');
   });

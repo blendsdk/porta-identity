@@ -1,5 +1,6 @@
 import type { Middleware } from 'koa';
 import { logger } from '../lib/logger.js';
+import { recordSecurityDecision } from '../security/decision-context.js';
 
 export function errorHandler(): Middleware {
   return async (ctx, next) => {
@@ -13,8 +14,31 @@ export function errorHandler(): Middleware {
         status: ctx.status,
       };
 
+      if (ctx.status === 413) {
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'validation',
+          reasonCode: 'body-too-large',
+          outcome: 'deny',
+        });
+      } else if (ctx.status === 400) {
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'validation',
+          reasonCode: 'malformed-body',
+          outcome: 'deny',
+        });
+      } else {
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'handler',
+          reasonCode: 'handler-failed',
+          outcome: 'error',
+        });
+      }
+
       if (ctx.status >= 500) {
-        logger.error({ err, method: ctx.method, path: ctx.path }, 'Unhandled error');
+        logger.error(
+          { event: 'request-handler-failed', requestId: ctx.state.requestId },
+          'Request handler failed',
+        );
       }
     }
   };

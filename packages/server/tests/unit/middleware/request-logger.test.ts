@@ -88,7 +88,7 @@ describe('requestLogger middleware', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('logs request info with method, path, status, and duration', async () => {
+  it('logs request info with method, normalized route, status, and duration', async () => {
     const { logger } = await import('../../../src/lib/logger.js');
     vi.mocked(logger.info).mockClear();
     const middleware = requestLogger();
@@ -106,11 +106,11 @@ describe('requestLogger middleware', () => {
       expect.objectContaining({
         requestId: expect.any(String),
         method: 'POST',
-        path: '/api/test',
+        routeTemplate: '/unmatched',
         status: 201,
         duration: expect.any(Number),
       }),
-      expect.stringContaining('POST /api/test'),
+      'HTTP request completed',
     );
   });
 });

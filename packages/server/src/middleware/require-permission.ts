@@ -17,6 +17,7 @@
 
 import type { Middleware } from 'koa';
 import { hasPermissions } from '../lib/admin-permissions.js';
+import { recordSecurityDecision } from '../security/decision-context.js';
 
 /**
  * Create middleware that requires specific admin permission(s).
@@ -33,6 +34,11 @@ export function requirePermission(...requiredPermissions: string[]): Middleware 
 
     // Safety check: requireAdminAuth() must have run first
     if (!adminUser) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
       ctx.status = 401;
       ctx.body = {
         error: 'Authentication required',
@@ -43,6 +49,12 @@ export function requirePermission(...requiredPermissions: string[]): Middleware 
 
     // Check if the user has all required permissions
     if (!hasPermissions([...adminUser.permissions], requiredPermissions)) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'permission',
+        reasonCode: 'permission-required',
+        outcome: 'deny',
+        detail: { permissions: requiredPermissions },
+      });
       ctx.status = 403;
       ctx.body = {
         error: 'Forbidden',

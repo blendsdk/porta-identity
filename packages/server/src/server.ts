@@ -109,12 +109,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   }
 
   // Global middleware stack (order matters):
-  // 1. Error handler catches all downstream errors
-  // 2. Request logger adds X-Request-Id and logs request/response
+  // 1. Request correlation and terminal finalization wrap every Koa request
+  // 2. Error handler converts downstream failures into minimal public responses
   // 3. Security headers (CSP, HSTS, X-Frame-Options, etc.)
   // 4. Selective body parser — only routes that need it (NOT OIDC routes)
-  app.use(errorHandler());
   app.use(requestLogger());
+  app.use(errorHandler());
   app.use(securityHeaders());
 
   // Prometheus metrics counter — increments porta_http_requests_total per response.
