@@ -22,10 +22,12 @@ import type { ImportMode } from '../lib/data-import.js';
 // Validation
 // ---------------------------------------------------------------------------
 
-const importRequestSchema = z.object({
-  mode: z.enum(['merge', 'overwrite', 'dry-run']).default('dry-run'),
-  manifest: importManifestSchema,
-});
+const importRequestSchema = z
+  .object({
+    mode: z.enum(['merge', 'overwrite', 'dry-run']).default('dry-run'),
+    manifest: importManifestSchema,
+  })
+  .strict();
 
 // ---------------------------------------------------------------------------
 // Router factory
@@ -48,16 +50,15 @@ export function createImportRouter(): Router {
       const body = importRequestSchema.parse(ctx.request.body);
       const actorId = ctx.state.adminUser?.id;
 
-      const result = await importData(
-        body.manifest,
-        body.mode as ImportMode,
-        actorId,
-      );
+      const result = await importData(body.manifest, body.mode as ImportMode, actorId);
 
       ctx.body = result;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        ctx.throw(400, `Invalid import manifest: ${err.issues.map((e: z.ZodIssue) => e.message).join(', ')}`);
+        ctx.throw(
+          400,
+          `Invalid import manifest: ${err.issues.map((e: z.ZodIssue) => e.message).join(', ')}`,
+        );
       }
       if (err instanceof Error && err.message.includes('Unsupported manifest version')) {
         ctx.throw(400, err.message);
