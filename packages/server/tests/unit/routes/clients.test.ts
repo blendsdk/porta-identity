@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Client, ClientSecret, SecretWithPlaintext, ClientWithSecret } from '../../../src/clients/types.js';
+import type {
+  Client,
+  ClientSecret,
+  SecretWithPlaintext,
+  ClientWithSecret,
+} from '../../../src/clients/types.js';
 import type { Organization } from '../../../src/organizations/types.js';
 import { ClientNotFoundError, ClientValidationError } from '../../../src/clients/errors.js';
 
@@ -121,7 +126,9 @@ function createTestSecret(overrides: Partial<ClientSecret> = {}): ClientSecret {
 }
 
 /** Secret with plaintext (returned at generation) */
-function createTestSecretWithPlaintext(overrides: Partial<SecretWithPlaintext> = {}): SecretWithPlaintext {
+function createTestSecretWithPlaintext(
+  overrides: Partial<SecretWithPlaintext> = {},
+): SecretWithPlaintext {
   return {
     id: 'secret-uuid-1',
     clientId: 'client-db-uuid-1',
@@ -137,11 +144,13 @@ function createTestSecretWithPlaintext(overrides: Partial<SecretWithPlaintext> =
  * Create a minimal mock Koa context for route testing.
  * Follows the same pattern as the organization/application route tests.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -149,10 +158,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -169,9 +186,7 @@ function createMockCtx(overrides: {
  * skipping any router-level middleware (like requireSuperAdmin).
  */
 function findHandler(router: ReturnType<typeof createClientRouter>, method: string, path: string) {
-  const layer = router.stack.find(
-    (l) => l.methods.includes(method) && l.path === path,
-  );
+  const layer = router.stack.find((l) => l.methods.includes(method) && l.path === path);
   expect(layer).toBeDefined();
   return layer!.stack[layer!.stack.length - 1];
 }
@@ -182,8 +197,9 @@ describe('client routes', () => {
     // Default: every call to getOrganizationById returns a fully-featured org
     // so the `effectiveLoginMethods` decorator always has something to
     // resolve against. Individual tests override as needed.
-    (organizationService.getOrganizationById as ReturnType<typeof vi.fn>)
-      .mockResolvedValue(createTestOrg());
+    (organizationService.getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(
+      createTestOrg(),
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -216,7 +232,10 @@ describe('client routes', () => {
 
       expect(ctx.status).toBe(201);
       const body = ctx.body as {
-        data: { client: Client & { effectiveLoginMethods: readonly string[] }; secret: SecretWithPlaintext };
+        data: {
+          client: Client & { effectiveLoginMethods: readonly string[] };
+          secret: SecretWithPlaintext;
+        };
         warning: string;
       };
       // Client body contains all original fields + decorator
@@ -262,18 +281,19 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Client request is invalid');
     });
 
     it('should return 400 when organization is invalid', async () => {
-      (clientService.createClient as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ClientValidationError('Organization not found'));
+      (clientService.createClient as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientValidationError('Organization not found'),
+      );
 
       const router = createClientRouter();
       const handler = findHandler(router, 'POST', '/api/admin/clients');
       const ctx = createMockCtx({ body: validBody });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Organization not found');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
     });
 
     // -----------------------------------------------------------------------
@@ -316,7 +336,9 @@ describe('client routes', () => {
         expect(clientService.createClient).toHaveBeenCalledWith(
           expect.objectContaining({ loginMethods: ['password'] }),
         );
-        const body = ctx.body as { data: { client: Client & { effectiveLoginMethods: readonly string[] } } };
+        const body = ctx.body as {
+          data: { client: Client & { effectiveLoginMethods: readonly string[] } };
+        };
         // With explicit override, the effective value reflects the override
         expect(body.data.client.effectiveLoginMethods).toEqual(['password']);
       });
@@ -331,7 +353,7 @@ describe('client routes', () => {
         await handler(ctx as never, vi.fn());
 
         expect(ctx.status).toBe(400);
-        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect((ctx.body as { error: string }).error).toBe('Client request is invalid');
         expect(clientService.createClient).not.toHaveBeenCalled();
       });
 
@@ -345,7 +367,7 @@ describe('client routes', () => {
         await handler(ctx as never, vi.fn());
 
         expect(ctx.status).toBe(400);
-        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect((ctx.body as { error: string }).error).toBe('Client request is invalid');
         expect(clientService.createClient).not.toHaveBeenCalled();
       });
 
@@ -361,7 +383,8 @@ describe('client routes', () => {
         await handler(ctx as never, vi.fn());
 
         expect(ctx.status).toBe(201);
-        const calledWith = (clientService.createClient as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        const calledWith = (clientService.createClient as ReturnType<typeof vi.fn>).mock
+          .calls[0][0];
         expect(calledWith.loginMethods).toBeUndefined();
       });
     });
@@ -374,7 +397,9 @@ describe('client routes', () => {
   describe('GET / — List clients', () => {
     it('should return paginated list with defaults', async () => {
       const result = { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 };
-      (clientService.listClientsByOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+      (clientService.listClientsByOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        result,
+      );
 
       const router = createClientRouter();
       const handler = findHandler(router, 'GET', '/api/admin/clients');
@@ -425,8 +450,9 @@ describe('client routes', () => {
 
     it('should return effectiveLoginMethods using the org default when client has no override', async () => {
       // Org with password-only default
-      (organizationService.getOrganizationById as ReturnType<typeof vi.fn>)
-        .mockResolvedValue(createTestOrg({ defaultLoginMethods: ['password'] }));
+      (organizationService.getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createTestOrg({ defaultLoginMethods: ['password'] }),
+      );
 
       const client = createTestClient({ loginMethods: null });
       (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
@@ -477,8 +503,9 @@ describe('client routes', () => {
     });
 
     it('should throw 404 when client not found', async () => {
-      (clientService.updateClient as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ClientNotFoundError('nonexistent'));
+      (clientService.updateClient as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientNotFoundError('nonexistent'),
+      );
 
       const router = createClientRouter();
       const handler = findHandler(router, 'PUT', '/api/admin/clients/:id');
@@ -539,7 +566,7 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Client request is invalid');
       expect(clientService.updateClient).not.toHaveBeenCalled();
     });
   });
@@ -562,14 +589,15 @@ describe('client routes', () => {
     });
 
     it('should throw 400 when already revoked', async () => {
-      (clientService.revokeClient as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ClientValidationError('Client is already revoked'));
+      (clientService.revokeClient as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientValidationError('Client is already revoked'),
+      );
 
       const router = createClientRouter();
       const handler = findHandler(router, 'POST', '/api/admin/clients/:id/revoke');
       const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client is already revoked');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
     });
   });
 
@@ -623,7 +651,9 @@ describe('client routes', () => {
       const body = ctx.body as { data: SecretWithPlaintext; warning: string };
       expect(body.data).toEqual(secret);
       expect(body.warning).toBe('Store the secret securely. It will not be shown again.');
-      expect(secretService.generateAndStore).toHaveBeenCalledWith('client-db-uuid-1', { label: 'production' });
+      expect(secretService.generateAndStore).toHaveBeenCalledWith('client-db-uuid-1', {
+        label: 'production',
+      });
     });
 
     it('should accept empty body for secret generation', async () => {
@@ -666,7 +696,11 @@ describe('client routes', () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
+      const handler = findHandler(
+        router,
+        'POST',
+        '/api/admin/clients/:id/secrets/:secretId/revoke',
+      );
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -679,16 +713,21 @@ describe('client routes', () => {
     });
 
     it('should throw 400 when secret already revoked', async () => {
-      (secretService.revoke as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ClientValidationError('Secret is already revoked'));
+      (secretService.revoke as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientValidationError('Secret is already revoked'),
+      );
 
       const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
+      const handler = findHandler(
+        router,
+        'POST',
+        '/api/admin/clients/:id/secrets/:secretId/revoke',
+      );
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Secret is already revoked');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
     });
   });
 

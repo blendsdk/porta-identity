@@ -120,10 +120,13 @@ GET /api/admin/audit
 | `user.auto_unlocked` | Account auto-unlocked after cooldown expired     |
 
 ::: info Audit durability
-Most compatibility audit events remain best-effort: a write failure is logged and does not change
-the public operation result. Covered bulk and import mutations are stricter. Their business audit
-row is written in the same PostgreSQL transaction as the mutation, so an audit failure rolls back
-that mutation and returns a minimal service-unavailable response.
+Compatibility audit events remain best-effort and do not change the public operation result.
+Authorized administrative mutations also write a required business audit row in the same
+PostgreSQL transaction as their database changes. Import is atomic: an audit failure rolls back the
+manifest and returns a minimal service-unavailable response. Bulk processing is intentionally
+per-item: an audit failure rolls back the current item, preserves earlier committed items, marks the
+current and remaining items `not_attempted`, and returns the ordered partial result with one
+correlation identifier.
 :::
 
 ## Audit Retention & Cleanup

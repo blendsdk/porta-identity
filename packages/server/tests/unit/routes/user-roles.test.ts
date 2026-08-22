@@ -187,7 +187,7 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Role assignment request is invalid');
     });
 
     it('should return 400 for empty role IDs array', async () => {

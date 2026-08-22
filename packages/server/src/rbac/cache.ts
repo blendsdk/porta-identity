@@ -24,6 +24,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { Role } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -77,13 +78,15 @@ export async function getCachedRole(id: string): Promise<Role | null> {
  * @param role - Role to cache
  */
 export async function setCachedRole(role: Role): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.set(`${ROLE_PREFIX}${role.id}`, JSON.stringify(role), 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, id: role.id }, 'Failed to cache role');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.set(`${ROLE_PREFIX}${role.id}`, JSON.stringify(role), 'EX', CACHE_TTL);
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, id: role.id }, 'Failed to cache role');
+    }
+  });
 }
 
 /**
@@ -94,13 +97,15 @@ export async function setCachedRole(role: Role): Promise<void> {
  * @param id - Role UUID
  */
 export async function invalidateRoleCache(id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${ROLE_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, id }, 'Failed to invalidate role cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${ROLE_PREFIX}${id}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, id }, 'Failed to invalidate role cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -137,12 +142,14 @@ export async function getCachedUserRoles(userId: string): Promise<string[] | nul
  * @param roleSlugs - Array of role slug strings
  */
 export async function setCachedUserRoles(userId: string, roleSlugs: string[]): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.set(`${USER_ROLES_PREFIX}${userId}`, JSON.stringify(roleSlugs), 'EX', CACHE_TTL);
-  } catch (err) {
-    logger.warn({ err, userId }, 'Failed to cache user roles');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.set(`${USER_ROLES_PREFIX}${userId}`, JSON.stringify(roleSlugs), 'EX', CACHE_TTL);
+    } catch (err) {
+      logger.warn({ err, userId }, 'Failed to cache user roles');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -182,17 +189,19 @@ export async function setCachedUserPermissions(
   userId: string,
   permissionSlugs: string[],
 ): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.set(
-      `${USER_PERMISSIONS_PREFIX}${userId}`,
-      JSON.stringify(permissionSlugs),
-      'EX',
-      CACHE_TTL,
-    );
-  } catch (err) {
-    logger.warn({ err, userId }, 'Failed to cache user permissions');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.set(
+        `${USER_PERMISSIONS_PREFIX}${userId}`,
+        JSON.stringify(permissionSlugs),
+        'EX',
+        CACHE_TTL,
+      );
+    } catch (err) {
+      logger.warn({ err, userId }, 'Failed to cache user permissions');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -208,15 +217,14 @@ export async function setCachedUserPermissions(
  * @param userId - User UUID
  */
 export async function invalidateUserRbacCache(userId: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(
-      `${USER_ROLES_PREFIX}${userId}`,
-      `${USER_PERMISSIONS_PREFIX}${userId}`,
-    );
-  } catch (err) {
-    logger.warn({ err, userId }, 'Failed to invalidate user RBAC cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${USER_ROLES_PREFIX}${userId}`, `${USER_PERMISSIONS_PREFIX}${userId}`);
+    } catch (err) {
+      logger.warn({ err, userId }, 'Failed to invalidate user RBAC cache');
+    }
+  });
 }
 
 /**
@@ -230,26 +238,28 @@ export async function invalidateUserRbacCache(userId: string): Promise<void> {
  * are infrequent admin operations, so the trade-off is acceptable.
  */
 export async function invalidateAllUserRbacCaches(): Promise<void> {
-  try {
-    const redis = getRedis();
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
 
-    // Use SCAN to find and delete user RBAC cache keys
-    // SCAN is non-blocking unlike KEYS which can lock Redis
-    const patterns = [`${USER_ROLES_PREFIX}*`, `${USER_PERMISSIONS_PREFIX}*`];
+      // Use SCAN to find and delete user RBAC cache keys
+      // SCAN is non-blocking unlike KEYS which can lock Redis
+      const patterns = [`${USER_ROLES_PREFIX}*`, `${USER_PERMISSIONS_PREFIX}*`];
 
-    for (const pattern of patterns) {
-      let cursor = '0';
-      do {
-        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-        cursor = nextCursor;
-        if (keys.length > 0) {
-          await redis.del(...keys);
-        }
-      } while (cursor !== '0');
+      for (const pattern of patterns) {
+        let cursor = '0';
+        do {
+          const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+          cursor = nextCursor;
+          if (keys.length > 0) {
+            await redis.del(...keys);
+          }
+        } while (cursor !== '0');
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to invalidate all user RBAC caches');
     }
-  } catch (err) {
-    logger.warn({ err }, 'Failed to invalidate all user RBAC caches');
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------

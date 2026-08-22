@@ -50,14 +50,14 @@ function handleError(
   err: unknown,
 ): never {
   if (err instanceof RoleNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Role not found');
   }
   if (err instanceof RbacValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Role assignment request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Role assignment request is invalid' };
     return undefined as never;
   }
   throw err;

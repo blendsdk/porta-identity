@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { CustomClaimDefinition, CustomClaimValue, CustomClaimWithValue } from '../../../src/custom-claims/types.js';
+import type {
+  CustomClaimDefinition,
+  CustomClaimValue,
+  CustomClaimWithValue,
+} from '../../../src/custom-claims/types.js';
 import { ClaimNotFoundError, ClaimValidationError } from '../../../src/custom-claims/errors.js';
 
 // Mock all dependencies before importing the module under test.
@@ -29,7 +33,9 @@ import { createCustomClaimRouter } from '../../../src/routes/custom-claims.js';
 // ---------------------------------------------------------------------------
 
 /** Standard test claim definition */
-function createTestDefinition(overrides: Partial<CustomClaimDefinition> = {}): CustomClaimDefinition {
+function createTestDefinition(
+  overrides: Partial<CustomClaimDefinition> = {},
+): CustomClaimDefinition {
   return {
     id: 'claim-uuid-1',
     applicationId: 'app-uuid-1',
@@ -62,11 +68,13 @@ function createTestValue(overrides: Partial<CustomClaimValue> = {}): CustomClaim
  * Create a minimal mock Koa context for route testing.
  * Simulates what Koa provides to route handlers.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -74,10 +82,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -89,7 +105,11 @@ function createMockCtx(overrides: {
 }
 
 /** Find a route layer by method and path suffix */
-function findLayer(router: ReturnType<typeof createCustomClaimRouter>, method: string, pathSuffix: string) {
+function findLayer(
+  router: ReturnType<typeof createCustomClaimRouter>,
+  method: string,
+  pathSuffix: string,
+) {
   const prefix = '/api/admin/applications/:appId/claims';
   return router.stack.find(
     (l) => l.methods.includes(method) && l.path === `${prefix}${pathSuffix}`,
@@ -97,7 +117,10 @@ function findLayer(router: ReturnType<typeof createCustomClaimRouter>, method: s
 }
 
 /** Execute the last middleware in a layer's stack (the actual handler) */
-async function execHandler(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function execHandler(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   const next = vi.fn();
   await layer.stack[layer.stack.length - 1](ctx as never, next);
 }
@@ -142,7 +165,7 @@ describe('custom claims routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Claim request is invalid');
     });
 
     it('should return 400 for invalid claimType', async () => {
@@ -167,7 +190,7 @@ describe('custom claims routes', () => {
         body: { claimName: 'sub', claimType: 'string' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Claim name "sub" is reserved');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Claim request is invalid');
     });
 
     it('should throw 400 when claim name already exists', async () => {
@@ -181,7 +204,7 @@ describe('custom claims routes', () => {
         body: { claimName: 'department', claimType: 'string' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('already exists');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Claim request is invalid');
     });
   });
 
@@ -321,7 +344,11 @@ describe('custom claims routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: value });
-      expect(claimService.setValue).toHaveBeenCalledWith('user-uuid-1', 'claim-uuid-1', 'Engineering');
+      expect(claimService.setValue).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'claim-uuid-1',
+        'Engineering',
+      );
     });
 
     it('should throw 400 when value type does not match definition', async () => {
@@ -335,13 +362,11 @@ describe('custom claims routes', () => {
         body: { value: 'not-a-number' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Expected number');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Claim request is invalid');
     });
 
     it('should throw 404 when claim definition not found', async () => {
-      vi.mocked(claimService.setValue).mockRejectedValue(
-        new ClaimNotFoundError('nonexistent'),
-      );
+      vi.mocked(claimService.setValue).mockRejectedValue(new ClaimNotFoundError('nonexistent'));
 
       const layer = findLayer(createCustomClaimRouter(), 'PUT', '/:claimId/users/:userId');
       const ctx = createMockCtx({
@@ -457,7 +482,9 @@ describe('custom claims routes', () => {
     it('should register all expected routes', () => {
       const router = createCustomClaimRouter();
       const prefix = '/api/admin/applications/:appId/claims';
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain(`POST ${prefix}`);
       expect(paths).toContain(`GET ${prefix}`);

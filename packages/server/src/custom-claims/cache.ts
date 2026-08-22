@@ -19,6 +19,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { CustomClaimDefinition } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -72,18 +73,20 @@ export async function setCachedDefinitions(
   applicationId: string,
   definitions: CustomClaimDefinition[],
 ): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.set(
-      `${DEFINITIONS_PREFIX}${applicationId}`,
-      JSON.stringify(definitions),
-      'EX',
-      CACHE_TTL,
-    );
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, applicationId }, 'Failed to cache claim definitions');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.set(
+        `${DEFINITIONS_PREFIX}${applicationId}`,
+        JSON.stringify(definitions),
+        'EX',
+        CACHE_TTL,
+      );
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, applicationId }, 'Failed to cache claim definitions');
+    }
+  });
 }
 
 /**
@@ -94,13 +97,15 @@ export async function setCachedDefinitions(
  * @param applicationId - Application UUID
  */
 export async function invalidateDefinitionsCache(applicationId: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${DEFINITIONS_PREFIX}${applicationId}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, applicationId }, 'Failed to invalidate claim definitions cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${DEFINITIONS_PREFIX}${applicationId}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, applicationId }, 'Failed to invalidate claim definitions cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

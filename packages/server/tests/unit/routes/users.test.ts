@@ -34,7 +34,9 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 
 vi.mock('../../../src/auth/email-service.js', () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
-  renderInvitationEmail: vi.fn().mockResolvedValue({ html: '<html></html>', text: 'text', subject: 'subject' }),
+  renderInvitationEmail: vi
+    .fn()
+    .mockResolvedValue({ html: '<html></html>', text: 'text', subject: 'subject' }),
 }));
 
 vi.mock('../../../src/organizations/service.js', () => ({
@@ -49,7 +51,6 @@ vi.mock('../../../src/lib/audit-log.js', () => ({
 vi.mock('../../../src/config/index.js', () => ({
   config: { issuerBaseUrl: 'https://auth.example.com' },
 }));
-
 
 // Mock super-admin middleware to always pass through
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
@@ -70,7 +71,6 @@ import * as userService from '../../../src/users/service.js';
 import * as emailService from '../../../src/auth/email-service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
 import { createUserRouter } from '../../../src/routes/users.js';
-
 
 /** Standard test user */
 function createTestUser(overrides: Partial<User> = {}): User {
@@ -112,11 +112,13 @@ function createTestUser(overrides: Partial<User> = {}): User {
 }
 
 /** Create a minimal mock Koa context for route testing */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -124,16 +126,28 @@ function createMockCtx(overrides: {
     params: { orgId: 'org-uuid-1', ...(overrides.params ?? {}) },
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: {
       organization: { isSuperAdmin: true },
-      adminUser: { id: 'admin-uuid-1', givenName: 'Admin', familyName: 'User', email: 'admin@example.com' },
+      adminUser: {
+        id: 'admin-uuid-1',
+        givenName: 'Admin',
+        familyName: 'User',
+        email: 'admin@example.com',
+      },
     },
     throw: vi.fn((status: number, message: string) => {
-
       const err = new Error(message) as Error & { status: number };
       err.status = status;
       throw err;
@@ -145,14 +159,21 @@ function createMockCtx(overrides: {
 const PREFIX = '/api/admin/organizations/:orgId/users';
 
 /** Find a route layer by method and path suffix */
-function findLayer(router: ReturnType<typeof createUserRouter>, method: string, pathSuffix: string) {
+function findLayer(
+  router: ReturnType<typeof createUserRouter>,
+  method: string,
+  pathSuffix: string,
+) {
   return router.stack.find(
     (l) => l.methods.includes(method) && l.path === `${PREFIX}${pathSuffix}`,
   );
 }
 
 /** Execute the last middleware in the layer's stack (the actual handler) */
-async function exec(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function exec(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   return layer.stack[layer.stack.length - 1](ctx as never, vi.fn());
 }
 
@@ -186,18 +207,19 @@ describe('user routes', () => {
       await exec(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('User request is invalid');
     });
 
     it('should return 400 for duplicate email', async () => {
-      (userService.createUser as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new UserValidationError('Email already exists in this organization'));
+      (userService.createUser as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new UserValidationError('Email already exists in this organization'),
+      );
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
       const ctx = createMockCtx({ body: { email: 'john@example.com' } });
 
-      await expect(exec(layer!, ctx)).rejects.toThrow('Email already exists');
+      await expect(exec(layer!, ctx)).rejects.toThrow('User request is invalid');
     });
   });
 
@@ -298,8 +320,9 @@ describe('user routes', () => {
     });
 
     it('should return 404 for not found', async () => {
-      (userService.updateUser as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new UserNotFoundError('nonexistent'));
+      (userService.updateUser as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new UserNotFoundError('nonexistent'),
+      );
 
       const router = createUserRouter();
       const layer = findLayer(router, 'PUT', '/:userId');
@@ -333,7 +356,10 @@ describe('user routes', () => {
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '/:userId/suspend');
-      const ctx = createMockCtx({ params: { userId: 'user-uuid-1' }, body: { reason: 'policy violation' } });
+      const ctx = createMockCtx({
+        params: { userId: 'user-uuid-1' },
+        body: { reason: 'policy violation' },
+      });
 
       await exec(layer!, ctx);
 
@@ -348,7 +374,10 @@ describe('user routes', () => {
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '/:userId/lock');
-      const ctx = createMockCtx({ params: { userId: 'user-uuid-1' }, body: { reason: 'brute force' } });
+      const ctx = createMockCtx({
+        params: { userId: 'user-uuid-1' },
+        body: { reason: 'brute force' },
+      });
 
       await exec(layer!, ctx);
 
@@ -363,7 +392,7 @@ describe('user routes', () => {
       await exec(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('User request is invalid');
     });
   });
 
@@ -391,7 +420,10 @@ describe('user routes', () => {
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '/:userId/password');
-      const ctx = createMockCtx({ params: { userId: 'user-uuid-1' }, body: { password: 'secure_password_123' } });
+      const ctx = createMockCtx({
+        params: { userId: 'user-uuid-1' },
+        body: { password: 'secure_password_123' },
+      });
 
       await exec(layer!, ctx);
 
@@ -472,7 +504,8 @@ describe('user routes', () => {
       await exec(layer!, ctx);
 
       // The 3rd positional argument to sendInvitationEmail is the invite URL.
-      const inviteUrl = (emailService.sendInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][2];
+      const inviteUrl = (emailService.sendInvitationEmail as ReturnType<typeof vi.fn>).mock
+        .calls[0][2];
       expect(inviteUrl).toBe('https://auth.example.com/acme/auth/accept-invite/T');
     });
 
@@ -486,7 +519,8 @@ describe('user routes', () => {
       await exec(layer!, ctx);
 
       // The 3rd positional argument to renderInvitationEmail is the preview URL.
-      const previewUrl = (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][2];
+      const previewUrl = (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock
+        .calls[0][2];
       expect(previewUrl).toBe('https://auth.example.com/acme/auth/accept-invite/PREVIEW_TOKEN');
     });
   });
@@ -496,7 +530,6 @@ describe('user routes', () => {
   // -------------------------------------------------------------------------
 
   describe('router structure', () => {
-
     it('should have the correct prefix', () => {
       const router = createUserRouter();
       expect(router.opts.prefix).toBe(PREFIX);
@@ -504,7 +537,9 @@ describe('user routes', () => {
 
     it('should register all expected routes', () => {
       const router = createUserRouter();
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain(`POST ${PREFIX}`);
       expect(paths).toContain(`GET ${PREFIX}`);

@@ -77,6 +77,30 @@ export interface AdminUser {
   permissions: readonly string[];
 }
 
+/**
+ * Enforce super-admin organization membership through the shared public denial boundary.
+ *
+ * @returns `true` only when the authenticated account belongs to the required organization.
+ */
+export function requireAdminOrganizationMembership(
+  ctx: Parameters<Middleware>[0],
+  userOrganizationId: string,
+  adminOrganizationId: string,
+): boolean {
+  if (userOrganizationId === adminOrganizationId) return true;
+  recordSecurityDecision(ctx, {
+    decisionPoint: 'membership',
+    reasonCode: 'membership-required',
+    outcome: 'deny',
+  });
+  ctx.status = 403;
+  ctx.body = {
+    error: 'Forbidden',
+    message: 'Administrative access is not permitted',
+  };
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Koa state type augmentation
 // ---------------------------------------------------------------------------
@@ -225,26 +249,14 @@ export function requireAdminAuth(): Middleware {
         outcome: 'deny',
       });
       ctx.status = 401;
-      ctx.body = { error: 'Invalid token', message: 'User not found or not active' };
+      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
       return;
     }
 
     // -----------------------------------------------------------------
     // Step 5: Verify user belongs to the super-admin organization
     // -----------------------------------------------------------------
-    if (user.organizationId !== superAdminOrg.id) {
-      recordSecurityDecision(ctx, {
-        decisionPoint: 'membership',
-        reasonCode: 'membership-required',
-        outcome: 'deny',
-      });
-      ctx.status = 403;
-      ctx.body = {
-        error: 'Forbidden',
-        message: 'Admin access requires membership in the admin organization',
-      };
-      return;
-    }
+    if (!requireAdminOrganizationMembership(ctx, user.organizationId, superAdminOrg.id)) return;
 
     // -----------------------------------------------------------------
     // Step 6: Verify user has an admin role (any porta-* role)
@@ -263,7 +275,7 @@ export function requireAdminAuth(): Middleware {
         outcome: 'deny',
       });
       ctx.status = 403;
-      ctx.body = { error: 'Forbidden', message: 'Admin role required' };
+      ctx.body = { error: 'Forbidden', message: 'Administrative access is not permitted' };
       return;
     }
 

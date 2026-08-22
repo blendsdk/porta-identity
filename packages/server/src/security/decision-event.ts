@@ -115,6 +115,30 @@ export const securityDecisionEventSchema = z
         message: 'Protected references and their key identifier must appear together',
       });
     }
+
+    const expectedOutcome =
+      event.statusCode >= 500 ? 'error' : event.statusCode >= 400 ? 'deny' : 'allow';
+    if (event.outcome !== expectedOutcome) {
+      context.addIssue({
+        code: 'custom',
+        path: ['outcome'],
+        message: 'Terminal outcome must match the final HTTP status class',
+      });
+    }
+    if ((event.reasonCode === 'allowed') !== (event.outcome === 'allow')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['reasonCode'],
+        message: 'The allowed reason is valid only for an allowed outcome',
+      });
+    }
+    if ((event.reasonCode === 'handler-failed') !== (event.outcome === 'error')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['reasonCode'],
+        message: 'The handler-failed reason is valid only for an error outcome',
+      });
+    }
   });
 
 /** Validated terminal event. */

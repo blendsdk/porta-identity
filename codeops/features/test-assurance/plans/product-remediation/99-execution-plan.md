@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 12:25
-> **Progress**: 53/57 tasks (93%)
+> **Last Updated**: 2026-08-22 14:01
+> **Progress**: 54/59 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -151,6 +151,8 @@ where required, and free of secret/formula exposure.
 - [x] 4.7 Run ST-25–ST-30 green through unit, integration, raw malformed transport, admin denial, and mutation rollback boundaries. ✅ (completed: 2026-08-22 12:43 CEST; required terminal-event specification 17/17, production boundary implementation 4/4, focused middleware/admin 34/34, administrative-data integration 17/17, lint/format, structure 70/70, and full `yarn verify` passed in 11m48s with server pentest 224/224)
 - [x] 4.8 Add unknown-field, redaction-canary, route-template, key-rotation, sink-failure, client-error, and atomicity implementation tests — `packages/server/tests/unit/security/security-decision-event.impl.test.ts` ✅ (completed: 2026-08-22 12:57 CEST; seven focused strict-schema, privacy-reference, route-normalization, key-rotation, exactly-once sink, parser-deduplication, and transaction-audit tests passed; lint/format, structure 70/70, and full `yarn verify` passed in 10m59s with pentest 224/224)
 - [x] 4.9 Run Phase 4 targeted/P1/production-security/pentest checks and `yarn verify`; update logging, audit, configuration, and security docs. ✅ (completed: 2026-08-22 13:30 CEST; terminal specification 17/17, P1 selector 58/58, production-security tenant/admin behavior 17/17 with truthful registered exit 40 for pre-existing P1 product/incomplete gaps, standalone pentest 224/224, docs build, structure 70/70, and full `yarn verify` passed in 11m37s)
+- [x] 4.10 Implement every accepted Phase 4 quality correction for independent live observations, exact terminal classification, response/log privacy, synchronous transport-sink failure, complete administrative audit atomicity, and truthful bulk/import documentation. ✅ (completed: 2026-08-22 14:19 CEST; replaced circular evidence with real Koa/Node/PostgreSQL observations, enforced exact terminal tuples and generic public diagnostics, made all covered admin mutations transaction-bound to durable audit with post-commit cache/external effects, fixed synchronous transport-sink fallback, and corrected bulk/import documentation; focused terminal 17/17, transaction integration 2/2, docs build, structure 70/70, and full `yarn verify` passed in 12m05s with server unit 2,857, integration 362, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
+- [ ] 4.11 Run focused and full verification, commit the correction, complete one bounded re-review, resolve any accepted residual, and close the Phase 4 quality gate.
 
 Deliverable: every covered request has one independently attributable privacy-safe decision event,
 and covered authorized mutations cannot commit without durable audit intent.

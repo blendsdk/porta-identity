@@ -18,6 +18,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { Organization } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -95,17 +96,19 @@ export async function getCachedOrganizationById(id: string): Promise<Organizatio
  * @param org - Organization to cache
  */
 export async function cacheOrganization(org: Organization): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(org);
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(org);
 
-    // Store under both keys with the same TTL
-    await redis.set(`${SLUG_PREFIX}${org.slug}`, data, 'EX', CACHE_TTL);
-    await redis.set(`${ID_PREFIX}${org.id}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, slug: org.slug, id: org.id }, 'Failed to cache organization');
-  }
+      // Store under both keys with the same TTL
+      await redis.set(`${SLUG_PREFIX}${org.slug}`, data, 'EX', CACHE_TTL);
+      await redis.set(`${ID_PREFIX}${org.id}`, data, 'EX', CACHE_TTL);
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, slug: org.slug, id: org.id }, 'Failed to cache organization');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -123,13 +126,15 @@ export async function cacheOrganization(org: Organization): Promise<void> {
  * @param id - Organization UUID
  */
 export async function invalidateOrganizationCache(slug: string, id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, slug, id }, 'Failed to invalidate organization cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, slug, id }, 'Failed to invalidate organization cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

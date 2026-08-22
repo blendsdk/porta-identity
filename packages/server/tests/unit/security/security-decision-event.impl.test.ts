@@ -67,6 +67,54 @@ describe('security decision event implementation', () => {
     ).toThrow();
   });
 
+  it('should reject terminal outcomes and reasons which contradict the public status', () => {
+    expect(() =>
+      createSecurityDecisionEvent({
+        requestId: randomUUID(),
+        surface: 'admin-api',
+        method: 'POST',
+        routeTemplate: '/api/admin/users',
+        statusCode: 400,
+        outcome: 'allow',
+        decisionPoint: 'handler',
+        reasonCode: 'allowed',
+      }),
+    ).toThrow();
+    expect(() =>
+      createSecurityDecisionEvent({
+        requestId: randomUUID(),
+        surface: 'admin-api',
+        method: 'POST',
+        routeTemplate: '/api/admin/users',
+        statusCode: 503,
+        outcome: 'error',
+        decisionPoint: 'handler',
+        reasonCode: 'schema-invalid',
+      }),
+    ).toThrow();
+  });
+
+  it.each([
+    [400, 'validation', 'schema-invalid'],
+    [404, 'resource', 'route-not-found'],
+    [405, 'validation', 'method-not-allowed'],
+  ] as const)(
+    'should classify an unrecorded %i response as a denial at the exact boundary',
+    async (status, decisionPoint, reasonCode) => {
+      const context = requestContext({ status });
+      initializeSecurityDecision(context as never, randomUUID());
+
+      const event = await finalizeSecurityDecision(context as never, vi.fn());
+
+      expect(event).toMatchObject({
+        statusCode: status,
+        outcome: 'deny',
+        decisionPoint,
+        reasonCode,
+      });
+    },
+  );
+
   it('should retain only domain-separated protected references for raw identity canaries', async () => {
     const canary = 'protected@example.test';
     const context = requestContext();
@@ -153,6 +201,24 @@ describe('security decision event implementation', () => {
     expect(events).toHaveLength(1);
     expect(end).toHaveBeenCalledOnce();
     expect(JSON.stringify(events[0])).not.toContain('parser canary');
+  });
+
+  it('should close the parser socket when the transport sink throws synchronously', async () => {
+    const server = createServer();
+    const socket = new Socket();
+    const end = vi.spyOn(socket, 'end').mockReturnValue(socket);
+    const before = getSecurityDecisionSinkFailureCount();
+    const detach = attachTransportDecisionHandler(server, () => {
+      throw new Error('synchronous sink failure');
+    });
+
+    server.emit('clientError', new Error('raw parser canary'), socket);
+    await new Promise((resolve) => setImmediate(resolve));
+    detach();
+    socket.destroy();
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(getSecurityDecisionSinkFailureCount()).toBe(before + 1);
   });
 
   it('should propagate transaction-bound audit failure to the mutation owner', async () => {

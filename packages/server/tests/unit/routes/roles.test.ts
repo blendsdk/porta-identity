@@ -65,11 +65,13 @@ function createTestPermission(overrides: Partial<Permission> = {}): Permission {
  * Create a minimal mock Koa context for route testing.
  * Simulates what Koa provides to route handlers.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -77,10 +79,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -92,7 +102,11 @@ function createMockCtx(overrides: {
 }
 
 /** Find a route layer by method and path suffix */
-function findLayer(router: ReturnType<typeof createRoleRouter>, method: string, pathSuffix: string) {
+function findLayer(
+  router: ReturnType<typeof createRoleRouter>,
+  method: string,
+  pathSuffix: string,
+) {
   const prefix = '/api/admin/applications/:appId/roles';
   return router.stack.find(
     (l) => l.methods.includes(method) && l.path === `${prefix}${pathSuffix}`,
@@ -100,7 +114,10 @@ function findLayer(router: ReturnType<typeof createRoleRouter>, method: string, 
 }
 
 /** Execute the last middleware in a layer's stack (the actual handler) */
-async function execHandler(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function execHandler(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   const next = vi.fn();
   await layer.stack[layer.stack.length - 1](ctx as never, next);
 }
@@ -144,7 +161,7 @@ describe('role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Role request is invalid');
     });
 
     it('should throw 400 when slug already exists', async () => {
@@ -158,7 +175,7 @@ describe('role routes', () => {
         body: { name: 'Editor' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Role slug already exists');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Role request is invalid');
     });
   });
 
@@ -237,9 +254,7 @@ describe('role routes', () => {
     });
 
     it('should throw 404 when role not found', async () => {
-      vi.mocked(roleService.updateRole).mockRejectedValue(
-        new RoleNotFoundError('nonexistent'),
-      );
+      vi.mocked(roleService.updateRole).mockRejectedValue(new RoleNotFoundError('nonexistent'));
 
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId');
       const ctx = createMockCtx({
@@ -293,7 +308,7 @@ describe('role routes', () => {
         params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Role has 5 assigned users');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Role request is invalid');
     });
   });
 
@@ -346,7 +361,7 @@ describe('role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Role request is invalid');
     });
 
     it('should return 400 for empty permissions array', async () => {
@@ -387,7 +402,9 @@ describe('role routes', () => {
   describe('GET /:roleId/users — List users with role', () => {
     it('should return paginated user list', async () => {
       const result = {
-        rows: [{ userId: 'user-1', roleId: 'role-uuid-1', assignedBy: null, createdAt: new Date() }] as UserRole[],
+        rows: [
+          { userId: 'user-1', roleId: 'role-uuid-1', assignedBy: null, createdAt: new Date() },
+        ] as UserRole[],
         total: 1,
       };
       vi.mocked(userRoleService.getUsersWithRole).mockResolvedValue(result);
@@ -411,7 +428,7 @@ describe('role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Role request is invalid');
     });
   });
 
@@ -428,7 +445,9 @@ describe('role routes', () => {
     it('should register all expected routes', () => {
       const router = createRoleRouter();
       const prefix = '/api/admin/applications/:appId/roles';
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain(`POST ${prefix}`);
       expect(paths).toContain(`GET ${prefix}`);

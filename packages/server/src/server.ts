@@ -69,6 +69,7 @@ import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
 import { adminRateLimiter } from './middleware/admin-rate-limiter.js';
+import { adminMutationAudit } from './middleware/admin-mutation-audit.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
 import { findSuperAdminOrganization } from './organizations/repository.js';
 import { getApplicationBySlug } from './applications/index.js';
@@ -234,6 +235,7 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Per-IP key, 60 req / 60s.  GET requests pass through unmetered.
   // Mounted before admin routes so it fires before route handlers.
   app.use(adminRateLimiter());
+  app.use(adminMutationAudit());
 
   // Set the OIDC provider for admin auth middleware — enables opaque access
   // token validation via provider.AccessToken.find() for all /api/admin/* routes.

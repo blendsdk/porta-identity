@@ -58,16 +58,19 @@ const listPermissionsSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof PermissionNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Permission not found');
   }
   if (err instanceof RbacValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Permission request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Permission request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -154,27 +157,35 @@ export function createPermissionRouter(): Router {
   // DELETE /:permId — Delete permission
   // Supports ?force=true to delete even when roles reference it
   // -------------------------------------------------------------------------
-  router.delete('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_ARCHIVE), async (ctx) => {
-    try {
-      const force = ctx.query.force === 'true';
-      await permissionService.deletePermission(ctx.params.permId, force);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.delete(
+    '/:permId',
+    requirePermission(ADMIN_PERMISSIONS.PERMISSION_ARCHIVE),
+    async (ctx) => {
+      try {
+        const force = ctx.query.force === 'true';
+        await permissionService.deletePermission(ctx.params.permId, force);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:permId/roles — List roles that include this permission
   // -------------------------------------------------------------------------
-  router.get('/:permId/roles', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
-    try {
-      const roles = await permissionService.getRolesWithPermission(ctx.params.permId);
-      ctx.body = { data: roles };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.get(
+    '/:permId/roles',
+    requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ),
+    async (ctx) => {
+      try {
+        const roles = await permissionService.getRolesWithPermission(ctx.params.permId);
+        ctx.body = { data: roles };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   return router;
 }

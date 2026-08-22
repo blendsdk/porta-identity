@@ -93,8 +93,8 @@ export function createBrandingRouter(): Router {
         );
         ctx.body = { data: asset };
         return;
-      } catch (err) {
-        ctx.throw(400, err instanceof Error ? err.message : 'Upload failed');
+      } catch {
+        ctx.throw(400, 'Branding upload is invalid');
         return;
       }
     }

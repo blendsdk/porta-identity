@@ -594,8 +594,8 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     };
 
     await renderAndRespond(ctx, 'reset-success', context);
-  } catch (error) {
-    logger.error({ error }, 'Failed to process password reset');
+  } catch {
+    logger.error({ event: 'password-reset-processing-failed' }, 'Password reset processing failed');
     await renderResetFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.generic'));
   }
 }
@@ -670,8 +670,8 @@ async function renderErrorPageForAuth(
     ctx.status = 400;
     ctx.type = 'text/html';
     ctx.body = html;
-  } catch (renderError) {
-    logger.error({ renderError }, 'Failed to render auth error page');
+  } catch {
+    logger.error({ event: 'auth-error-render-failed' }, 'Authentication error page failed');
     ctx.status = 500;
     ctx.body = 'An error occurred';
   }

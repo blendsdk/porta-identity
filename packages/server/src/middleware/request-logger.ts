@@ -9,6 +9,28 @@ import {
   type SecurityDecisionSink,
 } from '../security/decision-context.js';
 
+/** Closed request-completion record exposed to owner-controlled operational sinks. */
+export interface OperationalRequestRecord {
+  /** Server-created request correlation identifier. */
+  readonly requestId: string;
+  /** Public HTTP method. */
+  readonly method: string;
+  /** Registered route template or closed unmatched fallback. */
+  readonly routeTemplate: string;
+  /** Final public status. */
+  readonly status: number;
+  /** Bounded request duration in milliseconds. */
+  readonly duration: number;
+}
+
+/** Sink for a normalized request-completion record. */
+export type OperationalRequestSink = (record: OperationalRequestRecord) => void;
+
+/** Emit one request-completion record through the production logger. */
+const logOperationalRequest: OperationalRequestSink = (record) => {
+  logger.info(record, 'HTTP request completed');
+};
+
 /**
  * Replace bearer and interaction path segments before they reach structured or rendered logs.
  *
@@ -25,7 +47,10 @@ export function sanitizeRequestPath(path: string): string {
 }
 
 /** Create request-correlation middleware that emits only sanitized route-shaped paths. */
-export function requestLogger(decisionSink?: SecurityDecisionSink): Middleware {
+export function requestLogger(
+  decisionSink?: SecurityDecisionSink,
+  operationalSink: OperationalRequestSink = logOperationalRequest,
+): Middleware {
   return async (ctx, next) => {
     const requestId = randomUUID();
     ctx.state.requestId = requestId;
@@ -39,10 +64,13 @@ export function requestLogger(decisionSink?: SecurityDecisionSink): Middleware {
     } finally {
       const duration = Date.now() - start;
       const routeTemplate = normalizedRouteTemplate(ctx);
-      logger.info(
-        { requestId, method: ctx.method, routeTemplate, status: ctx.status, duration },
-        'HTTP request completed',
-      );
+      operationalSink({
+        requestId,
+        method: ctx.method,
+        routeTemplate,
+        status: ctx.status,
+        duration,
+      });
       await finalizeSecurityDecision(ctx, decisionSink);
     }
   };

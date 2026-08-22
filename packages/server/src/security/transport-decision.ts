@@ -33,7 +33,11 @@ export function attachTransportDecisionHandler(
       decisionPoint: 'transport',
       reasonCode: 'transport-parse-failed',
     });
-    void Promise.resolve(sink(event)).catch(recordSecurityDecisionSinkFailure);
+    try {
+      void Promise.resolve(sink(event)).catch(recordSecurityDecisionSinkFailure);
+    } catch {
+      recordSecurityDecisionSinkFailure();
+    }
 
     if (socket.writable && !socket.destroyed) socket.end(MINIMAL_BAD_REQUEST);
     else socket.destroy();

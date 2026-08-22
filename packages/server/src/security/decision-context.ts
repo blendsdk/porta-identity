@@ -119,13 +119,7 @@ export async function finalizeSecurityDecision(
   if (surface === null) return null;
 
   const status = ctx.status;
-  const fallbackOutcome: SecurityDecisionEvent['outcome'] =
-    status >= 500 ? 'error' : status >= 400 ? 'deny' : 'allow';
-  const fact: SecurityDecisionFact =
-    state.fact ??
-    (status === 404
-      ? { decisionPoint: 'resource', reasonCode: 'route-not-found', outcome: 'deny' }
-      : { decisionPoint: 'handler', reasonCode: status >= 500 ? 'handler-failed' : 'allowed' });
+  const fact = state.fact ?? fallbackDecisionFact(status);
 
   const references: Partial<Record<SecurityReferenceDomain, string>> = {};
   const populatedDomains = SECURITY_REFERENCE_DOMAINS.filter(
@@ -147,7 +141,7 @@ export async function finalizeSecurityDecision(
     method: normalizeMethod(ctx.method),
     routeTemplate: normalizedRouteTemplate(ctx),
     statusCode: status,
-    outcome: fact.outcome ?? fallbackOutcome,
+    outcome: fact.outcome ?? outcomeForStatus(status),
     decisionPoint: fact.decisionPoint,
     reasonCode: fact.reasonCode,
     ...(fact.detail === undefined ? {} : { detail: fact.detail }),
@@ -160,6 +154,30 @@ export async function finalizeSecurityDecision(
     recordSecurityDecisionSinkFailure();
   }
   return event;
+}
+
+/** Derive the only compatible terminal outcome from a final HTTP status. */
+function outcomeForStatus(status: number): SecurityDecisionEvent['outcome'] {
+  if (status >= 500) return 'error';
+  if (status >= 400) return 'deny';
+  return 'allow';
+}
+
+/** Classify a final response when no earlier boundary supplied a more specific fact. */
+function fallbackDecisionFact(status: number): SecurityDecisionFact {
+  if (status === 404) {
+    return { decisionPoint: 'resource', reasonCode: 'route-not-found', outcome: 'deny' };
+  }
+  if (status === 405) {
+    return { decisionPoint: 'validation', reasonCode: 'method-not-allowed', outcome: 'deny' };
+  }
+  if (status >= 400 && status < 500) {
+    return { decisionPoint: 'validation', reasonCode: 'schema-invalid', outcome: 'deny' };
+  }
+  if (status >= 500) {
+    return { decisionPoint: 'handler', reasonCode: 'handler-failed', outcome: 'error' };
+  }
+  return { decisionPoint: 'handler', reasonCode: 'allowed', outcome: 'allow' };
 }
 
 /** Map an arbitrary HTTP method to the closed event vocabulary. */

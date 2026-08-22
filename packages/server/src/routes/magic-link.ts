@@ -247,13 +247,10 @@ async function verifyMagicLink(
 
     // No interaction UID — magic link opened outside an OIDC flow.
     // Show the magic link success page (standalone authentication confirmation).
-    logger.info(
-      { userId: authority.userId },
-      'Magic link verified without interaction UID — showing success page',
-    );
+    logger.info({ event: 'magic-link-standalone-completed' }, 'Magic link verification completed');
     await renderSuccessPageForAuth(ctx, org, locale, t);
-  } catch (error) {
-    logger.error({ error }, 'Failed to verify magic link');
+  } catch {
+    logger.error({ event: 'magic-link-verification-failed' }, 'Magic link verification failed');
     await renderErrorPageForAuth(ctx, org, locale, t, t('errors.generic'));
   }
 }
@@ -354,8 +351,8 @@ async function renderErrorPageForAuth(
     ctx.status = 400;
     ctx.type = 'text/html';
     ctx.body = html;
-  } catch (renderError) {
-    logger.error({ renderError }, 'Failed to render auth error page');
+  } catch {
+    logger.error({ event: 'auth-error-render-failed' }, 'Authentication error page failed');
     ctx.status = 500;
     ctx.body = 'An error occurred';
   }

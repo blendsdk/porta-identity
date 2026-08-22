@@ -79,9 +79,7 @@ const createClientSchema = z.object({
   grantTypes: z.array(z.string()).optional(),
   responseTypes: z.array(z.string()).optional(),
   scope: z.string().optional(),
-  tokenEndpointAuthMethod: z.enum([
-    'client_secret_basic', 'client_secret_post', 'none',
-  ]).optional(),
+  tokenEndpointAuthMethod: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
   allowedOrigins: z.array(z.string().url()).optional(),
   requirePkce: z.boolean().optional(),
   loginMethods: clientLoginMethodsSchema.optional(),
@@ -96,9 +94,7 @@ const updateClientSchema = z.object({
   grantTypes: z.array(z.string()).optional(),
   responseTypes: z.array(z.string()).optional(),
   scope: z.string().optional(),
-  tokenEndpointAuthMethod: z.enum([
-    'client_secret_basic', 'client_secret_post', 'none',
-  ]).optional(),
+  tokenEndpointAuthMethod: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
   allowedOrigins: z.array(z.string().url()).optional(),
   requirePkce: z.boolean().optional(),
   loginMethods: clientLoginMethodsSchema.optional(),
@@ -154,13 +150,15 @@ const createSecretSchema = z.object({
  * @param client - Client from the service layer
  * @returns Client decorated with `effectiveLoginMethods`
  */
-async function withEffectiveLoginMethods(client: Client): Promise<Client & { effectiveLoginMethods: readonly string[] }> {
+async function withEffectiveLoginMethods(
+  client: Client,
+): Promise<Client & { effectiveLoginMethods: readonly string[] }> {
   const org = await organizationService.getOrganizationById(client.organizationId);
   const effectiveLoginMethods = org
     ? resolveLoginMethods(org, client)
-    // Defensive: if the org went missing after the client was fetched, fall
-    // back to the client's explicit override if present, otherwise default.
-    : (client.loginMethods ?? ['password', 'magic_link']);
+    : // Defensive: if the org went missing after the client was fetched, fall
+      // back to the client's explicit override if present, otherwise default.
+      (client.loginMethods ?? ['password', 'magic_link']);
   return { ...client, effectiveLoginMethods };
 }
 
@@ -172,16 +170,19 @@ async function withEffectiveLoginMethods(client: Client): Promise<Client & { eff
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof ClientNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Client not found');
   }
   if (err instanceof ClientValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Client request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Client request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -320,14 +321,18 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/deactivate — Deactivate client
   // -------------------------------------------------------------------------
-  router.post('/:id/deactivate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
-    try {
-      await clientService.deactivateClient(ctx.params.id);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post(
+    '/:id/deactivate',
+    requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE),
+    async (ctx) => {
+      try {
+        await clientService.deactivateClient(ctx.params.id);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:id/secrets — Generate new secret
@@ -370,14 +375,18 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/secrets/:secretId/revoke — Revoke a secret
   // -------------------------------------------------------------------------
-  router.post('/:id/secrets/:secretId/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
-    try {
-      await secretService.revoke(ctx.params.secretId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post(
+    '/:id/secrets/:secretId/revoke',
+    requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE),
+    async (ctx) => {
+      try {
+        await secretService.revoke(ctx.params.secretId);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   return router;
 }

@@ -17,6 +17,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { TwoFactorStatus } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -68,18 +69,17 @@ export async function getCachedTwoFactorStatus(userId: string): Promise<TwoFacto
  * @param userId - User UUID
  * @param status - 2FA status to cache
  */
-export async function cacheTwoFactorStatus(
-  userId: string,
-  status: TwoFactorStatus,
-): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(status);
-    await redis.set(`${STATUS_PREFIX}${userId}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, userId }, 'Failed to cache 2FA status');
-  }
+export async function cacheTwoFactorStatus(userId: string, status: TwoFactorStatus): Promise<void> {
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(status);
+      await redis.set(`${STATUS_PREFIX}${userId}`, data, 'EX', CACHE_TTL);
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, userId }, 'Failed to cache 2FA status');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -95,13 +95,15 @@ export async function cacheTwoFactorStatus(
  * @param userId - User UUID
  */
 export async function invalidateTwoFactorCache(userId: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${STATUS_PREFIX}${userId}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, userId }, 'Failed to invalidate 2FA status cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${STATUS_PREFIX}${userId}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, userId }, 'Failed to invalidate 2FA status cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

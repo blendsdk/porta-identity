@@ -87,7 +87,15 @@ const ADMIN_USER = {
 };
 
 const ADMIN_ROLES = [
-  { id: 'role-1', applicationId: 'app-1', name: 'Admin', slug: 'porta-admin', description: null, createdAt: new Date(), updatedAt: new Date() },
+  {
+    id: 'role-1',
+    applicationId: 'app-1',
+    name: 'Admin',
+    slug: 'porta-admin',
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
 ];
 
 /** Simulated opaque access token returned by provider.AccessToken.find() */
@@ -109,10 +117,18 @@ function createMockCtx(authHeader?: string) {
       if (name === 'Authorization') return authHeader ?? '';
       return '';
     }),
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: {} as Record<string, unknown>,
   };
 }
@@ -228,7 +244,7 @@ describe('admin auth middleware', () => {
       await middleware(ctx as never, next);
 
       expect(ctx.status).toBe(401);
-      expect((ctx.body as { message: string }).message).toBe('User not found or not active');
+      expect((ctx.body as { message: string }).message).toBe('Token validation failed');
       expect(next).not.toHaveBeenCalled();
     });
   });
@@ -254,7 +270,9 @@ describe('admin auth middleware', () => {
 
       expect(ctx.status).toBe(403);
       expect((ctx.body as { error: string }).error).toBe('Forbidden');
-      expect((ctx.body as { message: string }).message).toContain('admin organization');
+      expect((ctx.body as { message: string }).message).toBe(
+        'Administrative access is not permitted',
+      );
       expect(next).not.toHaveBeenCalled();
     });
 
@@ -262,7 +280,15 @@ describe('admin auth middleware', () => {
       setupHappyPath();
       // User has roles but not porta-admin
       vi.mocked(getUserRoles).mockResolvedValue([
-        { id: 'role-2', applicationId: 'app-1', name: 'Viewer', slug: 'viewer', description: null, createdAt: new Date(), updatedAt: new Date() },
+        {
+          id: 'role-2',
+          applicationId: 'app-1',
+          name: 'Viewer',
+          slug: 'viewer',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ] as never);
 
       const middleware = requireAdminAuth();
@@ -272,7 +298,9 @@ describe('admin auth middleware', () => {
       await middleware(ctx as never, next);
 
       expect(ctx.status).toBe(403);
-      expect((ctx.body as { message: string }).message).toBe('Admin role required');
+      expect((ctx.body as { message: string }).message).toBe(
+        'Administrative access is not permitted',
+      );
       expect(next).not.toHaveBeenCalled();
     });
   });
@@ -335,7 +363,9 @@ describe('admin auth middleware', () => {
         permissions: expect.any(Array),
       });
       // Legacy porta-admin resolves to all permissions (super-admin equivalent)
-      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(0);
+      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(
+        0,
+      );
       // Verify the token was looked up with the correct value
       expect(mockAccessTokenFind).toHaveBeenCalledWith('valid-opaque-token');
     });
@@ -343,9 +373,33 @@ describe('admin auth middleware', () => {
     it('includes only porta-* role slugs in adminUser.roles', async () => {
       setupHappyPath();
       vi.mocked(getUserRoles).mockResolvedValue([
-        { id: 'r1', applicationId: 'app-1', name: 'Admin', slug: 'porta-super-admin', description: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: 'r2', applicationId: 'app-1', name: 'Auditor', slug: 'porta-auditor', description: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: 'r3', applicationId: 'app-1', name: 'Custom', slug: 'custom-role', description: null, createdAt: new Date(), updatedAt: new Date() },
+        {
+          id: 'r1',
+          applicationId: 'app-1',
+          name: 'Admin',
+          slug: 'porta-super-admin',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'r2',
+          applicationId: 'app-1',
+          name: 'Auditor',
+          slug: 'porta-auditor',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'r3',
+          applicationId: 'app-1',
+          name: 'Custom',
+          slug: 'custom-role',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ] as never);
 
       const middleware = requireAdminAuth();
@@ -362,7 +416,9 @@ describe('admin auth middleware', () => {
         'porta-auditor',
       ]);
       // Permissions should be resolved from both admin roles
-      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(0);
+      expect((ctx.state.adminUser as { permissions: string[] }).permissions.length).toBeGreaterThan(
+        0,
+      );
     });
   });
 });

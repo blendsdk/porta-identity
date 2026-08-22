@@ -354,9 +354,11 @@ All security-relevant actions are logged to the `audit_log` table:
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
 | System         | `system.config_changed`, `system.key_rotated`                     |
 
-Compatibility audit writes remain best-effort and do not change the main request result. Covered
-administrative data mutations instead write their durable business audit row through the same
-PostgreSQL transaction as the mutation. A failed audit insert therefore rolls back the mutation.
+Compatibility audit writes remain best-effort and do not change the main request result. Every
+successful state-changing administrative request also writes a durable business audit row through
+the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
+back that request's database changes. Bulk operations preserve their documented per-item
+transactions, while imports retain one manifest-wide transaction.
 
 Covered administrative and public-authentication requests emit one strict
 `security.decision.v1` terminal event after the final response status is known. Correlation starts

@@ -10,7 +10,7 @@
  */
 
 import type { PoolClient } from 'pg';
-import { getPool } from './database.js';
+import { afterDatabaseCommit, getPool } from './database.js';
 import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
@@ -37,42 +37,42 @@ export interface AuditLogEntry {
 /**
  * Write an audit log entry to the database.
  *
- * Uses fire-and-forget pattern: errors are caught and logged as warnings
- * but never thrown to the caller. This ensures that audit logging never
- * blocks or breaks the primary operation.
+ * Compatibility events never change the owning operation's result. Outside a database transaction
+ * they are written immediately; inside one they are deferred until commit. Errors are reduced to a
+ * privacy-safe warning and are never thrown to the caller.
  *
  * @param entry - Audit log entry data
  */
 export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
-  try {
-    const pool = getPool();
-
-    await pool.query(
-      `INSERT INTO audit_log (
+  await afterDatabaseCommit(async () => {
+    try {
+      const pool = getPool();
+      await pool.query(
+        `INSERT INTO audit_log (
          organization_id, user_id, actor_id,
          event_type, event_category, description,
          metadata, ip_address, user_agent
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        entry.organizationId ?? null,
-        entry.userId ?? null,
-        entry.actorId ?? null,
-        entry.eventType,
-        entry.eventCategory,
-        entry.description ?? null,
-        entry.metadata ? JSON.stringify(entry.metadata) : '{}',
-        entry.ipAddress ?? null,
-        entry.userAgent ?? null,
-      ],
-    );
-  } catch (err) {
-    // Fire-and-forget: log the failure but never throw
-    logger.warn(
-      { err, eventType: entry.eventType, eventCategory: entry.eventCategory },
-      'Failed to write audit log entry',
-    );
-  }
+        [
+          entry.organizationId ?? null,
+          entry.userId ?? null,
+          entry.actorId ?? null,
+          entry.eventType,
+          entry.eventCategory,
+          entry.description ?? null,
+          entry.metadata ? JSON.stringify(entry.metadata) : '{}',
+          entry.ipAddress ?? null,
+          entry.userAgent ?? null,
+        ],
+      );
+    } catch {
+      logger.warn(
+        { event: 'compatibility-audit-write-failed', eventType: entry.eventType },
+        'Compatibility audit write failed',
+      );
+    }
+  });
 }
 
 /**

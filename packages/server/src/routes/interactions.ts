@@ -589,8 +589,8 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
 
     // Render the login page with CSRF token in both cookie and hidden field
     await renderAndRespond(ctx, 'login', context);
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to show login page');
+  } catch {
+    logger.error({ event: 'login-page-failed' }, 'Login page rendering failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -678,7 +678,7 @@ async function processLogin(
 
     // Step 1: Verify CSRF token (cookie vs form field)
     if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
+      logger.warn({ event: 'login-csrf-rejected' }, 'Login request CSRF validation failed');
       await renderLoginWithError(
         ctx,
         provider,
@@ -711,16 +711,13 @@ async function processLogin(
       : org.defaultLoginMethods;
 
     if (!effectiveLoginMethods.includes('password')) {
-      logger.warn(
-        { uid: interaction.uid, email, clientId: interaction.params.client_id },
-        'Password login attempted for client where method is disabled',
-      );
+      logger.warn({ event: 'password-login-method-disabled' }, 'Password login method is disabled');
 
       dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
-        description: `Password login attempted on client where method is disabled (${email})`,
+        description: 'Password login attempted where the method is disabled',
         ipAddress: ctx.ip,
         metadata: {
           clientId: interaction.params.client_id,
@@ -756,7 +753,7 @@ async function processLogin(
         organizationId: org.id,
         eventType: 'rate_limit.login',
         eventCategory: 'security',
-        description: `Login rate limit exceeded for ${email}`,
+        description: 'Login rate limit exceeded',
         ipAddress: ctx.ip,
       });
 
@@ -858,8 +855,8 @@ async function processLogin(
             10,
             locale,
           );
-        } catch (otpErr) {
-          logger.warn({ otpErr, userId: user.id }, 'Failed to send initial OTP code');
+        } catch {
+          logger.warn({ event: 'login-otp-delivery-failed' }, 'Initial OTP delivery failed');
         }
       }
 
@@ -868,7 +865,7 @@ async function processLogin(
         userId: user.id,
         eventType: '2fa.challenge.started',
         eventCategory: 'authentication',
-        description: `2FA challenge initiated for ${email} (method: ${twoFactorMethod ?? 'setup_required'})`,
+        description: `Two-factor challenge initiated (${twoFactorMethod ?? 'setup_required'})`,
         ipAddress: ctx.ip,
       });
 
@@ -891,7 +888,7 @@ async function processLogin(
       userId: user.id,
       eventType: 'user.login.password',
       eventCategory: 'authentication',
-      description: `Password login successful (${email})`,
+      description: 'Password login successful',
       ipAddress: ctx.ip,
     });
 
@@ -903,8 +900,8 @@ async function processLogin(
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (err) {
-    logger.error({ err, email }, 'Failed to process login');
+  } catch {
+    logger.error({ event: 'login-processing-failed' }, 'Login processing failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1212,8 +1209,8 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     };
 
     await renderAndRespond(ctx, 'consent', context);
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to show consent page');
+  } catch {
+    logger.error({ event: 'consent-page-failed' }, 'Consent page rendering failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1247,7 +1244,7 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
 
     // Verify CSRF token
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on consent');
+      logger.warn({ event: 'consent-csrf-rejected' }, 'Consent request CSRF validation failed');
       ctx.status = 403;
       ctx.body = 'Invalid CSRF token';
       return;
@@ -1327,8 +1324,8 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
         mergeWithLastSubmission: false,
       });
     }
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to process consent');
+  } catch {
+    logger.error({ event: 'consent-processing-failed' }, 'Consent processing failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1370,8 +1367,8 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to abort interaction');
+  } catch {
+    logger.error({ event: 'interaction-abort-failed' }, 'Interaction abort failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1486,9 +1483,9 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
     };
 
     await renderAndRespond(ctx, 'error', context, 400);
-  } catch (renderError) {
+  } catch {
     // Last resort: if even the error page fails, send plain text
-    logger.error({ renderError }, 'Failed to render error page');
+    logger.error({ event: 'interaction-error-render-failed' }, 'Interaction error page failed');
     ctx.status = 500;
     ctx.body = 'An error occurred';
   }

@@ -23,7 +23,12 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
-import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
+import {
+  generateCsrfToken,
+  verifyCsrfToken,
+  setCsrfCookie,
+  getCsrfFromCookie,
+} from '../auth/csrf.js';
 import { hashToken } from '../auth/tokens.js';
 import { findValidInvitationToken, markTokenUsed } from '../auth/token-repository.js';
 import type { InvitationTokenRecord } from '../auth/token-repository.js';
@@ -212,7 +217,15 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on accept-invite');
-    await renderInviteFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.csrf_invalid'), 403);
+    await renderInviteFormWithError(
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
+      t('errors.csrf_invalid'),
+      403,
+    );
     return;
   }
 
@@ -239,7 +252,11 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   // Step 3: Validate passwords match
   if (password !== confirmPassword) {
     await renderInviteFormWithError(
-      ctx, org, locale, t, tokenPlaintext,
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
       t('invitation.error_password_mismatch'),
     );
     return;
@@ -292,8 +309,11 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     };
 
     await renderAndRespond(ctx, 'invite-success', context);
-  } catch (error) {
-    logger.error({ error }, 'Failed to process invitation acceptance');
+  } catch {
+    logger.error(
+      { event: 'invitation-acceptance-failed' },
+      'Invitation acceptance processing failed',
+    );
     await renderInviteFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.generic'));
   }
 }
@@ -389,7 +409,10 @@ async function applyPreAssignments(
           [role.roleId, role.applicationId],
         );
         if (roleCheck.rows.length === 0) {
-          logger.warn({ roleId: role.roleId, userId }, 'Pre-assigned role no longer exists, skipping');
+          logger.warn(
+            { event: 'invitation-role-unavailable' },
+            'Invitation role assignment was skipped',
+          );
           continue;
         }
 
@@ -401,9 +424,9 @@ async function applyPreAssignments(
           [userId, role.roleId],
         );
 
-        logger.debug({ userId, roleId: role.roleId }, 'Pre-assigned role applied');
-      } catch (err) {
-        logger.warn({ err, userId, roleId: role.roleId }, 'Failed to apply pre-assigned role');
+        logger.debug({ event: 'invitation-role-applied' }, 'Invitation role assignment applied');
+      } catch {
+        logger.warn({ event: 'invitation-role-failed' }, 'Invitation role assignment failed');
       }
     }
   }
@@ -418,7 +441,10 @@ async function applyPreAssignments(
           [claim.claimDefinitionId, claim.applicationId],
         );
         if (defCheck.rows.length === 0) {
-          logger.warn({ claimDefinitionId: claim.claimDefinitionId, userId }, 'Pre-assigned claim definition no longer exists, skipping');
+          logger.warn(
+            { event: 'invitation-claim-unavailable' },
+            'Invitation claim assignment was skipped',
+          );
           continue;
         }
 
@@ -430,9 +456,9 @@ async function applyPreAssignments(
           [userId, claim.claimDefinitionId, JSON.stringify(claim.value)],
         );
 
-        logger.debug({ userId, claimDefinitionId: claim.claimDefinitionId }, 'Pre-assigned claim applied');
-      } catch (err) {
-        logger.warn({ err, userId, claimDefinitionId: claim.claimDefinitionId }, 'Failed to apply pre-assigned claim');
+        logger.debug({ event: 'invitation-claim-applied' }, 'Invitation claim assignment applied');
+      } catch {
+        logger.warn({ event: 'invitation-claim-failed' }, 'Invitation claim assignment failed');
       }
     }
   }
@@ -446,8 +472,8 @@ async function applyPreAssignments(
       eventCategory: 'authentication',
       description: `Pre-assignments applied: ${roles?.length ?? 0} roles, ${claims?.length ?? 0} claims`,
       metadata: {
-        roles: roles?.map(r => r.roleId) ?? [],
-        claims: claims?.map(c => c.claimDefinitionId) ?? [],
+        roles: roles?.map((r) => r.roleId) ?? [],
+        claims: claims?.map((c) => c.claimDefinitionId) ?? [],
       },
     });
   }

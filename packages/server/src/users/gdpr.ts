@@ -10,16 +10,16 @@
  * and active OIDC sessions/grants.
  *
  * **Purge** anonymizes the user record and audit entries, deletes all
- * related data (roles, claims, 2FA, OIDC sessions), and fires an audit
- * event before anonymization for compliance trail.
+ * related data (roles, claims, 2FA, OIDC sessions), and writes the compliance
+ * audit event in the same transaction before commit.
  *
  * Safety: Purging super-admin org users is blocked to prevent lock-out.
  *
  * @module users/gdpr
  */
 
-import { getPool } from '../lib/database.js';
-import { writeAuditLog } from '../lib/audit-log.js';
+import { getDatabaseTransactionClient, getPool, runDatabaseTransaction } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import type { User } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -240,32 +240,18 @@ export async function exportUserData(user: User): Promise<UserDataExport> {
  * @throws Error if user belongs to super-admin org
  */
 export async function purgeUserData(user: User, actorId: string): Promise<PurgeResult> {
-  const pool = getPool();
+  return runDatabaseTransaction(async () => {
+    const client = getDatabaseTransactionClient();
+    if (!client) throw new Error('GDPR purge transaction is unavailable');
 
-  // Safety check: block purge of super-admin org users
-  const orgCheck = await pool.query<{ is_super_admin: boolean }>(
-    'SELECT is_super_admin FROM organizations WHERE id = $1',
-    [user.organizationId],
-  );
-  if (orgCheck.rows[0]?.is_super_admin) {
-    throw new Error('Cannot purge users belonging to the super-admin organization');
-  }
-
-  // Fire audit event BEFORE anonymization so the trail has the real user ID
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    userId: user.id,
-    actorId,
-    eventType: 'user.purged',
-    eventCategory: 'gdpr',
-    description: `GDPR purge initiated for user ${user.email}`,
-    metadata: { userId: user.id, email: user.email },
-  });
-
-  // Execute all deletions in a transaction for consistency
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+    // The authority check and destructive changes share the same transaction.
+    const orgCheck = await client.query<{ is_super_admin: boolean }>(
+      'SELECT is_super_admin FROM organizations WHERE id = $1 FOR SHARE',
+      [user.organizationId],
+    );
+    if (orgCheck.rows[0]?.is_super_admin) {
+      throw new Error('Cannot purge users belonging to the super-admin organization');
+    }
 
     // 1. Revoke all active OIDC sessions/grants
     const oidcDelete = await client.query(
@@ -282,16 +268,12 @@ export async function purgeUserData(user: User, actorId: string): Promise<PurgeR
     );
 
     // 3. Delete custom claim values
-    const claimsDelete = await client.query(
-      'DELETE FROM user_claim_values WHERE user_id = $1',
-      [user.id],
-    );
+    const claimsDelete = await client.query('DELETE FROM user_claim_values WHERE user_id = $1', [
+      user.id,
+    ]);
 
     // 4. Delete role assignments
-    const rolesDelete = await client.query(
-      'DELETE FROM user_roles WHERE user_id = $1',
-      [user.id],
-    );
+    const rolesDelete = await client.query('DELETE FROM user_roles WHERE user_id = $1', [user.id]);
 
     // 5. Anonymize audit log entries referencing this user
     const auditUpdate = await client.query(
@@ -335,21 +317,24 @@ export async function purgeUserData(user: User, actorId: string): Promise<PurgeR
       [user.id, anonymizedEmail],
     );
 
-    await client.query('COMMIT');
+    await writeAuditLogInTransaction(client, {
+      organizationId: user.organizationId,
+      userId: user.id,
+      actorId,
+      eventType: 'user.purged',
+      eventCategory: 'gdpr',
+      description: 'GDPR purge committed',
+      metadata: { userId: user.id },
+    });
 
     return {
       userId: user.id,
       anonymizedEmail,
       deletedRoles: rolesDelete.rowCount ?? 0,
       deletedClaims: claimsDelete.rowCount ?? 0,
-      deletedTwoFactor: (twoFactorDelete.rowCount ?? 0),
+      deletedTwoFactor: twoFactorDelete.rowCount ?? 0,
       deletedOidcPayloads: oidcDelete.rowCount ?? 0,
       anonymizedAuditEntries: auditUpdate.rowCount ?? 0,
     };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }

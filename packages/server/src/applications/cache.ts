@@ -22,6 +22,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { Application } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -99,17 +100,19 @@ export async function getCachedApplicationById(id: string): Promise<Application 
  * @param app - Application to cache
  */
 export async function cacheApplication(app: Application): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(app);
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(app);
 
-    // Store under both keys with the same TTL
-    await redis.set(`${SLUG_PREFIX}${app.slug}`, data, 'EX', CACHE_TTL);
-    await redis.set(`${ID_PREFIX}${app.id}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, slug: app.slug, id: app.id }, 'Failed to cache application');
-  }
+      // Store under both keys with the same TTL
+      await redis.set(`${SLUG_PREFIX}${app.slug}`, data, 'EX', CACHE_TTL);
+      await redis.set(`${ID_PREFIX}${app.id}`, data, 'EX', CACHE_TTL);
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, slug: app.slug, id: app.id }, 'Failed to cache application');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -127,13 +130,15 @@ export async function cacheApplication(app: Application): Promise<void> {
  * @param id - Application UUID
  */
 export async function invalidateApplicationCache(slug: string, id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, slug, id }, 'Failed to invalidate application cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, slug, id }, 'Failed to invalidate application cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

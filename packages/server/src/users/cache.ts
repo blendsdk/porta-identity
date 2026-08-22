@@ -19,6 +19,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { User } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -71,14 +72,16 @@ export async function getCachedUserById(id: string): Promise<User | null> {
  * @param user - User to cache
  */
 export async function cacheUser(user: User): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(user);
-    await redis.set(`${USER_PREFIX}${user.id}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, id: user.id }, 'Failed to cache user');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(user);
+      await redis.set(`${USER_PREFIX}${user.id}`, data, 'EX', CACHE_TTL);
+    } catch (err) {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ err, id: user.id }, 'Failed to cache user');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,13 +97,15 @@ export async function cacheUser(user: User): Promise<void> {
  * @param id - User UUID
  */
 export async function invalidateUserCache(id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${USER_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, id }, 'Failed to invalidate user cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${USER_PREFIX}${id}`);
+    } catch (err) {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ err, id }, 'Failed to invalidate user cache');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

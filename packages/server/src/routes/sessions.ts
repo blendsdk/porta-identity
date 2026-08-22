@@ -21,6 +21,7 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as sessionTracking from '../lib/session-tracking.js';
 import { getRedis } from '../lib/redis.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -30,7 +31,10 @@ const listSessionsSchema = z.object({
   userId: z.string().uuid().optional(),
   organizationId: z.string().uuid().optional(),
   clientId: z.string().uuid().optional(),
-  activeOnly: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  activeOnly: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -91,12 +95,14 @@ export function createSessionRouter(): Router {
     await sessionTracking.revokeSession(sessionId);
 
     // 2. Delete from Redis to kill the live session
-    try {
-      const redis = getRedis();
-      await redis.del(`oidc:Session:${sessionId}`);
-    } catch {
-      // Redis deletion failure is non-fatal — session will expire naturally
-    }
+    await afterDatabaseCommit(async () => {
+      try {
+        const redis = getRedis();
+        await redis.del(`oidc:Session:${sessionId}`);
+      } catch {
+        // Redis deletion failure is non-fatal — session will expire naturally.
+      }
+    });
 
     ctx.status = 204;
   });

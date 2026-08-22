@@ -58,7 +58,7 @@ export function requirePermission(...requiredPermissions: string[]): Middleware 
       ctx.status = 403;
       ctx.body = {
         error: 'Forbidden',
-        message: `Insufficient permissions. Required: ${requiredPermissions.join(', ')}`,
+        message: 'The requested operation is not permitted',
       };
       return;
     }

@@ -39,7 +39,7 @@ import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { writeAuditLog } from '../lib/audit-log.js';
-import { getPool } from '../lib/database.js';
+import { afterDatabaseCommit, getPool } from '../lib/database.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
 import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
@@ -172,18 +172,18 @@ function handleError(
 ): never {
   if (err instanceof SuperAdminProtectionError) {
     ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: err.message };
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;
   }
   if (err instanceof UserNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'User not found');
   }
   if (err instanceof UserValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'User request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'User request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -517,12 +517,12 @@ export function createUserRouter(): Router {
       } catch (err) {
         if (err instanceof SuperAdminProtectionError) {
           ctx.status = 403;
-          ctx.body = { error: err.message };
+          ctx.body = { error: 'The requested operation is not permitted' };
           return;
         }
         if (err instanceof Error && err.message.includes('super-admin')) {
           ctx.status = 403;
-          ctx.body = { error: err.message };
+          ctx.body = { error: 'The requested operation is not permitted' };
           return;
         }
         throw err;
@@ -631,18 +631,25 @@ export function createUserRouter(): Router {
       if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
       emailOptions.inviterName = inviterName;
 
-      await sendInvitationEmail(
-        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
-        inviteUrl,
-        body.locale ?? org.defaultLocale ?? 'en',
-        emailOptions,
+      await afterDatabaseCommit(() =>
+        sendInvitationEmail(
+          {
+            id: user.id,
+            email: user.email,
+            givenName: user.givenName,
+            familyName: user.familyName,
+          },
+          {
+            id: org.id,
+            slug: org.slug,
+            brandingLogoUrl: org.brandingLogoUrl,
+            brandingPrimaryColor: org.brandingPrimaryColor,
+            brandingCompanyName: org.brandingCompanyName,
+          },
+          inviteUrl,
+          body.locale ?? org.defaultLocale ?? 'en',
+          emailOptions,
+        ),
       );
 
       // Audit log the invitation
@@ -652,7 +659,7 @@ export function createUserRouter(): Router {
         actorId: adminUser.id,
         eventType: 'user.invited',
         eventCategory: 'admin',
-        description: `User ${user.email} invited by ${inviterName}`,
+        description: 'User invitation created',
         metadata: {
           hasPersonalMessage: !!body.personalMessage,
           preAssignedRoles: body.roles?.length ?? 0,

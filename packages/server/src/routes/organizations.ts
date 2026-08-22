@@ -57,32 +57,48 @@ const createOrganizationSchema = z.object({
   slug: z.string().min(3).max(100).optional(),
   defaultLocale: z.string().min(2).max(10).optional(),
   defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z.object({
-    logoUrl: z.string().url().nullable().optional(),
-    faviconUrl: z.string().url().nullable().optional(),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
-    companyName: z.string().max(255).nullable().optional(),
-    customCss: z.string().max(10000).nullable().optional(),
-  }).optional(),
+  branding: z
+    .object({
+      logoUrl: z.string().url().nullable().optional(),
+      faviconUrl: z.string().url().nullable().optional(),
+      primaryColor: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .nullable()
+        .optional(),
+      companyName: z.string().max(255).nullable().optional(),
+      customCss: z.string().max(10000).nullable().optional(),
+    })
+    .optional(),
 });
 
 const updateOrganizationSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   defaultLocale: z.string().min(2).max(10).optional(),
   defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z.object({
-    logoUrl: z.string().url().nullable().optional(),
-    faviconUrl: z.string().url().nullable().optional(),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
-    companyName: z.string().max(255).nullable().optional(),
-    customCss: z.string().max(10000).nullable().optional(),
-  }).optional(),
+  branding: z
+    .object({
+      logoUrl: z.string().url().nullable().optional(),
+      faviconUrl: z.string().url().nullable().optional(),
+      primaryColor: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .nullable()
+        .optional(),
+      companyName: z.string().max(255).nullable().optional(),
+      customCss: z.string().max(10000).nullable().optional(),
+    })
+    .optional(),
 });
 
 const updateBrandingSchema = z.object({
   logoUrl: z.string().url().nullable().optional(),
   faviconUrl: z.string().url().nullable().optional(),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullable()
+    .optional(),
   companyName: z.string().max(255).nullable().optional(),
   customCss: z.string().max(10000).nullable().optional(),
 });
@@ -118,16 +134,19 @@ const validateSlugSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof OrganizationNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Organization not found');
   }
   if (err instanceof OrganizationValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Organization request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Organization request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -229,7 +248,8 @@ export function createOrganizationRouter(): Router {
       const body = updateOrganizationSchema.parse(ctx.request.body);
       // Check If-Match for optimistic concurrency (optional — backward compatible)
       const current = await organizationService.getOrganizationById(ctx.params.id);
-      if (current && !checkIfMatch(ctx, 'organization', current.id, current.updatedAt, current)) return;
+      if (current && !checkIfMatch(ctx, 'organization', current.id, current.updatedAt, current))
+        return;
       const org = await organizationService.updateOrganization(ctx.params.id, body);
       setETagHeader(ctx, 'organization', org.id, org.updatedAt);
       ctx.body = { data: org };
@@ -323,8 +343,9 @@ export function createOrganizationRouter(): Router {
 
       if (dryRun) {
         // Resolve org and return cascade counts without deleting
-        const org = await organizationService.getOrganizationById(idOrSlug)
-          ?? await organizationService.getOrganizationBySlug(idOrSlug);
+        const org =
+          (await organizationService.getOrganizationById(idOrSlug)) ??
+          (await organizationService.getOrganizationBySlug(idOrSlug));
         if (!org) {
           ctx.throw(404, `Organization not found: ${idOrSlug}`);
           return;
