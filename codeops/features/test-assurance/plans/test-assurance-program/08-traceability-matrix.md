@@ -69,6 +69,7 @@ Must, source mismatch, dangling ID, or unregistered extra edge.
 | R5.12       | ST-34, ST-39, ST-48–ST-51  | 7.2–7.9, 8.3–8.9                         | CLAIM-R5-12 |
 | R5.13       | ST-63A                     | 6.4, 6.12, 7.4, 7.9, 8.6, 8.9, 9.5, 9.10 | CLAIM-R5-13 |
 | R5.14       | ST-63B                     | 1.5, 6.4–6.12, 7.4–7.9, 8.6–8.9, 9.5–9.10 | CLAIM-R5-14 |
+| R5.17       | ST-52–ST-54, ST-57–ST-61, ST-63 | 9.1–9.10                             | CLAIM-R5-17 |
 | R6.1        | ST-64, ST-66               | 5.1–5.4, 5.10                            | CLAIM-R6-01 |
 | R6.2        | ST-68                      | 5.1–5.4, 5.10–5.11                       | CLAIM-R6-02 |
 | R6.3        | ST-64–ST-68                | 5.1–5.4, 5.10–5.11                       | CLAIM-R6-03 |

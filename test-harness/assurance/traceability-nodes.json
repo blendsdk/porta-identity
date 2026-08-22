@@ -230,6 +230,10 @@
       "sourceClause": "RD-05#R5.14"
     },
     {
+      "id": "R5.17",
+      "sourceClause": "RD-05#R5.17"
+    },
+    {
       "id": "R6.1",
       "sourceClause": "RD-06#R6.1"
     },
@@ -563,6 +567,7 @@
     "CLAIM-R5-12",
     "CLAIM-R5-13",
     "CLAIM-R5-14",
+    "CLAIM-R5-17",
     "CLAIM-R6-01",
     "CLAIM-R6-02",
     "CLAIM-R6-03",

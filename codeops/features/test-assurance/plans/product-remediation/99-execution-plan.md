@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 16:43
-> **Progress**: 59/62 tasks (95%)
+> **Last Updated**: 2026-08-22 17:09
+> **Progress**: 60/63 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -33,9 +33,9 @@ to the exec-plan protocol.
 | 2 | Tenant-bound atomic magic links | 13 |
 | 3 | Bulk/import/export product contracts | 12 |
 | 4 | Correlated security decisions and durable audit | 11 |
-| 5 | Black-box closure and documentation | 7 |
+| 5 | Black-box closure and documentation | 8 |
 
-**Total: 62 tasks across 5 phases.**
+**Total: 63 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -170,7 +170,8 @@ and covered authorized mutations cannot commit without durable audit intent.
 - [x] 5.1b Align the live resource-denial observer with Phase 4's fixed global not-found response while preserving the direct tenant-user guard response. ✅ (completed: 2026-08-22 15:39 CEST; the clean collector isolated the mismatch to thrown client/session resource denials now normalized by the global error handler, while the tenant-user guard retains its direct generic response; focused tenant/admin 28/28 passed and full `yarn verify` passed in 10m40s with server unit 2,860, integration 362, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 - [x] 5.1c Align the retained UI harness with durable recovery-worker lifecycle, tenant-bound magic-link fixtures, generic account-state privacy, and the supported first-party/foreign-client consent contract. ✅ (completed: 2026-08-22 16:19 CEST; the initial closure run exposed stale UI plumbing rather than a product regression; the harness now starts and settles the production recovery worker, direct magic-link fixtures persist tenant/interaction authority, suspended and locked accounts retain generic public rejection, and supported consent admission no longer relies on a forbidden cross-tenant client; focused UI 22/22, full UI 132/132, standalone pentest 224/224, type/format/diff checks, and full `yarn verify` passed in 10m41s)
 - [x] 5.1d Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries from the clean UI checkpoint; persist current provenance and zero-residue evidence. ✅ (completed: 2026-08-22 16:43 CEST; clean revision `b5bd86ce` produced production-security run `ab67e52b-82c7-4149-a111-34577664deaa` with human-auth 7/7, second-factor 4/4, and tenant/admin 17/17 while retaining unrelated registered exit 40; P1 58/58, packed P1/admin `ebd7d287`, packed tenant/admin `876977d5`, packed general compatibility `3537e709`, UI 132/132, and pentest 224/224 passed; all four artifacts are mode 0600 and revision/tree bound, the primary tree is unchanged, active-run state is absent, packed residue arrays are empty, and no assurance-labelled container remains)
-- [ ] 5.2 Re-run the affected assurance aggregate/report and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
+- [x] 5.2a Add the independently validated R5.17 requirement, case, task, and claim edge required by the governed aggregate. ✅ (completed: 2026-08-22 17:09 CEST; the first aggregate stopped safely after `assurance:validate` exposed the missing post-program requirement edge; executable nodes and human traceability now map R5.17 exactly to ST-52–ST-54, ST-57–ST-61, ST-63, Tasks 9.1–9.10, and CLAIM-R5-17; governance tests, JSON/Markdown formatting, diff checks, and full `yarn verify` passed in 10m15s with pentest 224/224)
+- [ ] 5.2b Re-run the affected assurance aggregate/report from the clean traceability checkpoint and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
 - [ ] 5.3 Update RD/traceability, both roadmaps, public docs, techdocs/ADR, and current test inventory with truthful claim status and no certification language.
 - [ ] 5.4 Run final `yarn test:structure`, `yarn test:ui`, `yarn test:pentest`, `yarn harness:test`, exact assurance roll-up, and `yarn verify`; confirm clean worktree and zero owned residue.
 
@@ -193,7 +194,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 62 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 63 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.
