@@ -182,12 +182,6 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
       conclusion: 'blocked',
     },
     {
-      id: 'bulk-import-export-contract-unapproved',
-      authority: 'authority-blocked',
-      statusSource: 'approved-program-gap-register',
-      conclusion: 'blocked',
-    },
-    {
       id: 'forwarding-context-observer-incomplete',
       authority: 'stale-or-no-go-evidence',
       statusSource: 'approved-program-gap-register',
@@ -434,7 +428,7 @@ const assuranceAllAggregateItemsFixture: readonly AssuranceAllItemEvidence[] = O
 export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence = Object.freeze({
   schemaVersion: 1,
   registryVersion: 1,
-  registryDigest: 'sha256:636cb651f8b2610df46d3c361261372585f1521a2c6995581edea6d89a22cca1',
+  registryDigest: 'sha256:9d8c81a715daa3f2da1d9a502300fc31d85c737fd9ffbf3c663b16f6fe4cca7c',
   baselineRevision: 'b'.repeat(40),
   baselineTreeDigest: `sha256:${'c'.repeat(64)}`,
   children: Object.freeze(

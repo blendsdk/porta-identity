@@ -58,14 +58,14 @@ sequenceDiagram
 
 ### Password Security
 
-| Feature                    | Implementation                                         |
-| -------------------------- | ------------------------------------------------------ |
-| **Hashing algorithm**      | Argon2id (winner of the Password Hashing Competition)  |
-| **Password validation**    | NIST SP 800-63B compliant                              |
-| **Minimum length**         | 8 characters (configurable)                            |
-| **Breach detection**       | Checks against known breached passwords                |
-| **Timing-safe comparison** | Prevents timing attacks on credential verification     |
-| **Rate limiting**          | Redis-backed per-email rate limiting on login attempts |
+| Feature                     | Implementation                                                      |
+| --------------------------- | ------------------------------------------------------------------- |
+| **Hashing algorithm**       | Argon2id (winner of the Password Hashing Competition)               |
+| **Password validation**     | NIST SP 800-63B compliant                                           |
+| **Minimum length**          | 8 characters (configurable)                                         |
+| **Breach detection**        | Checks against known breached passwords                             |
+| **Fixed verification work** | One account or dummy Argon2id verification per valid-shaped attempt |
+| **Rate limiting**           | Redis-backed per-email rate limiting on login attempts              |
 
 ### Password Reset Flow
 
@@ -81,7 +81,10 @@ sequenceDiagram
     User->>Porta: Click "Forgot password?"
     Porta->>Porta: Render forgot-password.hbs
     User->>Porta: Submit email address
-    Porta->>DB: Generate secure reset token
+    Porta->>DB: Enqueue tenant-bound recovery work
+    Porta->>User: Render the same confirmation for every valid request
+    Porta->>DB: Worker resolves an eligible account in the tenant
+    Porta->>DB: Persist one job-owned reset token hash
     Porta->>Email: Send password-reset email
     Note over User: Receives email with reset link
     User->>Porta: Click reset link
@@ -92,6 +95,11 @@ sequenceDiagram
     Porta->>Email: Send password-changed notification
     Porta->>User: Redirect to login
 ```
+
+Password-reset requests do not perform account lookup, token creation, or SMTP delivery in the
+public request. A bounded worker performs that work after the generic response has been returned.
+Retries reuse the same job-owned artifact; an ambiguous SMTP outcome can deliver the same link
+again, but cannot create a second active reset token for that job.
 
 ---
 

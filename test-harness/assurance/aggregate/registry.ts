@@ -209,12 +209,6 @@ export const aggregateKnownGaps: readonly AssuranceAllKnownGapRegistration[] = O
     conclusion: 'blocked',
   },
   {
-    id: 'bulk-import-export-contract-unapproved',
-    authority: 'authority-blocked',
-    statusSource: 'approved-program-gap-register',
-    conclusion: 'blocked',
-  },
-  {
     id: 'forwarding-context-observer-incomplete',
     authority: 'stale-or-no-go-evidence',
     statusSource: 'approved-program-gap-register',

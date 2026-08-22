@@ -93,6 +93,21 @@ Must, source mismatch, dangling ID, or unregistered extra edge.
 | R7.11       | ST-78                      | 1.5, 10.7–10.8                           | CLAIM-R7-11 |
 | R7.12       | ST-79                      | 11.1                                     | CLAIM-R7-12 |
 
+## Authorized product-remediation status
+
+The exact mappings above remain the executable ownership authority. The later product-remediation
+plan repaired four product roots without changing those claim identities:
+
+| Root | Requirement / claim | Remediation tasks | Admitted boundary | Residual status |
+| --- | --- | --- | --- | --- |
+| Enumeration work asymmetry | R5.6 / CLAIM-R5-06 | product-remediation 1.1–1.16 | Design-level fixed-work and public functional controls | Statistical timing remains non-gating and authority-blocked |
+| Cross-tenant magic-link acceptance | R5.7 / CLAIM-R5-07 | product-remediation 2.1–2.9 | Tenant/interaction/client authority, atomic consume, replay and failure controls | Other R5.7 artifact/consistency gaps remain independent |
+| Bulk/import/export contract ambiguity | R5.9 / CLAIM-R5-09 | product-remediation 3.1–3.10 | Server, SDK/CLI, raw P1, packed-client, transaction and export controls | The obsolete contract-unapproved gap is removed; unrelated P1 defects remain |
+| Missing terminal decision event | R5.17 / CLAIM-R5-17 | product-remediation 4.1–4.11 | Exact terminal-event tuples, privacy, sink failure and durable audit atomicity | Unmapped protocol/forwarding/dependency observations receive no inferred credit |
+
+Clean aggregate run `98473889-8a9c-4fff-9048-af5e0d0001aa` admitted the governed report at revision
+`5cb03e5f`. It does not certify exploit absence or authorize new CI, release, or merge gates.
+
 The mappings above establish ownership, not completion. For Phase 7, ST-35 consent substitution,
 ST-40 JWKS-key separation, ST-41 consent/logout/client-context, and the affected R5.2 log/recovery/
 side-effect edges are incomplete under DEF-6 and cannot close CLAIM-R5-02/03/04/05.

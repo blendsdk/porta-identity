@@ -116,6 +116,8 @@ Both endpoints return the same response format with per-item results:
 - Duplicate IDs reject the complete request before access or mutation
 - Each item uses a tenant-qualified `SELECT ... FOR UPDATE` and a separate transaction containing
   the update and durable audit row
+- An audit-write failure rolls back that item; earlier committed items remain authoritative and
+  the failed item plus every remaining item is reported as `not_attempted`
 - If infrastructure stops after committed items, every remaining row is returned in order with
   code `not_attempted` and one correlation ID; raw dependency diagnostics are never returned
 - All queries are parameterized (SQL injection safe)

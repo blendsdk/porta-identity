@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-08-21
+> **Last Updated**: 2026-08-22
 
 ## Overview
 
@@ -312,6 +312,14 @@ real registered command stage, so that behavior remains explicitly unqualified. 
 proposal recommends no workflow promotion until the real stages prove signal cleanup and receive a
 separate user-approved workflow decision. These commands therefore remain local/on-demand evidence
 tools and are not blocking CI, release, or merge gates.
+
+A separately authorized product-remediation plan repaired four findings discovered by these
+boundaries: enumeration work asymmetry, cross-tenant magic-link acceptance, ambiguous
+bulk/import/export behavior, and missing terminal decision events for the covered request set.
+Clean black-box and packed-client checkpoints rerun the affected boundaries. Statistical timing,
+TOTP same-window replay, forwarding observers, protocol observations, dependency behavior, and
+real command-stage signals remain explicit gaps; the repairs do not turn ADR-014 into a
+certification or a workflow-promotion decision.
 
 **Consequences**:
 

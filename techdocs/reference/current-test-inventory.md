@@ -8,16 +8,17 @@
 
 ## Executive Summary
 
-Porta has **328 branch-CI test files containing 4,315 currently collected test cases**. The often
+Porta has **356 branch-CI test files containing 4,543 currently collected test cases**. The often
 quoted “3K+” figure covers only the server's Vitest projects. The complete branch-CI surface also
 contains SDK, CLI, browser, external OIDC harness, and repository-structure tests. At the snapshot,
 six root-owned assurance-internal files contained 53 governance cases. The assurance program now
-contains 39 phase-gated specification and implementation files selected by explicit root commands;
+contains 113 phase-gated specification and implementation files selected by explicit root commands;
 they remain outside the required branch lane until separately authorized.
 
-The repository contains a substantial test investment: **74,916 lines of test code** compared with
+The repository contains a substantial test investment: **81,182 lines of branch test code** compared with
 **47,784 lines of TypeScript production source** across the server, SDK, and CLI. The branch-CI
-files account for 75,161 lines of test code; assurance-internal tests add another 1,629 lines. Most cases are
+files account for those 81,182 lines; assurance specification and implementation files add another
+14,635 lines. Most cases are
 isolated unit tests. Real PostgreSQL, Redis, MailHog, HTTP server, browser, and external-client
 layers are also present.
 
@@ -26,11 +27,11 @@ test has an independent or sufficiently strict oracle.
 
 ## Assurance Closeout Checkpoint
 
-The latest authoritative `yarn verify` checkpoint collected **246 server test files / 3,517
+The latest authoritative `yarn verify` checkpoint collected **251 server test files / 3,575
 cases**, **31 SDK files / 404 cases**, and **29 CLI files / 356 cases**, in addition to 70
-repository-structure cases. The assurance tree contains 99 explicitly selected specification and
-implementation files with 399 static top-level cases; service-backed journeys and parameterized
-subtests make that static count unsuitable as a runtime total.
+repository-structure cases. The assurance tree contains 113 explicitly selected specification and
+implementation files; service-backed journeys and parameterized subtests make a static source
+count unsuitable as a runtime total.
 
 The product-remediation suite adds rerunnable enumeration-resistance and magic-link authority
 oracles plus implementation tests. They exercise real public route handlers and production worker
@@ -50,9 +51,10 @@ data observations. Evidence is clean-revision bound, owner-only, redacted, and a
 the applicable lifecycle and cleanup checks succeed.
 
 This checkpoint is deliberately **not** certification and does not claim that Porta has no exploit
-paths. Product defects and unresolved contracts remain separately recorded, including TOTP replay
-semantics, incomplete correlated decision logs, public nginx version disclosure, dependency
-reconnection behavior, SDK cursor
+paths. The authorized enumeration-work, magic-link authority, administrative-data, and covered
+terminal-decision product roots are corrected and rerunnable. Product defects and unresolved
+contracts remain separately recorded, including statistical timing authority, TOTP replay
+semantics, protocol/forwarding/dependency observation gaps, public nginx version disclosure, SDK cursor
 pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
 completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
 protocol-candidate qualification, local ratchets, and exhaustive local aggregate/UI collection.
@@ -64,16 +66,16 @@ merge-policy use.
 
 | Suite                 |   Files |     Cases |   Test LOC | Primary boundary                                          | Required by branch CI       |
 | --------------------- | ------: | --------: | ---------: | --------------------------------------------------------- | --------------------------- |
-| Server unit           |     156 |     2,799 |     44,110 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
-| Server integration    |      29 |       297 |      5,952 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
-| Server HTTP E2E       |      21 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
+| Server unit           |     163 |     2,860 |     46,453 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
+| Server integration    |      33 |       362 |      6,506 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
+| Server HTTP E2E       |      20 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
 | Server penetration    |      35 |       224 |      5,266 | Attack-oriented HTTP requests against full Porta          | Yes, through `yarn verify`  |
-| Server browser UI     |      24 |       134 |      4,948 | Chromium against a real Porta server                      | Yes, separate `ui` job      |
-| SDK unit              |      31 |       404 |      5,875 | SDK behavior with mock transports                         | Yes, through `yarn verify`  |
-| CLI unit              |      29 |       355 |      6,032 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
+| Server browser UI     |      24 |       132 |      4,783 | Chromium against a real Porta server                      | Yes, separate `ui` job      |
+| SDK unit              |      31 |       404 |      5,884 | SDK behavior with mock transports                         | Yes, through `yarn verify`  |
+| CLI unit              |      29 |       356 |      6,051 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
 | External OIDC harness |       6 |         6 |        203 | Dockerized SPA and BFF clients using Porta over HTTP/TLS  | Yes, separate `harness` job |
-| Repository structure  |      14 |        70 |      2,844 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
-| **Total**             | **345** | **4,418** | **78,351** | —                                                         | **Yes**                     |
+| Repository structure  |      15 |        70 |      2,915 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
+| **Total**             | **356** | **4,543** | **81,182** | —                                                         | **Yes**                     |
 
 Case counts were collected through Vitest's runtime collector, Playwright's `--list` mode, and a
 fresh `yarn test:structure` run. Parameterized server tests explain why runtime case counts exceed
@@ -83,10 +85,10 @@ static `it(...)` declarations.
 
 | Command or job                                                                              | What it executes                                                                                                      |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                                                               | 70 structure tests, all 3,449 server Vitest cases, 404 SDK tests, and 355 CLI tests, plus lint, typecheck, and builds |
+| `yarn verify`                                                                               | 70 structure tests, all 3,575 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
 | `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
 | `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
-| `yarn test:ui`                                                                              | 134 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
+| `yarn test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
 | `yarn harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
 | CI `verify` job                                                                             | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
 | CI `ui` job                                                                                 | Builds packages and runs the Playwright UI suite                                                                      |
