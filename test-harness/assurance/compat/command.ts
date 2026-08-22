@@ -9,6 +9,11 @@ import { readPublicRuntimeFixtureManifest } from '../../fixtures/fixture-runtime
 import { cleanupPackedConsumer, loadPackedSurfaces, preparePackedConsumer } from './consumer.js';
 import { runPackedCliWithIsolatedHome, type PackedCliOutcome } from './credential-home.js';
 import { verifyPackedCliSdkResolution } from './resolution.js';
+import { collectPackedAdminDataJourneys, validatePackedAdminDataEvidence } from './admin-data.js';
+import {
+  createPackedAdminDataLiveDriver,
+  type PackedAdminDataLiveDriver,
+} from './admin-data-live.js';
 import {
   createPackedTenantAdminLiveDriver,
   type PackedTenantAdminLiveDriver,
@@ -36,6 +41,7 @@ export const packedCompatibilitySelectors = [
   'ST-72',
   'ST-73',
   'tenant-admin',
+  'admin-data',
   'p1-admin',
   'protocol',
   'compatibility',
@@ -168,6 +174,9 @@ export async function runPackedCompatibilityFoundation(
   let stage: PackedCompatibilityFailureStage = 'preparation';
   let recoveryCommand: string | undefined;
   let tenantAdminDriver: PackedTenantAdminLiveDriver | undefined;
+  let adminDataDriver: PackedAdminDataLiveDriver | undefined;
+  let adminDataJourneys: Awaited<ReturnType<typeof collectPackedAdminDataJourneys>> | undefined;
+  let adminDataProvenance: ReturnType<typeof createPackedP1ReadProvenance> | undefined;
   let protocolDriver: PackedProtocolLiveDriver | undefined;
   let p1ReadDriver: PackedP1ReadLiveDriver | undefined;
   let p1ReadJourneys: Awaited<ReturnType<typeof collectPackedP1ReadJourneys>> | undefined;
@@ -211,6 +220,11 @@ export async function runPackedCompatibilityFoundation(
         tenantAdminDriver,
       );
       evidence = { ...commonEvidence, tenantAdmin };
+    } else if (selector === 'admin-data') {
+      stage = 'credentials';
+      adminDataDriver = createPackedAdminDataLiveDriver(consumer, surfaces);
+      adminDataProvenance = createPackedP1ReadProvenance(consumer, surfaces, resolution);
+      adminDataJourneys = await collectPackedAdminDataJourneys(adminDataDriver);
     } else if (selector === 'p1-admin') {
       stage = 'credentials';
       p1ReadDriver = createPackedP1ReadLiveDriver(consumer, surfaces);
@@ -249,6 +263,14 @@ export async function runPackedCompatibilityFoundation(
     recoveryCommand =
       error instanceof PackedCompatibilityExecutionError ? error.recoveryCommand : undefined;
   } finally {
+    if (adminDataDriver !== undefined) {
+      try {
+        await adminDataDriver.dispose();
+      } catch {
+        exitCode = 60;
+        stage = 'cleanup';
+      }
+    }
     if (p1ReadDriver !== undefined) {
       try {
         await p1ReadDriver.dispose();
@@ -291,6 +313,37 @@ export async function runPackedCompatibilityFoundation(
   } catch {
     exitCode = 60;
     stage = 'provenance';
+  }
+  if (
+    selector === 'admin-data' &&
+    exitCode === 0 &&
+    adminDataProvenance !== undefined &&
+    adminDataJourneys !== undefined
+  ) {
+    try {
+      evidence = validatePackedAdminDataEvidence({
+        version: 1,
+        provenance: adminDataProvenance,
+        journeys: adminDataJourneys,
+        cleanup: {
+          terminalOutcome: 'success',
+          callerCredentialFingerprintUnchanged: adminDataJourneys.every(
+            (journey) =>
+              journey.cliIsolation === undefined ||
+              journey.cliIsolation.callerCredentialFingerprintUnchanged,
+          ),
+          temporaryHomesRemoved: adminDataJourneys.every(
+            (journey) =>
+              journey.cliIsolation === undefined || journey.cliIsolation.temporaryHomeRemoved,
+          ),
+          consumerRemoved,
+          residuePaths: consumerRemoved ? [] : ['compat-runtime-or-child'],
+        },
+      });
+    } catch {
+      exitCode = 30;
+      stage = 'surfaces';
+    }
   }
   if (
     selector === 'p1-admin' &&

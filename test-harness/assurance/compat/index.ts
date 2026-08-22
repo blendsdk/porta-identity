@@ -18,6 +18,12 @@ export {
 } from './credential-home.js';
 export { digestRegularTree, requireCanonicalChild, sha256Bytes } from './filesystem.js';
 export { verifyPackedCliSdkResolution, type PackedCliSdkResolution } from './resolution.js';
+export {
+  collectPackedAdminDataJourneys,
+  validatePackedAdminDataEvidence,
+  type PackedAdminDataDriver,
+} from './admin-data.js';
+export { createPackedAdminDataLiveDriver, PackedAdminDataLiveDriver } from './admin-data-live.js';
 export { createPackedP1ReadLiveDriver, PackedP1ReadLiveDriver } from './p1-read-live.js';
 export {
   collectPackedP1ReadJourneys,

@@ -152,7 +152,7 @@ export const commandContracts: Readonly<Record<string, AssuranceCommandContract>
   },
   'assurance:compat': {
     selectorGrammar:
-      '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|p1-admin|protocol|compatibility>',
+      '--select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|admin-data|p1-admin|protocol|compatibility>',
     timeout: '1800s',
     artifactSubdirectory: 'compat/<selector>/',
     prerequisites: [

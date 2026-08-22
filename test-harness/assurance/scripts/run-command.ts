@@ -1223,7 +1223,7 @@ async function runCompatibilityCommand(options: readonly string[]): Promise<void
     !isPackedCompatibilitySelector(selectedValue)
   ) {
     process.stderr.write(
-      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|p1-admin|protocol|compatibility>\n',
+      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|admin-data|p1-admin|protocol|compatibility>\n',
     );
     process.exitCode = setupFailureExit;
     return;
