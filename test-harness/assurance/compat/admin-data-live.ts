@@ -51,7 +51,12 @@ function canonicalize(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, child]) => [key, canonicalize(child)]),
+      .map(([key, child]) => [
+        key,
+        key === 'exportedAt' && typeof child === 'string' && !Number.isNaN(Date.parse(child))
+          ? 'valid-iso8601-timestamp'
+          : canonicalize(child),
+      ]),
   );
 }
 
@@ -316,16 +321,27 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
         },
       );
       if (
-        child.code !== 0 ||
         child.signal !== null ||
         child.outputTruncated ||
+        child.setupFailed ||
         child.cleanupFailed
       ) {
         throw new Error('packed administrative-data CLI request failed');
       }
-      const output = readFileSync(outputPath, 'utf8');
-      result = normalizeResponse(200, JSON.parse(output));
-      boundedOutput = `${output}${child.stdout}${child.stderr}`;
+      if (child.code === 0) {
+        const output = readFileSync(outputPath, 'utf8');
+        result = normalizeResponse(200, JSON.parse(output));
+        boundedOutput = `${output}${child.stdout}${child.stderr}`;
+      } else {
+        result = {
+          outcome: 'unexpected-error',
+          status: null,
+          bodyDigest: digest({ unavailable: true }),
+          recordCount: null,
+          publicFieldDigest: digest([]),
+        };
+        boundedOutput = `${child.stdout}${child.stderr}`;
+      }
     } finally {
       rmSync(outputPath, { force: true });
       rmSync(home, { recursive: true, force: true });
