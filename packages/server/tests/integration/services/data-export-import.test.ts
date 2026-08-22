@@ -151,9 +151,7 @@ describe('Data Export & Import (Integration)', () => {
       expect(result.created.length).toBeGreaterThanOrEqual(1);
 
       // Verify it was NOT actually created
-      const { findOrganizationBySlug } = await import(
-        '../../../src/organizations/repository.js'
-      );
+      const { findOrganizationBySlug } = await import('../../../src/organizations/repository.js');
       const org = await findOrganizationBySlug('dry-run-org');
       expect(org).toBeNull();
     });
@@ -194,7 +192,7 @@ describe('Data Export & Import (Integration)', () => {
 
       const result = await importData(manifest, 'merge');
 
-      expect(result.errors).toHaveLength(0);
+      expect(result.errors).toBeUndefined();
     });
   });
 

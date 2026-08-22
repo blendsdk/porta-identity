@@ -15,8 +15,7 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { importData, importManifestSchema } from '../lib/data-import.js';
-import type { ImportMode } from '../lib/data-import.js';
+import { importData, importManifestSchema, ImportOperationError } from '../lib/data-import.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -50,20 +49,29 @@ export function createImportRouter(): Router {
       const body = importRequestSchema.parse(ctx.request.body);
       const actorId = ctx.state.adminUser?.id;
 
-      const result = await importData(body.manifest, body.mode as ImportMode, actorId);
+      const result = await importData(body.manifest, body.mode, actorId);
 
       ctx.body = result;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        ctx.throw(
-          400,
-          `Invalid import manifest: ${err.issues.map((e: z.ZodIssue) => e.message).join(', ')}`,
-        );
+        ctx.status = 400;
+        ctx.body = { error: 'Import manifest is invalid', code: 'import_manifest_invalid' };
+        return;
       }
-      if (err instanceof Error && err.message.includes('Unsupported manifest version')) {
-        ctx.throw(400, err.message);
+      if (err instanceof ImportOperationError) {
+        ctx.status = err.status;
+        ctx.body = {
+          error: 'Import request could not be completed',
+          code: err.code,
+          correlationId: err.correlationId,
+        };
+        return;
       }
-      ctx.throw(500, err instanceof Error ? err.message : 'Import failed');
+      ctx.status = 503;
+      ctx.body = {
+        error: 'Import request could not be completed',
+        code: 'import_execution_failed',
+      };
     }
   });
 
