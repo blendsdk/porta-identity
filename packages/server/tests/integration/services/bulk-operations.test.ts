@@ -120,6 +120,7 @@ describe('Bulk Operations (Integration)', () => {
         entityType: 'user',
         entityIds: [user1.id, user2.id],
         action: 'suspend',
+        organizationId: org.id,
       });
 
       expect(result.succeeded).toBe(2);
@@ -136,12 +137,18 @@ describe('Bulk Operations (Integration)', () => {
       const user2 = await createTestUser(org.id, { email: 'act2@bulk.com' });
 
       // Suspend them first so they can be activated
-      await bulkStatusChange({ entityType: 'user', entityIds: [user1.id, user2.id], action: 'suspend' });
+      await bulkStatusChange({
+        entityType: 'user',
+        entityIds: [user1.id, user2.id],
+        action: 'suspend',
+        organizationId: org.id,
+      });
 
       const result = await bulkStatusChange({
         entityType: 'user',
         entityIds: [user1.id, user2.id],
         action: 'activate',
+        organizationId: org.id,
       });
 
       expect(result.succeeded).toBe(2);
@@ -158,6 +165,7 @@ describe('Bulk Operations (Integration)', () => {
         entityType: 'user',
         entityIds: [user1.id],
         action: 'lock',
+        organizationId: org.id,
       });
 
       expect(result.succeeded).toBe(1);
@@ -167,12 +175,14 @@ describe('Bulk Operations (Integration)', () => {
     });
 
     it('should report failures for non-existent IDs', async () => {
+      const org = await createTestOrganization();
       const fakeId = '00000000-0000-0000-0000-000000000099';
 
       const result = await bulkStatusChange({
         entityType: 'user',
         entityIds: [fakeId],
         action: 'suspend',
+        organizationId: org.id,
       });
 
       expect(result.failed).toBe(1);

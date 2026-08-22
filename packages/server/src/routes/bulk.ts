@@ -23,13 +23,25 @@ import { bulkStatusChange } from '../lib/bulk-operations.js';
 // ---------------------------------------------------------------------------
 
 export const bulkOrgStatusSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(100),
+  ids: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Bulk entity identifiers must be unique',
+    }),
   action: z.enum(['activate', 'suspend', 'archive']),
   reason: z.string().max(500).optional(),
 });
 
 export const bulkUserStatusSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(100),
+  ids: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Bulk entity identifiers must be unique',
+    }),
   action: z.enum(['activate', 'deactivate', 'suspend', 'lock', 'unlock']),
   reason: z.string().max(500).optional(),
   organizationId: z.string().uuid(),
@@ -47,16 +59,21 @@ export function createBulkRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /organizations/status — Bulk organization status change
   // -------------------------------------------------------------------------
-  router.post('/organizations/status', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
-    const body = bulkOrgStatusSchema.parse(ctx.request.body);
-    const result = await bulkStatusChange({
-      entityType: 'organization',
-      entityIds: body.ids,
-      action: body.action,
-      reason: body.reason,
-    });
-    ctx.body = result;
-  });
+  router.post(
+    '/organizations/status',
+    requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE),
+    async (ctx) => {
+      const body = bulkOrgStatusSchema.parse(ctx.request.body);
+      const result = await bulkStatusChange({
+        entityType: 'organization',
+        entityIds: body.ids,
+        action: body.action,
+        reason: body.reason,
+        actorId: ctx.state.adminUser?.id,
+      });
+      ctx.body = result;
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /users/status — Bulk user status change
@@ -69,6 +86,7 @@ export function createBulkRouter(): Router {
       action: body.action,
       reason: body.reason,
       organizationId: body.organizationId,
+      actorId: ctx.state.adminUser?.id,
     });
     ctx.body = result;
   });
