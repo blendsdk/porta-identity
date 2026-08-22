@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 07:24
-> **Progress**: 35/53 tasks (66%)
+> **Last Updated**: 2026-08-22 07:38
+> **Progress**: 36/53 tasks (68%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -120,7 +120,7 @@ intended use remains atomic and single-use.
 - [x] 3.3 Implement whole-request validation, tenant-scoped per-item transactions, ordered closed outcomes, and not-attempted bulk results — `packages/server/src/routes/bulk.ts`, `packages/server/src/lib/bulk-operations.ts` ✅ (completed: 2026-08-22 06:35 CEST; duplicate/scope/action/reason validation precedes access, user locks and writes are tenant-qualified, each item transaction includes durable audit, dependency failure emits closed not-attempted rows and one correlation ID; focused unit/spec 13/13, PostgreSQL integration 8/8, type/lint/format gates, and `yarn verify` passed in 8m50s)
 - [x] 3.4 Implement the closed import prevalidator/planner and remove secret-equivalent manifest inputs — `packages/server/src/lib/data-import.ts`, import schemas/types ✅ (completed: 2026-08-22 06:53 CEST; strict versioned schemas reject unknown, duplicate, and authentication-material inputs before mutation; deterministic dependency/collision planning is snapshot-ready; focused unit/contract 84/84, import/export integration 10/10, lint/type/format gates, and `yarn verify` passed in 8m52s)
 - [x] 3.5 Implement atomic merge/overwrite/dry-run execution, sanitized typed errors, and credential-after-commit handling — `packages/server/src/lib/data-import.ts`, `packages/server/src/routes/imports.ts` ✅ (completed: 2026-08-22 07:24 CEST; repeatable-read execution rolls back every non-skip failure, overwrite changes only approved mutable fields, dry-run returns boolean credential intent without effects, committed confidential credentials return once, and public/audit failures are sanitized; focused unit/contract 84/84, PostgreSQL integration 10/10, lint/type/format gates, and final `yarn verify` passed in 9m24s)
-- [ ] 3.6 Implement dedicated export authorization, exact relationship scope, field policies, 10,000-row bound, audit-detail filtering, and CSV formula neutralization — `packages/server/src/routes/exports.ts`, `packages/server/src/lib/data-export.ts`
+- [x] 3.6 Implement dedicated export authorization, exact relationship scope, field policies, 10,000-row bound, audit-detail filtering, and CSV formula neutralization — `packages/server/src/routes/exports.ts`, `packages/server/src/lib/data-export.ts` ✅ (completed: 2026-08-22 07:38 CEST; every export requires dedicated plus entity-read authority, role scope proves tenant/application participation, all closed queries probe 10,001 rows, audit details use an event allowlist, and CSV formulas are neutralized before RFC quoting; focused unit/spec 12/12, PostgreSQL integration 10/10, lint/type/format gates, and `yarn verify` passed in 9m00s)
 - [ ] 3.7 Align SDK/CLI export types and public bulk/import/export documentation with the approved contract — `packages/sdk/`, `packages/cli/`, `docs/api/`, `docs/cli/`
 - [ ] 3.8 Run ST-14–ST-24 green through unit/integration/raw HTTP and packed-client boundaries.
 - [ ] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts`

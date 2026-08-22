@@ -102,11 +102,13 @@ describe('Data Export & Import (Integration)', () => {
     it('should export roles scoped to an application', async () => {
       const org = await createTestOrganization();
       const app = await createTestApplication({ organizationId: org.id });
+      await createTestClient(org.id, app.id);
       await createTestRole(app.id, { name: 'Test Role' });
 
       const result = await exportData({
         entityType: 'roles',
         format: 'json',
+        organizationId: org.id,
         applicationId: app.id,
       });
 

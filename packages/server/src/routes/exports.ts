@@ -22,20 +22,24 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { exportData } from '../lib/data-export.js';
-import type { ExportEntityType, ExportFormat } from '../lib/data-export.js';
+import { exportData, ExportOperationError } from '../lib/data-export.js';
+import type { ExportEntityType } from '../lib/data-export.js';
 
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
-const exportQuerySchema = z.object({
-  format: z.enum(['json', 'csv']).default('json'),
-  organizationId: z.string().uuid().optional(),
-  applicationId: z.string().uuid().optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
-});
+const exportEntitySchema = z.enum(['users', 'organizations', 'clients', 'roles', 'audit']);
+
+const exportQuerySchema = z
+  .object({
+    format: z.enum(['json', 'csv']).default('json'),
+    organizationId: z.string().uuid().optional(),
+    applicationId: z.string().uuid().optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+  })
+  .strict();
 
 const ENTITY_PERMISSIONS: Record<string, string> = {
   users: ADMIN_PERMISSIONS.USER_READ,
@@ -57,37 +61,48 @@ export function createExportRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:entityType — Export data
   // -------------------------------------------------------------------------
-  router.get('/:entityType', async (ctx, next) => {
-    const entityType = ctx.params.entityType as ExportEntityType;
-    const permission = ENTITY_PERMISSIONS[entityType];
-    if (!permission) {
-      ctx.throw(400, `Unsupported entity type: ${entityType}`);
+  router.get('/:entityType', requirePermission(ADMIN_PERMISSIONS.EXPORT_READ), async (ctx) => {
+    const entityResult = exportEntitySchema.safeParse(ctx.params.entityType);
+    if (!entityResult.success) {
+      ctx.status = 400;
+      ctx.body = { error: 'Export request is invalid', code: 'export_entity_invalid' };
       return;
     }
+    const entityType: ExportEntityType = entityResult.data;
+    const permission = ENTITY_PERMISSIONS[entityType];
 
-    // Check permission dynamically based on entity type
     const permMiddleware = requirePermission(permission);
     await permMiddleware(ctx, async () => {
-      const query = exportQuerySchema.parse(ctx.query);
-
       try {
+        const query = exportQuerySchema.parse(ctx.query);
         const result = await exportData({
           entityType,
-          format: query.format as ExportFormat,
+          format: query.format,
           organizationId: query.organizationId,
           applicationId: query.applicationId,
           startDate: query.startDate ? new Date(query.startDate) : undefined,
           endDate: query.endDate ? new Date(query.endDate) : undefined,
+          actorId: ctx.state.adminUser?.id,
         });
 
         ctx.set('Content-Disposition', `attachment; filename="${result.filename}"`);
         ctx.type = result.contentType;
         ctx.body = result.data;
-      } catch (err) {
-        ctx.throw(400, err instanceof Error ? err.message : 'Export failed');
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          ctx.status = 400;
+          ctx.body = { error: 'Export request is invalid', code: 'export_request_invalid' };
+          return;
+        }
+        if (error instanceof ExportOperationError) {
+          ctx.status = error.status;
+          ctx.body = { error: 'Export request could not be completed', code: error.code };
+          return;
+        }
+        ctx.status = 503;
+        ctx.body = { error: 'Export request could not be completed', code: 'export_failed' };
       }
     });
-    await next();
   });
 
   return router;
