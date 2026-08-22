@@ -2,16 +2,16 @@ import type { RatchetCoverageCounts, StalenessTrigger } from './assurance-ratche
 
 /** Reviewed observation-only coverage baseline from the accepted security capture. */
 export const reviewedCoverageBaseline = Object.freeze({
-  sourceRevision: 'c347b1363a182335e77f40735e28e191e314eb03',
-  sourceRunId: '1ca88f05-8501-4a15-bdde-d0b2f33e762c',
-  summaryDigest: 'sha256:489254a6735e87e10c7e2d86e0d26e4af69a74a5673e8e07e0e24683071b9128',
-  normalizedPathCount: 139,
-  normalizedPathDigest: 'sha256:69f21de088bff6acf74b1235bd294524a40228d3afc32c51517055d037961dab',
+  sourceRevision: '16dae6b8412577a1c98e3f1f2ae07e20a69eee95',
+  sourceRunId: '53ff6f24-219a-485b-a87f-93343612aa91',
+  summaryDigest: 'sha256:7b48038ecc8ce95ecb59770f6dcbc1fadfda1461c99b641a07a3a2fd218c66a9',
+  normalizedPathCount: 150,
+  normalizedPathDigest: 'sha256:fd7fc28f6149f51ca71b8ca6266dc140706bf2c225b877aa40252ed3b0a94e63',
   counts: Object.freeze<RatchetCoverageCounts>({
-    statements: Object.freeze({ covered: 1483, total: 6442 }),
-    branches: Object.freeze({ covered: 399, total: 3118 }),
-    functions: Object.freeze({ covered: 243, total: 939 }),
-    lines: Object.freeze({ covered: 1462, total: 6203 }),
+    statements: Object.freeze({ covered: 1838, total: 7630 }),
+    branches: Object.freeze({ covered: 580, total: 3919 }),
+    functions: Object.freeze({ covered: 317, total: 1177 }),
+    lines: Object.freeze({ covered: 1806, total: 7296 }),
   }),
   enforcement: 'local-observation-only' as const,
   promotionAuthorized: false as const,

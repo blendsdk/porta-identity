@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 17:25
-> **Progress**: 61/64 tasks (95%)
+> **Last Updated**: 2026-08-22 18:03
+> **Progress**: 62/65 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -33,9 +33,9 @@ to the exec-plan protocol.
 | 2 | Tenant-bound atomic magic links | 13 |
 | 3 | Bulk/import/export product contracts | 12 |
 | 4 | Correlated security decisions and durable audit | 11 |
-| 5 | Black-box closure and documentation | 9 |
+| 5 | Black-box closure and documentation | 10 |
 
-**Total: 64 tasks across 5 phases.**
+**Total: 65 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -172,7 +172,8 @@ and covered authorized mutations cannot commit without durable audit intent.
 - [x] 5.1d Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries from the clean UI checkpoint; persist current provenance and zero-residue evidence. ✅ (completed: 2026-08-22 16:43 CEST; clean revision `b5bd86ce` produced production-security run `ab67e52b-82c7-4149-a111-34577664deaa` with human-auth 7/7, second-factor 4/4, and tenant/admin 17/17 while retaining unrelated registered exit 40; P1 58/58, packed P1/admin `ebd7d287`, packed tenant/admin `876977d5`, packed general compatibility `3537e709`, UI 132/132, and pentest 224/224 passed; all four artifacts are mode 0600 and revision/tree bound, the primary tree is unchanged, active-run state is absent, packed residue arrays are empty, and no assurance-labelled container remains)
 - [x] 5.2a Add the independently validated R5.17 requirement, case, task, and claim edge required by the governed aggregate. ✅ (completed: 2026-08-22 17:09 CEST; the first aggregate stopped safely after `assurance:validate` exposed the missing post-program requirement edge; executable nodes and human traceability now map R5.17 exactly to ST-52–ST-54, ST-57–ST-61, ST-63, Tasks 9.1–9.10, and CLAIM-R5-17; governance tests, JSON/Markdown formatting, diff checks, and full `yarn verify` passed in 10m15s with pentest 224/224)
 - [x] 5.2b Rebind the local observation staleness ratchet to the authorized R5.17 requirement content without changing coverage floors or promotion policy. ✅ (completed: 2026-08-22 17:25 CEST; the clean aggregate admitted traceability and then stopped safely when its internal suite detected the pre-remediation RD-05 digest; only the reviewed requirement identity and review metadata were advanced, the local coverage baseline remains unchanged and non-promoting, focused ratchet tests passed, and full `yarn verify` passed in 10m23s with pentest 224/224)
-- [ ] 5.2c Re-run the affected assurance aggregate/report from the clean ratchet checkpoint and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
+- [x] 5.2c Review and advance the local-only coverage baseline to the exact clean post-remediation source set and monotonically higher covered counts. ✅ (completed: 2026-08-22 18:03 CEST; aggregate run `c6da28e1` completed all 16 children with 13 assured and only registered gaps retained, then its report correctly rejected an unreviewed total/path change; the reviewed production-security observation `53ff6f24` advances paths 139→150, statements 1483→1838, branches 399→580, functions 243→317, and lines 1462→1806 without promotion authority; focused ratchets passed and full `yarn verify` passed in 10m16s)
+- [ ] 5.2d Re-run the governed aggregate/report from the clean coverage-baseline checkpoint and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
 - [ ] 5.3 Update RD/traceability, both roadmaps, public docs, techdocs/ADR, and current test inventory with truthful claim status and no certification language.
 - [ ] 5.4 Run final `yarn test:structure`, `yarn test:ui`, `yarn test:pentest`, `yarn harness:test`, exact assurance roll-up, and `yarn verify`; confirm clean worktree and zero owned residue.
 
@@ -195,7 +196,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 64 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 65 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.
