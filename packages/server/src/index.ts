@@ -23,6 +23,7 @@ import { initI18n, registerHandlebarsI18nHelper } from './auth/i18n.js';
 import { initTemplateEngine } from './auth/template-engine.js';
 import { startAccountRecoveryWorker, stopAccountRecoveryWorker } from './auth/recovery-service.js';
 import { initializeDummyPasswordHash } from './users/password.js';
+import { attachTransportDecisionHandler } from './security/transport-decision.js';
 
 async function main() {
   // Step 1: Connect to infrastructure services
@@ -57,6 +58,7 @@ async function main() {
     startAccountRecoveryWorker(oidcProvider);
     logger.info({ port: config.port, host: config.host }, 'Server started');
   });
+  attachTransportDecisionHandler(server);
 
   // Step 7: Graceful shutdown — close connections in reverse order
   let shutdownStarted = false;

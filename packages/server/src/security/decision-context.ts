@@ -88,6 +88,11 @@ export function getSecurityDecisionSinkFailureCount(): number {
   return emergencySinkFailureCount;
 }
 
+/** Increment the bounded fallback counter when a non-Koa decision sink fails. */
+export function recordSecurityDecisionSinkFailure(): void {
+  emergencySinkFailureCount = Math.min(Number.MAX_SAFE_INTEGER, emergencySinkFailureCount + 1);
+}
+
 /** Default structured sink used by production request finalization. */
 export const logSecurityDecision: SecurityDecisionSink = (event) => {
   logger.info({ securityDecision: event }, event.eventName);
@@ -152,7 +157,7 @@ export async function finalizeSecurityDecision(
   try {
     await sink(event);
   } catch {
-    emergencySinkFailureCount = Math.min(Number.MAX_SAFE_INTEGER, emergencySinkFailureCount + 1);
+    recordSecurityDecisionSinkFailure();
   }
   return event;
 }
