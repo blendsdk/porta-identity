@@ -13,21 +13,43 @@
 
 Run commands from the repository root.
 
-| Purpose             | Command                          | Validation                                                                                                                       |
-| ------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Install             | `yarn install --frozen-lockfile` | Passed on 2026-08-08 in the migration worktree                                                                                   |
-| Full verification   | `yarn verify`                    | Passed on 2026-08-09: 60 structure tests, 224 server files / 3,348 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests |
-| Structure tests     | `yarn test:structure`            | Node repository-contract tests; no services required                                                                             |
-| Unit tests          | `yarn test:unit`                 | Runs the server unit project                                                                                                     |
-| Integration tests   | `yarn test:integration`          | Requires PostgreSQL, Redis, and MailHog                                                                                          |
-| End-to-end tests    | `yarn test:e2e`                  | Requires PostgreSQL, Redis, and MailHog                                                                                          |
-| Penetration tests   | `yarn test:pentest`              | Requires PostgreSQL, Redis, and MailHog                                                                                          |
-| Browser tests       | `yarn test:ui`                   | Requires Playwright Chromium and test infrastructure                                                                             |
-| OIDC harness        | `yarn harness:test`              | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                         |
-| Documentation build | `yarn docs:build`                | Declared by root package scripts                                                                                                 |
-| Dependency check    | `yarn deps:check`                | Checks root and active workspaces while excluding internal workspace packages                                                    |
+| Purpose             | Command                          | Validation                                                                                                               |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Install             | `yarn install --frozen-lockfile` | Passed on 2026-08-08 in the migration worktree                                                                           |
+| Full verification   | `yarn verify`                    | Passed on 2026-08-23: 70 structure; server unit 2,861, integration 363, E2E 129, and pentest 224; SDK 404; CLI 356 tests |
+| Structure tests     | `yarn test:structure`            | Node repository-contract tests; no services required                                                                     |
+| Unit tests          | `yarn test:unit`                 | Runs the server unit project                                                                                             |
+| Integration tests   | `yarn test:integration`          | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| End-to-end tests    | `yarn test:e2e`                  | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| Penetration tests   | `yarn test:pentest`              | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| Browser tests       | `yarn test:ui`                   | Requires Playwright Chromium and test infrastructure                                                                     |
+| OIDC harness        | `yarn harness:test`              | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                 |
+| Documentation build | `yarn docs:build`                | Declared by root package scripts                                                                                         |
+| Dependency check    | `yarn deps:check`                | Checks root and active workspaces while excluding internal workspace packages                                            |
 
 `yarn verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
+
+## Feature verification workflow
+
+- Before implementation, identify the affected public and security boundaries and write or update
+  immutable specification tests first. During implementation, run the narrow unit, integration,
+  E2E, UI, or harness selector that gives the fastest relevant feedback.
+- Before every commit, run `yarn verify`. It already includes the server penetration suite. Never
+  delete, skip, weaken, or retry-away a failing security assertion.
+- For browser-facing behavior, also run `yarn test:ui`. For retained SPA/BFF behavior, run
+  `yarn harness:test`; both remain outside `yarn verify`.
+- For authentication, OIDC/token, tenant isolation, administrative authorization, sessions,
+  recovery, cookies, CSRF, CORS, or other security-sensitive behavior, also run the relevant
+  `yarn assurance:harness` command with a registered `protocol` or `security` project and the
+  applicable profile. Use `production-security` whenever the claim depends on production cookie,
+  TLS, CORS, CSP, or security-profile behavior.
+- For SDK or CLI contract changes, run the relevant registered `yarn assurance:compat` selector
+  from a clean committed revision so package and source provenance can be verified.
+- Coverage, fault, mutation, control-check, stability, report, and `assurance:all` commands are
+  specialized plan/evidence tools, not routine feature gates. Run them only when the governing
+  plan or affected assurance code requires them. `assurance:all` can retain registered blocked or
+  unqualified outcomes, so review its artifact and exit taxonomy instead of treating every nonzero
+  result as an ordinary test failure.
 
 ## Repository structure
 
@@ -91,8 +113,11 @@ explain the concrete risk and propose a secure alternative.
 - Assess authentication, authorization, cryptography, tenant isolation, validation, rate limiting,
   sessions, error handling, and information exposure before completing a security-relevant change.
 
-## Active migration constraint
+## Branch and feature isolation
 
-The monorepo migration is structural. Preserve supported application, API, OIDC, CLI, SDK, database, configuration, and deployment behavior. Do not combine product features, enhancements, or unrelated bug fixes with structural work. Record discovered product defects for later instead of fixing them during the migration.
+The monorepo migration and assurance remediation are complete checkpoints. Start new Porta product
+features on separate feature branches and sessions; do not add unrelated feature work to migration
+or assurance-remediation branches. Keep `main` off limits and preserve the verified migration and
+assurance histories when integrating through the repository's designated integration flow.
 
 <!-- CODEOPS-PROJECT:END -->
