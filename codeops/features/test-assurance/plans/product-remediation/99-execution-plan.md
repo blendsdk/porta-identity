@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 05:34
-> **Progress**: 30/53 tasks (57%)
+> **Last Updated**: 2026-08-22 06:10
+> **Progress**: 31/53 tasks (58%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -30,12 +30,12 @@ to the exec-plan protocol.
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
 | 1 | Enumeration-resistant password and recovery work | 17 |
-| 2 | Tenant-bound atomic magic links | 12 |
+| 2 | Tenant-bound atomic magic links | 13 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 52 tasks across 5 phases.**
+**Total: 53 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -110,12 +110,12 @@ intended use remains atomic and single-use.
 
 ## Phase 3: Bulk/import/export product contracts
 
-> **Phase baseline tree**: _(record at execution start)_
+> **Phase baseline tree**: `3a31a5d3e1c586daea3149a401da9a7912e33a2e`
 > **Lenses**: security, api-surface, concurrency
 
 **Reference**: 03-03; ST-14–ST-24; AR-3
 
-- [ ] 3.1 [spec-author] Write immutable bulk/import/export specifications — `packages/server/tests/unit/admin/administrative-data-contract.spec.test.ts`
+- [x] 3.1 [spec-author] Write immutable bulk/import/export specifications — `packages/server/tests/unit/admin/administrative-data-contract.spec.test.ts` ✅ (completed: 2026-08-22 06:10 CEST; immutable ST-14–ST-24 catalog, stable product-driver contract, and fail-closed adapter authored; ordinary specification 4/4, structure 70/70 with the exact 245-file inventory, and `yarn verify` passed with 159 unit files/2,819 tests, 30 integration files/301 tests, 20 E2E files/129 tests, and 35 pentest files/224 tests)
 - [ ] 3.2 Run the isolated specifications and record exact RED for duplicate, tenant, rollback, secret, scope, bound, and CSV cases.
 - [ ] 3.3 Implement whole-request validation, tenant-scoped per-item transactions, ordered closed outcomes, and not-attempted bulk results — `packages/server/src/routes/bulk.ts`, `packages/server/src/lib/bulk-operations.ts`
 - [ ] 3.4 Implement the closed import prevalidator/planner and remove secret-equivalent manifest inputs — `packages/server/src/lib/data-import.ts`, import schemas/types
@@ -184,7 +184,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 49 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 53 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.
