@@ -3,7 +3,7 @@
 > **Feature-Set**: Test Assurance
 > **Status**: Executing — authorized product remediation in progress; unrelated named gaps remain
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-21 16:43
+> **Last Updated**: 2026-08-22 05:34
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -23,7 +23,7 @@
 | RD-03    | Coverage attribution and ratchets                    | [RD-03](requirements/RD-03-coverage-attribution-and-ratchets.md)                    | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing    | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02                                                                                |
 | RD-04    | Functional contracts and compatibility               | [RD-04](requirements/RD-04-functional-contracts-and-compatibility.md)               | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing    | 🔄     | 2026-08-19 15:13 | packed protocol evidence admitted                                                                      |
 | ↳ DEF-2  | Clean packed-client evidence checkpoints             | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Done         | ✅     | 2026-08-14 16:37 | AR-58 approved; Tasks 6.5–6.7 own delivery                                                             |
-| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                | Executing    | 🔄     | 2026-08-22 01:42 | product remediation at 25/49; documented Phase 2 implementation is verified                            |
+| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                | Executing    | 🔄     | 2026-08-22 05:34 | product remediation at 30/53; Phase 2 tenant-bound magic-link remediation is complete                  |
 | ↳ DEF-3  | Advanced protocol consistency campaign               | —                                                                                   | —                                                                           | Deferred     | ⏸️     | 2026-08-19 19:40 | concurrency, response loss, restart, commit boundaries                                                 |
 | ↳ DEF-4  | Authorization-code atomic consumption                | —                                                                                   | —                                                                           | Blocked      | ⛔     | 2026-08-19 19:40 | Redis consume is read/modify/write; product fix needs separate authority                               |
 | ↳ DEF-5  | Protocol control sensitivity campaign                | —                                                                                   | —                                                                           | Deferred     | ⏸️     | 2026-08-19 19:53 | no disposable protocol source variations in this program                                               |

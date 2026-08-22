@@ -3,7 +3,7 @@
 > **Date**: 2026-08-22
 > **Phase baseline tree**: `829f66aa378e6cd6f3f9f7eb271000fadde48da1`
 > **Reviewed completion commit**: `2ef98981`
-> **Disposition**: Bounded re-review corrections verified; clean evidence pending
+> **Disposition**: Complete — bounded re-review corrections and clean evidence verified
 
 ## Review Result
 
@@ -54,3 +54,16 @@ existing Phase 2 scope; none is waived and no third review will be dispatched.
 The residual correction is verified directly by the immutable oracle, focused service-backed
 regressions, the Phase 2 command set, and full verification. The quality profile permits no third
 review pass after this bounded re-review.
+
+## Final Evidence
+
+Clean run `213b2914-312a-44d9-8a78-574642b8e332` is bound to correction commit `d16cc4ec` and
+tree `6c528099`. Its mode-0600 production-exposure artifact retains the expected registered exit
+`40` for the named correlated-decision-event gap without awarding correlated-log credit. The
+functional human-auth block passed 7/7 and tenant/admin passed 17/17. The active-run record is
+absent and no run-labelled Docker resource remains.
+
+The correction oracle passed 8/8 through the real loopback Koa application and provider-owned
+Interaction model. Unit passed 3,386/3,386, integration 301/301, E2E 129/129, pentest 224/224,
+documentation built, and final `yarn verify` completed all four workspace tasks. Every accepted
+Major is corrected; Phase 2 is closed without a prohibited third review.
