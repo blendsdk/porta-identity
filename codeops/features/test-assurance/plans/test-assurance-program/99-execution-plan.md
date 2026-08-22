@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Blocked — all authorized executable tasks complete; 6 named gaps remain
-> **Last Updated**: 2026-08-21 00:53
-> **Progress**: 117/123 tasks (95%)
+> **Status**: Blocked — all authorized executable tasks complete; 4 named gaps remain
+> **Last Updated**: 2026-08-23 00:44
+> **Progress**: 119/123 tasks (97%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -854,7 +854,7 @@ assurance.
       invalid-run rule. If no defensible independent bound is approved, block only the timing claim.
       The user chose not to create the unsupported timing campaign. No threshold, sample rule, or
       measurement is inferred from current Porta behavior; only the timing-distribution edge is
-      blocked as DEF-7 while status/body/header enumeration checks continue. Governance passed
+      blocked as DEF-23 while status/body/header enumeration checks continue. Governance passed
       55/55, structure passed 68/68, and `yarn verify` passed 233 server files / 3,382 tests,
       31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-19 22:48)
@@ -879,7 +879,7 @@ assurance.
       structure passed 68/68, assurance typecheck/lint/formatting passed, and `yarn verify` passed
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-19 23:35)
-- [!] 8.4 Blocked: DEF-7 has no independently approved enumeration hypothesis, effect-size bound,
+- [!] 8.4 Blocked: DEF-23 has no independently approved enumeration hypothesis, effect-size bound,
       sample-size/power rule, or environment/noise contract. Do not collect timing samples or infer
       a threshold from Porta behavior. Functional status/body/header enumeration and equivalent
       limit-key checks remain in Tasks 8.2–8.3 and 8.6–8.9.
@@ -940,13 +940,12 @@ assurance.
       functional block before the retained tenant/admin block passed 17/17. Static checks and
       structure passed 68/68; `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 01:57)
-- [!] 8.7c Blocked: DEF-10 — the production-security public-boundary run accepted an Alpha-issued
-      magic-link value through Bravo's route with a 302 response instead of the required rejection.
-      Preserve the immutable tenant-binding oracle and route the product correction separately.
-      Add transient MailHog acquisition and exact sequential-use journeys for magic link,
-      password reset, and invitation. Verify intended recipient/tenant, configured lifetime,
-      second-use rejection, protected-state nonmutation, and exposure redaction without retaining
-      delivered values.
+- [!] 8.7c Blocked: DEF-8 — product remediation closed the former DEF-10 cross-tenant magic-link
+      acceptance defect with tenant, interaction, and client binding plus atomic non-consuming
+      rejection. Transient MailHog acquisition and exact sequential-use journeys for magic link,
+      password reset, and invitation remain incomplete. They must verify intended recipient and
+      tenant, configured lifetime, second-use rejection, protected-state nonmutation, and exposure
+      redaction without retaining delivered values.
 - [x] 8.7d Add email-OTP and recovery-code public sequential-use journeys plus TOTP enforcement.
       Preserve DEF-9 for same-window TOTP replay until separate product/security authority resolves
       that contract; do not manufacture a passing expectation from the stateless verifier.
@@ -990,7 +989,7 @@ assurance.
       tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 03:40)
 - [x] 8.9c From the clean pushed orchestration revision, run operational and production-security
       browser/security projects, attributed security coverage, audit/log/recovery evidence, all
-      pentests, and `yarn verify`. Keep DEF-7, DEF-9, DEF-10, and DEF-11 explicit; the roll-up may
+      pentests, and `yarn verify`. Keep DEF-23, DEF-8, DEF-9, and DEF-11 explicit; the roll-up may
       report partial assurance but cannot close their affected claims.
       Clean revision `8c42d0fa` passed operational run
       `19a7d550-7a29-4719-862e-4864cf01bf9c`, production-security run
@@ -1002,10 +1001,11 @@ assurance.
 
 **Phase gate:** admitted functional, session, cookie/CSRF, email-OTP, recovery-code, and TOTP
 enforcement claims have public-boundary evidence, and production controls are proven only in
-production-security mode. Magic-link tenant binding remains blocked under DEF-10, same-window TOTP
-replay remains blocked under DEF-9, the timing-distribution edge remains blocked under DEF-7, and
-source-variation sensitivity remains deferred under DEF-11. None receives assurance credit. The
-independent phase review and completed corrections are recorded in
+production-security mode. Product remediation closed the former DEF-10 magic-link tenant-binding
+defect. Delivered-artifact acquisition/reuse remains blocked under DEF-8, same-window TOTP replay
+remains blocked under DEF-9, the timing-distribution edge remains blocked under DEF-23, and source-
+variation sensitivity remains deferred under DEF-11. None of those remaining gaps receives
+assurance credit. The independent phase review and completed corrections are recorded in
 [16-phase-8-quality-review.md](16-phase-8-quality-review.md).
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
@@ -1020,10 +1020,11 @@ independent phase review and completed corrections are recorded in
 > **Scope mode**: strict — validation, exposure, and administrative-data assurance only; no product
 > feature changes, scanner adoption, production hooks, CI changes, or unrelated remediation
 
-- [!] 9.1 Blocked: DEF-12 has no product-authority decision for bulk/import/export duplicate,
+- [x] 9.1 Record the approved bulk/import/export product-authority decision for duplicate,
       collision, provenance/version, rollback, partial-outcome, and export-sensitivity contracts.
-      ST-62 and only its claims remain blocked; the oracle is not inferred from current code or
-      documentation, and independent P1 work continues.
+      The separately authorized product-remediation plan supplied the immutable contract and
+      closed DEF-12 without inferring the oracle from legacy behavior. ✅ (completed: 2026-08-23
+      00:44; delivered and verified by product-remediation Phase 3 on 2026-08-22)
 - [x] 9.2 [spec-author] Write ST-52–ST-56 raw cases for SQL, CRLF/header, XSS/template, prototype,
       command/path, redirect, slug/tenant, host/proxy, method, malformed JSON, oversize, and
       exposure. Added five versioned threat profiles and 25 immutable specification-only cases
@@ -1044,9 +1045,12 @@ independent phase review and completed corrections are recorded in
       assurance typecheck/lint/formatting passed, structure passed 68/68, and `yarn verify` passed
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. No live
       or product behavior is claimed. ✅ (completed: 2026-08-20 06:11)
-- [!] 9.4 Blocked: DEF-12 — product authority has not approved the ST-62 bulk/import/export
-      duplicate, collision, provenance/version, rollback, partial-result, and export-sensitivity
-      contracts. The affected claims remain blocked and independent P1 work continues.
+- [x] 9.4 Bind the ST-62 umbrella edge to the approved immutable administrative-data catalog and
+      its production-backed duplicate, tenant, rollback, credential, scope, bound, and CSV
+      observations. Product-remediation Phase 3 passed the service-backed catalog 35/35, the
+      corrected packed SDK/CLI journeys, focused integration checks, and full `yarn verify`; DEF-12
+      is superseded while unrelated P1 gaps remain explicit. ✅ (completed: 2026-08-23 00:44;
+      evidence finalized 2026-08-22)
 - [x] 9.5a Implement the closed P1 baseline registry and provenance-bound evidence capability;
       audit existing pentest/integration candidates and classify broad smoke,
       conditional-prerequisite, status-only, and service/repository cases as corroboration only.
