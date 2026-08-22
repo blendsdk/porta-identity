@@ -63,7 +63,13 @@ export function createBulkRouter(): Router {
     '/organizations/status',
     requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE),
     async (ctx) => {
-      const body = bulkOrgStatusSchema.parse(ctx.request.body);
+      const parsed = bulkOrgStatusSchema.safeParse(ctx.request.body);
+      if (!parsed.success) {
+        ctx.status = 400;
+        ctx.body = { error: 'Bulk request is invalid', code: 'bulk_request_invalid' };
+        return;
+      }
+      const body = parsed.data;
       const result = await bulkStatusChange({
         entityType: 'organization',
         entityIds: body.ids,
@@ -79,7 +85,13 @@ export function createBulkRouter(): Router {
   // POST /users/status — Bulk user status change
   // -------------------------------------------------------------------------
   router.post('/users/status', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    const body = bulkUserStatusSchema.parse(ctx.request.body);
+    const parsed = bulkUserStatusSchema.safeParse(ctx.request.body);
+    if (!parsed.success) {
+      ctx.status = 400;
+      ctx.body = { error: 'Bulk request is invalid', code: 'bulk_request_invalid' };
+      return;
+    }
+    const body = parsed.data;
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: body.ids,

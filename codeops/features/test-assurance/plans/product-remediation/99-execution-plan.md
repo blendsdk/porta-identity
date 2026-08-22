@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 09:20
-> **Progress**: 40/55 tasks (73%)
+> **Last Updated**: 2026-08-22 09:37
+> **Progress**: 41/55 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -125,7 +125,7 @@ intended use remains atomic and single-use.
 - [x] 3.8a Connect the immutable ST-14–ST-24 contract to production validation, transactions, and independent PostgreSQL/audit observers; run the service-backed integration boundary green. ✅ (completed: 2026-08-22 08:19 CEST; split from 3.8 because packed archives require a clean committed source revision; production-backed ST-14–ST-24 passed 35/35, combined admin integration 53/53, SDK 12/12, CLI 25/25, structure 70/70, and `yarn verify` passed in 9m46s with server unit 2,823, integration 336, E2E 129, pentest 224, SDK 404, and CLI 355 tests)
 - [x] 3.8b Add the bounded raw-HTTP and packed SDK/CLI administrative-data journey capability with exact package, credential, response, state, and cleanup observations. ✅ (completed: 2026-08-22 08:39 CEST; exact four-journey SDK/CLI matrix, independent raw response comparison, protected-state nonmutation, transient canary scanning, package provenance, isolated CLI home, and cleanup admission implemented; focused contract/implementation 6/6, assurance TypeScript, ESLint, Prettier, structure, and diff gates passed; `yarn verify` passed in 9m33s)
 - [x] 3.8c From the clean pushed capability revision, run ST-14–ST-24 through the raw-HTTP and packed-client boundaries and record provenance and zero residue. ✅ (completed: 2026-08-22 09:20 CEST; clean revision `0e5fc477` produced owner-only artifact `f4f499fe-9031-4ccd-8fa9-0f1df9f4cd91`; SDK import dry-run and user export passed with exact raw/state agreement, while bulk duplicate validation status 500 and packed CLI export were truthfully retained as product failures for 3.9; package/image/fixture provenance was exact, caller credentials unchanged, temporary homes and consumer removed, and residue empty)
-- [ ] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts`
+- [x] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts` ✅ (completed: 2026-08-22 09:37 CEST; bulk validation now returns the closed HTTP 400 contract, packed CLI exports read the SDK native raw response, implementation regressions cover transaction/lock ordering, infrastructure stop, dry-run rollback, credential planning, and export projection; focused server 9/9, CLI 6/6, structure 70/70, static gates, and `yarn verify` passed in 9m38s)
 - [ ] 3.10 Run Phase 3 targeted/P1/compatibility/pentest checks, `yarn test:structure`, and `yarn verify`; update admin-data techdocs.
 
 Deliverable: administrative data behavior is exact, tenant-safe, compatible where promised, atomic

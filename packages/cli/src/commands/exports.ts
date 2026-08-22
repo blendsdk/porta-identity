@@ -29,6 +29,15 @@ interface ExportDownloadArgs extends GlobalOptions {
   output?: string;
 }
 
+/** Read export bytes from the SDK's raw transport response without assuming JSON parsing. */
+async function readExportContent(response: {
+  readonly body: unknown;
+  readonly raw?: Response;
+}): Promise<string> {
+  if (response.raw) return response.raw.text();
+  return typeof response.body === 'string' ? response.body : JSON.stringify(response.body, null, 2);
+}
+
 // ---------------------------------------------------------------------------
 // Command
 // ---------------------------------------------------------------------------
@@ -88,11 +97,7 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               endDate: argv['end-date'],
             });
 
-            // The SDK returns a TransportResponse with raw body
-            const content =
-              typeof response.body === 'string'
-                ? response.body
-                : JSON.stringify(response.body, null, 2);
+            const content = await readExportContent(response);
 
             if (argv.output) {
               fs.writeFileSync(argv.output, content, 'utf-8');
