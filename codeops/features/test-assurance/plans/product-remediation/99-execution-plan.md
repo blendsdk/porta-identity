@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 16:19
-> **Progress**: 58/62 tasks (94%)
+> **Last Updated**: 2026-08-22 16:43
+> **Progress**: 59/62 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -169,7 +169,7 @@ and covered authorized mutations cannot commit without durable audit intent.
 - [x] 5.1a Align the live tenant/admin decision observer with the generic privacy-safe permission and membership responses introduced by Phase 4. ✅ (completed: 2026-08-22 15:11 CEST; the initial clean collector exposed a stale permission-name oracle after Phase 4 correctly removed that public disclosure; the observer and implementation tests now require the generic permission/membership messages, focused tenant/admin 27/27 passed, and full `yarn verify` passed in 10m30s with server unit 2,860, integration 362, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 - [x] 5.1b Align the live resource-denial observer with Phase 4's fixed global not-found response while preserving the direct tenant-user guard response. ✅ (completed: 2026-08-22 15:39 CEST; the clean collector isolated the mismatch to thrown client/session resource denials now normalized by the global error handler, while the tenant-user guard retains its direct generic response; focused tenant/admin 28/28 passed and full `yarn verify` passed in 10m40s with server unit 2,860, integration 362, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 - [x] 5.1c Align the retained UI harness with durable recovery-worker lifecycle, tenant-bound magic-link fixtures, generic account-state privacy, and the supported first-party/foreign-client consent contract. ✅ (completed: 2026-08-22 16:19 CEST; the initial closure run exposed stale UI plumbing rather than a product regression; the harness now starts and settles the production recovery worker, direct magic-link fixtures persist tenant/interaction authority, suspended and locked accounts retain generic public rejection, and supported consent admission no longer relies on a forbidden cross-tenant client; focused UI 22/22, full UI 132/132, standalone pentest 224/224, type/format/diff checks, and full `yarn verify` passed in 10m41s)
-- [ ] 5.1d Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries from the clean UI checkpoint; persist current provenance and zero-residue evidence.
+- [x] 5.1d Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries from the clean UI checkpoint; persist current provenance and zero-residue evidence. ✅ (completed: 2026-08-22 16:43 CEST; clean revision `b5bd86ce` produced production-security run `ab67e52b-82c7-4149-a111-34577664deaa` with human-auth 7/7, second-factor 4/4, and tenant/admin 17/17 while retaining unrelated registered exit 40; P1 58/58, packed P1/admin `ebd7d287`, packed tenant/admin `876977d5`, packed general compatibility `3537e709`, UI 132/132, and pentest 224/224 passed; all four artifacts are mode 0600 and revision/tree bound, the primary tree is unchanged, active-run state is absent, packed residue arrays are empty, and no assurance-labelled container remains)
 - [ ] 5.2 Re-run the affected assurance aggregate/report and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
 - [ ] 5.3 Update RD/traceability, both roadmaps, public docs, techdocs/ADR, and current test inventory with truthful claim status and no certification language.
 - [ ] 5.4 Run final `yarn test:structure`, `yarn test:ui`, `yarn test:pentest`, `yarn harness:test`, exact assurance roll-up, and `yarn verify`; confirm clean worktree and zero owned residue.
