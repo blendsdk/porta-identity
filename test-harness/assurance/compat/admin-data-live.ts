@@ -123,7 +123,7 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
       ),
       this.getJson(
         api,
-        `/api/admin/organizations/${this.entity('alpha')}/clients?pageSize=100`,
+        `/api/admin/clients?organizationId=${this.entity('alpha')}&pageSize=100`,
         headers,
       ),
       this.getJson(api, '/api/admin/organizations?pageSize=100', headers),
