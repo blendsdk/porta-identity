@@ -14,6 +14,7 @@
  *   to prevent timing side-channels from leaking hash validity info
  */
 
+import { randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,12 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 /** Maximum password length to prevent denial-of-service via huge inputs */
 export const MAX_PASSWORD_LENGTH = 128;
+
+/** Process-owned dummy hash used when no eligible account password exists. */
+let dummyPasswordHash: string | null = null;
+
+/** Shared initialization promise preventing duplicate concurrent Argon2id work. */
+let dummyPasswordHashInitialization: Promise<string> | null = null;
 
 // ---------------------------------------------------------------------------
 // Validation result type
@@ -90,6 +97,42 @@ export async function hashPassword(plaintext: string): Promise<string> {
   return argon2.hash(plaintext, {
     type: argon2.argon2id,
   });
+}
+
+/**
+ * Initialize the process-owned Argon2id dummy hash.
+ *
+ * Startup awaits this operation so an authentication process never serves requests with a cheap
+ * missing-account branch. Repeated calls are idempotent for the lifetime of the process.
+ */
+export async function initializeDummyPasswordHash(): Promise<void> {
+  if (dummyPasswordHash !== null) return;
+  dummyPasswordHashInitialization ??= hashPassword(randomBytes(32).toString('base64url'));
+  dummyPasswordHash = await dummyPasswordHashInitialization;
+}
+
+/**
+ * Read the initialized process-owned dummy hash.
+ *
+ * @returns Argon2id hash with no authentication authority.
+ * @throws Error when startup did not initialize the dummy hash.
+ */
+export function getDummyPasswordHash(): string {
+  if (dummyPasswordHash === null) {
+    throw new Error('Dummy password hash has not been initialized');
+  }
+  return dummyPasswordHash;
+}
+
+/**
+ * Return the process-owned dummy hash, initializing it when an embedded app bypassed the entry
+ * point. Production startup still awaits initialization before listening.
+ *
+ * @returns Initialized non-authoritative Argon2id hash.
+ */
+export async function ensureDummyPasswordHash(): Promise<string> {
+  await initializeDummyPasswordHash();
+  return getDummyPasswordHash();
 }
 
 // ---------------------------------------------------------------------------

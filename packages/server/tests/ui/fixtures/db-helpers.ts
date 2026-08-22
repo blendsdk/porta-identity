@@ -105,22 +105,41 @@ export interface UserRecord {
  */
 export interface DbHelpers {
   /** Create a password reset token, returns the raw (unhashed) token */
-  createPasswordResetToken(userId: string, orgId: string, options?: TokenCreateOptions): Promise<string>;
+  createPasswordResetToken(
+    userId: string,
+    orgId: string,
+    options?: TokenCreateOptions,
+  ): Promise<string>;
 
   /** Create a magic link token, returns the raw (unhashed) token */
-  createMagicLinkToken(userId: string, orgId: string, interactionUid?: string, options?: TokenCreateOptions): Promise<string>;
+  createMagicLinkToken(
+    userId: string,
+    orgId: string,
+    interactionUid?: string,
+    options?: TokenCreateOptions,
+  ): Promise<string>;
 
   /** Create an invitation token for a user email */
-  createInvitationToken(email: string, orgId: string, options?: TokenCreateOptions): Promise<string>;
+  createInvitationToken(
+    email: string,
+    orgId: string,
+    options?: TokenCreateOptions,
+  ): Promise<string>;
 
   /** Mark a token as used (for replay testing) */
-  markTokenUsed(tokenHash: string, table: 'password_reset_tokens' | 'magic_link_tokens' | 'invitation_tokens'): Promise<void>;
+  markTokenUsed(
+    tokenHash: string,
+    table: 'password_reset_tokens' | 'magic_link_tokens' | 'invitation_tokens',
+  ): Promise<void>;
 
   /** Get user by email within an org (by org ID) */
   getUserByEmail(email: string, orgId: string): Promise<UserRecord | null>;
 
   /** Update user status directly in the database */
-  updateUserStatus(userId: string, status: 'active' | 'inactive' | 'suspended' | 'locked'): Promise<void>;
+  updateUserStatus(
+    userId: string,
+    status: 'active' | 'inactive' | 'suspended' | 'locked',
+  ): Promise<void>;
 
   /** Reset rate limit counters for a key pattern in Redis */
   resetRateLimits(pattern: string): Promise<void>;
@@ -212,15 +231,15 @@ async function createPasswordResetToken(
  * Create a magic link token in the database.
  *
  * @param userId - UUID of the user
- * @param _orgId - Organization ID (unused but kept for interface consistency)
- * @param _interactionUid - Optional OIDC interaction UID (unused in DB, but part of the flow)
+ * @param orgId - Organization that owns the token authority
+ * @param interactionUid - Optional OIDC interaction bound to the token
  * @param options - Expiry control options
  * @returns Raw plaintext token for constructing the magic link URL
  */
 async function createMagicLinkToken(
   userId: string,
-  _orgId: string,
-  _interactionUid?: string,
+  orgId: string,
+  interactionUid?: string,
   options?: TokenCreateOptions,
 ): Promise<string> {
   const db = getTestPool();
@@ -228,9 +247,10 @@ async function createMagicLinkToken(
   const expiresAt = calculateExpiry(15, options); // Default: 15 minutes
 
   await db.query(
-    `INSERT INTO magic_link_tokens (user_id, token_hash, expires_at)
-     VALUES ($1, $2, $3)`,
-    [userId, hash, expiresAt],
+    `INSERT INTO magic_link_tokens
+       (user_id, organization_id, interaction_uid, authority_bound, token_hash, expires_at)
+     VALUES ($1, $2, $3, TRUE, $4, $5)`,
+    [userId, orgId, interactionUid ?? null, hash, expiresAt],
   );
 
   return plaintext;
@@ -335,7 +355,10 @@ async function updateUserStatus(
   status: 'active' | 'inactive' | 'suspended' | 'locked',
 ): Promise<void> {
   const db = getTestPool();
-  await db.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [status, userId]);
+  await db.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [
+    status,
+    userId,
+  ]);
 }
 
 /**
@@ -427,10 +450,9 @@ async function getUserPasswordHash(userId: string): Promise<string> {
  */
 async function getOrgIdBySlug(slug: string): Promise<string> {
   const db = getTestPool();
-  const result = await db.query<{ id: string }>(
-    `SELECT id FROM organizations WHERE slug = $1`,
-    [slug],
-  );
+  const result = await db.query<{ id: string }>(`SELECT id FROM organizations WHERE slug = $1`, [
+    slug,
+  ]);
 
   if (result.rows.length === 0) {
     throw new Error(`Organization not found: ${slug}`);

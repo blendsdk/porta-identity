@@ -1,5 +1,5 @@
 /**
- * Unit tests for the 'manage-2fa' protected operation added in RD-28.
+ * Unit tests for bootstrap-user protection during two-factor administration.
  *
  * Verifies that 'manage-2fa' is a valid ProtectedOperation and that
  * guardSuperAdmin correctly blocks 2FA management operations on the
@@ -37,11 +37,9 @@ describe('manage-2fa protected operation', () => {
       expect(PROTECTED_OPERATIONS).toContain('manage-2fa');
     });
 
-    it('should include "manage-2fa" alongside the original 6 operations', () => {
-      // Verify all original operations are still present after adding manage-2fa
+    it('should include "manage-2fa" alongside the other supported operations', () => {
       expect(PROTECTED_OPERATIONS).toContain('delete');
       expect(PROTECTED_OPERATIONS).toContain('suspend');
-      expect(PROTECTED_OPERATIONS).toContain('archive');
       expect(PROTECTED_OPERATIONS).toContain('lock');
       expect(PROTECTED_OPERATIONS).toContain('deactivate');
       expect(PROTECTED_OPERATIONS).toContain('remove-super-admin-role');
@@ -83,18 +81,14 @@ describe('manage-2fa protected operation', () => {
       mockGetConfig.mockResolvedValue(superAdminId);
 
       // Normal user should not be blocked
-      await expect(
-        guardSuperAdmin(normalUserId, 'manage-2fa'),
-      ).resolves.toBeUndefined();
+      await expect(guardSuperAdmin(normalUserId, 'manage-2fa')).resolves.toBeUndefined();
     });
 
     it('should NOT throw when no super-admin is configured', async () => {
       // Pre-init state: no super-admin user ID in system_config
       mockGetConfig.mockResolvedValue('');
 
-      await expect(
-        guardSuperAdmin(normalUserId, 'manage-2fa'),
-      ).resolves.toBeUndefined();
+      await expect(guardSuperAdmin(normalUserId, 'manage-2fa')).resolves.toBeUndefined();
     });
   });
 

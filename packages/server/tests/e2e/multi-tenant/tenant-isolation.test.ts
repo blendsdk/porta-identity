@@ -95,8 +95,8 @@ describe('Tenant Isolation (E2E)', () => {
       { grant_type: 'client_credentials' },
       { headers: { Authorization: `Basic ${creds}` } },
     );
-    // Client A is not registered in Org B
-    expect([400, 401]).toContain(response.status);
+    // A foreign client is indistinguishable from an unknown client in this tenant.
+    expect(response.status).toBe(404);
   });
 
   it('should reject Org B client credentials at Org A token endpoint', async () => {
@@ -106,7 +106,7 @@ describe('Tenant Isolation (E2E)', () => {
       { grant_type: 'client_credentials' },
       { headers: { Authorization: `Basic ${creds}` } },
     );
-    expect([400, 401]).toContain(response.status);
+    expect(response.status).toBe(404);
   });
 
   it('should have different discovery documents per org', async () => {

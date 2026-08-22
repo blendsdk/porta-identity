@@ -68,7 +68,7 @@ describe('Authorization Endpoint — Invalid Params (E2E)', () => {
     const params = baseParams();
     params.client_id = 'unknown-client-id-xyz';
     const response = await http.get(`/${orgSlug}/auth?${new URLSearchParams(params)}`);
-    expect([400, 302, 303]).toContain(response.status);
+    expect(response.status).toBe(404);
   });
 
   it('should reject mismatched redirect_uri', async () => {

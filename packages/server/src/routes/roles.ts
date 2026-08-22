@@ -70,19 +70,22 @@ const listUsersWithRoleSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof RoleNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Role not found');
   }
   if (err instanceof PermissionNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Permission not found');
   }
   if (err instanceof RbacValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Role request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Role request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -178,40 +181,52 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:roleId/permissions — List permissions for a role
   // -------------------------------------------------------------------------
-  router.get('/:roleId/permissions', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
-    try {
-      const permissions = await roleService.getPermissionsForRole(ctx.params.roleId);
-      ctx.body = { data: permissions };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.get(
+    '/:roleId/permissions',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_READ),
+    async (ctx) => {
+      try {
+        const permissions = await roleService.getPermissionsForRole(ctx.params.roleId);
+        ctx.body = { data: permissions };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // PUT /:roleId/permissions — Assign permissions to a role
   // -------------------------------------------------------------------------
-  router.put('/:roleId/permissions', requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE), async (ctx) => {
-    try {
-      const body = permissionIdsSchema.parse(ctx.request.body);
-      await roleService.assignPermissionsToRole(ctx.params.roleId, body.permissionIds);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.put(
+    '/:roleId/permissions',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
+    async (ctx) => {
+      try {
+        const body = permissionIdsSchema.parse(ctx.request.body);
+        await roleService.assignPermissionsToRole(ctx.params.roleId, body.permissionIds);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // DELETE /:roleId/permissions — Remove permissions from a role
   // -------------------------------------------------------------------------
-  router.delete('/:roleId/permissions', requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE), async (ctx) => {
-    try {
-      const body = permissionIdsSchema.parse(ctx.request.body);
-      await roleService.removePermissionsFromRole(ctx.params.roleId, body.permissionIds);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.delete(
+    '/:roleId/permissions',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
+    async (ctx) => {
+      try {
+        const body = permissionIdsSchema.parse(ctx.request.body);
+        await roleService.removePermissionsFromRole(ctx.params.roleId, body.permissionIds);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:roleId/users — List users with this role (org-scoped, paginated)
@@ -220,11 +235,10 @@ export function createRoleRouter(): Router {
   router.get('/:roleId/users', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
       const query = listUsersWithRoleSchema.parse(ctx.query);
-      const result = await userRoleService.getUsersWithRole(
-        ctx.params.roleId,
-        query.orgId,
-        { page: query.page, pageSize: query.pageSize },
-      );
+      const result = await userRoleService.getUsersWithRole(ctx.params.roleId, query.orgId, {
+        page: query.page,
+        pageSize: query.pageSize,
+      });
       ctx.body = { data: result.rows, total: result.total };
     } catch (err) {
       handleError(ctx, err);

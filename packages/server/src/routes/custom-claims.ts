@@ -66,16 +66,19 @@ const setValueSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof ClaimNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Claim not found');
   }
   if (err instanceof ClaimValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Claim request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Claim request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -183,42 +186,54 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:claimId/users/:userId — Set a claim value for a user
   // -------------------------------------------------------------------------
-  router.put('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE), async (ctx) => {
-    try {
-      const body = setValueSchema.parse(ctx.request.body);
-      const value = await claimService.setValue(
-        ctx.params.userId,
-        ctx.params.claimId,
-        body.value,
-      );
-      ctx.body = { data: value };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.put(
+    '/:claimId/users/:userId',
+    requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE),
+    async (ctx) => {
+      try {
+        const body = setValueSchema.parse(ctx.request.body);
+        const value = await claimService.setValue(
+          ctx.params.userId,
+          ctx.params.claimId,
+          body.value,
+        );
+        ctx.body = { data: value };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:claimId/users/:userId — Get a claim value for a user
   // -------------------------------------------------------------------------
-  router.get('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_READ), async (ctx) => {
-    const value = await claimService.getValue(ctx.params.userId, ctx.params.claimId);
-    if (!value) {
-      ctx.throw(404, 'Claim value not found');
-    }
-    ctx.body = { data: value };
-  });
+  router.get(
+    '/:claimId/users/:userId',
+    requirePermission(ADMIN_PERMISSIONS.CLAIM_READ),
+    async (ctx) => {
+      const value = await claimService.getValue(ctx.params.userId, ctx.params.claimId);
+      if (!value) {
+        ctx.throw(404, 'Claim value not found');
+      }
+      ctx.body = { data: value };
+    },
+  );
 
   // -------------------------------------------------------------------------
   // DELETE /:claimId/users/:userId — Delete a claim value
   // -------------------------------------------------------------------------
-  router.delete('/:claimId/users/:userId', requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE), async (ctx) => {
-    try {
-      await claimService.deleteValue(ctx.params.userId, ctx.params.claimId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.delete(
+    '/:claimId/users/:userId',
+    requirePermission(ADMIN_PERMISSIONS.CLAIM_UPDATE),
+    async (ctx) => {
+      try {
+        await claimService.deleteValue(ctx.params.userId, ctx.params.claimId);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   return router;
 }

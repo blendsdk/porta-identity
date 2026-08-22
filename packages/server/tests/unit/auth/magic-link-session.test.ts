@@ -14,8 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { mockRedis } = vi.hoisted(() => {
   const mockRedis = {
     set: vi.fn().mockResolvedValue('OK'),
-    get: vi.fn().mockResolvedValue(null),
-    del: vi.fn().mockResolvedValue(1),
+    eval: vi.fn().mockResolvedValue(-2),
   };
   return { mockRedis };
 });
@@ -132,30 +131,35 @@ describe('magic-link-session', () => {
   // =========================================================================
 
   describe('consumeMagicLinkSession', () => {
+    const authority = { organizationId: 'org-1', interactionUid: 'int-1' };
+
     it('should return null when no cookie is present', async () => {
       const ctx = createMockCtx(null);
-      const result = await consumeMagicLinkSession(ctx as never);
+      const result = await consumeMagicLinkSession(ctx as never, authority);
       expect(result).toBeNull();
-      expect(mockRedis.get).not.toHaveBeenCalled();
+      expect(mockRedis.eval).not.toHaveBeenCalled();
     });
 
-    it('should return session data and delete Redis key (single-use)', async () => {
+    it('should atomically return and consume session data for exact authority', async () => {
       const sessionData = {
         userId: 'user-1',
         interactionUid: 'int-1',
         organizationId: 'org-1',
       };
-      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
+      mockRedis.eval.mockResolvedValue(JSON.stringify(sessionData));
 
       const ctx = createMockCtx('session-token-abc');
-      const result = await consumeMagicLinkSession(ctx as never);
+      const result = await consumeMagicLinkSession(ctx as never, authority);
 
       expect(result).toEqual(sessionData);
-      // Should have read from Redis
-      expect(mockRedis.get).toHaveBeenCalledWith('ml_session:session-token-abc');
-      // Should have deleted the key (single-use)
-      expect(mockRedis.del).toHaveBeenCalledWith('ml_session:session-token-abc');
-      // Should have cleared the cookie
+      expect(mockRedis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("redis.call('DEL', KEYS[1])"),
+        2,
+        'ml_session:session-token-abc',
+        'interaction:org:int-1',
+        'org-1',
+        'int-1',
+      );
       expect(ctx.cookies.set).toHaveBeenCalledWith(
         '_ml_session',
         '',
@@ -164,10 +168,10 @@ describe('magic-link-session', () => {
     });
 
     it('should return null when session has expired (not in Redis)', async () => {
-      mockRedis.get.mockResolvedValue(null);
+      mockRedis.eval.mockResolvedValue(-2);
 
       const ctx = createMockCtx('expired-token');
-      const result = await consumeMagicLinkSession(ctx as never);
+      const result = await consumeMagicLinkSession(ctx as never, authority);
 
       expect(result).toBeNull();
       // Should still clear the cookie
@@ -176,26 +180,30 @@ describe('magic-link-session', () => {
         '',
         expect.objectContaining({ maxAge: 0 }),
       );
-      // Should NOT try to delete (nothing to delete)
-      expect(mockRedis.del).not.toHaveBeenCalled();
     });
 
-    it('should return null when session data has missing fields', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify({ userId: 'user-1' })); // missing fields
+    it('should preserve the cookie when tenant or interaction authority mismatches', async () => {
+      mockRedis.eval.mockResolvedValue(0);
 
-      const ctx = createMockCtx('partial-token');
-      const result = await consumeMagicLinkSession(ctx as never);
+      const ctx = createMockCtx('bound-token');
+      const result = await consumeMagicLinkSession(ctx as never, {
+        organizationId: 'org-foreign',
+        interactionUid: 'int-changed',
+      });
 
       expect(result).toBeNull();
+      expect(ctx.cookies.set).not.toHaveBeenCalled();
+      expect(ctx._cookieStore._ml_session).toBe('bound-token');
     });
 
-    it('should return null when session data is malformed JSON', async () => {
-      mockRedis.get.mockResolvedValue('not-json');
+    it('should clear the cookie when Redis rejects malformed stored data', async () => {
+      mockRedis.eval.mockResolvedValue(-1);
 
       const ctx = createMockCtx('bad-token');
-      const result = await consumeMagicLinkSession(ctx as never);
+      const result = await consumeMagicLinkSession(ctx as never, authority);
 
       expect(result).toBeNull();
+      expect(ctx._cookieStore._ml_session).toBeUndefined();
     });
   });
 

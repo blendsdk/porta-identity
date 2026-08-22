@@ -4,17 +4,17 @@ The data import API enables importing configuration from a JSON manifest, suppor
 
 ## Endpoints
 
-| Method | Path | Permission | Description |
-|--------|------|-----------|-------------|
-| `POST` | `/api/admin/import` | `import:write` | Import configuration manifest |
+| Method | Path                | Permission           | Description                   |
+| ------ | ------------------- | -------------------- | ----------------------------- |
+| `POST` | `/api/admin/import` | `admin:import:write` | Import configuration manifest |
 
 ## Import Modes
 
-| Mode | Behavior |
-|------|----------|
-| `merge` | Skip existing entities (match by slug), create new ones only |
-| `overwrite` | Update existing entities, create new ones |
-| `dry-run` | Show what would change without applying (default) |
+| Mode        | Behavior                                                                                                                                                   |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `merge`     | Skip existing tenant-qualified natural keys unchanged and create missing entities                                                                          |
+| `overwrite` | Create missing entities and update only documented presentation/configuration fields; ownership, IDs, protocol authority, and credentials remain unchanged |
+| `dry-run`   | Run the same planner against a repeatable-read snapshot without writes, audit entries, identifiers, or generated secrets (default)                         |
 
 ## Request
 
@@ -25,6 +25,7 @@ Content-Type: application/json
 
 {
   "mode": "dry-run",
+  "organizationId": "8b0ec59e-20d8-4f78-b0c5-c9b603af1c8b",
   "manifest": {
     "version": "1.0",
     "organizations": [...],
@@ -36,6 +37,10 @@ Content-Type: application/json
   }
 }
 ```
+
+When `organizationId` is present, every tenant-qualified entry must resolve to that organization.
+This prevents a scoped provisioning job from importing data into a different tenant. Omitting the
+field preserves the global super-administrator import contract.
 
 ## Manifest Format
 
@@ -62,9 +67,8 @@ Entities are processed in **dependency order** to satisfy foreign key constraint
 {
   "name": "Acme Corp",
   "slug": "acme-corp",
-  "display_name": "Acme Corporation",
-  "contact_email": "admin@acme.com",
-  "plan": "enterprise"
+  "default_locale": "en",
+  "branding_company_name": "Acme Corporation"
 }
 ```
 
@@ -125,37 +129,47 @@ Entities are processed in **dependency order** to satisfy foreign key constraint
 ```json
 {
   "mode": "dry-run",
-  "created": [
-    { "type": "organization", "slug": "acme-corp", "name": "Acme Corp" }
-  ],
+  "created": [{ "type": "organization", "slug": "acme-corp", "name": "Acme Corp" }],
   "updated": [
-    { "type": "application", "slug": "my-app", "name": "My App", "changes": ["name", "description"] }
+    {
+      "type": "application",
+      "slug": "my-app",
+      "name": "My App",
+      "changes": ["name", "description"]
+    }
   ],
-  "skipped": [
-    { "type": "role", "slug": "admin", "reason": "Already exists" }
-  ],
-  "errors": [
-    { "type": "client", "slug": "orphan-client", "error": "Parent application 'missing-app' not found" }
+  "skipped": [{ "type": "role", "slug": "admin", "reason": "Already exists" }],
+  "credentials": [
+    {
+      "clientName": "api",
+      "clientType": "confidential",
+      "credentialWillBeGenerated": true
+    }
   ]
 }
 ```
 
+Successful responses never contain an `errors` array. A committed confidential-client create
+returns its generated client ID and secret once, after the database commit. Dry-run responses use
+only `credentialWillBeGenerated`; they contain no generated identifier or secret.
+
 ## Security
 
 - Import **never** processes: client secrets, user passwords, signing keys, session data, audit logs
-- All changes are applied in a **single PostgreSQL transaction** — all succeed or all rollback
-- Manifest version is checked before any processing
-- All input is validated with Zod schemas
-- An audit log entry is created for each import operation
+- All changes use one **repeatable-read PostgreSQL transaction** — all succeed or all roll back
+- Version, unknown fields, duplicate natural keys, parents, collisions, and secret-equivalent input
+  are rejected before mutation
+- Overwrite never moves ownership, changes security authority, or rotates existing credentials
+- The audit entry retains only actor, mode, version, manifest digest, and aggregate counts
 
 ## Error Handling
 
-| Error | Status | Description |
-|-------|--------|-------------|
-| Invalid manifest schema | `400` | Manifest doesn't match expected format |
-| Unsupported manifest version | `400` | Version is not `1.0` |
-| Transaction failure | `500` | Database error, all changes rolled back |
-| Missing parent entity | — | Recorded in `errors[]` array, doesn't fail the import |
+| Error                                                | Status | Description                                                                                    |
+| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| Invalid manifest schema                              | `400`  | Manifest doesn't match expected format                                                         |
+| Unsupported manifest version                         | `400`  | Version is not `1.0`                                                                           |
+| Missing parent, collision, or immutable-field change | `409`  | Whole manifest rejected with no mutation                                                       |
+| Transaction failure                                  | `503`  | Whole manifest rolled back; response carries a correlation ID but no infrastructure diagnostic |
 
 ## Related
 

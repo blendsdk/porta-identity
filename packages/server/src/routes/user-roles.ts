@@ -22,7 +22,9 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
+import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
@@ -43,16 +45,19 @@ const roleIdsSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof RoleNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Role not found');
   }
   if (err instanceof RbacValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Role assignment request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Role assignment request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -82,53 +87,74 @@ export function createUserRoleRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List roles for user
   // -------------------------------------------------------------------------
-  router.get('/', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
-    try {
-      const roles = await userRoleService.getUserRoles(ctx.params.userId);
-      ctx.body = { data: roles };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.get(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_READ),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const roles = await userRoleService.getUserRoles(ctx.params.userId);
+        ctx.body = { data: roles };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // PUT / — Assign roles to user
   // -------------------------------------------------------------------------
-  router.put('/', requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN), async (ctx) => {
-    try {
-      const body = roleIdsSchema.parse(ctx.request.body);
-      await userRoleService.assignRolesToUser(ctx.params.userId, body.roleIds);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.put(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const body = roleIdsSchema.parse(ctx.request.body);
+        await userRoleService.assignRolesToUser(ctx.params.userId, body.roleIds);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // DELETE / — Remove roles from user
   // -------------------------------------------------------------------------
-  router.delete('/', requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN), async (ctx) => {
-    try {
-      const body = roleIdsSchema.parse(ctx.request.body);
-      await userRoleService.removeRolesFromUser(ctx.params.userId, body.roleIds);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.delete(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_ASSIGN),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const body = roleIdsSchema.parse(ctx.request.body);
+        await guardSuperAdmin(ctx.params.userId, 'remove-super-admin-role');
+        await userRoleService.removeRolesFromUser(ctx.params.userId, body.roleIds);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /permissions — List resolved permissions for user
   // Resolves all permissions across all assigned roles (deduplicated)
   // -------------------------------------------------------------------------
-  router.get('/permissions', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
-    try {
-      const permissions = await userRoleService.getUserPermissions(ctx.params.userId);
-      ctx.body = { data: permissions };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.get(
+    '/permissions',
+    requirePermission(ADMIN_PERMISSIONS.ROLE_READ),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const permissions = await userRoleService.getUserPermissions(ctx.params.userId);
+        ctx.body = { data: permissions };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   return router;
 }

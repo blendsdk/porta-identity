@@ -19,6 +19,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { User } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -50,9 +51,9 @@ export async function getCachedUserById(id: string): Promise<User | null> {
     const data = await redis.get(`${USER_PREFIX}${id}`);
     if (!data) return null;
     return deserializeUser(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read user from cache');
+    logger.warn({ event: 'user-cache-read-failed' }, 'User cache read failed');
     return null;
   }
 }
@@ -71,14 +72,16 @@ export async function getCachedUserById(id: string): Promise<User | null> {
  * @param user - User to cache
  */
 export async function cacheUser(user: User): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(user);
-    await redis.set(`${USER_PREFIX}${user.id}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, id: user.id }, 'Failed to cache user');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(user);
+      await redis.set(`${USER_PREFIX}${user.id}`, data, 'EX', CACHE_TTL);
+    } catch {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ event: 'user-cache-write-failed' }, 'User cache write failed');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,13 +97,15 @@ export async function cacheUser(user: User): Promise<void> {
  * @param id - User UUID
  */
 export async function invalidateUserCache(id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${USER_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, id }, 'Failed to invalidate user cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${USER_PREFIX}${id}`);
+    } catch {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn({ event: 'user-cache-invalidation-failed' }, 'User cache invalidation failed');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

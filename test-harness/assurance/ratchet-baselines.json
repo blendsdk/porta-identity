@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "coverage": {
+    "sourceRevision": "16dae6b8412577a1c98e3f1f2ae07e20a69eee95",
+    "sourceRunId": "53ff6f24-219a-485b-a87f-93343612aa91",
+    "summaryDigest": "sha256:7b48038ecc8ce95ecb59770f6dcbc1fadfda1461c99b641a07a3a2fd218c66a9",
+    "normalizedPathCount": 150,
+    "normalizedPathDigest": "sha256:fd7fc28f6149f51ca71b8ca6266dc140706bf2c225b877aa40252ed3b0a94e63",
+    "counts": {
+      "statements": { "covered": 1838, "total": 7630 },
+      "branches": { "covered": 580, "total": 3919 },
+      "functions": { "covered": 317, "total": 1177 },
+      "lines": { "covered": 1806, "total": 7296 }
+    },
+    "enforcement": "local-observation-only",
+    "promotionAuthorized": false
+  },
+  "monitoredInputs": {
+    "requirement-r5": {
+      "paths": [
+        "codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md"
+      ],
+      "digest": "sha256:f17005ca28d271dbf6e14ff2b0a606fe06c7a5af654bc252c2a55b3f85ffc569",
+      "affectedRequirementPrefix": "R5"
+    },
+    "fixture": {
+      "paths": [
+        "test-harness/fixtures/fixture-definition.ts",
+        "test-harness/fixtures/seed-arrangement.ts"
+      ],
+      "digest": "sha256:08c5e9634ea2fc605d18c65050e2edebad5949aa09295b7d11a08784f9ebaab6",
+      "affectedRequirementPrefix": "*"
+    },
+    "dependency": {
+      "paths": ["yarn.lock"],
+      "digest": "sha256:b35d279fd3d199436eeb59658b8e44ab3eb3a9140ae90cd7094b17ed27478dd9",
+      "affectedRequirementPrefix": "*"
+    },
+    "sentinel": {
+      "paths": ["test-harness/assurance/test-inventory.json"],
+      "digest": "sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c",
+      "affectedRequirementPrefix": "*"
+    }
+  },
+  "review": {
+    "reviewId": "local-observation-baseline-final-r5-2026-08-22",
+    "reviewedAt": "2026-08-22T20:41:46+02:00",
+    "reviewedBy": "authorized-test-assurance-execution",
+    "reason": "Retain the accepted local coverage observation while binding staleness to the final reviewed R5 requirement content, corrected R5.17 trace cases, and explicit external-correlation gap without changing CI policy.",
+    "sourceArtifact": "test-harness/.assurance-results/53ff6f24-219a-485b-a87f-93343612aa91/coverage/security/production-security/report/coverage-summary.json",
+    "promotionAuthorized": false
+  }
+}

@@ -27,21 +27,28 @@
  */
 
 import type { Middleware } from 'koa';
-import type Provider from 'oidc-provider';
 import type { Organization } from '../organizations/types.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRoles } from '../rbac/user-role-service.js';
 import { logger } from '../lib/logger.js';
-import {
-  resolvePermissionsFromRoles,
-} from '../lib/admin-permissions.js';
+import { resolvePermissionsFromRoles } from '../lib/admin-permissions.js';
+import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 
 // ---------------------------------------------------------------------------
 // OIDC provider reference — set at startup via setAdminAuthProvider()
 // ---------------------------------------------------------------------------
 
-let _provider: Provider | null = null;
+/** Minimal opaque-token lookup boundary required from the OIDC provider. */
+export interface AdminAccessTokenProvider {
+  /** Provider model used to resolve one opaque access token. */
+  readonly AccessToken: {
+    /** Resolve a token without exposing its storage mechanism to middleware. */
+    find(token: string): Promise<{ accountId?: string } | undefined>;
+  };
+}
+
+let _provider: AdminAccessTokenProvider | null = null;
 
 /**
  * Set the OIDC provider instance used for opaque access token validation.
@@ -50,8 +57,13 @@ let _provider: Provider | null = null;
  * The provider's AccessToken.find() method is used to look up opaque tokens
  * from the token store (Redis for short-lived tokens).
  */
-export function setAdminAuthProvider(provider: Provider): void {
+export function setAdminAuthProvider(provider: AdminAccessTokenProvider): void {
   _provider = provider;
+}
+
+/** Remove the process-owned OIDC provider reference during orderly teardown. */
+export function clearAdminAuthProvider(): void {
+  _provider = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +88,30 @@ export interface AdminUser {
   roles: string[];
   /** Resolved admin permissions from all assigned roles */
   permissions: readonly string[];
+}
+
+/**
+ * Enforce super-admin organization membership through the shared public denial boundary.
+ *
+ * @returns `true` only when the authenticated account belongs to the required organization.
+ */
+export function requireAdminOrganizationMembership(
+  ctx: Parameters<Middleware>[0],
+  userOrganizationId: string,
+  adminOrganizationId: string,
+): boolean {
+  if (userOrganizationId === adminOrganizationId) return true;
+  recordSecurityDecision(ctx, {
+    decisionPoint: 'membership',
+    reasonCode: 'membership-required',
+    outcome: 'deny',
+  });
+  ctx.status = 403;
+  ctx.body = {
+    error: 'Forbidden',
+    message: 'Administrative access is not permitted',
+  };
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +160,11 @@ export function requireAdminAuth(): Middleware {
     // -----------------------------------------------------------------
     const authHeader = ctx.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
       ctx.status = 401;
       ctx.body = {
         error: 'Authentication required',
@@ -152,6 +193,11 @@ export function requireAdminAuth(): Middleware {
     // checks since the provider is the authoritative token store.
     if (!_provider) {
       logger.error('Admin auth: OIDC provider not initialized');
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'handler',
+        reasonCode: 'handler-failed',
+        outcome: 'error',
+      });
       ctx.status = 500;
       ctx.body = { error: 'Server configuration error' };
       return;
@@ -162,15 +208,25 @@ export function requireAdminAuth(): Middleware {
       const accessToken = await _provider.AccessToken.find(token);
       if (!accessToken || !accessToken.accountId) {
         logger.debug('Admin auth: access token not found or missing accountId');
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'authentication',
+          reasonCode: 'authentication-required',
+          outcome: 'deny',
+        });
         ctx.status = 401;
         ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
         return;
       }
       userId = accessToken.accountId;
-    } catch (err) {
+    } catch {
       // Intentionally vague error message — don't reveal internal details.
       // Log the real error server-side for debugging.
-      logger.debug({ err }, 'Admin auth: access token lookup failed');
+      logger.debug({ event: 'admin-token-lookup-rejected' }, 'Admin token lookup rejected');
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
       ctx.status = 401;
       ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
       return;
@@ -184,6 +240,11 @@ export function requireAdminAuth(): Middleware {
     if (!superAdminOrg) {
       // System not initialized — porta init has not been run
       logger.error('Admin auth: super-admin organization not found — run porta init');
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'handler',
+        reasonCode: 'handler-failed',
+        outcome: 'error',
+      });
       ctx.status = 500;
       ctx.body = { error: 'Server configuration error' };
       return;
@@ -195,22 +256,20 @@ export function requireAdminAuth(): Middleware {
     // findUserForOidc returns null for non-existent or non-active users
     const user = await findUserForOidc(userId);
     if (!user) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
       ctx.status = 401;
-      ctx.body = { error: 'Invalid token', message: 'User not found or not active' };
+      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
       return;
     }
 
     // -----------------------------------------------------------------
     // Step 5: Verify user belongs to the super-admin organization
     // -----------------------------------------------------------------
-    if (user.organizationId !== superAdminOrg.id) {
-      ctx.status = 403;
-      ctx.body = {
-        error: 'Forbidden',
-        message: 'Admin access requires membership in the admin organization',
-      };
-      return;
-    }
+    if (!requireAdminOrganizationMembership(ctx, user.organizationId, superAdminOrg.id)) return;
 
     // -----------------------------------------------------------------
     // Step 6: Verify user has an admin role (any porta-* role)
@@ -223,8 +282,13 @@ export function requireAdminAuth(): Middleware {
       .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));
 
     if (adminRoleSlugs.length === 0) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'membership',
+        reasonCode: 'membership-required',
+        outcome: 'deny',
+      });
       ctx.status = 403;
-      ctx.body = { error: 'Forbidden', message: 'Admin role required' };
+      ctx.body = { error: 'Forbidden', message: 'Administrative access is not permitted' };
       return;
     }
 
@@ -243,6 +307,8 @@ export function requireAdminAuth(): Middleware {
       roles: adminRoleSlugs,
       permissions,
     } satisfies AdminUser;
+    recordSecurityReference(ctx, 'actor', userId);
+    recordSecurityReference(ctx, 'tenant', user.organizationId);
 
     await next();
   };

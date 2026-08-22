@@ -20,7 +20,7 @@ test.describe('SPA — Logout Flow', () => {
     await page.click('button:has-text("Sign out")');
 
     // 5. After signing out, Porta redirects back to the SPA
-    await page.waitForURL('**app-harness.ci.portaidentity.com:4100**', { timeout: 15_000 });
+    await page.waitForURL(`${process.env.HARNESS_APP_URL}/**`, { timeout: 15_000 });
 
     // 6. Verify logged out
     await expect(page.locator('[data-testid="status"]')).toContainText('NOT LOGGED IN', {

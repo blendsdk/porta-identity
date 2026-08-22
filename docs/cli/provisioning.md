@@ -120,12 +120,11 @@ organizations:
 
 ### Top Level
 
-| Field             | Type    | Required | Description                                                                                           |
-| ----------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------- |
-| `version`         | string  | Yes      | File format version (must be `"1.0"`)                                                                 |
-| `config`          | object  | No       | System configuration key-value overrides                                                              |
-| `allow_passwords` | boolean | No       | Enable password provisioning (default: `false`). See [Password Provisioning](#password-provisioning). |
-| `organizations`   | array   | Yes      | One or more organizations to provision                                                                |
+| Field           | Type   | Required | Description                              |
+| --------------- | ------ | -------- | ---------------------------------------- |
+| `version`       | string | Yes      | File format version (must be `"1.0"`)    |
+| `config`        | object | No       | System configuration key-value overrides |
+| `organizations` | array  | Yes      | One or more organizations to provision   |
 
 ### Organization
 
@@ -214,17 +213,16 @@ Only existing configuration keys are updated. Unknown keys are ignored for safet
 
 Users can be nested under organizations. Roles and claim values reference applications by slug.
 
-| Field            | Type    | Required | Description                                                                                               |
-| ---------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------- |
-| `email`          | string  | Yes      | User email address                                                                                        |
-| `given_name`     | string  | No       | First name                                                                                                |
-| `family_name`    | string  | No       | Last name                                                                                                 |
-| `locale`         | string  | No       | Locale code (e.g., `en`)                                                                                  |
-| `status`         | string  | No       | `active` or `inactive` (default: `active`)                                                                |
-| `email_verified` | boolean | No       | Whether email is verified (default: `false`)                                                              |
-| `password`       | string  | No       | Initial password (requires `allow_passwords: true`). See [Password Provisioning](#password-provisioning). |
-| `roles`          | array   | No       | Role assignments: `[{ app: "app-slug", role: "role-slug" }]`                                              |
-| `claims`         | array   | No       | Claim values: `[{ app: "app-slug", claim: "claim-slug", value: ... }]`                                    |
+| Field            | Type    | Required | Description                                                            |
+| ---------------- | ------- | -------- | ---------------------------------------------------------------------- |
+| `email`          | string  | Yes      | User email address                                                     |
+| `given_name`     | string  | No       | First name                                                             |
+| `family_name`    | string  | No       | Last name                                                              |
+| `locale`         | string  | No       | Locale code (e.g., `en`)                                               |
+| `status`         | string  | No       | `active` or `inactive` (default: `active`)                             |
+| `email_verified` | boolean | No       | Whether email is verified (default: `false`)                           |
+| `roles`          | array   | No       | Role assignments: `[{ app: "app-slug", role: "role-slug" }]`           |
+| `claims`         | array   | No       | Claim values: `[{ app: "app-slug", claim: "claim-slug", value: ... }]` |
 
 ### Module
 
@@ -296,42 +294,18 @@ porta app role assign-perm --app-id <app> --role admin --permission read
 porta app role assign-perm --app-id <app> --role admin --permission write
 ```
 
-## Password Provisioning
+## Authentication Material
 
-By default, provisioning files **cannot include passwords**. This is a deliberate security decision — production environments should use invitation flows or magic links instead.
-
-For **development and testing only**, you can enable password provisioning:
-
-```yaml
-version: '1.0'
-allow_passwords: true # ⚠ Development/testing only!
-
-organizations:
-  - name: Dev Org
-    slug: dev
-    users:
-      - email: admin@dev.example.com
-        given_name: Admin
-        password: 'SecureP@ss123!' # NIST SP 800-63B validated
-        email_verified: true
-        roles:
-          - app: my-app
-            role: admin
-```
-
-**Security notes:**
-
-- Passwords are validated against NIST SP 800-63B requirements (minimum 8 characters, no common patterns)
-- Passwords are hashed client-side with **Argon2id** before HTTP transport — plaintext never touches the wire or server
-- The `allow_passwords` flag is intentionally separate from the user data to make the security trade-off explicit
-- If a `password` field is present without `allow_passwords: true`, the command fails with a clear error
+Provisioning files cannot contain passwords, password hashes, client-secret values, signing keys,
+sessions, tokens, recovery codes, or TOTP secrets. New users establish authentication through the
+normal invitation, magic-link, or password-recovery flow. `allow_passwords` is no longer accepted.
 
 ## How It Works
 
 1. **Parse** — Reads the YAML/JSON file and validates against the schema
-2. **Transform** — Converts the nested structure to a flat import manifest (includes client-side password hashing if applicable)
-3. **Import** — Sends the manifest to the Admin API import endpoint, which processes entities in 12 dependency-ordered phases within a single transaction
-4. **Report** — Displays a summary of created/skipped/updated/failed entities and client credentials
+2. **Transform** — Converts the nested structure to a strict version 1.0 flat manifest
+3. **Import** — Validates the full plan and applies it in one repeatable-read transaction
+4. **Report** — Displays created/skipped/updated entities and once-only committed client credentials
 
 **Import engine processing order (single transaction):**
 
@@ -360,7 +334,9 @@ Use `--dry-run` to preview what would be created without making any changes:
 porta provision --file setup.yaml --dry-run
 ```
 
-Output shows the parsed manifest summary and validation results.
+Output shows exact planned creates, mutable updates, and skips. Confidential-client creates use a
+boolean `credentialWillBeGenerated`; dry-run never creates identifiers, secrets, audit rows, mail,
+or cache effects.
 
 ## JSON Output
 
@@ -403,12 +379,12 @@ porta provision -f examples/provision-simple.yaml --dry-run
 porta provision -f examples/provision-simple.yaml
 ```
 
-| Example                                                                                                                | What It Demonstrates                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`provision-simple.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-simple.yaml)         | **Getting started** — Single org (`acme`), one app, public SPA client + confidential API client, 2 permissions, 2 roles with permission mappings, per-client login method override                                                                                                                                                                                                                               |
-| [`provision-multi-org.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-multi-org.yaml)   | **Multi-tenancy** — Two isolated organizations (`acme`, `globex`), each with their own app, clients, permissions, and roles. Shows how tenant isolation works in provisioning                                                                                                                                                                                                                                    |
-| [`provision-enterprise.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-enterprise.yaml) | **Enterprise setup** — One org with 2 applications (ERP + Customer Portal), 10 permissions, 7 roles, 3 clients (web + native + portal), 2 custom claim definitions, and system config TTL overrides                                                                                                                                                                                                              |
-| [`provision-full.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-full.yaml)             | **Complete feature showcase** — Every provisioning feature in one file: org branding (color, company name, custom CSS), 2FA policy, login methods, 3 application modules, 3 roles with permission mappings, 7 permissions, 3 custom claims, public + confidential client with secret config (label + expiry), 3 users with passwords and role/claim assignments, system config. Requires `allow_passwords: true` |
+| Example                                                                                                                | What It Demonstrates                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`provision-simple.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-simple.yaml)         | **Getting started** — Single org (`acme`), one app, public SPA client + confidential API client, 2 permissions, 2 roles with permission mappings, per-client login method override                                                                                                      |
+| [`provision-multi-org.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-multi-org.yaml)   | **Multi-tenancy** — Two isolated organizations (`acme`, `globex`), each with their own app, clients, permissions, and roles. Shows how tenant isolation works in provisioning                                                                                                           |
+| [`provision-enterprise.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-enterprise.yaml) | **Enterprise setup** — One org with 2 applications (ERP + Customer Portal), 10 permissions, 7 roles, 3 clients (web + native + portal), 2 custom claim definitions, and system config TTL overrides                                                                                     |
+| [`provision-full.yaml`](https://github.com/blendsdk/porta-identity/blob/main/examples/provision-full.yaml)             | **Complete feature showcase** — Organization branding, 2FA policy, login methods, application modules, role mappings, permissions, claims, public and confidential clients, users, assignments, and system configuration. Users establish authentication through normal recovery flows. |
 
 ::: tip Progression path
 Start with `provision-simple.yaml` to understand the basics, then graduate to `provision-full.yaml` when you need the complete feature set. Copy any example and customize it for your environment.

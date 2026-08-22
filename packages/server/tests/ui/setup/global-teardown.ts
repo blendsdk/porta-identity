@@ -38,7 +38,12 @@ async function globalTeardown(_config: FullConfig): Promise<void> {
   // already loaded in this process from global setup
   const { disconnectDatabase } = await import('../../../src/lib/database.js');
   const { disconnectRedis } = await import('../../../src/lib/redis.js');
+  const { stopAccountRecoveryWorker } = await import('../../../src/auth/recovery-service.js');
 
+  const workerSettled = await stopAccountRecoveryWorker();
+  if (!workerSettled) {
+    throw new Error('UI recovery worker did not settle before teardown');
+  }
   await disconnectDatabase();
   await disconnectRedis();
 

@@ -5,10 +5,11 @@ vi.mock('../../../src/lib/database.js', () => ({
 }));
 
 import { getPool } from '../../../src/lib/database.js';
-import { exportData } from '../../../src/lib/data-export.js';
+import { ExportOperationError, exportData } from '../../../src/lib/data-export.js';
 
 function createMockPool() {
-  return { query: vi.fn() };
+  const client = { query: vi.fn(), release: vi.fn() };
+  return { connect: vi.fn().mockResolvedValue(client), client };
 }
 
 describe('data-export', () => {
@@ -21,9 +22,16 @@ describe('data-export', () => {
   });
 
   it('should export users as JSON', async () => {
-    mockPool.query.mockResolvedValue({
+    mockPool.client.query.mockResolvedValue({
       rows: [
-        { id: 'u1', email: 'a@b.com', status: 'active', given_name: 'Test', family_name: 'User', created_at: new Date('2026-01-01') },
+        {
+          id: 'u1',
+          email: 'a@b.com',
+          status: 'active',
+          given_name: 'Test',
+          family_name: 'User',
+          created_at: new Date('2026-01-01'),
+        },
       ],
     });
 
@@ -42,7 +50,7 @@ describe('data-export', () => {
   });
 
   it('should export users as CSV', async () => {
-    mockPool.query.mockResolvedValue({
+    mockPool.client.query.mockResolvedValue({
       rows: [
         { id: 'u1', email: 'a@b.com', status: 'active', given_name: 'Test', family_name: 'User' },
       ],
@@ -61,9 +69,15 @@ describe('data-export', () => {
   });
 
   it('should escape CSV values with commas', async () => {
-    mockPool.query.mockResolvedValue({
+    mockPool.client.query.mockResolvedValue({
       rows: [
-        { id: 'u1', email: 'a@b.com', status: 'active', given_name: 'Hello, World', family_name: 'User' },
+        {
+          id: 'u1',
+          email: 'a@b.com',
+          status: 'active',
+          given_name: 'Hello, World',
+          family_name: 'User',
+        },
       ],
     });
 
@@ -77,21 +91,19 @@ describe('data-export', () => {
   });
 
   it('should require organizationId for user export', async () => {
-    await expect(exportData({
-      entityType: 'users',
-      format: 'json',
-    })).rejects.toThrow('Organization ID required');
+    await expect(exportData({ entityType: 'users', format: 'json' })).rejects.toMatchObject({
+      code: 'export_scope_required',
+    } satisfies Partial<ExportOperationError>);
   });
 
   it('should require applicationId for roles export', async () => {
-    await expect(exportData({
-      entityType: 'roles',
-      format: 'json',
-    })).rejects.toThrow('Application ID required');
+    await expect(exportData({ entityType: 'roles', format: 'json' })).rejects.toMatchObject({
+      code: 'export_scope_required',
+    } satisfies Partial<ExportOperationError>);
   });
 
   it('should export organizations without orgId', async () => {
-    mockPool.query.mockResolvedValue({
+    mockPool.client.query.mockResolvedValue({
       rows: [{ id: 'org-1', name: 'Acme', slug: 'acme', status: 'active' }],
     });
 
@@ -104,7 +116,7 @@ describe('data-export', () => {
   });
 
   it('should use parameterized queries', async () => {
-    mockPool.query.mockResolvedValue({ rows: [] });
+    mockPool.client.query.mockResolvedValue({ rows: [] });
 
     await exportData({
       entityType: 'users',
@@ -112,13 +124,13 @@ describe('data-export', () => {
       organizationId: 'org-1',
     });
 
-    const [sql, params] = mockPool.query.mock.calls[0];
+    const [sql, params] = mockPool.client.query.mock.calls[1];
     expect(sql).toContain('$1');
     expect(params).toEqual(['org-1']);
   });
 
   it('should not include sensitive fields in user export', async () => {
-    mockPool.query.mockResolvedValue({ rows: [] });
+    mockPool.client.query.mockResolvedValue({ rows: [] });
 
     await exportData({
       entityType: 'users',
@@ -126,7 +138,7 @@ describe('data-export', () => {
       organizationId: 'org-1',
     });
 
-    const sql = mockPool.query.mock.calls[0][0] as string;
+    const sql = String(mockPool.client.query.mock.calls[1][0]);
     expect(sql.toLowerCase()).not.toContain('password');
     expect(sql.toLowerCase()).not.toContain('secret');
   });

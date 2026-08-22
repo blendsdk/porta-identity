@@ -93,16 +93,19 @@ const updateModuleSchema = z.object({
  * Handle domain errors and map them to HTTP responses.
  * Unknown errors are re-thrown for the global error handler.
  */
-function handleError(ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never }, err: unknown): never {
+function handleError(
+  ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
+  err: unknown,
+): never {
   if (err instanceof ApplicationNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'Application not found');
   }
   if (err instanceof ApplicationValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'Application request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'Application request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -190,7 +193,8 @@ export function createApplicationRouter(): Router {
       const body = updateApplicationSchema.parse(ctx.request.body);
       // Check If-Match for optimistic concurrency (optional — backward compatible)
       const current = await applicationService.getApplicationById(ctx.params.id);
-      if (current && !checkIfMatch(ctx, 'application', current.id, current.updatedAt, current)) return;
+      if (current && !checkIfMatch(ctx, 'application', current.id, current.updatedAt, current))
+        return;
       const app = await applicationService.updateApplication(ctx.params.id, body);
       setETagHeader(ctx, 'application', app.id, app.updatedAt);
       ctx.body = { data: app };
@@ -260,15 +264,19 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:id/modules/:moduleId — Update module
   // -------------------------------------------------------------------------
-  router.put('/:id/modules/:moduleId', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
-    try {
-      const body = updateModuleSchema.parse(ctx.request.body);
-      const mod = await applicationService.updateModule(ctx.params.moduleId, body);
-      ctx.body = { data: mod };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.put(
+    '/:id/modules/:moduleId',
+    requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
+    async (ctx) => {
+      try {
+        const body = updateModuleSchema.parse(ctx.request.body);
+        const mod = await applicationService.updateModule(ctx.params.moduleId, body);
+        ctx.body = { data: mod };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:id/history — Application change history
@@ -286,14 +294,18 @@ export function createApplicationRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /:id/modules/:moduleId/deactivate — Deactivate module
   // -------------------------------------------------------------------------
-  router.post('/:id/modules/:moduleId/deactivate', requirePermission(ADMIN_PERMISSIONS.APP_UPDATE), async (ctx) => {
-    try {
-      await applicationService.deactivateModule(ctx.params.moduleId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post(
+    '/:id/modules/:moduleId/deactivate',
+    requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
+    async (ctx) => {
+      try {
+        await applicationService.deactivateModule(ctx.params.moduleId);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   return router;
 }

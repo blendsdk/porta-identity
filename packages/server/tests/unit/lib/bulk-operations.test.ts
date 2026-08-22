@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
@@ -11,145 +11,216 @@ vi.mock('../../../src/lib/logger.js', () => ({
 import { getPool } from '../../../src/lib/database.js';
 import { bulkStatusChange } from '../../../src/lib/bulk-operations.js';
 
-function createMockPool() {
-  return { query: vi.fn() };
+const ORGANIZATION_ID = '00000000-0000-0000-0000-000000000001';
+
+function createMockClient() {
+  return { query: vi.fn(), release: vi.fn() };
 }
 
 describe('bulk-operations', () => {
-  let mockPool: ReturnType<typeof createMockPool>;
+  let mockClient: ReturnType<typeof createMockClient>;
+  let connect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPool = createMockPool();
-    (getPool as ReturnType<typeof vi.fn>).mockReturnValue(mockPool);
+    mockClient = createMockClient();
+    connect = vi.fn().mockResolvedValue(mockClient);
+    (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ connect });
   });
 
-  it('should return empty result for empty IDs', async () => {
-    const result = await bulkStatusChange({
-      entityType: 'organization',
-      entityIds: [],
-      action: 'suspend',
-    });
-    expect(result.total).toBe(0);
-    expect(result.succeeded).toBe(0);
-    expect(result.failed).toBe(0);
-    expect(result.results).toHaveLength(0);
+  it('should return an empty result for empty IDs', async () => {
+    await expect(
+      bulkStatusChange({ entityType: 'organization', entityIds: [], action: 'suspend' }),
+    ).resolves.toStrictEqual({ total: 0, succeeded: 0, failed: 0, results: [] });
+    expect(connect).not.toHaveBeenCalled();
   });
 
-  it('should reject more than 100 IDs', async () => {
-    const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
-    await expect(bulkStatusChange({
-      entityType: 'organization',
-      entityIds: ids,
-      action: 'suspend',
-    })).rejects.toThrow('limited to 100');
+  it('should reject request-level violations before database access', async () => {
+    await expect(
+      bulkStatusChange({
+        entityType: 'organization',
+        entityIds: Array.from({ length: 101 }, (_, index) => `id-${index}`),
+        action: 'suspend',
+      }),
+    ).rejects.toThrow('limited to 100');
+    await expect(
+      bulkStatusChange({
+        entityType: 'organization',
+        entityIds: ['duplicate', 'duplicate'],
+        action: 'suspend',
+      }),
+    ).rejects.toThrow('unique');
+    await expect(
+      bulkStatusChange({ entityType: 'user', entityIds: ['user'], action: 'suspend' }),
+    ).rejects.toThrow('Organization scope');
+    expect(connect).not.toHaveBeenCalled();
   });
 
-  it('should reject invalid action for entity type', async () => {
-    await expect(bulkStatusChange({
-      entityType: 'organization',
-      entityIds: ['id-1'],
-      action: 'lock', // orgs can't be locked
-    })).rejects.toThrow("Invalid action 'lock'");
+  it('should reject an action outside the entity catalog', async () => {
+    await expect(
+      bulkStatusChange({
+        entityType: 'organization',
+        entityIds: ['id-1'],
+        action: 'lock',
+      }),
+    ).rejects.toThrow("Invalid action 'lock'");
+    expect(connect).not.toHaveBeenCalled();
   });
 
-  it('should successfully change status of organizations', async () => {
-    mockPool.query
-      .mockResolvedValueOnce({ rows: [{ status: 'active' }] }) // SELECT
-      .mockResolvedValueOnce({ rowCount: 1 }); // UPDATE
+  it('should commit an organization transition and its audit together', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ status: 'active' }] })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({});
 
     const result = await bulkStatusChange({
       entityType: 'organization',
       entityIds: ['org-1'],
       action: 'suspend',
+      actorId: 'actor-1',
     });
 
-    expect(result.total).toBe(1);
-    expect(result.succeeded).toBe(1);
-    expect(result.results[0]).toEqual({
-      id: 'org-1',
-      success: true,
-      previousStatus: 'active',
-      newStatus: 'suspended',
+    expect(result).toStrictEqual({
+      total: 1,
+      succeeded: 1,
+      failed: 0,
+      results: [
+        {
+          id: 'org-1',
+          success: true,
+          outcome: 'succeeded',
+          code: null,
+          previousStatus: 'active',
+          newStatus: 'suspended',
+        },
+      ],
     });
+    expect(mockClient.query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/)[0])).toEqual([
+      'BEGIN',
+      'SELECT',
+      'UPDATE',
+      'INSERT',
+      'COMMIT',
+    ]);
+    expect(mockClient.release).toHaveBeenCalledOnce();
   });
 
-  it('should report not found entities', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [] }); // SELECT returns empty
+  it('should conceal missing and foreign users behind one result code', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({});
 
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-missing'],
       action: 'suspend',
+      organizationId: ORGANIZATION_ID,
     });
 
-    expect(result.failed).toBe(1);
-    expect(result.results[0].error).toContain('not found');
+    expect(result.results[0]).toMatchObject({
+      success: false,
+      outcome: 'failed',
+      code: 'not_found_or_not_authorized',
+    });
+    expect(mockClient.query.mock.calls[1][0]).toContain('organization_id = $2');
+    expect(mockClient.query.mock.calls[1][1]).toEqual(['user-missing', ORGANIZATION_ID]);
   });
 
-  it('should report invalid transition', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [{ status: 'locked' }] });
+  it('should return a closed invalid-transition result', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ status: 'locked' }] })
+      .mockResolvedValueOnce({});
 
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-1'],
-      action: 'suspend', // can't suspend from locked
+      action: 'suspend',
+      organizationId: ORGANIZATION_ID,
     });
 
-    expect(result.failed).toBe(1);
-    expect(result.results[0].error).toContain("Cannot suspend from status 'locked'");
+    expect(result.results[0]).toMatchObject({
+      success: false,
+      outcome: 'failed',
+      code: 'invalid_transition',
+      previousStatus: 'locked',
+    });
   });
 
-  it('should handle mixed success/failure in bulk', async () => {
-    // First entity: success
-    mockPool.query
+  it('should preserve mixed item ordering across isolated transactions', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ status: 'active' }] })
-      .mockResolvedValueOnce({ rowCount: 1 });
-    // Second entity: not found
-    mockPool.query.mockResolvedValueOnce({ rows: [] });
-    // Third entity: success
-    mockPool.query
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ status: 'active' }] })
-      .mockResolvedValueOnce({ rowCount: 1 });
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({});
 
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['u1', 'u2', 'u3'],
       action: 'suspend',
+      organizationId: ORGANIZATION_ID,
     });
 
-    expect(result.total).toBe(3);
-    expect(result.succeeded).toBe(2);
-    expect(result.failed).toBe(1);
+    expect(result).toMatchObject({ total: 3, succeeded: 2, failed: 1 });
+    expect(result.results.map(({ id, code }) => ({ id, code }))).toStrictEqual([
+      { id: 'u1', code: null },
+      { id: 'u2', code: 'not_found_or_not_authorized' },
+      { id: 'u3', code: null },
+    ]);
+    expect(connect).toHaveBeenCalledTimes(3);
+    expect(mockClient.release).toHaveBeenCalledTimes(3);
   });
 
-  it('should use parameterized queries (SQL injection safe)', async () => {
-    mockPool.query
+  it('should use parameterized queries for identifier and scope values', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ status: 'active' }] })
-      .mockResolvedValueOnce({ rowCount: 1 });
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({});
 
     await bulkStatusChange({
-      entityType: 'organization',
-      entityIds: ['org-1'],
+      entityType: 'user',
+      entityIds: ['user-1'],
       action: 'suspend',
+      organizationId: ORGANIZATION_ID,
     });
 
-    // SELECT query uses parameterized $1
-    const selectCall = mockPool.query.mock.calls[0];
-    expect(selectCall[0]).toContain('$1');
-    expect(selectCall[1]).toEqual(['org-1']);
+    expect(mockClient.query.mock.calls[1][0]).toContain('id = $1 AND organization_id = $2');
+    expect(mockClient.query.mock.calls[1][1]).toEqual(['user-1', ORGANIZATION_ID]);
   });
 
-  it('should handle database errors gracefully', async () => {
-    mockPool.query.mockRejectedValueOnce(new Error('connection lost'));
+  it('should stop after a dependency error without returning the raw error', async () => {
+    mockClient.query
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('connection details must not escape'))
+      .mockResolvedValueOnce({});
 
     const result = await bulkStatusChange({
       entityType: 'user',
-      entityIds: ['u1'],
+      entityIds: ['u1', 'u2'],
       action: 'deactivate',
+      organizationId: ORGANIZATION_ID,
     });
 
-    expect(result.failed).toBe(1);
-    expect(result.results[0].error).toBe('connection lost');
+    expect(result.correlationId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(result.results.map((item) => item.code)).toStrictEqual([
+      'not_attempted',
+      'not_attempted',
+    ]);
+    expect(JSON.stringify(result)).not.toContain('connection details');
+    expect(connect).toHaveBeenCalledOnce();
   });
 });

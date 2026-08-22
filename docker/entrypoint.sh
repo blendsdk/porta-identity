@@ -69,7 +69,7 @@ fi
 # Optional: Auto-run database migrations
 if [ "$AUTO_MIGRATE" = "true" ]; then
   echo "🔄 Running database migrations..."
-  node dist/cli/index.js migrate up
+  env -u NODE_V8_COVERAGE node dist/cli/index.js migrate up
   echo "✅ Migrations complete"
 fi
 

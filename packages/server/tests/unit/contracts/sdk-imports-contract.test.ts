@@ -22,8 +22,7 @@ describe('SDK↔Server contract: Imports', () => {
   describe('ImportManifest request shape', () => {
     it('SDK ImportManifest passes server Zod validation', () => {
       const manifest = {
-        version: '1',
-        mode: 'merge',
+        version: '1.0',
         organizations: [
           {
             name: 'Test Org',

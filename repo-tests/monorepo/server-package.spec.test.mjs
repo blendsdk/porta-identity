@@ -176,6 +176,11 @@ test('should identify the server package and its executable entry points', () =>
     'node dist/index.js',
     'server start script must run the compiled server entry point',
   );
+  assert.equal(
+    serverManifest.scripts?.['test:all'],
+    'yarn test:unit && yarn test:integration && yarn test:e2e && yarn test:pentest',
+    'service-backed server suites must run in separate processes so project teardown completes before the next shared-infrastructure owner starts',
+  );
 });
 
 // Published server contents include the compiled program and every runtime asset it needs.
@@ -349,7 +354,7 @@ test('should retain every behavioral and harness test file', () => {
       paths: ['unit', 'integration', 'e2e', 'pentest'].flatMap((suite) =>
         findPhysicalFiles(`packages/server/tests/${suite}`, /(?:\.test|\.spec)\.ts$/),
       ),
-      expectedCount: 225,
+      expectedCount: 252,
     },
     {
       label: 'server browser UI tests',

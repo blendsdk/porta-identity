@@ -5,6 +5,19 @@ import test from 'node:test';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const supportedScripts = [
+  'assurance:all',
+  'assurance:baseline',
+  'assurance:compat',
+  'assurance:control-check',
+  'assurance:coverage',
+  'assurance:fault',
+  'assurance:harness',
+  'assurance:mutation',
+  'assurance:red',
+  'assurance:report',
+  'assurance:stability',
+  'assurance:test',
+  'assurance:validate',
   'build',
   'cli',
   'deps:check',
@@ -142,13 +155,19 @@ test('should start development and production server entry points directly', () 
   );
 });
 
-// Aggregate tasks remain thin Turbo entry points and verification keeps structure checks first.
-test('should delegate aggregate build, typecheck, lint, test, and verify tasks to Turbo', () => {
+// Package tasks remain Turbo-owned while root static checks also cover the non-workspace harness.
+test('should keep package tasks in Turbo and root-own retained-harness static checks', () => {
   const scripts = readRootManifest().scripts ?? {};
 
-  for (const turboTask of ['build', 'typecheck', 'lint', 'lint:fix', 'test']) {
+  for (const turboTask of ['build', 'test']) {
     assertScriptEquals(scripts, turboTask, `turbo run ${turboTask}`);
   }
+  assert.match(scripts.typecheck ?? '', /test-harness\/tsconfig\.assurance\.json/);
+  assert.match(scripts.typecheck ?? '', /turbo run typecheck/);
+  assert.match(scripts.lint ?? '', /test-harness\/eslint\.config\.js/);
+  assert.match(scripts.lint ?? '', /turbo run lint/);
+  assert.match(scripts['lint:fix'] ?? '', /test-harness\/eslint\.config\.js/);
+  assert.match(scripts['lint:fix'] ?? '', /turbo run lint:fix/);
   assertScriptEquals(scripts, 'test:structure', 'node --test repo-tests/monorepo/*.test.mjs');
   assertScriptEquals(scripts, 'verify', 'yarn test:structure && turbo run verify');
   assertScriptEquals(scripts, 'format', 'prettier --write .');

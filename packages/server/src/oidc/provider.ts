@@ -20,6 +20,7 @@ import { buildProviderConfiguration } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
+import { registerProtocolSecurityObservers } from './protocol-security-observer.js';
 
 /**
  * Create and configure the node-oidc-provider instance.
@@ -53,14 +54,14 @@ export async function createOidcProvider(params: {
     clientBasedCORS: oidcCors,
     // Interaction URL builder.
     // Also stores the auth-flow org ID in Redis so interaction handlers
-    // can resolve the correct tenant (the URL slug is stripped before
-    // the provider sees it, so returnTo doesn't contain the org slug).
+    // can recover the validated client tenant after the URL slug is stripped.
     interactionUrl: (ctx, interaction) => {
       // ctx here is the provider's internal Koa context, NOT the outer app's.
       // The org is passed via req._portaOrganization (set in server.ts).
       type PortaReq = { _portaOrganization?: { id: string } };
       type InternalCtx = { req?: PortaReq; request?: { req?: PortaReq } };
-      const req = (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
+      const req =
+        (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
       const org = req?._portaOrganization;
       if (org?.id && interaction?.uid) {
         getRedis()
@@ -75,6 +76,7 @@ export async function createOidcProvider(params: {
   // The actual per-org issuer is resolved dynamically via URL rewriting
   // in the Koa router (server.ts strips the /:orgSlug prefix).
   const provider = new Provider(config.issuerBaseUrl, configuration);
+  registerProtocolSecurityObservers(provider);
 
   // Enable proxy mode — required for path-based multi-tenancy so the
   // provider trusts forwarded headers and handles URL rewriting correctly.

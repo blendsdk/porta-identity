@@ -13,6 +13,7 @@ Porta integrates with several external systems and libraries. This document desc
 ### Purpose
 
 Primary persistent data store for all Porta data:
+
 - Organization, application, client, user records
 - RBAC roles, permissions, and assignments
 - Custom claim definitions and values
@@ -25,11 +26,11 @@ Primary persistent data store for all Porta data:
 
 ### Connection
 
-| Parameter | Source | Description |
-|-----------|--------|-------------|
-| Connection string | `DATABASE_URL` env var | Full PostgreSQL connection URL |
-| Driver | `pg` (node-postgres) | Native PostgreSQL client |
-| Pool size | Default (pg default: 10) | Connection pool managed by `pg.Pool` |
+| Parameter         | Source                   | Description                          |
+| ----------------- | ------------------------ | ------------------------------------ |
+| Connection string | `DATABASE_URL` env var   | Full PostgreSQL connection URL       |
+| Driver            | `pg` (node-postgres)     | Native PostgreSQL client             |
+| Pool size         | Default (pg default: 10) | Connection pool managed by `pg.Pool` |
 
 **Connection module**: `packages/server/src/lib/database.ts`
 
@@ -46,17 +47,16 @@ All queries use **parameterized SQL** — no raw string interpolation:
 
 ```typescript
 // Standard CRUD
-await pool.query(
-  'INSERT INTO organizations (id, name, slug, status) VALUES ($1, $2, $3, $4)',
-  [id, name, slug, 'active']
-);
+await pool.query('INSERT INTO organizations (id, name, slug, status) VALUES ($1, $2, $3, $4)', [
+  id,
+  name,
+  slug,
+  'active',
+]);
 
 // Dynamic UPDATE (service layer builds SET clause safely)
 const setClauses = ['name = $2', 'updated_at = NOW()'];
-await pool.query(
-  `UPDATE organizations SET ${setClauses.join(', ')} WHERE id = $1`,
-  [id, name]
-);
+await pool.query(`UPDATE organizations SET ${setClauses.join(', ')} WHERE id = $1`, [id, name]);
 
 // Cursor-based pagination
 await pool.query(
@@ -64,16 +64,16 @@ await pool.query(
    WHERE (name, id) > ($1, $2) 
    ORDER BY name ASC, id ASC 
    LIMIT $3`,
-  [lastValue, lastId, limit]
+  [lastValue, lastId, limit],
 );
 ```
 
 ### Extensions
 
-| Extension | Migration | Purpose |
-|-----------|-----------|---------|
-| `pgcrypto` | 001 | `gen_random_uuid()` for UUID primary keys |
-| `citext` | 001 | Case-insensitive text for emails and slugs |
+| Extension  | Migration | Purpose                                    |
+| ---------- | --------- | ------------------------------------------ |
+| `pgcrypto` | 001       | `gen_random_uuid()` for UUID primary keys  |
+| `citext`   | 001       | Case-insensitive text for emails and slugs |
 
 ### Connection Lifecycle
 
@@ -94,6 +94,7 @@ await pool.query(
 ### Purpose
 
 In-memory data store for performance-sensitive and ephemeral data:
+
 - **OIDC sessions** — Short-lived artifacts (Session, Interaction, AuthorizationCode, etc.)
 - **Tenant cache** — Organization lookup by slug/ID
 - **Entity cache** — User, client, role, permission lookups
@@ -102,11 +103,11 @@ In-memory data store for performance-sensitive and ephemeral data:
 
 ### Connection
 
-| Parameter | Source | Description |
-|-----------|--------|-------------|
-| Connection string | `REDIS_URL` env var | Full Redis connection URL |
-| Driver | `ioredis` | Full-featured Redis client |
-| Reconnection | Auto-reconnect | Built-in exponential backoff |
+| Parameter         | Source              | Description                  |
+| ----------------- | ------------------- | ---------------------------- |
+| Connection string | `REDIS_URL` env var | Full Redis connection URL    |
+| Driver            | `ioredis`           | Full-featured Redis client   |
+| Reconnection      | Auto-reconnect      | Built-in exponential backoff |
 
 **Connection module**: `packages/server/src/lib/redis.ts`
 
@@ -157,6 +158,7 @@ Sliding window implementation using Redis `INCR` and `EXPIRE`.
 ### Data Persistence
 
 Redis data is **ephemeral** — no persistence configuration needed:
+
 - Cache data rebuilds from PostgreSQL on miss
 - OIDC sessions have natural TTLs
 - Rate limit counters expire automatically
@@ -174,6 +176,7 @@ Redis data is **ephemeral** — no persistence configuration needed:
 ### Purpose
 
 Email delivery for authentication workflows:
+
 - **Magic link** emails (passwordless login)
 - **Password reset** emails
 - **User invitation** emails
@@ -181,14 +184,14 @@ Email delivery for authentication workflows:
 
 ### Connection
 
-| Parameter | Source | Description |
-|-----------|--------|-------------|
-| Host | `SMTP_HOST` env var | SMTP server hostname |
-| Port | `SMTP_PORT` env var (default: 587) | SMTP server port |
-| Username | `SMTP_USER` env var (optional) | SMTP auth username |
-| Password | `SMTP_PASS` env var (optional) | SMTP auth password |
-| From | `SMTP_FROM` env var | Sender email address |
-| Driver | Nodemailer | Standard Node.js SMTP transport |
+| Parameter | Source                             | Description                     |
+| --------- | ---------------------------------- | ------------------------------- |
+| Host      | `SMTP_HOST` env var                | SMTP server hostname            |
+| Port      | `SMTP_PORT` env var (default: 587) | SMTP server port                |
+| Username  | `SMTP_USER` env var (optional)     | SMTP auth username              |
+| Password  | `SMTP_PASS` env var (optional)     | SMTP auth password              |
+| From      | `SMTP_FROM` env var                | Sender email address            |
+| Driver    | Nodemailer                         | Standard Node.js SMTP transport |
 
 **Module**: `packages/server/src/auth/email-transport.ts` (transport abstraction), `packages/server/src/auth/email-service.ts` (high-level API)
 
@@ -196,16 +199,24 @@ Email delivery for authentication workflows:
 
 ```mermaid
 graph LR
-    SVC[Service Layer] --> RENDER[Email Renderer<br/>Handlebars templates]
+    REQ[Public Recovery Route] --> OUTBOX[PostgreSQL Recovery Job]
+    OUTBOX --> WORKER[Bounded Recovery Worker]
+    WORKER --> RENDER[Email Renderer<br/>Handlebars templates]
     RENDER --> I18N[i18n Translation<br/>Locale-aware]
     I18N --> TRANSPORT[Email Transport<br/>Nodemailer SMTP]
     TRANSPORT --> SMTP[SMTP Server]
 ```
 
-1. **Service** triggers email (e.g., magic link requested)
-2. **Renderer** (`packages/server/src/auth/email-renderer.ts`) renders Handlebars template with i18n
-3. **Transport** (`packages/server/src/auth/email-transport.ts`) sends via Nodemailer
-4. **SMTP server** delivers the email
+1. **Public route** inserts protected, tenant-bound recovery work and returns a generic response.
+2. **Worker** resolves the eligible account and creates or reuses the job-owned token artifact.
+3. **Renderer** (`packages/server/src/auth/email-renderer.ts`) renders the localized Handlebars template.
+4. **Transport** (`packages/server/src/auth/email-transport.ts`) sends via Nodemailer.
+5. **SMTP server** delivers the email.
+
+Magic-link and password-reset delivery use this durable path. Invitations and other transactional
+messages continue to call the email service directly. Recovery delivery is at-least-once after an
+ambiguous SMTP outcome: a retry sends the same link, while the database retains only one active
+artifact for the job.
 
 ### Templates
 
@@ -214,6 +225,7 @@ Email templates live in `packages/server/templates/default/` with locale-specifi
 ### Development
 
 In development, MailHog captures all emails:
+
 - SMTP: `localhost:1025`
 - Web UI: `http://localhost:8025` (view captured emails in browser)
 
@@ -222,6 +234,7 @@ In development, MailHog captures all emails:
 ### Purpose
 
 OpenID Connect protocol engine — handles all OIDC-compliant authentication flows:
+
 - Authorization Code (with PKCE)
 - Client Credentials
 - Refresh Token
@@ -256,32 +269,32 @@ graph TB
 
 The OIDC provider is configured in `packages/server/src/oidc/configuration.ts`:
 
-| Feature | Configuration |
-|---------|--------------|
-| **Signing algorithm** | ES256 (ECDSA P-256) only |
-| **PKCE** | Enforced for public clients (S256 method) |
-| **Scopes** | `openid`, `profile`, `email`, `offline_access` + custom |
-| **Claims** | Standard OIDC claims + RBAC roles + custom claims |
-| **Grant types** | `authorization_code`, `refresh_token`, `client_credentials` |
-| **Token format** | JWT (signed with ES256) |
-| **Interactions** | Custom login/consent pages |
-| **TTLs** | Loaded from `system_config` table at startup |
+| Feature               | Configuration                                               |
+| --------------------- | ----------------------------------------------------------- |
+| **Signing algorithm** | ES256 (ECDSA P-256) only                                    |
+| **PKCE**              | Enforced for public clients (S256 method)                   |
+| **Scopes**            | `openid`, `profile`, `email`, `offline_access` + custom     |
+| **Claims**            | Standard OIDC claims + RBAC roles + custom claims           |
+| **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials` |
+| **Token format**      | JWT (signed with ES256)                                     |
+| **Interactions**      | Custom login/consent pages                                  |
+| **TTLs**              | Loaded from `system_config` table at startup                |
 
 ### Adapter Strategy
 
 The adapter factory (`packages/server/src/oidc/adapter-factory.ts`) routes OIDC models to the appropriate storage backend:
 
-| Model | Adapter | Storage |
-|-------|---------|---------|
-| Session | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| Interaction | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| AuthorizationCode | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| ReplayDetection | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| ClientCredentials | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| PushedAuthorizationRequest | Redis | `packages/server/src/oidc/redis-adapter.ts` |
-| AccessToken | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
-| RefreshToken | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
-| Grant | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| Model                      | Adapter    | Storage                                        |
+| -------------------------- | ---------- | ---------------------------------------------- |
+| Session                    | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| Interaction                | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| AuthorizationCode          | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| ReplayDetection            | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| ClientCredentials          | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| PushedAuthorizationRequest | Redis      | `packages/server/src/oidc/redis-adapter.ts`    |
+| AccessToken                | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| RefreshToken               | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| Grant                      | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
 
 ### Client Discovery
 

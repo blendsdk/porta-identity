@@ -26,18 +26,26 @@ import Router from '@koa/router';
 import type { Context } from 'koa';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidToken, markTokenUsed } from '../auth/token-repository.js';
+import { consumeAuthorizedMagicLink } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { generateCsrfToken } from '../auth/csrf.js';
-import { getUserById, recordLogin, markEmailVerified } from '../users/service.js';
-import {
-  createMagicLinkSession,
-} from '../auth/magic-link-session.js';
+import { invalidateUserCache } from '../users/cache.js';
+import { createMagicLinkSession } from '../auth/magic-link-session.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
+import {
+  createInteractionAuthorityResolver,
+  type InteractionAuthorityProvider,
+} from '../auth/interaction-authority.js';
+import {
+  buildMagicLinkCallbackRateLimitKey,
+  checkRateLimitStrict,
+  loadMagicLinkRateLimitConfig,
+} from '../auth/rate-limiter.js';
+import { magicLinkCallbackArtifactDigest } from '../auth/recovery-crypto.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +58,25 @@ interface AuthContext extends Context {
     [key: string]: unknown;
   };
 }
+
+/** Parsed interaction query whose validity is kept separate from standalone authority. */
+interface PresentedInteraction {
+  /** Whether the query can participate in an authority decision. */
+  readonly valid: boolean;
+  /** Exact supplied identifier, or null only when the query was absent. */
+  readonly value: string | null;
+}
+
+/** Dependency boundary for the security-critical callback limit. */
+export interface MagicLinkRouteDependencies {
+  /** Fail-closed counter used before live authority and artifact lookup. */
+  readonly checkCallbackRateLimit: typeof checkRateLimitStrict;
+}
+
+/** Production dependencies used unless a test owns an explicit failure boundary. */
+const DEFAULT_MAGIC_LINK_ROUTE_DEPENDENCIES: MagicLinkRouteDependencies = {
+  checkCallbackRateLimit: checkRateLimitStrict,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -71,6 +98,20 @@ function buildBrandingFromOrg(org: Organization) {
   };
 }
 
+/**
+ * Parse the optional interaction query without normalizing malformed input into standalone use.
+ *
+ * @param value - Raw Koa query value.
+ * @returns Exact bounded interaction authority and a fail-closed validity discriminator.
+ */
+function parsePresentedInteraction(value: unknown): PresentedInteraction {
+  if (value === undefined) return { valid: true, value: null };
+  if (typeof value !== 'string' || value.length < 1 || value.length > 128) {
+    return { valid: false, value: null };
+  }
+  return { valid: true, value };
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -78,14 +119,19 @@ function buildBrandingFromOrg(org: Organization) {
 /**
  * Create the magic link auth router.
  *
- * Handles magic link token verification at /:orgSlug/auth/magic-link/:token.
- * No longer requires a Provider instance — authentication is completed via
- * the `_ml_session` cookie and the interaction login handler.
+ * Handles magic link token verification at /:orgSlug/auth/magic-link/:token. Interaction-bound
+ * callbacks resolve their current client through the provider before durable authority is used.
  *
+ * @param provider - Provider-owned live interaction model. Omit only for standalone callbacks.
+ * @param dependencies - Fail-closed callback-limiter boundary.
  * @returns Koa router with magic link routes
  */
-export function createMagicLinkRouter(): Router {
+export function createMagicLinkRouter(
+  provider?: InteractionAuthorityProvider,
+  dependencies: MagicLinkRouteDependencies = DEFAULT_MAGIC_LINK_ROUTE_DEPENDENCIES,
+): Router {
   const router = new Router();
+  const interactionAuthority = provider ? createInteractionAuthorityResolver(provider) : null;
 
   // Tenant resolver — resolves orgSlug to organization and sets ctx.state.organization.
   // Applied at route level because this router is mounted directly on the Koa app
@@ -94,7 +140,7 @@ export function createMagicLinkRouter(): Router {
 
   // GET /:orgSlug/auth/magic-link/:token — Verify magic link
   router.get('/:orgSlug/auth/magic-link/:token', resolve, async (ctx) => {
-    await verifyMagicLink(ctx as AuthContext);
+    await verifyMagicLink(ctx as AuthContext, interactionAuthority, dependencies);
   });
 
   return router;
@@ -108,13 +154,10 @@ export function createMagicLinkRouter(): Router {
  * Verify a magic link token and set up the `_ml_session` for flow completion.
  *
  * 1. Hashes the token from URL params for DB lookup
- * 2. Finds the valid (unused, non-expired) token record
+ * 2. Locks and validates the token, route tenant, account, and persisted interaction authority
  * 3. If invalid/expired: renders error page with "link expired" message
  * 4. If valid:
- *    a. Marks the token as used (single-use)
- *    b. Marks the user's email as verified
- *    c. Records the login (increments login count)
- *    d. Writes audit log for magic link login
+ *    a. Atomically consumes the token, updates the user, and writes the successful audit row
  *    e. Creates `_ml_session` in Redis (5-min TTL, single-use)
  *    f. Redirects to `/interaction/{uid}` where the interaction handler
  *       detects the session cookie and completes the OIDC flow (same
@@ -123,10 +166,14 @@ export function createMagicLinkRouter(): Router {
  *
  * @param ctx - Koa context with organization state
  */
-async function verifyMagicLink(ctx: AuthContext): Promise<void> {
+async function verifyMagicLink(
+  ctx: AuthContext,
+  interactionAuthority: ReturnType<typeof createInteractionAuthorityResolver> | null,
+  dependencies: MagicLinkRouteDependencies,
+): Promise<void> {
   const org = ctx.state.organization;
   const tokenPlaintext = ctx.params.token;
-  const interactionUid = (ctx.query.interaction as string) ?? '';
+  const presentedInteraction = parsePresentedInteraction(ctx.query.interaction);
 
   // Resolve locale for error pages
   const locale = await resolveLocale(
@@ -140,85 +187,89 @@ async function verifyMagicLink(ctx: AuthContext): Promise<void> {
     // Step 1: Hash the token for DB lookup
     const tokenHash = hashToken(tokenPlaintext);
 
-    // Step 2: Find valid token
-    const tokenRecord = await findValidToken('magic_link_tokens', tokenHash);
-
-    if (!tokenRecord) {
-      // Token is invalid, expired, or already used
-      writeAuditLog({
-        organizationId: org.id,
-        eventType: 'user.magic_link.failed',
-        eventCategory: 'security',
-        description: 'Magic link verification failed: invalid or expired token',
-        ipAddress: ctx.ip,
-      });
-
-      await renderErrorPageForAuth(ctx, org, locale, t, t('errors.magic_link_expired'));
+    const socketPeer = ctx.req.socket.remoteAddress ?? 'unavailable';
+    const rateLimitKey = buildMagicLinkCallbackRateLimitKey(
+      org.id,
+      socketPeer,
+      magicLinkCallbackArtifactDigest(tokenPlaintext),
+    );
+    const rateLimit = await dependencies.checkCallbackRateLimit(
+      rateLimitKey,
+      await loadMagicLinkRateLimitConfig(),
+    );
+    if (!rateLimit.allowed) {
+      await rejectMagicLink(ctx, org, locale, t);
       return;
     }
 
-    // Step 3: Verify the user still exists and is active
-    const user = await getUserById(tokenRecord.userId);
+    const liveAuthority =
+      presentedInteraction.valid && presentedInteraction.value !== null && interactionAuthority
+        ? await interactionAuthority.resolve(presentedInteraction.value)
+        : null;
+    const interactionAccepted =
+      presentedInteraction.valid &&
+      (presentedInteraction.value === null ||
+        (liveAuthority !== null && liveAuthority.interactionUid === presentedInteraction.value));
 
-    if (!user || user.status !== 'active') {
-      writeAuditLog({
-        organizationId: org.id,
-        userId: tokenRecord.userId,
-        eventType: 'user.magic_link.failed',
-        eventCategory: 'security',
-        description: 'Magic link verification failed: user not found or inactive',
-        ipAddress: ctx.ip,
-      });
+    // Step 2: Lock and validate all durable authority before any successful mutation.
+    const authority = interactionAccepted
+      ? await consumeAuthorizedMagicLink({
+          tokenHash,
+          organizationId: org.id,
+          interactionUid: presentedInteraction.value,
+          clientId: liveAuthority?.clientId ?? null,
+          ipAddress: ctx.ip,
+        })
+      : null;
 
-      await renderErrorPageForAuth(ctx, org, locale, t, t('errors.magic_link_expired'));
+    if (!authority) {
+      await rejectMagicLink(ctx, org, locale, t);
       return;
     }
 
-    // Step 4: Mark token as used (single-use)
-    await markTokenUsed('magic_link_tokens', tokenRecord.id);
-
-    // Step 5: Mark email as verified (clicking magic link proves email ownership)
-    await markEmailVerified(user.id);
-
-    // Step 6: Record login
-    await recordLogin(user.id);
-
-    // Step 7: Audit log
-    writeAuditLog({
-      organizationId: org.id,
-      userId: user.id,
-      eventType: 'user.login.magic_link',
-      eventCategory: 'authentication',
-      description: `Magic link login successful (${user.email})`,
-      ipAddress: ctx.ip,
-    });
+    // The durable transaction has committed. Remove any stale cached account representation.
+    await invalidateUserCache(authority.userId);
 
     // Step 8: Complete the OIDC flow via _ml_session cookie.
     //
     // Create a magic link session and redirect to the interaction handler.
     // The interaction handler will detect the session cookie and complete
     // the OIDC flow (same browser) or show a success page (different browser).
-    if (interactionUid) {
+    if (authority.interactionUid) {
       await createMagicLinkSession(ctx, {
-        userId: user.id,
-        interactionUid,
+        userId: authority.userId,
+        interactionUid: authority.interactionUid,
         organizationId: org.id,
       });
-      ctx.redirect(`/interaction/${interactionUid}`);
+      ctx.redirect(`/interaction/${authority.interactionUid}`);
       return;
     }
 
     // No interaction UID — magic link opened outside an OIDC flow.
     // Show the magic link success page (standalone authentication confirmation).
-    logger.info(
-      { userId: user.id },
-      'Magic link verified without interaction UID — showing success page',
-    );
+    logger.info({ event: 'magic-link-standalone-completed' }, 'Magic link verification completed');
     await renderSuccessPageForAuth(ctx, org, locale, t);
-  } catch (error) {
-    logger.error({ error }, 'Failed to verify magic link');
+  } catch {
+    logger.error({ event: 'magic-link-verification-failed' }, 'Magic link verification failed');
     await renderErrorPageForAuth(ctx, org, locale, t, t('errors.generic'));
   }
+}
+
+/** Render and audit the one generic callback rejection without retaining bearer authority. */
+async function rejectMagicLink(
+  ctx: AuthContext,
+  org: Organization,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): Promise<void> {
+  writeAuditLog({
+    organizationId: org.id,
+    eventType: 'user.magic_link.failed',
+    eventCategory: 'security',
+    description: 'Magic link verification failed: invalid or expired token',
+    ipAddress: ctx.ip,
+  });
+  await renderErrorPageForAuth(ctx, org, locale, t, t('errors.magic_link_expired'));
 }
 
 // ---------------------------------------------------------------------------
@@ -258,8 +309,8 @@ async function renderSuccessPageForAuth(
     ctx.status = 200;
     ctx.type = 'text/html';
     ctx.body = html;
-  } catch (renderError) {
-    logger.error({ renderError }, 'Failed to render magic link success page');
+  } catch {
+    logger.error({ event: 'magic-link-success-render-failed' }, 'Magic link success page failed');
     ctx.status = 200;
     ctx.body = 'Your email has been verified. You may close this tab.';
   }
@@ -300,8 +351,8 @@ async function renderErrorPageForAuth(
     ctx.status = 400;
     ctx.type = 'text/html';
     ctx.body = html;
-  } catch (renderError) {
-    logger.error({ renderError }, 'Failed to render auth error page');
+  } catch {
+    logger.error({ event: 'auth-error-render-failed' }, 'Authentication error page failed');
     ctx.status = 500;
     ctx.body = 'An error occurred';
   }

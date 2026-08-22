@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+const appUrl = process.env.HARNESS_APP_URL ?? 'https://app-harness.ci.portaidentity.com:4100';
+const bffUrl = process.env.HARNESS_BFF_URL ?? 'http://app-harness.ci.portaidentity.com:4101';
+
 export default defineConfig({
   globalSetup: './tests/global-setup.ts',
   testDir: './tests',
@@ -9,7 +12,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'https://app-harness.ci.portaidentity.com:4100',
+    baseURL: appUrl,
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
@@ -21,12 +24,24 @@ export default defineConfig({
     {
       name: 'spa',
       testMatch: /spa-.*\.spec\.ts/,
-      use: { baseURL: 'https://app-harness.ci.portaidentity.com:4100' },
+      use: { baseURL: appUrl },
     },
     {
       name: 'bff',
       testMatch: /bff-.*\.spec\.ts/,
-      use: { baseURL: 'http://app-harness.ci.portaidentity.com:4101' },
+      use: { baseURL: bffUrl },
+    },
+    {
+      name: 'protocol',
+      testMatch: /protocol\/.+\.spec\.test\.ts/,
+    },
+    {
+      name: 'security',
+      testMatch: /security\/.+\.spec\.test\.ts/,
+    },
+    {
+      name: 'compatibility',
+      testMatch: /compatibility\/.+\.spec\.test\.ts/,
     },
   ],
   // No webServer — harness must be started separately via start.sh

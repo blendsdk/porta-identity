@@ -14,10 +14,7 @@
 #   porta provision --file examples/provision-full.yaml --dry-run
 #   porta provision --file examples/provision-full.yaml --mode overwrite
 
-version: "1.0"
-
-# Required when provisioning users with passwords (dev/test only)
-allow_passwords: true
+version: '1.0'
 
 organizations:
   - name: Full Demo Corp
@@ -29,8 +26,8 @@ organizations:
     two_factor_policy: optional
 
     branding:
-      primary_color: "#2563eb"
-      company_name: "Full Demo Corp"
+      primary_color: '#2563eb'
+      company_name: 'Full Demo Corp'
       custom_css: |
         .login-container {
           max-width: 420px;
@@ -157,7 +154,6 @@ organizations:
       - email: admin@full-demo.local
         given_name: Alice
         family_name: Admin
-        password: "DemoAdmin123!"
         email_verified: true
         status: active
         roles:
@@ -177,7 +173,6 @@ organizations:
       - email: manager@full-demo.local
         given_name: Bob
         family_name: Manager
-        password: "DemoManager456!"
         email_verified: true
         status: active
         roles:
@@ -197,7 +192,6 @@ organizations:
       - email: viewer@full-demo.local
         given_name: Carol
         family_name: Viewer
-        password: "DemoViewer789!"
         email_verified: true
         status: active
         roles:

@@ -23,7 +23,12 @@ export {
   deleteExpiredTokens,
   invalidateUserTokens,
 } from './token-repository.js';
-export type { TokenTable, TokenRecord, InvitationTokenRecord } from './token-repository.js';
+export type {
+  TokenTable,
+  GenericInsertTokenTable,
+  TokenRecord,
+  InvitationTokenRecord,
+} from './token-repository.js';
 
 // CSRF protection
 export { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from './csrf.js';
@@ -31,9 +36,11 @@ export { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } 
 // Rate limiting
 export {
   checkRateLimit,
+  checkRateLimitStrict,
   resetRateLimit,
   buildLoginRateLimitKey,
   buildMagicLinkRateLimitKey,
+  buildMagicLinkCallbackRateLimitKey,
   buildPasswordResetRateLimitKey,
   loadLoginRateLimitConfig,
   loadMagicLinkRateLimitConfig,
@@ -61,7 +68,12 @@ export {
 export type { EmailUser, EmailOrganization, InvitationEmailOptions } from './email-service.js';
 
 // i18n
-export { initI18n, resolveLocale, getTranslationFunction, registerHandlebarsI18nHelper } from './i18n.js';
+export {
+  initI18n,
+  resolveLocale,
+  getTranslationFunction,
+  registerHandlebarsI18nHelper,
+} from './i18n.js';
 
 // Template engine
 export { initTemplateEngine, renderPage } from './template-engine.js';

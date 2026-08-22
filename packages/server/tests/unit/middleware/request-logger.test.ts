@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { requestLogger } from '../../../src/middleware/request-logger.js';
+import { requestLogger, sanitizeRequestPath } from '../../../src/middleware/request-logger.js';
 
 // Mock the logger
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -15,8 +15,10 @@ vi.mock('../../../src/lib/logger.js', () => ({
 function createMockContext(overrides = {}): Record<string, unknown> {
   const headers: Record<string, string> = {};
   return {
+    req: {},
     status: 200,
     method: 'GET',
+    path: '/test',
     url: '/test',
     state: {},
     set: vi.fn((key: string, value: string) => {
@@ -28,6 +30,19 @@ function createMockContext(overrides = {}): Record<string, unknown> {
 }
 
 describe('requestLogger middleware', () => {
+  it.each([
+    ['/tenant/auth/magic-link/plaintext-artifact', '/:organization/auth/magic-link/:artifact'],
+    ['/tenant/auth/magic-link/plaintext-artifact/', '/:organization/auth/magic-link/:artifact/'],
+    [
+      '/tenant/auth/magic-link/plaintext-artifact/unmatched',
+      '/:organization/auth/magic-link/:artifact/unmatched',
+    ],
+    ['/interaction/private-interaction', '/interaction/:interaction'],
+    ['/interaction/private-interaction/consent', '/interaction/:interaction/consent'],
+  ])('sanitizes protected path %s', (path, expected) => {
+    expect(sanitizeRequestPath(path)).toBe(expected);
+  });
+
   it('sets X-Request-Id header', async () => {
     const middleware = requestLogger();
     const ctx = createMockContext();
@@ -73,11 +88,16 @@ describe('requestLogger middleware', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('logs request info with method, url, status, and duration', async () => {
+  it('logs request info with method, normalized route, status, and duration', async () => {
     const { logger } = await import('../../../src/lib/logger.js');
     vi.mocked(logger.info).mockClear();
     const middleware = requestLogger();
-    const ctx = createMockContext({ method: 'POST', url: '/api/test', status: 201 });
+    const ctx = createMockContext({
+      method: 'POST',
+      path: '/api/test',
+      url: '/api/test?ignored=value',
+      status: 201,
+    });
     const next = vi.fn().mockResolvedValue(undefined);
 
     await middleware(ctx as never, next);
@@ -86,11 +106,11 @@ describe('requestLogger middleware', () => {
       expect.objectContaining({
         requestId: expect.any(String),
         method: 'POST',
-        url: '/api/test',
+        routeTemplate: '/unmatched',
         status: 201,
         duration: expect.any(Number),
       }),
-      expect.stringContaining('POST /api/test'),
+      'HTTP request completed',
     );
   });
 });

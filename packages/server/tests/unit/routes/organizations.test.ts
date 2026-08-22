@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Organization } from '../../../src/organizations/types.js';
-import { OrganizationNotFoundError, OrganizationValidationError } from '../../../src/organizations/errors.js';
+import {
+  OrganizationNotFoundError,
+  OrganizationValidationError,
+} from '../../../src/organizations/errors.js';
 
 // Mock all dependencies before importing the module under test
 vi.mock('../../../src/organizations/service.js', () => ({
@@ -60,11 +63,13 @@ function createTestOrg(overrides: Partial<Organization> = {}): Organization {
  * Create a minimal mock Koa context for route testing.
  * Simulates what Koa provides to route handlers.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -72,10 +77,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -126,12 +139,13 @@ describe('organization routes', () => {
       await layer!.stack[layer!.stack.length - 1](ctx as never, next);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Organization request is invalid');
     });
 
     it('should return 400 when slug is taken', async () => {
-      (organizationService.createOrganization as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new OrganizationValidationError('Slug already in use'));
+      (organizationService.createOrganization as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new OrganizationValidationError('Slug already in use'),
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -141,9 +155,9 @@ describe('organization routes', () => {
       const ctx = createMockCtx({ body: { name: 'Acme' } });
       const next = vi.fn();
 
-      await expect(
-        layer!.stack[layer!.stack.length - 1](ctx as never, next),
-      ).rejects.toThrow('Slug already in use');
+      await expect(layer!.stack[layer!.stack.length - 1](ctx as never, next)).rejects.toThrow(
+        'Organization request is invalid',
+      );
     });
 
     // -----------------------------------------------------------------------
@@ -185,7 +199,7 @@ describe('organization routes', () => {
         await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
 
         expect(ctx.status).toBe(400);
-        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect((ctx.body as { error: string }).error).toBe('Organization request is invalid');
         expect(organizationService.createOrganization).not.toHaveBeenCalled();
       });
 
@@ -202,7 +216,7 @@ describe('organization routes', () => {
         await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
 
         expect(ctx.status).toBe(400);
-        expect((ctx.body as { error: string }).error).toBe('Validation failed');
+        expect((ctx.body as { error: string }).error).toBe('Organization request is invalid');
         expect(organizationService.createOrganization).not.toHaveBeenCalled();
       });
 
@@ -220,7 +234,8 @@ describe('organization routes', () => {
         await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
 
         expect(ctx.status).toBe(201);
-        const calledWith = (organizationService.createOrganization as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        const calledWith = (organizationService.createOrganization as ReturnType<typeof vi.fn>).mock
+          .calls[0][0];
         expect(calledWith.defaultLoginMethods).toBeUndefined();
       });
     });
@@ -283,9 +298,9 @@ describe('organization routes', () => {
       const ctx = createMockCtx({ params: { id: 'nonexistent' } });
       const next = vi.fn();
 
-      await expect(
-        layer!.stack[layer!.stack.length - 1](ctx as never, next),
-      ).rejects.toThrow('Organization not found');
+      await expect(layer!.stack[layer!.stack.length - 1](ctx as never, next)).rejects.toThrow(
+        'Organization not found',
+      );
     });
   });
 
@@ -312,8 +327,9 @@ describe('organization routes', () => {
     });
 
     it('should throw 404 when organization not found', async () => {
-      (organizationService.updateOrganization as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new OrganizationNotFoundError('nonexistent'));
+      (organizationService.updateOrganization as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new OrganizationNotFoundError('nonexistent'),
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -323,9 +339,9 @@ describe('organization routes', () => {
       const ctx = createMockCtx({ params: { id: 'nonexistent' }, body: { name: 'Test' } });
       const next = vi.fn();
 
-      await expect(
-        layer!.stack[layer!.stack.length - 1](ctx as never, next),
-      ).rejects.toThrow('Organization not found');
+      await expect(layer!.stack[layer!.stack.length - 1](ctx as never, next)).rejects.toThrow(
+        'Organization not found',
+      );
     });
 
     it('should accept defaultLoginMethods on update and return the updated org', async () => {
@@ -365,7 +381,7 @@ describe('organization routes', () => {
       await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Organization request is invalid');
       expect(organizationService.updateOrganization).not.toHaveBeenCalled();
     });
   });
@@ -377,14 +393,19 @@ describe('organization routes', () => {
   describe('PUT /:id/branding — Update branding', () => {
     it('should return updated organization with branding', async () => {
       const org = createTestOrg({ brandingPrimaryColor: '#FF0000' });
-      (organizationService.updateOrganizationBranding as ReturnType<typeof vi.fn>).mockResolvedValue(org);
+      (
+        organizationService.updateOrganizationBranding as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(org);
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
         (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id/branding',
       );
 
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' }, body: { primaryColor: '#FF0000' } });
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { primaryColor: '#FF0000' },
+      });
       const next = vi.fn();
 
       await layer!.stack[layer!.stack.length - 1](ctx as never, next);
@@ -399,7 +420,9 @@ describe('organization routes', () => {
 
   describe('POST /:id/suspend', () => {
     it('should return 204 on success', async () => {
-      (organizationService.suspendOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (organizationService.suspendOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -415,8 +438,9 @@ describe('organization routes', () => {
     });
 
     it('should throw 400 when org is super-admin', async () => {
-      (organizationService.suspendOrganization as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new OrganizationValidationError('Super-admin organization cannot be suspended'));
+      (organizationService.suspendOrganization as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new OrganizationValidationError('Super-admin organization cannot be suspended'),
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -426,15 +450,17 @@ describe('organization routes', () => {
       const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
       const next = vi.fn();
 
-      await expect(
-        layer!.stack[layer!.stack.length - 1](ctx as never, next),
-      ).rejects.toThrow('Super-admin organization cannot be suspended');
+      await expect(layer!.stack[layer!.stack.length - 1](ctx as never, next)).rejects.toThrow(
+        'Organization request is invalid',
+      );
     });
   });
 
   describe('POST /:id/activate', () => {
     it('should return 204 on success', async () => {
-      (organizationService.activateOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (organizationService.activateOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -452,7 +478,9 @@ describe('organization routes', () => {
 
   describe('POST /:id/archive', () => {
     it('should return 204 on success', async () => {
-      (organizationService.archiveOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (organizationService.archiveOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -470,7 +498,9 @@ describe('organization routes', () => {
 
   describe('POST /:id/restore', () => {
     it('should return 204 on success', async () => {
-      (organizationService.restoreOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (organizationService.restoreOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -492,8 +522,9 @@ describe('organization routes', () => {
 
   describe('GET /validate-slug', () => {
     it('should return valid result', async () => {
-      (organizationService.validateSlugAvailability as ReturnType<typeof vi.fn>)
-        .mockResolvedValue({ isValid: true });
+      (organizationService.validateSlugAvailability as ReturnType<typeof vi.fn>).mockResolvedValue({
+        isValid: true,
+      });
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -509,8 +540,10 @@ describe('organization routes', () => {
     });
 
     it('should return invalid result with error', async () => {
-      (organizationService.validateSlugAvailability as ReturnType<typeof vi.fn>)
-        .mockResolvedValue({ isValid: false, error: 'Slug already in use' });
+      (organizationService.validateSlugAvailability as ReturnType<typeof vi.fn>).mockResolvedValue({
+        isValid: false,
+        error: 'Slug already in use',
+      });
 
       const router = createOrganizationRouter();
       const layer = router.stack.find(
@@ -538,7 +571,9 @@ describe('organization routes', () => {
 
     it('should register all expected routes', () => {
       const router = createOrganizationRouter();
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain('POST /api/admin/organizations');
       expect(paths).toContain('GET /api/admin/organizations');

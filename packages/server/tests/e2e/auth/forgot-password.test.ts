@@ -106,15 +106,12 @@ describe('Forgot/Reset Password Flow (E2E)', () => {
 
       // Submit new password
       const newPassword = 'NewSecurePassword456!';
-      const resetResponse = await http.post(
-        `/${org.slug}/auth/reset-password/${token}`,
-        {
-          password: newPassword,
-          confirmPassword: newPassword,
-          _csrf: resetCsrf!,
-          _csrfStored: resetCsrf!,
-        },
-      );
+      const resetResponse = await http.post(`/${org.slug}/auth/reset-password/${token}`, {
+        password: newPassword,
+        confirmPassword: newPassword,
+        _csrf: resetCsrf!,
+        _csrfStored: resetCsrf!,
+      });
 
       // Should show success page
       expect(resetResponse.status).toBe(200);
@@ -162,6 +159,48 @@ describe('Forgot/Reset Password Flow (E2E)', () => {
     }
   });
 
+  it('should reject a valid reset token under another tenant without consuming it', async () => {
+    const otherOrganization = await createTestOrganization({ name: 'Other Reset Org' });
+    const csrf = await getForgotPageCsrf();
+    await http.post(`/${org.slug}/auth/forgot-password`, {
+      email: user.email,
+      _csrf: csrf,
+      _csrfStored: csrf,
+    });
+
+    const message = await mailhog.waitForMessage(user.email, 10000);
+    const link = mailhog.extractLink(message, /http[s]?:\/\/[^\s"<]+reset-password[^\s"<]+/);
+    expect(link).toBeTruthy();
+    const token = link?.match(/reset-password\/([^?]+)/)?.[1];
+    expect(token).toBeTruthy();
+
+    const foreignClient = new TestHttpClient(baseUrl);
+    const foreignGet = await foreignClient.get(
+      `/${otherOrganization.slug}/auth/reset-password/${token}`,
+    );
+    expect(foreignGet.body).toContain('This password reset link has expired');
+
+    const foreignForgot = await foreignClient.get(
+      `/${otherOrganization.slug}/auth/forgot-password`,
+    );
+    const foreignCsrf = foreignClient.extractCsrfToken(foreignForgot.body);
+    expect(foreignCsrf).toBeTruthy();
+    const foreignPost = await foreignClient.post(
+      `/${otherOrganization.slug}/auth/reset-password/${token}`,
+      {
+        password: 'ForeignTenantPassword456!',
+        confirmPassword: 'ForeignTenantPassword456!',
+        _csrf: foreignCsrf!,
+        _csrfStored: foreignCsrf!,
+      },
+    );
+    expect(foreignPost.body).toContain('This password reset link has expired');
+
+    const originalGet = await new TestHttpClient(baseUrl).get(link!);
+    expect(originalGet.status).toBe(200);
+    expect(originalGet.body).not.toContain('This password reset link has expired');
+  });
+
   // ── Non-existent email → same response ─────────────────────────
 
   it('should return same response for non-existent email', async () => {
@@ -180,9 +219,7 @@ describe('Forgot/Reset Password Flow (E2E)', () => {
   // ── Invalid token rejected ─────────────────────────────────────
 
   it('should reject invalid reset token', async () => {
-    const response = await http.get(
-      `/${org.slug}/auth/reset-password/invalid-token-string`,
-    );
+    const response = await http.get(`/${org.slug}/auth/reset-password/invalid-token-string`);
 
     // Should show error page
     expect([400, 200]).toContain(response.status);

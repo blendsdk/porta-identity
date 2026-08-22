@@ -94,8 +94,6 @@ export function adminRateLimiter(): Middleware {
       logger.warn(
         {
           action: 'admin_rate_limit_exceeded',
-          ip: ctx.ip,
-          path: ctx.path,
           method: ctx.method,
         },
         'Admin API rate limit exceeded',

@@ -12,13 +12,13 @@ GET /api/admin/audit
 
 **Query parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limit` | integer | Max results to return (default: 50, max: 500) |
-| `event` | string | Filter by `event_type` |
-| `org` | uuid | Filter by `organization_id` |
-| `user` | uuid | Filter by `user_id` |
-| `since` | ISO 8601 | Filter events after this date |
+| Parameter | Type     | Description                                   |
+| --------- | -------- | --------------------------------------------- |
+| `limit`   | integer  | Max results to return (default: 50, max: 500) |
+| `event`   | string   | Filter by `event_type`                        |
+| `org`     | uuid     | Filter by `organization_id`                   |
+| `user`    | uuid     | Filter by `user_id`                           |
+| `since`   | ISO 8601 | Filter events after this date                 |
 
 **Response:** `200 OK`
 
@@ -49,78 +49,84 @@ GET /api/admin/audit
 
 ### Organization Events
 
-| Action | Description |
-|--------|-------------|
-| `organization.created` | New organization created |
-| `organization.updated` | Organization details updated |
-| `organization.suspended` | Organization suspended |
-| `organization.activated` | Organization reactivated |
-| `organization.archived` | Organization archived |
-| `organization.branding_updated` | Branding settings changed |
+| Action                          | Description                  |
+| ------------------------------- | ---------------------------- |
+| `organization.created`          | New organization created     |
+| `organization.updated`          | Organization details updated |
+| `organization.suspended`        | Organization suspended       |
+| `organization.activated`        | Organization reactivated     |
+| `organization.archived`         | Organization archived        |
+| `organization.branding_updated` | Branding settings changed    |
 
 ### User Events
 
-| Action | Description |
-|--------|-------------|
-| `user.created` | New user created |
-| `user.invited` | User invitation sent |
-| `user.updated` | User profile updated |
-| `user.suspended` | User suspended |
-| `user.activated` | User activated |
-| `user.locked` | User locked (security) |
-| `user.unlocked` | User unlocked |
-| `user.archived` | User archived |
-| `user.password_changed` | Password changed |
-| `user.login_success` | Successful login |
-| `user.login_failure` | Failed login attempt |
+| Action                  | Description            |
+| ----------------------- | ---------------------- |
+| `user.created`          | New user created       |
+| `user.invited`          | User invitation sent   |
+| `user.updated`          | User profile updated   |
+| `user.suspended`        | User suspended         |
+| `user.activated`        | User activated         |
+| `user.locked`           | User locked (security) |
+| `user.unlocked`         | User unlocked          |
+| `user.archived`         | User archived          |
+| `user.password_changed` | Password changed       |
+| `user.login_success`    | Successful login       |
+| `user.login_failure`    | Failed login attempt   |
 
 ### Client Events
 
-| Action | Description |
-|--------|-------------|
-| `client.created` | New OIDC client created |
-| `client.updated` | Client configuration updated |
-| `client.revoked` | Client revoked |
-| `client.secret_generated` | New client secret generated |
-| `client.secret_revoked` | Client secret revoked |
+| Action                    | Description                  |
+| ------------------------- | ---------------------------- |
+| `client.created`          | New OIDC client created      |
+| `client.updated`          | Client configuration updated |
+| `client.revoked`          | Client revoked               |
+| `client.secret_generated` | New client secret generated  |
+| `client.secret_revoked`   | Client secret revoked        |
 
 ### RBAC Events
 
-| Action | Description |
-|--------|-------------|
-| `role.created` | New role created |
-| `role.updated` | Role updated |
-| `role.archived` | Role archived |
-| `role.permission_assigned` | Permission assigned to role |
-| `role.permission_removed` | Permission removed from role |
-| `user.role_assigned` | Role assigned to user |
-| `user.role_removed` | Role removed from user |
+| Action                     | Description                  |
+| -------------------------- | ---------------------------- |
+| `role.created`             | New role created             |
+| `role.updated`             | Role updated                 |
+| `role.archived`            | Role archived                |
+| `role.permission_assigned` | Permission assigned to role  |
+| `role.permission_removed`  | Permission removed from role |
+| `user.role_assigned`       | Role assigned to user        |
+| `user.role_removed`        | Role removed from user       |
 
 ### Security Events
 
-| Action | Description |
-|--------|-------------|
+| Action                           | Description                         |
+| -------------------------------- | ----------------------------------- |
 | `security.login_method_disabled` | Attempted login via disabled method |
-| `security.2fa_enabled` | 2FA enabled for user |
-| `security.2fa_disabled` | 2FA disabled for user |
-| `security.rate_limited` | Rate limit triggered |
+| `security.2fa_enabled`           | 2FA enabled for user                |
+| `security.2fa_disabled`          | 2FA disabled for user               |
+| `security.rate_limited`          | Rate limit triggered                |
 
 ### GDPR Events
 
-| Action | Description |
-|--------|-------------|
+| Action               | Description                          |
+| -------------------- | ------------------------------------ |
 | `user.data_exported` | User data exported (GDPR Article 20) |
-| `user.data_purged` | User data purged (GDPR Article 17) |
+| `user.data_purged`   | User data purged (GDPR Article 17)   |
 
 ### Account Lockout Events
 
-| Action | Description |
-|--------|-------------|
-| `user.auto_locked` | Account auto-locked after failed login threshold |
-| `user.auto_unlocked` | Account auto-unlocked after cooldown expired |
+| Action               | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `user.auto_locked`   | Account auto-locked after failed login threshold |
+| `user.auto_unlocked` | Account auto-unlocked after cooldown expired     |
 
-::: info
-Audit events are **fire-and-forget** — they are written asynchronously to avoid impacting request latency. All events include the actor (who), the entity (what), and metadata (details). If an audit write fails, a WARN-level log entry is emitted.
+::: info Audit durability
+Compatibility audit events remain best-effort and do not change the public operation result.
+Authorized administrative mutations also write a required business audit row in the same
+PostgreSQL transaction as their database changes. Import is atomic: an audit failure rolls back the
+manifest and returns a minimal service-unavailable response. Bulk processing is intentionally
+per-item: an audit failure rolls back the current item, preserves earlier committed items, marks the
+current and remaining items `not_attempted`, and returns the ordered partial result with one
+correlation identifier.
 :::
 
 ## Audit Retention & Cleanup

@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { importManifestSchema } from '../../../src/lib/data-import.js';
 import type { ImportResult, ImportClientCredentials } from '../../../src/lib/data-import.js';
+import { buildImportManifestPlan } from '../../../src/lib/data-import-plan.js';
 import { generateClientId } from '../../../src/clients/crypto.js';
 
 // ============================================================================
@@ -24,7 +25,7 @@ describe('importManifestSchema — role_permission_mappings', () => {
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read', 'write', 'delete'],
+          permission_slugs: ['crm:records:read', 'crm:records:write', 'crm:records:delete'],
           application_slug: 'crm',
           organization_slug: 'acme',
         },
@@ -36,7 +37,9 @@ describe('importManifestSchema — role_permission_mappings', () => {
       expect(result.data.role_permission_mappings).toHaveLength(1);
       expect(result.data.role_permission_mappings[0].role_slug).toBe('admin');
       expect(result.data.role_permission_mappings[0].permission_slugs).toEqual([
-        'read', 'write', 'delete',
+        'crm:records:read',
+        'crm:records:write',
+        'crm:records:delete',
       ]);
     }
   });
@@ -48,13 +51,13 @@ describe('importManifestSchema — role_permission_mappings', () => {
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read', 'write'],
+          permission_slugs: ['app:records:read', 'app:records:write'],
           application_slug: 'app',
           organization_slug: 'org',
         },
         {
           role_slug: 'viewer',
-          permission_slugs: ['read'],
+          permission_slugs: ['app:records:read'],
           application_slug: 'app',
           organization_slug: 'org',
         },
@@ -181,12 +184,8 @@ describe('importManifestSchema — backward compatibility', () => {
   it('accepts old manifest without role_permission_mappings', () => {
     const input = {
       version: '1.0',
-      organizations: [
-        { name: 'Org', slug: 'org' },
-      ],
-      applications: [
-        { name: 'App', slug: 'app', organization_slug: 'org' },
-      ],
+      organizations: [{ name: 'Org', slug: 'org' }],
+      applications: [{ name: 'App', slug: 'app', organization_slug: 'org' }],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -233,11 +232,18 @@ describe('importManifestSchema — backward compatibility', () => {
       organizations: [{ name: 'Org', slug: 'org' }],
       applications: [{ name: 'App', slug: 'app', organization_slug: 'org' }],
       roles: [{ name: 'Admin', slug: 'admin', application_slug: 'app', organization_slug: 'org' }],
-      permissions: [{ name: 'Read', slug: 'read', application_slug: 'app', organization_slug: 'org' }],
+      permissions: [
+        {
+          name: 'Read',
+          slug: 'app:resource:read',
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
+      ],
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read'],
+          permission_slugs: ['app:resource:read'],
           application_slug: 'app',
           organization_slug: 'org',
         },
@@ -268,16 +274,17 @@ describe('importManifestSchema — organization default_login_methods', () => {
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.organizations[0].default_login_methods).toEqual(['password', 'magic_link']);
+      expect(result.data.organizations[0].default_login_methods).toEqual([
+        'password',
+        'magic_link',
+      ]);
     }
   });
 
   it('should accept organization with password-only login method', () => {
     const input = {
       version: '1.0',
-      organizations: [
-        { name: 'Org', slug: 'org', default_login_methods: ['password'] },
-      ],
+      organizations: [{ name: 'Org', slug: 'org', default_login_methods: ['password'] }],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -289,9 +296,7 @@ describe('importManifestSchema — organization default_login_methods', () => {
   it('should accept organization without default_login_methods (uses DB default)', () => {
     const input = {
       version: '1.0',
-      organizations: [
-        { name: 'Org', slug: 'org' },
-      ],
+      organizations: [{ name: 'Org', slug: 'org' }],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -373,7 +378,13 @@ describe('importManifestSchema — client login_methods + token_endpoint_auth_me
     const input = {
       version: '1.0',
       organizations: [],
-      clients: [{ ...baseClient, client_type: 'confidential', token_endpoint_auth_method: 'client_secret_basic' }],
+      clients: [
+        {
+          ...baseClient,
+          client_type: 'confidential',
+          token_endpoint_auth_method: 'client_secret_basic',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -481,7 +492,12 @@ describe('ImportResult — credentials array', () => {
       errors: [],
       credentials: [
         { clientName: 'Client A', clientId: 'id-a', clientType: 'public' },
-        { clientName: 'Client B', clientId: 'id-b', clientType: 'confidential', secretPlaintext: 'secret-b' },
+        {
+          clientName: 'Client B',
+          clientId: 'id-b',
+          clientType: 'confidential',
+          secretPlaintext: 'secret-b',
+        },
       ],
     };
     expect(result.credentials).toHaveLength(2);
@@ -512,7 +528,9 @@ describe('importManifestSchema — Phase 2 client fields', () => {
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.clients[0].post_logout_redirect_uris).toEqual(['https://example.com/logout']);
+      expect(result.data.clients[0].post_logout_redirect_uris).toEqual([
+        'https://example.com/logout',
+      ]);
     }
   });
 
@@ -520,12 +538,17 @@ describe('importManifestSchema — Phase 2 client fields', () => {
     const input = {
       version: '1.0',
       organizations: [],
-      clients: [{ ...baseClient, allowed_origins: ['https://example.com', 'https://app.example.com'] }],
+      clients: [
+        { ...baseClient, allowed_origins: ['https://example.com', 'https://app.example.com'] },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.clients[0].allowed_origins).toEqual(['https://example.com', 'https://app.example.com']);
+      expect(result.data.clients[0].allowed_origins).toEqual([
+        'https://example.com',
+        'https://app.example.com',
+      ]);
     }
   });
 
@@ -584,14 +607,16 @@ describe('importManifestSchema — Phase 2 client fields', () => {
     const input = {
       version: '1.0',
       organizations: [],
-      clients: [{
-        ...baseClient,
-        post_logout_redirect_uris: ['https://example.com/logout'],
-        allowed_origins: ['https://example.com'],
-        require_pkce: true,
-        secret_label: 'my-secret',
-        secret_expires_at: '2027-01-01T00:00:00Z',
-      }],
+      clients: [
+        {
+          ...baseClient,
+          post_logout_redirect_uris: ['https://example.com/logout'],
+          allowed_origins: ['https://example.com'],
+          require_pkce: true,
+          secret_label: 'my-secret',
+          secret_expires_at: '2027-01-01T00:00:00Z',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -649,11 +674,13 @@ describe('importManifestSchema — secret config (flat manifest)', () => {
     const input = {
       version: '1.0',
       organizations: [],
-      clients: [{
-        ...baseClient,
-        secret_label: 'staging-key',
-        secret_expires_at: '2027-12-31T23:59:59Z',
-      }],
+      clients: [
+        {
+          ...baseClient,
+          secret_label: 'staging-key',
+          secret_expires_at: '2027-12-31T23:59:59Z',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -769,39 +796,45 @@ describe('importManifestSchema — Phase 3 users', () => {
   it('accepts manifest with users array', () => {
     const input = {
       version: '1.0',
-      users: [{
-        email: 'alice@test.local',
-        organization_slug: 'test-org',
-        given_name: 'Alice',
-        family_name: 'Test',
-        status: 'active',
-        email_verified: true,
-      }],
+      users: [
+        {
+          email: 'alice@test.local',
+          organization_slug: 'test-org',
+          given_name: 'Alice',
+          family_name: 'Test',
+          status: 'active',
+          email_verified: true,
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 
-  it('accepts user with password_hash', () => {
+  it('rejects user password hashes before import planning', () => {
     const input = {
       version: '1.0',
-      users: [{
-        email: 'alice@test.local',
-        organization_slug: 'test-org',
-        password_hash: '$argon2id$v=19$m=65536,t=3,p=4$abc$def',
-      }],
+      users: [
+        {
+          email: 'alice@test.local',
+          organization_slug: 'test-org',
+          password_hash: '$argon2id$v=19$m=65536,t=3,p=4$abc$def',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('accepts user without optional fields', () => {
     const input = {
       version: '1.0',
-      users: [{
-        email: 'minimal@test.local',
-        organization_slug: 'test-org',
-      }],
+      users: [
+        {
+          email: 'minimal@test.local',
+          organization_slug: 'test-org',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -857,14 +890,16 @@ describe('importManifestSchema — Phase 3 application modules', () => {
   it('accepts manifest with application_modules', () => {
     const input = {
       version: '1.0',
-      application_modules: [{
-        name: 'Dashboard',
-        slug: 'dashboard',
-        application_slug: 'app',
-        organization_slug: 'org',
-        description: 'Main dashboard',
-        status: 'active',
-      }],
+      application_modules: [
+        {
+          name: 'Dashboard',
+          slug: 'dashboard',
+          application_slug: 'app',
+          organization_slug: 'org',
+          description: 'Main dashboard',
+          status: 'active',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -873,12 +908,14 @@ describe('importManifestSchema — Phase 3 application modules', () => {
   it('accepts module without optional fields', () => {
     const input = {
       version: '1.0',
-      application_modules: [{
-        name: 'Reports',
-        slug: 'reports',
-        application_slug: 'app',
-        organization_slug: 'org',
-      }],
+      application_modules: [
+        {
+          name: 'Reports',
+          slug: 'reports',
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -887,13 +924,15 @@ describe('importManifestSchema — Phase 3 application modules', () => {
   it('rejects module with invalid status', () => {
     const input = {
       version: '1.0',
-      application_modules: [{
-        name: 'Bad',
-        slug: 'bad',
-        application_slug: 'app',
-        organization_slug: 'org',
-        status: 'deleted',
-      }],
+      application_modules: [
+        {
+          name: 'Bad',
+          slug: 'bad',
+          application_slug: 'app',
+          organization_slug: 'org',
+          status: 'deleted',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(false);
@@ -913,12 +952,14 @@ describe('importManifestSchema — Phase 3 user-role assignments', () => {
   it('accepts manifest with user_role_assignments', () => {
     const input = {
       version: '1.0',
-      user_role_assignments: [{
-        email: 'alice@test.local',
-        organization_slug: 'org',
-        application_slug: 'app',
-        role_slug: 'admin',
-      }],
+      user_role_assignments: [
+        {
+          email: 'alice@test.local',
+          organization_slug: 'org',
+          application_slug: 'app',
+          role_slug: 'admin',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -927,11 +968,13 @@ describe('importManifestSchema — Phase 3 user-role assignments', () => {
   it('rejects assignment without email', () => {
     const input = {
       version: '1.0',
-      user_role_assignments: [{
-        organization_slug: 'org',
-        application_slug: 'app',
-        role_slug: 'admin',
-      }],
+      user_role_assignments: [
+        {
+          organization_slug: 'org',
+          application_slug: 'app',
+          role_slug: 'admin',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(false);
@@ -951,13 +994,15 @@ describe('importManifestSchema — Phase 3 user claim values', () => {
   it('accepts manifest with user_claim_values', () => {
     const input = {
       version: '1.0',
-      user_claim_values: [{
-        email: 'alice@test.local',
-        organization_slug: 'org',
-        application_slug: 'app',
-        claim_slug: 'department',
-        value: 'Engineering',
-      }],
+      user_claim_values: [
+        {
+          email: 'alice@test.local',
+          organization_slug: 'org',
+          application_slug: 'app',
+          claim_slug: 'department',
+          value: 'Engineering',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -967,13 +1012,15 @@ describe('importManifestSchema — Phase 3 user claim values', () => {
     for (const value of ['string-val', 42, true, { nested: 'json' }]) {
       const input = {
         version: '1.0',
-        user_claim_values: [{
-          email: 'a@b.com',
-          organization_slug: 'org',
-          application_slug: 'app',
-          claim_slug: 'test',
-          value,
-        }],
+        user_claim_values: [
+          {
+            email: 'a@b.com',
+            organization_slug: 'org',
+            application_slug: 'app',
+            claim_slug: 'test',
+            value,
+          },
+        ],
       };
       const result = importManifestSchema.safeParse(input);
       expect(result.success).toBe(true);
@@ -994,13 +1041,15 @@ describe('importManifestSchema — Phase 3 organization branding + 2FA fields', 
   it('accepts organization with branding fields', () => {
     const input = {
       version: '1.0',
-      organizations: [{
-        name: 'Branded Org',
-        slug: 'branded',
-        branding_primary_color: '#ff6600',
-        branding_company_name: 'Branded Corp',
-        branding_custom_css: 'body { color: red; }',
-      }],
+      organizations: [
+        {
+          name: 'Branded Org',
+          slug: 'branded',
+          branding_primary_color: '#ff6600',
+          branding_company_name: 'Branded Corp',
+          branding_custom_css: 'body { color: red; }',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -1009,11 +1058,13 @@ describe('importManifestSchema — Phase 3 organization branding + 2FA fields', 
   it('accepts organization with two_factor_policy', () => {
     const input = {
       version: '1.0',
-      organizations: [{
-        name: 'Secure Org',
-        slug: 'secure',
-        two_factor_policy: 'required_totp',
-      }],
+      organizations: [
+        {
+          name: 'Secure Org',
+          slug: 'secure',
+          two_factor_policy: 'required_totp',
+        },
+      ],
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
@@ -1046,5 +1097,69 @@ describe('importManifestSchema — Phase 3 organization branding + 2FA fields', 
     };
     const result = importManifestSchema.safeParse(input);
     expect(result.success).toBe(true);
+  });
+});
+
+describe('closed import prevalidation and planning', () => {
+  it('rejects unknown top-level and nested fields', () => {
+    expect(importManifestSchema.safeParse({ version: '1.0', unexpected: true }).success).toBe(
+      false,
+    );
+    expect(
+      importManifestSchema.safeParse({
+        version: '1.0',
+        organizations: [{ name: 'Alpha', slug: 'alpha', unexpected: true }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects duplicate tenant-qualified natural keys', () => {
+    const result = importManifestSchema.safeParse({
+      version: '1.0',
+      users: [
+        { email: 'User@alpha.test', organization_slug: 'alpha' },
+        { email: 'user@alpha.test', organization_slug: 'alpha' },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('builds ordered internal and external dependency references without mutation', () => {
+    const manifest = importManifestSchema.parse({
+      version: '1.0',
+      organizations: [{ name: 'Alpha', slug: 'alpha' }],
+      clients: [
+        {
+          client_name: 'Portal',
+          organization_slug: 'alpha',
+          application_slug: 'existing-app',
+          client_type: 'confidential',
+        },
+      ],
+    });
+
+    const plan = buildImportManifestPlan(manifest);
+    expect(plan.entries.map((entry) => entry.entityType)).toStrictEqual(['organization', 'client']);
+    expect(plan.entries[1].credentialWillBeGenerated).toBe(true);
+    expect(plan.entries[1].dependencies).toContainEqual({
+      entityType: 'organization',
+      naturalKey: 'alpha',
+      source: 'manifest',
+    });
+    expect(plan.externalDependencies).toStrictEqual([
+      {
+        entityType: 'application',
+        naturalKey: 'existing-app',
+        source: 'database',
+      },
+    ]);
+  });
+
+  it('rejects authentication material embedded as configuration overrides', () => {
+    const result = importManifestSchema.safeParse({
+      version: '1.0',
+      config: { signing_key: 'protected-value' },
+    });
+    expect(result.success).toBe(false);
   });
 });

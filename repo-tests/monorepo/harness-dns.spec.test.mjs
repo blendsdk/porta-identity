@@ -42,12 +42,17 @@ test('should use the reserved CI loopback names throughout the OIDC harness', ()
 // DNS drift must fail before the harness starts containers or launches browsers.
 test('should verify both harness names resolve only to IPv4 loopback before startup', () => {
   const startScript = readRepositoryFile('test-harness/scripts/start.sh');
+  const lifecycleRuntime = readRepositoryFile('test-harness/fixtures/lifecycle-runtime.ts');
+  const lifecycleController = readRepositoryFile('test-harness/fixtures/lifecycle-controller.ts');
   const preflightScript = readRepositoryFile('test-harness/scripts/check-loopback-dns.mjs');
-  const preflightInvocation = 'node "$PROJECT_ROOT/test-harness/scripts/check-loopback-dns.mjs"';
+  const preflightInvocation = 'test-harness/scripts/check-loopback-dns.mjs';
+  const composeStartInvocation = 'compose.start(manifest, signal)';
 
-  assert.ok(startScript.includes(preflightInvocation));
+  assert.match(startScript, /scripts\/lifecycle\.ts start/);
+  assert.ok(lifecycleRuntime.includes(preflightInvocation));
   assert.ok(
-    startScript.indexOf(preflightInvocation) < startScript.indexOf('docker compose'),
+    lifecycleController.indexOf("prerequisites.run('dns'") <
+      lifecycleController.indexOf(composeStartInvocation),
     'DNS preflight must run before Docker Compose starts the harness',
   );
   assert.match(preflightScript, /resolve4/);
@@ -58,8 +63,12 @@ test('should verify both harness names resolve only to IPv4 loopback before star
 
 // The generated test certificate must name both browser-visible harness hosts.
 test('should generate a TLS certificate for both CI loopback names', () => {
-  const startScript = readRepositoryFile('test-harness/scripts/start.sh');
+  const lifecycleRuntime = readRepositoryFile('test-harness/fixtures/lifecycle-runtime.ts');
+  const lifecycleValidation = readRepositoryFile('test-harness/fixtures/lifecycle-validation.ts');
+  const certificateSources = `${lifecycleRuntime}\n${lifecycleValidation}`;
 
-  assert.match(startScript, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
-  assert.match(startScript, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, new RegExp(`DNS:${portaHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, new RegExp(`DNS:${appHost.replaceAll('.', '\\.')}`));
+  assert.match(certificateSources, /IP:127\.0\.0\.1/);
+  assert.match(lifecycleRuntime, /subjectAltName\?\.includes\('IP Address:127\.0\.0\.1'\)/);
 });

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "tests": [
+    {
+      "path": "test-harness/assurance/tests/assurance.spec.test.ts",
+      "runner": "node",
+      "cases": [
+        {
+          "name": "assurance foundation is available for contract verification",
+          "trusted": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Application, ApplicationModule } from '../../../src/applications/types.js';
-import { ApplicationNotFoundError, ApplicationValidationError } from '../../../src/applications/errors.js';
+import {
+  ApplicationNotFoundError,
+  ApplicationValidationError,
+} from '../../../src/applications/errors.js';
 
 // Mock all dependencies before importing the module under test
 vi.mock('../../../src/applications/service.js', () => ({
@@ -73,11 +76,13 @@ function createTestModule(overrides: Partial<ApplicationModule> = {}): Applicati
  * Create a minimal mock Koa context for route testing.
  * Follows the same pattern as the organization route tests.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -85,10 +90,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -104,10 +117,12 @@ function createMockCtx(overrides: {
  * Extracts the last middleware in the stack (the actual handler),
  * skipping any router-level middleware (like requireSuperAdmin).
  */
-function findHandler(router: ReturnType<typeof createApplicationRouter>, method: string, path: string) {
-  const layer = router.stack.find(
-    (l) => l.methods.includes(method) && l.path === path,
-  );
+function findHandler(
+  router: ReturnType<typeof createApplicationRouter>,
+  method: string,
+  path: string,
+) {
+  const layer = router.stack.find((l) => l.methods.includes(method) && l.path === path);
   expect(layer).toBeDefined();
   return layer!.stack[layer!.stack.length - 1];
 }
@@ -142,18 +157,21 @@ describe('application routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Application request is invalid');
     });
 
     it('should return 400 when slug is taken', async () => {
-      (applicationService.createApplication as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ApplicationValidationError('Slug already in use'));
+      (applicationService.createApplication as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ApplicationValidationError('Slug already in use'),
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'POST', '/api/admin/applications');
       const ctx = createMockCtx({ body: { name: 'BusinessSuite' } });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Slug already in use');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow(
+        'Application request is invalid',
+      );
     });
   });
 
@@ -225,8 +243,9 @@ describe('application routes', () => {
     });
 
     it('should throw 404 when application not found', async () => {
-      (applicationService.updateApplication as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ApplicationNotFoundError('nonexistent'));
+      (applicationService.updateApplication as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ApplicationNotFoundError('nonexistent'),
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'PUT', '/api/admin/applications/:id');
@@ -242,7 +261,9 @@ describe('application routes', () => {
 
   describe('POST /:id/archive', () => {
     it('should return 204 on success', async () => {
-      (applicationService.archiveApplication as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (applicationService.archiveApplication as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'POST', '/api/admin/applications/:id/archive');
@@ -254,20 +275,25 @@ describe('application routes', () => {
     });
 
     it('should throw 400 when already archived', async () => {
-      (applicationService.archiveApplication as ReturnType<typeof vi.fn>)
-        .mockRejectedValue(new ApplicationValidationError('Application is already archived'));
+      (applicationService.archiveApplication as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ApplicationValidationError('Application is already archived'),
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'POST', '/api/admin/applications/:id/archive');
       const ctx = createMockCtx({ params: { id: 'app-uuid-1' } });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Application is already archived');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow(
+        'Application request is invalid',
+      );
     });
   });
 
   describe('POST /:id/activate', () => {
     it('should return 204 on success', async () => {
-      (applicationService.activateApplication as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (applicationService.activateApplication as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'POST', '/api/admin/applications/:id/activate');
@@ -281,7 +307,9 @@ describe('application routes', () => {
 
   describe('POST /:id/deactivate', () => {
     it('should return 204 on success', async () => {
-      (applicationService.deactivateApplication as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (applicationService.deactivateApplication as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createApplicationRouter();
       const handler = findHandler(router, 'POST', '/api/admin/applications/:id/deactivate');
@@ -321,7 +349,7 @@ describe('application routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Application request is invalid');
     });
   });
 
@@ -356,16 +384,24 @@ describe('application routes', () => {
 
       expect(ctx.body).toEqual({ data: mod });
       // Verify moduleId is used (not the app id)
-      expect(applicationService.updateModule).toHaveBeenCalledWith('mod-uuid-1', { name: 'Updated CRM' });
+      expect(applicationService.updateModule).toHaveBeenCalledWith('mod-uuid-1', {
+        name: 'Updated CRM',
+      });
     });
   });
 
   describe('POST /:id/modules/:moduleId/deactivate — Deactivate module', () => {
     it('should return 204 on success', async () => {
-      (applicationService.deactivateModule as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (applicationService.deactivateModule as ReturnType<typeof vi.fn>).mockResolvedValue(
+        undefined,
+      );
 
       const router = createApplicationRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/applications/:id/modules/:moduleId/deactivate');
+      const handler = findHandler(
+        router,
+        'POST',
+        '/api/admin/applications/:id/modules/:moduleId/deactivate',
+      );
       const ctx = createMockCtx({ params: { id: 'app-uuid-1', moduleId: 'mod-uuid-1' } });
 
       await handler(ctx as never, vi.fn());

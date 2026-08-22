@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "faults": [
+    {
+      "id": "foundation-smoke",
+      "rationale": "Proves that one reviewed fault can independently kill two exact claim and sentinel tuples.",
+      "target": {
+        "ancestorCommit": "e07ea505427ad6da668479ce2f517801a7049f79",
+        "path": "test-harness/assurance/fault/fixtures/foundation-control.mjs",
+        "sha256": "sha256:2c94e47031da2696ab8282d902d636e3a9dca9ab4decb7e608cd737873f721b5"
+      },
+      "patchPath": "test-harness/assurance/fault/patches/foundation-smoke.patch",
+      "buildCommand": "foundation-syntax-check",
+      "executionCommand": "foundation-sentinel",
+      "timeoutMilliseconds": 120000,
+      "cleanupVerification": "primary-tree-unchanged-and-no-owned-residue",
+      "tuples": [
+        {
+          "claimId": "CLAIM-R6-01",
+          "sentinelId": "ST-64",
+          "expectedSignature": "FOUNDATION_FAULT_DETECTED_ALPHA"
+        },
+        {
+          "claimId": "CLAIM-R6-03",
+          "sentinelId": "ST-66",
+          "expectedSignature": "FOUNDATION_FAULT_DETECTED_BRAVO"
+        }
+      ]
+    }
+  ]
+}

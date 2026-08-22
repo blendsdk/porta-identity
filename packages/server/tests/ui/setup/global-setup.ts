@@ -30,6 +30,7 @@ import {
   TEST_SMTP_PORT,
   TEST_SMTP_FROM,
   TEST_COOKIE_KEYS,
+  TEST_SIGNING_KEY_ENCRYPTION_KEY,
   DEFAULT_TEST_PASSWORD,
 } from '../../helpers/constants.js';
 
@@ -62,15 +63,35 @@ const RESETTABLE_USER_PASSWORD = 'OldPassword123!';
  * The 'invited' user has no password (simulates a pending invitation).
  */
 const ADDITIONAL_USERS = [
-  { email: 'suspended@test.example.com', status: 'suspended' as const, password: ADDITIONAL_USER_PASSWORD },
-  { email: 'inactive@test.example.com', status: 'inactive' as const, password: ADDITIONAL_USER_PASSWORD },
-  { email: 'locked@test.example.com', status: 'locked' as const, password: ADDITIONAL_USER_PASSWORD },
+  {
+    email: 'suspended@test.example.com',
+    status: 'suspended' as const,
+    password: ADDITIONAL_USER_PASSWORD,
+  },
+  {
+    email: 'inactive@test.example.com',
+    status: 'inactive' as const,
+    password: ADDITIONAL_USER_PASSWORD,
+  },
+  {
+    email: 'locked@test.example.com',
+    status: 'locked' as const,
+    password: ADDITIONAL_USER_PASSWORD,
+  },
   // Lockable user: created as active, will be locked by individual tests
-  { email: 'lockable@test.example.com', status: 'active' as const, password: ADDITIONAL_USER_PASSWORD },
+  {
+    email: 'lockable@test.example.com',
+    status: 'active' as const,
+    password: ADDITIONAL_USER_PASSWORD,
+  },
   // Invited user: inactive with no password (simulates pending invitation acceptance)
   { email: 'invited@test.example.com', status: 'inactive' as const, password: null },
   // Resettable user: active, with known password for password reset tests
-  { email: 'resettable@test.example.com', status: 'active' as const, password: RESETTABLE_USER_PASSWORD },
+  {
+    email: 'resettable@test.example.com',
+    status: 'active' as const,
+    password: RESETTABLE_USER_PASSWORD,
+  },
 ] as const;
 
 /**
@@ -110,11 +131,9 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.SMTP_FROM = TEST_SMTP_FROM;
   process.env.COOKIE_KEYS = TEST_COOKIE_KEYS;
   process.env.ISSUER_BASE_URL = `http://localhost:${UI_TEST_PORT}`;
-  // 64 hex chars = 32-byte key for AES-256-GCM signing key encryption.
-  // Must be set explicitly — the DB may contain signing keys encrypted
-  // with a different key from a prior test suite run.
-  process.env.SIGNING_KEY_ENCRYPTION_KEY =
-    'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+  // All suites sharing this database use one key so persisted test signing keys remain readable
+  // when repository commands run sequentially. This setup still truncates before generating keys.
+  process.env.SIGNING_KEY_ENCRYPTION_KEY = TEST_SIGNING_KEY_ENCRYPTION_KEY;
 
   // ── Step 2: Dynamic imports ────────────────────────────────────────
   // Import after env vars are set so modules read correct config
@@ -127,6 +146,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   const { createApp } = await import('../../../src/server.js');
   const { initI18n } = await import('../../../src/auth/i18n.js');
   const { initTemplateEngine } = await import('../../../src/auth/template-engine.js');
+  const { startAccountRecoveryWorker } = await import('../../../src/auth/recovery-service.js');
 
   // ── Step 3: Connect infrastructure ─────────────────────────────────
   await connectDatabase();
@@ -142,9 +162,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // Decrypting those with *this* run's key causes AES-GCM auth tag
   // mismatch → SigningKeyCryptoError. Truncating first ensures
   // ensureSigningKeys() auto-generates fresh keys with the correct key.
-  const { truncateAllTables, seedBaseData } = await import(
-    '../../integration/helpers/database.js'
-  );
+  const { truncateAllTables, seedBaseData } = await import('../../integration/helpers/database.js');
   await truncateAllTables();
 
   // ── Step 6: Initialize subsystems ──────────────────────────────────
@@ -169,6 +187,11 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     if (server!.listening) resolve();
     else server!.on('listening', resolve);
   });
+
+  // The UI harness constructs the application directly instead of executing the process entry
+  // point. Start the same durable recovery worker that production starts after HTTP readiness so
+  // browser recovery journeys observe real asynchronous delivery.
+  startAccountRecoveryWorker(provider);
 
   // ── Step 10: Seed test data ────────────────────────────────────────
   await seedBaseData();
@@ -219,23 +242,19 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   for (const userData of ADDITIONAL_USERS) {
     if (userData.password) {
       // User with password — create with hashed password and verified email
-      const { user } = await createTestUserWithPassword(
-        tenant.org.id,
-        userData.password,
-        {
-          email: userData.email,
-          givenName: 'Test',
-          familyName: userData.email.split('@')[0],
-          emailVerified: true,
-        },
-      );
+      const { user } = await createTestUserWithPassword(tenant.org.id, userData.password, {
+        email: userData.email,
+        givenName: 'Test',
+        familyName: userData.email.split('@')[0],
+        emailVerified: true,
+      });
 
       // Update status if not 'active' (factory creates all users as active)
       if (userData.status !== 'active') {
-        await pool.query(
-          `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`,
-          [userData.status, user.id],
-        );
+        await pool.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [
+          userData.status,
+          user.id,
+        ]);
       }
 
       // Track resettable user ID for env var export
@@ -251,10 +270,10 @@ async function globalSetup(_config: FullConfig): Promise<void> {
       });
 
       // Set status to 'invited'
-      await pool.query(
-        `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`,
-        [userData.status, user.id],
-      );
+      await pool.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [
+        userData.status,
+        user.id,
+      ]);
     }
   }
 
@@ -267,10 +286,10 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     });
 
     // Update status (factory creates all orgs as active)
-    await pool.query(
-      `UPDATE organizations SET status = $1, updated_at = NOW() WHERE id = $2`,
-      [orgData.status, org.id],
-    );
+    await pool.query(`UPDATE organizations SET status = $1, updated_at = NOW() WHERE id = $2`, [
+      orgData.status,
+      org.id,
+    ]);
   }
 
   // ── Step 9d: Seed 2FA-enabled users ─────────────────────────────────
@@ -280,7 +299,8 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // workers which ran in a separate process.
   const { encryptTotpSecret } = await import('../../../src/two-factor/crypto.js');
   const { generateTotpSecret } = await import('../../../src/two-factor/totp.js');
-  const { generateRecoveryCodes, hashRecoveryCode } = await import('../../../src/two-factor/recovery.js');
+  const { generateRecoveryCodes, hashRecoveryCode } =
+    await import('../../../src/two-factor/recovery.js');
 
   // 1. Email OTP user — has 2FA enabled with 'email' method
   const { user: twoFaEmailUser } = await createTestUserWithPassword(
@@ -350,10 +370,9 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     },
   });
   // Set the org's 2FA policy to 'required_totp' — forces TOTP enrollment on login
-  await pool.query(
-    `UPDATE organizations SET two_factor_policy = 'required_totp' WHERE id = $1`,
-    [twoFaSetupTenant.org.id],
-  );
+  await pool.query(`UPDATE organizations SET two_factor_policy = 'required_totp' WHERE id = $1`, [
+    twoFaSetupTenant.org.id,
+  ]);
 
   // ── Step 9e: Seed login-method tenants ──────────────────────────────
   // Two dedicated tenants whose CLIENT overrides the effective login methods:

@@ -1,28 +1,19 @@
 /**
- * OIDC Test Harness — Seed Script
+ * Arranges the deterministic retained-harness baseline and writes compatibility configuration.
  *
- * Creates the minimal test data needed for the OIDC test harness:
- *   - 1 organization (test-org)
- *   - 1 application (Test App)
- *   - 1 public client (for SPA, with PKCE + allowed_origins)
- *   - 1 confidential client (for BFF, with client_secret_post)
- *   - 1 test user (active, with password)
- *
- * Uses Porta's service layer directly for correct hashing (Argon2id passwords,
- * SHA-256+Argon2id secrets).
- *
- * Idempotent: safe to re-run. Existing resources are found and reused.
- *
- * Outputs:
- *   - test-harness/config.generated.json — consumed by BFF and Playwright tests
- *   - test-harness/spa/config.json — consumed by the SPA (served by sirv)
+ * Porta services are imported only after disposable runtime environment variables are installed.
+ * Raw credentials remain confined to the ignored runtime configuration consumed by the BFF; the
+ * public SPA configuration contains no password, client secret, token, or cookie material.
  */
 
-// Suppress pino logs BEFORE any module loads the logger.
-// 'fatal' is the quietest valid level (config schema doesn't allow 'silent').
-process.env.LOG_LEVEL = 'fatal';
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-// Point at the test-harness services while allowing concurrent local stacks.
+import { arrangeFixtureBaseline } from '../fixtures/seed-arrangement.js';
+import { writeFixtureRuntimeFiles } from '../fixtures/fixture-runtime-files.js';
+
+process.env.LOG_LEVEL = 'fatal';
+let fixtureSetupStage = 'connect';
 const postgresPort = process.env.HARNESS_POSTGRES_PORT ?? '5432';
 const redisPort = process.env.HARNESS_REDIS_PORT ?? '6379';
 const mailhogPort = process.env.HARNESS_MAILHOG_PORT ?? '8025';
@@ -38,250 +29,86 @@ process.env.SIGNING_KEY_ENCRYPTION_KEY ??=
 process.env.TWO_FACTOR_ENCRYPTION_KEY ??=
   'f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2';
 
-import dotenv from 'dotenv';
-dotenv.config();
+/** Writes one JSON runtime file with owner-only permissions. */
+function writeRuntimeJson(path: string, value: object): void {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  chmodSync(path, 0o600);
+}
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const ORG_NAME = 'Test Organization';
-const ORG_SLUG = 'test-org';
-const APP_NAME = 'Test App';
-
-const SPA_CLIENT_NAME = 'Test SPA';
-const SPA_REDIRECT_URI = 'https://app-harness.ci.portaidentity.com:4100/callback.html';
-const SPA_POST_LOGOUT_URI = 'https://app-harness.ci.portaidentity.com:4100/';
-
-const BFF_CLIENT_NAME = 'Test BFF';
-const BFF_REDIRECT_URI = 'http://app-harness.ci.portaidentity.com:4101/callback';
-const BFF_POST_LOGOUT_URI = 'http://app-harness.ci.portaidentity.com:4101/';
-
-const SHARED_SCOPE = 'openid profile email offline_access';
-
-const TEST_USER_EMAIL = 'testuser@test.org';
-const TEST_USER_PASSWORD = 'TestPassword123!';
-const TEST_USER_GIVEN_NAME = 'Test';
-const TEST_USER_FAMILY_NAME = 'User';
-
-const PORTA_BASE_URL = 'https://porta-harness.ci.portaidentity.com:3443';
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
-
-async function main() {
-  console.log('\n🧪 OIDC Test Harness: Seed');
-  console.log('   Creating minimal test data...\n');
-
-  // Dynamic imports — ensures LOG_LEVEL=fatal is set before logger initializes
+/** Arranges fixtures and emits only path-minimal, non-secret progress output. */
+async function main(): Promise<void> {
+  await (await import('dotenv')).default.config();
   const { connectDatabase, disconnectDatabase } =
     await import('../../packages/server/src/lib/database.js');
   const { connectRedis, disconnectRedis } = await import('../../packages/server/src/lib/redis.js');
-  const { createOrganization, getOrganizationBySlug, updateOrganization } =
-    await import('../../packages/server/src/organizations/index.js');
-  const { createApplication, getApplicationBySlug } =
-    await import('../../packages/server/src/applications/index.js');
-  const { createClient, listClientsByApplication, generateSecret } =
-    await import('../../packages/server/src/clients/index.js');
-  const { createUser, getUserByEmail, reactivateUser } =
-    await import('../../packages/server/src/users/index.js');
-
-  // Connect to infrastructure
   await connectDatabase();
   await connectRedis();
 
   try {
-    // -----------------------------------------------------------------------
-    // Phase A: Organization
-    // -----------------------------------------------------------------------
-    console.log('[A] Creating organization...');
-    let org = await getOrganizationBySlug(ORG_SLUG);
-    if (org) {
-      console.log(`  ⚠️  Org "${ORG_NAME}" exists: ${org.id}`);
-    } else {
-      org = await createOrganization({ name: ORG_NAME, slug: ORG_SLUG });
-      console.log(`  ✅ Org "${ORG_NAME}" created: ${org.id}`);
+    const harnessRoot = resolve(import.meta.dirname, '..');
+    const portaBaseUrl =
+      process.env.HARNESS_PORTA_URL ?? 'https://porta-harness.ci.portaidentity.com:3443';
+    const appBaseUrl =
+      process.env.HARNESS_APP_URL ?? 'https://app-harness.ci.portaidentity.com:4100';
+    const bffBaseUrl =
+      process.env.HARNESS_BFF_URL ?? 'http://app-harness.ci.portaidentity.com:4101';
+    fixtureSetupStage = 'arrange-baseline';
+    const runtime = await arrangeFixtureBaseline({ appBaseUrl, bffBaseUrl });
+    const sharedScope = 'openid profile email offline_access';
+    const runId = process.env.HARNESS_RUN_ID;
+    const endpointManifestPath = process.env.PORTA_ENDPOINT_MANIFEST;
+    if (runId === undefined || endpointManifestPath === undefined) {
+      throw new Error('active run identity and endpoint manifest are required');
     }
-
-    // Ensure login methods are set (password + magic_link for test coverage)
-    await updateOrganization(org.id, {
-      defaultLoginMethods: ['password', 'magic_link'],
-    });
-    console.log(`  🔐 Login methods: [password, magic_link]\n`);
-
-    // -----------------------------------------------------------------------
-    // Phase B: Application
-    // -----------------------------------------------------------------------
-    console.log('[B] Creating application...');
-    let app = await getApplicationBySlug('test-app');
-    if (app) {
-      console.log(`  ⚠️  App "${APP_NAME}" exists: ${app.id}`);
-    } else {
-      app = await createApplication({ name: APP_NAME });
-      console.log(`  ✅ App "${APP_NAME}" created: ${app.id}`);
-    }
-    console.log();
-
-    // -----------------------------------------------------------------------
-    // Phase C: Clients
-    // -----------------------------------------------------------------------
-    console.log('[C] Creating OIDC clients...');
-
-    // Lookup existing clients (idempotent)
-    const existingClients = await listClientsByApplication(app.id, { page: 1, pageSize: 100 });
-
-    // --- SPA (public) client ---
-    let spaClient = existingClients.data.find(
-      (c: { clientName: string }) => c.clientName === SPA_CLIENT_NAME,
-    );
-    if (spaClient) {
-      console.log(`  ⚠️  Client "${SPA_CLIENT_NAME}" exists: ${spaClient.clientId}`);
-    } else {
-      const result = await createClient({
-        organizationId: org.id,
-        applicationId: app.id,
-        clientName: SPA_CLIENT_NAME,
-        clientType: 'public',
-        applicationType: 'web',
-        redirectUris: [SPA_REDIRECT_URI],
-        postLogoutRedirectUris: [SPA_POST_LOGOUT_URI],
-        grantTypes: ['authorization_code', 'refresh_token'],
-        scope: SHARED_SCOPE,
-        // The browser SPA needs an exact origin allowlist when Porta applies production CORS.
-        allowedOrigins: ['https://app-harness.ci.portaidentity.com:4100'],
-      });
-      spaClient = result.client;
-      console.log(`  ✅ Client "${SPA_CLIENT_NAME}" created: ${spaClient.clientId}`);
-    }
-
-    // --- BFF (confidential) client ---
-    let bffClient = existingClients.data.find(
-      (c: { clientName: string }) => c.clientName === BFF_CLIENT_NAME,
-    );
-    if (bffClient) {
-      console.log(`  ⚠️  Client "${BFF_CLIENT_NAME}" exists: ${bffClient.clientId}`);
-    } else {
-      const result = await createClient({
-        organizationId: org.id,
-        applicationId: app.id,
-        clientName: BFF_CLIENT_NAME,
-        clientType: 'confidential',
-        applicationType: 'web',
-        redirectUris: [BFF_REDIRECT_URI],
-        postLogoutRedirectUris: [BFF_POST_LOGOUT_URI],
-        grantTypes: ['authorization_code', 'refresh_token'],
-        tokenEndpointAuthMethod: 'client_secret_post',
-        scope: SHARED_SCOPE,
-      });
-      bffClient = result.client;
-      console.log(`  ✅ Client "${BFF_CLIENT_NAME}" created: ${bffClient.clientId}`);
-    }
-
-    // Always generate a fresh secret for the BFF client (rotates each seed run)
-    const secretResult = await generateSecret(bffClient.id);
-    const bffSecret = secretResult.plaintext;
-    console.log(`  🔑 BFF client secret: ${bffSecret}\n`);
-
-    // -----------------------------------------------------------------------
-    // Phase D: Test User
-    // -----------------------------------------------------------------------
-    console.log('[D] Creating test user...');
-    let user = await getUserByEmail(org.id, TEST_USER_EMAIL);
-    if (user) {
-      console.log(`  ⚠️  User "${TEST_USER_EMAIL}" exists: ${user.id}`);
-    } else {
-      user = await createUser({
-        organizationId: org.id,
-        email: TEST_USER_EMAIL,
-        givenName: TEST_USER_GIVEN_NAME,
-        familyName: TEST_USER_FAMILY_NAME,
-        password: TEST_USER_PASSWORD,
-      });
-      console.log(`  ✅ User "${TEST_USER_EMAIL}" created: ${user.id}`);
-    }
-
-    // Ensure user is active (users start as inactive after creation)
-    try {
-      await reactivateUser(user.id);
-    } catch {
-      // Already active — that's fine
-    }
-    console.log(`  ✅ User status: active\n`);
-
-    // -----------------------------------------------------------------------
-    // Phase E: Write Config
-    // -----------------------------------------------------------------------
-    console.log('[E] Writing config files...');
-
-    const config = {
-      orgSlug: ORG_SLUG,
+    fixtureSetupStage = 'persist-runtime-files';
+    writeFixtureRuntimeFiles(runId, endpointManifestPath, runtime);
+    const publicConfig = {
+      orgSlug: runtime.retained.organizationSlug,
       spa: {
-        clientId: spaClient.clientId,
-        redirectUri: SPA_REDIRECT_URI,
-        postLogoutRedirectUri: SPA_POST_LOGOUT_URI,
-        scope: SHARED_SCOPE,
+        clientId: runtime.retained.publicClientId,
+        redirectUri: `${appBaseUrl}/callback.html`,
+        postLogoutRedirectUri: `${appBaseUrl}/`,
+        scope: sharedScope,
       },
       bff: {
-        clientId: bffClient.clientId,
-        clientSecret: bffSecret,
-        redirectUri: BFF_REDIRECT_URI,
-        postLogoutRedirectUri: BFF_POST_LOGOUT_URI,
-        scope: SHARED_SCOPE,
+        clientId: runtime.retained.confidentialClientId,
+        clientSecretCredentialRef: 'credential:alpha:client-secret:confidential',
+        redirectUri: `${bffBaseUrl}/callback`,
+        postLogoutRedirectUri: `${bffBaseUrl}/`,
+        scope: sharedScope,
       },
       user: {
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
+        email: runtime.retained.userEmail,
+        passwordCredentialRef: 'credential:alpha:password:active',
       },
       porta: {
-        issuer: `${PORTA_BASE_URL}/${ORG_SLUG}`,
-        baseUrl: PORTA_BASE_URL,
+        issuer: `${portaBaseUrl}/${runtime.retained.organizationSlug}`,
+        baseUrl: portaBaseUrl,
       },
-      mailhog: {
-        apiUrl: `http://localhost:${mailhogPort}/api`,
-      },
+      mailhog: { apiUrl: `http://localhost:${mailhogPort}/api` },
     };
+    fixtureSetupStage = 'persist-public-config';
+    writeRuntimeJson(resolve(harnessRoot, 'config.generated.json'), publicConfig);
 
-    // Write to test-harness/config.generated.json (BFF + Playwright)
-    const harnessRoot = path.resolve(import.meta.dirname ?? '.', '..');
-    const configPath = path.join(harnessRoot, 'config.generated.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    console.log(`  ✅ Config written: ${configPath}`);
+    const spaDirectory = resolve(harnessRoot, 'spa');
+    mkdirSync(spaDirectory, { recursive: true, mode: 0o700 });
+    writeRuntimeJson(resolve(spaDirectory, 'config.json'), {
+      orgSlug: publicConfig.orgSlug,
+      spa: publicConfig.spa,
+      porta: publicConfig.porta,
+    });
 
-    // Write to test-harness/spa/config.json (SPA — served by sirv)
-    const spaConfigDir = path.join(harnessRoot, 'spa');
-    if (!fs.existsSync(spaConfigDir)) {
-      fs.mkdirSync(spaConfigDir, { recursive: true });
-    }
-    const spaConfigPath = path.join(spaConfigDir, 'config.json');
-    fs.writeFileSync(spaConfigPath, JSON.stringify(config, null, 2), 'utf-8');
-    console.log(`  ✅ SPA config written: ${spaConfigPath}\n`);
-
-    // -----------------------------------------------------------------------
-    // Summary
-    // -----------------------------------------------------------------------
-    const SEP = '═'.repeat(60);
-    console.log(SEP);
-    console.log('🧪 Test Harness Seeded Successfully!\n');
-    console.log(`  Organization: ${ORG_NAME} (${ORG_SLUG})`);
-    console.log(`  Application:  ${APP_NAME}`);
-    console.log(`  SPA Client:   ${spaClient.clientId} (public)`);
-    console.log(`  BFF Client:   ${bffClient.clientId} (confidential)`);
-    console.log(`  BFF Secret:   ${bffSecret}`);
-    console.log(`  Test User:    ${TEST_USER_EMAIL} / ${TEST_USER_PASSWORD}`);
-    console.log(`  Porta:        ${PORTA_BASE_URL}`);
-    console.log(`  Issuer:       ${PORTA_BASE_URL}/${ORG_SLUG}`);
-    console.log(SEP);
+    process.stdout.write(
+      `HARNESS_FIXTURES_READY: organizations=3 aliases=${runtime.entities.length}\n`,
+    );
   } finally {
     await disconnectRedis();
     await disconnectDatabase();
   }
 }
 
-main().catch((err) => {
-  console.error('❌ Seed failed:', err);
-  process.exit(1);
+main().catch((error: unknown) => {
+  void error;
+  process.stderr.write(`HARNESS_FIXTURE_SETUP_FAILED: stage=${fixtureSetupStage}\n`);
+  process.exitCode = 1;
 });

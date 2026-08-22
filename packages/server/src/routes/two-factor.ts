@@ -20,7 +20,12 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
-import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
+import {
+  generateCsrfToken,
+  verifyCsrfToken,
+  setCsrfCookie,
+  getCsrfFromCookie,
+} from '../auth/csrf.js';
 import { checkRateLimit, buildRateLimitKey, type RateLimitConfig } from '../auth/rate-limiter.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
@@ -101,7 +106,12 @@ function buildBrandingFromOrg(org: Organization) {
  * @param orgSlug - Organization slug
  * @returns Base template context
  */
-function buildBaseContext(ctx: TwoFactorContext, locale: string, csrfToken: string, orgSlug: string) {
+function buildBaseContext(
+  ctx: TwoFactorContext,
+  locale: string,
+  csrfToken: string,
+  orgSlug: string,
+) {
   return {
     branding: buildBrandingFromOrg(ctx.state.organization),
     locale,
@@ -151,7 +161,9 @@ function maskEmail(email: string): string {
  * @param interaction - OIDC interaction details
  * @returns Pending 2FA state, or null
  */
-function getPendingTwoFactor(interaction: { result?: Record<string, unknown> }): PendingTwoFactor | null {
+function getPendingTwoFactor(interaction: {
+  result?: Record<string, unknown>;
+}): PendingTwoFactor | null {
   const result = interaction.result;
   if (!result?.twoFactor) return null;
   const tf = result.twoFactor as PendingTwoFactor;
@@ -223,7 +235,11 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware,
     // so we resolve the org from the client → organization chain.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
 
     const pending = getPendingTwoFactor(interaction);
 
@@ -234,7 +250,11 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     }
 
     const org = ctx.state.organization;
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
     const t = getTranslationFunction(locale, org.slug);
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
@@ -255,8 +275,8 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     };
 
     await renderAndRespond(ctx, 'two-factor-verify', context);
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to show 2FA page');
+  } catch {
+    logger.error({ event: 'two-factor-page-failed' }, 'Two-factor page rendering failed');
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
@@ -284,7 +304,11 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);
@@ -294,13 +318,24 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
       return;
     }
 
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
     const t = getTranslationFunction(locale, org.slug);
 
     // Verify CSRF token (cookie vs form field)
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on 2FA verify');
-      await renderTwoFactorWithError(ctx, interaction.uid, pending, locale, t, t('errors.csrf_invalid'));
+      logger.warn({ event: 'two-factor-csrf-rejected' }, 'Two-factor CSRF validation failed');
+      await renderTwoFactorWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('errors.csrf_invalid'),
+      );
       return;
     }
 
@@ -318,13 +353,28 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
         description: '2FA verification rate limit exceeded',
         ipAddress: ctx.ip,
       });
-      await renderTwoFactorWithError(ctx, interaction.uid, pending, locale, t, t('errors.rate_limit_exceeded'), 429);
+      await renderTwoFactorWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('errors.rate_limit_exceeded'),
+        429,
+      );
       return;
     }
 
     // Validate code is not empty
     if (!code) {
-      await renderTwoFactorWithError(ctx, interaction.uid, pending, locale, t, t('two-factor.error_code_required'));
+      await renderTwoFactorWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('two-factor.error_code_required'),
+      );
       return;
     }
 
@@ -339,9 +389,9 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
         // Email OTP
         verified = await verifyOtp(pending.pendingAccountId, code);
       }
-    } catch (verifyErr) {
+    } catch {
       // Verification service threw an error (invalid code, expired, exhausted, etc.)
-      logger.debug({ verifyErr, userId: pending.pendingAccountId, codeType }, '2FA verification failed');
+      logger.debug({ event: 'two-factor-code-rejected', codeType }, 'Two-factor code rejected');
       verified = false;
     }
 
@@ -354,7 +404,14 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
         description: `2FA verification failed (${codeType})`,
         ipAddress: ctx.ip,
       });
-      await renderTwoFactorWithError(ctx, interaction.uid, pending, locale, t, t('two-factor.error_invalid_code'));
+      await renderTwoFactorWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('two-factor.error_invalid_code'),
+      );
       return;
     }
 
@@ -371,11 +428,16 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
     });
 
     // Finish the OIDC interaction with the verified user
-    await provider.interactionFinished(ctx.req, ctx.res, {
-      login: { accountId: pending.pendingAccountId },
-    }, { mergeWithLastSubmission: false });
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to verify 2FA');
+    await provider.interactionFinished(
+      ctx.req,
+      ctx.res,
+      {
+        login: { accountId: pending.pendingAccountId },
+      },
+      { mergeWithLastSubmission: false },
+    );
+  } catch {
+    logger.error({ event: 'two-factor-verification-failed' }, 'Two-factor verification failed');
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
@@ -396,7 +458,11 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);
@@ -417,21 +483,36 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
       return;
     }
 
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
 
     // Generate and send new OTP code
     try {
       const otpCode = await sendOtpCode(pending.pendingAccountId, pending.email, org.id);
       const user = await findUserById(pending.pendingAccountId);
       sendOtpCodeEmail(
-        { id: pending.pendingAccountId, email: pending.email, givenName: user?.givenName, familyName: user?.familyName },
-        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+        {
+          id: pending.pendingAccountId,
+          email: pending.email,
+          givenName: user?.givenName,
+          familyName: user?.familyName,
+        },
+        {
+          id: org.id,
+          slug: org.slug,
+          brandingLogoUrl: org.brandingLogoUrl,
+          brandingPrimaryColor: org.brandingPrimaryColor,
+          brandingCompanyName: org.brandingCompanyName,
+        },
         otpCode,
         10,
         locale,
       );
-    } catch (otpErr) {
-      logger.warn({ otpErr, userId: pending.pendingAccountId }, 'Failed to resend OTP code');
+    } catch {
+      logger.warn({ event: 'two-factor-otp-resend-failed' }, 'OTP resend failed');
     }
 
     writeAuditLog({
@@ -439,13 +520,13 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
       userId: pending.pendingAccountId,
       eventType: '2fa.otp.resent',
       eventCategory: 'authentication',
-      description: `OTP code resent to ${pending.email}`,
+      description: 'OTP code resent',
       ipAddress: ctx.ip,
     });
 
     ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to resend OTP code');
+  } catch {
+    logger.error({ event: 'two-factor-resend-failed' }, 'Two-factor resend failed');
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
@@ -466,7 +547,11 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
 
     const pending = getPendingTwoFactor(interaction);
 
@@ -476,13 +561,21 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
     }
 
     const org = ctx.state.organization;
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
     const t = getTranslationFunction(locale, org.slug);
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
 
     // Check for existing pending TOTP setup (avoids regenerating on page reload/error retry)
-    const existingSetup = await getPendingTotpSetupInfo(pending.pendingAccountId, pending.email, org.slug);
+    const existingSetup = await getPendingTotpSetupInfo(
+      pending.pendingAccountId,
+      pending.email,
+      org.slug,
+    );
 
     let qrCodeDataUri: string;
     let totpSecret: string;
@@ -516,12 +609,13 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
       qrCodeDataUri,
       totpSecret,
       recoveryCodes,
-      flash: errorParam === 'invalid_code' ? { error: t('two-factor.error_invalid_code') } : undefined,
+      flash:
+        errorParam === 'invalid_code' ? { error: t('two-factor.error_invalid_code') } : undefined,
     };
 
     await renderAndRespond(ctx, 'two-factor-setup', context);
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to show 2FA setup page');
+  } catch {
+    logger.error({ event: 'two-factor-setup-page-failed' }, 'Two-factor setup page failed');
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
@@ -550,7 +644,11 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
 
     // Resolve organization from the interaction's client_id.
     // 2FA routes don't go through the tenant resolver middleware.
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     const pending = getPendingTwoFactor(interaction);
@@ -560,11 +658,15 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       return;
     }
 
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
+    const locale = await resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
 
     // Verify CSRF token
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on 2FA setup');
+      logger.warn({ event: 'two-factor-setup-csrf-rejected' }, 'Two-factor setup CSRF failed');
       // Redirect back to setup to try again
       ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
       return;
@@ -588,20 +690,36 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
         const otpCode = await sendOtpCode(pending.pendingAccountId, pending.email, org.id);
         const user = await findUserById(pending.pendingAccountId);
         sendOtpCodeEmail(
-          { id: pending.pendingAccountId, email: pending.email, givenName: user?.givenName, familyName: user?.familyName },
-          { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+          {
+            id: pending.pendingAccountId,
+            email: pending.email,
+            givenName: user?.givenName,
+            familyName: user?.familyName,
+          },
+          {
+            id: org.id,
+            slug: org.slug,
+            brandingLogoUrl: org.brandingLogoUrl,
+            brandingPrimaryColor: org.brandingPrimaryColor,
+            brandingCompanyName: org.brandingCompanyName,
+          },
           otpCode,
           10,
           locale,
         );
-      } catch (otpErr) {
-        logger.warn({ otpErr, userId: pending.pendingAccountId }, 'Failed to send OTP after email setup');
+      } catch {
+        logger.warn({ event: 'two-factor-setup-otp-failed' }, 'Setup OTP delivery failed');
       }
 
       // Update the interaction pending method to email
-      await provider.interactionResult(ctx.req, ctx.res, {
-        twoFactor: { ...pending, method: 'email' },
-      }, { mergeWithLastSubmission: true });
+      await provider.interactionResult(
+        ctx.req,
+        ctx.res,
+        {
+          twoFactor: { ...pending, method: 'email' },
+        },
+        { mergeWithLastSubmission: true },
+      );
 
       ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
       return;
@@ -641,11 +759,16 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       ipAddress: ctx.ip,
     });
 
-    await provider.interactionFinished(ctx.req, ctx.res, {
-      login: { accountId: pending.pendingAccountId },
-    }, { mergeWithLastSubmission: false });
-  } catch (error) {
-    logger.error({ error, uid: ctx.params.uid }, 'Failed to process 2FA setup');
+    await provider.interactionFinished(
+      ctx.req,
+      ctx.res,
+      {
+        login: { accountId: pending.pendingAccountId },
+      },
+      { mergeWithLastSubmission: false },
+    );
+  } catch {
+    logger.error({ event: 'two-factor-setup-failed' }, 'Two-factor setup failed');
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }

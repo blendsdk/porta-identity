@@ -36,7 +36,9 @@ describe('domains/imports', () => {
       const result = await imports.provision(manifest);
 
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/import', body: manifest,
+        method: 'POST',
+        path: '/import',
+        body: manifest,
       });
       expect(result).toEqual(body);
     });
@@ -86,15 +88,17 @@ describe('domains/imports', () => {
         updated: [],
         skipped: [],
         errors: [],
-        credentials: [{
-          clientName: 'API Client',
-          clientId: 'generated-id-123',
-          clientType: 'confidential',
-          secretPlaintext: 'secret-abc-123',
-          secretId: 'secret-row-id',
-          secretLabel: 'default',
-          secretExpiresAt: '2027-01-01T00:00:00.000Z',
-        }],
+        credentials: [
+          {
+            clientName: 'API Client',
+            clientId: 'generated-id-123',
+            clientType: 'confidential',
+            secretPlaintext: 'secret-abc-123',
+            secretId: 'secret-row-id',
+            secretLabel: 'default',
+            secretExpiresAt: '2027-01-01T00:00:00.000Z',
+          },
+        ],
       };
       const transport = mockTransport({ body });
       const imports = createImportsDomain(transport);
@@ -119,6 +123,11 @@ describe('domains/imports', () => {
       const result = await imports.provision({ manifest: {}, dryRun: true });
 
       expect(result.mode).toBe('dry-run');
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'POST',
+        path: '/import',
+        body: { manifest: {}, mode: 'dry-run' },
+      });
     });
   });
 });

@@ -34,9 +34,17 @@ const superAdminUser = {
   organizationId: 'org-1',
   roles: ['porta-super-admin'],
   permissions: [
-    'admin:org:create', 'admin:org:read', 'admin:org:update', 'admin:org:suspend', 'admin:org:archive',
-    'admin:user:create', 'admin:user:read', 'admin:user:update',
-    'admin:audit:read', 'admin:config:read', 'admin:config:update',
+    'admin:org:create',
+    'admin:org:read',
+    'admin:org:update',
+    'admin:org:suspend',
+    'admin:org:archive',
+    'admin:user:create',
+    'admin:user:read',
+    'admin:user:update',
+    'admin:audit:read',
+    'admin:config:read',
+    'admin:config:update',
   ] as const,
 };
 
@@ -45,7 +53,12 @@ const auditorUser = {
   email: 'auditor@test.com',
   organizationId: 'org-1',
   roles: ['porta-auditor'],
-  permissions: ['admin:audit:read', 'admin:org:read', 'admin:user:read', 'admin:export:read'] as const,
+  permissions: [
+    'admin:audit:read',
+    'admin:org:read',
+    'admin:user:read',
+    'admin:export:read',
+  ] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -109,7 +122,9 @@ describe('requirePermission middleware', () => {
 
       expect(ctx.status).toBe(403);
       expect((ctx.body as { error: string }).error).toBe('Forbidden');
-      expect((ctx.body as { message: string }).message).toContain('admin:org:create');
+      expect((ctx.body as { message: string }).message).toBe(
+        'The requested operation is not permitted',
+      );
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -124,22 +139,25 @@ describe('requirePermission middleware', () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it('should include required permissions in error message', async () => {
+    it('should not include required permissions in error message', async () => {
       const ctx = createMockContext(auditorUser);
       const middleware = requirePermission('admin:org:create', 'admin:org:update');
 
       await middleware(ctx, mockNext);
 
       const body = ctx.body as { message: string };
-      expect(body.message).toContain('admin:org:create');
-      expect(body.message).toContain('admin:org:update');
+      expect(body.message).toBe('The requested operation is not permitted');
     });
   });
 
   describe('permission checks for different roles', () => {
     it('should allow super-admin to access any permission', async () => {
       const ctx = createMockContext(superAdminUser);
-      const middleware = requirePermission('admin:org:create', 'admin:audit:read', 'admin:config:update');
+      const middleware = requirePermission(
+        'admin:org:create',
+        'admin:audit:read',
+        'admin:config:update',
+      );
 
       await middleware(ctx, mockNext);
 

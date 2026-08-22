@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-22
 
 ## Overview
 
@@ -8,7 +8,7 @@ Porta exposes two distinct API surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
 2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
-This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
+   This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
 
 ## REST Conventions
 
@@ -34,34 +34,34 @@ All admin endpoints follow a consistent RESTful pattern:
 
 ### HTTP Methods
 
-| Method | Purpose | Idempotent | Response |
-|--------|---------|-----------|----------|
-| `GET` | Retrieve resource(s) | Yes | 200 + body |
-| `POST` | Create resource | No | 201 + body |
-| `PUT` | Full update | Yes | 200 + body |
-| `PATCH` | Partial update / status change | Yes | 200 + body |
-| `DELETE` | Remove resource | Yes | 204 (no body) |
+| Method   | Purpose                        | Idempotent | Response      |
+| -------- | ------------------------------ | ---------- | ------------- |
+| `GET`    | Retrieve resource(s)           | Yes        | 200 + body    |
+| `POST`   | Create resource                | No         | 201 + body    |
+| `PUT`    | Full update                    | Yes        | 200 + body    |
+| `PATCH`  | Partial update / status change | Yes        | 200 + body    |
+| `DELETE` | Remove resource                | Yes        | 204 (no body) |
 
 ### Endpoint Inventory
 
-| Route File | Base Path | Endpoints | Description |
-|-----------|-----------|-----------|-------------|
-| `organizations.ts` | `/api/admin/organizations` | 10 | Org CRUD + status lifecycle + branding |
-| `applications.ts` | `/api/admin/applications` | 11 | App CRUD + status + modules |
-| `clients.ts` | `/api/admin/clients` | 10 | Client CRUD + status + secrets |
-| `users.ts` | `/api/admin/organizations/:orgId/users` | 13 | User CRUD + status + password + login tracking |
-| `roles.ts` | `/api/admin/applications/:appId/roles` | 9 | Role CRUD + permission assignment |
-| `permissions.ts` | `/api/admin/applications/:appId/permissions` | 6 | Permission CRUD |
-| `user-roles.ts` | `/api/admin/organizations/:orgId/users/:userId/roles` | 4 | User-role assignment |
-| `custom-claims.ts` | `/api/admin/applications/:appId/claims` | 9 | Claim definitions + user values |
-| `config.ts` | `/api/admin/config` | — | System configuration management |
-| `keys.ts` | `/api/admin/keys` | — | Signing key management |
-| `audit.ts` | `/api/admin/audit` | — | Audit log viewer with filters |
-| `stats.ts` | `/api/admin/stats` | — | Dashboard statistics (6 aggregate queries) |
-| `sessions.ts` | `/api/admin/sessions` | — | Session management + revocation |
-| `bulk.ts` | `/api/admin/bulk` | — | Bulk status operations |
-| `branding.ts` | `/api/admin/organizations/:orgId/branding` | — | Logo/favicon upload (bytea) |
-| `exports.ts` | `/api/admin/export/:entityType` | — | CSV/JSON data export |
+| Route File         | Base Path                                             | Endpoints | Description                                    |
+| ------------------ | ----------------------------------------------------- | --------- | ---------------------------------------------- |
+| `organizations.ts` | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
+| `applications.ts`  | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
+| `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
+| `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
+| `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
+| `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
+| `custom-claims.ts` | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
+| `config.ts`        | `/api/admin/config`                                   | —         | System configuration management                |
+| `keys.ts`          | `/api/admin/keys`                                     | —         | Signing key management                         |
+| `audit.ts`         | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
+| `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
+| `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
+| `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
+| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | —         | Logo/favicon upload (bytea)                    |
+| `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
 
 ## Authentication
 
@@ -91,17 +91,35 @@ sequenceDiagram
 ```
 
 **Key properties:**
+
 - **Self-authentication** — Porta validates tokens signed by its own keys
 - **ES256 only** — No algorithm negotiation; ECDSA P-256 is enforced
 - **Role-based** — Requires `porta-admin` role in the super-admin organization
+- **Nested-resource isolation** — Organization-prefixed user and user-role routes run permission
+  middleware first, then require the target user to belong to the path organization before the
+  handler can read or mutate it
 - **Metadata endpoint** — `GET /api/admin/metadata` is unauthenticated (for CLI login discovery)
 
 ### OIDC Authentication
 
 OIDC endpoints use standard OpenID Connect mechanisms:
+
 - **Authorization Code + PKCE** for public clients (SPAs, CLI)
 - **Client Secret Post** for confidential clients (with SHA-256 pre-hash)
 - **Client Credentials** for machine-to-machine
+
+### Magic-Link Callback Authority
+
+`GET /:orgSlug/auth/magic-link/:token` is a public authentication callback, not an Admin API
+route. The optional `interaction` query value is transport input and never replaces persisted
+authority. Before any successful mutation, Porta requires the route organization, artifact
+organization, current account organization, persisted interaction, and live OIDC client tenant to
+agree. Invalid, expired, replayed, cross-tenant, and interaction-mismatched requests share one
+generic response contract.
+
+Successful verification commits token consumption, account state, and durable audit together. A
+separate short-lived Redis continuation is created afterward and is atomically consumed only when
+its tenant and interaction match independently resolved OIDC authority.
 
 ## Request Validation
 
@@ -111,7 +129,12 @@ All request bodies are validated using **Zod schemas** defined inline in route h
 // Example: Create organization
 const schema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(2).max(63).regex(/^[a-z0-9-]+$/).optional(),
+  slug: z
+    .string()
+    .min(2)
+    .max(63)
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
   defaultLocale: z.string().max(10).optional(),
 });
 
@@ -119,6 +142,7 @@ const body = schema.parse(ctx.request.body);
 ```
 
 **Validation principles:**
+
 - Every request body field is validated before reaching the service layer
 - Zod parse errors are caught by the error handler and returned as 400 responses
 - Path parameters (UUIDs) are validated with `z.string().uuid()`
@@ -202,20 +226,20 @@ All errors follow a consistent JSON format:
 
 ### HTTP Status Codes
 
-| Code | Meaning | When Used |
-|------|---------|-----------|
-| 200 | OK | Successful read or update |
-| 201 | Created | Successful resource creation |
-| 204 | No Content | Successful deletion |
-| 400 | Bad Request | Validation failure (Zod parse error) |
-| 401 | Unauthorized | Missing or invalid authentication |
-| 403 | Forbidden | Insufficient permissions or suspended tenant |
-| 404 | Not Found | Resource does not exist |
-| 409 | Conflict | Duplicate slug, email uniqueness violation |
-| 410 | Gone | Archived tenant |
-| 412 | Precondition Failed | ETag mismatch |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Unhandled error (details hidden) |
+| Code | Meaning               | When Used                                    |
+| ---- | --------------------- | -------------------------------------------- |
+| 200  | OK                    | Successful read or update                    |
+| 201  | Created               | Successful resource creation                 |
+| 204  | No Content            | Successful deletion                          |
+| 400  | Bad Request           | Validation failure (Zod parse error)         |
+| 401  | Unauthorized          | Missing or invalid authentication            |
+| 403  | Forbidden             | Insufficient permissions or suspended tenant |
+| 404  | Not Found             | Resource does not exist                      |
+| 409  | Conflict              | Duplicate slug, email uniqueness violation   |
+| 410  | Gone                  | Archived tenant                              |
+| 412  | Precondition Failed   | ETag mismatch                                |
+| 429  | Too Many Requests     | Rate limit exceeded                          |
+| 500  | Internal Server Error | Unhandled error (details hidden)             |
 
 ### Domain Error Classes
 
@@ -252,7 +276,8 @@ graph LR
 2. **Service function** orchestrates business logic
 3. **Repository** executes parameterized SQL queries
 4. **Cache** is invalidated after writes
-5. **Audit log** records the action (fire-and-forget)
+5. **Audit log** records the action (best-effort for compatibility workflows; transaction-bound
+   for covered administrative data mutations)
 6. **Response** is returned as JSON
 
 ### Functional Style
@@ -267,17 +292,35 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
 class OrganizationService { create(input) { ... } }
 ```
 
-## Data Export
+## Administrative Data Operations
 
-The export API supports bulk data extraction:
+Administrative data APIs use closed schemas and explicit authorization boundaries:
 
+```text
+POST /api/admin/bulk/organizations/status
+POST /api/admin/bulk/users/status
+POST /api/admin/import
+GET  /api/admin/export/:entityType
 ```
-GET /api/admin/export/organizations?format=csv
-GET /api/admin/export/users?format=json&orgId=<uuid>
-```
 
-Supported entity types: organizations, applications, clients, users.
-Supported formats: CSV, JSON.
+Bulk status changes validate the complete request before persistence. Each accepted item then owns
+one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
+rejections are returned in input order. A dependency failure preserves earlier commits, marks the
+current and remaining items `not_attempted`, and exposes only a correlation identifier.
+
+Imports accept versioned manifests in `merge`, `overwrite`, or `dry-run` mode. The planner rejects
+unknown fields, duplicate natural keys, unresolved parents, cross-tenant relationships, and
+credential-equivalent input before mutation. Merge skips existing tenant-qualified keys; overwrite
+changes only the documented presentation and configuration fields; dry-run rolls back its snapshot
+and reports credential intent without identifiers or plaintext. Non-skip failures roll back the
+whole manifest.
+
+Exports support organizations, users, clients, roles, and audit records in CSV or JSON. Every
+request requires `admin:export:read` plus the entity-specific read permission. Users and clients
+are organization-scoped; roles require a proven organization/application relationship; audit
+exports require an organization and bounded date range. Queries reject results above 10,000 rows,
+project an exact public field allowlist, omit private audit details, and neutralize spreadsheet
+formula prefixes before CSV quoting.
 
 ## Related Documentation
 

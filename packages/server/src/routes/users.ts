@@ -39,12 +39,13 @@ import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { writeAuditLog } from '../lib/audit-log.js';
-import { getPool } from '../lib/database.js';
+import { afterDatabaseCommit, getPool } from '../lib/database.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
 import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
+import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData, purgeUserData } from '../users/gdpr.js';
@@ -171,18 +172,18 @@ function handleError(
 ): never {
   if (err instanceof SuperAdminProtectionError) {
     ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: err.message };
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;
   }
   if (err instanceof UserNotFoundError) {
-    ctx.throw(404, err.message);
+    ctx.throw(404, 'User not found');
   }
   if (err instanceof UserValidationError) {
-    ctx.throw(400, err.message);
+    ctx.throw(400, 'User request is invalid');
   }
   if (err instanceof z.ZodError) {
     ctx.status = 400;
-    ctx.body = { error: 'Validation failed', details: err.issues };
+    ctx.body = { error: 'User request is invalid' };
     return undefined as never;
   }
   throw err;
@@ -257,35 +258,45 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:userId — Get user by ID
   // -------------------------------------------------------------------------
-  router.get('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
-    const user = await userService.getUserById(ctx.params.userId);
-    if (!user) {
-      ctx.throw(404, 'User not found');
-      return; // unreachable — keeps TS narrowing happy
-    }
-    setETagHeader(ctx, 'user', user.id, user.updatedAt);
-    ctx.body = { data: user };
-  });
+  router.get(
+    '/:userId',
+    requirePermission(ADMIN_PERMISSIONS.USER_READ),
+    requireUserOrganization(),
+    async (ctx) => {
+      const user = await userService.getUserById(ctx.params.userId);
+      if (!user) {
+        ctx.throw(404, 'User not found');
+        return; // unreachable — keeps TS narrowing happy
+      }
+      setETagHeader(ctx, 'user', user.id, user.updatedAt);
+      ctx.body = { data: user };
+    },
+  );
 
   // -------------------------------------------------------------------------
   // PUT /:userId — Update user profile
   // -------------------------------------------------------------------------
-  router.put('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_UPDATE), async (ctx) => {
-    try {
-      const body = updateUserSchema.parse(ctx.request.body);
-      // Check If-Match for optimistic concurrency (optional — backward compatible)
-      const current = await userService.getUserById(ctx.params.userId);
-      if (current && !checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
-      // Convert null address to undefined — Zod allows null for clearing,
-      // but UpdateUserInput uses undefined to mean "no change"
-      const input = { ...body, address: body.address ?? undefined };
-      const user = await userService.updateUser(ctx.params.userId, input);
-      setETagHeader(ctx, 'user', user.id, user.updatedAt);
-      ctx.body = { data: user };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.put(
+    '/:userId',
+    requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const body = updateUserSchema.parse(ctx.request.body);
+        // Check If-Match for optimistic concurrency (optional — backward compatible)
+        const current = await userService.getUserById(ctx.params.userId);
+        if (current && !checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
+        // Convert null address to undefined — Zod allows null for clearing,
+        // but UpdateUserInput uses undefined to mean "no change"
+        const input = { ...body, address: body.address ?? undefined };
+        const user = await userService.updateUser(ctx.params.userId, input);
+        setETagHeader(ctx, 'user', user.id, user.updatedAt);
+        ctx.body = { data: user };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:userId/deactivate — Deactivate user
@@ -294,6 +305,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/deactivate',
     requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'deactivate');
@@ -311,6 +323,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/reactivate',
     requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await userService.reactivateUser(ctx.params.userId);
@@ -328,6 +341,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/suspend',
     requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'suspend');
@@ -346,6 +360,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/unsuspend',
     requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await userService.unsuspendUser(ctx.params.userId);
@@ -360,28 +375,38 @@ export function createUserRouter(): Router {
   // POST /:userId/lock — Lock user
   // Protected: super-admin user cannot be locked
   // -------------------------------------------------------------------------
-  router.post('/:userId/lock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await guardSuperAdmin(ctx.params.userId, 'lock');
-      const body = lockUserSchema.parse(ctx.request.body);
-      await userService.lockUser(ctx.params.userId, body.reason);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post(
+    '/:userId/lock',
+    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        await guardSuperAdmin(ctx.params.userId, 'lock');
+        const body = lockUserSchema.parse(ctx.request.body);
+        await userService.lockUser(ctx.params.userId, body.reason);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:userId/unlock — Unlock user
   // -------------------------------------------------------------------------
-  router.post('/:userId/unlock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await userService.unlockUser(ctx.params.userId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post(
+    '/:userId/unlock',
+    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        await userService.unlockUser(ctx.params.userId);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:userId/password — Set password
@@ -389,6 +414,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/password',
     requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         const body = setPasswordSchema.parse(ctx.request.body);
@@ -406,6 +432,7 @@ export function createUserRouter(): Router {
   router.delete(
     '/:userId/password',
     requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await userService.clearUserPassword(ctx.params.userId);
@@ -422,6 +449,7 @@ export function createUserRouter(): Router {
   router.post(
     '/:userId/verify-email',
     requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
+    requireUserOrganization(),
     async (ctx) => {
       try {
         await userService.markEmailVerified(ctx.params.userId);
@@ -435,14 +463,19 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET /:userId/export — GDPR data export (Article 20)
   // -------------------------------------------------------------------------
-  router.get('/:userId/export', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
-    const user = await userService.getUserById(ctx.params.userId);
-    if (!user) {
-      return ctx.throw(404, 'User not found');
-    }
-    const exportData = await exportUserData(user);
-    ctx.body = { data: exportData };
-  });
+  router.get(
+    '/:userId/export',
+    requirePermission(ADMIN_PERMISSIONS.USER_READ),
+    requireUserOrganization(),
+    async (ctx) => {
+      const user = await userService.getUserById(ctx.params.userId);
+      if (!user) {
+        return ctx.throw(404, 'User not found');
+      }
+      const exportData = await exportUserData(user);
+      ctx.body = { data: exportData };
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /:userId/purge — GDPR data purge (Article 17)
@@ -451,59 +484,69 @@ export function createUserRouter(): Router {
   // Irreversibly anonymizes user data and deletes related records.
   // Protected: super-admin user cannot be purged
   // -------------------------------------------------------------------------
-  router.post('/:userId/purge', requirePermission(ADMIN_PERMISSIONS.USER_ARCHIVE), async (ctx) => {
-    // Require explicit confirmation via header OR request body
-    const confirmHeader = ctx.get('X-Confirm-Purge');
-    const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
-    if (confirmHeader !== 'true' && confirmBody !== true) {
-      ctx.status = 400;
-      ctx.body = {
-        error: 'Purge requires confirmation',
-        message: 'Set X-Confirm-Purge: true header or send { "confirmPurge": true } in body',
-      };
-      return;
-    }
-
-    const user = await userService.getUserById(ctx.params.userId);
-    if (!user) {
-      return ctx.throw(404, 'User not found');
-    }
-
-    try {
-      // Guard: super-admin user cannot be purged
-      await guardSuperAdmin(ctx.params.userId, 'delete');
-
-      // Use the admin user's ID as the actor for the audit trail
-      const actorId = ctx.state.adminUser?.id ?? 'system';
-      const result = await purgeUserData(user, actorId);
-      ctx.body = { data: result };
-    } catch (err) {
-      if (err instanceof SuperAdminProtectionError) {
-        ctx.status = 403;
-        ctx.body = { error: err.message };
+  router.post(
+    '/:userId/purge',
+    requirePermission(ADMIN_PERMISSIONS.USER_ARCHIVE),
+    requireUserOrganization(),
+    async (ctx) => {
+      // Require explicit confirmation via header OR request body
+      const confirmHeader = ctx.get('X-Confirm-Purge');
+      const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
+      if (confirmHeader !== 'true' && confirmBody !== true) {
+        ctx.status = 400;
+        ctx.body = {
+          error: 'Purge requires confirmation',
+          message: 'Set X-Confirm-Purge: true header or send { "confirmPurge": true } in body',
+        };
         return;
       }
-      if (err instanceof Error && err.message.includes('super-admin')) {
-        ctx.status = 403;
-        ctx.body = { error: err.message };
-        return;
+
+      const user = await userService.getUserById(ctx.params.userId);
+      if (!user) {
+        return ctx.throw(404, 'User not found');
       }
-      throw err;
-    }
-  });
+
+      try {
+        // Guard: super-admin user cannot be purged
+        await guardSuperAdmin(ctx.params.userId, 'delete');
+
+        // Use the admin user's ID as the actor for the audit trail
+        const actorId = ctx.state.adminUser?.id ?? 'system';
+        const result = await purgeUserData(user, actorId);
+        ctx.body = { data: result };
+      } catch (err) {
+        if (err instanceof SuperAdminProtectionError) {
+          ctx.status = 403;
+          ctx.body = { error: 'The requested operation is not permitted' };
+          return;
+        }
+        if (err instanceof Error && err.message.includes('super-admin')) {
+          ctx.status = 403;
+          ctx.body = { error: 'The requested operation is not permitted' };
+          return;
+        }
+        throw err;
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:userId/history — User change history
   // -------------------------------------------------------------------------
-  router.get('/:userId/history', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
-    const { limit, after, event_type } = ctx.query as Record<string, string>;
-    const result = await getEntityHistory('user', ctx.params.userId, {
-      limit: limit ? parseInt(limit, 10) : undefined,
-      after: after || undefined,
-      eventTypePrefix: event_type || undefined,
-    });
-    ctx.body = result;
-  });
+  router.get(
+    '/:userId/history',
+    requirePermission(ADMIN_PERMISSIONS.USER_READ),
+    requireUserOrganization(),
+    async (ctx) => {
+      const { limit, after, event_type } = ctx.query as Record<string, string>;
+      const result = await getEntityHistory('user', ctx.params.userId, {
+        limit: limit ? parseInt(limit, 10) : undefined,
+        after: after || undefined,
+        eventTypePrefix: event_type || undefined,
+      });
+      ctx.body = result;
+    },
+  );
 
   // -------------------------------------------------------------------------
   // POST /invite — Send invitation to a new or existing user
@@ -588,18 +631,25 @@ export function createUserRouter(): Router {
       if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
       emailOptions.inviterName = inviterName;
 
-      await sendInvitationEmail(
-        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
-        inviteUrl,
-        body.locale ?? org.defaultLocale ?? 'en',
-        emailOptions,
+      await afterDatabaseCommit(() =>
+        sendInvitationEmail(
+          {
+            id: user.id,
+            email: user.email,
+            givenName: user.givenName,
+            familyName: user.familyName,
+          },
+          {
+            id: org.id,
+            slug: org.slug,
+            brandingLogoUrl: org.brandingLogoUrl,
+            brandingPrimaryColor: org.brandingPrimaryColor,
+            brandingCompanyName: org.brandingCompanyName,
+          },
+          inviteUrl,
+          body.locale ?? org.defaultLocale ?? 'en',
+          emailOptions,
+        ),
       );
 
       // Audit log the invitation
@@ -609,7 +659,7 @@ export function createUserRouter(): Router {
         actorId: adminUser.id,
         eventType: 'user.invited',
         eventCategory: 'admin',
-        description: `User ${user.email} invited by ${inviterName}`,
+        description: 'User invitation created',
         metadata: {
           hasPersonalMessage: !!body.personalMessage,
           preAssignedRoles: body.roles?.length ?? 0,

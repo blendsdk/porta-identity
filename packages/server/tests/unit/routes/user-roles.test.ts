@@ -16,7 +16,12 @@ vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
+vi.mock('../../../src/lib/super-admin-protection.js', () => ({
+  guardSuperAdmin: vi.fn(),
+}));
+
 import * as userRoleService from '../../../src/rbac/user-role-service.js';
+import { guardSuperAdmin } from '../../../src/lib/super-admin-protection.js';
 import { createUserRoleRouter } from '../../../src/routes/user-roles.js';
 
 // ---------------------------------------------------------------------------
@@ -55,11 +60,13 @@ function createTestPermission(overrides: Partial<Permission> = {}): Permission {
  * Create a minimal mock Koa context for route testing.
  * Simulates what Koa provides to route handlers.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -67,10 +74,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -82,7 +97,11 @@ function createMockCtx(overrides: {
 }
 
 /** Find a route layer by method and path suffix */
-function findLayer(router: ReturnType<typeof createUserRoleRouter>, method: string, pathSuffix: string) {
+function findLayer(
+  router: ReturnType<typeof createUserRoleRouter>,
+  method: string,
+  pathSuffix: string,
+) {
   const prefix = '/api/admin/organizations/:orgId/users/:userId/roles';
   return router.stack.find(
     (l) => l.methods.includes(method) && l.path === `${prefix}${pathSuffix}`,
@@ -90,7 +109,10 @@ function findLayer(router: ReturnType<typeof createUserRoleRouter>, method: stri
 }
 
 /** Execute the last middleware in a layer's stack (the actual handler) */
-async function execHandler(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function execHandler(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   const next = vi.fn();
   await layer.stack[layer.stack.length - 1](ctx as never, next);
 }
@@ -151,10 +173,9 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
-      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith(
-        'user-uuid-1',
-        ['a0000000-0000-4000-a000-000000000001'],
-      );
+      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith('user-uuid-1', [
+        'a0000000-0000-4000-a000-000000000001',
+      ]);
     });
 
     it('should return 400 for invalid role IDs (not UUIDs)', async () => {
@@ -166,7 +187,7 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Role assignment request is invalid');
     });
 
     it('should return 400 for empty role IDs array', async () => {
@@ -201,6 +222,7 @@ describe('user-role routes', () => {
 
   describe('DELETE / — Remove roles from user', () => {
     it('should return 204 on successful removal', async () => {
+      vi.mocked(guardSuperAdmin).mockResolvedValue(undefined);
       vi.mocked(userRoleService.removeRolesFromUser).mockResolvedValue(undefined);
 
       const layer = findLayer(createUserRoleRouter(), 'DELETE', '');
@@ -211,6 +233,20 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
+      expect(guardSuperAdmin).toHaveBeenCalledWith('user-uuid-1', 'remove-super-admin-role');
+    });
+
+    it('should not remove roles when bootstrap-user protection rejects the request', async () => {
+      vi.mocked(guardSuperAdmin).mockRejectedValue(new Error('protected bootstrap user'));
+      const layer = findLayer(createUserRoleRouter(), 'DELETE', '');
+      const ctx = createMockCtx({
+        params: defaultParams,
+        body: { roleIds: ['a0000000-0000-4000-a000-000000000001'] },
+      });
+
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('protected bootstrap user');
+
+      expect(userRoleService.removeRolesFromUser).not.toHaveBeenCalled();
     });
 
     it('should return 400 for missing roleIds', async () => {
@@ -266,7 +302,9 @@ describe('user-role routes', () => {
     it('should register all expected routes', () => {
       const router = createUserRoleRouter();
       const prefix = '/api/admin/organizations/:orgId/users/:userId/roles';
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain(`GET ${prefix}`);
       expect(paths).toContain(`PUT ${prefix}`);

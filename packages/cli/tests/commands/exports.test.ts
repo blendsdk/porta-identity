@@ -133,6 +133,25 @@ describe('exports command', () => {
       writeSpy.mockRestore();
     });
 
+    it('reads native raw responses returned by the SDK transport', async () => {
+      const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      mockExports.download.mockResolvedValue({
+        body: undefined,
+        raw: new Response('{"data":[{"id":"1"}]}', {
+          headers: { 'content-type': 'application/json' },
+        }),
+      });
+
+      await invokeSubcommand('download', {
+        'entity-type': 'users',
+        format: 'json',
+      });
+
+      expect(writeSpy).toHaveBeenCalledWith('{"data":[{"id":"1"}]}');
+      expect(handleError).not.toHaveBeenCalled();
+      writeSpy.mockRestore();
+    });
+
     it('passes filter params', async () => {
       const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
       mockExports.download.mockResolvedValue({ body: '' });

@@ -32,14 +32,17 @@ vi.mock('../../../src/lib/database.js', () => ({
     query: mockQuery,
     connect: mockConnect,
   })),
+  getDatabaseTransactionClient: vi.fn(() => ({ query: mockClientQuery })),
+  runDatabaseTransaction: vi.fn(async (work: () => Promise<unknown>) => work()),
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(async () => undefined),
 }));
 
 import { exportUserData, purgeUserData } from '../../../src/users/gdpr.js';
-import { writeAuditLog } from '../../../src/lib/audit-log.js';
+import { writeAuditLogInTransaction } from '../../../src/lib/audit-log.js';
+import { runDatabaseTransaction } from '../../../src/lib/database.js';
 import type { User } from '../../../src/users/types.js';
 
 // ---------------------------------------------------------------------------
@@ -111,13 +114,29 @@ describe('GDPR Export/Purge', () => {
       mockQuery
         .mockResolvedValueOnce({ rows: [{ id: 'org-456', name: 'Acme', slug: 'acme' }] })
         .mockResolvedValueOnce({
-          rows: [{ role_id: 'role-1', name: 'Admin', slug: 'admin', application_id: 'app-1', created_at: '2026-01-15' }],
+          rows: [
+            {
+              role_id: 'role-1',
+              name: 'Admin',
+              slug: 'admin',
+              application_id: 'app-1',
+              created_at: '2026-01-15',
+            },
+          ],
         })
         .mockResolvedValueOnce({
           rows: [{ claim_name: 'department', value: 'Engineering', application_id: 'app-1' }],
         })
         .mockResolvedValueOnce({
-          rows: [{ id: 'audit-1', event_type: 'user.login', event_category: 'auth', description: 'Login', created_at: '2026-04-20' }],
+          rows: [
+            {
+              id: 'audit-1',
+              event_type: 'user.login',
+              event_category: 'auth',
+              description: 'Login',
+              created_at: '2026-04-20',
+            },
+          ],
         })
         .mockResolvedValueOnce({ rows: [{ count: '2' }] });
 
@@ -200,13 +219,9 @@ describe('GDPR Export/Purge', () => {
   describe('purgeUserData', () => {
     /** Setup mock queries for a successful purge */
     function setupPurgeMocks(isSuperAdmin = false) {
-      // org check
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ is_super_admin: isSuperAdmin }],
-      });
-      // Transaction queries in order: BEGIN, oidc delete, totp, otp, recovery, claims, roles, audit update, user update, COMMIT
+      // Transaction queries in order: org authority, OIDC, 2FA, claims, roles, audit, and user.
       mockClientQuery
-        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ is_super_admin: isSuperAdmin }] })
         .mockResolvedValueOnce({ rowCount: 3 }) // oidc delete
         .mockResolvedValueOnce({ rowCount: 1 }) // totp
         .mockResolvedValueOnce({ rowCount: 2 }) // otp codes
@@ -214,8 +229,7 @@ describe('GDPR Export/Purge', () => {
         .mockResolvedValueOnce({ rowCount: 2 }) // claims
         .mockResolvedValueOnce({ rowCount: 3 }) // roles
         .mockResolvedValueOnce({ rowCount: 10 }) // audit update
-        .mockResolvedValueOnce({}) // user update
-        .mockResolvedValueOnce({}); // COMMIT
+        .mockResolvedValueOnce({}); // user update
     }
 
     it('should anonymize user record (I3)', async () => {
@@ -281,23 +295,23 @@ describe('GDPR Export/Purge', () => {
 
     it('should block purge of super-admin org users (I8)', async () => {
       // org check returns super-admin
-      mockQuery.mockResolvedValueOnce({
+      mockClientQuery.mockResolvedValueOnce({
         rows: [{ is_super_admin: true }],
       });
 
-      await expect(
-        purgeUserData(createTestUser(), 'admin-1'),
-      ).rejects.toThrow('Cannot purge users belonging to the super-admin organization');
+      await expect(purgeUserData(createTestUser(), 'admin-1')).rejects.toThrow(
+        'Cannot purge users belonging to the super-admin organization',
+      );
 
-      // Should not have started a transaction
-      expect(mockConnect).not.toHaveBeenCalled();
+      expect(writeAuditLogInTransaction).not.toHaveBeenCalled();
     });
 
-    it('should fire audit event before anonymization (I9)', async () => {
+    it('should write the purge audit in the mutation transaction (I9)', async () => {
       setupPurgeMocks();
       await purgeUserData(createTestUser(), 'admin-1');
 
-      expect(writeAuditLog).toHaveBeenCalledWith(
+      expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ query: mockClientQuery }),
         expect.objectContaining({
           eventType: 'user.purged',
           eventCategory: 'gdpr',
@@ -306,36 +320,27 @@ describe('GDPR Export/Purge', () => {
         }),
       );
 
-      // Audit event should be called before transaction starts
-      const auditCallOrder = vi.mocked(writeAuditLog).mock.invocationCallOrder[0];
-      const connectCallOrder = mockConnect.mock.invocationCallOrder[0];
-      expect(auditCallOrder).toBeLessThan(connectCallOrder);
+      expect(runDatabaseTransaction).toHaveBeenCalledOnce();
     });
 
     it('should rollback transaction on error', async () => {
       // org check OK
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ is_super_admin: false }],
-      });
-      // Transaction fails mid-way
       mockClientQuery
-        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ is_super_admin: false }] })
         .mockRejectedValueOnce(new Error('DB connection lost')); // oidc delete fails
 
-      await expect(
-        purgeUserData(createTestUser(), 'admin-1'),
-      ).rejects.toThrow('DB connection lost');
+      await expect(purgeUserData(createTestUser(), 'admin-1')).rejects.toThrow(
+        'DB connection lost',
+      );
 
-      // Verify ROLLBACK was called
-      expect(mockClientQuery).toHaveBeenCalledWith('ROLLBACK');
-      expect(mockRelease).toHaveBeenCalled();
+      expect(writeAuditLogInTransaction).not.toHaveBeenCalled();
     });
 
-    it('should always release the client connection', async () => {
+    it('should always use the shared transaction owner', async () => {
       setupPurgeMocks();
       await purgeUserData(createTestUser(), 'admin-1');
 
-      expect(mockRelease).toHaveBeenCalledTimes(1);
+      expect(runDatabaseTransaction).toHaveBeenCalledOnce();
     });
   });
 });

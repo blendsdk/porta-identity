@@ -10,16 +10,38 @@
  */
 
 import { Page, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { z } from 'zod';
+
+import { readProtectedRuntimeCredential } from '../fixtures/fixture-runtime-files.js';
 
 // ── Config ──────────────────────────────────────────────
 
+const runtimeConfig = z
+  .object({
+    user: z.object({
+      email: z.string().email(),
+      passwordCredentialRef: z.string().startsWith('credential:'),
+    }),
+  })
+  .parse(
+    JSON.parse(readFileSync(resolve(import.meta.dirname, '../config.generated.json'), 'utf8')),
+  );
+const credentialPath = process.env.HARNESS_FIXTURE_CREDENTIALS;
+if (credentialPath === undefined) throw new Error('HARNESS_FIXTURE_CREDENTIALS is required');
+
+/** Retained browser principal loaded from the ignored protected runtime configuration. */
 export const TEST_USER = {
-  email: 'testuser@test.org',
-  password: 'TestPassword123!',
+  email: runtimeConfig.user.email,
+  password: readProtectedRuntimeCredential(
+    credentialPath,
+    runtimeConfig.user.passwordCredentialRef,
+  ),
 };
 
 /** MailHog API endpoint used by the browser harness. */
-export const MAILHOG_API = `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}/api`;
+export const MAILHOG_API = `${process.env.HARNESS_MAILHOG_URL ?? `http://localhost:${process.env.HARNESS_MAILHOG_PORT ?? '8025'}`}/api`;
 
 // ── Porta Login Page Helpers ────────────────────────────
 
@@ -135,7 +157,16 @@ export async function waitForEmail(
     const resp = await fetch(
       `${MAILHOG_API}/v2/search?kind=to&query=${encodeURIComponent(recipientEmail)}`,
     );
-    const data = await resp.json();
+    const data = z
+      .object({
+        items: z.array(
+          z.object({
+            Content: z.object({ Body: z.string().optional() }).optional(),
+            Raw: z.object({ Data: z.string().optional() }).optional(),
+          }),
+        ),
+      })
+      .parse(await resp.json());
 
     if (data.items && data.items.length > 0) {
       const latestEmail = data.items[data.items.length - 1];
@@ -163,12 +194,12 @@ export function extractMagicLink(emailBody: string): string {
   decoded = decoded.replace(/&amp;/g, '&');
 
   // Magic link emails typically contain a URL like:
-  // https://porta-harness.ci.portaidentity.com:3443/test-org/interaction/{uid}/magic-link/verify?token={token}
+  // <manifest Porta URL>/test-org/interaction/{uid}/magic-link/verify?token={token}
   const urlMatch = decoded.match(/https?:\/\/[^\s"<>]+magic[^\s"<>]*/i);
   if (!urlMatch) {
     // Fallback: find a Porta URL served through the harness TLS proxy.
     const fallbackMatch = decoded.match(
-      /https?:\/\/porta-harness\.ci\.portaidentity\.com:3443[^\s"<>]+/i,
+      /https?:\/\/porta-harness\.ci\.portaidentity\.com:\d{2,5}[^\s"<>]+/i,
     );
     if (!fallbackMatch) {
       throw new Error('Could not find magic link URL in email body');

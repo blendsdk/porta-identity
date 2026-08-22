@@ -129,10 +129,7 @@ export async function insertUser(data: InsertUserData): Promise<User> {
 export async function findUserById(id: string): Promise<User | null> {
   const pool = getPool();
 
-  const result = await pool.query<UserRow>(
-    'SELECT * FROM users WHERE id = $1',
-    [id],
-  );
+  const result = await pool.query<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
 
   if (result.rows.length === 0) return null;
   return mapRowToUser(result.rows[0]);
@@ -439,7 +436,9 @@ export async function listUsersCursor(
     const decoded = decodeCursor(options.cursor);
     if (decoded) {
       if (decoded.s === null) {
-        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        conditions.push(
+          `(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`,
+        );
         params.push(decoded.i);
         paramIndex++;
       } else {
@@ -474,11 +473,16 @@ export async function listUsersCursor(
   // Resolve sort value getter based on sort column
   const getSortValue = (u: User): string | number | null => {
     switch (sortColumn) {
-      case 'email': return u.email;
-      case 'given_name': return u.givenName ?? null;
-      case 'family_name': return u.familyName ?? null;
-      case 'last_login_at': return u.lastLoginAt?.toISOString() ?? null;
-      default: return u.createdAt.toISOString();
+      case 'email':
+        return u.email;
+      case 'given_name':
+        return u.givenName ?? null;
+      case 'family_name':
+        return u.familyName ?? null;
+      case 'last_login_at':
+        return u.lastLoginAt?.toISOString() ?? null;
+      default:
+        return u.createdAt.toISOString();
     }
   };
 
@@ -595,6 +599,78 @@ export async function incrementFailedLoginCount(
     status: row?.status ?? 'active',
     failedLoginCount: row?.failed_login_count ?? 0,
   };
+}
+
+/**
+ * Apply the fixed-shape failed-login update only when the selected account remains active.
+ *
+ * Callers pass a non-account UUID when no eligible account exists. PostgreSQL still executes the
+ * same statement, while the status predicate prevents mutation of absent or ineligible accounts.
+ *
+ * @param id - Eligible account UUID or the fixed non-account UUID.
+ * @param maxAttempts - Auto-lock threshold.
+ * @returns Updated status/count, or the neutral no-op result.
+ */
+export async function recordEligiblePasswordFailure(
+  id: string,
+  maxAttempts: number,
+): Promise<{ status: string; failedLoginCount: number }> {
+  const pool = getPool();
+  const result = await pool.query<{ status: string; failed_login_count: number }>(
+    `UPDATE users
+     SET failed_login_count = failed_login_count + 1,
+         last_failed_login_at = NOW(),
+         status = CASE
+           WHEN failed_login_count + 1 >= $2 THEN 'locked'
+           ELSE status
+         END,
+         locked_at = CASE
+           WHEN failed_login_count + 1 >= $2 THEN NOW()
+           ELSE locked_at
+         END,
+         locked_reason = CASE
+           WHEN failed_login_count + 1 >= $2 THEN 'auto_lockout'
+           ELSE locked_reason
+         END
+     WHERE id = $1
+       AND status = 'active'
+     RETURNING status, failed_login_count`,
+    [id, maxAttempts],
+  );
+
+  const row = result.rows[0];
+  return {
+    status: row?.status ?? 'unmodified',
+    failedLoginCount: row?.failed_login_count ?? 0,
+  };
+}
+
+/**
+ * Conditionally clear an elapsed automatic lock using a fixed-shape update.
+ *
+ * @param id - Candidate account UUID or the fixed non-account UUID.
+ * @param lockedBefore - Inclusive cutoff for an elapsed automatic lock.
+ * @returns Whether an account was unlocked.
+ */
+export async function unlockEligiblePasswordAccount(
+  id: string,
+  lockedBefore: Date,
+): Promise<boolean> {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE users
+     SET status = 'active',
+         locked_at = NULL,
+         locked_reason = NULL,
+         failed_login_count = 0,
+         last_failed_login_at = NULL
+     WHERE id = $1
+       AND status = 'locked'
+       AND locked_reason = 'auto_lockout'
+       AND locked_at <= $2`,
+    [id, lockedBefore],
+  );
+  return result.rowCount === 1;
 }
 
 /**

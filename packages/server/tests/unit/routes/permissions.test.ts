@@ -58,11 +58,13 @@ function createTestRole(overrides: Partial<Role> = {}): Role {
  * Create a minimal mock Koa context for route testing.
  * Simulates what Koa provides to route handlers.
  */
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: unknown;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    query?: Record<string, string>;
+    body?: unknown;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
 
@@ -70,10 +72,18 @@ function createMockCtx(overrides: {
     params: overrides.params ?? {},
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
     state: { organization: { isSuperAdmin: true } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
@@ -85,7 +95,11 @@ function createMockCtx(overrides: {
 }
 
 /** Find a route layer by method and path suffix */
-function findLayer(router: ReturnType<typeof createPermissionRouter>, method: string, pathSuffix: string) {
+function findLayer(
+  router: ReturnType<typeof createPermissionRouter>,
+  method: string,
+  pathSuffix: string,
+) {
   const prefix = '/api/admin/applications/:appId/permissions';
   return router.stack.find(
     (l) => l.methods.includes(method) && l.path === `${prefix}${pathSuffix}`,
@@ -93,7 +107,10 @@ function findLayer(router: ReturnType<typeof createPermissionRouter>, method: st
 }
 
 /** Execute the last middleware in a layer's stack (the actual handler) */
-async function execHandler(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function execHandler(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   const next = vi.fn();
   await layer.stack[layer.stack.length - 1](ctx as never, next);
 }
@@ -138,7 +155,7 @@ describe('permission routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('Validation failed');
+      expect((ctx.body as { error: string }).error).toBe('Permission request is invalid');
     });
 
     it('should return 400 for invalid slug format', async () => {
@@ -152,7 +169,7 @@ describe('permission routes', () => {
         body: { name: 'Bad Permission', slug: 'INVALID' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Invalid permission slug format');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');
     });
   });
 
@@ -170,7 +187,10 @@ describe('permission routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permissions });
-      expect(permissionService.listPermissionsByApplication).toHaveBeenCalledWith('app-uuid-1', undefined);
+      expect(permissionService.listPermissionsByApplication).toHaveBeenCalledWith(
+        'app-uuid-1',
+        undefined,
+      );
     });
 
     it('should pass moduleId filter when provided', async () => {
@@ -243,7 +263,9 @@ describe('permission routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permission });
-      expect(permissionService.updatePermission).toHaveBeenCalledWith('perm-uuid-1', { name: 'Updated' });
+      expect(permissionService.updatePermission).toHaveBeenCalledWith('perm-uuid-1', {
+        name: 'Updated',
+      });
     });
 
     it('should throw 404 when permission not found', async () => {
@@ -303,7 +325,7 @@ describe('permission routes', () => {
         params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission is used by 3 roles');
+      await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');
     });
   });
 
@@ -351,7 +373,9 @@ describe('permission routes', () => {
     it('should register all expected routes', () => {
       const router = createPermissionRouter();
       const prefix = '/api/admin/applications/:appId/permissions';
-      const paths = router.stack.map((l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`);
+      const paths = router.stack.map(
+        (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
+      );
 
       expect(paths).toContain(`POST ${prefix}`);
       expect(paths).toContain(`GET ${prefix}`);

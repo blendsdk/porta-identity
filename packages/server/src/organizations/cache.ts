@@ -18,6 +18,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { afterDatabaseCommit } from '../lib/database.js';
 import type { Organization } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -52,9 +53,9 @@ export async function getCachedOrganizationBySlug(slug: string): Promise<Organiz
     const data = await redis.get(`${SLUG_PREFIX}${slug}`);
     if (!data) return null;
     return deserializeOrganization(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, slug }, 'Failed to read organization from cache by slug');
+    logger.warn({ event: 'organization-cache-read-failed' }, 'Organization cache read failed');
     return null;
   }
 }
@@ -74,9 +75,9 @@ export async function getCachedOrganizationById(id: string): Promise<Organizatio
     const data = await redis.get(`${ID_PREFIX}${id}`);
     if (!data) return null;
     return deserializeOrganization(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read organization from cache by ID');
+    logger.warn({ event: 'organization-cache-read-failed' }, 'Organization cache read failed');
     return null;
   }
 }
@@ -95,17 +96,19 @@ export async function getCachedOrganizationById(id: string): Promise<Organizatio
  * @param org - Organization to cache
  */
 export async function cacheOrganization(org: Organization): Promise<void> {
-  try {
-    const redis = getRedis();
-    const data = JSON.stringify(org);
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      const data = JSON.stringify(org);
 
-    // Store under both keys with the same TTL
-    await redis.set(`${SLUG_PREFIX}${org.slug}`, data, 'EX', CACHE_TTL);
-    await redis.set(`${ID_PREFIX}${org.id}`, data, 'EX', CACHE_TTL);
-  } catch (err) {
-    // Graceful degradation — cache write failure is non-fatal
-    logger.warn({ err, slug: org.slug, id: org.id }, 'Failed to cache organization');
-  }
+      // Store under both keys with the same TTL
+      await redis.set(`${SLUG_PREFIX}${org.slug}`, data, 'EX', CACHE_TTL);
+      await redis.set(`${ID_PREFIX}${org.id}`, data, 'EX', CACHE_TTL);
+    } catch {
+      // Graceful degradation — cache write failure is non-fatal
+      logger.warn({ event: 'organization-cache-write-failed' }, 'Organization cache write failed');
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -123,13 +126,18 @@ export async function cacheOrganization(org: Organization): Promise<void> {
  * @param id - Organization UUID
  */
 export async function invalidateOrganizationCache(slug: string, id: string): Promise<void> {
-  try {
-    const redis = getRedis();
-    await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
-  } catch (err) {
-    // Graceful degradation — cache invalidation failure is non-fatal
-    logger.warn({ err, slug, id }, 'Failed to invalidate organization cache');
-  }
+  await afterDatabaseCommit(async () => {
+    try {
+      const redis = getRedis();
+      await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
+    } catch {
+      // Graceful degradation — cache invalidation failure is non-fatal
+      logger.warn(
+        { event: 'organization-cache-invalidation-failed' },
+        'Organization cache invalidation failed',
+      );
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

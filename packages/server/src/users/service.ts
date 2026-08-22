@@ -26,7 +26,12 @@ import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
 import { UserNotFoundError, UserValidationError } from './errors.js';
-import { hashPassword, validatePassword, verifyPassword } from './password.js';
+import {
+  ensureDummyPasswordHash,
+  hashPassword,
+  validatePassword,
+  verifyPassword,
+} from './password.js';
 import type { ListUsersCursorOptions, UpdateUserData } from './repository.js';
 import {
   emailExists,
@@ -39,6 +44,8 @@ import {
   listUsersCursor as repoListCursor,
   updateUser as repoUpdate,
   resetFailedLoginCount,
+  recordEligiblePasswordFailure,
+  unlockEligiblePasswordAccount,
   updateLoginStats,
 } from './repository.js';
 import type {
@@ -48,6 +55,27 @@ import type {
   User,
   UserListOptions,
 } from './types.js';
+
+/** Fixed UUID that can never identify a persisted account. */
+const NON_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+/** Production boundaries used by fixed-shape password verification. */
+export interface LoginPasswordVerificationDependencies {
+  /** Load an eligible account hash without exposing it to the route. */
+  readonly loadAccountHash: typeof getPasswordHash;
+  /** Load the process-owned non-authoritative hash. */
+  readonly loadDummyHash: typeof ensureDummyPasswordHash;
+  /** Execute the password-hash verification algorithm. */
+  readonly verifyHash: typeof verifyPassword;
+}
+
+/** Production boundaries used by fixed-shape failed-login accounting. */
+export interface PasswordFailureDependencies {
+  /** Execute the conditional database update for an eligible account identifier. */
+  readonly recordEligibleFailure: typeof recordEligiblePasswordFailure;
+  /** Invalidate the selected account cache key after the database operation. */
+  readonly invalidateCache: typeof invalidateUserCache;
+}
 
 // ---------------------------------------------------------------------------
 // Create
@@ -525,11 +553,70 @@ export async function setUserPassword(
  * @returns true if the password matches
  */
 export async function verifyUserPassword(id: string, password: string): Promise<boolean> {
-  // getPasswordHash only returns for active users with a password
   const hash = await getPasswordHash(id);
   if (!hash) return false;
-
   return verifyPassword(hash, password);
+}
+
+/**
+ * Verify exactly one account or dummy Argon2id hash for an admitted login attempt.
+ *
+ * @param id - Eligible active account UUID, or null for every non-eligible identity state.
+ * @param password - Submitted plaintext password.
+ * @param dependencies - Production hash boundaries, replaceable by pass-through observers.
+ * @returns True only when an eligible account hash matched.
+ */
+export async function verifyLoginPassword(
+  id: string | null,
+  password: string,
+  dependencies?: LoginPasswordVerificationDependencies,
+): Promise<boolean> {
+  const boundaries = dependencies ?? {
+    loadAccountHash: getPasswordHash,
+    loadDummyHash: ensureDummyPasswordHash,
+    verifyHash: verifyPassword,
+  };
+  const hash = await boundaries.loadAccountHash(id ?? NON_ACCOUNT_USER_ID);
+  const selectedHash = hash ?? (await boundaries.loadDummyHash());
+  const matched = await boundaries.verifyHash(selectedHash, password);
+  return id !== null && hash !== null && matched;
+}
+
+/**
+ * Resolve the password-login account through a fixed sequence of database and cache operations.
+ *
+ * The initial lookup identifies a possible elapsed automatic lock. The conditional update and
+ * cache invalidation execute for every admitted identity, using a non-account UUID when absent.
+ * A second lookup then observes the post-cooldown state without an identity-dependent branch.
+ *
+ * @param organizationId - Resolved tenant authority.
+ * @param email - Normalized login address.
+ * @returns Current account state, or null when no account exists.
+ */
+export async function prepareUserForPasswordLogin(
+  organizationId: string,
+  email: string,
+): Promise<User | null> {
+  const candidate = await getUserByEmail(organizationId, email);
+  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds', 900);
+  const candidateId = candidate?.id ?? NON_ACCOUNT_USER_ID;
+  const unlocked = await unlockEligiblePasswordAccount(
+    candidateId,
+    new Date(Date.now() - cooldownSeconds * 1_000),
+  );
+  await invalidateUserCache(candidateId);
+
+  if (unlocked && candidate) {
+    void writeAuditLog({
+      organizationId: candidate.organizationId,
+      userId: candidate.id,
+      eventType: 'user.auto_unlocked',
+      eventCategory: 'security',
+      description: 'Account auto-unlocked after configured cooldown',
+    });
+  }
+
+  return getUserByEmail(organizationId, email);
 }
 
 /**
@@ -630,7 +717,7 @@ export async function recordFailedLogin(
   const justLocked = result.status === 'locked' && user.status === 'active';
 
   if (justLocked) {
-    writeAuditLog({
+    void writeAuditLog({
       organizationId: user.organizationId,
       userId: user.id,
       eventType: 'user.auto_locked',
@@ -641,6 +728,41 @@ export async function recordFailedLogin(
   }
 
   return { locked: justLocked, failedCount: result.failedLoginCount };
+}
+
+/**
+ * Execute one fixed-shape failure-accounting operation for an admitted password rejection.
+ *
+ * @param user - Eligible active account, or null for every other identity state.
+ * @param dependencies - Production persistence/cache boundaries, replaceable by pass-through observers.
+ * @returns Neutral or real account-lock result without disclosing identity publicly.
+ */
+export async function recordPasswordFailure(
+  user: User | null,
+  dependencies?: PasswordFailureDependencies,
+): Promise<{ locked: boolean; failedCount: number }> {
+  const boundaries = dependencies ?? {
+    recordEligibleFailure: recordEligiblePasswordFailure,
+    invalidateCache: invalidateUserCache,
+  };
+  const maxAttempts = await getSystemConfigNumber('max_failed_logins', 5);
+  const userId = user?.id ?? NON_ACCOUNT_USER_ID;
+  const result = await boundaries.recordEligibleFailure(userId, maxAttempts);
+  await boundaries.invalidateCache(userId);
+  const locked = result.status === 'locked' && user !== null;
+
+  if (locked && user) {
+    void writeAuditLog({
+      organizationId: user.organizationId,
+      userId: user.id,
+      eventType: 'user.auto_locked',
+      eventCategory: 'security',
+      description: 'Account auto-locked after failed login threshold',
+      metadata: { failedCount: result.failedLoginCount, threshold: maxAttempts },
+    });
+  }
+
+  return { locked, failedCount: result.failedLoginCount };
 }
 
 /**

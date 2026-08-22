@@ -31,6 +31,6 @@ test.describe('BFF — Magic Link Login Flow', () => {
 
     // 5. Verify the magic link URL is well-formed
     expect(magicLinkUrl).toContain('/auth/magic-link/');
-    expect(magicLinkUrl).toContain('porta-harness.ci.portaidentity.com:3443');
+    expect(new URL(magicLinkUrl).origin).toBe(process.env.HARNESS_PORTA_URL);
   });
 });

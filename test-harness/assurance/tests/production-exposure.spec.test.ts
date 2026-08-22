@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createProductionExposureContract } from './production-exposure-adapter.js';
+import { admitProductionExposureCases } from '../production-exposure/admission.js';
+import {
+  productionExposureCaseEvidence,
+  productionExposureExecutionFailure,
+  writeProductionExposureEvidence,
+  type ProductionExposureCaseEvidence,
+} from '../production-exposure/evidence.js';
+import { validationExposureProductionCases } from './validation-exposure-production-case-requirements.js';
+import { validationExposureRawCases } from './validation-exposure-raw-case-requirements.js';
+
+const profile = process.env.HARNESS_PROFILE;
+if (profile !== 'operational' && profile !== 'production-security') {
+  throw new Error('PRODUCTION_EXPOSURE_PROFILE_REQUIRED');
+}
+
+const applicableCases = admitProductionExposureCases(profile, [
+  ...validationExposureRawCases,
+  ...validationExposureProductionCases,
+]);
+
+test('observes every applicable production policy and dependency case without log overclaim', async (context) => {
+  const observer = await createProductionExposureContract();
+  const records: ProductionExposureCaseEvidence[] = [];
+  try {
+    for (const requirement of applicableCases) {
+      await context.test(requirement.id, async () => {
+        let observation;
+        try {
+          observation = await observer.observe(requirement);
+        } catch {
+          records.push(productionExposureExecutionFailure(requirement));
+          assert.fail(`PRODUCTION_EXPOSURE_CASE_EXECUTION_FAILED: ${requirement.id}`);
+        }
+        records.push(productionExposureCaseEvidence(requirement, observation));
+        assert.equal(observation.caseId, requirement.id);
+        assert.equal(observation.profile, profile);
+        assert.equal(observation.control.status, requirement.control.expectedStatus);
+        if (requirement.family === 'cors-policy') {
+          for (const controlObservation of requirement.control.requiredObservations) {
+            assert.equal(
+              observation.control.headerContracts[controlObservation],
+              true,
+              controlObservation,
+            );
+          }
+        }
+        assert.equal(observation.probe.status, requirement.expected.status);
+        assert.equal(observation.probe.bodyContract, requirement.expected.bodyContract);
+        for (const expectedHeader of requirement.expected.headerContract) {
+          assert.equal(observation.probe.headerContracts[expectedHeader], true, expectedHeader);
+        }
+        for (const stateCheck of requirement.independentStateObservations) {
+          assert.equal(observation.independentStateObservations[stateCheck], true, stateCheck);
+        }
+        for (const prohibitedEffect of requirement.prohibitedSideEffects) {
+          assert.equal(
+            observation.prohibitedSideEffects[prohibitedEffect],
+            false,
+            prohibitedEffect,
+          );
+        }
+        assert.equal(observation.recoveryPassed, true);
+        assert.equal(observation.correlatedLogCredit, false);
+        assert.equal(
+          observation.correlatedLogGap,
+          'correlated-security-decision-event-unavailable',
+        );
+      });
+    }
+  } finally {
+    await observer.close();
+    const evidencePath = writeProductionExposureEvidence(records);
+    process.stdout.write(`PRODUCTION_EXPOSURE_EVIDENCE=${evidencePath}\n`);
+  }
+});

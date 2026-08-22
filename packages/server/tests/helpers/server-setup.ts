@@ -30,6 +30,7 @@ import {
 
 // Module-level server reference for teardown
 let server: Server | null = null;
+let stopRecoveryWorker: (() => Promise<boolean>) | null = null;
 
 /**
  * Start the full Porta test server.
@@ -81,6 +82,8 @@ export async function setup(): Promise<void> {
   const { createApp } = await import('../../src/server.js');
   const { initI18n } = await import('../../src/auth/i18n.js');
   const { initTemplateEngine } = await import('../../src/auth/template-engine.js');
+  const { startAccountRecoveryWorker, stopAccountRecoveryWorker } =
+    await import('../../src/auth/recovery-service.js');
 
   // ── Step 4: Connect infrastructure ─────────────────────────────
   await connectDatabase();
@@ -107,6 +110,8 @@ export async function setup(): Promise<void> {
     if (server!.listening) resolve();
     else server!.on('listening', resolve);
   });
+  startAccountRecoveryWorker(provider);
+  stopRecoveryWorker = stopAccountRecoveryWorker;
 }
 
 /**
@@ -126,6 +131,12 @@ export async function teardown(): Promise<void> {
       server!.close((err) => (err ? reject(err) : resolve()));
     });
     server = null;
+  }
+
+  if (stopRecoveryWorker) {
+    const settled = await stopRecoveryWorker();
+    stopRecoveryWorker = null;
+    if (!settled) throw new Error('Recovery worker did not settle during test server teardown');
   }
 
   // Disconnect infrastructure

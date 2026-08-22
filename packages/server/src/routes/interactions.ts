@@ -23,7 +23,12 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import type Provider from 'oidc-provider';
-import { generateCsrfToken, verifyCsrfToken, setCsrfCookie, getCsrfFromCookie } from '../auth/csrf.js';
+import {
+  generateCsrfToken,
+  verifyCsrfToken,
+  setCsrfCookie,
+  getCsrfFromCookie,
+} from '../auth/csrf.js';
 import {
   checkRateLimit,
   resetRateLimit,
@@ -32,33 +37,30 @@ import {
   loadLoginRateLimitConfig,
   loadMagicLinkRateLimitConfig,
 } from '../auth/rate-limiter.js';
-import { generateToken } from '../auth/tokens.js';
-import { insertToken, invalidateUserTokens } from '../auth/token-repository.js';
-import { sendMagicLinkEmail, sendOtpCodeEmail } from '../auth/email-service.js';
+import { sendOtpCodeEmail } from '../auth/email-service.js';
+import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
-import { getUserByEmail, verifyUserPassword, recordLogin, recordFailedLogin, checkAutoUnlock } from '../users/service.js';
 import {
-  requiresTwoFactor,
-  determineTwoFactorMethod,
-  sendOtpCode,
-} from '../two-factor/service.js';
-import { getSystemConfigNumber } from '../lib/system-config.js';
+  prepareUserForPasswordLogin,
+  verifyLoginPassword,
+  recordLogin,
+  recordPasswordFailure,
+} from '../users/service.js';
+import { requiresTwoFactor, determineTwoFactorMethod, sendOtpCode } from '../two-factor/service.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import { config } from '../config/index.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
 import type { Organization } from '../organizations/types.js';
-import {
-  hasMagicLinkSession,
-  consumeMagicLinkSession,
-} from '../auth/magic-link-session.js';
+import { hasMagicLinkSession, consumeMagicLinkSession } from '../auth/magic-link-session.js';
+import type { MagicLinkSessionAuthority } from '../auth/magic-link-session.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
 import { purgeExpired } from '../oidc/postgres-adapter.js';
+import { observeProtocolSecurityRejection } from '../oidc/protocol-security-observer.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +76,70 @@ interface InteractionContext extends Context {
     [key: string]: unknown;
   };
 }
+
+/** Injectable boundaries used by enumeration-sensitive interaction handlers. */
+export interface EnumerationSensitiveInteractionDependencies {
+  /** Read the request's CSRF cookie. */
+  readonly getCsrfFromCookie: typeof getCsrfFromCookie;
+  /** Verify the submitted CSRF value. */
+  readonly verifyCsrfToken: typeof verifyCsrfToken;
+  /** Generate a response CSRF value. */
+  readonly generateCsrfToken: typeof generateCsrfToken;
+  /** Set the response CSRF cookie. */
+  readonly setCsrfCookie: typeof setCsrfCookie;
+  /** Build a tenant/IP/address login-rate key. */
+  readonly buildLoginRateLimitKey: typeof buildLoginRateLimitKey;
+  /** Build a tenant/address magic-link-rate key. */
+  readonly buildMagicLinkRateLimitKey: typeof buildMagicLinkRateLimitKey;
+  /** Load the configured login limit. */
+  readonly loadLoginRateLimitConfig: typeof loadLoginRateLimitConfig;
+  /** Load the configured magic-link limit. */
+  readonly loadMagicLinkRateLimitConfig: typeof loadMagicLinkRateLimitConfig;
+  /** Apply one admitted rate-limit operation. */
+  readonly checkRateLimit: typeof checkRateLimit;
+  /** Clear the successful-login rate-limit state. */
+  readonly resetRateLimit: typeof resetRateLimit;
+  /** Resolve a locale without exposing identity state. */
+  readonly resolveLocale: typeof resolveLocale;
+  /** Resolve the page translation function. */
+  readonly getTranslationFunction: typeof getTranslationFunction;
+  /** Render a public HTML response. */
+  readonly renderPage: typeof renderPage;
+  /** Resolve the account and fixed cooldown work. */
+  readonly prepareUserForPasswordLogin: typeof prepareUserForPasswordLogin;
+  /** Perform exactly one account or dummy Argon2id verification. */
+  readonly verifyLoginPassword: typeof verifyLoginPassword;
+  /** Execute the fixed-shape rejected-login operation. */
+  readonly recordPasswordFailure: typeof recordPasswordFailure;
+  /** Record a successful eligible login. */
+  readonly recordLogin: typeof recordLogin;
+  /** Durably enqueue account-independent recovery work. */
+  readonly enqueueAccountRecovery: typeof enqueueAccountRecovery;
+  /** Write a privacy-safe audit event. */
+  readonly writeAuditLog: typeof writeAuditLog;
+}
+
+const defaultEnumerationDependencies: EnumerationSensitiveInteractionDependencies = {
+  getCsrfFromCookie,
+  verifyCsrfToken,
+  generateCsrfToken,
+  setCsrfCookie,
+  buildLoginRateLimitKey,
+  buildMagicLinkRateLimitKey,
+  loadLoginRateLimitConfig,
+  loadMagicLinkRateLimitConfig,
+  checkRateLimit,
+  resetRateLimit,
+  resolveLocale,
+  getTranslationFunction,
+  renderPage,
+  prepareUserForPasswordLogin,
+  verifyLoginPassword,
+  recordPasswordFailure,
+  recordLogin,
+  enqueueAccountRecovery,
+  writeAuditLog,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,13 +176,12 @@ function resolveLoginMethodsFromOidcClient(
 ): LoginMethod[] {
   // oidc-provider's Client objects expose metadata() → Record<string, unknown>.
   // Missing client or missing metadata function → treat as fully inherited.
-  const metadata = (client as { metadata?: () => Record<string, unknown> } | null | undefined)
-    ?.metadata?.();
+  const metadata = (
+    client as { metadata?: () => Record<string, unknown> } | null | undefined
+  )?.metadata?.();
   const raw = metadata?.['urn:porta:login_methods'];
   // Defensive: accept only null or string[]; treat anything else as null.
-  const normalized: LoginMethod[] | null = Array.isArray(raw)
-    ? (raw as LoginMethod[])
-    : null;
+  const normalized: LoginMethod[] | null = Array.isArray(raw) ? (raw as LoginMethod[]) : null;
   return resolveLoginMethods(org, { loginMethods: normalized });
 }
 
@@ -169,8 +234,9 @@ async function renderAndRespond(
   pageName: string,
   context: TemplateContext,
   statusCode = 200,
+  renderer: typeof renderPage = renderPage,
 ): Promise<void> {
-  const html = await renderPage(pageName, context);
+  const html = await renderer(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
   ctx.body = html;
@@ -200,9 +266,7 @@ export async function resolveOrganizationForInteraction(
   if (ctx.state.organization) return;
 
   // Prefer the auth-flow org stored in Redis during interaction creation.
-  // The interactionUrl callback (provider.ts) stores the tenant-resolver
-  // org ID keyed by interaction UID. This preserves the correct tenant
-  // when the client belongs to a different org (third-party app scenario).
+  // OIDC entry middleware has already proved that this organization owns the client.
   if (interactionUid) {
     try {
       const storedOrgId = await getRedis().get(`interaction:org:${interactionUid}`);
@@ -232,28 +296,62 @@ export async function resolveOrganizationForInteraction(
   ctx.state.organization = org;
 }
 
+/** Authority and branding resolved from the interaction record written by the OIDC provider. */
+interface MagicLinkContinuationAuthority {
+  /** Exact tenant and interaction input for atomic Redis consumption. */
+  readonly authority: MagicLinkSessionAuthority;
+  /** Active organization used only after the stored continuation matches. */
+  readonly organization: Organization;
+}
+
 /**
- * Get an error message for a user status that prevents login.
- * Returns undefined if the status allows login (i.e., 'active').
+ * Resolve continuation authority independently from the magic-link session value.
  *
- * @param status - User status value
- * @param t - Translation function
- * @returns Error message string, or undefined if status allows login
+ * The provider writes this tenant mapping when it creates the interaction. A missing, expired, or
+ * malformed mapping cannot authorize consumption and leaves the short-lived session untouched.
+ *
+ * @param interactionUid - Exact interaction selected by the public route.
+ * @returns Active interaction authority, or null when it cannot be proven.
  */
-function getStatusErrorMessage(
-  status: string,
-  t: (key: string) => string,
-): string | undefined {
-  switch (status) {
-    case 'inactive':
-      return t('login.error_account_inactive');
-    case 'suspended':
-      return t('login.error_account_suspended');
-    case 'locked':
-      return t('login.error_account_locked');
-    default:
-      return undefined;
+async function resolveMagicLinkContinuationAuthority(
+  interactionUid: string,
+): Promise<MagicLinkContinuationAuthority | null> {
+  if (interactionUid.length < 1 || interactionUid.length > 128) return null;
+  const organizationId = await getRedis().get(`interaction:org:${interactionUid}`);
+  if (!organizationId) return null;
+  const organization = await getOrganizationById(organizationId);
+  if (!organization || organization.status !== 'active') return null;
+  return { authority: { organizationId, interactionUid }, organization };
+}
+
+/**
+ * Derive recovery-job authority from the provider interaction and its persisted client owner.
+ *
+ * @param routeInteractionUid - Interaction selected by the route.
+ * @param interactionUid - Interaction identifier returned by oidc-provider.
+ * @param clientIdValue - Client identifier returned by oidc-provider.
+ * @param clientOrganizationIdValue - Tenant metadata returned by the admitted provider client.
+ * @param organization - Tenant resolved for the interaction.
+ * @returns Exact job authority, or null when route, provider, client, and tenant do not agree.
+ */
+function deriveMagicLinkRecoveryAuthority(
+  routeInteractionUid: string,
+  interactionUid: string,
+  clientIdValue: unknown,
+  clientOrganizationIdValue: unknown,
+  organization: Organization,
+): { readonly organizationId: string; readonly interactionUid: string } | null {
+  if (
+    routeInteractionUid !== interactionUid ||
+    interactionUid.length < 1 ||
+    interactionUid.length > 128 ||
+    typeof clientIdValue !== 'string' ||
+    clientIdValue.length < 1 ||
+    clientOrganizationIdValue !== organization.id
+  ) {
+    return null;
   }
+  return { organizationId: organization.id, interactionUid };
 }
 
 // ---------------------------------------------------------------------------
@@ -269,8 +367,25 @@ function getStatusErrorMessage(
  * @param provider - node-oidc-provider instance for interaction management
  * @returns Koa router with interaction routes mounted at /interaction
  */
-export function createInteractionRouter(provider: Provider): Router {
+export function createInteractionRouter(
+  provider: Provider,
+  enumerationDependencies: EnumerationSensitiveInteractionDependencies = defaultEnumerationDependencies,
+): Router {
   const router = new Router({ prefix: '/interaction' });
+
+  router.use(async (ctx, next) => {
+    try {
+      await next();
+    } catch (error: unknown) {
+      if (isMissingInteraction(error)) {
+        observeProtocolSecurityRejection({
+          request: ctx.req,
+          eventClass: 'interaction-context-rejected',
+        });
+      }
+      throw error;
+    }
+  });
 
   // -------------------------------------------------------------------------
   // GET /interaction/:uid — Show login or consent page
@@ -283,14 +398,14 @@ export function createInteractionRouter(provider: Provider): Router {
   // POST /interaction/:uid/login — Process password login
   // -------------------------------------------------------------------------
   router.post('/:uid/login', async (ctx) => {
-    await processLogin(ctx as InteractionContext, provider);
+    await processLogin(ctx as InteractionContext, provider, enumerationDependencies);
   });
 
   // -------------------------------------------------------------------------
   // POST /interaction/:uid/magic-link — Send magic link email
   // -------------------------------------------------------------------------
   router.post('/:uid/magic-link', async (ctx) => {
-    await handleSendMagicLink(ctx as InteractionContext, provider);
+    await handleSendMagicLink(ctx as InteractionContext, provider, enumerationDependencies);
   });
 
   // -------------------------------------------------------------------------
@@ -315,6 +430,12 @@ export function createInteractionRouter(provider: Provider): Router {
   });
 
   return router;
+}
+
+/** Identifies the provider's exact expired, absent, or mismatched interaction state error. */
+function isMissingInteraction(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || Array.isArray(error)) return false;
+  return Reflect.get(error, 'name') === 'SessionNotFound' && Reflect.get(error, 'status') === 400;
 }
 
 // ---------------------------------------------------------------------------
@@ -351,11 +472,13 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
   // Magic link session detection
   // -----------------------------------------------------------------------
   if (hasMagicLinkSession(ctx)) {
-    const session = await consumeMagicLinkSession(ctx);
+    const continuationAuthority = await resolveMagicLinkContinuationAuthority(ctx.params.uid);
+    const session = continuationAuthority
+      ? await consumeMagicLinkSession(ctx, continuationAuthority.authority)
+      : null;
 
-    if (session) {
-      // Resolve organization from the session data for branding
-      const org = await getOrganizationById(session.organizationId);
+    if (session && continuationAuthority) {
+      const org = continuationAuthority.organization;
 
       // Try to complete the OIDC flow (same browser — interaction cookies present)
       try {
@@ -371,16 +494,11 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
         // Different browser — interaction cookies not present, or interaction expired.
         // Show the magic link success page instead.
         logger.info(
-          { uid: session.interactionUid, userId: session.userId },
-          'Magic link: interaction cookies not present — showing success page (cross-browser)',
+          { event: 'magic_link_cross_browser_success' },
+          'Magic link interaction cookies unavailable; showing success page',
         );
 
-        if (org) {
-          await renderMagicLinkSuccessPage(ctx, org);
-        } else {
-          // Fallback: org not found (shouldn't happen, but be safe)
-          await renderErrorPage(ctx, 'errors.generic');
-        }
+        await renderMagicLinkSuccessPage(ctx, org);
         return;
       }
     }
@@ -430,15 +548,15 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // format. We DO defensively trim and length-cap at RFC 5321 max (320 chars)
     // to avoid pathological template renders. Handlebars HTML-escapes on
     // interpolation, which blocks XSS via the value="" attribute.
-    const rawHint = typeof params.login_hint === 'string'
-      ? params.login_hint.trim().slice(0, 320)
-      : '';
+    const rawHint =
+      typeof params.login_hint === 'string' ? params.login_hint.trim().slice(0, 320) : '';
     const emailHint = rawHint.length > 0 ? rawHint : undefined;
 
     // Resolve human-readable client name from OIDC provider metadata.
     // Falls back to the raw client_id if not found.
     const oidcClient = await provider.Client.find(params.client_id as string);
-    const clientName = (oidcClient?.metadata()?.client_name as string) ?? (params.client_id as string);
+    const clientName =
+      (oidcClient?.metadata()?.client_name as string) ?? (params.client_id as string);
 
     // Resolve the effective login methods from the client's OIDC metadata.
     // When no client is found (edge case — client deleted mid-flow), fall back
@@ -471,8 +589,8 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
 
     // Render the login page with CSRF token in both cookie and hidden field
     await renderAndRespond(ctx, 'login', context);
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to show login page');
+  } catch {
+    logger.error({ event: 'login-page-failed' }, 'Login page rendering failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -528,28 +646,50 @@ async function renderMagicLinkSuccessPage(
  * @param ctx - Koa context with organization state
  * @param provider - OIDC provider instance
  */
-async function processLogin(ctx: InteractionContext, provider: Provider): Promise<void> {
+async function processLogin(
+  ctx: InteractionContext,
+  provider: Provider,
+  dependencies: EnumerationSensitiveInteractionDependencies,
+): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const storedCsrf = dependencies.getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Resolve locale for error messages
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
-    const t = getTranslationFunction(locale, org.slug);
+    const locale = await dependencies.resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
+    const t = dependencies.getTranslationFunction(locale, org.slug);
 
     // Step 1: Verify CSRF token (cookie vs form field)
-    if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on login');
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+    if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
+      logger.warn({ event: 'login-csrf-rejected' }, 'Login request CSRF validation failed');
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.csrf_invalid'),
+        200,
+        dependencies,
+      );
       return;
     }
 
@@ -571,16 +711,13 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       : org.defaultLoginMethods;
 
     if (!effectiveLoginMethods.includes('password')) {
-      logger.warn(
-        { uid: interaction.uid, email, clientId: interaction.params.client_id },
-        'Password login attempted for client where method is disabled',
-      );
+      logger.warn({ event: 'password-login-method-disabled' }, 'Password login method is disabled');
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
-        description: `Password login attempted on client where method is disabled (${email})`,
+        description: 'Password login attempted where the method is disabled',
         ipAddress: ctx.ip,
         metadata: {
           clientId: interaction.params.client_id,
@@ -590,115 +727,91 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.login_method_disabled'),
         403,
+        dependencies,
       );
       return;
     }
 
     // Step 2: Check rate limit
-    const rateLimitKey = buildLoginRateLimitKey(org.id, ctx.ip, email);
-    const rateLimitConfig = await loadLoginRateLimitConfig();
-    const rateLimitResult = await checkRateLimit(rateLimitKey, rateLimitConfig);
+    const rateLimitKey = dependencies.buildLoginRateLimitKey(org.id, ctx.ip, email);
+    const rateLimitConfig = await dependencies.loadLoginRateLimitConfig();
+    const rateLimitResult = await dependencies.checkRateLimit(rateLimitKey, rateLimitConfig);
 
     if (!rateLimitResult.allowed) {
       ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
       // Audit: rate limit exceeded
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'rate_limit.login',
         eventCategory: 'security',
-        description: `Login rate limit exceeded for ${email}`,
+        description: 'Login rate limit exceeded',
         ipAddress: ctx.ip,
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.rate_limit_exceeded'),
         429,
+        dependencies,
       );
       return;
     }
 
-    // Step 3: Look up user by org + email
-    const user = await getUserByEmail(org.id, email);
+    // Resolve cooldown state and verify exactly one real or dummy Argon2id hash. Only active
+    // accounts with passwords receive authentication authority; every other state follows the
+    // same verification and persistence shape.
+    const observedUser = await dependencies.prepareUserForPasswordLogin(org.id, email);
+    const eligibleUser =
+      observedUser?.status === 'active' && observedUser.hasPassword ? observedUser : null;
+    const passwordValid = await dependencies.verifyLoginPassword(
+      eligibleUser?.id ?? null,
+      password,
+    );
 
-    if (!user) {
-      // Generic error — prevent user enumeration
-      writeAuditLog({
+    if (!eligibleUser || !passwordValid) {
+      const lockResult = await dependencies.recordPasswordFailure(eligibleUser);
+
+      void dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'user.login.password.failed',
         eventCategory: 'security',
-        description: `Login failed: user not found (${email})`,
-        ipAddress: ctx.ip,
-      });
-
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('login.error_invalid'));
-      return;
-    }
-
-    // Step 3.5: Auto-unlock check — if the user was auto-locked and the
-    // cooldown has elapsed, unlock them so they can attempt login again.
-    // This must run BEFORE the status check so that expired lockouts
-    // don't block the user.
-    if (user.status === 'locked' && user.lockedReason === 'auto_lockout') {
-      const unlocked = await checkAutoUnlock(user);
-      if (unlocked) {
-        // Re-read user with fresh status for the status check below
-        const refreshed = await getUserByEmail(org.id, email);
-        if (refreshed) Object.assign(user, refreshed);
-      }
-    }
-
-    // Step 4: Check user status — only active users can log in
-    const statusError = getStatusErrorMessage(user.status, t);
-    if (statusError) {
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.login.password.failed',
-        eventCategory: 'security',
-        description: `Login failed: account ${user.status} (${email})`,
-        ipAddress: ctx.ip,
-      });
-
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, statusError);
-      return;
-    }
-
-    // Step 5: Verify password
-    const passwordValid = await verifyUserPassword(user.id, password);
-
-    if (!passwordValid) {
-      // Record the failed attempt and check for auto-lock threshold
-      const lockResult = await recordFailedLogin(user);
-
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.login.password.failed',
-        eventCategory: 'security',
-        description: lockResult.locked
-          ? `Login failed: account auto-locked after ${lockResult.failedCount} attempts (${email})`
-          : `Login failed: wrong password (${email})`,
+        description: 'Password login rejected',
         ipAddress: ctx.ip,
         metadata: { failedCount: lockResult.failedCount, autoLocked: lockResult.locked },
       });
 
-      // If the account was just auto-locked, show the locked error instead
-      // of the generic "invalid credentials" so the user knows what happened.
-      const errorMsg = lockResult.locked
-        ? t('login.error_account_locked')
-        : t('login.error_invalid');
-
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, errorMsg);
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('login.error_invalid'),
+        200,
+        dependencies,
+      );
       return;
     }
 
+    const user = eligibleUser;
+
     // Step 6: Password valid — check if 2FA is required
-    await resetRateLimit(rateLimitKey);
+    await dependencies.resetRateLimit(rateLimitKey);
 
     // Determine 2FA requirements based on org policy and user state
     const twoFactorRequired = user.twoFactorEnabled || requiresTwoFactor(org, user);
@@ -706,13 +819,18 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
 
     if (twoFactorRequired) {
       // Store pending login in the interaction session — user must complete 2FA
-      await provider.interactionResult(ctx.req, ctx.res, {
-        twoFactor: {
-          pendingAccountId: user.id,
-          method: twoFactorMethod ?? 'email',
-          email: user.email,
+      await provider.interactionResult(
+        ctx.req,
+        ctx.res,
+        {
+          twoFactor: {
+            pendingAccountId: user.id,
+            method: twoFactorMethod ?? 'email',
+            email: user.email,
+          },
         },
-      }, { mergeWithLastSubmission: true });
+        { mergeWithLastSubmission: true },
+      );
 
       // If method is email, auto-send the first OTP code
       if (twoFactorMethod === 'email' || (!user.twoFactorEnabled && !twoFactorMethod)) {
@@ -720,14 +838,25 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
           const otpCode = await sendOtpCode(user.id, user.email, org.id);
           // Send the OTP code via email (fire-and-forget)
           sendOtpCodeEmail(
-            { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-            { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
+            {
+              id: user.id,
+              email: user.email,
+              givenName: user.givenName,
+              familyName: user.familyName,
+            },
+            {
+              id: org.id,
+              slug: org.slug,
+              brandingLogoUrl: org.brandingLogoUrl,
+              brandingPrimaryColor: org.brandingPrimaryColor,
+              brandingCompanyName: org.brandingCompanyName,
+            },
             otpCode,
             10,
             locale,
           );
-        } catch (otpErr) {
-          logger.warn({ otpErr, userId: user.id }, 'Failed to send initial OTP code');
+        } catch {
+          logger.warn({ event: 'login-otp-delivery-failed' }, 'Initial OTP delivery failed');
         }
       }
 
@@ -736,7 +865,7 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
         userId: user.id,
         eventType: '2fa.challenge.started',
         eventCategory: 'authentication',
-        description: `2FA challenge initiated for ${email} (method: ${twoFactorMethod ?? 'setup_required'})`,
+        description: `Two-factor challenge initiated (${twoFactorMethod ?? 'setup_required'})`,
         ipAddress: ctx.ip,
       });
 
@@ -751,15 +880,15 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     }
 
     // No 2FA required — complete login normally
-    await recordLogin(user.id);
+    await dependencies.recordLogin(user.id);
 
     // Audit: successful login (no 2FA)
-    writeAuditLog({
+    dependencies.writeAuditLog({
       organizationId: org.id,
       userId: user.id,
       eventType: 'user.login.password',
       eventCategory: 'authentication',
-      description: `Password login successful (${email})`,
+      description: 'Password login successful',
       ipAddress: ctx.ip,
     });
 
@@ -771,8 +900,8 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (err) {
-    logger.error({ err, email }, 'Failed to process login');
+  } catch {
+    logger.error({ event: 'login-processing-failed' }, 'Login processing failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -787,27 +916,52 @@ async function processLogin(ctx: InteractionContext, provider: Provider): Promis
  * @param ctx - Koa context with organization state
  * @param provider - OIDC provider instance
  */
-async function handleSendMagicLink(ctx: InteractionContext, provider: Provider): Promise<void> {
+async function handleSendMagicLink(
+  ctx: InteractionContext,
+  provider: Provider,
+  dependencies: EnumerationSensitiveInteractionDependencies,
+): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const email = (body.email ?? '').trim().toLowerCase();
   const submittedCsrf = body._csrf ?? '';
-  const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const storedCsrf = dependencies.getCsrfFromCookie(ctx) ?? '';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Resolve locale for page rendering
-    const locale = await resolveLocale(undefined, ctx.get('Accept-Language') || undefined, org.defaultLocale);
-    const t = getTranslationFunction(locale, org.slug);
+    const locale = await dependencies.resolveLocale(
+      undefined,
+      ctx.get('Accept-Language') || undefined,
+      org.defaultLocale,
+    );
+    const t = dependencies.getTranslationFunction(locale, org.slug);
 
     // Verify CSRF token (cookie vs form field)
-    if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
-      await renderLoginWithError(ctx, provider, interaction, t, locale, email, t('errors.csrf_invalid'));
+    if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
+      logger.warn(
+        { event: 'magic_link_csrf_rejected' },
+        'Magic link request rejected by CSRF validation',
+      );
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.csrf_invalid'),
+        200,
+        dependencies,
+      );
       return;
     }
 
@@ -823,15 +977,19 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
 
     if (!effectiveMagicLinkMethods.includes('magic_link')) {
       logger.warn(
-        { uid: interaction.uid, email, clientId: interaction.params.client_id },
+        {
+          event: 'magic_link_method_disabled',
+          organizationId: org.id,
+          clientId: interaction.params.client_id,
+        },
         'Magic link attempted for client where method is disabled',
       );
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'security.login_method_disabled',
         eventCategory: 'security',
-        description: `Magic link attempted on client where method is disabled (${email})`,
+        description: 'Magic link attempted on client where method is disabled',
         ipAddress: ctx.ip,
         metadata: {
           clientId: interaction.params.client_id,
@@ -841,78 +999,98 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.login_method_disabled'),
         403,
+        dependencies,
+      );
+      return;
+    }
+
+    const recoveryAuthority = deriveMagicLinkRecoveryAuthority(
+      ctx.params.uid,
+      interaction.uid,
+      interaction.params.client_id,
+      oidcClientForMagicLink?.metadata().organizationId,
+      org,
+    );
+    if (!recoveryAuthority) {
+      logger.warn({ event: 'magic_link_authority_rejected' }, 'Magic link authority rejected');
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.interaction_expired'),
+        400,
+        dependencies,
       );
       return;
     }
 
     // Check rate limit for magic link requests
-    const rateLimitKey = buildMagicLinkRateLimitKey(org.id, email);
-    const rateLimitConfig = await loadMagicLinkRateLimitConfig();
-    const rateLimitResult = await checkRateLimit(rateLimitKey, rateLimitConfig);
+    const rateLimitKey = dependencies.buildMagicLinkRateLimitKey(org.id, email);
+    const rateLimitConfig = await dependencies.loadMagicLinkRateLimitConfig();
+    const rateLimitResult = await dependencies.checkRateLimit(rateLimitKey, rateLimitConfig);
 
     if (!rateLimitResult.allowed) {
       ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
-      writeAuditLog({
+      dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'rate_limit.magic_link',
         eventCategory: 'security',
-        description: `Magic link rate limit exceeded for ${email}`,
+        description: 'Magic link rate limit exceeded',
         ipAddress: ctx.ip,
       });
 
       await renderLoginWithError(
-        ctx, provider, interaction, t, locale, email,
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
         t('errors.rate_limit_exceeded'),
         429,
+        dependencies,
       );
       return;
     }
 
-    // Look up user — but ALWAYS show the same "check your email" page
-    const user = await getUserByEmail(org.id, email);
-
-    if (user && user.status === 'active') {
-      // Invalidate any existing magic link tokens for this user
-      await invalidateUserTokens('magic_link_tokens', user.id);
-
-      // Generate new token
-      const { plaintext, hash } = generateToken();
-
-      // Load TTL from system_config (default: 15 minutes = 900s)
-      const ttlSeconds = await getSystemConfigNumber('magic_link_ttl', 900);
-      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-
-      // Store token hash in database
-      await insertToken('magic_link_tokens', user.id, hash, expiresAt);
-
-      // Build the magic link URL with the interaction UID for flow resumption
-      const magicLinkUrl = `${config.issuerBaseUrl}/${org.slug}/auth/magic-link/${plaintext}?interaction=${interaction.uid}`;
-
-      // Send the magic link email (fire-and-forget)
-      sendMagicLinkEmail(
-        { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        { id: org.id, slug: org.slug, brandingLogoUrl: org.brandingLogoUrl, brandingPrimaryColor: org.brandingPrimaryColor, brandingCompanyName: org.brandingCompanyName },
-        magicLinkUrl,
-        locale,
-      );
-
-      // Audit: magic link sent
-      writeAuditLog({
-        organizationId: org.id,
-        userId: user.id,
-        eventType: 'user.magic_link.sent',
-        eventCategory: 'authentication',
-        description: `Magic link sent to ${email}`,
-        ipAddress: ctx.ip,
+    try {
+      await dependencies.enqueueAccountRecovery({
+        jobType: 'magic_link',
+        organizationId: recoveryAuthority.organizationId,
+        email,
+        interactionUid: recoveryAuthority.interactionUid,
+        actionNonce: submittedCsrf,
       });
+    } catch {
+      logger.error({ event: 'magic_link_enqueue_failed' }, 'Failed to enqueue magic link');
+      await renderLoginWithError(
+        ctx,
+        provider,
+        interaction,
+        t,
+        locale,
+        email,
+        t('errors.interaction_expired'),
+        503,
+        dependencies,
+      );
+      return;
     }
 
     // Always render the "check your email" page — prevents user enumeration
-    const csrfToken = generateCsrfToken();
+    const csrfToken = dependencies.generateCsrfToken();
     const context: TemplateContext = {
       ...buildBaseContext(ctx, locale, csrfToken, org.slug),
       t,
@@ -920,9 +1098,9 @@ async function handleSendMagicLink(ctx: InteractionContext, provider: Provider):
       loginUrl: `/interaction/${interaction.uid}`,
     };
 
-    await renderAndRespond(ctx, 'magic-link-sent', context);
-  } catch (err) {
-    logger.error({ err, email }, 'Failed to send magic link');
+    await renderAndRespond(ctx, 'magic-link-sent', context, 200, dependencies.renderPage);
+  } catch {
+    logger.error({ event: 'magic_link_request_failed' }, 'Magic link request failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -977,7 +1155,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
         }
         if (details.missingResourceScopes) {
           for (const [indicator, scopes] of Object.entries(
-            details.missingResourceScopes as Record<string, Iterable<string>>
+            details.missingResourceScopes as Record<string, Iterable<string>>,
           )) {
             grant.addResourceScope(indicator, [...scopes].join(' '));
           }
@@ -1024,15 +1202,15 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
         uid: interaction.uid,
         prompt: prompt.name,
         params: params as Record<string, unknown>,
-        client: { clientName: client?.metadata()?.client_name as string ?? clientId },
+        client: { clientName: (client?.metadata()?.client_name as string) ?? clientId },
       },
       scopes: requestedScopes,
-      clientName: client?.metadata()?.client_name as string ?? clientId,
+      clientName: (client?.metadata()?.client_name as string) ?? clientId,
     };
 
     await renderAndRespond(ctx, 'consent', context);
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to show consent page');
+  } catch {
+    logger.error({ event: 'consent-page-failed' }, 'Consent page rendering failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1057,12 +1235,16 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     // Verify CSRF token
     if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on consent');
+      logger.warn({ event: 'consent-csrf-rejected' }, 'Consent request CSRF validation failed');
       ctx.status = 403;
       ctx.body = 'Invalid CSRF token';
       return;
@@ -1094,7 +1276,7 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
       // Grant missing resource scopes
       if (details.missingResourceScopes) {
         for (const [indicator, scopes] of Object.entries(
-          details.missingResourceScopes as Record<string, Iterable<string>>
+          details.missingResourceScopes as Record<string, Iterable<string>>,
         )) {
           grant.addResourceScope(indicator, [...scopes].join(' '));
         }
@@ -1142,8 +1324,8 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
         mergeWithLastSubmission: false,
       });
     }
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to process consent');
+  } catch {
+    logger.error({ event: 'consent-processing-failed' }, 'Consent processing failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1162,7 +1344,11 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
 
     // Resolve organization from the interaction's client_id
-    await resolveOrganizationForInteraction(ctx, interaction.params.client_id as string, interaction.uid);
+    await resolveOrganizationForInteraction(
+      ctx,
+      interaction.params.client_id as string,
+      interaction.uid,
+    );
     const org = ctx.state.organization;
 
     writeAuditLog({
@@ -1181,8 +1367,8 @@ async function abortInteraction(ctx: InteractionContext, provider: Provider): Pr
     await provider.interactionFinished(ctx.req, ctx.res, result, {
       mergeWithLastSubmission: false,
     });
-  } catch (err) {
-    logger.error({ err, uid: ctx.params.uid }, 'Failed to abort interaction');
+  } catch {
+    logger.error({ event: 'interaction-abort-failed' }, 'Interaction abort failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
@@ -1213,10 +1399,11 @@ async function renderLoginWithError(
   email: string,
   errorMessage: string,
   statusCode = 200,
+  dependencies: EnumerationSensitiveInteractionDependencies = defaultEnumerationDependencies,
 ): Promise<void> {
   const org = ctx.state.organization;
-  const csrfToken = generateCsrfToken();
-  setCsrfCookie(ctx, csrfToken);
+  const csrfToken = dependencies.generateCsrfToken();
+  dependencies.setCsrfCookie(ctx, csrfToken);
 
   // Resolve human-readable client name from provider metadata.
   // Falls back to raw client_id if the client is not found.
@@ -1254,7 +1441,7 @@ async function renderLoginWithError(
     loginMethods: effectiveMethods,
   };
 
-  await renderAndRespond(ctx, 'login', context, statusCode);
+  await renderAndRespond(ctx, 'login', context, statusCode, dependencies.renderPage);
 }
 
 // ---------------------------------------------------------------------------
@@ -1281,7 +1468,13 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
     const context: TemplateContext = {
       branding: org
         ? buildBrandingFromOrg(org)
-        : { logoUrl: null, faviconUrl: null, primaryColor: '#3B82F6', companyName: 'Porta', customCss: null },
+        : {
+            logoUrl: null,
+            faviconUrl: null,
+            primaryColor: '#3B82F6',
+            companyName: 'Porta',
+            customCss: null,
+          },
       locale,
       t,
       csrfToken,
@@ -1290,9 +1483,9 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
     };
 
     await renderAndRespond(ctx, 'error', context, 400);
-  } catch (renderError) {
+  } catch {
     // Last resort: if even the error page fails, send plain text
-    logger.error({ renderError }, 'Failed to render error page');
+    logger.error({ event: 'interaction-error-render-failed' }, 'Interaction error page failed');
     ctx.status = 500;
     ctx.body = 'An error occurred';
   }

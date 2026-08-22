@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
+  afterDatabaseCommit: vi.fn(async (effect: () => Promise<void>) => effect()),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -42,15 +43,15 @@ describe('audit-log', () => {
       expect(sql).toContain('INSERT INTO audit_log');
 
       const params = mockQuery.mock.calls[0][1] as unknown[];
-      expect(params[0]).toBe('org-1');           // organization_id
-      expect(params[1]).toBe('user-1');          // user_id
-      expect(params[2]).toBe('actor-1');         // actor_id
-      expect(params[3]).toBe('org.created');     // event_type
-      expect(params[4]).toBe('admin');           // event_category
+      expect(params[0]).toBe('org-1'); // organization_id
+      expect(params[1]).toBe('user-1'); // user_id
+      expect(params[2]).toBe('actor-1'); // actor_id
+      expect(params[3]).toBe('org.created'); // event_type
+      expect(params[4]).toBe('admin'); // event_category
       expect(params[5]).toBe('Created organization'); // description
       expect(params[6]).toBe('{"slug":"acme-corp"}'); // metadata JSON
-      expect(params[7]).toBe('192.168.1.1');     // ip_address
-      expect(params[8]).toBe('Mozilla/5.0');     // user_agent
+      expect(params[7]).toBe('192.168.1.1'); // ip_address
+      expect(params[8]).toBe('Mozilla/5.0'); // user_agent
     });
 
     it('should set null for optional fields when not provided', async () => {
