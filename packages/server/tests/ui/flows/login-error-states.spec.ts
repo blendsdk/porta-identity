@@ -20,11 +20,7 @@ import { test, expect } from '../fixtures/test-fixtures.js';
 test.describe('Login Error States', () => {
   // ── 6.1: Suspended user ──────────────────────────────────────────────
 
-  test('suspended user sees account suspended error', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('suspended user sees account suspended error', async ({ page, testData, startAuthFlow }) => {
     // Start OIDC auth flow → lands on login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -40,20 +36,17 @@ test.describe('Login Error States', () => {
     // Should stay on login page (still an interaction URL)
     expect(page.url()).toContain('/interaction/');
 
-    // Should show an error flash message about suspension
+    // Account state must not be disclosed to an unauthenticated caller.
     const flash = page.locator('.flash-error, .error, .alert-error');
     await expect(flash).toBeVisible();
     const flashText = await flash.textContent();
-    expect(flashText?.toLowerCase()).toMatch(/suspend/);
+    expect(flashText?.toLowerCase()).toContain('invalid email or password');
+    expect(flashText?.toLowerCase()).not.toMatch(/suspend|status/);
   });
 
   // ── 6.2: Inactive user (no active account) ──────────────────────────
 
-  test('inactive user sees account error', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('inactive user sees account error', async ({ page, testData, startAuthFlow }) => {
     // Start OIDC auth flow → lands on login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -76,11 +69,7 @@ test.describe('Login Error States', () => {
 
   // ── 6.3: Locked user ────────────────────────────────────────────────
 
-  test('locked user sees account locked error', async ({
-    page,
-    testData,
-    startAuthFlow,
-  }) => {
+  test('locked user sees account locked error', async ({ page, testData, startAuthFlow }) => {
     // Start OIDC auth flow → lands on login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -96,11 +85,12 @@ test.describe('Login Error States', () => {
     // Should stay on login page
     expect(page.url()).toContain('/interaction/');
 
-    // Should show an error flash message about being locked
+    // Locked accounts use the same public rejection as every other failed login.
     const flash = page.locator('.flash-error, .error, .alert-error');
     await expect(flash).toBeVisible();
     const flashText = await flash.textContent();
-    expect(flashText?.toLowerCase()).toMatch(/lock/);
+    expect(flashText?.toLowerCase()).toContain('invalid email or password');
+    expect(flashText?.toLowerCase()).not.toMatch(/lock|status/);
   });
 
   // ── 6.4: Non-existent user ──────────────────────────────────────────
