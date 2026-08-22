@@ -494,8 +494,8 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
         // Different browser — interaction cookies not present, or interaction expired.
         // Show the magic link success page instead.
         logger.info(
-          { uid: session.interactionUid, userId: session.userId },
-          'Magic link: interaction cookies not present — showing success page (cross-browser)',
+          { event: 'magic_link_cross_browser_success' },
+          'Magic link interaction cookies unavailable; showing success page',
         );
 
         await renderMagicLinkSuccessPage(ctx, org);
@@ -950,7 +950,10 @@ async function handleSendMagicLink(
 
     // Verify CSRF token (cookie vs form field)
     if (!dependencies.verifyCsrfToken(storedCsrf, submittedCsrf)) {
-      logger.warn({ uid: interaction.uid }, 'CSRF token mismatch on magic link');
+      logger.warn(
+        { event: 'magic_link_csrf_rejected' },
+        'Magic link request rejected by CSRF validation',
+      );
       await renderLoginWithError(
         ctx,
         provider,

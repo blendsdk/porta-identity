@@ -7,10 +7,22 @@ import {
   type MagicLinkSessionAuthority,
 } from '../../../src/auth/magic-link-session.js';
 import { hashToken } from '../../../src/auth/tokens.js';
+import { checkRateLimitStrict } from '../../../src/auth/rate-limiter.js';
+import { createSmtpTransport } from '../../../src/auth/email-transport.js';
+import { setEmailTransport } from '../../../src/auth/email-service.js';
+import { AccountRecoveryJobProcessor } from '../../../src/auth/recovery-job-processor.js';
+import { createRecoveryJobRepository } from '../../../src/auth/recovery-job-repository.js';
+import { enqueueAccountRecovery } from '../../../src/auth/recovery-service.js';
 import { getPool } from '../../../src/lib/database.js';
 import { getRedis } from '../../../src/lib/redis.js';
 import type { Organization } from '../../../src/organizations/types.js';
-import { createTestOrganization, createTestUser } from '../../integration/helpers/factories.js';
+import {
+  createTestApplication,
+  createTestClient,
+  createTestOrganization,
+  createTestUser,
+} from '../../integration/helpers/factories.js';
+import { MailHogClient } from '../../e2e/helpers/mailhog.js';
 import type {
   MagicLinkArtifactMode,
   MagicLinkAuthorityFixture,
@@ -55,6 +67,7 @@ function createContext(input: {
   readonly organization: Organization;
   readonly token: string;
   readonly interactionUid?: string;
+  readonly socketPeer?: string;
   readonly jar: Map<string, string>;
 }) {
   let status = 200;
@@ -72,7 +85,7 @@ function createContext(input: {
     params: { orgSlug: input.organization.slug, token: input.token },
     query: input.interactionUid === undefined ? {} : { interaction: input.interactionUid },
     request: { body: {} },
-    req: {},
+    req: { socket: { remoteAddress: input.socketPeer ?? '127.0.0.1' } },
     res: {},
     ip: '127.0.0.1',
     secure: true,
@@ -119,6 +132,10 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
   private initialMailCount = 0;
   private continuationWrites = 0;
   private sessionMutations = 0;
+  private callbackLimiterUnavailable = false;
+  private alphaClientId: string | null = null;
+  private bravoClientId: string | null = null;
+  private deliveredUrl: string | null = null;
 
   /** Reset owned tenant state and arrange one authority-bound durable artifact. */
   public async reset(input: {
@@ -129,6 +146,7 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
     this.jar.clear();
     this.continuationWrites = 0;
     this.sessionMutations = 0;
+    this.callbackLimiterUnavailable = false;
     this.alpha = await createTestOrganization({
       name: 'Magic Alpha',
       slug: `magic-alpha-${randomUUID()}`,
@@ -137,6 +155,12 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
       name: 'Magic Bravo',
       slug: `magic-bravo-${randomUUID()}`,
     });
+    const application = await createTestApplication();
+    const alphaClient = await createTestClient(this.alpha.id, application.id);
+    const bravoClient = await createTestClient(this.bravo.id, application.id);
+    this.alphaClientId = alphaClient.clientId;
+    this.bravoClientId = bravoClient.clientId;
+    this.deliveredUrl = null;
     const email = `magic-${randomUUID()}@test.example.com`;
     const user = await createTestUser(this.alpha.id, { email, emailVerified: false });
     const tokenValue = randomUUID();
@@ -155,9 +179,16 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
       ],
     );
     await getRedis().set(`interaction:org:${interactionUid}`, this.alpha.id, 'EX', 3600);
+    await getRedis().set(`interaction:client:${interactionUid}`, alphaClient.clientId, 'EX', 3600);
     await getRedis().set(
       `interaction:org:${foreignClientInteractionUid}`,
       this.bravo.id,
+      'EX',
+      3600,
+    );
+    await getRedis().set(
+      `interaction:client:${foreignClientInteractionUid}`,
+      bravoClient.clientId,
       'EX',
       3600,
     );
@@ -180,10 +211,99 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
     return this.fixture;
   }
 
+  /** Replace the provider-owned client mapping for the exact persisted interaction. */
+  public async setLiveAuthority(state: 'matching' | 'missing' | 'foreign-client'): Promise<void> {
+    const fixture = this.requireFixture();
+    const key = `interaction:client:${fixture.interactionUid}`;
+    if (state === 'missing') {
+      await getRedis().del(key);
+      return;
+    }
+    const clientId = state === 'matching' ? this.alphaClientId : this.bravoClientId;
+    if (!clientId) throw new Error('Magic-link client authority is not initialized');
+    await getRedis().set(key, clientId, 'EX', 3600);
+  }
+
+  /** Remove the arranged artifact while preserving its future callback identity. */
+  public async removeArtifact(): Promise<void> {
+    const fixture = this.requireFixture();
+    await getPool().query('DELETE FROM magic_link_tokens WHERE token_hash = $1', [
+      hashToken(fixture.tokenValue),
+    ]);
+  }
+
+  /** Insert the arranged bound artifact after callback-attempt state has been established. */
+  public async activateArtifact(): Promise<void> {
+    const fixture = this.requireFixture();
+    await getPool().query(
+      `INSERT INTO magic_link_tokens
+         (user_id, token_hash, expires_at, organization_id, interaction_uid, authority_bound)
+       VALUES ($1, $2, NOW() + INTERVAL '15 minutes', $3, $4, TRUE)`,
+      [
+        fixture.userId,
+        hashToken(fixture.tokenValue),
+        fixture.organizationId,
+        fixture.interactionUid,
+      ],
+    );
+  }
+
+  /** Deliver one standalone artifact through the production outbox processor. */
+  public async deliverStandaloneArtifact(): Promise<MagicLinkAuthorityFixture> {
+    const fixture = await this.reset({ mode: 'standalone' });
+    await this.removeArtifact();
+    const mailhog = new MailHogClient();
+    await mailhog.clearAll();
+    this.initialMailCount = 0;
+    setEmailTransport(createSmtpTransport());
+    const enqueued = await enqueueAccountRecovery({
+      jobType: 'magic_link',
+      organizationId: fixture.organizationId,
+      email: fixture.email,
+      interactionUid: null,
+      actionNonce: randomUUID(),
+    });
+    const repository = createRecoveryJobRepository();
+    const workerId = randomUUID();
+    const now = new Date();
+    const claimed = await repository.claimAvailable({
+      workerId,
+      now,
+      leaseExpiredBefore: new Date(now.getTime() - 300_000),
+      limit: 1,
+    });
+    const job = claimed.find((candidate) => candidate.id === enqueued.job.id);
+    if (!job) throw new Error('Standalone magic-link recovery job was not claimed');
+    const started = await repository.beginAttempt({ jobId: job.id, workerId, now });
+    if (!started) throw new Error('Standalone magic-link recovery attempt did not start');
+    const result = await new AccountRecoveryJobProcessor().process({ ...job, attemptCount: 1 });
+    if (result !== 'completed') throw new Error('Standalone magic-link recovery did not complete');
+    const completed = await repository.markCompleted({ jobId: job.id, workerId, now: new Date() });
+    if (!completed) throw new Error('Standalone magic-link recovery completion was not persisted');
+    const message = await mailhog.waitForMessage(fixture.email);
+    const deliveredUrl = mailhog.extractLink(
+      message,
+      /https?:\/\/[^\s"<>]+\/auth\/magic-link\/[^\s"<>]+/,
+    );
+    if (!deliveredUrl) throw new Error('Standalone magic-link delivery URL was unavailable');
+    const parsed = new URL(deliveredUrl);
+    const tokenValue = decodeURIComponent(parsed.pathname.split('/').at(-1) ?? '');
+    if (!tokenValue) throw new Error('Standalone magic-link artifact was unavailable');
+    this.deliveredUrl = deliveredUrl;
+    this.fixture = { ...fixture, tokenValue };
+    return this.fixture;
+  }
+
+  /** Return the latest standalone delivery URL without exposing mailbox internals. */
+  public readDeliveredUrl(): string | null {
+    return this.deliveredUrl;
+  }
+
   /** Present the arranged artifact through the real public magic-link route handler. */
   public async present(input: {
     readonly routeOrganizationId: string;
     readonly interactionUid?: string;
+    readonly socketPeer?: string;
   }): Promise<MagicLinkPublicOutcome> {
     const fixture = this.requireFixture();
     const organization = this.requireOrganization(input.routeOrganizationId);
@@ -191,9 +311,27 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
       organization,
       token: fixture.tokenValue,
       ...(input.interactionUid === undefined ? {} : { interactionUid: input.interactionUid }),
+      ...(input.socketPeer === undefined ? {} : { socketPeer: input.socketPeer }),
       jar: this.jar,
     });
-    const handler = findHandler(createMagicLinkRouter(), 'GET', 'magic-link');
+    const provider = {
+      Interaction: {
+        find: async (uid: string) => {
+          const clientId = await getRedis().get(`interaction:client:${uid}`);
+          return clientId ? { uid, params: { client_id: clientId } } : undefined;
+        },
+      },
+    };
+    const handler = findHandler(
+      createMagicLinkRouter(provider, {
+        checkCallbackRateLimit: async (key, config) => {
+          if (this.callbackLimiterUnavailable) throw new Error('callback limiter unavailable');
+          return checkRateLimitStrict(key, config);
+        },
+      }),
+      'GET',
+      'magic-link',
+    );
     await handler(request.context as never, async () => undefined);
     const snapshot = request.snapshot();
     const accepted = snapshot.status === 200 || snapshot.status === 302;
@@ -209,6 +347,11 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
         : `${snapshot.status}:${snapshot.type}`,
       genericError: accepted ? null : GENERIC_MAGIC_LINK_FAILURE,
     };
+  }
+
+  /** Select whether callback-limit storage fails before the next public presentation. */
+  public setCallbackLimiterUnavailable(unavailable: boolean): void {
+    this.callbackLimiterUnavailable = unavailable;
   }
 
   /** Mark only the arranged durable artifact consumed. */

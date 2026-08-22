@@ -15,6 +15,7 @@ import type { ProtectedRecoveryAddress, RecoveryJobType } from './recovery-job-r
 const ADDRESS_CONTEXT = 'porta/recovery-address/v1';
 const IDEMPOTENCY_CONTEXT = 'porta/recovery-idempotency/v1';
 const TOKEN_CONTEXT = 'porta/recovery-token/v1';
+const CALLBACK_CONTEXT = 'porta/magic-link-callback/v1';
 const ALGORITHM = 'aes-256-gcm';
 const addressSchema = z.string().trim().toLowerCase().email().max(255);
 
@@ -136,4 +137,15 @@ export function recoveryArtifactToken(
   if (!secret) throw new Error('Recovery artifact key is unavailable');
   const key = deriveKey(secret, TOKEN_CONTEXT);
   return createHmac('sha256', key).update(jobType).update('\0').update(jobId).digest('base64url');
+}
+
+/**
+ * Derive a non-reversible callback identity without retaining the presented bearer artifact.
+ *
+ * @param artifact - Plaintext callback artifact held only for the current request.
+ * @returns A short keyed digest safe for an ephemeral rate-limit key.
+ */
+export function magicLinkCallbackArtifactDigest(artifact: string): string {
+  const key = deriveKey(config.cookieKeys[0], CALLBACK_CONTEXT);
+  return createHmac('sha256', key).update(artifact).digest('base64url').slice(0, 22);
 }

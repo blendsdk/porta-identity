@@ -26,8 +26,10 @@ import { getSystemConfigNumber } from '../../../src/lib/system-config.js';
 import { logger } from '../../../src/lib/logger.js';
 import {
   checkRateLimit,
+  checkRateLimitStrict,
   resetRateLimit,
   buildLoginRateLimitKey,
+  buildMagicLinkCallbackRateLimitKey,
   buildMagicLinkRateLimitKey,
   buildPasswordResetRateLimitKey,
   loadLoginRateLimitConfig,
@@ -168,6 +170,27 @@ describe('rate-limiter', () => {
     });
   });
 
+  describe('checkRateLimitStrict', () => {
+    it('should preserve the shared counter decision when Redis is available', async () => {
+      mockRedis(6, 120);
+
+      await expect(
+        checkRateLimitStrict('strict-key', { max: 5, windowSeconds: 900 }),
+      ).resolves.toMatchObject({ allowed: false, remaining: 0, retryAfter: 120 });
+    });
+
+    it('should reject when Redis cannot enforce the counter', async () => {
+      (getRedis as ReturnType<typeof vi.fn>).mockReturnValue({
+        incr: vi.fn().mockRejectedValue(new Error('Connection refused')),
+      });
+
+      await expect(checkRateLimitStrict('strict-key', DEFAULT_CONFIG)).rejects.toThrow(
+        'Connection refused',
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+  });
+
   // -------------------------------------------------------------------------
   // resetRateLimit
   // -------------------------------------------------------------------------
@@ -240,8 +263,29 @@ describe('rate-limiter', () => {
 
     it('should use SHA-256 hash of email', () => {
       const key = buildMagicLinkRateLimitKey('org-1', 'test@example.com');
-      const expectedHash = crypto.createHash('sha256').update('test@example.com').digest('hex').slice(0, 16);
+      const expectedHash = crypto
+        .createHash('sha256')
+        .update('test@example.com')
+        .digest('hex')
+        .slice(0, 16);
       expect(key).toBe(`ratelimit:magic:org-1:${expectedHash}`);
+    });
+  });
+
+  describe('buildMagicLinkCallbackRateLimitKey', () => {
+    it('should isolate callback budgets by tenant, direct peer, and artifact digest', () => {
+      const baseline = buildMagicLinkCallbackRateLimitKey('org-1', '127.0.0.1', 'artifact-a');
+
+      expect(baseline).toMatch(/^ratelimit:magic-callback:org-1:[a-f0-9]{16}:artifact-a$/);
+      expect(buildMagicLinkCallbackRateLimitKey('org-2', '127.0.0.1', 'artifact-a')).not.toBe(
+        baseline,
+      );
+      expect(buildMagicLinkCallbackRateLimitKey('org-1', '127.0.0.2', 'artifact-a')).not.toBe(
+        baseline,
+      );
+      expect(buildMagicLinkCallbackRateLimitKey('org-1', '127.0.0.1', 'artifact-b')).not.toBe(
+        baseline,
+      );
     });
   });
 
@@ -265,7 +309,7 @@ describe('rate-limiter', () => {
   describe('loadLoginRateLimitConfig', () => {
     it('should load config from system_config with correct keys', async () => {
       (getSystemConfigNumber as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce(15)   // rate_limit_login_max
+        .mockResolvedValueOnce(15) // rate_limit_login_max
         .mockResolvedValueOnce(600); // rate_limit_login_window
 
       const config = await loadLoginRateLimitConfig();

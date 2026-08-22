@@ -29,6 +29,19 @@ vi.mock('../../../src/auth/template-engine.js', () => ({ renderPage: mockRenderP
 vi.mock('../../../src/auth/csrf.js', () => ({ generateCsrfToken: () => 'csrf-value' }));
 vi.mock('../../../src/users/cache.js', () => ({ invalidateUserCache: mockInvalidateUserCache }));
 vi.mock('../../../src/lib/audit-log.js', () => ({ writeAuditLog: vi.fn() }));
+vi.mock('../../../src/auth/rate-limiter.js', () => ({
+  buildMagicLinkCallbackRateLimitKey: vi.fn().mockReturnValue('callback-limit-key'),
+  checkRateLimitStrict: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 4,
+    resetAt: new Date('2026-01-01T00:15:00.000Z'),
+    retryAfter: 0,
+  }),
+  loadMagicLinkRateLimitConfig: vi.fn().mockResolvedValue({ max: 5, windowSeconds: 900 }),
+}));
+vi.mock('../../../src/auth/recovery-crypto.js', () => ({
+  magicLinkCallbackArtifactDigest: vi.fn().mockReturnValue('protected-artifact-digest'),
+}));
 
 import { consumeMagicLinkSession } from '../../../src/auth/magic-link-session.js';
 import { consumeAuthorizedMagicLink } from '../../../src/auth/token-repository.js';
@@ -65,6 +78,16 @@ const TEST_ORGANIZATION: Organization = {
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
+/** Provider interaction which binds the arranged UID to the current test client. */
+const TEST_PROVIDER = {
+  Interaction: {
+    find: vi.fn().mockResolvedValue({
+      uid: 'interaction-alpha',
+      params: { client_id: 'client-alpha' },
+    }),
+  },
+};
+
 /** One recorded SQL call used to verify transaction ordering and terminal state. */
 interface RecordedQuery {
   /** SQL text passed to the mocked PostgreSQL client. */
@@ -84,6 +107,9 @@ function arrangeTransaction(input: { readonly failAudit: boolean }): {
     const sql = String(sqlValue);
     const values = valuesValue ?? [];
     queries.push({ sql, values });
+    if (sql.includes('FROM clients')) {
+      return { rows: [{ id: 'client-row-id' }], rowCount: 1 };
+    }
     if (sql.includes('SELECT token.id')) {
       return { rows: [AUTHORIZED_TOKEN_ROW], rowCount: 1 };
     }
@@ -116,7 +142,7 @@ function createPublicContext(): {
     params: { orgSlug: TEST_ORGANIZATION.slug, token: 'raw-magic-link-token' },
     query: { interaction: 'interaction-alpha' },
     request: { body: {} },
-    req: {},
+    req: { socket: { remoteAddress: '127.0.0.1' } },
     res: {},
     ip: '127.0.0.1',
     secure: true,
@@ -153,7 +179,7 @@ function createPublicContext(): {
 
 /** Invoke only the registered public magic-link route handler. */
 async function invokePublicMagicLink(context: Record<string, unknown>): Promise<void> {
-  const layer = createMagicLinkRouter().stack.find(
+  const layer = createMagicLinkRouter(TEST_PROVIDER).stack.find(
     (candidate) => candidate.methods.includes('GET') && candidate.path.includes('magic-link'),
   );
   const handler = layer?.stack.at(-1);
@@ -193,11 +219,13 @@ describe('magic-link binding implementation', () => {
         tokenHash: 'presented-hash',
         organizationId: 'organization-alpha',
         interactionUid: 'interaction-alpha',
+        clientId: 'client-alpha',
       }),
     ).rejects.toThrow('audit sink unavailable');
 
     expect(transaction.queries.map(({ sql }) => sql.trim().split(/\s+/)[0])).toStrictEqual([
       'BEGIN',
+      'SELECT',
       'SELECT',
       'UPDATE',
       'UPDATE',

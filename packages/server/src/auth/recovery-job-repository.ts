@@ -230,7 +230,7 @@ const enqueueSchema = z
   .strict()
   .superRefine((input, context) => {
     const interactionMatchesType =
-      (input.jobType === 'magic_link' && input.interactionUid !== null) ||
+      input.jobType === 'magic_link' ||
       (input.jobType === 'password_reset' && input.interactionUid === null);
     if (!interactionMatchesType) {
       context.addIssue({

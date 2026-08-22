@@ -33,6 +33,8 @@ import { getPool } from '../../../src/lib/database.js';
 import { setEmailTransport } from '../../../src/auth/email-service.js';
 import { createSmtpTransport } from '../../../src/auth/email-transport.js';
 import {
+  createTestApplication,
+  createTestClient,
   createTestOrganization,
   createTestUser,
   createTestUserWithPassword,
@@ -151,6 +153,7 @@ function findHandler(router: Router, method: string, path: string) {
 export class ProductionEnumerationResistanceDriver implements EnumerationResistanceSpecDriver {
   private readonly mailhog = new MailHogClient();
   private organization: Organization | null = null;
+  private interactionClientId: string | null = null;
   private fixture: IdentityFixture | null = null;
   private actionId = randomUUID();
   private now = new Date();
@@ -201,6 +204,8 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
 
     const organization = await createTestOrganization({ name: 'Enumeration Production Org' });
     this.organization = organization;
+    const application = await createTestApplication();
+    this.interactionClientId = (await createTestClient(organization.id, application.id)).clientId;
     const email = `${state}-${randomUUID()}@test.example.com`;
     let user: User | null = null;
     if (state !== 'absent') {
@@ -527,7 +532,12 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
 
   /** Create a worker whose injected failures surround, rather than replace, the real processor. */
   private createWorker(): ObservableRecoveryWorker {
-    const processor = new AccountRecoveryJobProcessor();
+    const processor = new AccountRecoveryJobProcessor({
+      resolve: async (interactionUid) => {
+        const clientId = this.interactionClientId;
+        return clientId ? { interactionUid, clientId } : null;
+      },
+    });
     return new ObservableRecoveryWorker({
       repository: createRecoveryJobRepository(),
       workerId: this.workerId,

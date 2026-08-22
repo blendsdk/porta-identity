@@ -284,7 +284,7 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(standaloneUserRouter.routes());
   app.use(standaloneUserRouter.allowedMethods());
 
-  // RBAC & Custom Claims admin APIs (RD-08) — requires admin authentication
+  // RBAC and custom-claims admin APIs require admin authentication.
   // Role management at /api/admin/applications/:appId/roles
   const roleRouter = createRoleRouter();
   app.use(roleRouter.routes());
@@ -399,7 +399,7 @@ export function createApp(oidcProvider?: Provider): Koa {
   // Mounted before the OIDC catch-all to prevent it from swallowing auth paths.
   // Magic link no longer needs the provider — authentication is completed via
   // the _ml_session cookie and the interaction login handler.
-  const magicLinkRouter = createMagicLinkRouter();
+  const magicLinkRouter = createMagicLinkRouter(oidcProvider);
   app.use(magicLinkRouter.routes());
   app.use(magicLinkRouter.allowedMethods());
 

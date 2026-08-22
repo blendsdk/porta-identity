@@ -1,9 +1,9 @@
 /**
  * Token repository — PostgreSQL CRUD for all three token tables.
  *
- * Handles magic_link_tokens, password_reset_tokens, and invitation_tokens
- * using a shared implementation with a validated table name parameter.
- * The table name is checked against an allowlist to prevent SQL injection.
+ * Password-reset and invitation tokens use shared allowlisted helpers. Magic-link issuance and
+ * consumption use dedicated authority-aware transactions so callers cannot omit tenant, live
+ * client, or interaction validation.
  *
  * Token lifecycle:
  *   1. insertToken()          → store hash + expiry for a user
@@ -24,6 +24,9 @@ import type { UserStatus } from '../users/types.js';
 
 /** Allowed token table names — used as an allowlist to prevent SQL injection */
 export type TokenTable = 'magic_link_tokens' | 'password_reset_tokens' | 'invitation_tokens';
+
+/** Token tables whose rows do not require magic-link tenant and interaction authority. */
+export type GenericInsertTokenTable = Exclude<TokenTable, 'magic_link_tokens'>;
 
 /** Row shape returned from any of the three token tables */
 export interface TokenRecord {
@@ -69,6 +72,8 @@ export interface EnsureMagicLinkRecoveryTokenInput extends EnsureRecoveryTokenBa
   readonly organizationId: string;
   /** Exact OIDC interaction authority, or null for an explicitly standalone artifact. */
   readonly interactionUid: string | null;
+  /** Current OIDC client resolved from the provider-owned interaction. */
+  readonly clientId: string | null;
 }
 
 /** Recovery-token input for password reset, which has no OIDC interaction authority. */
@@ -135,6 +140,8 @@ export interface ConsumeAuthorizedMagicLinkInput {
   readonly organizationId: string;
   /** Exact transport interaction, or null when the public request supplied none. */
   readonly interactionUid: string | null;
+  /** Current interaction client, or null only for an explicitly standalone artifact. */
+  readonly clientId: string | null;
   /** Validated request address retained only in the successful audit row. */
   readonly ipAddress?: string;
 }
@@ -213,7 +220,7 @@ function mapRowToToken(row: TokenRow): TokenRecord {
  * @param expiresAt - When this token expires
  */
 export async function insertToken(
-  table: TokenTable,
+  table: GenericInsertTokenTable,
   userId: string,
   tokenHash: string,
   expiresAt: Date,
@@ -297,6 +304,18 @@ export async function ensureRecoveryJobToken(
       return 'superseded';
     }
 
+    if (input.table === 'magic_link_tokens') {
+      const clientMatches =
+        input.interactionUid === null && input.clientId === null
+          ? true
+          : input.interactionUid !== null &&
+            input.clientId !== null &&
+            (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
+      if (!clientMatches) {
+        await client.query('COMMIT');
+        return 'superseded';
+      }
+    }
     await client.query(
       `UPDATE ${input.table}
        SET used_at = NOW()
@@ -332,6 +351,34 @@ export async function ensureRecoveryJobToken(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Lock and validate the current client tenant inside an artifact transaction.
+ *
+ * Client ownership is checked in the same transaction that inserts or consumes the artifact so a
+ * concurrent revocation cannot pass an earlier route-only check and then gain authority.
+ *
+ * @param client - Active PostgreSQL transaction.
+ * @param clientId - Public OIDC client identifier resolved from the live interaction.
+ * @param organizationId - Tenant which must currently own the active client.
+ * @returns True only when one current active client row is locked.
+ */
+async function lockActiveClientAuthority(
+  client: PoolClient,
+  clientId: string,
+  organizationId: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `SELECT id
+     FROM clients
+     WHERE client_id = $1
+       AND organization_id = $2
+       AND status = 'active'
+     FOR SHARE`,
+    [clientId, organizationId],
+  );
+  return result.rowCount === 1;
 }
 
 /**
@@ -486,6 +533,16 @@ export async function consumeAuthorizedMagicLink(
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
+    const clientMatches =
+      input.interactionUid === null && input.clientId === null
+        ? true
+        : input.interactionUid !== null &&
+          input.clientId !== null &&
+          (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
+    if (!clientMatches) {
+      await client.query('ROLLBACK');
+      return null;
+    }
     const token = await findAndLockMagicLinkToken(client, input.tokenHash, input.organizationId);
     const authorityMatches =
       token !== null &&

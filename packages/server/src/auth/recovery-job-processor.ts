@@ -17,9 +17,17 @@ import {
   type RecoveryJobProcessingResult,
   type RecoveryJobProcessor,
 } from './recovery-worker.js';
+import type { InteractionAuthorityResolver } from './interaction-authority.js';
 
 /** Concrete tenant-scoped processor for magic-link and password-reset work. */
 export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
+  /**
+   * Create a processor with the provider-owned interaction boundary used by magic-link work.
+   *
+   * @param interactionAuthority - Live interaction resolver. Password-reset jobs do not use it.
+   */
+  public constructor(protected readonly interactionAuthority?: InteractionAuthorityResolver) {}
+
   /** Resolve eligibility, create one artifact, and deliver its stable link. */
   public async process(job: ClaimedRecoveryJob): Promise<RecoveryJobProcessingResult> {
     let address: string;
@@ -59,18 +67,25 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
         tokenHash: hashToken(plaintext),
         expiresAt: new Date(Date.now() + ttlSeconds * 1_000),
       };
-      const artifact =
-        job.jobType === 'magic_link'
-          ? await ensureRecoveryJobToken({
-              ...artifactInput,
-              table: 'magic_link_tokens',
-              organizationId: job.organizationId,
-              interactionUid: job.interactionUid,
-            })
-          : await ensureRecoveryJobToken({
-              ...artifactInput,
-              table: 'password_reset_tokens',
-            });
+      let artifact;
+      if (job.jobType === 'magic_link') {
+        const liveAuthority = job.interactionUid
+          ? await this.interactionAuthority?.resolve(job.interactionUid)
+          : null;
+        if (job.interactionUid && !liveAuthority) return 'no_op';
+        artifact = await ensureRecoveryJobToken({
+          ...artifactInput,
+          table: 'magic_link_tokens',
+          organizationId: job.organizationId,
+          interactionUid: job.interactionUid,
+          clientId: liveAuthority?.clientId ?? null,
+        });
+      } else {
+        artifact = await ensureRecoveryJobToken({
+          ...artifactInput,
+          table: 'password_reset_tokens',
+        });
+      }
       if (artifact === 'superseded') return 'no_op';
     } catch {
       throw new RecoveryJobProcessingError('database_unavailable', true);
@@ -79,7 +94,9 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
     const base = `${config.issuerBaseUrl}/${organization.slug}/auth`;
     const recoveryUrl =
       job.jobType === 'magic_link'
-        ? `${base}/magic-link/${plaintext}?interaction=${encodeURIComponent(job.interactionUid ?? '')}`
+        ? `${base}/magic-link/${plaintext}${
+            job.interactionUid ? `?interaction=${encodeURIComponent(job.interactionUid)}` : ''
+          }`
         : `${base}/reset-password/${plaintext}`;
     try {
       await sendRecoveryEmailStrict({
@@ -107,7 +124,14 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
   }
 }
 
-/** Create the production account-recovery processor. */
-export function createAccountRecoveryJobProcessor(): RecoveryJobProcessor {
-  return new AccountRecoveryJobProcessor();
+/**
+ * Create the production account-recovery processor.
+ *
+ * @param interactionAuthority - Live provider authority for interaction-bound magic links.
+ * @returns The account-independent processor used by the durable worker.
+ */
+export function createAccountRecoveryJobProcessor(
+  interactionAuthority?: InteractionAuthorityResolver,
+): RecoveryJobProcessor {
+  return new AccountRecoveryJobProcessor(interactionAuthority);
 }

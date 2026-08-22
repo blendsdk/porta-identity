@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { requestLogger } from '../../../src/middleware/request-logger.js';
+import { requestLogger, sanitizeRequestPath } from '../../../src/middleware/request-logger.js';
 
 // Mock the logger
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -30,6 +30,14 @@ function createMockContext(overrides = {}): Record<string, unknown> {
 }
 
 describe('requestLogger middleware', () => {
+  it.each([
+    ['/tenant/auth/magic-link/plaintext-artifact', '/:organization/auth/magic-link/:artifact'],
+    ['/interaction/private-interaction', '/interaction/:interaction'],
+    ['/interaction/private-interaction/consent', '/interaction/:interaction/consent'],
+  ])('sanitizes protected path %s', (path, expected) => {
+    expect(sanitizeRequestPath(path)).toBe(expected);
+  });
+
   it('sets X-Request-Id header', async () => {
     const middleware = requestLogger();
     const ctx = createMockContext();

@@ -26,7 +26,7 @@ import {
   findAndLockMagicLinkToken,
   invalidateUserTokens,
 } from '../../../src/auth/token-repository.js';
-import type { TokenTable } from '../../../src/auth/token-repository.js';
+import type { GenericInsertTokenTable, TokenTable } from '../../../src/auth/token-repository.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,6 +87,12 @@ const VALID_TABLES: TokenTable[] = [
   'invitation_tokens',
 ];
 
+/** Tables that can be inserted without magic-link authority metadata. */
+const GENERIC_INSERT_TABLES: GenericInsertTokenTable[] = [
+  'password_reset_tokens',
+  'invitation_tokens',
+];
+
 describe('token-repository', () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -98,7 +104,7 @@ describe('token-repository', () => {
     it('should throw for invalid table name on insertToken', async () => {
       mockPool();
       await expect(
-        insertToken('invalid_table' as TokenTable, 'user-1', 'hash', new Date()),
+        insertToken('invalid_table' as GenericInsertTokenTable, 'user-1', 'hash', new Date()),
       ).rejects.toThrow('Invalid token table');
     });
 
@@ -136,17 +142,20 @@ describe('token-repository', () => {
   // -------------------------------------------------------------------------
 
   describe('insertToken', () => {
-    it.each(VALID_TABLES)('should insert into %s with correct parameters', async (table) => {
-      const mockQuery = mockPool();
-      const expiresAt = new Date('2026-06-01T00:00:00Z');
+    it.each(GENERIC_INSERT_TABLES)(
+      'should insert into %s with correct parameters',
+      async (table) => {
+        const mockQuery = mockPool();
+        const expiresAt = new Date('2026-06-01T00:00:00Z');
 
-      await insertToken(table, 'user-uuid-1', 'hash-abc', expiresAt);
+        await insertToken(table, 'user-uuid-1', 'hash-abc', expiresAt);
 
-      expect(mockQuery).toHaveBeenCalledTimes(1);
-      const [sql, params] = mockQuery.mock.calls[0];
-      expect(sql).toContain(`INSERT INTO ${table}`);
-      expect(params).toEqual(['user-uuid-1', 'hash-abc', expiresAt]);
-    });
+        expect(mockQuery).toHaveBeenCalledTimes(1);
+        const [sql, params] = mockQuery.mock.calls[0];
+        expect(sql).toContain(`INSERT INTO ${table}`);
+        expect(params).toEqual(['user-uuid-1', 'hash-abc', expiresAt]);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -247,6 +256,7 @@ describe('token-repository', () => {
       });
       const { query, release } = mockScriptedTransaction([
         {},
+        { rows: [{ id: 'client-row-id' }], rowCount: 1 },
         { rows: [row], rowCount: 1 },
         { rowCount: 1 },
         { rows: [{ id: 'user-uuid-1' }], rowCount: 1 },
@@ -259,6 +269,7 @@ describe('token-repository', () => {
           tokenHash: 'presented-token-hash',
           organizationId: 'organization-alpha',
           interactionUid: 'interaction-alpha',
+          clientId: 'client-alpha',
           ipAddress: '127.0.0.1',
         }),
       ).resolves.toStrictEqual({
@@ -270,6 +281,7 @@ describe('token-repository', () => {
         query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')),
       ).toStrictEqual([
         'BEGIN',
+        'SELECT id',
         'SELECT token.id,',
         'UPDATE magic_link_tokens',
         'UPDATE users',
@@ -285,18 +297,24 @@ describe('token-repository', () => {
         interaction_uid: 'interaction-authoritative',
         account_status: 'active',
       });
-      const { query, release } = mockScriptedTransaction([{}, { rows: [row], rowCount: 1 }, {}]);
+      const { query, release } = mockScriptedTransaction([
+        {},
+        { rows: [{ id: 'client-row-id' }], rowCount: 1 },
+        { rows: [row], rowCount: 1 },
+        {},
+      ]);
 
       await expect(
         consumeAuthorizedMagicLink({
           tokenHash: 'presented-token-hash',
           organizationId: 'organization-alpha',
           interactionUid: 'interaction-changed',
+          clientId: 'client-alpha',
         }),
       ).resolves.toBeNull();
 
-      expect(query).toHaveBeenCalledTimes(3);
-      expect(query.mock.calls[2][0]).toBe('ROLLBACK');
+      expect(query).toHaveBeenCalledTimes(4);
+      expect(query.mock.calls[3][0]).toBe('ROLLBACK');
       expect(release).toHaveBeenCalledOnce();
     });
 
@@ -319,6 +337,7 @@ describe('token-repository', () => {
           tokenHash: 'presented-token-hash',
           organizationId: 'organization-alpha',
           interactionUid: null,
+          clientId: null,
         }),
       ).resolves.toBeNull();
 

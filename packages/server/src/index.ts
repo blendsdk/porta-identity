@@ -54,7 +54,7 @@ async function main() {
   // Step 6: Create and start the HTTP server with OIDC provider mounted
   const app = createApp(oidcProvider);
   const server = app.listen(config.port, config.host, () => {
-    startAccountRecoveryWorker();
+    startAccountRecoveryWorker(oidcProvider);
     logger.info({ port: config.port, host: config.host }, 'Server started');
   });
 

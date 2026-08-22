@@ -12,6 +12,10 @@ import {
   recoveryIdempotencyDigest,
 } from './recovery-crypto.js';
 import { createRecoveryWorker, type RecoveryWorker } from './recovery-worker.js';
+import {
+  createInteractionAuthorityResolver,
+  type InteractionAuthorityProvider,
+} from './interaction-authority.js';
 
 /** Input accepted after public validation, CSRF, and rate limiting. */
 export interface EnqueueAccountRecoveryInput {
@@ -55,12 +59,18 @@ export async function enqueueAccountRecovery(
   return result;
 }
 
-/** Start the singleton recovery worker after all application dependencies are ready. */
-export function startAccountRecoveryWorker(): void {
+/**
+ * Start the singleton recovery worker after all application dependencies are ready.
+ *
+ * @param provider - Live provider authority required by interaction-bound magic-link jobs.
+ */
+export function startAccountRecoveryWorker(provider?: InteractionAuthorityProvider): void {
   if (worker) return;
   worker = createRecoveryWorker({
     repository: createRecoveryJobRepository(),
-    processor: createAccountRecoveryJobProcessor(),
+    processor: createAccountRecoveryJobProcessor(
+      provider ? createInteractionAuthorityResolver(provider) : undefined,
+    ),
   });
   worker.start();
 }

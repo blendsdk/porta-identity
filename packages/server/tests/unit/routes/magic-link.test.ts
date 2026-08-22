@@ -46,6 +46,21 @@ vi.mock('../../../src/auth/magic-link-session.js', () => ({
   createMagicLinkSession: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../../src/auth/rate-limiter.js', () => ({
+  buildMagicLinkCallbackRateLimitKey: vi.fn().mockReturnValue('callback-limit-key'),
+  checkRateLimitStrict: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 4,
+    resetAt: new Date('2026-01-01T00:15:00.000Z'),
+    retryAfter: 0,
+  }),
+  loadMagicLinkRateLimitConfig: vi.fn().mockResolvedValue({ max: 5, windowSeconds: 900 }),
+}));
+
+vi.mock('../../../src/auth/recovery-crypto.js', () => ({
+  magicLinkCallbackArtifactDigest: vi.fn().mockReturnValue('protected-artifact-digest'),
+}));
+
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
 }));
@@ -67,7 +82,18 @@ import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as userCache from '../../../src/users/cache.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
+import * as rateLimiter from '../../../src/auth/rate-limiter.js';
 import type { Organization } from '../../../src/organizations/types.js';
+
+/** Provider model whose current interaction belongs to the test client. */
+const TEST_PROVIDER = {
+  Interaction: {
+    find: vi.fn().mockResolvedValue({
+      uid: 'interaction-uid-1',
+      params: { client_id: 'client-alpha' },
+    }),
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -106,7 +132,7 @@ function createMockCtx(
     params: { orgSlug: 'test-org', token: 'plain-token-123', ...(overrides.params ?? {}) },
     query: overrides.query ?? { interaction: 'interaction-uid-1' },
     request: { body: {} },
-    req: {},
+    req: { socket: { remoteAddress: '127.0.0.1' } },
     res: {},
     ip: '127.0.0.1',
     get status() {
@@ -137,6 +163,11 @@ function createMockCtx(
   };
 }
 
+/** Create the route with a provider-backed interaction authority boundary. */
+function createTestRouter() {
+  return createMagicLinkRouter(TEST_PROVIDER);
+}
+
 function findLayer(
   router: ReturnType<typeof createMagicLinkRouter>,
   method: string,
@@ -160,6 +191,16 @@ describe('magic link routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(templateEngine.renderPage).mockResolvedValue('<html>rendered</html>');
+    vi.mocked(rateLimiter.checkRateLimitStrict).mockResolvedValue({
+      allowed: true,
+      remaining: 4,
+      resetAt: new Date('2026-01-01T00:15:00.000Z'),
+      retryAfter: 0,
+    });
+    TEST_PROVIDER.Interaction.find.mockResolvedValue({
+      uid: 'interaction-uid-1',
+      params: { client_id: 'client-alpha' },
+    });
   });
 
   describe('GET /:orgSlug/auth/magic-link/:token — verifyMagicLink', () => {
@@ -169,7 +210,7 @@ describe('magic link routes', () => {
         interactionUid: 'interaction-uid-1',
       });
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx();
 
@@ -179,6 +220,7 @@ describe('magic link routes', () => {
         tokenHash: 'hashed-token-abc',
         organizationId: 'org-uuid-1',
         interactionUid: 'interaction-uid-1',
+        clientId: 'client-alpha',
         ipAddress: '127.0.0.1',
       });
       expect(userCache.invalidateUserCache).toHaveBeenCalledWith('user-uuid-1');
@@ -196,7 +238,7 @@ describe('magic link routes', () => {
     it('should show error page for invalid/expired token', async () => {
       vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue(null);
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx();
 
@@ -214,10 +256,41 @@ describe('magic link routes', () => {
       );
     });
 
+    it('should reject before durable lookup when the callback budget is exhausted', async () => {
+      vi.mocked(rateLimiter.checkRateLimitStrict).mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        resetAt: new Date('2026-01-01T00:15:00.000Z'),
+        retryAfter: 900,
+      });
+      const layer = findLayer(createTestRouter(), 'GET', 'magic-link');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.consumeAuthorizedMagicLink).not.toHaveBeenCalled();
+      expect(ctx.status).toBe(400);
+    });
+
+    it('should reject generically before durable lookup when callback limiting is unavailable', async () => {
+      vi.mocked(rateLimiter.checkRateLimitStrict).mockRejectedValue(new Error('Redis unavailable'));
+      const layer = findLayer(createTestRouter(), 'GET', 'magic-link');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.consumeAuthorizedMagicLink).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.stringContaining('generic') }),
+      );
+      expect(ctx.status).toBe(400);
+    });
+
     it('should show the same error page when stored interaction authority differs', async () => {
       vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue(null);
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx();
 
@@ -231,7 +304,7 @@ describe('magic link routes', () => {
     });
 
     it('should reject a malformed interaction query without invoking durable authority', async () => {
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx({ query: { interaction: '' } });
 
@@ -251,7 +324,7 @@ describe('magic link routes', () => {
         interactionUid: null,
       });
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       // No interaction query param
       const ctx = createMockCtx({ query: {} });
@@ -277,7 +350,7 @@ describe('magic link routes', () => {
       const { createMagicLinkSession } = await import('../../../src/auth/magic-link-session.js');
       vi.mocked(createMagicLinkSession).mockRejectedValue(new Error('Redis down'));
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx();
 
@@ -296,7 +369,7 @@ describe('magic link routes', () => {
     it('should render generic error on unexpected exception', async () => {
       vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockRejectedValue(new Error('DB down'));
 
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const layer = findLayer(router, 'GET', 'magic-link');
       const ctx = createMockCtx();
 
@@ -311,7 +384,7 @@ describe('magic link routes', () => {
 
   describe('router structure', () => {
     it('should register the magic link route', () => {
-      const router = createMagicLinkRouter();
+      const router = createTestRouter();
       const paths = router.stack.map(
         (l) => `${l.methods.filter((m) => m !== 'HEAD').join(',')} ${l.path}`,
       );

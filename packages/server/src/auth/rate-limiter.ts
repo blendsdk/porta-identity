@@ -67,45 +67,12 @@ export interface RateLimitConfig {
  * @param config - Rate limit configuration (max requests + window)
  * @returns Rate limit result with allowed status and metadata
  */
-export async function checkRateLimit(key: string, config: RateLimitConfig): Promise<RateLimitResult> {
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
   try {
-    const redis = getRedis();
-
-    // Atomically increment the counter
-    const count = await redis.incr(key);
-
-    // If this is the first request in the window, set the TTL
-    if (count === 1) {
-      await redis.expire(key, config.windowSeconds);
-    }
-
-    // Get the remaining TTL to calculate resetAt and retryAfter
-    const ttl = await redis.ttl(key);
-
-    // Handle edge case: TTL is -1 (key exists but no expiry set — race condition)
-    // Re-set the expire to ensure the window closes
-    if (ttl === -1) {
-      await redis.expire(key, config.windowSeconds);
-    }
-
-    const effectiveTtl = ttl > 0 ? ttl : config.windowSeconds;
-    const resetAt = new Date(Date.now() + effectiveTtl * 1000);
-
-    if (count > config.max) {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetAt,
-        retryAfter: effectiveTtl,
-      };
-    }
-
-    return {
-      allowed: true,
-      remaining: config.max - count,
-      resetAt,
-      retryAfter: 0,
-    };
+    return await executeRateLimit(key, config);
   } catch (error) {
     // Graceful degradation: allow request on Redis failure
     logger.warn({ error, key }, 'Rate limiter Redis error — allowing request');
@@ -116,6 +83,35 @@ export async function checkRateLimit(key: string, config: RateLimitConfig): Prom
       retryAfter: 0,
     };
   }
+}
+
+/**
+ * Check a security-critical limit without allowing Redis failure to bypass the boundary.
+ *
+ * @param key - Privacy-safe, domain-separated Redis key.
+ * @param config - Maximum attempts and fixed window.
+ * @returns Current limit decision.
+ * @throws When Redis cannot durably increment and expire the attempt counter.
+ */
+export async function checkRateLimitStrict(
+  key: string,
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  return executeRateLimit(key, config);
+}
+
+/** Execute the shared Redis counter algorithm without selecting a failure policy. */
+async function executeRateLimit(key: string, config: RateLimitConfig): Promise<RateLimitResult> {
+  const redis = getRedis();
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, config.windowSeconds);
+  const ttl = await redis.ttl(key);
+  if (ttl === -1) await redis.expire(key, config.windowSeconds);
+  const effectiveTtl = ttl > 0 ? ttl : config.windowSeconds;
+  const resetAt = new Date(Date.now() + effectiveTtl * 1_000);
+  return count > config.max
+    ? { allowed: false, remaining: 0, resetAt, retryAfter: effectiveTtl }
+    : { allowed: true, remaining: config.max - count, resetAt, retryAfter: 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +179,22 @@ export function buildLoginRateLimitKey(orgId: string, ip: string, email: string)
  */
 export function buildMagicLinkRateLimitKey(orgId: string, email: string): string {
   return `ratelimit:magic:${orgId}:${hashIdentifier(email)}`;
+}
+
+/**
+ * Build the callback-attempt key from tenant, direct socket peer, and protected artifact digest.
+ *
+ * @param orgId - Route organization UUID.
+ * @param socketPeer - Direct TCP peer rather than a caller-controlled forwarding header.
+ * @param artifactDigest - Domain-separated keyed digest of the presented artifact.
+ * @returns Privacy-safe Redis key with isolated tenant, peer, and artifact budgets.
+ */
+export function buildMagicLinkCallbackRateLimitKey(
+  orgId: string,
+  socketPeer: string,
+  artifactDigest: string,
+): string {
+  return `ratelimit:magic-callback:${orgId}:${hashIdentifier(socketPeer)}:${artifactDigest}`;
 }
 
 /**

@@ -110,7 +110,7 @@ export async function setup(): Promise<void> {
     if (server!.listening) resolve();
     else server!.on('listening', resolve);
   });
-  startAccountRecoveryWorker();
+  startAccountRecoveryWorker(provider);
   stopRecoveryWorker = stopAccountRecoveryWorker;
 }
 
