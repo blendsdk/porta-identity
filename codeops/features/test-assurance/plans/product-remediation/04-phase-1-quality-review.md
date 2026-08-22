@@ -3,7 +3,8 @@
 > **Date**: 2026-08-21
 > **Phase baseline tree**: `cffb76d0bde7ea89f097b83de50ffe5222e8cb87`
 > **Reviewed completion commit**: `bd9ee461`
-> **Disposition**: Corrections required before bounded re-review
+> **Correction checkpoint**: `93f856326a702e2b39d1d13e848655a240fd82b4`
+> **Disposition**: Complete — bounded re-review corrections and clean evidence verified
 
 ## Review Result
 
@@ -42,4 +43,15 @@ necessary corrections within the approved Phase 1 scope; neither finding is waiv
 | RV-105 | Major | Replace hard-coded password algorithm and failure-operation facts with pass-through observations at the production Argon2id, database, and cache boundaries; prove a raw dummy-hash match still has no authentication authority. |
 | RV-106 / SA-104 | Major | Permanently suppress an older job after any newer job-owned artifact exists, including after that newer artifact is consumed or expired; add the missing real-database ordering regression. |
 
-Phase 1 remains open until these corrections, targeted verification, and full verification pass.
+## Closure Evidence
+
+Both bounded re-review findings were corrected without another review pass. The final clean
+production-security run `0c567504-0fb8-4bbc-9539-00a5ffaaa99b` is bound to correction commit
+`93f856326a702e2b39d1d13e848655a240fd82b4` and tree
+`12b3ad981686d0956bb510a00ae16a7e052fdef7`. It completed functional 7/7, second-factor 4/4, and
+tenant/admin 17/17 with the expected registered exit `40`; its owner-only evidence is mode 0600,
+active-run state is absent, and no run-labelled Docker resource remains.
+
+The corrected enumeration/recovery oracle passed 11/11, service-backed concurrency and authority
+integration passed 14/14, wrong-tenant password-reset E2E passed 7/7, dispatcher precedence passed
+11/11, and full `yarn verify` passed. All accepted Phase 1 Critical/Major corrections are closed.
