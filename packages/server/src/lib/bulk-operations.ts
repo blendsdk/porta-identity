@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
+import { writeAuditLogInTransaction } from './audit-log.js';
 
 /** Supported entity types for bulk operations. */
 export type BulkEntityType = 'organization' | 'user';
@@ -178,22 +179,14 @@ async function insertAudit(
 ): Promise<void> {
   const organizationId = input.entityType === 'organization' ? id : input.organizationId;
   const userId = input.entityType === 'user' ? id : null;
-  await client.query(
-    `INSERT INTO audit_log (
-       organization_id, user_id, actor_id, event_type, event_category, metadata
-     ) VALUES ($1, $2, $3, $4, 'admin', $5)`,
-    [
-      organizationId,
-      userId,
-      input.actorId ?? null,
-      `admin.bulk.${input.entityType}.status_changed`,
-      JSON.stringify({
-        action: input.action,
-        previousStatus,
-        newStatus: nextStatus,
-      }),
-    ],
-  );
+  await writeAuditLogInTransaction(client, {
+    organizationId,
+    ...(userId === null ? {} : { userId }),
+    ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
+    eventType: `admin.bulk.${input.entityType}.status_changed`,
+    eventCategory: 'admin',
+    metadata: { action: input.action, previousStatus, newStatus: nextStatus },
+  });
 }
 
 /** Create one concealed missing/foreign item result. */

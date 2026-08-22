@@ -92,6 +92,35 @@ describe('administrative data implementation', () => {
     expect(failed.release).toHaveBeenCalledOnce();
   });
 
+  it('should roll back a covered mutation when its durable audit write fails', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ status: 'active' }] })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockRejectedValueOnce(new Error('audit unavailable'))
+      .mockResolvedValueOnce({});
+    useClients(client);
+
+    const result = await bulkStatusChange({
+      entityType: 'user',
+      entityIds: ['user-1'],
+      action: 'suspend',
+      organizationId: 'organization-1',
+      actorId: 'actor-1',
+    });
+
+    expect(result).toMatchObject({
+      succeeded: 0,
+      failed: 1,
+      results: [{ id: 'user-1', outcome: 'not_attempted' }],
+    });
+    expect(
+      client.query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/)[0]),
+    ).toStrictEqual(['BEGIN', 'SELECT', 'UPDATE', 'INSERT', 'ROLLBACK']);
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('should roll back an empty dry-run without committing or returning credentials', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [], rowCount: 0 });

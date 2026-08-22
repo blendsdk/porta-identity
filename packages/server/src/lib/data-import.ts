@@ -37,6 +37,7 @@ import { validateSlug as validateOrganizationSlug } from '../organizations/slugs
 import { validateSlug as validateApplicationSlug } from '../applications/slugs.js';
 import { validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
 import { validateClaimName, validateClaimValue } from '../custom-claims/validators.js';
+import { writeAuditLogInTransaction } from './audit-log.js';
 
 // ============================================================================
 // Types
@@ -540,15 +541,17 @@ export async function importData(
 
   const pool = getPool();
   const client = await pool.connect();
+  const acquiredClientLocks: string[] = [];
 
   try {
-    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     const clientLockKeys = manifest.clients
       .map((item) => naturalKey(item.organization_slug, item.application_slug, item.client_name))
       .sort();
     for (const lockKey of clientLockKeys) {
-      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [lockKey]);
+      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [lockKey]);
+      acquiredClientLocks.push(lockKey);
     }
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
       await requireImportScope(client, manifest, organizationId);
       await requireResolvedImportDependencies(client, manifestPlan);
@@ -715,23 +718,19 @@ export async function importData(
     } else {
       // Write audit log entry for the import
       if (actorId) {
-        await client.query(
-          `INSERT INTO audit_log (event_type, event_category, actor_id, metadata)
-           VALUES ($1, $2, $3, $4)`,
-          [
-            'admin.import',
-            'admin',
-            actorId,
-            JSON.stringify({
-              mode,
-              manifestVersion: manifest.version,
-              manifestDigest: createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
-              created: result.created.length,
-              updated: result.updated.length,
-              skipped: result.skipped.length,
-            }),
-          ],
-        );
+        await writeAuditLogInTransaction(client, {
+          actorId,
+          eventType: 'admin.import',
+          eventCategory: 'admin',
+          metadata: {
+            mode,
+            manifestVersion: manifest.version,
+            manifestDigest: createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
+            created: result.created.length,
+            updated: result.updated.length,
+            skipped: result.skipped.length,
+          },
+        });
       }
       await client.query('COMMIT');
     }
@@ -754,12 +753,37 @@ export async function importData(
     );
     throw failure;
   } finally {
-    try {
-      client.release();
-    } catch {
-      // Transaction-scoped locks are already released by commit or rollback. A pool-release
-      // failure cannot revise the authoritative transaction outcome returned to the caller.
+    await releaseImportClient(client, acquiredClientLocks);
+  }
+}
+
+/**
+ * Release session locks without revising the transaction's authoritative outcome.
+ *
+ * An unlock failure destroys the pooled connection, which makes PostgreSQL release every
+ * session-scoped lock. Cleanup is deliberately non-throwing because commit may already have made
+ * a one-time credential result durable and authoritative.
+ */
+async function releaseImportClient(
+  client: PoolClient,
+  acquiredLocks: readonly string[],
+): Promise<void> {
+  try {
+    for (const lockKey of [...acquiredLocks].reverse()) {
+      await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [lockKey]);
     }
+  } catch (error) {
+    try {
+      client.release(error instanceof Error ? error : new Error('Import lock cleanup failed'));
+    } catch {
+      // Pool cleanup must never replace the committed result or the original transaction failure.
+    }
+    return;
+  }
+  try {
+    client.release();
+  } catch {
+    // Pool cleanup must never replace the committed result or the original transaction failure.
   }
 }
 

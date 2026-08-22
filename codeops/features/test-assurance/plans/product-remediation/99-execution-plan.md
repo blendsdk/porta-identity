@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 12:06
-> **Progress**: 49/57 tasks (86%)
+> **Last Updated**: 2026-08-22 12:25
+> **Progress**: 50/57 tasks (88%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -147,7 +147,7 @@ where required, and free of secret/formula exposure.
 - [x] 4.3 Implement the strict event model, closed reason vocabulary, HKDF/HMAC protected references, and schema validator — `packages/server/src/security/decision-event.ts` ✅ (completed: 2026-08-22 11:38 CEST; strict unknown-field-rejecting schema, closed reasons/details, domain-separated HKDF/HMAC references, active/retained key verification, and bounded input implemented; type/lint/format passed; an initial full gate had two load-sensitive timing ratios fail while the unchanged timing file passed 5/5 in isolation, and the authoritative unmodified rerun passed all four tasks in 9m34s with pentest 224/224)
 - [x] 4.4 Implement correlation-first context, typed decision facts, minimal error mapping, and exactly-once terminal finalization — `packages/server/src/middleware/`, `packages/server/src/server.ts` ✅ (completed: 2026-08-22 11:54 CEST; correlation/finalization now wraps covered requests before parsing, authentication/membership/permission/resource/error boundaries record typed facts and protected identities, raw paths were removed from ordinary request/error logs, and sink failure preserves the public result; unit 2,840/2,840, focused middleware 31/31, type/lint/format passed, and final full `yarn verify` passed in 9m53s)
 - [x] 4.5 Add sanitized Node `clientError` handling for transport parser failures without raw-packet inspection — `packages/server/src/index.ts`, server listener ownership ✅ (completed: 2026-08-22 12:06 CEST; one socket-deduplicated listener emits a fresh correlated closed transport event, returns only a fixed empty 400 when writable, never inspects/logs parser error or packet bytes, and uses bounded sink-failure accounting; type/lint/format passed and full `yarn verify` passed in 9m25s)
-- [ ] 4.6 Make covered state-changing admin mutations commit durable audit/outbox intent atomically; preserve denial on sink failure — affected admin services/repositories and audit module
+- [x] 4.6 Make covered state-changing admin mutations commit durable audit/outbox intent atomically; preserve denial on sink failure — affected admin services/repositories and audit module ✅ (completed: 2026-08-22 12:25 CEST; covered bulk/import mutations use one throwing transaction-bound audit writer and audit failure rolls back before success; pre-transaction session locking preserves fresh snapshots while non-throwing cleanup destroys ambiguous connections without revising committed results; focused unit 15/15, three consecutive PostgreSQL integration runs 17/17, type/lint/format passed, and final full `yarn verify` passed in 9m22s with pentest 224/224)
 - [ ] 4.7 Run ST-25–ST-30 green through unit, integration, raw malformed transport, admin denial, and mutation rollback boundaries.
 - [ ] 4.8 Add unknown-field, redaction-canary, route-template, key-rotation, sink-failure, client-error, and atomicity implementation tests — `packages/server/tests/unit/security/security-decision-event.impl.test.ts`
 - [ ] 4.9 Run Phase 4 targeted/P1/production-security/pentest checks and `yarn verify`; update logging, audit, configuration, and security docs.
