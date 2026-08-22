@@ -3,7 +3,7 @@
 > **Date**: 2026-08-22
 > **Phase baseline tree**: `3a31a5d3e1c586daea3149a401da9a7912e33a2e`
 > **Reviewed completion commit**: `1ac721e9`
-> **Disposition**: Executing — accepted corrections are being implemented
+> **Disposition**: Done — accepted corrections and bounded residuals verified
 
 ## Review Result
 
@@ -38,6 +38,24 @@ without changing the approved import/export contract.
 
 ## Bounded Re-review
 
-One bounded re-review will inspect only the accepted correction diff after focused and full
-verification pass. Any Critical or Major residual keeps Phase 3 open. Minor findings remain
-report-only unless a correction is required by the verified implementation.
+The one bounded re-review found three accepted residuals in the correction diff. Phase 3 remains
+open until their focused and full verification passes.
+
+| Finding | Severity | Accepted correction |
+| --- | --- | --- |
+| RV-307 / RV-35N-R1 | Major | Replace session-scoped advisory locks and fallible post-commit unlocks with transaction-scoped locks; pool cleanup cannot revise a committed result or original transaction error. |
+| RV-308 | Major | Resolve role, permission, user, and claim relationship endpoints independently from either transaction-local planned identities or the validated database snapshot. |
+| SA-302-R1 | Major | Apply canonical reserved-name and value-type validation to imported custom claims before any dry-run or write admission. |
+
+Focused unit and service-backed PostgreSQL regressions cover the three boundaries. The review found
+no other Critical or Major residual in the accepted correction surface.
+
+## Closure Evidence
+
+- Focused administrative implementation tests: 14 passed.
+- Service-backed import/export integration tests: 17 passed.
+- Server lint and typecheck passed; repository structure passed 70/70.
+- Full `yarn verify` passed in 9m27s: server unit 2,837, integration 343, E2E 129,
+  pentest 224, SDK 404, and CLI 356 tests.
+- The correction was completed without weakening assertions, suppressing failures, or modifying
+  established migrations.

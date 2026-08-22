@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 10:29
-> **Progress**: 43/57 tasks (75%)
+> **Last Updated**: 2026-08-22 10:48
+> **Progress**: 44/57 tasks (77%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -128,7 +128,7 @@ intended use remains atomic and single-use.
 - [x] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts` ✅ (completed: 2026-08-22 09:37 CEST; bulk validation now returns the closed HTTP 400 contract, packed CLI exports read the SDK native raw response, implementation regressions cover transaction/lock ordering, infrastructure stop, dry-run rollback, credential planning, and export projection; focused server 9/9, CLI 6/6, structure 70/70, static gates, and `yarn verify` passed in 9m38s)
 - [x] 3.10 Run Phase 3 targeted/P1/compatibility/pentest checks, `yarn test:structure`, and `yarn verify`; update admin-data techdocs. ✅ (completed: 2026-08-22 09:55 CEST; clean revision `3d244e11` produced owner-only packed artifact `166972da-8f43-4f3d-a213-1323a2a03e3a` with all four SDK/CLI journeys passed, exact raw-response agreement, unchanged credentials, removed homes/consumer, and zero residue; focused server 9/9, P1 58/58, pentest 224/224, structure 70/70, documentation gates, and final `yarn verify` passed in 9m53s)
 - [x] 3.11 Implement every accepted Phase 3 quality correction for compatibility normalization, complete dry-run planning, canonical validation, tenant-safe application/client resolution, concurrent client creation, typed configuration, and export-audit scope. ✅ (completed: 2026-08-22 10:29 CEST; focused SDK/CLI requests, 89 unit cases, 15 service-backed integration cases, type/lint/format, and structure 70/70 passed; full `yarn verify` passed in 10m25s with server unit 2,835, integration 341, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
-- [ ] 3.12 Run focused and full verification, commit the correction, complete one bounded re-review, resolve any accepted residual, and close the Phase 3 quality gate.
+- [x] 3.12 Run focused and full verification, commit the correction, complete one bounded re-review, resolve any accepted residual, and close the Phase 3 quality gate. ✅ (completed: 2026-08-22 10:48 CEST; transaction-scoped client locks preserve committed outcomes, mixed planned/persisted relationship previews pass, reserved or mistyped custom claims fail atomically; focused unit 14/14, service-backed integration 17/17, lint/type/format, structure 70/70, and full `yarn verify` passed in 9m27s with server unit 2,837, integration 343, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 
 Deliverable: administrative data behavior is exact, tenant-safe, compatible where promised, atomic
 where required, and free of secret/formula exposure.

@@ -16,6 +16,8 @@ import {
   createTestClient,
   createTestUser,
   createTestRole,
+  createTestPermission,
+  createTestClaimDefinition,
 } from '../helpers/factories.js';
 import { exportData } from '../../../src/lib/data-export.js';
 import { importData } from '../../../src/lib/data-import.js';
@@ -308,6 +310,118 @@ describe('Data Export & Import (Integration)', () => {
         'preview-org',
       ]);
       expect(persisted.rowCount).toBe(0);
+    });
+
+    it('should resolve mixed planned and persisted relationship endpoints in dry-run', async () => {
+      const org = await createTestOrganization({ name: 'Mixed Preview Org' });
+      const app = await createTestApplication({ organizationId: org.id });
+      await createTestClient(org.id, app.id);
+      const user = await createTestUser(org.id, { email: 'mixed-preview@example.test' });
+      const permission = await createTestPermission(app.id, {
+        name: 'Persisted Read',
+        slug: 'mixed:records:read',
+      });
+
+      const result = await importData(
+        {
+          version: '1.0',
+          roles: [
+            {
+              name: 'Planned Role',
+              slug: 'planned-role',
+              application_slug: app.slug,
+              organization_slug: org.slug,
+            },
+          ],
+          claim_definitions: [
+            {
+              name: 'Planned Department',
+              slug: 'planned_department',
+              claim_type: 'string',
+              application_slug: app.slug,
+              organization_slug: org.slug,
+            },
+          ],
+          role_permission_mappings: [
+            {
+              role_slug: 'planned-role',
+              permission_slugs: [permission.slug],
+              application_slug: app.slug,
+              organization_slug: org.slug,
+            },
+          ],
+          user_role_assignments: [
+            {
+              email: user.email,
+              role_slug: 'planned-role',
+              application_slug: app.slug,
+              organization_slug: org.slug,
+            },
+          ],
+          user_claim_values: [
+            {
+              email: user.email,
+              claim_slug: 'planned_department',
+              value: 'engineering',
+              application_slug: app.slug,
+              organization_slug: org.slug,
+            },
+          ],
+        },
+        'dry-run',
+      );
+
+      expect(result.errors).toBeUndefined();
+      expect(result.created.map(({ type }) => type)).toEqual(
+        expect.arrayContaining([
+          'role',
+          'claim_definition',
+          'role_permission_mapping',
+          'user_role_assignment',
+          'user_claim_value',
+        ]),
+      );
+      expect(
+        await getPool().query('SELECT 1 FROM roles WHERE application_id = $1 AND slug = $2', [
+          app.id,
+          'planned-role',
+        ]),
+      ).toMatchObject({ rowCount: 0 });
+    });
+
+    it('should reject mismatched custom-claim values without durable effects', async () => {
+      const org = await createTestOrganization({ name: 'Claim Validation Org' });
+      const app = await createTestApplication({ organizationId: org.id });
+      await createTestClient(org.id, app.id);
+      const user = await createTestUser(org.id, { email: 'claim-validation@example.test' });
+      const claim = await createTestClaimDefinition(app.id, {
+        claimName: 'employee_number',
+        claimType: 'number',
+      });
+
+      await expect(
+        importData(
+          {
+            version: '1.0',
+            user_claim_values: [
+              {
+                email: user.email,
+                claim_slug: claim.claimName,
+                value: 'not-a-number',
+                application_slug: app.slug,
+                organization_slug: org.slug,
+              },
+            ],
+          },
+          'overwrite',
+        ),
+      ).rejects.toMatchObject({ code: 'import_plan_rejected' });
+      expect(
+        await getPool().query(
+          'SELECT 1 FROM custom_claim_values WHERE user_id = $1 AND claim_id = $2',
+          [user.id, claim.id],
+        ),
+      ).toMatchObject({ rowCount: 0 });
     });
 
     it('should reject a tenant-scoped declaration of a foreign shared application', async () => {

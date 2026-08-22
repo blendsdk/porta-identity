@@ -36,6 +36,7 @@ import { validateRedirectUris } from '../clients/validators.js';
 import { validateSlug as validateOrganizationSlug } from '../organizations/slugs.js';
 import { validateSlug as validateApplicationSlug } from '../applications/slugs.js';
 import { validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
+import { validateClaimName, validateClaimValue } from '../custom-claims/validators.js';
 
 // ============================================================================
 // Types
@@ -290,7 +291,7 @@ const permissionSchema = z
 const claimDefinitionSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(63),
+    slug: z.string().refine((slug) => validateClaimName(slug).valid),
     application_slug: z.string().min(1),
     organization_slug: z.string().min(1),
     claim_type: z.enum(['string', 'number', 'boolean', 'json']),
@@ -539,17 +540,15 @@ export async function importData(
 
   const pool = getPool();
   const client = await pool.connect();
-  const acquiredClientLocks: string[] = [];
 
   try {
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     const clientLockKeys = manifest.clients
       .map((item) => naturalKey(item.organization_slug, item.application_slug, item.client_name))
       .sort();
     for (const lockKey of clientLockKeys) {
-      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [lockKey]);
-      acquiredClientLocks.push(lockKey);
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [lockKey]);
     }
-    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
       await requireImportScope(client, manifest, organizationId);
       await requireResolvedImportDependencies(client, manifestPlan);
@@ -561,6 +560,12 @@ export async function importData(
     // Populated as entities are created/matched, used by dependent entities.
     const orgMap = new Map<string, string>(); // org slug → org ID
     const appMap = new Map<string, string>(); // "orgSlug:appSlug" → app ID
+    const roleMap = new Map<string, string>();
+    const permissionMap = new Map<string, string>();
+    const claimMap = new Map<
+      string,
+      { id: string; claimType: 'string' | 'number' | 'boolean' | 'json' }
+    >();
 
     // A dry-run cannot persist newly declared parents, but dependent validation still needs stable
     // transaction-local identities. UUID-shaped deterministic placeholders allow the normal
@@ -574,6 +579,31 @@ export async function importData(
           `${application.organization_slug}:${application.slug}`,
           plannedEntityId('application', `${application.organization_slug}:${application.slug}`),
         );
+      }
+      for (const role of manifest.roles) {
+        roleMap.set(
+          naturalKey(role.organization_slug, role.application_slug, role.slug),
+          plannedEntityId(
+            'role',
+            naturalKey(role.organization_slug, role.application_slug, role.slug),
+          ),
+        );
+      }
+      for (const permission of manifest.permissions) {
+        permissionMap.set(
+          naturalKey(permission.organization_slug, permission.application_slug, permission.slug),
+          plannedEntityId(
+            'permission',
+            naturalKey(permission.organization_slug, permission.application_slug, permission.slug),
+          ),
+        );
+      }
+      for (const claim of manifest.claim_definitions) {
+        const claimKey = naturalKey(claim.organization_slug, claim.application_slug, claim.slug);
+        claimMap.set(claimKey, {
+          id: plannedEntityId('claim_definition', claimKey),
+          claimType: claim.claim_type,
+        });
       }
     }
 
@@ -594,48 +624,31 @@ export async function importData(
 
     // Roles depend on applications.
     for (const role of manifest.roles ?? []) {
-      await processRole(client, role, mode, result, orgMap, appMap);
+      await processRole(client, role, mode, result, orgMap, appMap, roleMap);
     }
 
     // Permissions depend on applications.
     for (const perm of manifest.permissions ?? []) {
-      await processPermission(client, perm, mode, result, orgMap, appMap);
+      await processPermission(client, perm, mode, result, orgMap, appMap, permissionMap);
     }
 
     // Claim definitions depend on applications.
     for (const claim of manifest.claim_definitions ?? []) {
-      await processClaimDefinition(client, claim, mode, result, orgMap, appMap);
+      await processClaimDefinition(client, claim, mode, result, orgMap, appMap, claimMap);
     }
 
     // Role-permission mappings depend on roles and permissions.
     for (const mapping of manifest.role_permission_mappings ?? []) {
-      if (
-        mode === 'dry-run' &&
-        manifest.roles.some(
-          (role) =>
-            role.organization_slug === mapping.organization_slug &&
-            role.application_slug === mapping.application_slug &&
-            role.slug === mapping.role_slug,
-        ) &&
-        mapping.permission_slugs.every((permissionSlug) =>
-          manifest.permissions.some(
-            (permission) =>
-              permission.organization_slug === mapping.organization_slug &&
-              permission.application_slug === mapping.application_slug &&
-              permission.slug === permissionSlug,
-          ),
-        )
-      ) {
-        for (const permissionSlug of mapping.permission_slugs) {
-          result.created.push({
-            type: 'role_permission_mapping',
-            slug: `${mapping.role_slug}→${permissionSlug}`,
-            name: `${mapping.role_slug} → ${permissionSlug}`,
-          });
-        }
-        continue;
-      }
-      await processRolePermissionMapping(client, mapping, mode, result, orgMap, appMap);
+      await processRolePermissionMapping(
+        client,
+        mapping,
+        mode,
+        result,
+        orgMap,
+        appMap,
+        roleMap,
+        permissionMap,
+      );
     }
 
     // Application modules depend on applications.
@@ -659,54 +672,30 @@ export async function importData(
 
     // User-role assignments depend on users and roles.
     for (const assignment of manifest.user_role_assignments ?? []) {
-      if (
-        mode === 'dry-run' &&
-        manifest.users.some(
-          (user) =>
-            user.organization_slug === assignment.organization_slug &&
-            user.email.toLowerCase() === assignment.email.toLowerCase(),
-        ) &&
-        manifest.roles.some(
-          (role) =>
-            role.organization_slug === assignment.organization_slug &&
-            role.application_slug === assignment.application_slug &&
-            role.slug === assignment.role_slug,
-        )
-      ) {
-        result.created.push({
-          type: 'user_role_assignment',
-          slug: `${assignment.email}→${assignment.role_slug}`,
-          name: `${assignment.email} → ${assignment.role_slug}`,
-        });
-        continue;
-      }
-      await processUserRoleAssignment(client, assignment, mode, result, orgMap, appMap, userMap);
+      await processUserRoleAssignment(
+        client,
+        assignment,
+        mode,
+        result,
+        orgMap,
+        appMap,
+        userMap,
+        roleMap,
+      );
     }
 
     // User claim values depend on users and claim definitions.
     for (const claimValue of manifest.user_claim_values ?? []) {
-      if (
-        mode === 'dry-run' &&
-        manifest.users.some(
-          (user) =>
-            user.organization_slug === claimValue.organization_slug &&
-            user.email.toLowerCase() === claimValue.email.toLowerCase(),
-        ) &&
-        manifest.claim_definitions.some(
-          (claim) =>
-            claim.organization_slug === claimValue.organization_slug &&
-            claim.application_slug === claimValue.application_slug &&
-            claim.slug === claimValue.claim_slug,
-        )
-      ) {
-        result.created.push({
-          type: 'user_claim_value',
-          slug: `${claimValue.email}:${claimValue.claim_slug}`,
-          name: `${claimValue.email} → ${claimValue.claim_slug}`,
-        });
-        continue;
-      }
-      await processUserClaimValue(client, claimValue, mode, result, orgMap, appMap, userMap);
+      await processUserClaimValue(
+        client,
+        claimValue,
+        mode,
+        result,
+        orgMap,
+        appMap,
+        userMap,
+        claimMap,
+      );
     }
 
     // System configuration overrides run after entity planning.
@@ -765,20 +754,12 @@ export async function importData(
     );
     throw failure;
   } finally {
-    await releaseImportLocks(client, acquiredClientLocks);
-  }
-}
-
-/** Release session-scoped client natural-key locks before returning the connection to the pool. */
-async function releaseImportLocks(client: PoolClient, acquiredLocks: string[]): Promise<void> {
-  try {
-    for (const lockKey of acquiredLocks.reverse()) {
-      await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [lockKey]);
+    try {
+      client.release();
+    } catch {
+      // Transaction-scoped locks are already released by commit or rollback. A pool-release
+      // failure cannot revise the authoritative transaction outcome returned to the caller.
     }
-    client.release();
-  } catch (error) {
-    client.release(error instanceof Error ? error : new Error('Import lock cleanup failed'));
-    throw new ImportOperationError('import_execution_failed', 503);
   }
 }
 
@@ -1280,6 +1261,7 @@ async function processRole(
   result: ImportAccumulator,
   orgMap: Map<string, string>,
   appMap: Map<string, string>,
+  roleMap: Map<string, string>,
 ): Promise<void> {
   try {
     const appId = await resolveAppId(
@@ -1302,8 +1284,10 @@ async function processRole(
       'SELECT id, name, description FROM roles WHERE slug = $1 AND application_id = $2',
       [role.slug, appId],
     );
+    const roleKey = naturalKey(role.organization_slug, role.application_slug, role.slug);
 
     if (existing.length > 0) {
+      roleMap.set(roleKey, existing[0].id);
       const changedFields = [
         existing[0].name !== role.name ? 'name' : null,
         existing[0].description !== (role.description ?? null) ? 'description' : null,
@@ -1342,11 +1326,12 @@ async function processRole(
         return;
       }
 
-      await client.query(
+      const { rows } = await client.query(
         `INSERT INTO roles (name, slug, application_id, description)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4) RETURNING id`,
         [role.name, role.slug, appId, role.description ?? null],
       );
+      roleMap.set(roleKey, rows[0].id);
       result.created.push({ type: 'role', slug: role.slug, name: role.name });
     }
   } catch (err) {
@@ -1364,6 +1349,7 @@ async function processPermission(
   result: ImportAccumulator,
   orgMap: Map<string, string>,
   appMap: Map<string, string>,
+  permissionMap: Map<string, string>,
 ): Promise<void> {
   try {
     const appId = await resolveAppId(
@@ -1386,8 +1372,10 @@ async function processPermission(
       'SELECT id, name, description FROM permissions WHERE slug = $1 AND application_id = $2',
       [perm.slug, appId],
     );
+    const permissionKey = naturalKey(perm.organization_slug, perm.application_slug, perm.slug);
 
     if (existing.length > 0) {
+      permissionMap.set(permissionKey, existing[0].id);
       const changedFields = [
         existing[0].name !== perm.name ? 'name' : null,
         existing[0].description !== (perm.description ?? null) ? 'description' : null,
@@ -1427,11 +1415,12 @@ async function processPermission(
         return;
       }
 
-      await client.query(
+      const { rows } = await client.query(
         `INSERT INTO permissions (name, slug, application_id, description)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4) RETURNING id`,
         [perm.name, perm.slug, appId, perm.description ?? null],
       );
+      permissionMap.set(permissionKey, rows[0].id);
       result.created.push({ type: 'permission', slug: perm.slug, name: perm.name });
     }
   } catch (err) {
@@ -1449,6 +1438,7 @@ async function processClaimDefinition(
   result: ImportAccumulator,
   orgMap: Map<string, string>,
   appMap: Map<string, string>,
+  claimMap: Map<string, { id: string; claimType: 'string' | 'number' | 'boolean' | 'json' }>,
 ): Promise<void> {
   try {
     const appId = await resolveAppId(
@@ -1474,8 +1464,10 @@ async function processClaimDefinition(
        WHERE claim_name = $1 AND application_id = $2`,
       [claim.slug, appId],
     );
+    const claimKey = naturalKey(claim.organization_slug, claim.application_slug, claim.slug);
 
     if (existing.length > 0) {
+      claimMap.set(claimKey, { id: existing[0].id, claimType: existing[0].claim_type });
       if (mode !== 'merge' && existing[0].claim_type !== claim.claim_type) {
         throw new ImportOperationError('import_plan_rejected', 409);
       }
@@ -1515,11 +1507,12 @@ async function processClaimDefinition(
         return;
       }
 
-      await client.query(
+      const { rows } = await client.query(
         `INSERT INTO custom_claim_definitions (claim_name, application_id, claim_type, description)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4) RETURNING id`,
         [claim.slug, appId, claim.claim_type, claim.description ?? null],
       );
+      claimMap.set(claimKey, { id: rows[0].id, claimType: claim.claim_type });
       result.created.push({ type: 'claim_definition', slug: claim.slug, name: claim.name });
     }
   } catch (err) {
@@ -1552,11 +1545,19 @@ async function processRolePermissionMapping(
   result: ImportAccumulator,
   _orgMap: Map<string, string>,
   appMap: Map<string, string>,
+  roleMap: Map<string, string>,
+  permissionMap: Map<string, string>,
 ): Promise<void> {
   try {
     // Resolve application ID from the composite key
     const appKey = `${mapping.organization_slug}:${mapping.application_slug}`;
-    const appId = appMap.get(appKey);
+    const appId = await resolveAppId(
+      client,
+      mapping.organization_slug,
+      mapping.application_slug,
+      _orgMap,
+      appMap,
+    );
 
     if (!appId) {
       result.errors.push({
@@ -1568,11 +1569,21 @@ async function processRolePermissionMapping(
     }
 
     // Find role by slug within the application
-    const roleResult = await client.query(
-      'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
-      [mapping.role_slug, appId],
+    const roleKey = naturalKey(
+      mapping.organization_slug,
+      mapping.application_slug,
+      mapping.role_slug,
     );
-    if (roleResult.rowCount === 0) {
+    let roleId = roleMap.get(roleKey);
+    if (!roleId) {
+      const roleResult = await client.query(
+        'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
+        [mapping.role_slug, appId],
+      );
+      roleId = roleResult.rows[0]?.id;
+      if (roleId) roleMap.set(roleKey, roleId);
+    }
+    if (!roleId) {
       result.errors.push({
         type: 'role_permission_mapping',
         slug: mapping.role_slug,
@@ -1580,15 +1591,23 @@ async function processRolePermissionMapping(
       });
       return;
     }
-    const roleId = roleResult.rows[0].id;
-
     // Process each permission in the mapping
     for (const permSlug of mapping.permission_slugs) {
-      const permResult = await client.query(
-        'SELECT id FROM permissions WHERE slug = $1 AND application_id = $2',
-        [permSlug, appId],
+      const permissionKey = naturalKey(
+        mapping.organization_slug,
+        mapping.application_slug,
+        permSlug,
       );
-      if (permResult.rowCount === 0) {
+      let permId = permissionMap.get(permissionKey);
+      if (!permId) {
+        const permResult = await client.query(
+          'SELECT id FROM permissions WHERE slug = $1 AND application_id = $2',
+          [permSlug, appId],
+        );
+        permId = permResult.rows[0]?.id;
+        if (permId) permissionMap.set(permissionKey, permId);
+      }
+      if (!permId) {
         result.errors.push({
           type: 'role_permission_mapping',
           slug: `${mapping.role_slug}→${permSlug}`,
@@ -1596,7 +1615,18 @@ async function processRolePermissionMapping(
         });
         continue;
       }
-      const permId = permResult.rows[0].id;
+      if (
+        mode === 'dry-run' &&
+        (roleId === plannedEntityId('role', roleKey) ||
+          permId === plannedEntityId('permission', permissionKey))
+      ) {
+        result.created.push({
+          type: 'role_permission_mapping',
+          slug: `${mapping.role_slug}→${permSlug}`,
+          name: `${mapping.role_slug} → ${permSlug}`,
+        });
+        continue;
+      }
       const existingMapping = await client.query(
         'SELECT 1 FROM role_permissions WHERE role_id = $1 AND permission_id = $2',
         [roleId, permId],
@@ -1940,13 +1970,25 @@ async function processUserRoleAssignment(
   assignment: z.infer<typeof userRoleAssignmentSchema>,
   mode: ImportMode,
   result: ImportAccumulator,
-  _orgMap: Map<string, string>,
+  orgMap: Map<string, string>,
   appMap: Map<string, string>,
   userMap: Map<string, string>,
+  roleMap: Map<string, string>,
 ): Promise<void> {
   try {
     const userMapKey = `${assignment.organization_slug}:${assignment.email}`;
-    const userId = userMap.get(userMapKey);
+    let userId = userMap.get(userMapKey);
+    if (!userId) {
+      const orgId = await resolveOrgId(client, assignment.organization_slug, orgMap);
+      if (orgId) {
+        const { rows } = await client.query(
+          'SELECT id FROM users WHERE email = $1 AND organization_id = $2',
+          [assignment.email, orgId],
+        );
+        userId = rows[0]?.id;
+        if (userId) userMap.set(userMapKey, userId);
+      }
+    }
     if (!userId) {
       result.errors.push({
         type: 'user_role_assignment',
@@ -1956,8 +1998,13 @@ async function processUserRoleAssignment(
       return;
     }
 
-    const appKey = `${assignment.organization_slug}:${assignment.application_slug}`;
-    const appId = appMap.get(appKey);
+    const appId = await resolveAppId(
+      client,
+      assignment.organization_slug,
+      assignment.application_slug,
+      orgMap,
+      appMap,
+    );
     if (!appId) {
       result.errors.push({
         type: 'user_role_assignment',
@@ -1967,11 +2014,21 @@ async function processUserRoleAssignment(
       return;
     }
 
-    const { rows: roleRows } = await client.query(
-      'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
-      [assignment.role_slug, appId],
+    const roleKey = naturalKey(
+      assignment.organization_slug,
+      assignment.application_slug,
+      assignment.role_slug,
     );
-    if (roleRows.length === 0) {
+    let roleId = roleMap.get(roleKey);
+    if (!roleId) {
+      const { rows } = await client.query(
+        'SELECT id FROM roles WHERE slug = $1 AND application_id = $2',
+        [assignment.role_slug, appId],
+      );
+      roleId = rows[0]?.id;
+      if (roleId) roleMap.set(roleKey, roleId);
+    }
+    if (!roleId) {
       result.errors.push({
         type: 'user_role_assignment',
         slug: `${assignment.email}→${assignment.role_slug}`,
@@ -1979,9 +2036,25 @@ async function processUserRoleAssignment(
       });
       return;
     }
+    if (
+      mode === 'dry-run' &&
+      (userId ===
+        plannedEntityId(
+          'user',
+          `${assignment.organization_slug}:${assignment.email.toLowerCase()}`,
+        ) ||
+        roleId === plannedEntityId('role', roleKey))
+    ) {
+      result.created.push({
+        type: 'user_role_assignment',
+        slug: `${assignment.email}→${assignment.role_slug}`,
+        name: `${assignment.email} → ${assignment.role_slug}`,
+      });
+      return;
+    }
     const existingAssignment = await client.query(
       'SELECT 1 FROM user_roles WHERE user_id = $1 AND role_id = $2',
-      [userId, roleRows[0].id],
+      [userId, roleId],
     );
     if (existingAssignment.rowCount !== 0) {
       result.skipped.push({
@@ -2005,7 +2078,7 @@ async function processUserRoleAssignment(
       `INSERT INTO user_roles (user_id, role_id, assigned_by)
        VALUES ($1, $2, $3)
        ON CONFLICT (user_id, role_id) DO NOTHING`,
-      [userId, roleRows[0].id, null],
+      [userId, roleId, null],
     );
     result.created.push({
       type: 'user_role_assignment',
@@ -2026,13 +2099,25 @@ async function processUserClaimValue(
   claimValue: z.infer<typeof userClaimValueSchema>,
   mode: ImportMode,
   result: ImportAccumulator,
-  _orgMap: Map<string, string>,
+  orgMap: Map<string, string>,
   appMap: Map<string, string>,
   userMap: Map<string, string>,
+  claimMap: Map<string, { id: string; claimType: 'string' | 'number' | 'boolean' | 'json' }>,
 ): Promise<void> {
   try {
     const userMapKey = `${claimValue.organization_slug}:${claimValue.email}`;
-    const userId = userMap.get(userMapKey);
+    let userId = userMap.get(userMapKey);
+    if (!userId) {
+      const orgId = await resolveOrgId(client, claimValue.organization_slug, orgMap);
+      if (orgId) {
+        const { rows } = await client.query(
+          'SELECT id FROM users WHERE email = $1 AND organization_id = $2',
+          [claimValue.email, orgId],
+        );
+        userId = rows[0]?.id;
+        if (userId) userMap.set(userMapKey, userId);
+      }
+    }
     if (!userId) {
       result.errors.push({
         type: 'user_claim_value',
@@ -2042,8 +2127,13 @@ async function processUserClaimValue(
       return;
     }
 
-    const appKey = `${claimValue.organization_slug}:${claimValue.application_slug}`;
-    const appId = appMap.get(appKey);
+    const appId = await resolveAppId(
+      client,
+      claimValue.organization_slug,
+      claimValue.application_slug,
+      orgMap,
+      appMap,
+    );
     if (!appId) {
       result.errors.push({
         type: 'user_claim_value',
@@ -2053,11 +2143,24 @@ async function processUserClaimValue(
       return;
     }
 
-    const { rows: claimRows } = await client.query(
-      'SELECT id, claim_type FROM custom_claim_definitions WHERE claim_name = $1 AND application_id = $2',
-      [claimValue.claim_slug, appId],
+    const claimKey = naturalKey(
+      claimValue.organization_slug,
+      claimValue.application_slug,
+      claimValue.claim_slug,
     );
-    if (claimRows.length === 0) {
+    let claimIdentity = claimMap.get(claimKey);
+    if (!claimIdentity) {
+      const { rows } = await client.query(
+        'SELECT id, claim_type FROM custom_claim_definitions WHERE claim_name = $1 AND application_id = $2',
+        [claimValue.claim_slug, appId],
+      );
+      const row = rows[0];
+      if (row) {
+        claimIdentity = { id: row.id, claimType: row.claim_type };
+        claimMap.set(claimKey, claimIdentity);
+      }
+    }
+    if (!claimIdentity) {
       result.errors.push({
         type: 'user_claim_value',
         slug: `${claimValue.email}:${claimValue.claim_slug}`,
@@ -2065,9 +2168,28 @@ async function processUserClaimValue(
       });
       return;
     }
+    if (!validateClaimValue(claimIdentity.claimType, claimValue.value).valid) {
+      throw new ImportOperationError('import_plan_rejected', 409);
+    }
+    if (
+      mode === 'dry-run' &&
+      (userId ===
+        plannedEntityId(
+          'user',
+          `${claimValue.organization_slug}:${claimValue.email.toLowerCase()}`,
+        ) ||
+        claimIdentity.id === plannedEntityId('claim_definition', claimKey))
+    ) {
+      result.created.push({
+        type: 'user_claim_value',
+        slug: `${claimValue.email}:${claimValue.claim_slug}`,
+        name: `${claimValue.email} → ${claimValue.claim_slug}`,
+      });
+      return;
+    }
     const existingValue = await client.query(
       'SELECT value FROM custom_claim_values WHERE user_id = $1 AND claim_id = $2',
-      [userId, claimRows[0].id],
+      [userId, claimIdentity.id],
     );
     if (existingValue.rowCount !== 0) {
       const valueChanged =
@@ -2091,7 +2213,7 @@ async function processUserClaimValue(
       }
       await client.query(
         'UPDATE custom_claim_values SET value = $1 WHERE user_id = $2 AND claim_id = $3',
-        [JSON.stringify(claimValue.value), userId, claimRows[0].id],
+        [JSON.stringify(claimValue.value), userId, claimIdentity.id],
       );
       result.updated.push({
         type: 'user_claim_value',
@@ -2113,7 +2235,7 @@ async function processUserClaimValue(
 
     await client.query(
       'INSERT INTO custom_claim_values (user_id, claim_id, value) VALUES ($1, $2, $3)',
-      [userId, claimRows[0].id, JSON.stringify(claimValue.value)],
+      [userId, claimIdentity.id, JSON.stringify(claimValue.value)],
     );
     result.created.push({
       type: 'user_claim_value',

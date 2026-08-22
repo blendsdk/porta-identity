@@ -108,6 +108,26 @@ describe('administrative data implementation', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('should preserve a committed result when pool release fails afterward', async () => {
+    const client = createClient();
+    client.query.mockResolvedValue({ rows: [], rowCount: 0 });
+    client.release.mockImplementationOnce(() => {
+      throw new Error('pool release failed');
+    });
+    useClients(client);
+    const manifest = importManifestSchema.parse({ version: '1.0' });
+
+    await expect(importData(manifest, 'merge')).resolves.toMatchObject({
+      mode: 'merge',
+      credentials: [],
+    });
+    expect(client.query.mock.calls.map(([sql]) => String(sql))).toStrictEqual([
+      'BEGIN ISOLATION LEVEL SERIALIZABLE',
+      'COMMIT',
+    ]);
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('should mark exactly one confidential client for one-time credential generation', () => {
     const manifest = importManifestSchema.parse({
       version: '1.0',
@@ -214,6 +234,20 @@ describe('administrative data implementation', () => {
             client_type: 'confidential',
             redirect_uris: ['https://alpha.example.test/callback'],
             secret_expires_at: 'tomorrow',
+          },
+        ],
+      },
+    ],
+    [
+      'reserved custom claim',
+      {
+        claim_definitions: [
+          {
+            name: 'Reserved Roles',
+            slug: 'roles',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            claim_type: 'json',
           },
         ],
       },
