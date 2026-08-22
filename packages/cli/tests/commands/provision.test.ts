@@ -200,13 +200,16 @@ describe('provision command handler', () => {
     expect(success).toHaveBeenCalled();
   });
 
-  it('sends dry-run flag', async () => {
+  it('sends the canonical dry-run mode', async () => {
     mockFileRead(minimalFile);
     mockImports.provision.mockResolvedValue({ ...importResult, dryRun: true });
 
     await invokeProvision({ file: '/tmp/infra.json', 'dry-run': true });
 
-    expect(mockImports.provision).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
+    expect(mockImports.provision).toHaveBeenCalledWith({
+      manifest: expect.any(Object),
+      mode: 'dry-run',
+    });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Dry-run'));
   });
 

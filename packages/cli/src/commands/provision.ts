@@ -646,7 +646,7 @@ function formatTypeName(type: string): string {
 
 interface ProvisionOptions extends GlobalOptions {
   file: string;
-  mode: string;
+  mode: 'merge' | 'overwrite';
   'dry-run'?: boolean;
 }
 
@@ -719,8 +719,7 @@ export const provisionCommand: CommandModule<GlobalOptions, ProvisionOptions> = 
       const client = createClient(argv);
       const sdkManifest: ImportManifest = {
         manifest: manifest as unknown as Record<string, unknown>,
-        mode: isDryRun ? undefined : (argv.mode as 'merge' | 'overwrite'),
-        dryRun: isDryRun,
+        mode: importMode,
       };
       const result = await client.imports.provision(sdkManifest);
 

@@ -31,6 +31,11 @@ import {
   requireResolvedImportDependencies,
 } from './data-import-plan.js';
 import { generateClientId, generateSecret, hashSecret, sha256Secret } from '../clients/crypto.js';
+import { LOGIN_METHODS } from '../clients/types.js';
+import { validateRedirectUris } from '../clients/validators.js';
+import { validateSlug as validateOrganizationSlug } from '../organizations/slugs.js';
+import { validateSlug as validateApplicationSlug } from '../applications/slugs.js';
+import { validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
 
 // ============================================================================
 // Types
@@ -157,8 +162,8 @@ const MANIFEST_VERSION = '1.0';
 const organizationSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(63),
-    default_login_methods: z.array(z.string()).optional(),
+    slug: z.string().refine((slug) => validateOrganizationSlug(slug).isValid),
+    default_login_methods: z.array(z.enum(LOGIN_METHODS)).min(1).optional(),
     default_locale: z.string().max(10).optional().nullable(),
     // Organization policy and presentation fields.
     two_factor_policy: z
@@ -175,8 +180,8 @@ const organizationSchema = z
 const applicationSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(63),
-    organization_slug: z.string().min(1),
+    slug: z.string().refine((slug) => validateApplicationSlug(slug).isValid),
+    organization_slug: z.string().refine((slug) => validateOrganizationSlug(slug).isValid),
     description: z.string().max(1000).optional().nullable(),
   })
   .strict();
@@ -184,30 +189,88 @@ const applicationSchema = z
 const clientSchema = z
   .object({
     client_name: z.string().min(1).max(255),
-    application_slug: z.string().min(1),
-    organization_slug: z.string().min(1),
+    application_slug: z.string().refine((slug) => validateApplicationSlug(slug).isValid),
+    organization_slug: z.string().refine((slug) => validateOrganizationSlug(slug).isValid),
     client_type: z.enum(['confidential', 'public']),
-    application_type: z.string().optional(),
-    grant_types: z.array(z.string()).optional(),
-    redirect_uris: z.array(z.string()).optional(),
-    response_types: z.array(z.string()).optional(),
+    application_type: z.enum(['web', 'native', 'spa']).optional(),
+    grant_types: z
+      .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
+      .min(1)
+      .optional(),
+    redirect_uris: z.array(z.string()).min(1).max(10).optional(),
+    response_types: z.array(z.literal('code')).min(1).max(1).optional(),
     scope: z.string().optional(),
-    login_methods: z.array(z.string()).optional().nullable(),
-    token_endpoint_auth_method: z.string().optional(),
+    login_methods: z.array(z.enum(LOGIN_METHODS)).min(1).optional().nullable(),
+    token_endpoint_auth_method: z
+      .enum(['client_secret_basic', 'client_secret_post', 'none'])
+      .optional(),
     // Additional OIDC client fields matching the database schema.
-    post_logout_redirect_uris: z.array(z.string()).optional(),
-    allowed_origins: z.array(z.string()).optional(),
+    post_logout_redirect_uris: z.array(z.string().url()).max(10).optional(),
+    allowed_origins: z.array(z.string().url()).max(10).optional(),
     require_pkce: z.boolean().optional(),
     // Secret metadata is flattened from the nested provisioning document.
     secret_label: z.string().max(255).optional().nullable(),
-    secret_expires_at: z.string().optional().nullable(),
+    secret_expires_at: z.string().datetime().optional().nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.redirect_uris !== undefined &&
+      !validateRedirectUris(value.redirect_uris, false).isValid
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Invalid redirect URI',
+        path: ['redirect_uris'],
+      });
+    }
+    if (
+      value.post_logout_redirect_uris?.some((uri) => !validateRedirectUris([uri], false).isValid)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Invalid post-logout redirect URI',
+        path: ['post_logout_redirect_uris'],
+      });
+    }
+    if (
+      value.allowed_origins?.some((origin) => {
+        const parsed = new URL(origin);
+        return (
+          parsed.pathname !== '/' ||
+          parsed.search !== '' ||
+          parsed.hash !== '' ||
+          origin.includes('*')
+        );
+      })
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Invalid allowed origin',
+        path: ['allowed_origins'],
+      });
+    }
+    const authMethod =
+      value.token_endpoint_auth_method ??
+      (value.client_type === 'public' ? 'none' : 'client_secret_post');
+    if (value.client_type === 'public' && (authMethod !== 'none' || value.require_pkce === false)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Public clients require PKCE and no client secret authentication',
+      });
+    }
+    if (value.client_type === 'public' && value.grant_types?.includes('client_credentials')) {
+      context.addIssue({ code: 'custom', message: 'Public clients cannot use client credentials' });
+    }
+    if (value.client_type === 'confidential' && authMethod === 'none') {
+      context.addIssue({ code: 'custom', message: 'Confidential clients require authentication' });
+    }
+  });
 
 const roleSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(63),
+    slug: z.string().refine(validateRoleSlug),
     application_slug: z.string().min(1),
     organization_slug: z.string().min(1),
     description: z.string().max(1000).optional().nullable(),
@@ -217,7 +280,7 @@ const roleSchema = z
 const permissionSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(63),
+    slug: z.string().refine(validatePermissionSlug),
     application_slug: z.string().min(1),
     organization_slug: z.string().min(1),
     description: z.string().max(1000).optional().nullable(),
@@ -242,10 +305,10 @@ const claimDefinitionSchema = z
  */
 const rolePermissionMappingSchema = z
   .object({
-    role_slug: z.string().min(1),
-    permission_slugs: z.array(z.string().min(1)),
-    application_slug: z.string().min(1),
-    organization_slug: z.string().min(1),
+    role_slug: z.string().refine(validateRoleSlug),
+    permission_slugs: z.array(z.string().refine(validatePermissionSlug)).min(1),
+    application_slug: z.string().refine((slug) => validateApplicationSlug(slug).isValid),
+    organization_slug: z.string().refine((slug) => validateOrganizationSlug(slug).isValid),
   })
   .strict();
 
@@ -476,9 +539,17 @@ export async function importData(
 
   const pool = getPool();
   const client = await pool.connect();
+  const acquiredClientLocks: string[] = [];
 
   try {
-    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+    const clientLockKeys = manifest.clients
+      .map((item) => naturalKey(item.organization_slug, item.application_slug, item.client_name))
+      .sort();
+    for (const lockKey of clientLockKeys) {
+      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [lockKey]);
+      acquiredClientLocks.push(lockKey);
+    }
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
     try {
       await requireImportScope(client, manifest, organizationId);
       await requireResolvedImportDependencies(client, manifestPlan);
@@ -490,6 +561,21 @@ export async function importData(
     // Populated as entities are created/matched, used by dependent entities.
     const orgMap = new Map<string, string>(); // org slug → org ID
     const appMap = new Map<string, string>(); // "orgSlug:appSlug" → app ID
+
+    // A dry-run cannot persist newly declared parents, but dependent validation still needs stable
+    // transaction-local identities. UUID-shaped deterministic placeholders allow the normal
+    // parameterized lookup paths to run without ever matching durable rows.
+    if (mode === 'dry-run') {
+      for (const organization of manifest.organizations) {
+        orgMap.set(organization.slug, plannedEntityId('organization', organization.slug));
+      }
+      for (const application of manifest.applications) {
+        appMap.set(
+          `${application.organization_slug}:${application.slug}`,
+          plannedEntityId('application', `${application.organization_slug}:${application.slug}`),
+        );
+      }
+    }
 
     // Organizations have no manifest dependencies.
     for (const org of manifest.organizations ?? []) {
@@ -523,6 +609,32 @@ export async function importData(
 
     // Role-permission mappings depend on roles and permissions.
     for (const mapping of manifest.role_permission_mappings ?? []) {
+      if (
+        mode === 'dry-run' &&
+        manifest.roles.some(
+          (role) =>
+            role.organization_slug === mapping.organization_slug &&
+            role.application_slug === mapping.application_slug &&
+            role.slug === mapping.role_slug,
+        ) &&
+        mapping.permission_slugs.every((permissionSlug) =>
+          manifest.permissions.some(
+            (permission) =>
+              permission.organization_slug === mapping.organization_slug &&
+              permission.application_slug === mapping.application_slug &&
+              permission.slug === permissionSlug,
+          ),
+        )
+      ) {
+        for (const permissionSlug of mapping.permission_slugs) {
+          result.created.push({
+            type: 'role_permission_mapping',
+            slug: `${mapping.role_slug}→${permissionSlug}`,
+            name: `${mapping.role_slug} → ${permissionSlug}`,
+          });
+        }
+        continue;
+      }
       await processRolePermissionMapping(client, mapping, mode, result, orgMap, appMap);
     }
 
@@ -533,17 +645,67 @@ export async function importData(
 
     // Users depend on organizations.
     const userMap = new Map<string, string>(); // "orgSlug:email" → user ID
+    if (mode === 'dry-run') {
+      for (const user of manifest.users) {
+        userMap.set(
+          `${user.organization_slug}:${user.email}`,
+          plannedEntityId('user', `${user.organization_slug}:${user.email.toLowerCase()}`),
+        );
+      }
+    }
     for (const user of manifest.users ?? []) {
       await processUser(client, user, mode, result, orgMap, userMap);
     }
 
     // User-role assignments depend on users and roles.
     for (const assignment of manifest.user_role_assignments ?? []) {
+      if (
+        mode === 'dry-run' &&
+        manifest.users.some(
+          (user) =>
+            user.organization_slug === assignment.organization_slug &&
+            user.email.toLowerCase() === assignment.email.toLowerCase(),
+        ) &&
+        manifest.roles.some(
+          (role) =>
+            role.organization_slug === assignment.organization_slug &&
+            role.application_slug === assignment.application_slug &&
+            role.slug === assignment.role_slug,
+        )
+      ) {
+        result.created.push({
+          type: 'user_role_assignment',
+          slug: `${assignment.email}→${assignment.role_slug}`,
+          name: `${assignment.email} → ${assignment.role_slug}`,
+        });
+        continue;
+      }
       await processUserRoleAssignment(client, assignment, mode, result, orgMap, appMap, userMap);
     }
 
     // User claim values depend on users and claim definitions.
     for (const claimValue of manifest.user_claim_values ?? []) {
+      if (
+        mode === 'dry-run' &&
+        manifest.users.some(
+          (user) =>
+            user.organization_slug === claimValue.organization_slug &&
+            user.email.toLowerCase() === claimValue.email.toLowerCase(),
+        ) &&
+        manifest.claim_definitions.some(
+          (claim) =>
+            claim.organization_slug === claimValue.organization_slug &&
+            claim.application_slug === claimValue.application_slug &&
+            claim.slug === claimValue.claim_slug,
+        )
+      ) {
+        result.created.push({
+          type: 'user_claim_value',
+          slug: `${claimValue.email}:${claimValue.claim_slug}`,
+          name: `${claimValue.email} → ${claimValue.claim_slug}`,
+        });
+        continue;
+      }
       await processUserClaimValue(client, claimValue, mode, result, orgMap, appMap, userMap);
     }
 
@@ -603,7 +765,20 @@ export async function importData(
     );
     throw failure;
   } finally {
+    await releaseImportLocks(client, acquiredClientLocks);
+  }
+}
+
+/** Release session-scoped client natural-key locks before returning the connection to the pool. */
+async function releaseImportLocks(client: PoolClient, acquiredLocks: string[]): Promise<void> {
+  try {
+    for (const lockKey of acquiredLocks.reverse()) {
+      await client.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [lockKey]);
+    }
     client.release();
+  } catch (error) {
+    client.release(error instanceof Error ? error : new Error('Import lock cleanup failed'));
+    throw new ImportOperationError('import_execution_failed', 503);
   }
 }
 
@@ -648,6 +823,21 @@ async function requireImportScope(
       .filter((application) => application.organization_slug === expectedSlug)
       .map((application) => application.slug),
   );
+  for (const applicationSlug of declaredApplications) {
+    const existing = await client.query(
+      `SELECT 1 FROM applications a
+       JOIN clients c ON c.application_id = a.id
+       WHERE a.slug = $1 AND c.organization_id = $2
+       LIMIT 1`,
+      [applicationSlug, organizationId],
+    );
+    const globallyExisting = await client.query('SELECT 1 FROM applications WHERE slug = $1', [
+      applicationSlug,
+    ]);
+    if (globallyExisting.rowCount === 1 && existing.rowCount !== 1) {
+      throw new ImportOperationError('import_plan_rejected', 409);
+    }
+  }
   const referencedApplications = new Set([
     ...manifest.clients.map((item) => item.application_slug),
     ...manifest.roles.map((item) => item.application_slug),
@@ -947,8 +1137,9 @@ async function processClient(
       `SELECT id, client_id, client_type, application_type, grant_types, redirect_uris,
               response_types, scope, login_methods, token_endpoint_auth_method,
               post_logout_redirect_uris, allowed_origins, require_pkce
-       FROM clients WHERE client_name = $1 AND application_id = $2`,
-      [clientDef.client_name, appId],
+       FROM clients
+       WHERE client_name = $1 AND application_id = $2 AND organization_id = $3`,
+      [clientDef.client_name, appId, orgId],
     );
 
     if (existing.length > 1) {
@@ -1469,9 +1660,10 @@ async function processConfigOverride(
 ): Promise<void> {
   try {
     // Check if config key exists — we only update, never create
-    const existing = await client.query('SELECT id, value FROM system_config WHERE key = $1', [
-      key,
-    ]);
+    const existing = await client.query(
+      'SELECT id, value, value_type, is_sensitive FROM system_config WHERE key = $1',
+      [key],
+    );
 
     if (existing.rowCount === 0) {
       result.errors.push({
@@ -1482,7 +1674,14 @@ async function processConfigOverride(
       return;
     }
 
-    const valueChanged = existing.rows[0].value !== String(value);
+    if (
+      existing.rows[0].is_sensitive === true ||
+      !configValueMatchesType(value, existing.rows[0].value_type)
+    ) {
+      throw new ImportOperationError('import_plan_rejected', 409);
+    }
+
+    const valueChanged = JSON.stringify(existing.rows[0].value) !== JSON.stringify(value);
     if (mode === 'merge' || !valueChanged) {
       result.skipped.push({
         type: 'config',
@@ -1502,10 +1701,9 @@ async function processConfigOverride(
       return;
     }
 
-    // Update existing config value — cast to JSONB via text
     await client.query(
-      `UPDATE system_config SET value = to_jsonb($1::text), updated_at = NOW() WHERE key = $2`,
-      [String(value), key],
+      `UPDATE system_config SET value = $1::jsonb, updated_at = NOW() WHERE key = $2`,
+      [JSON.stringify(value), key],
     );
 
     result.updated.push({
@@ -1516,6 +1714,23 @@ async function processConfigOverride(
     });
   } catch (err) {
     throw normalizeImportFailure(err);
+  }
+}
+
+/** Validate a manifest value against the configuration row's persisted public type. */
+function configValueMatchesType(value: string | number | boolean, valueType: unknown): boolean {
+  switch (valueType) {
+    case 'string':
+    case 'duration':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number' && Number.isFinite(value);
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'json':
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -1919,6 +2134,14 @@ function normalizeImportFailure(error: unknown): ImportOperationError {
   return error instanceof ImportOperationError
     ? error
     : new ImportOperationError('import_execution_failed', 503);
+}
+
+/** Build a deterministic UUID-shaped identity that can never escape a rolled-back preview. */
+function plannedEntityId(kind: string, naturalKeyValue: string): string {
+  const digest = createHash('sha256')
+    .update(`porta-import-preview\0${kind}\0${naturalKeyValue}`)
+    .digest('hex');
+  return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
 /**

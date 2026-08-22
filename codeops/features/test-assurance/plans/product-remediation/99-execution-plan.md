@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 09:55
-> **Progress**: 42/55 tasks (76%)
+> **Last Updated**: 2026-08-22 10:29
+> **Progress**: 43/57 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -35,7 +35,7 @@ to the exec-plan protocol.
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 55 tasks across 5 phases.**
+**Total: 57 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -127,6 +127,8 @@ intended use remains atomic and single-use.
 - [x] 3.8c From the clean pushed capability revision, run ST-14–ST-24 through the raw-HTTP and packed-client boundaries and record provenance and zero residue. ✅ (completed: 2026-08-22 09:20 CEST; clean revision `0e5fc477` produced owner-only artifact `f4f499fe-9031-4ccd-8fa9-0f1df9f4cd91`; SDK import dry-run and user export passed with exact raw/state agreement, while bulk duplicate validation status 500 and packed CLI export were truthfully retained as product failures for 3.9; package/image/fixture provenance was exact, caller credentials unchanged, temporary homes and consumer removed, and residue empty)
 - [x] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts` ✅ (completed: 2026-08-22 09:37 CEST; bulk validation now returns the closed HTTP 400 contract, packed CLI exports read the SDK native raw response, implementation regressions cover transaction/lock ordering, infrastructure stop, dry-run rollback, credential planning, and export projection; focused server 9/9, CLI 6/6, structure 70/70, static gates, and `yarn verify` passed in 9m38s)
 - [x] 3.10 Run Phase 3 targeted/P1/compatibility/pentest checks, `yarn test:structure`, and `yarn verify`; update admin-data techdocs. ✅ (completed: 2026-08-22 09:55 CEST; clean revision `3d244e11` produced owner-only packed artifact `166972da-8f43-4f3d-a213-1323a2a03e3a` with all four SDK/CLI journeys passed, exact raw-response agreement, unchanged credentials, removed homes/consumer, and zero residue; focused server 9/9, P1 58/58, pentest 224/224, structure 70/70, documentation gates, and final `yarn verify` passed in 9m53s)
+- [x] 3.11 Implement every accepted Phase 3 quality correction for compatibility normalization, complete dry-run planning, canonical validation, tenant-safe application/client resolution, concurrent client creation, typed configuration, and export-audit scope. ✅ (completed: 2026-08-22 10:29 CEST; focused SDK/CLI requests, 89 unit cases, 15 service-backed integration cases, type/lint/format, and structure 70/70 passed; full `yarn verify` passed in 10m25s with server unit 2,835, integration 341, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
+- [ ] 3.12 Run focused and full verification, commit the correction, complete one bounded re-review, resolve any accepted residual, and close the Phase 3 quality gate.
 
 Deliverable: administrative data behavior is exact, tenant-safe, compatible where promised, atomic
 where required, and free of secret/formula exposure.

@@ -25,7 +25,7 @@ describe('importManifestSchema — role_permission_mappings', () => {
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read', 'write', 'delete'],
+          permission_slugs: ['crm:records:read', 'crm:records:write', 'crm:records:delete'],
           application_slug: 'crm',
           organization_slug: 'acme',
         },
@@ -37,9 +37,9 @@ describe('importManifestSchema — role_permission_mappings', () => {
       expect(result.data.role_permission_mappings).toHaveLength(1);
       expect(result.data.role_permission_mappings[0].role_slug).toBe('admin');
       expect(result.data.role_permission_mappings[0].permission_slugs).toEqual([
-        'read',
-        'write',
-        'delete',
+        'crm:records:read',
+        'crm:records:write',
+        'crm:records:delete',
       ]);
     }
   });
@@ -51,13 +51,13 @@ describe('importManifestSchema — role_permission_mappings', () => {
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read', 'write'],
+          permission_slugs: ['app:records:read', 'app:records:write'],
           application_slug: 'app',
           organization_slug: 'org',
         },
         {
           role_slug: 'viewer',
-          permission_slugs: ['read'],
+          permission_slugs: ['app:records:read'],
           application_slug: 'app',
           organization_slug: 'org',
         },
@@ -233,12 +233,17 @@ describe('importManifestSchema — backward compatibility', () => {
       applications: [{ name: 'App', slug: 'app', organization_slug: 'org' }],
       roles: [{ name: 'Admin', slug: 'admin', application_slug: 'app', organization_slug: 'org' }],
       permissions: [
-        { name: 'Read', slug: 'read', application_slug: 'app', organization_slug: 'org' },
+        {
+          name: 'Read',
+          slug: 'app:resource:read',
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
       ],
       role_permission_mappings: [
         {
           role_slug: 'admin',
-          permission_slugs: ['read'],
+          permission_slugs: ['app:resource:read'],
           application_slug: 'app',
           organization_slug: 'org',
         },

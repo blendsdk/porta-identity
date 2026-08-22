@@ -102,7 +102,7 @@ describe('administrative data implementation', () => {
 
     expect(result).toMatchObject({ mode: 'dry-run', credentials: [] });
     expect(client.query.mock.calls.map(([sql]) => String(sql))).toStrictEqual([
-      'BEGIN ISOLATION LEVEL REPEATABLE READ',
+      'BEGIN ISOLATION LEVEL SERIALIZABLE',
       'ROLLBACK',
     ]);
     expect(client.release).toHaveBeenCalledOnce();
@@ -112,17 +112,17 @@ describe('administrative data implementation', () => {
     const manifest = importManifestSchema.parse({
       version: '1.0',
       organizations: [{ name: 'Alpha', slug: 'alpha' }],
-      applications: [{ name: 'Portal', slug: 'portal', organization_slug: 'alpha' }],
+      applications: [{ name: 'Portal', slug: 'alpha-app', organization_slug: 'alpha' }],
       clients: [
         {
           client_name: 'confidential-client',
-          application_slug: 'portal',
+          application_slug: 'alpha-app',
           organization_slug: 'alpha',
           client_type: 'confidential',
         },
         {
           client_name: 'public-client',
-          application_slug: 'portal',
+          application_slug: 'alpha-app',
           organization_slug: 'alpha',
           client_type: 'public',
         },
@@ -136,6 +136,90 @@ describe('administrative data implementation', () => {
     expect(
       clientEntries.map(({ credentialWillBeGenerated }) => credentialWillBeGenerated),
     ).toStrictEqual([true, false]);
+  });
+
+  it.each([
+    ['reserved organization slug', { organizations: [{ name: 'Invalid', slug: 'admin' }] }],
+    [
+      'unknown login method',
+      { organizations: [{ name: 'Alpha', slug: 'alpha', default_login_methods: ['unknown'] }] },
+    ],
+    [
+      'redirect fragment',
+      {
+        clients: [
+          {
+            client_name: 'Invalid Client',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            client_type: 'public',
+            redirect_uris: ['https://alpha.example.test/callback#fragment'],
+          },
+        ],
+      },
+    ],
+    [
+      'public client secret authentication',
+      {
+        clients: [
+          {
+            client_name: 'Invalid Client',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            client_type: 'public',
+            redirect_uris: ['https://alpha.example.test/callback'],
+            token_endpoint_auth_method: 'client_secret_post',
+          },
+        ],
+      },
+    ],
+    [
+      'public client without PKCE',
+      {
+        clients: [
+          {
+            client_name: 'Invalid Client',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            client_type: 'public',
+            redirect_uris: ['https://alpha.example.test/callback'],
+            require_pkce: false,
+          },
+        ],
+      },
+    ],
+    [
+      'origin with path',
+      {
+        clients: [
+          {
+            client_name: 'Invalid Client',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            client_type: 'confidential',
+            redirect_uris: ['https://alpha.example.test/callback'],
+            allowed_origins: ['https://alpha.example.test/path'],
+          },
+        ],
+      },
+    ],
+    [
+      'invalid secret expiry',
+      {
+        clients: [
+          {
+            client_name: 'Invalid Client',
+            application_slug: 'alpha-app',
+            organization_slug: 'alpha',
+            client_type: 'confidential',
+            redirect_uris: ['https://alpha.example.test/callback'],
+            secret_expires_at: 'tomorrow',
+          },
+        ],
+      },
+    ],
+  ])('should reject %s during complete manifest prevalidation', (_name, manifest) => {
+    expect(importManifestSchema.safeParse({ version: '1.0', ...manifest }).success).toBe(false);
   });
 
   it('should export only allowlisted fields and commit the read with its audit record', async () => {

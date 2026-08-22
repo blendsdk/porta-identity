@@ -14,7 +14,13 @@ export interface ImportsDomain {
 export function createImportsDomain(transport: HttpTransport): ImportsDomain {
   return {
     async provision(manifest) {
-      const res = await transport.request({ method: 'POST', path: '/import', body: manifest });
+      const { dryRun, mode, ...request } = manifest;
+      const normalizedMode = dryRun === true ? 'dry-run' : mode;
+      const res = await transport.request({
+        method: 'POST',
+        path: '/import',
+        body: { ...request, ...(normalizedMode === undefined ? {} : { mode: normalizedMode }) },
+      });
       return res.body as ImportResult;
     },
   };

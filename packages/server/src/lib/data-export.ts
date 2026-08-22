@@ -243,7 +243,14 @@ async function writeExportAudit(
     [
       options.organizationId ?? null,
       options.actorId,
-      JSON.stringify({ entityType: options.entityType, format: options.format, rowCount }),
+      JSON.stringify({
+        entityType: options.entityType,
+        format: options.format,
+        rowCount,
+        ...(options.applicationId === undefined ? {} : { applicationId: options.applicationId }),
+        ...(options.startDate === undefined ? {} : { startDate: options.startDate.toISOString() }),
+        ...(options.endDate === undefined ? {} : { endDate: options.endDate.toISOString() }),
+      }),
     ],
   );
 }

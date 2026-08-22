@@ -19,6 +19,7 @@ import {
 } from '../helpers/factories.js';
 import { exportData } from '../../../src/lib/data-export.js';
 import { importData } from '../../../src/lib/data-import.js';
+import { getPool } from '../../../src/lib/database.js';
 
 describe('Data Export & Import (Integration)', () => {
   beforeEach(async () => {
@@ -131,6 +132,45 @@ describe('Data Export & Import (Integration)', () => {
         expect(user.passwordHash).toBeUndefined();
       }
     });
+
+    it('should retain exact role and audit-window scope in export audit metadata', async () => {
+      const org = await createTestOrganization({ name: 'Export Audit Org' });
+      const app = await createTestApplication({ organizationId: org.id });
+      await createTestClient(org.id, app.id);
+      await createTestRole(app.id, { name: 'Audited Role' });
+      const actor = await createTestUser(org.id, { email: 'export-actor@example.test' });
+      const startDate = new Date('2026-01-01T00:00:00.000Z');
+      const endDate = new Date('2026-01-31T23:59:59.999Z');
+
+      await exportData({
+        entityType: 'roles',
+        format: 'json',
+        organizationId: org.id,
+        applicationId: app.id,
+        actorId: actor.id,
+      });
+      await exportData({
+        entityType: 'audit',
+        format: 'json',
+        organizationId: org.id,
+        startDate,
+        endDate,
+        actorId: actor.id,
+      });
+
+      const audits = await getPool().query<{ metadata: Record<string, unknown> }>(
+        `SELECT metadata FROM audit_log
+         WHERE event_type = 'admin.export' AND actor_id = $1
+         ORDER BY created_at, id`,
+        [actor.id],
+      );
+      expect(audits.rows).toHaveLength(2);
+      expect(audits.rows[0].metadata).toMatchObject({ applicationId: app.id });
+      expect(audits.rows[1].metadata).toMatchObject({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+    });
   });
 
   // ── Import ─────────────────────────────────────────────────────────
@@ -195,6 +235,167 @@ describe('Data Export & Import (Integration)', () => {
       const result = await importData(manifest, 'merge');
 
       expect(result.errors).toBeUndefined();
+    });
+
+    it('should validate a complete new dependency graph in dry-run without persistence', async () => {
+      const manifest = {
+        version: '1.0' as const,
+        organizations: [{ name: 'Preview Org', slug: 'preview-org' }],
+        applications: [
+          { name: 'Preview App', slug: 'preview-app', organization_slug: 'preview-org' },
+        ],
+        clients: [
+          {
+            client_name: 'Preview Client',
+            application_slug: 'preview-app',
+            organization_slug: 'preview-org',
+            client_type: 'public' as const,
+            application_type: 'spa' as const,
+            redirect_uris: ['https://preview.example.test/callback'],
+          },
+        ],
+        roles: [
+          {
+            name: 'Preview Role',
+            slug: 'preview-role',
+            application_slug: 'preview-app',
+            organization_slug: 'preview-org',
+          },
+        ],
+        permissions: [
+          {
+            name: 'Preview Read',
+            slug: 'preview:records:read',
+            application_slug: 'preview-app',
+            organization_slug: 'preview-org',
+          },
+        ],
+        role_permission_mappings: [
+          {
+            role_slug: 'preview-role',
+            permission_slugs: ['preview:records:read'],
+            application_slug: 'preview-app',
+            organization_slug: 'preview-org',
+          },
+        ],
+        users: [{ email: 'preview@example.test', organization_slug: 'preview-org' }],
+        user_role_assignments: [
+          {
+            email: 'preview@example.test',
+            organization_slug: 'preview-org',
+            application_slug: 'preview-app',
+            role_slug: 'preview-role',
+          },
+        ],
+      };
+
+      const result = await importData(manifest, 'dry-run');
+
+      expect(result.errors).toBeUndefined();
+      expect(result.created.map(({ type }) => type)).toEqual(
+        expect.arrayContaining([
+          'organization',
+          'application',
+          'client',
+          'role',
+          'permission',
+          'role_permission_mapping',
+          'user',
+          'user_role_assignment',
+        ]),
+      );
+      const persisted = await getPool().query('SELECT 1 FROM organizations WHERE slug = $1', [
+        'preview-org',
+      ]);
+      expect(persisted.rowCount).toBe(0);
+    });
+
+    it('should reject a tenant-scoped declaration of a foreign shared application', async () => {
+      const alpha = await createTestOrganization({ name: 'Scoped Alpha' });
+      const bravo = await createTestOrganization({ name: 'Scoped Bravo' });
+      const bravoApp = await createTestApplication({ organizationId: bravo.id });
+      await createTestClient(bravo.id, bravoApp.id);
+
+      await expect(
+        importData(
+          {
+            version: '1.0',
+            applications: [
+              {
+                name: 'Foreign Rewrite',
+                slug: bravoApp.slug,
+                organization_slug: alpha.slug,
+              },
+            ],
+          },
+          'overwrite',
+          undefined,
+          alpha.id,
+        ),
+      ).rejects.toMatchObject({ code: 'import_plan_rejected' });
+    });
+
+    it('should serialize concurrent same-tenant client creation', async () => {
+      const org = await createTestOrganization({ name: 'Concurrent Import Org' });
+      const app = await createTestApplication({ organizationId: org.id });
+      const manifest = {
+        version: '1.0' as const,
+        clients: [
+          {
+            client_name: 'Concurrent Client',
+            application_slug: app.slug,
+            organization_slug: org.slug,
+            client_type: 'public' as const,
+            application_type: 'spa' as const,
+            redirect_uris: ['https://concurrent.example.test/callback'],
+          },
+        ],
+      };
+
+      const outcomes = await Promise.allSettled([
+        importData(manifest, 'merge'),
+        importData(manifest, 'merge'),
+      ]);
+      expect(outcomes.every(({ status }) => status === 'fulfilled')).toBe(true);
+      const results = outcomes.flatMap((outcome) =>
+        outcome.status === 'fulfilled' ? [outcome.value] : [],
+      );
+      expect(results.flatMap(({ created }) => created)).toHaveLength(1);
+      expect(results.flatMap(({ skipped }) => skipped)).toHaveLength(1);
+      const count = await getPool().query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM clients
+         WHERE organization_id = $1 AND application_id = $2 AND client_name = $3`,
+        [org.id, app.id, 'Concurrent Client'],
+      );
+      expect(count.rows[0].count).toBe('1');
+    });
+
+    it('should preserve typed config values and reject sensitive config updates', async () => {
+      await importData(
+        {
+          version: '1.0',
+          config: { api_rate_limit: 250, cookie_secure: false, access_token_ttl: '7200' },
+        },
+        'overwrite',
+      );
+      const values = await getPool().query<{ key: string; value: unknown }>(
+        `SELECT key, value FROM system_config
+         WHERE key = ANY($1::text[]) ORDER BY key`,
+        [['access_token_ttl', 'api_rate_limit', 'cookie_secure']],
+      );
+      expect(Object.fromEntries(values.rows.map(({ key, value }) => [key, value]))).toEqual({
+        access_token_ttl: '7200',
+        api_rate_limit: 250,
+        cookie_secure: false,
+      });
+
+      await getPool().query(
+        `INSERT INTO system_config (key, value, value_type, is_sensitive)
+         VALUES ('private_runtime_key', '"protected"', 'string', TRUE)`,
+      );
+      await expect(
+        importData({ version: '1.0', config: { private_runtime_key: 'replacement' } }, 'overwrite'),
+      ).rejects.toMatchObject({ code: 'import_plan_rejected' });
     });
   });
 
