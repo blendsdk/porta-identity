@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type Router from '@koa/router';
+import type Provider from 'oidc-provider';
 import { createMagicLinkRouter } from '../../../src/routes/magic-link.js';
 import { createInteractionRouter } from '../../../src/routes/interactions.js';
 import {
@@ -32,7 +33,15 @@ import type {
 } from './magic-link-tenant-binding-contract.js';
 
 /** Fixed public failure classification derived from the real response status and content type. */
-const GENERIC_MAGIC_LINK_FAILURE = '400:text/html:error-page';
+const GENERIC_MAGIC_LINK_FAILURE = 'invalid-or-expired';
+
+/** Optional real application boundary used by the correction evidence collector. */
+export interface MagicLinkPublicBoundary {
+  /** Actual provider whose Interaction model owns live authority. */
+  readonly provider: Provider;
+  /** Loopback URL of the real Koa application. */
+  readonly baseUrl: string;
+}
 
 /** Mutable cookie jar shared across one public presentation and its continuation attempts. */
 interface CookieJar {
@@ -137,6 +146,9 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
   private bravoClientId: string | null = null;
   private deliveredUrl: string | null = null;
 
+  /** Create a driver with an optional full HTTP/provider boundary. */
+  public constructor(private readonly publicBoundary?: MagicLinkPublicBoundary) {}
+
   /** Reset owned tenant state and arrange one authority-bound durable artifact. */
   public async reset(input: {
     readonly mode: MagicLinkArtifactMode;
@@ -192,6 +204,9 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
       'EX',
       3600,
     );
+    if (this.publicBoundary && input.mode === 'interaction-bound') {
+      await this.replaceProviderInteraction(interactionUid, alphaClient.clientId);
+    }
     const account = await getPool().query<{ login_count: number }>(
       'SELECT login_count FROM users WHERE id = $1',
       [user.id],
@@ -214,6 +229,14 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
   /** Replace the provider-owned client mapping for the exact persisted interaction. */
   public async setLiveAuthority(state: 'matching' | 'missing' | 'foreign-client'): Promise<void> {
     const fixture = this.requireFixture();
+    if (this.publicBoundary) {
+      const clientId = state === 'matching' ? this.alphaClientId : this.bravoClientId;
+      await this.replaceProviderInteraction(
+        fixture.interactionUid,
+        state === 'missing' ? null : clientId,
+      );
+      return;
+    }
     const key = `interaction:client:${fixture.interactionUid}`;
     if (state === 'missing') {
       await getRedis().del(key);
@@ -307,6 +330,33 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
   }): Promise<MagicLinkPublicOutcome> {
     const fixture = this.requireFixture();
     const organization = this.requireOrganization(input.routeOrganizationId);
+    if (this.publicBoundary && !this.callbackLimiterUnavailable && input.socketPeer === undefined) {
+      const url = new URL(
+        `/${organization.slug}/auth/magic-link/${encodeURIComponent(fixture.tokenValue)}`,
+        this.publicBoundary.baseUrl,
+      );
+      if (input.interactionUid !== undefined) {
+        url.searchParams.set('interaction', input.interactionUid);
+      }
+      const response = await fetch(url, { redirect: 'manual' });
+      const body = await response.text();
+      const contentType = response.headers.get('content-type')?.split(';', 1)[0] ?? 'unknown';
+      const redirect = response.headers.get('location');
+      const accepted =
+        response.status === 200 || response.status === 302 || response.status === 303;
+      const protectedValueExposed = [fixture.tokenValue, fixture.email, fixture.userId].some(
+        (value) => body.includes(value),
+      );
+      return {
+        accepted,
+        responseShape: redirect
+          ? 'interaction-redirect'
+          : response.status === 400 && contentType === 'text/html' && !protectedValueExposed
+            ? '400:text/html:error-page'
+            : `${response.status}:${contentType}:unexpected`,
+        genericError: accepted || protectedValueExposed ? null : GENERIC_MAGIC_LINK_FAILURE,
+      };
+    }
     const request = createContext({
       organization,
       token: fixture.tokenValue,
@@ -344,7 +394,9 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
       accepted,
       responseShape: snapshot.redirect
         ? 'interaction-redirect'
-        : `${snapshot.status}:${snapshot.type}`,
+        : snapshot.status === 400 && snapshot.type === 'text/html'
+          ? '400:text/html:error-page'
+          : `${snapshot.status}:${snapshot.type}:unexpected`,
       genericError: accepted ? null : GENERIC_MAGIC_LINK_FAILURE,
     };
   }
@@ -467,6 +519,21 @@ export class ProductionMagicLinkTenantBindingDriver implements MagicLinkTenantBi
     if (this.alpha?.id === id) return this.alpha;
     if (this.bravo?.id === id) return this.bravo;
     throw new Error('Magic-link route organization is outside the owned fixture');
+  }
+
+  /** Replace one exact provider-owned interaction without touching its durable artifact. */
+  private async replaceProviderInteraction(uid: string, clientId: string | null): Promise<void> {
+    const provider = this.publicBoundary?.provider;
+    if (!provider) return;
+    const existing = await provider.Interaction.find(uid);
+    if (existing) await existing.destroy();
+    if (!clientId) return;
+    const interaction = new provider.Interaction(uid, {
+      params: { client_id: clientId, scope: 'openid' },
+      prompt: { name: 'login', reasons: [], details: {} },
+      returnTo: '/',
+    });
+    await interaction.save(3_600);
   }
 
   /** Read the MailHog message count without retaining message content. */

@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 03:37
-> **Progress**: 28/52 tasks (54%)
+> **Last Updated**: 2026-08-22 04:50
+> **Progress**: 29/53 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -100,7 +100,8 @@ timing remains explicitly diagnostic.
 - [x] 2.8b From the clean pushed documentation checkpoint, run the production-security human-auth collector, repeated Phase 2 targeted/pentest checks, `yarn verify`, and the Phase 2 quality gate. ✅ (completed: 2026-08-22 02:42 CEST; clean collector run `062a1b50-a27a-4f45-b8e5-9292fe75ed62` completed functional 7/7, second-factor 4/4, and tenant/admin 17/17 with the expected registered exit `40`, mode `0600`, exact commit/tree provenance, and zero active-run/Docker residue; the mandatory review recorded four Major corrections and left Phase 2 open)
 - [x] 2.8c Extend the immutable ST-07–ST-13 oracle for exact live interaction/client authority, standalone delivered URLs, callback limiting, and real operational-log privacy; record the exact RED assertions. ✅ (completed: 2026-08-22 02:58 CEST; ordinary structural oracle 2/2 green and required mode produced exactly one failed/one passed with sole marker `MAGIC_LINK_LIVE_AUTHORITY_CORRECTION_CAPABILITY_MISSING`; structure 70/70 and `yarn verify` passed with 242 server test files)
 - [x] 2.8d Implement live interaction/client authority admission at issuance and callback consumption, conditional standalone URLs, the protected callback limiter, privacy-safe logs, and authority-only token APIs; add focused implementation and public-boundary tests. ✅ (completed: 2026-08-22 03:37 CEST; production-backed correction oracle 8/8, focused unit 87/87, existing live authority 12/12, enumeration 9/9, live issuance 3/3, structure 70/70, and final `yarn verify` passed with 244 server files/3,466 tests)
-- [ ] 2.8e From the clean pushed correction revision, rerun production-security evidence, Phase 2 unit/integration/E2E/pentest gates, documentation build, `yarn verify`, and one bounded quality re-review; close Phase 2 only if no Critical or Major remains.
+- [x] 2.8e From the clean pushed correction revision, rerun production-security evidence, Phase 2 unit/integration/E2E/pentest gates, documentation build, `yarn verify`, and one bounded quality re-review; implement and verify every accepted residual correction without a prohibited third review. ✅ (completed: 2026-08-22 04:50 CEST; bounded re-review accepted three residual Majors; real Koa/provider oracle 8/8, unit 3,386/3,386, integration 301/301, E2E 129/129, pentest 224/224, docs build, and final `yarn verify` all passed; no third review dispatched)
+- [ ] 2.8f From the clean pushed residual-correction revision, rerun production-security evidence, the Phase 2 command set, documentation build, and `yarn verify`; close Phase 2 only when provenance and cleanup are exact and no accepted review correction remains unresolved.
 
 Deliverable: cross-tenant or wrong-interaction presentation cannot authenticate, mutate, or consume;
 intended use remains atomic and single-use.

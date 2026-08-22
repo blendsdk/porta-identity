@@ -32,6 +32,11 @@ function createMockContext(overrides = {}): Record<string, unknown> {
 describe('requestLogger middleware', () => {
   it.each([
     ['/tenant/auth/magic-link/plaintext-artifact', '/:organization/auth/magic-link/:artifact'],
+    ['/tenant/auth/magic-link/plaintext-artifact/', '/:organization/auth/magic-link/:artifact/'],
+    [
+      '/tenant/auth/magic-link/plaintext-artifact/unmatched',
+      '/:organization/auth/magic-link/:artifact/unmatched',
+    ],
     ['/interaction/private-interaction', '/interaction/:interaction'],
     ['/interaction/private-interaction/consent', '/interaction/:interaction/consent'],
   ])('sanitizes protected path %s', (path, expected) => {

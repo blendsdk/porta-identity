@@ -271,6 +271,19 @@ export async function ensureRecoveryJobToken(
       throw new Error('Recovery job disappeared before artifact issuance');
     }
 
+    if (input.table === 'magic_link_tokens') {
+      const clientMatches =
+        input.interactionUid === null && input.clientId === null
+          ? true
+          : input.interactionUid !== null &&
+            input.clientId !== null &&
+            (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
+      if (!clientMatches) {
+        await client.query('COMMIT');
+        return 'superseded';
+      }
+    }
+
     const existing = await client.query<RecoveryTokenStateRow>(
       `SELECT used_at IS NULL AND expires_at > NOW() AS active
        FROM ${input.table}
@@ -304,18 +317,6 @@ export async function ensureRecoveryJobToken(
       return 'superseded';
     }
 
-    if (input.table === 'magic_link_tokens') {
-      const clientMatches =
-        input.interactionUid === null && input.clientId === null
-          ? true
-          : input.interactionUid !== null &&
-            input.clientId !== null &&
-            (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
-      if (!clientMatches) {
-        await client.query('COMMIT');
-        return 'superseded';
-      }
-    }
     await client.query(
       `UPDATE ${input.table}
        SET used_at = NOW()

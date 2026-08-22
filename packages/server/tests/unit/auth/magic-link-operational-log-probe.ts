@@ -1,6 +1,6 @@
 /** Production-logger child probe for bearer and interaction path redaction. */
 
-import { logger } from '../../../src/lib/logger.js';
+import Koa from 'koa';
 import { requestLogger } from '../../../src/middleware/request-logger.js';
 
 const artifact = process.env.PORTA_PROBE_ARTIFACT ?? '';
@@ -13,22 +13,32 @@ if (![artifact, interactionUid, email, userId, organizationId].every((value) => 
   throw new Error('Operational log probe inputs are incomplete');
 }
 
-/** Execute the real request middleware for one protected path. */
-async function logRequest(path: string): Promise<void> {
-  const context = {
-    state: {} as Record<string, unknown>,
-    req: {},
-    method: 'GET',
-    path,
-    status: 400,
-    set: () => undefined,
-  };
-  await requestLogger()(context as never, async () => undefined);
+const app = new Koa();
+app.use(requestLogger());
+app.use((ctx) => {
+  ctx.status = 400;
+  ctx.body = 'Rejected';
+});
+const server = app.listen(0, '127.0.0.1');
+await new Promise<void>((resolve, reject) => {
+  server.once('listening', resolve);
+  server.once('error', reject);
+});
+const address = server.address();
+if (!address || typeof address === 'string') {
+  throw new Error('Operational log probe did not receive a loopback port');
 }
-
-await logRequest(`/tenant/auth/magic-link/${artifact}`);
-await logRequest(`/interaction/${interactionUid}`);
-logger.warn(
-  { email, userId, organizationId, uid: interactionUid, interactionUid },
-  'Magic link authority rejected',
-);
+const baseUrl = `http://127.0.0.1:${address.port}`;
+for (const path of [
+  `/tenant/auth/magic-link/${artifact}`,
+  `/tenant/auth/magic-link/${artifact}/`,
+  `/tenant/auth/magic-link/${artifact}/unmatched`,
+  `/interaction/${interactionUid}`,
+  `/interaction/${interactionUid}/consent`,
+]) {
+  const response = await fetch(new URL(path, baseUrl));
+  await response.arrayBuffer();
+}
+await new Promise<void>((resolve, reject) => {
+  server.close((error) => (error ? reject(error) : resolve()));
+});

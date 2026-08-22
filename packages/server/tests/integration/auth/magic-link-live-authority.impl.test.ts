@@ -123,4 +123,38 @@ describe('magic-link live issuance authority', () => {
       (await mailhog.getMessages()).filter((message) => message.to.includes(user.email)),
     ).toHaveLength(1);
   });
+
+  it('does not resend an existing artifact after its client is deactivated', async () => {
+    const alpha = await createTestOrganization({ name: 'Magic Alpha' });
+    const application = await createTestApplication();
+    const alphaClient = await createTestClient(alpha.id, application.id);
+    const user = await createTestUser(alpha.id, {
+      email: `magic-${randomUUID()}@test.example.com`,
+    });
+    const interactionUid = `requested-${randomUUID()}`;
+    const enqueued = await enqueueAccountRecovery({
+      jobType: 'magic_link',
+      organizationId: alpha.id,
+      email: user.email,
+      interactionUid,
+      actionNonce: randomUUID(),
+    });
+    const job = await claimRecoveryJob(enqueued.job.id);
+    const processor = new AccountRecoveryJobProcessor({
+      resolve: async () => ({ interactionUid, clientId: alphaClient.clientId }),
+    });
+
+    await expect(processor.process(job)).resolves.toBe('completed');
+    await getPool().query("UPDATE clients SET status = 'inactive' WHERE id = $1", [alphaClient.id]);
+    await expect(processor.process(job)).resolves.toBe('no_op');
+
+    expect(
+      (await mailhog.getMessages()).filter((message) => message.to.includes(user.email)),
+    ).toHaveLength(1);
+    const artifact = await getPool().query<{ used_at: Date | null }>(
+      'SELECT used_at FROM magic_link_tokens WHERE recovery_job_id = $1',
+      [job.id],
+    );
+    expect(artifact.rows).toStrictEqual([{ used_at: null }]);
+  });
 });

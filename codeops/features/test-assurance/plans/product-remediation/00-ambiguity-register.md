@@ -355,3 +355,46 @@ the Redis-only and duplicate-column alternatives. **Policy version**: 1. **Root 
 `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: provider Interaction lookup cannot expose the
 exact client identifier, or interaction lifetime becomes shorter than the approved recovery-job
 retry horizon.
+
+**AR-19 — Phase 2 residual evidence and retry authority correction (runtime):** **Authority**: AI
+— delegated by `--auto-design`. **Eligibility**: security mechanism, transaction ordering, and
+test-observation architecture inside the approved magic-link tenant-binding behavior; no product
+policy, public compatibility, scope, or acceptance criterion change. **Objective**: prevent both
+secret-bearing path leakage and resend of stale authority, while ensuring the immutable oracle is
+credited only by real public behavior. **Decision**: sanitize the magic-link bearer at a segment
+boundary; validate current client authority before any same-job artifact reuse; and drive the
+correction oracle through the real Koa application and `oidc-provider` interaction authority,
+classifying only observed response and logger output. **Evidence**: the request sanitizer used an
+end anchor; the token repository returned an existing artifact before locking its current client;
+and the correction driver invoked terminal route handlers with a test-owned provider mapping and
+constructed its response classification. **Rejected alternatives**: enumerating a few suffixes
+would leave new path shapes exposed; validating authority after returning the existing artifact is
+too late; and retaining handler-level doubles would continue to award evidence without exercising
+tenant resolution, middleware ordering, or provider storage. **Strongest counterargument**: a
+full application boundary makes the correction suite slower and requires owned provider setup,
+but this is proportionate for a bearer-bearing authentication callback and avoids a second test
+oracle. **Confidence**: High. **Hardening**: the mandatory correctness and security reviewers
+independently converged on the same three boundaries; the selected correction preserves the
+existing production resolver and retained test infrastructure without adding a product test hook.
+**Policy version**: 1. **Root Invocation ID**: `AD-TA-REMEDIATION-20260821`. **Reopen trigger**:
+the public callback no longer runs through Koa, provider interaction storage changes authority
+semantics, or recovery delivery gains transport-level idempotency that changes retry behavior.
+
+**AR-20 — Residual-correction clean evidence checkpoint (runtime):** **Authority**: AI — delegated
+by `--auto-design`. **Eligibility**: reversible verification sequencing within the approved Phase
+2 boundary; no product behavior, scope, priority, or acceptance criterion change. **Objective**:
+bind final Phase 2 evidence to the exact source that includes all accepted bounded re-review
+corrections. **Decision**: Task 2.8e owns the accepted residual implementation, focused gates, and
+full verification; Task 2.8f starts from its clean pushed commit and reruns the production-security
+collector plus the complete Phase 2 command set. No third quality review is dispatched. **Evidence**:
+the collector's clean-tree guard cannot admit the current residual-correction work before it is
+committed, while the quality policy forbids promoting a verification-pending task or running a
+third review. **Rejected alternatives**: reusing run `59c935c7-52fa-451d-bdfc-d83a9addbbe4`
+would bind final evidence to pre-correction bytes; bypassing the clean-tree guard would weaken
+provenance; and a third review would violate the bounded quality protocol. **Strongest
+counterargument**: this repeats the longest commands once more, but it is the only existing path
+that preserves both clean provenance and the review cap. **Confidence**: High. **Hardening**: this
+is the same reviewed capability-then-evidence pattern used by the preceding phase checkpoints and
+introduces no new mechanism. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-REMEDIATION-20260821`. **Reopen trigger**: the collector gains a reviewed content-addressed
+snapshot mode that can safely bind verified uncommitted source.

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ProductionMagicLinkTenantBindingDriver } from './magic-link-tenant-binding-production-driver.js';
+import type { MagicLinkPublicBoundary } from './magic-link-tenant-binding-production-driver.js';
 import type {
   LiveInteractionAuthorityState,
   MagicLinkLiveAuthorityCorrectionDriver,
@@ -76,10 +77,15 @@ function mapFixture(
 
 /** Service-backed correction driver reusing the retained public-action test harness. */
 export class ProductionMagicLinkLiveAuthorityCorrectionDriver implements MagicLinkLiveAuthorityCorrectionDriver {
-  private readonly authority = new ProductionMagicLinkTenantBindingDriver();
+  private readonly authority: ProductionMagicLinkTenantBindingDriver;
   private fixture: MagicLinkLiveAuthorityFixture | null = null;
   private operationalOutput: readonly string[] = [];
   private standalone = false;
+
+  /** Create a correction driver over one real Koa/provider boundary. */
+  public constructor(publicBoundary: MagicLinkPublicBoundary) {
+    this.authority = new ProductionMagicLinkTenantBindingDriver(publicBoundary);
+  }
 
   /** Arrange one interaction-bound artifact with matching current client authority. */
   public async resetBound(): Promise<MagicLinkLiveAuthorityFixture> {
@@ -106,8 +112,8 @@ export class ProductionMagicLinkLiveAuthorityCorrectionDriver implements MagicLi
     });
     return {
       accepted: outcome.accepted,
-      responseShape: outcome.accepted ? outcome.responseShape : '400:text/html:error-page',
-      genericFailure: outcome.accepted ? null : 'invalid-or-expired',
+      responseShape: outcome.responseShape,
+      genericFailure: outcome.genericError,
     };
   }
 

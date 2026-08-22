@@ -11,7 +11,10 @@ import { registerProtocolRequestCorrelation } from '../oidc/protocol-security-ob
  */
 export function sanitizeRequestPath(path: string): string {
   return path
-    .replace(/^\/[^/]+\/auth\/magic-link\/[^/]+$/, '/:organization/auth/magic-link/:artifact')
+    .replace(
+      /^\/[^/]+\/auth\/magic-link\/[^/]+(?=\/|$)/,
+      '/:organization/auth/magic-link/:artifact',
+    )
     .replace(/^\/interaction\/[^/]+(?=\/|$)/, '/interaction/:interaction');
 }
 

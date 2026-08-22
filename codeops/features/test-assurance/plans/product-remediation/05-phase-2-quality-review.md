@@ -3,7 +3,7 @@
 > **Date**: 2026-08-22
 > **Phase baseline tree**: `829f66aa378e6cd6f3f9f7eb271000fadde48da1`
 > **Reviewed completion commit**: `2ef98981`
-> **Disposition**: Corrections required before bounded re-review
+> **Disposition**: Bounded re-review corrections verified; clean evidence pending
 
 ## Review Result
 
@@ -38,3 +38,19 @@ operational-log privacy boundary.
 One bounded re-review will inspect only the accepted correction diff after the correction and
 clean-evidence tasks pass. A Critical or Major residual keeps Phase 2 open; there is no third review
 pass.
+
+The single bounded re-review inspected correction commit `cecc58c2` and clean owned run
+`59c935c7-52fa-451d-bdfc-d83a9addbbe4`. It confirmed the live callback authority, limiter,
+standalone delivery, authority-only insertion API, provenance, and cleanup boundaries, but found
+three residual Major defects. Auto-design accepted all three as necessary corrections inside the
+existing Phase 2 scope; none is waived and no third review will be dispatched.
+
+| Finding | Severity | Accepted correction |
+| --- | --- | --- |
+| SA-206 | Major | Redact a magic-link artifact at its segment boundary so trailing slashes and additional suffix segments cannot expose it in structured or rendered request logs. Exercise those variants through the real request middleware. |
+| RV-206 | Major | Validate and lock current magic-link client authority before returning an existing same-job artifact, so an SMTP retry cannot resend after client deactivation or tenant reassignment. Add a service-backed retry regression. |
+| RV-207 | Major | Replace handler-level response synthesis and test-owned provider mappings with real application HTTP requests and provider-owned interaction observations. Retain only classifications derived from actual public responses and actual production request logs. |
+
+The residual correction is verified directly by the immutable oracle, focused service-backed
+regressions, the Phase 2 command set, and full verification. The quality profile permits no third
+review pass after this bounded re-review.
