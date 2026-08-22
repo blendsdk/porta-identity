@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 10:48
-> **Progress**: 44/57 tasks (77%)
+> **Last Updated**: 2026-08-22 11:04
+> **Progress**: 45/57 tasks (79%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -137,12 +137,12 @@ where required, and free of secret/formula exposure.
 
 ## Phase 4: Correlated security decisions and durable audit
 
-> **Phase baseline tree**: _(record at execution start)_
+> **Phase baseline tree**: `acf87b63e12a61fe0e88fd2b4c0c21adac2bc294`
 > **Lenses**: security, api-surface
 
 **Reference**: 03-04; ST-25–ST-30; AR-4, AR-8
 
-- [ ] 4.1 [spec-author] Write immutable security-decision event specifications — `packages/server/tests/unit/security/security-decision-event.spec.test.ts`
+- [x] 4.1 [spec-author] Write immutable security-decision event specifications — `packages/server/tests/unit/security/security-decision-event.spec.test.ts` ✅ (completed: 2026-08-22 11:04 CEST; immutable 13-case terminal-event catalog, strict privacy fields, atomic audit/sink failure, and key-rotation oracle authored; focused spec 3/3, type/lint/format, structure 70/70, and full `yarn verify` passed in 9m42s with server unit 2,840, integration 343, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 - [ ] 4.2 Run the isolated specifications and record exact RED for missing/duplicate events, raw data, caller correlation, and audit rollback.
 - [ ] 4.3 Implement the strict event model, closed reason vocabulary, HKDF/HMAC protected references, and schema validator — `packages/server/src/security/decision-event.ts`
 - [ ] 4.4 Implement correlation-first context, typed decision facts, minimal error mapping, and exactly-once terminal finalization — `packages/server/src/middleware/`, `packages/server/src/server.ts`
