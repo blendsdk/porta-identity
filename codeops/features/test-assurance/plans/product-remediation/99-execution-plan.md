@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 06:10
-> **Progress**: 31/53 tasks (58%)
+> **Last Updated**: 2026-08-22 06:21
+> **Progress**: 32/53 tasks (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -116,7 +116,7 @@ intended use remains atomic and single-use.
 **Reference**: 03-03; ST-14–ST-24; AR-3
 
 - [x] 3.1 [spec-author] Write immutable bulk/import/export specifications — `packages/server/tests/unit/admin/administrative-data-contract.spec.test.ts` ✅ (completed: 2026-08-22 06:10 CEST; immutable ST-14–ST-24 catalog, stable product-driver contract, and fail-closed adapter authored; ordinary specification 4/4, structure 70/70 with the exact 245-file inventory, and `yarn verify` passed with 159 unit files/2,819 tests, 30 integration files/301 tests, 20 E2E files/129 tests, and 35 pentest files/224 tests)
-- [ ] 3.2 Run the isolated specifications and record exact RED for duplicate, tenant, rollback, secret, scope, bound, and CSV cases.
+- [x] 3.2 Run the isolated specifications and record exact RED for duplicate, tenant, rollback, secret, scope, bound, and CSV cases. ✅ (completed: 2026-08-22 06:21 CEST; required mode exited `1` with exactly one failed/three passed and sole marker `ADMINISTRATIVE_DATA_CAPABILITY_MISSING`; ordinary `yarn verify` passed all four tasks in 9m04s)
 - [ ] 3.3 Implement whole-request validation, tenant-scoped per-item transactions, ordered closed outcomes, and not-attempted bulk results — `packages/server/src/routes/bulk.ts`, `packages/server/src/lib/bulk-operations.ts`
 - [ ] 3.4 Implement the closed import prevalidator/planner and remove secret-equivalent manifest inputs — `packages/server/src/lib/data-import.ts`, import schemas/types
 - [ ] 3.5 Implement atomic merge/overwrite/dry-run execution, sanitized typed errors, and credential-after-commit handling — `packages/server/src/lib/data-import.ts`, `packages/server/src/routes/imports.ts`
