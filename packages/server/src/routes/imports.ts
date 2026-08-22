@@ -24,6 +24,7 @@ import { importData, importManifestSchema, ImportOperationError } from '../lib/d
 const importRequestSchema = z
   .object({
     mode: z.enum(['merge', 'overwrite', 'dry-run']).default('dry-run'),
+    organizationId: z.string().uuid().optional(),
     manifest: importManifestSchema,
   })
   .strict();
@@ -49,7 +50,7 @@ export function createImportRouter(): Router {
       const body = importRequestSchema.parse(ctx.request.body);
       const actorId = ctx.state.adminUser?.id;
 
-      const result = await importData(body.manifest, body.mode, actorId);
+      const result = await importData(body.manifest, body.mode, actorId, body.organizationId);
 
       ctx.body = result;
     } catch (err) {

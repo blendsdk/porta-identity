@@ -25,6 +25,7 @@ Content-Type: application/json
 
 {
   "mode": "dry-run",
+  "organizationId": "8b0ec59e-20d8-4f78-b0c5-c9b603af1c8b",
   "manifest": {
     "version": "1.0",
     "organizations": [...],
@@ -36,6 +37,10 @@ Content-Type: application/json
   }
 }
 ```
+
+When `organizationId` is present, every tenant-qualified entry must resolve to that organization.
+This prevents a scoped provisioning job from importing data into a different tenant. Omitting the
+field preserves the global super-administrator import contract.
 
 ## Manifest Format
 

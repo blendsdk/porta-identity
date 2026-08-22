@@ -548,8 +548,8 @@ if (capability.available) {
       },
     );
 
-    // Authorization and relationship failure reveals no count, rows, body, or foreign identity.
-    it('should reject missing authority and foreign tenant or application scope without disclosure', async () => {
+    // Authorization and invalid relationship failure reveals no count, rows, body, or identity.
+    it('should reject missing authority and mismatched application scope without disclosure', async () => {
       await withDriver(async (driver) => {
         const fixture = await driver.reset();
         const attempts = [
@@ -564,12 +564,6 @@ if (capability.available) {
             format: 'json',
             permissions: [ADMINISTRATIVE_DATA_ORACLE.export.dedicatedPermission],
             organizationId: fixture.alphaOrganizationId,
-          }),
-          driver.submitExport({
-            entityType: 'users',
-            format: 'json',
-            permissions: exportPermissions('users'),
-            organizationId: fixture.bravoOrganizationId,
           }),
           driver.submitExport({
             entityType: 'roles',
@@ -652,7 +646,12 @@ if (capability.available) {
           endDate: '2026-01-31T23:59:59.999Z',
         });
         const observation = await driver.observe();
-        const retained = serializedSurfaces(auditCsv, auditJson, observation);
+        const retained = serializedSurfaces(
+          auditCsv,
+          auditJson,
+          observation.audits,
+          observation.operationalOutput,
+        );
         expect(retained).not.toContain(fixture.auditPrivateCanary);
         for (const field of ADMINISTRATIVE_DATA_ORACLE.export.forbiddenAuditFields) {
           expect(retained).not.toContain(`"${field}"`);

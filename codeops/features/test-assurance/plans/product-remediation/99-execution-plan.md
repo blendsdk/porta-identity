@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 07:53
-> **Progress**: 37/53 tasks (70%)
+> **Last Updated**: 2026-08-22 08:19
+> **Progress**: 38/55 tasks (69%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -31,11 +31,11 @@ to the exec-plan protocol.
 | ---: | --- | ---: |
 | 1 | Enumeration-resistant password and recovery work | 17 |
 | 2 | Tenant-bound atomic magic links | 13 |
-| 3 | Bulk/import/export product contracts | 10 |
+| 3 | Bulk/import/export product contracts | 12 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 53 tasks across 5 phases.**
+**Total: 55 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -122,7 +122,9 @@ intended use remains atomic and single-use.
 - [x] 3.5 Implement atomic merge/overwrite/dry-run execution, sanitized typed errors, and credential-after-commit handling — `packages/server/src/lib/data-import.ts`, `packages/server/src/routes/imports.ts` ✅ (completed: 2026-08-22 07:24 CEST; repeatable-read execution rolls back every non-skip failure, overwrite changes only approved mutable fields, dry-run returns boolean credential intent without effects, committed confidential credentials return once, and public/audit failures are sanitized; focused unit/contract 84/84, PostgreSQL integration 10/10, lint/type/format gates, and final `yarn verify` passed in 9m24s)
 - [x] 3.6 Implement dedicated export authorization, exact relationship scope, field policies, 10,000-row bound, audit-detail filtering, and CSV formula neutralization — `packages/server/src/routes/exports.ts`, `packages/server/src/lib/data-export.ts` ✅ (completed: 2026-08-22 07:38 CEST; every export requires dedicated plus entity-read authority, role scope proves tenant/application participation, all closed queries probe 10,001 rows, audit details use an event allowlist, and CSV formulas are neutralized before RFC quoting; focused unit/spec 12/12, PostgreSQL integration 10/10, lint/type/format gates, and `yarn verify` passed in 9m00s)
 - [x] 3.7 Align SDK/CLI export types and public bulk/import/export documentation with the approved contract — `packages/sdk/`, `packages/cli/`, `docs/api/`, `docs/cli/` ✅ (completed: 2026-08-22 07:53 CEST; SDK and CLI expose exactly five export entities and complete audit scope, successful imports omit errors, dry-run credential intent is boolean-only, password provisioning is rejected before network access, and API/CLI docs plus the full example match the atomic bounded contract; SDK 7/7, CLI 16/16, structure 70/70, docs build, type/lint/format gates, and `yarn verify` passed in 8m51s)
-- [ ] 3.8 Run ST-14–ST-24 green through unit/integration/raw HTTP and packed-client boundaries.
+- [x] 3.8a Connect the immutable ST-14–ST-24 contract to production validation, transactions, and independent PostgreSQL/audit observers; run the service-backed integration boundary green. ✅ (completed: 2026-08-22 08:19 CEST; split from 3.8 because packed archives require a clean committed source revision; production-backed ST-14–ST-24 passed 35/35, combined admin integration 53/53, SDK 12/12, CLI 25/25, structure 70/70, and `yarn verify` passed in 9m46s with server unit 2,823, integration 336, E2E 129, pentest 224, SDK 404, and CLI 355 tests)
+- [ ] 3.8b Add the bounded raw-HTTP and packed SDK/CLI administrative-data journey capability with exact package, credential, response, state, and cleanup observations.
+- [ ] 3.8c From the clean pushed capability revision, run ST-14–ST-24 through the raw-HTTP and packed-client boundaries and record provenance and zero residue.
 - [ ] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts`
 - [ ] 3.10 Run Phase 3 targeted/P1/compatibility/pentest checks, `yarn test:structure`, and `yarn verify`; update admin-data techdocs.
 
@@ -184,7 +186,7 @@ Phase 5 clean black-box closure
 
 ## Success criteria
 
-1. All 53 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
+1. All 55 tasks are `[x]`; no `[~]`, `[ ]`, or `[!]` remains.
 2. ST-01–ST-30 were observed RED before implementation and are GREEN afterward.
 3. Existing tests and pentest assertions remain unweakened and all authoritative verification passes.
 4. Migrations are additive and tested; no generated/sensitive artifact is committed.

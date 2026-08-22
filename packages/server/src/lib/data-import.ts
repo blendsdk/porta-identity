@@ -449,6 +449,7 @@ export async function importData(
   manifestInput: ImportManifest,
   mode: ImportMode,
   actorId?: string,
+  organizationId?: string,
 ): Promise<ImportResult> {
   // Public routes parse first, while direct service callers receive the same closed/defaulted
   // contract here so optional collections can never bypass prevalidation.
@@ -479,6 +480,7 @@ export async function importData(
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
     try {
+      await requireImportScope(client, manifest, organizationId);
       await requireResolvedImportDependencies(client, manifestPlan);
     } catch {
       throw new ImportOperationError('import_plan_rejected', 409);
@@ -602,6 +604,72 @@ export async function importData(
     throw failure;
   } finally {
     client.release();
+  }
+}
+
+/**
+ * Require every tenant-qualified manifest entry to resolve to one requested organization.
+ * Global imports omit the boundary and retain the established super-administrator behavior.
+ */
+async function requireImportScope(
+  client: PoolClient,
+  manifest: ImportManifest,
+  organizationId: string | undefined,
+): Promise<void> {
+  if (organizationId === undefined) return;
+  const organization = await client.query<{ slug: string }>(
+    'SELECT slug FROM organizations WHERE id = $1',
+    [organizationId],
+  );
+  const expectedSlug = organization.rows[0]?.slug;
+  if (!expectedSlug || Object.keys(manifest.config ?? {}).length > 0) {
+    throw new ImportOperationError('import_plan_rejected', 409);
+  }
+
+  const referencedSlugs = [
+    ...manifest.organizations.map((item) => item.slug),
+    ...manifest.applications.map((item) => item.organization_slug),
+    ...manifest.clients.map((item) => item.organization_slug),
+    ...manifest.roles.map((item) => item.organization_slug),
+    ...manifest.permissions.map((item) => item.organization_slug),
+    ...manifest.claim_definitions.map((item) => item.organization_slug),
+    ...manifest.role_permission_mappings.map((item) => item.organization_slug),
+    ...manifest.users.map((item) => item.organization_slug),
+    ...manifest.application_modules.map((item) => item.organization_slug),
+    ...manifest.user_role_assignments.map((item) => item.organization_slug),
+    ...manifest.user_claim_values.map((item) => item.organization_slug),
+  ];
+  if (referencedSlugs.some((slug) => slug !== expectedSlug)) {
+    throw new ImportOperationError('import_plan_rejected', 409);
+  }
+
+  const declaredApplications = new Set(
+    manifest.applications
+      .filter((application) => application.organization_slug === expectedSlug)
+      .map((application) => application.slug),
+  );
+  const referencedApplications = new Set([
+    ...manifest.clients.map((item) => item.application_slug),
+    ...manifest.roles.map((item) => item.application_slug),
+    ...manifest.permissions.map((item) => item.application_slug),
+    ...manifest.claim_definitions.map((item) => item.application_slug),
+    ...manifest.role_permission_mappings.map((item) => item.application_slug),
+    ...manifest.application_modules.map((item) => item.application_slug),
+    ...manifest.user_role_assignments.map((item) => item.application_slug),
+    ...manifest.user_claim_values.map((item) => item.application_slug),
+  ]);
+  for (const applicationSlug of referencedApplications) {
+    if (declaredApplications.has(applicationSlug)) continue;
+    const relationship = await client.query(
+      `SELECT 1 FROM applications a
+       JOIN clients c ON c.application_id = a.id
+       WHERE a.slug = $1 AND c.organization_id = $2
+       LIMIT 1`,
+      [applicationSlug, organizationId],
+    );
+    if (relationship.rowCount !== 1) {
+      throw new ImportOperationError('import_plan_rejected', 409);
+    }
   }
 }
 
@@ -882,6 +950,10 @@ async function processClient(
        FROM clients WHERE client_name = $1 AND application_id = $2`,
       [clientDef.client_name, appId],
     );
+
+    if (existing.length > 1) {
+      throw new ImportOperationError('import_plan_rejected', 409);
+    }
 
     if (existing.length > 0) {
       const expectedAuthMethod =

@@ -17,6 +17,8 @@ export interface ImportManifest {
   mode?: ImportMode;
   /** Dry run — validate without applying (shorthand for mode='dry-run') */
   dryRun?: boolean;
+  /** Optional tenant boundary which every tenant-qualified manifest entry must match. */
+  organizationId?: string;
 }
 
 /** A single entity operation result (created or updated) */

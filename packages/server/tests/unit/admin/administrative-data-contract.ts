@@ -162,11 +162,11 @@ export const ADMINISTRATIVE_DATA_ORACLE = Object.freeze({
     entities: EXPORT_ENTITY_TYPES,
     dedicatedPermission: 'admin:export:read',
     entityPermissions: {
-      organizations: 'org:read',
-      users: 'user:read',
-      clients: 'client:read',
-      roles: 'role:read',
-      audit: 'audit:read',
+      organizations: 'admin:org:read',
+      users: 'admin:user:read',
+      clients: 'admin:client:read',
+      roles: 'admin:role:read',
+      audit: 'admin:audit:read',
     },
     // User columns are the exact published API list. The other public entity exports retain their
     // shipped server column catalogs, while audit replaces raw metadata with mapped safe details.
