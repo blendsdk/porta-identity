@@ -212,7 +212,7 @@ test('should distinguish handler permission and resource boundaries after authen
           status: 403,
           body: {
             error: 'Forbidden',
-            message: 'The requested operation is not permitted',
+            message: 'Administrative access is not permitted',
           },
         },
         proof,

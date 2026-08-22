@@ -82,10 +82,10 @@ function permissionMessage(entry: ControlPlaneAuthorityCase): string {
 function resourceError(target: LiveAdminTarget): string {
   const names: Record<LiveAdminTarget['surface'], string> = {
     user: 'User not found',
-    client: 'Client not found',
-    session: 'Session not found',
-    application: 'Application not found',
-    role: 'Role not found',
+    client: 'Not Found',
+    session: 'Not Found',
+    application: 'Not Found',
+    role: 'Not Found',
   };
   return names[target.surface];
 }
