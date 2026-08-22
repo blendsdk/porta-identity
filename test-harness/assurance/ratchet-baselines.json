@@ -20,7 +20,7 @@
       "paths": [
         "codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md"
       ],
-      "digest": "sha256:e9ec7df09f9de12bc8cfff9f18cdc94aa261a6330fab3fdc5fb8c9665a9d5af2",
+      "digest": "sha256:86065b5cf2c07d41c0a4e1fb5a3976c8cd107f7b0f15a34fd11d8a5773cf15f1",
       "affectedRequirementPrefix": "R5"
     },
     "fixture": {
@@ -43,10 +43,10 @@
     }
   },
   "review": {
-    "reviewId": "local-observation-baseline-2026-08-22",
-    "reviewedAt": "2026-08-22T17:15:00+02:00",
+    "reviewId": "local-observation-baseline-correlation-gap-2026-08-22",
+    "reviewedAt": "2026-08-22T19:45:00+02:00",
     "reviewedBy": "authorized-test-assurance-execution",
-    "reason": "Retain the accepted local coverage observation and bind staleness to the authorized R5.17 requirement without changing CI policy.",
+    "reason": "Retain the accepted local coverage observation while binding staleness to the corrected R5.17 trace cases and explicit external-correlation gap without changing CI policy.",
     "sourceArtifact": "test-harness/.assurance-results/53ff6f24-219a-485b-a87f-93343612aa91/coverage/security/production-security/report/coverage-summary.json",
     "promotionAuthorized": false
   }

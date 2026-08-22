@@ -87,6 +87,8 @@ export interface SecurityDecisionCaseObservation {
   readonly emergencyFallbackCount: number;
   /** Complete sanitized operational output for canary scanning. */
   readonly operationalOutput: readonly string[];
+  /** Bounded durable-audit content captured independently for canary scanning. */
+  readonly auditOutput: readonly string[];
 }
 
 /** Production-backed behavior driver used only when explicitly required. */
@@ -172,3 +174,36 @@ export const SECURITY_DECISION_EVENT_ORACLE = Object.freeze({
     'stack',
   ]),
 });
+
+/** Stable trace cases which bind the public assurance catalog to executable scenarios. */
+export const SECURITY_DECISION_TRACE_CASES = Object.freeze({
+  'ST-80': Object.freeze([
+    'admin-read-allowed',
+    'admin-unauthenticated',
+    'admin-membership-denied',
+    'admin-permission-denied',
+    'admin-resource-denied',
+  ] satisfies readonly SecurityDecisionCaseId[]),
+  'ST-81': Object.freeze([
+    'admin-mutation-committed',
+    'admin-mutation-audit-failed',
+  ] satisfies readonly SecurityDecisionCaseId[]),
+  'ST-82': Object.freeze([
+    'malformed-json',
+    'oversized-body',
+    'schema-rejected',
+    'handler-threw',
+    'transport-parser-rejected',
+  ] satisfies readonly SecurityDecisionCaseId[]),
+  'ST-83': Object.freeze(
+    SECURITY_DECISION_EVENT_ORACLE.cases.map(
+      ([caseId]) => caseId,
+    ) satisfies readonly SecurityDecisionCaseId[],
+  ),
+  'ST-84': Object.freeze(['denial-sink-failed'] satisfies readonly SecurityDecisionCaseId[]),
+});
+
+/** Stable non-case operations which complete the executable trace catalog. */
+export const SECURITY_DECISION_TRACE_OPERATIONS = Object.freeze({
+  'ST-85': 'observe-key-rotation',
+} as const);

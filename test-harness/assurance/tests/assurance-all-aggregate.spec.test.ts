@@ -200,6 +200,7 @@ test('rolls up every item exactly once without laundering defects or authority g
       'enumeration-timing-contract-unapproved',
       'totp-same-window-replay-authority',
       'forwarding-context-observer-incomplete',
+      'correlated-security-decision-observer-incomplete',
       'source-variation-campaign-not-executed',
       'real-command-stage-signal-observation-unqualified',
     ],

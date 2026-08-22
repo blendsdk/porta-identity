@@ -215,6 +215,12 @@ export const aggregateKnownGaps: readonly AssuranceAllKnownGapRegistration[] = O
     conclusion: 'unqualified',
   },
   {
+    id: 'correlated-security-decision-observer-incomplete',
+    authority: 'stale-or-no-go-evidence',
+    statusSource: 'approved-program-gap-register',
+    conclusion: 'unqualified',
+  },
+  {
     id: 'source-variation-campaign-not-executed',
     authority: 'stale-or-no-go-evidence',
     statusSource: 'approved-program-gap-register',

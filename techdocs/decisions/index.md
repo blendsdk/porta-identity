@@ -8,22 +8,22 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## Decision Log
 
-| #       | Decision                                                                            | Status     | Date       | Summary                                                         |
-| ------- | ----------------------------------------------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------- |
-| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                       | Accepted   | —          | Koa required for node-oidc-provider compatibility               |
-| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                       | Accepted   | —          | Organization slug in URL path for OIDC issuer isolation         |
-| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)             | Accepted   | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
-| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                 | Accepted   | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
-| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)             | Accepted   | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
-| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted   | —          | Standalone functions over classes for services                  |
-| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted   | —          | Zod schemas for fail-fast config and request validation         |
-| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted   | —          | Direct-DB for init/migrate, HTTP for all other commands         |
-| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Accepted   | —          | Porta validates its own tokens for admin API access             |
-| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted   | —          | Consistent module layout: types, repository, cache, service     |
-| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted   | —          | Per-client override with org-level default inheritance          |
-| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted   | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
-| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff)             | Superseded | 2026-04    | Historical design for the removed GUI workspace                 |
-| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Proposed   | 2026-08-09 | Risk-sliced black-box evidence in the retained harness          |
+| #       | Decision                                                                            | Status                | Date       | Summary                                                         |
+| ------- | ----------------------------------------------------------------------------------- | --------------------- | ---------- | --------------------------------------------------------------- |
+| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                       | Accepted              | —          | Koa required for node-oidc-provider compatibility               |
+| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                       | Accepted              | —          | Organization slug in URL path for OIDC issuer isolation         |
+| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)             | Accepted              | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
+| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                 | Accepted              | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
+| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)             | Accepted              | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
+| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted              | —          | Standalone functions over classes for services                  |
+| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
+| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
+| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Accepted              | —          | Porta validates its own tokens for admin API access             |
+| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
+| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted              | —          | Per-client override with org-level default inheritance          |
+| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
+| ADR-013 | [Admin GUI: React SPA + Koa BFF](#adr-013-admin-gui-react-spa--koa-bff)             | Superseded            | 2026-04    | Historical design for the removed GUI workspace                 |
+| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
 
 ---
 

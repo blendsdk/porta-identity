@@ -4,6 +4,8 @@ import {
   SECURITY_DECISION_EVENT_CAPABILITY_MISSING,
   SECURITY_DECISION_EVENT_ORACLE,
   SECURITY_DECISION_FORBIDDEN_CANARIES,
+  SECURITY_DECISION_TRACE_CASES,
+  SECURITY_DECISION_TRACE_OPERATIONS,
   type SecurityDecisionCaseId,
   type SecurityDecisionCaseObservation,
 } from './security-decision-event-contract.js';
@@ -43,6 +45,7 @@ function expectExactEvent(observation: SecurityDecisionCaseObservation): void {
   const retained = JSON.stringify({
     event: observation.event,
     output: observation.operationalOutput,
+    audit: observation.auditOutput,
   });
   for (const canary of SECURITY_DECISION_FORBIDDEN_CANARIES) {
     expect(retained).not.toContain(canary);
@@ -85,6 +88,22 @@ describe('security decision terminal-event requirement catalog', () => {
       'error',
       'stack',
     ]);
+  });
+
+  it('should bind globally unique trace cases to every executable decision scenario', () => {
+    expect(Object.keys(SECURITY_DECISION_TRACE_CASES)).toStrictEqual([
+      'ST-80',
+      'ST-81',
+      'ST-82',
+      'ST-83',
+      'ST-84',
+    ]);
+    expect(
+      new Set(Object.entries(SECURITY_DECISION_TRACE_CASES).flatMap(([, caseIds]) => caseIds)),
+    ).toStrictEqual(new Set(SECURITY_DECISION_EVENT_ORACLE.cases.map(([caseId]) => caseId)));
+    expect(SECURITY_DECISION_TRACE_OPERATIONS).toStrictEqual({
+      'ST-85': 'observe-key-rotation',
+    });
   });
 
   it('should fail closed only when production evidence is explicitly required', () => {

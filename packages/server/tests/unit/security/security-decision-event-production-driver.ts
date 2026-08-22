@@ -86,6 +86,7 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       durableAuditCount: 0,
       emergencyFallbackCount: getSecurityDecisionSinkFailureCount() - fallbackBefore,
       operationalOutput: observation.output,
+      auditOutput: [],
     };
   }
 
@@ -188,8 +189,16 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
     const organization = await pool.query<{ id: string }>(
       'SELECT id FROM organizations WHERE is_super_admin = TRUE LIMIT 1',
     );
-    const organizationId = organization.rows[0]?.id;
-    if (!organizationId) throw new Error('Super-admin fixture is unavailable');
+    const existingOrganizationId = organization.rows[0]?.id;
+    const organizationId = existingOrganizationId ?? randomUUID();
+    const createdOrganization = existingOrganizationId === undefined;
+    if (createdOrganization) {
+      await pool.query(
+        `INSERT INTO organizations (id, name, slug, is_super_admin)
+         VALUES ($1, $2, $3, TRUE)`,
+        [organizationId, 'Decision super admin', `decision-admin-${runId}`],
+      );
+    }
 
     await pool.query(
       `INSERT INTO users (id, organization_id, email, status)
@@ -223,6 +232,9 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
         clearAdminAuthProvider();
         await pool.query('DELETE FROM users WHERE id = $1', [userId]);
         await pool.query('DELETE FROM applications WHERE id = $1', [applicationId]);
+        if (createdOrganization) {
+          await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
+        }
         await invalidateUserCache(userId);
         await invalidateUserRbacCache(userId);
       },
@@ -348,8 +360,13 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
         'SELECT COUNT(*)::text AS count FROM security_decision_driver_mutations WHERE run_id = $1',
         [runId],
       );
-      const audit = await pool.query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count FROM audit_log
+      const audit = await pool.query<{
+        event_type: string;
+        event_category: string;
+        description: string;
+        metadata: unknown;
+      }>(
+        `SELECT event_type, event_category, description, metadata FROM audit_log
          WHERE actor_id = $1 AND event_type = 'admin.mutation.committed'`,
         [actorId],
       );
@@ -359,9 +376,10 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
         eventCount: events.length,
         event: events.length === 1 ? events[0] : null,
         mutationCount: Number(mutation.rows[0]?.count ?? 0),
-        durableAuditCount: Number(audit.rows[0]?.count ?? 0),
+        durableAuditCount: audit.rowCount ?? 0,
         emergencyFallbackCount: 0,
         operationalOutput: output,
+        auditOutput: audit.rows.map((row) => JSON.stringify(row)),
       };
     } finally {
       await new Promise<void>((resolve, reject) => {
@@ -404,6 +422,7 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
         durableAuditCount: 0,
         emergencyFallbackCount: 0,
         operationalOutput: [response],
+        auditOutput: [],
       };
     } finally {
       detach();

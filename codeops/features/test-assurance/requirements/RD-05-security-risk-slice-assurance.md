@@ -28,7 +28,7 @@ claim and is not a certification statement.
 | R5.6 | Fixed-shape password/recovery work and public enumeration equivalence are implemented and rerunnable | Statistical timing distributions remain diagnostic and receive no security credit |
 | R5.7 | Magic-link tenant, interaction, client-authority, atomic-consume, and replay behavior is implemented and rerunnable | TOTP same-window replay and other explicitly deferred consistency cases remain open |
 | R5.9 | Whole-request bulk validation, per-item bulk transactions, atomic import, and bounded allowlisted export are implemented and rerunnable | Unrelated packed-client/product observations remain separately recorded |
-| R5.17 | Covered malformed/admin outcomes emit one privacy-safe terminal event and covered authorized mutations retain durable audit atomicity | Unmapped protocol, forwarding, and dependency-observation gaps receive no inferred credit |
+| R5.17 | Covered malformed/admin outcomes emit one privacy-safe terminal event and covered authorized mutations retain durable audit atomicity | Server-backed cases are rerunnable; external production-security correlation remains unqualified, and unmapped gaps receive no inferred credit |
 
 ## Functional Requirements
 

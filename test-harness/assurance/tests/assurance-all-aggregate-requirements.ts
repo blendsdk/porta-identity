@@ -188,6 +188,12 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
       conclusion: 'unqualified',
     },
     {
+      id: 'correlated-security-decision-observer-incomplete',
+      authority: 'stale-or-no-go-evidence',
+      statusSource: 'approved-program-gap-register',
+      conclusion: 'unqualified',
+    },
+    {
       id: 'source-variation-campaign-not-executed',
       authority: 'stale-or-no-go-evidence',
       statusSource: 'approved-program-gap-register',
@@ -428,7 +434,7 @@ const assuranceAllAggregateItemsFixture: readonly AssuranceAllItemEvidence[] = O
 export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence = Object.freeze({
   schemaVersion: 1,
   registryVersion: 1,
-  registryDigest: 'sha256:9d8c81a715daa3f2da1d9a502300fc31d85c737fd9ffbf3c663b16f6fe4cca7c',
+  registryDigest: 'sha256:2da5bf9c9d08148e0f71281a8613ab49b4526178df44d21182fdf71f33e4b7bb',
   baselineRevision: 'b'.repeat(40),
   baselineTreeDigest: `sha256:${'c'.repeat(64)}`,
   children: Object.freeze(

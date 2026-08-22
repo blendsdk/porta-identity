@@ -69,7 +69,7 @@ Must, source mismatch, dangling ID, or unregistered extra edge.
 | R5.12       | ST-34, ST-39, ST-48–ST-51  | 7.2–7.9, 8.3–8.9                         | CLAIM-R5-12 |
 | R5.13       | ST-63A                     | 6.4, 6.12, 7.4, 7.9, 8.6, 8.9, 9.5, 9.10 | CLAIM-R5-13 |
 | R5.14       | ST-63B                     | 1.5, 6.4–6.12, 7.4–7.9, 8.6–8.9, 9.5–9.10 | CLAIM-R5-14 |
-| R5.17       | ST-52–ST-54, ST-57–ST-61, ST-63 | 9.1–9.10                             | CLAIM-R5-17 |
+| R5.17       | ST-80–ST-85                | 9.6                                      | CLAIM-R5-17 |
 | R6.1        | ST-64, ST-66               | 5.1–5.4, 5.10                            | CLAIM-R6-01 |
 | R6.2        | ST-68                      | 5.1–5.4, 5.10–5.11                       | CLAIM-R6-02 |
 | R6.3        | ST-64–ST-68                | 5.1–5.4, 5.10–5.11                       | CLAIM-R6-03 |
@@ -103,10 +103,11 @@ plan repaired four product roots without changing those claim identities:
 | Enumeration work asymmetry | R5.6 / CLAIM-R5-06 | product-remediation 1.1–1.16 | Design-level fixed-work and public functional controls | Statistical timing remains non-gating and authority-blocked |
 | Cross-tenant magic-link acceptance | R5.7 / CLAIM-R5-07 | product-remediation 2.1–2.9 | Tenant/interaction/client authority, atomic consume, replay and failure controls | Other R5.7 artifact/consistency gaps remain independent |
 | Bulk/import/export contract ambiguity | R5.9 / CLAIM-R5-09 | product-remediation 3.1–3.10 | Server, SDK/CLI, raw P1, packed-client, transaction and export controls | The obsolete contract-unapproved gap is removed; unrelated P1 defects remain |
-| Missing terminal decision event | R5.17 / CLAIM-R5-17 | product-remediation 4.1–4.11 | Exact terminal-event tuples, privacy, sink failure and durable audit atomicity | Unmapped protocol/forwarding/dependency observations receive no inferred credit |
+| Missing terminal decision event | R5.17 / CLAIM-R5-17 | product-remediation 4.1–4.11 | Server-backed terminal-event tuples, privacy, sink failure and durable audit atomicity | External production-security log correlation remains unqualified; no aggregate claim credit is awarded |
 
 Clean aggregate run `98473889-8a9c-4fff-9048-af5e0d0001aa` admitted the governed report at revision
-`5cb03e5f`. It does not certify exploit absence or authorize new CI, release, or merge gates.
+`5cb03e5f`. That run predates the explicit external-correlation gap registration and does not award
+R5.17 aggregate credit, certify exploit absence, or authorize new CI, release, or merge gates.
 
 The mappings above establish ownership, not completion. For Phase 7, ST-35 consent substitution,
 ST-40 JWKS-key separation, ST-41 consent/logout/client-context, and the affected R5.2 log/recovery/

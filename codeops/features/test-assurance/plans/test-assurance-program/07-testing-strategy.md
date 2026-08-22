@@ -134,6 +134,12 @@ DEF-6; a passing live command cannot close them.
 | ST-63A | Review/classify existing tests and run every pre-existing server pentest after a slice                        | Tests receive an explicit evidence class; no pentest is deleted, skipped, relaxed, or replaced              | R4.2, R5.13 |
 | ST-63B | Force one independently verified invariant violation                                                          | Expected oracle remains; affected claim/slice blocks and separate defect routing is created                 | R5.14       |
 | ST-63C | Attempt to execute or close risk slices out of order                                                          | P0 tenant/admin, protocol/token, human auth, then P1 order is enforced unless an active exploit is recorded | R5.1        |
+| ST-80  | Execute covered allowed and denied administrative requests through the production middleware chain           | Exactly one strict terminal decision event records the final status, outcome, boundary, and closed reason   | R5.17       |
+| ST-81  | Execute a covered authorized mutation with a successful audit, then force its durable audit write to fail      | Success commits mutation and audit atomically; audit failure rolls back the mutation and returns minimally  | R5.17       |
+| ST-82  | Exercise covered malformed JSON, oversized body, schema rejection, thrown handler, and HTTP parser failures    | Each covered request or connection emits one correlated terminal decision without raw input or error detail | R5.17       |
+| ST-83  | Inject request, credential, identity, network, stack, SQL, path, and infrastructure canaries                   | Forbidden material is absent from the event, response, operational output, audit data, and retained evidence | R5.17       |
+| ST-84  | Force the terminal-event sink to fail while a covered request is denied                                        | The denial remains authoritative and one bounded privacy-safe emergency fallback is recorded                | R5.17       |
+| ST-85  | Rotate the reference-protection key ring while retaining the prior key                                         | New references use the active key; prior references verify only with retained keys; domains remain distinct | R5.17       |
 
 ### Fault sensitivity and packed-client compatibility
 

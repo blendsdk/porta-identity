@@ -55,12 +55,12 @@ construction after the product behavior is green.
 
 | # | Input / scenario | Expected output / behavior | Source |
 | --- | --- | --- | --- |
-| ST-25 | Allowed and denied admin reads traverse authentication, membership, permission, and resource boundaries. | Each request emits exactly one strict `security.decision.v1` event with final status/outcome and exact decision point/reason; no substring joining is needed. | RD-05 R5.17/AC15; 03-04; AR-4 |
-| ST-26 | Authorized admin mutation succeeds, then its durable audit write is forced to fail in an isolated transaction test. | Success commits mutation+audit atomically; audit failure rolls back mutation and returns minimal failure. | RD-05 R5.17/AC15; 03-04; AR-4 |
-| ST-27 | Malformed JSON, oversized body, Zod rejection, thrown handler, and Node HTTP parser failure occur. | Each covered request/connection emits one closed terminal event with server correlation and no raw rejected input/error; Koa and transport forms are distinguishable. | RD-05 R5.17/AC15; 03-04; AR-4 |
-| ST-28 | Caller supplies request ID, encoded path/query, credentials, raw IDs, email, IP, user agent, stack, SQL, or infrastructure canaries. | Caller request ID is ignored as authority; all forbidden material is absent from event, ordinary logs, audit, response, and retained evidence. | RD-05 R5.17/AC15; 03-04; AR-4, AR-8 |
-| ST-29 | Event sink throws while request is denied. | Denial remains denied; one bounded emergency counter/fallback occurs without sensitive text; request cannot become allowed. | RD-05 R5.17/AC15; 03-04; AR-4 |
-| ST-30 | Rotate the cookie-key ring while retaining the prior key. | New protected references use the active derived key ID; prior references verify only with retained prior keys; cross-domain references differ. | 03-04; AR-8 |
+| ST-80 | Allowed and denied admin reads traverse authentication, membership, permission, and resource boundaries. | Each request emits exactly one strict `security.decision.v1` event with final status/outcome and exact decision point/reason; no substring joining is needed. | RD-05 R5.17/AC15; 03-04; AR-4 |
+| ST-81 | Authorized admin mutation succeeds, then its durable audit write is forced to fail in an isolated transaction test. | Success commits mutation+audit atomically; audit failure rolls back mutation and returns minimal failure. | RD-05 R5.17/AC15; 03-04; AR-4 |
+| ST-82 | Malformed JSON, oversized body, Zod rejection, thrown handler, and Node HTTP parser failure occur. | Each covered request/connection emits one closed terminal event with server correlation and no raw rejected input/error; Koa and transport forms are distinguishable. | RD-05 R5.17/AC15; 03-04; AR-4 |
+| ST-83 | Caller supplies request ID, encoded path/query, credentials, raw IDs, email, IP, user agent, stack, SQL, or infrastructure canaries. | Caller request ID is ignored as authority; all forbidden material is absent from event, ordinary logs, audit, response, and retained evidence. | RD-05 R5.17/AC15; 03-04; AR-4, AR-8 |
+| ST-84 | Event sink throws while request is denied. | Denial remains denied; one bounded emergency counter/fallback occurs without sensitive text; request cannot become allowed. | RD-05 R5.17/AC15; 03-04; AR-4 |
+| ST-85 | Rotate the cookie-key ring while retaining the prior key. | New protected references use the active derived key ID; prior references verify only with retained prior keys; cross-domain references differ. | 03-04; AR-8 |
 
 ## Test files
 
@@ -69,7 +69,7 @@ construction after the product behavior is green.
 | Specification | `packages/server/tests/unit/security/enumeration-resistance.spec.test.ts` | ST-01–ST-06 |
 | Specification | `packages/server/tests/unit/auth/magic-link-tenant-binding.spec.test.ts` | ST-07–ST-13 |
 | Specification | `packages/server/tests/unit/admin/administrative-data-contract.spec.test.ts` | ST-14–ST-24 |
-| Specification | `packages/server/tests/unit/security/security-decision-event.spec.test.ts` | ST-25–ST-30 |
+| Specification | `packages/server/tests/unit/security/security-decision-event.spec.test.ts` | ST-80–ST-85 |
 | Implementation | Concern-specific `*.impl.test.ts` files beside existing unit/integration projects | Repository, transaction, worker, Lua, redaction, and failure internals |
 | Black box | Existing retained harness human-auth/P1/security projects | Public response, cross-tenant, MailHog, packed client, and log observations |
 

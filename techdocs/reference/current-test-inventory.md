@@ -8,16 +8,16 @@
 
 ## Executive Summary
 
-Porta has **356 branch-CI test files containing 4,543 currently collected test cases**. The often
+Porta has **356 branch-CI test files containing 4,545 currently collected test cases**. The often
 quoted “3K+” figure covers only the server's Vitest projects. The complete branch-CI surface also
 contains SDK, CLI, browser, external OIDC harness, and repository-structure tests. At the snapshot,
 six root-owned assurance-internal files contained 53 governance cases. The assurance program now
 contains 113 phase-gated specification and implementation files selected by explicit root commands;
 they remain outside the required branch lane until separately authorized.
 
-The repository contains a substantial test investment: **81,182 lines of branch test code** compared with
+The repository contains a substantial test investment: **81,202 lines of branch test code** compared with
 **47,784 lines of TypeScript production source** across the server, SDK, and CLI. The branch-CI
-files account for those 81,182 lines; assurance specification and implementation files add another
+files account for those 81,202 lines; assurance specification and implementation files add another
 14,635 lines. Most cases are
 isolated unit tests. Real PostgreSQL, Redis, MailHog, HTTP server, browser, and external-client
 layers are also present.
@@ -27,7 +27,7 @@ test has an independent or sufficiently strict oracle.
 
 ## Assurance Closeout Checkpoint
 
-The latest authoritative `yarn verify` checkpoint collected **251 server test files / 3,575
+The latest authoritative collector snapshot contains **251 server test files / 3,577
 cases**, **31 SDK files / 404 cases**, and **29 CLI files / 356 cases**, in addition to 70
 repository-structure cases. The assurance tree contains 113 explicitly selected specification and
 implementation files; service-backed journeys and parameterized subtests make a static source
@@ -54,7 +54,8 @@ This checkpoint is deliberately **not** certification and does not claim that Po
 paths. The authorized enumeration-work, magic-link authority, administrative-data, and covered
 terminal-decision product roots are corrected and rerunnable. Product defects and unresolved
 contracts remain separately recorded, including statistical timing authority, TOTP replay
-semantics, protocol/forwarding/dependency observation gaps, public nginx version disclosure, SDK cursor
+semantics, external terminal-event correlation, protocol/forwarding/dependency observation gaps,
+public nginx version disclosure, SDK cursor
 pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
 completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
 protocol-candidate qualification, local ratchets, and exhaustive local aggregate/UI collection.
@@ -66,8 +67,8 @@ merge-policy use.
 
 | Suite                 |   Files |     Cases |   Test LOC | Primary boundary                                          | Required by branch CI       |
 | --------------------- | ------: | --------: | ---------: | --------------------------------------------------------- | --------------------------- |
-| Server unit           |     163 |     2,860 |     46,453 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
-| Server integration    |      33 |       362 |      6,506 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
+| Server unit           |     163 |     2,861 |     46,473 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
+| Server integration    |      33 |       363 |      6,506 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
 | Server HTTP E2E       |      20 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
 | Server penetration    |      35 |       224 |      5,266 | Attack-oriented HTTP requests against full Porta          | Yes, through `yarn verify`  |
 | Server browser UI     |      24 |       132 |      4,783 | Chromium against a real Porta server                      | Yes, separate `ui` job      |
@@ -75,7 +76,7 @@ merge-policy use.
 | CLI unit              |      29 |       356 |      6,051 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
 | External OIDC harness |       6 |         6 |        203 | Dockerized SPA and BFF clients using Porta over HTTP/TLS  | Yes, separate `harness` job |
 | Repository structure  |      15 |        70 |      2,915 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
-| **Total**             | **356** | **4,543** | **81,182** | —                                                         | **Yes**                     |
+| **Total**             | **356** | **4,545** | **81,202** | —                                                         | **Yes**                     |
 
 Case counts were collected through Vitest's runtime collector, Playwright's `--list` mode, and a
 fresh `yarn test:structure` run. Parameterized server tests explain why runtime case counts exceed
@@ -85,7 +86,7 @@ static `it(...)` declarations.
 
 | Command or job                                                                              | What it executes                                                                                                      |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                                                               | 70 structure tests, all 3,575 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
+| `yarn verify`                                                                               | 70 structure tests, all 3,577 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
 | `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
 | `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
 | `yarn test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
@@ -99,54 +100,59 @@ not part of the local `yarn verify` command; they are separate CI jobs.
 
 ## Server Unit Tests
 
-The server unit project accounts for **2,799 cases (63% of the complete test count)**. One hundred
-and four of its 156 files directly call `vi.mock`; other files use spies, passed-in fakes, or real pure
+The server unit project accounts for **2,861 cases (63% of the complete test count)**. One hundred
+and five of its 163 files directly call `vi.mock`; other files use spies, passed-in fakes, or real pure
 objects. These tests mainly verify module-level logic, returned values, query construction,
 dependency calls, error handling, and validation.
 
 | Area            | Cases | What the test files exercise                                                                                                                                                                                                     |
 | --------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lib`           |   409 | Admin permissions, audit logs, branding assets, bulk operations, cursor pagination, import/export, entity history, ETags, image validation, logging, runtime paths, sessions, signing keys, statistics, and system configuration |
-| `routes`        |   298 | Route handlers for applications, clients, claims, interactions, invitations, magic links, password resets, RBAC, statistics, 2FA, and users                                                                                      |
-| `middleware`    |   266 | Admin authentication/CORS/rate limits, client-secret hashing, errors, metrics, OIDC CORS, permissions, readiness, logging, security headers, tenant resolution, and token limits                                                 |
+| `lib`           |   412 | Admin permissions, audit logs, branding assets, bulk operations, cursor pagination, import/export, entity history, ETags, image validation, logging, runtime paths, sessions, signing keys, statistics, and system configuration |
+| `routes`        |   306 | Route handlers for applications, clients, claims, interactions, invitations, magic links, password resets, RBAC, statistics, 2FA, and users                                                                                      |
+| `middleware`    |   295 | Admin authentication/CORS/rate limits, client-secret hashing, errors, metrics, OIDC CORS, permissions, readiness, logging, security headers, tenant resolution, and token limits                                                 |
 | `rbac`          |   253 | Permission and role repositories/services, mappings, user-role assignment, caches, slugs, errors, and types                                                                                                                      |
 | `clients`       |   197 | Client repository/service, secret lifecycle and cryptography, login-method resolution, validators, caches, and types                                                                                                             |
-| `oidc`          |   168 | Account lookup, adapter selection, provider configuration, CORS, grants, PostgreSQL/Redis adapters, rendering hooks, and missing-session recovery                                                                                |
-| `auth`          |   164 | CSRF, email rendering/transport, localization, magic-link sessions, rate limiting, templates, token generation, and token persistence                                                                                            |
+| `auth`          |   196 | CSRF, email rendering/transport, localization, magic-link sessions, rate limiting, templates, token generation, and token persistence                                                                                            |
+| `oidc`          |   176 | Account lookup, adapter selection, provider configuration, CORS, grants, PostgreSQL/Redis adapters, rendering hooks, and missing-session recovery                                                                                |
 | `two-factor`    |   142 | Encryption, OTP, TOTP, recovery codes, repositories, services, caches, errors, and types                                                                                                                                         |
 | `custom-claims` |   140 | Claim repositories/services, caches, validators, types, and errors                                                                                                                                                               |
 | `users`         |   132 | Lockout, caching, claims, GDPR behavior, passwords, repository/service behavior, types, and errors                                                                                                                               |
 | `organizations` |   121 | Organization cache, destruction, repository/service, slugs, super-admin lookup, and types                                                                                                                                        |
-| Migrations      |   119 | Migration-file structure and schema expectations without applying the real migration chain                                                                                                                                       |
+| Migrations      |   134 | Migration-file structure and schema expectations without applying the real migration chain                                                                                                                                       |
 | `applications`  |   114 | Application cache, repository/service, slugs, and types                                                                                                                                                                          |
 | Server CLI      |   114 | Bootstrap, migration command handling, health, initialization, prompts, output, and errors                                                                                                                                       |
 | SDK contracts   |    35 | Compile-time/runtime alignment between server routes and SDK bulk, domain, and import contracts                                                                                                                                  |
-| Configuration   |    49 | Configuration parsing, validation, defaults, and production constraints                                                                                                                                                          |
+| Configuration   |    50 | Configuration parsing, validation, defaults, and production constraints                                                                                                                                                          |
+| Security oracle |    25 | Enumeration resistance and terminal-decision behavior through requirement-owned production adapters                                                                                                                              |
+| Admin contracts |    19 | Bulk/import/export request, transaction, scope, and response contracts                                                                                                                                                           |
 
 ## Server Integration Tests
 
-The integration project contains **275 cases**. It uses real infrastructure and directly verifies
+The integration project contains **363 cases**. It uses real infrastructure and directly verifies
 persistence and service boundaries without exercising every behavior through public HTTP.
 
-| Area               | Cases | What is exercised                                                                                                                                                     |
-| ------------------ | ----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repositories       |    98 | Applications, audit logs, clients, organizations, permissions, roles, 2FA, users, and cursor pagination against PostgreSQL                                            |
-| Services           |    89 | Branding assets, bulk operations, configuration, import/export, email delivery, entity history, ETag concurrency, invitations, sessions, signing keys, and statistics |
-| Migration chain    |    47 | Applied schema objects, constraints, indexes, and migration outcomes in PostgreSQL                                                                                    |
-| Adapters           |    17 | PostgreSQL and Redis OIDC adapter persistence behavior                                                                                                                |
-| 2FA administration |    15 | Administrative 2FA operations with persistent state                                                                                                                   |
-| Tenant middleware  |     6 | Organization resolution backed by real persistence/cache state                                                                                                        |
-| CLI initialization |     3 | Initialization behavior against infrastructure                                                                                                                        |
+| Area                | Cases | What is exercised                                                                                                                                                     |
+| ------------------- | ----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repositories        |    98 | Applications, audit logs, clients, organizations, permissions, roles, 2FA, users, and cursor pagination against PostgreSQL                                            |
+| Services            |    96 | Branding assets, bulk operations, configuration, import/export, email delivery, entity history, ETag concurrency, invitations, sessions, signing keys, and statistics |
+| Migration chain     |    48 | Applied schema objects, constraints, indexes, and migration outcomes in PostgreSQL                                                                                    |
+| Administrative data |    37 | Bulk/import/export contracts plus durable audit and transaction behavior                                                                                              |
+| Authentication      |    25 | Recovery jobs, magic-link authority, password resets, and related persistent state                                                                                    |
+| Decision events     |    18 | Production middleware terminal-event, privacy, correlation, and failure-path observations                                                                             |
+| Adapters            |    17 | PostgreSQL and Redis OIDC adapter persistence behavior                                                                                                                |
+| 2FA administration  |    15 | Administrative 2FA operations with persistent state                                                                                                                   |
+| Tenant middleware   |     6 | Organization resolution backed by real persistence/cache state                                                                                                        |
+| CLI initialization  |     3 | Initialization behavior against infrastructure                                                                                                                        |
 
 ## Server HTTP E2E Tests
 
-The HTTP E2E project starts the assembled Koa/OIDC server and contains **128 cases**.
+The HTTP E2E project starts the assembled Koa/OIDC server and contains **129 cases**.
 
 | Area               | Cases | What is exercised                                                                                            |
 | ------------------ | ----: | ------------------------------------------------------------------------------------------------------------ |
 | Invalid parameters |    43 | Authorization, consent, login-form, token-exchange, introspection, and revocation input handling             |
 | OIDC flows         |    37 | Authorization-code construction/entry, client credentials, discovery, refresh, introspection, and revocation |
-| Authentication     |    24 | Password login, magic links, forgotten passwords, and consent interactions                                   |
+| Authentication     |    25 | Password login, magic links, forgotten passwords, and consent interactions                                   |
 | Security           |    14 | CSRF, authentication rate limiting, and user-enumeration responses                                           |
 | Multi-tenancy      |    10 | Issuer/endpoint resolution and selected tenant-isolation cases                                               |
 
@@ -177,11 +183,11 @@ varies: the current files include conditional early returns and numerous broad �
 
 ## Browser UI Tests
 
-The UI project runs **134 cases in Chromium only** against a real server.
+The UI project runs **132 cases in Chromium only** against a real server.
 
 | Area                          | Cases | What is exercised                                                                                                                                 |
 | ----------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authentication and OIDC flows |    96 | Password and magic-link login, consent, invitations, resets, 2FA, userinfo, discovery, login methods, interaction lifecycle, and error states     |
+| Authentication and OIDC flows |    94 | Password and magic-link login, consent, invitations, resets, 2FA, userinfo, discovery, login methods, interaction lifecycle, and error states     |
 | Browser security              |    29 | Cookie attributes, CSRF behavior, magic-link/reset abuse, tenant branding/status isolation, security headers, console errors, and failed requests |
 | Accessibility                 |     5 | Labels, error associations, autofocus, keyboard navigation, and consent buttons                                                                   |
 | Infrastructure smoke          |     4 | Health endpoint and seeded user/organization fixtures                                                                                             |
@@ -208,11 +214,11 @@ server.
 
 ## CLI Tests
 
-All **355 CLI cases** are pure unit tests; command tests generally mock SDK calls.
+All **356 CLI cases** are pure unit tests; command tests generally mock SDK calls.
 
 | Area                   | Cases | What is exercised                                                                                                                                                                      |
 | ---------------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Commands               |   230 | Applications, audit, bulk, clients, configuration, diagnostics, exports, health, keys, logout, organizations, provisioning, sessions, statistics, users, version, and identity display |
+| Commands               |   231 | Applications, audit, bulk, clients, configuration, diagnostics, exports, health, keys, logout, organizations, provisioning, sessions, statistics, users, version, and identity display |
 | Browser authentication |    43 | PKCE, metadata, callback server, browser flow, and refresh-token warnings                                                                                                              |
 | Parsers                |    23 | CLI option and structured-value parsing                                                                                                                                                |
 | Error handling         |    19 | Error classification and user-facing handling                                                                                                                                          |
