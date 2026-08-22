@@ -53,9 +53,9 @@ export async function getCachedDefinitions(
     const data = await redis.get(`${DEFINITIONS_PREFIX}${applicationId}`);
     if (!data) return null;
     return deserializeDefinitions(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, applicationId }, 'Failed to read claim definitions from cache');
+    logger.warn({ event: 'claim-cache-read-failed' }, 'Claim cache read failed');
     return null;
   }
 }
@@ -82,9 +82,9 @@ export async function setCachedDefinitions(
         'EX',
         CACHE_TTL,
       );
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, applicationId }, 'Failed to cache claim definitions');
+      logger.warn({ event: 'claim-cache-write-failed' }, 'Claim cache write failed');
     }
   });
 }
@@ -101,9 +101,9 @@ export async function invalidateDefinitionsCache(applicationId: string): Promise
     try {
       const redis = getRedis();
       await redis.del(`${DEFINITIONS_PREFIX}${applicationId}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, applicationId }, 'Failed to invalidate claim definitions cache');
+      logger.warn({ event: 'claim-cache-invalidation-failed' }, 'Claim cache invalidation failed');
     }
   });
 }

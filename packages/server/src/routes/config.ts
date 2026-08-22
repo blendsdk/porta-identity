@@ -31,6 +31,11 @@ export const updateConfigSchema = z.object({
   value: z.string().min(1, 'Value must not be empty'),
 });
 
+/** Return the only public representation allowed for a stored configuration value. */
+export function publicConfigValue(value: string, isSensitive: boolean): string {
+  return isSensitive ? '***' : value;
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -58,21 +63,23 @@ export function createConfigRouter(): Router {
     );
 
     // Mask sensitive values to prevent accidental exposure
-    const data = result.rows.map((r: {
-      key: string;
-      value: string;
-      value_type: string;
-      description: string | null;
-      is_sensitive: boolean;
-      updated_at: string;
-    }) => ({
-      key: r.key,
-      value: r.is_sensitive ? '***' : r.value,
-      valueType: r.value_type,
-      description: r.description,
-      isSensitive: r.is_sensitive,
-      updatedAt: r.updated_at,
-    }));
+    const data = result.rows.map(
+      (r: {
+        key: string;
+        value: string;
+        value_type: string;
+        description: string | null;
+        is_sensitive: boolean;
+        updated_at: string;
+      }) => ({
+        key: r.key,
+        value: publicConfigValue(r.value, r.is_sensitive),
+        valueType: r.value_type,
+        description: r.description,
+        isSensitive: r.is_sensitive,
+        updatedAt: r.updated_at,
+      }),
+    );
 
     ctx.body = { data };
   });
@@ -88,7 +95,7 @@ export function createConfigRouter(): Router {
 
     if (result.rows.length === 0) {
       ctx.status = 404;
-      ctx.body = { error: `Config key not found: ${key}` };
+      ctx.body = { error: 'Configuration entry not found' };
       return;
     }
 
@@ -104,7 +111,7 @@ export function createConfigRouter(): Router {
     ctx.body = {
       data: {
         key: row.key,
-        value: row.is_sensitive ? '***' : row.value,
+        value: publicConfigValue(row.value, row.is_sensitive),
         valueType: row.value_type,
         description: row.description,
         isSensitive: row.is_sensitive,
@@ -122,32 +129,32 @@ export function createConfigRouter(): Router {
     const parsed = updateConfigSchema.safeParse(body);
     if (!parsed.success) {
       ctx.status = 400;
-      ctx.body = {
-        error: 'Validation failed',
-        details: parsed.error.issues.map((issue) => ({
-          path: issue.path,
-          message: issue.message,
-        })),
-      };
+      ctx.body = { error: 'Configuration request is invalid' };
       return;
     }
 
     const result = await getPool().query(
-      'UPDATE system_config SET value = $1, updated_at = NOW() WHERE key = $2 RETURNING key, value, value_type',
+      `UPDATE system_config SET value = $1, updated_at = NOW() WHERE key = $2
+       RETURNING key, value, value_type, is_sensitive`,
       [parsed.data.value, key],
     );
 
     if (result.rows.length === 0) {
       ctx.status = 404;
-      ctx.body = { error: `Config key not found: ${key}` };
+      ctx.body = { error: 'Configuration entry not found' };
       return;
     }
 
-    const row = result.rows[0] as { key: string; value: string; value_type: string };
+    const row = result.rows[0] as {
+      key: string;
+      value: string;
+      value_type: string;
+      is_sensitive: boolean;
+    };
     ctx.body = {
       data: {
         key: row.key,
-        value: row.value,
+        value: publicConfigValue(row.value, row.is_sensitive),
         valueType: row.value_type,
       },
     };

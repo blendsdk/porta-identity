@@ -309,8 +309,8 @@ async function renderSuccessPageForAuth(
     ctx.status = 200;
     ctx.type = 'text/html';
     ctx.body = html;
-  } catch (renderError) {
-    logger.error({ renderError }, 'Failed to render magic link success page');
+  } catch {
+    logger.error({ event: 'magic-link-success-render-failed' }, 'Magic link success page failed');
     ctx.status = 200;
     ctx.body = 'Your email has been verified. You may close this tab.';
   }

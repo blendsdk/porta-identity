@@ -51,9 +51,9 @@ export async function getCachedUserById(id: string): Promise<User | null> {
     const data = await redis.get(`${USER_PREFIX}${id}`);
     if (!data) return null;
     return deserializeUser(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read user from cache');
+    logger.warn({ event: 'user-cache-read-failed' }, 'User cache read failed');
     return null;
   }
 }
@@ -77,9 +77,9 @@ export async function cacheUser(user: User): Promise<void> {
       const redis = getRedis();
       const data = JSON.stringify(user);
       await redis.set(`${USER_PREFIX}${user.id}`, data, 'EX', CACHE_TTL);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, id: user.id }, 'Failed to cache user');
+      logger.warn({ event: 'user-cache-write-failed' }, 'User cache write failed');
     }
   });
 }
@@ -101,9 +101,9 @@ export async function invalidateUserCache(id: string): Promise<void> {
     try {
       const redis = getRedis();
       await redis.del(`${USER_PREFIX}${id}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, id }, 'Failed to invalidate user cache');
+      logger.warn({ event: 'user-cache-invalidation-failed' }, 'User cache invalidation failed');
     }
   });
 }

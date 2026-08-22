@@ -165,6 +165,16 @@ function outcomeForStatus(status: number): SecurityDecisionEvent['outcome'] {
 
 /** Classify a final response when no earlier boundary supplied a more specific fact. */
 function fallbackDecisionFact(status: number): SecurityDecisionFact {
+  if (status === 401) {
+    return {
+      decisionPoint: 'authentication',
+      reasonCode: 'authentication-required',
+      outcome: 'deny',
+    };
+  }
+  if (status === 403) {
+    return { decisionPoint: 'permission', reasonCode: 'permission-required', outcome: 'deny' };
+  }
   if (status === 404) {
     return { decisionPoint: 'resource', reasonCode: 'route-not-found', outcome: 'deny' };
   }

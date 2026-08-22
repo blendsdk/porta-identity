@@ -5,7 +5,11 @@ import Koa from 'koa';
 import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 import {
+  clearAdminAuthProvider,
   requireAdminOrganizationMembership,
+  requireAdminAuth,
+  setAdminAuthProvider,
+  type AdminAccessTokenProvider,
   type AdminUser,
 } from '../../../src/middleware/admin-auth.js';
 import { adminMutationAudit } from '../../../src/middleware/admin-mutation-audit.js';
@@ -14,6 +18,10 @@ import { requirePermission } from '../../../src/middleware/require-permission.js
 import { requireUserOrganization } from '../../../src/middleware/require-user-organization.js';
 import { requestLogger } from '../../../src/middleware/request-logger.js';
 import { getPool } from '../../../src/lib/database.js';
+import { logger, observeOperationalLogOutput } from '../../../src/lib/logger.js';
+import { createApplicationRouter } from '../../../src/routes/applications.js';
+import { invalidateUserRbacCache } from '../../../src/rbac/cache.js';
+import { invalidateUserCache } from '../../../src/users/cache.js';
 import {
   getSecurityDecisionSinkFailureCount,
   type SecurityDecisionSink,
@@ -34,6 +42,12 @@ interface HttpExecutionObservation {
   readonly status: number;
   readonly events: readonly SecurityDecisionEvent[];
   readonly output: readonly string[];
+}
+
+/** Ephemeral database authority used to traverse the full admin authentication chain. */
+interface AdminAuthorityFixture {
+  readonly token: string;
+  cleanup(): Promise<void>;
 }
 
 /** Build the minimal authenticated actor shape used by administrative middleware. */
@@ -118,13 +132,25 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       events.push(event);
       await decisionSink?.(event);
     };
+    const authority =
+      caseId === 'admin-read-allowed' || caseId === 'schema-rejected'
+        ? await this.#createAdminAuthority()
+        : null;
+    const detachLogObserver = observeOperationalLogOutput((line) => output.push(line));
+    const priorLogLevel = logger.level;
+    logger.level = 'trace';
     const app = new Koa();
     app.use(requestLogger(observedDecisionSink, (record) => output.push(JSON.stringify(record))));
     app.use(errorHandler());
     app.use(bodyParser({ jsonLimit: '1kb' }));
 
-    const router = new Router();
-    this.#registerHttpCase(router, caseId);
+    const router =
+      caseId === 'admin-read-allowed' || caseId === 'schema-rejected'
+        ? createApplicationRouter()
+        : new Router();
+    if (caseId !== 'admin-read-allowed' && caseId !== 'schema-rejected') {
+      this.#registerHttpCase(router, caseId);
+    }
     app.use(router.routes());
     app.use(router.allowedMethods());
 
@@ -134,7 +160,7 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       const address = server.address();
       if (address === null || typeof address === 'string')
         throw new Error('Test server unavailable');
-      const request = httpRequestFor(caseId);
+      const request = httpRequestFor(caseId, authority?.token);
       const response = await fetch(`http://127.0.0.1:${address.port}${request.path}`, {
         method: request.method,
         headers: request.headers,
@@ -146,19 +172,71 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
+      logger.level = priorLogLevel;
+      detachLogObserver();
+      await authority?.cleanup();
     }
+  }
+
+  /** Seed an actual super-admin user and role for production middleware traversal. */
+  async #createAdminAuthority(): Promise<AdminAuthorityFixture> {
+    const pool = getPool();
+    const runId = randomUUID();
+    const userId = randomUUID();
+    const applicationId = randomUUID();
+    const roleId = randomUUID();
+    const organization = await pool.query<{ id: string }>(
+      'SELECT id FROM organizations WHERE is_super_admin = TRUE LIMIT 1',
+    );
+    const organizationId = organization.rows[0]?.id;
+    if (!organizationId) throw new Error('Super-admin fixture is unavailable');
+
+    await pool.query(
+      `INSERT INTO users (id, organization_id, email, status)
+       VALUES ($1, $2, $3, 'active')`,
+      [userId, organizationId, `decision-${runId}@example.test`],
+    );
+    await pool.query('INSERT INTO applications (id, name, slug) VALUES ($1, $2, $3)', [
+      applicationId,
+      'Decision driver',
+      `decision-${runId}`,
+    ]);
+    await pool.query('INSERT INTO roles (id, application_id, name, slug) VALUES ($1, $2, $3, $4)', [
+      roleId,
+      applicationId,
+      'Decision super admin',
+      'porta-super-admin',
+    ]);
+    await pool.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+
+    const token = 'protected-access-token';
+    const provider: AdminAccessTokenProvider = {
+      AccessToken: {
+        find: async (candidate) => (candidate === token ? { accountId: userId } : undefined),
+      },
+    };
+    setAdminAuthProvider(provider);
+
+    return {
+      token,
+      cleanup: async () => {
+        clearAdminAuthProvider();
+        await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+        await pool.query('DELETE FROM applications WHERE id = $1', [applicationId]);
+        await invalidateUserCache(userId);
+        await invalidateUserRbacCache(userId);
+      },
+    };
   }
 
   /** Register the exact production middleware boundary for one HTTP case. */
   #registerHttpCase(router: Router, caseId: SecurityDecisionCaseId): void {
     switch (caseId) {
       case 'admin-read-allowed':
-        router.get('/api/admin/assurance', (ctx) => {
-          ctx.body = { ok: true };
-        });
-        return;
+      case 'schema-rejected':
+        throw new Error('Case uses the production application router');
       case 'admin-unauthenticated':
-        router.get('/api/admin/assurance', requirePermission('assurance:read'), (ctx) => {
+        router.get('/api/admin/assurance', requireAdminAuth(), (ctx) => {
           ctx.body = { ok: true };
         });
         return;
@@ -182,23 +260,15 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
         );
         return;
       case 'admin-resource-denied':
-        router.get(
-          '/api/admin/organizations/:orgId/users/:userId',
-          requireUserOrganization(),
-          (ctx) => {
-            ctx.body = { ok: true };
-          },
-        );
-        return;
-      case 'schema-rejected':
-        router.post('/api/admin/assurance', (ctx) => {
-          ctx.status = 400;
-          ctx.body = { error: 'Administrative request is invalid' };
+        router.get('/api/admin/users/:userId', requireUserOrganization(), (ctx) => {
+          ctx.body = { ok: true };
         });
         return;
       case 'handler-threw':
         router.get('/api/admin/assurance', () => {
-          throw new Error('SELECT secret FROM internal_table /srv/porta/private.ts:42');
+          throw new Error(
+            'SELECT secret FROM internal_table /srv/porta/private.ts:42 redis://private-cache:6379',
+          );
         });
         return;
       case 'malformed-json':
@@ -345,20 +415,29 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
 }
 
 /** Return the exact request needed to reach one HTTP scenario. */
-function httpRequestFor(caseId: SecurityDecisionCaseId): {
+function httpRequestFor(
+  caseId: SecurityDecisionCaseId,
+  accessToken?: string,
+): {
   readonly path: string;
   readonly method: 'GET' | 'POST';
-  readonly headers?: Readonly<Record<string, string>>;
+  readonly headers: Readonly<Record<string, string>>;
   readonly body?: string;
 } {
+  const headers: Record<string, string> = {
+    'x-request-id': 'caller-request-id',
+    'user-agent': 'AssuranceBrowser/1.0',
+    'x-forwarded-for': '203.0.113.42',
+  };
+  if (accessToken !== undefined) headers.authorization = `Bearer ${accessToken}`;
   if (caseId === 'admin-resource-denied') {
-    return { path: '/api/admin/organizations/not-an-id/users/raw-user-id', method: 'GET' };
+    return { path: '/api/admin/users/raw-user-id?token=raw-query', method: 'GET', headers };
   }
   if (caseId === 'malformed-json') {
     return {
       path: '/api/admin/assurance',
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { ...headers, 'content-type': 'application/json' },
       body: '{"email":"protected@example.test"',
     };
   }
@@ -366,17 +445,20 @@ function httpRequestFor(caseId: SecurityDecisionCaseId): {
     return {
       path: '/api/admin/assurance',
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { ...headers, 'content-type': 'application/json' },
       body: JSON.stringify({ value: 'x'.repeat(2_000) }),
     };
   }
   if (caseId === 'schema-rejected') {
     return {
-      path: '/api/admin/assurance',
+      path: '/api/admin/applications',
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { ...headers, 'content-type': 'application/json' },
       body: '{}',
     };
   }
-  return { path: '/api/admin/assurance', method: 'GET' };
+  if (caseId === 'admin-read-allowed') {
+    return { path: '/api/admin/applications', method: 'GET', headers };
+  }
+  return { path: '/api/admin/assurance', method: 'GET', headers };
 }

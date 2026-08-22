@@ -49,9 +49,9 @@ export async function getCachedTwoFactorStatus(userId: string): Promise<TwoFacto
     const data = await redis.get(`${STATUS_PREFIX}${userId}`);
     if (!data) return null;
     return deserializeStatus(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, userId }, 'Failed to read 2FA status from cache');
+    logger.warn({ event: 'two-factor-cache-read-failed' }, 'Two-factor cache read failed');
     return null;
   }
 }
@@ -75,9 +75,9 @@ export async function cacheTwoFactorStatus(userId: string, status: TwoFactorStat
       const redis = getRedis();
       const data = JSON.stringify(status);
       await redis.set(`${STATUS_PREFIX}${userId}`, data, 'EX', CACHE_TTL);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, userId }, 'Failed to cache 2FA status');
+      logger.warn({ event: 'two-factor-cache-write-failed' }, 'Two-factor cache write failed');
     }
   });
 }
@@ -99,9 +99,12 @@ export async function invalidateTwoFactorCache(userId: string): Promise<void> {
     try {
       const redis = getRedis();
       await redis.del(`${STATUS_PREFIX}${userId}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, userId }, 'Failed to invalidate 2FA status cache');
+      logger.warn(
+        { event: 'two-factor-cache-invalidation-failed' },
+        'Two-factor cache invalidation failed',
+      );
     }
   });
 }

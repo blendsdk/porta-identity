@@ -14,7 +14,19 @@ export function errorHandler(): Middleware {
         status: ctx.status,
       };
 
-      if (ctx.status === 413) {
+      if (ctx.status === 401) {
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'authentication',
+          reasonCode: 'authentication-required',
+          outcome: 'deny',
+        });
+      } else if (ctx.status === 403) {
+        recordSecurityDecision(ctx, {
+          decisionPoint: 'permission',
+          reasonCode: 'permission-required',
+          outcome: 'deny',
+        });
+      } else if (ctx.status === 413) {
         recordSecurityDecision(ctx, {
           decisionPoint: 'validation',
           reasonCode: 'body-too-large',

@@ -92,9 +92,23 @@ describe('security decision event implementation', () => {
         reasonCode: 'schema-invalid',
       }),
     ).toThrow();
+    expect(() =>
+      createSecurityDecisionEvent({
+        requestId: randomUUID(),
+        surface: 'admin-api',
+        method: 'GET',
+        routeTemplate: '/api/admin/users/:id',
+        statusCode: 403,
+        outcome: 'deny',
+        decisionPoint: 'validation',
+        reasonCode: 'permission-required',
+      }),
+    ).toThrow();
   });
 
   it.each([
+    [401, 'authentication', 'authentication-required'],
+    [403, 'permission', 'permission-required'],
     [400, 'validation', 'schema-invalid'],
     [404, 'resource', 'route-not-found'],
     [405, 'validation', 'method-not-allowed'],

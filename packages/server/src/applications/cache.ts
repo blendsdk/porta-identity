@@ -57,9 +57,9 @@ export async function getCachedApplicationBySlug(slug: string): Promise<Applicat
     const data = await redis.get(`${SLUG_PREFIX}${slug}`);
     if (!data) return null;
     return deserializeApplication(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, slug }, 'Failed to read application from cache by slug');
+    logger.warn({ event: 'application-cache-read-failed' }, 'Application cache read failed');
     return null;
   }
 }
@@ -79,9 +79,9 @@ export async function getCachedApplicationById(id: string): Promise<Application 
     const data = await redis.get(`${ID_PREFIX}${id}`);
     if (!data) return null;
     return deserializeApplication(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read application from cache by ID');
+    logger.warn({ event: 'application-cache-read-failed' }, 'Application cache read failed');
     return null;
   }
 }
@@ -108,9 +108,9 @@ export async function cacheApplication(app: Application): Promise<void> {
       // Store under both keys with the same TTL
       await redis.set(`${SLUG_PREFIX}${app.slug}`, data, 'EX', CACHE_TTL);
       await redis.set(`${ID_PREFIX}${app.id}`, data, 'EX', CACHE_TTL);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, slug: app.slug, id: app.id }, 'Failed to cache application');
+      logger.warn({ event: 'application-cache-write-failed' }, 'Application cache write failed');
     }
   });
 }
@@ -134,9 +134,12 @@ export async function invalidateApplicationCache(slug: string, id: string): Prom
     try {
       const redis = getRedis();
       await redis.del(`${SLUG_PREFIX}${slug}`, `${ID_PREFIX}${id}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, slug, id }, 'Failed to invalidate application cache');
+      logger.warn(
+        { event: 'application-cache-invalidation-failed' },
+        'Application cache invalidation failed',
+      );
     }
   });
 }

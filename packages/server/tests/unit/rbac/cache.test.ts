@@ -111,9 +111,13 @@ describe('getCachedRole', () => {
 
     expect(result).toBeNull();
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error), id: 'role-1' }),
-      'Failed to read role from cache',
+      { event: 'rbac-cache-read-failed' },
+      'RBAC cache read failed',
     );
+    expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain(
+      'Redis connection lost',
+    );
+    expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain('role-1');
   });
 
   it('should return null on invalid JSON', async () => {
@@ -150,8 +154,8 @@ describe('setCachedRole', () => {
     await setCachedRole(createTestRole());
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      'Failed to cache role',
+      { event: 'rbac-cache-write-failed' },
+      'RBAC cache write failed',
     );
   });
 });
@@ -172,8 +176,8 @@ describe('invalidateRoleCache', () => {
     await invalidateRoleCache('role-1');
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      'Failed to invalidate role cache',
+      { event: 'rbac-cache-invalidation-failed' },
+      'RBAC cache invalidation failed',
     );
   });
 });
@@ -232,12 +236,7 @@ describe('setCachedUserRoles', () => {
 
     await setCachedUserRoles('user-1', []);
 
-    expect(redis.set).toHaveBeenCalledWith(
-      'rbac:user-roles:user-1',
-      '[]',
-      'EX',
-      300,
-    );
+    expect(redis.set).toHaveBeenCalledWith('rbac:user-roles:user-1', '[]', 'EX', 300);
   });
 
   it('should log warning but not throw on Redis error', async () => {
@@ -318,10 +317,7 @@ describe('invalidateUserRbacCache', () => {
 
     await invalidateUserRbacCache('user-1');
 
-    expect(redis.del).toHaveBeenCalledWith(
-      'rbac:user-roles:user-1',
-      'rbac:user-perms:user-1',
-    );
+    expect(redis.del).toHaveBeenCalledWith('rbac:user-roles:user-1', 'rbac:user-perms:user-1');
   });
 
   it('should log warning but not throw on Redis error', async () => {
@@ -378,8 +374,8 @@ describe('invalidateAllUserRbacCaches', () => {
     await invalidateAllUserRbacCaches();
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ err: expect.any(Error) }),
-      'Failed to invalidate all user RBAC caches',
+      { event: 'rbac-cache-invalidation-failed' },
+      'RBAC cache invalidation failed',
     );
   });
 });

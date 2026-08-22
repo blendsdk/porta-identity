@@ -27,7 +27,6 @@
  */
 
 import type { Middleware } from 'koa';
-import type Provider from 'oidc-provider';
 import type { Organization } from '../organizations/types.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
@@ -40,7 +39,16 @@ import { recordSecurityDecision, recordSecurityReference } from '../security/dec
 // OIDC provider reference — set at startup via setAdminAuthProvider()
 // ---------------------------------------------------------------------------
 
-let _provider: Provider | null = null;
+/** Minimal opaque-token lookup boundary required from the OIDC provider. */
+export interface AdminAccessTokenProvider {
+  /** Provider model used to resolve one opaque access token. */
+  readonly AccessToken: {
+    /** Resolve a token without exposing its storage mechanism to middleware. */
+    find(token: string): Promise<{ accountId?: string } | undefined>;
+  };
+}
+
+let _provider: AdminAccessTokenProvider | null = null;
 
 /**
  * Set the OIDC provider instance used for opaque access token validation.
@@ -49,8 +57,13 @@ let _provider: Provider | null = null;
  * The provider's AccessToken.find() method is used to look up opaque tokens
  * from the token store (Redis for short-lived tokens).
  */
-export function setAdminAuthProvider(provider: Provider): void {
+export function setAdminAuthProvider(provider: AdminAccessTokenProvider): void {
   _provider = provider;
+}
+
+/** Remove the process-owned OIDC provider reference during orderly teardown. */
+export function clearAdminAuthProvider(): void {
+  _provider = null;
 }
 
 // ---------------------------------------------------------------------------

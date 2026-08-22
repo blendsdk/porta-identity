@@ -139,6 +139,40 @@ export const securityDecisionEventSchema = z
         message: 'The handler-failed reason is valid only for an error outcome',
       });
     }
+
+    const requiredDecisionPoints: Partial<
+      Record<
+        SecurityDecisionReasonCode,
+        | 'transport'
+        | 'validation'
+        | 'authentication'
+        | 'membership'
+        | 'permission'
+        | 'resource'
+        | 'handler'
+      >
+    > = {
+      allowed: 'handler',
+      'authentication-required': 'authentication',
+      'membership-required': 'membership',
+      'permission-required': 'permission',
+      'resource-not-found': 'resource',
+      'route-not-found': 'resource',
+      'malformed-body': 'validation',
+      'body-too-large': 'validation',
+      'schema-invalid': 'validation',
+      'method-not-allowed': 'validation',
+      'handler-failed': 'handler',
+      'transport-parse-failed': 'transport',
+    };
+    const requiredDecisionPoint = requiredDecisionPoints[event.reasonCode];
+    if (requiredDecisionPoint !== undefined && event.decisionPoint !== requiredDecisionPoint) {
+      context.addIssue({
+        code: 'custom',
+        path: ['decisionPoint'],
+        message: 'Terminal reason must match the boundary which made the decision',
+      });
+    }
   });
 
 /** Validated terminal event. */

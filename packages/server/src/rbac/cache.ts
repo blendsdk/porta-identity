@@ -62,9 +62,9 @@ export async function getCachedRole(id: string): Promise<Role | null> {
     const data = await redis.get(`${ROLE_PREFIX}${id}`);
     if (!data) return null;
     return deserializeRole(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read role from cache');
+    logger.warn({ event: 'rbac-cache-read-failed' }, 'RBAC cache read failed');
     return null;
   }
 }
@@ -82,9 +82,9 @@ export async function setCachedRole(role: Role): Promise<void> {
     try {
       const redis = getRedis();
       await redis.set(`${ROLE_PREFIX}${role.id}`, JSON.stringify(role), 'EX', CACHE_TTL);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, id: role.id }, 'Failed to cache role');
+      logger.warn({ event: 'rbac-cache-write-failed' }, 'RBAC cache write failed');
     }
   });
 }
@@ -101,9 +101,9 @@ export async function invalidateRoleCache(id: string): Promise<void> {
     try {
       const redis = getRedis();
       await redis.del(`${ROLE_PREFIX}${id}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, id }, 'Failed to invalidate role cache');
+      logger.warn({ event: 'rbac-cache-invalidation-failed' }, 'RBAC cache invalidation failed');
     }
   });
 }
@@ -127,8 +127,8 @@ export async function getCachedUserRoles(userId: string): Promise<string[] | nul
     const data = await redis.get(`${USER_ROLES_PREFIX}${userId}`);
     if (!data) return null;
     return JSON.parse(data) as string[];
-  } catch (err) {
-    logger.warn({ err, userId }, 'Failed to read user roles from cache');
+  } catch {
+    logger.warn({ event: 'rbac-cache-read-failed' }, 'RBAC cache read failed');
     return null;
   }
 }
@@ -146,8 +146,8 @@ export async function setCachedUserRoles(userId: string, roleSlugs: string[]): P
     try {
       const redis = getRedis();
       await redis.set(`${USER_ROLES_PREFIX}${userId}`, JSON.stringify(roleSlugs), 'EX', CACHE_TTL);
-    } catch (err) {
-      logger.warn({ err, userId }, 'Failed to cache user roles');
+    } catch {
+      logger.warn({ event: 'rbac-cache-write-failed' }, 'RBAC cache write failed');
     }
   });
 }
@@ -171,8 +171,8 @@ export async function getCachedUserPermissions(userId: string): Promise<string[]
     const data = await redis.get(`${USER_PERMISSIONS_PREFIX}${userId}`);
     if (!data) return null;
     return JSON.parse(data) as string[];
-  } catch (err) {
-    logger.warn({ err, userId }, 'Failed to read user permissions from cache');
+  } catch {
+    logger.warn({ event: 'rbac-cache-read-failed' }, 'RBAC cache read failed');
     return null;
   }
 }
@@ -198,8 +198,8 @@ export async function setCachedUserPermissions(
         'EX',
         CACHE_TTL,
       );
-    } catch (err) {
-      logger.warn({ err, userId }, 'Failed to cache user permissions');
+    } catch {
+      logger.warn({ event: 'rbac-cache-write-failed' }, 'RBAC cache write failed');
     }
   });
 }
@@ -221,8 +221,8 @@ export async function invalidateUserRbacCache(userId: string): Promise<void> {
     try {
       const redis = getRedis();
       await redis.del(`${USER_ROLES_PREFIX}${userId}`, `${USER_PERMISSIONS_PREFIX}${userId}`);
-    } catch (err) {
-      logger.warn({ err, userId }, 'Failed to invalidate user RBAC cache');
+    } catch {
+      logger.warn({ event: 'rbac-cache-invalidation-failed' }, 'RBAC cache invalidation failed');
     }
   });
 }
@@ -256,8 +256,8 @@ export async function invalidateAllUserRbacCaches(): Promise<void> {
           }
         } while (cursor !== '0');
       }
-    } catch (err) {
-      logger.warn({ err }, 'Failed to invalidate all user RBAC caches');
+    } catch {
+      logger.warn({ event: 'rbac-cache-invalidation-failed' }, 'RBAC cache invalidation failed');
     }
   });
 }

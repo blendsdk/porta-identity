@@ -56,9 +56,9 @@ export async function getCachedClientByClientId(clientId: string): Promise<Clien
     const data = await redis.get(`${CLIENT_ID_PREFIX}${clientId}`);
     if (!data) return null;
     return deserializeClient(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, clientId }, 'Failed to read client from cache by client_id');
+    logger.warn({ event: 'client-cache-read-failed' }, 'Client cache read failed');
     return null;
   }
 }
@@ -78,9 +78,9 @@ export async function getCachedClientById(id: string): Promise<Client | null> {
     const data = await redis.get(`${ID_PREFIX}${id}`);
     if (!data) return null;
     return deserializeClient(data);
-  } catch (err) {
+  } catch {
     // Graceful degradation — log and return null so caller falls back to DB
-    logger.warn({ err, id }, 'Failed to read client from cache by ID');
+    logger.warn({ event: 'client-cache-read-failed' }, 'Client cache read failed');
     return null;
   }
 }
@@ -107,9 +107,9 @@ export async function cacheClient(client: Client): Promise<void> {
       // Store under both keys with the same TTL
       await redis.set(`${CLIENT_ID_PREFIX}${client.clientId}`, data, 'EX', CACHE_TTL);
       await redis.set(`${ID_PREFIX}${client.id}`, data, 'EX', CACHE_TTL);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache write failure is non-fatal
-      logger.warn({ err, clientId: client.clientId, id: client.id }, 'Failed to cache client');
+      logger.warn({ event: 'client-cache-write-failed' }, 'Client cache write failed');
     }
   });
 }
@@ -133,9 +133,12 @@ export async function invalidateClientCache(clientId: string, id: string): Promi
     try {
       const redis = getRedis();
       await redis.del(`${CLIENT_ID_PREFIX}${clientId}`, `${ID_PREFIX}${id}`);
-    } catch (err) {
+    } catch {
       // Graceful degradation — cache invalidation failure is non-fatal
-      logger.warn({ err, clientId, id }, 'Failed to invalidate client cache');
+      logger.warn(
+        { event: 'client-cache-invalidation-failed' },
+        'Client cache invalidation failed',
+      );
     }
   });
 }

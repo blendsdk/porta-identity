@@ -70,11 +70,7 @@ interface MockContext {
  * @param method - HTTP method (e.g., 'POST')
  * @param ip - Client IP address
  */
-function createMockContext(
-  path: string,
-  method: string,
-  ip = '192.168.1.1',
-): MockContext {
+function createMockContext(path: string, method: string, ip = '192.168.1.1'): MockContext {
   const responseHeaders: Record<string, string> = {};
   return {
     path,
@@ -107,18 +103,13 @@ function createRateLimitResult(overrides: Partial<RateLimitResult> = {}): RateLi
  *
  * @returns Whether the `next()` callback was called
  */
-async function invokeMiddleware(
-  ctx: MockContext,
-): Promise<{ nextCalled: boolean }> {
+async function invokeMiddleware(ctx: MockContext): Promise<{ nextCalled: boolean }> {
   const middleware = adminRateLimiter();
   let nextCalled = false;
 
-  await middleware(
-    ctx as unknown as Parameters<typeof middleware>[0],
-    async () => {
-      nextCalled = true;
-    },
-  );
+  await middleware(ctx as unknown as Parameters<typeof middleware>[0], async () => {
+    nextCalled = true;
+  });
 
   return { nextCalled };
 }
@@ -171,9 +162,7 @@ describe('admin-rate-limiter middleware', () => {
     });
 
     it('should pass through when under the rate limit', async () => {
-      mockCheckRateLimit.mockResolvedValue(
-        createRateLimitResult({ allowed: true, remaining: 50 }),
-      );
+      mockCheckRateLimit.mockResolvedValue(createRateLimitResult({ allowed: true, remaining: 50 }));
       const ctx = createMockContext('/api/admin/organizations', 'POST');
       const { nextCalled } = await invokeMiddleware(ctx);
 
@@ -259,12 +248,12 @@ describe('admin-rate-limiter middleware', () => {
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'admin_rate_limit_exceeded',
-          ip: '10.0.0.5',
-          path: '/api/admin/organizations',
           method: 'POST',
         }),
         'Admin API rate limit exceeded',
       );
+      expect(JSON.stringify(mockLoggerWarn.mock.calls)).not.toContain('10.0.0.5');
+      expect(JSON.stringify(mockLoggerWarn.mock.calls)).not.toContain('/api/admin/organizations');
     });
   });
 
@@ -295,9 +284,7 @@ describe('admin-rate-limiter middleware', () => {
       // checkRateLimit already handles Redis failures internally and returns
       // allowed: true with a warning. This test verifies the middleware
       // correctly passes through in that scenario.
-      mockCheckRateLimit.mockResolvedValue(
-        createRateLimitResult({ allowed: true, remaining: 60 }),
-      );
+      mockCheckRateLimit.mockResolvedValue(createRateLimitResult({ allowed: true, remaining: 60 }));
       const ctx = createMockContext('/api/admin/organizations', 'POST');
       const { nextCalled } = await invokeMiddleware(ctx);
 
@@ -343,9 +330,7 @@ describe('admin-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('informational headers', () => {
     it('should set X-RateLimit-Limit and X-RateLimit-Remaining on allowed requests', async () => {
-      mockCheckRateLimit.mockResolvedValue(
-        createRateLimitResult({ allowed: true, remaining: 42 }),
-      );
+      mockCheckRateLimit.mockResolvedValue(createRateLimitResult({ allowed: true, remaining: 42 }));
       const ctx = createMockContext('/api/admin/organizations', 'POST');
       await invokeMiddleware(ctx);
 

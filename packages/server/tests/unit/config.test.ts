@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { configSchema } from '../../src/config/schema.js';
+import { publicConfigValue } from '../../src/routes/config.js';
 
 const validEnv = {
   nodeEnv: 'development',
@@ -21,6 +22,11 @@ const validEnv = {
 };
 
 describe('config schema', () => {
+  it('should mask sensitive administrative values in every public response', () => {
+    expect(publicConfigValue('redis://private-cache:6379', true)).toBe('***');
+    expect(publicConfigValue('public-value', false)).toBe('public-value');
+  });
+
   it('accepts valid configuration', () => {
     const result = configSchema.safeParse(validEnv);
     expect(result.success).toBe(true);
