@@ -291,17 +291,35 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
 class OrganizationService { create(input) { ... } }
 ```
 
-## Data Export
+## Administrative Data Operations
 
-The export API supports bulk data extraction:
+Administrative data APIs use closed schemas and explicit authorization boundaries:
 
+```text
+POST /api/admin/bulk/organizations/status
+POST /api/admin/bulk/users/status
+POST /api/admin/import
+GET  /api/admin/export/:entityType
 ```
-GET /api/admin/export/organizations?format=csv
-GET /api/admin/export/users?format=json&orgId=<uuid>
-```
 
-Supported entity types: organizations, applications, clients, users.
-Supported formats: CSV, JSON.
+Bulk status changes validate the complete request before persistence. Each accepted item then owns
+one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
+rejections are returned in input order. A dependency failure preserves earlier commits, marks the
+current and remaining items `not_attempted`, and exposes only a correlation identifier.
+
+Imports accept versioned manifests in `merge`, `overwrite`, or `dry-run` mode. The planner rejects
+unknown fields, duplicate natural keys, unresolved parents, cross-tenant relationships, and
+credential-equivalent input before mutation. Merge skips existing tenant-qualified keys; overwrite
+changes only the documented presentation and configuration fields; dry-run rolls back its snapshot
+and reports credential intent without identifiers or plaintext. Non-skip failures roll back the
+whole manifest.
+
+Exports support organizations, users, clients, roles, and audit records in CSV or JSON. Every
+request requires `admin:export:read` plus the entity-specific read permission. Users and clients
+are organization-scoped; roles require a proven organization/application relationship; audit
+exports require an organization and bounded date range. Queries reject results above 10,000 rows,
+project an exact public field allowlist, omit private audit details, and neutralize spreadsheet
+formula prefixes before CSV quoting.
 
 ## Related Documentation
 

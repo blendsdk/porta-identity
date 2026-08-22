@@ -26,8 +26,8 @@ test has an independent or sufficiently strict oracle.
 
 ## Assurance Closeout Checkpoint
 
-The latest authoritative `yarn verify` checkpoint collected **235 server test files / 3,409
-cases**, **31 SDK files / 404 cases**, and **29 CLI files / 355 cases**, in addition to 70
+The latest authoritative `yarn verify` checkpoint collected **246 server test files / 3,517
+cases**, **31 SDK files / 404 cases**, and **29 CLI files / 356 cases**, in addition to 70
 repository-structure cases. The assurance tree contains 99 explicitly selected specification and
 implementation files with 399 static top-level cases; service-backed journeys and parameterized
 subtests make that static count unsuitable as a runtime total.
@@ -37,7 +37,10 @@ oracles plus implementation tests. They exercise real public route handlers and 
 logic over PostgreSQL, Redis, MailHog, and SMTP boundaries. Coverage includes equal recovery
 responses, account-or-dummy Argon2id verification, durable jobs, retry/lease/shutdown limits,
 tenant/interaction-bound magic-link consumption, atomic Redis continuation use, rollback, expiry,
-post-commit dependency failure, and privacy-safe diagnostics.
+post-commit dependency failure, and privacy-safe diagnostics. Administrative-data specifications
+add whole-request bulk validation, tenant-qualified per-item transactions, atomic import modes,
+bounded allowlisted exports, and packed SDK/CLI journeys with independent raw-response and state
+comparison.
 
 Delivered assurance commands now cover typed governance and traceability, fenced lifecycle and
 fixtures, operational and production-security harness profiles, assembled-server V8 attribution,
@@ -48,8 +51,8 @@ the applicable lifecycle and cleanup checks succeed.
 
 This checkpoint is deliberately **not** certification and does not claim that Porta has no exploit
 paths. Product defects and unresolved contracts remain separately recorded, including TOTP replay
-semantics, bulk/import/export semantics, incomplete correlated
-decision logs, public nginx version disclosure, dependency reconnection behavior, SDK cursor
+semantics, incomplete correlated decision logs, public nginx version disclosure, dependency
+reconnection behavior, SDK cursor
 pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
 completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
 protocol-candidate qualification, local ratchets, and exhaustive local aggregate/UI collection.
@@ -277,22 +280,22 @@ assurance phases.
 
 ## Cross-Layer Product Coverage
 
-| Product behavior            |            Unit             |      Integration      |     HTTP E2E     |      Pentest       |        Browser        |       External harness        |
-| --------------------------- | :-------------------------: | :-------------------: | :--------------: | :----------------: | :-------------------: | :---------------------------: |
-| Password authentication     |             Yes             |        Partial        |       Yes        |        Yes         |          Yes          |              Yes              |
-| Magic-link authentication   |             Yes             |        Partial        |       Yes        |        Yes         |          Yes          |              Yes              |
-| Authorization code and PKCE |             Yes             |     Adapter only      |     Partial      |        Yes         |          Yes          |              Yes              |
-| Client credentials          |             Yes             |      Persistence      |       Yes        |        Yes         |        Limited        |        BFF indirectly         |
-| Refresh and revocation      |             Yes             |      Persistence      |       Yes        |        Yes         |        Limited        |      BFF refresh/logout       |
-| Consent                     |    Route/provider logic     |  No dedicated suite   |       Yes        |      Limited       |          Yes          |           Indirect            |
-| Two-factor authentication   |             Yes             |          Yes          |     Limited      | Admin attack cases |          Yes          |              No               |
-| Tenant isolation            |   Middleware/repositories   |        Partial        |  Selected cases  |  Selected attacks  | Status/branding cases |   No dedicated attack case    |
-| Admin API and RBAC          |          Extensive          | Repositories/services |     Limited      |        Yes         |      No admin UI      |              No               |
-| Password reset/invitations  |             Yes             |  Invitation service   |    Reset only    |   Reset attacks    |          Yes          |              No               |
-| Sessions                    |             Yes             |          Yes          |  Selected flows  |  Session attacks   | Interaction lifecycle |         Logout flows          |
-| Import/export/bulk          |             Yes             |          Yes          | No dedicated E2E | Limited injection  |          No           |              No               |
-| SDK public API              | Contract and SDK unit tests |   No live SDK suite   |        No        |         No         |          No           | Harness uses separate clients |
-| CLI public commands         |         Unit tests          |  Initialization only  |        No        |         No         |          No           |              No               |
+| Product behavior            |             Unit             |       Integration       |      HTTP E2E      |      Pentest       |        Browser        |      External harness      |
+| --------------------------- | :--------------------------: | :---------------------: | :----------------: | :----------------: | :-------------------: | :------------------------: |
+| Password authentication     |             Yes              |         Partial         |        Yes         |        Yes         |          Yes          |            Yes             |
+| Magic-link authentication   |             Yes              |         Partial         |        Yes         |        Yes         |          Yes          |            Yes             |
+| Authorization code and PKCE |             Yes              |      Adapter only       |      Partial       |        Yes         |          Yes          |            Yes             |
+| Client credentials          |             Yes              |       Persistence       |        Yes         |        Yes         |        Limited        |       BFF indirectly       |
+| Refresh and revocation      |             Yes              |       Persistence       |        Yes         |        Yes         |        Limited        |     BFF refresh/logout     |
+| Consent                     |     Route/provider logic     |   No dedicated suite    |        Yes         |      Limited       |          Yes          |          Indirect          |
+| Two-factor authentication   |             Yes              |           Yes           |      Limited       | Admin attack cases |          Yes          |             No             |
+| Tenant isolation            |   Middleware/repositories    |         Partial         |   Selected cases   |  Selected attacks  | Status/branding cases |  No dedicated attack case  |
+| Admin API and RBAC          |          Extensive           |  Repositories/services  |      Limited       |        Yes         |      No admin UI      |             No             |
+| Password reset/invitations  |             Yes              |   Invitation service    |     Reset only     |   Reset attacks    |          Yes          |             No             |
+| Sessions                    |             Yes              |           Yes           |   Selected flows   |  Session attacks   | Interaction lifecycle |        Logout flows        |
+| Import/export/bulk          | Exact contract and internals | PostgreSQL transactions | Packed raw/SDK/CLI | Limited injection  |          No           | Packed operational harness |
+| SDK public API              | Contract and SDK unit tests  |  Packed live journeys   |         No         |         No         |          No           | Packed operational harness |
+| CLI public commands         | Unit and raw-response tests  |  Packed live journeys   |         No         |         No         |          No           | Packed operational harness |
 
 “Yes” means a suite contains tests claiming that behavior. It does not mean the behavior is fully
 specified or that every relevant mutation would be detected.
