@@ -163,7 +163,7 @@ test('should distinguish handler permission and resource boundaries after authen
         status: 403,
         body: {
           error: 'Forbidden',
-          message: 'Insufficient permissions. Required: admin:user:read',
+          message: 'The requested operation is not permitted',
         },
       },
       proof,
@@ -212,7 +212,7 @@ test('should distinguish handler permission and resource boundaries after authen
           status: 403,
           body: {
             error: 'Forbidden',
-            message: 'Insufficient permissions. Required: admin:client:read',
+            message: 'The requested operation is not permitted',
           },
         },
         proof,

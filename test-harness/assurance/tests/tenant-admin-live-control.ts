@@ -56,7 +56,7 @@ function destructiveControl(target: LiveAdminTarget): boolean {
 const membershipDenialSchema = z
   .object({
     error: z.literal('Forbidden'),
-    message: z.literal('Admin access requires membership in the admin organization'),
+    message: z.literal('Administrative access is not permitted'),
   })
   .passthrough();
 
@@ -75,7 +75,7 @@ function permissionMessage(entry: ControlPlaneAuthorityCase): string {
     (candidate) => candidate.id === entry.action,
   );
   if (action === undefined) throw new Error('live control-plane action is not declared');
-  return `Insufficient permissions. Required: ${action.requiredPermission}`;
+  return 'The requested operation is not permitted';
 }
 
 /** Returns the exact public not-found error for one administrative resource surface. */

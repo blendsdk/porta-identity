@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
 > **Last Updated**: 2026-08-22 14:01
-> **Progress**: 55/59 tasks (93%)
+> **Progress**: 56/60 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -32,10 +32,10 @@ to the exec-plan protocol.
 | 1 | Enumeration-resistant password and recovery work | 17 |
 | 2 | Tenant-bound atomic magic links | 13 |
 | 3 | Bulk/import/export product contracts | 12 |
-| 4 | Correlated security decisions and durable audit | 9 |
-| 5 | Black-box closure and documentation | 4 |
+| 4 | Correlated security decisions and durable audit | 11 |
+| 5 | Black-box closure and documentation | 5 |
 
-**Total: 57 tasks across 5 phases.**
+**Total: 60 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -161,12 +161,13 @@ and covered authorized mutations cannot commit without durable audit intent.
 
 ## Phase 5: Black-box closure and documentation
 
-> **Phase baseline tree**: _(record at execution start)_
+> **Phase baseline tree**: `8bc77259271a051d302a95e715fec6630aad852f`
 > **Lenses**: security, api-surface
 
 **Reference**: RD-05 AC7/AC13–AC15; ST-01–ST-30
 
-- [ ] 5.1 Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries; persist clean provenance and zero-residue evidence.
+- [x] 5.1a Align the live tenant/admin decision observer with the generic privacy-safe permission and membership responses introduced by Phase 4. ✅ (completed: 2026-08-22 15:11 CEST; the initial clean collector exposed a stale permission-name oracle after Phase 4 correctly removed that public disclosure; the observer and implementation tests now require the generic permission/membership messages, focused tenant/admin 27/27 passed, and full `yarn verify` passed in 10m30s with server unit 2,860, integration 362, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
+- [ ] 5.1b Run the exact production-security human-auth, P1, packed compatibility, UI, and pentest boundaries; persist clean provenance and zero-residue evidence.
 - [ ] 5.2 Re-run the affected assurance aggregate/report and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
 - [ ] 5.3 Update RD/traceability, both roadmaps, public docs, techdocs/ADR, and current test inventory with truthful claim status and no certification language.
 - [ ] 5.4 Run final `yarn test:structure`, `yarn test:ui`, `yarn test:pentest`, `yarn harness:test`, exact assurance roll-up, and `yarn verify`; confirm clean worktree and zero owned residue.
