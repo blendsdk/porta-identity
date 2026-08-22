@@ -19,7 +19,7 @@ export const reviewedCoverageBaseline = Object.freeze({
 
 /** Reviewed identities for inputs that reopen assurance conclusions when changed. */
 export const reviewedStalenessDigests: Readonly<Record<StalenessTrigger, string>> = Object.freeze({
-  'requirement-r5': 'sha256:30ded17a2bfbc8aab6200836ae9e2992a68b16a87fd7d25a68db47e5704c6f42',
+  'requirement-r5': 'sha256:e9ec7df09f9de12bc8cfff9f18cdc94aa261a6330fab3fdc5fb8c9665a9d5af2',
   fixture: 'sha256:08c5e9634ea2fc605d18c65050e2edebad5949aa09295b7d11a08784f9ebaab6',
   dependency: 'sha256:b35d279fd3d199436eeb59658b8e44ab3eb3a9140ae90cd7094b17ed27478dd9',
   sentinel: 'sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c',

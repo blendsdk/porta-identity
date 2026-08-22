@@ -20,7 +20,7 @@
       "paths": [
         "codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md"
       ],
-      "digest": "sha256:30ded17a2bfbc8aab6200836ae9e2992a68b16a87fd7d25a68db47e5704c6f42",
+      "digest": "sha256:e9ec7df09f9de12bc8cfff9f18cdc94aa261a6330fab3fdc5fb8c9665a9d5af2",
       "affectedRequirementPrefix": "R5"
     },
     "fixture": {
@@ -43,10 +43,10 @@
     }
   },
   "review": {
-    "reviewId": "local-observation-baseline-2026-08-20",
-    "reviewedAt": "2026-08-20T20:05:00+02:00",
+    "reviewId": "local-observation-baseline-2026-08-22",
+    "reviewedAt": "2026-08-22T17:15:00+02:00",
     "reviewedBy": "authorized-test-assurance-execution",
-    "reason": "Establish exact local observation counts and staleness identities without changing CI policy.",
+    "reason": "Retain the accepted local coverage observation and bind staleness to the authorized R5.17 requirement without changing CI policy.",
     "sourceArtifact": "test-harness/.assurance-results/1ca88f05-8501-4a15-bdde-d0b2f33e762c/coverage/security/operational/report/coverage-summary.json",
     "promotionAuthorized": false
   }
