@@ -354,7 +354,16 @@ All security-relevant actions are logged to the `audit_log` table:
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
 | System         | `system.config_changed`, `system.key_rotated`                     |
 
-Audit writes are **fire-and-forget** — they do not block the main request flow and cannot cause request failures.
+Compatibility audit writes remain best-effort and do not change the main request result. Covered
+administrative data mutations instead write their durable business audit row through the same
+PostgreSQL transaction as the mutation. A failed audit insert therefore rolls back the mutation.
+
+Covered administrative and public-authentication requests emit one strict
+`security.decision.v1` terminal event after the final response status is known. Correlation starts
+before parsing and is server-owned. The event records only a normalized route template, closed
+decision facts, and optional domain-separated keyed references; raw requests, identities, network
+data, and error details have no event representation. A local sink failure cannot turn a denial
+into success and is represented only by a bounded in-memory failure counter.
 
 ## Penetration Test Coverage
 

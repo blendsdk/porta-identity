@@ -276,7 +276,8 @@ graph LR
 2. **Service function** orchestrates business logic
 3. **Repository** executes parameterized SQL queries
 4. **Cache** is invalidated after writes
-5. **Audit log** records the action (fire-and-forget)
+5. **Audit log** records the action (best-effort for compatibility workflows; transaction-bound
+   for covered administrative data mutations)
 6. **Response** is returned as JSON
 
 ### Functional Style

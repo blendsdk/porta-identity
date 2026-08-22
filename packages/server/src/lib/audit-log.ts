@@ -1,13 +1,12 @@
 /**
- * Generic audit log writer.
+ * Audit-log writers for best-effort events and transaction-bound administrative mutations.
  *
- * Inserts entries into the `audit_log` table using fire-and-forget
- * semantics — audit write failures are caught and logged but never
- * propagate to callers. This ensures audit logging never blocks
- * core business operations.
+ * Most existing callers use the compatibility writer, which keeps historical best-effort
+ * semantics. Administrative data mutations use the transaction-bound writer so their mutation
+ * and durable audit row either commit together or both roll back.
  *
- * This module is NOT specific to organizations — it will be reused
- * by future features (users, clients, auth workflows, etc.).
+ * This module is not specific to organizations and is shared by users, clients, authentication,
+ * and administrative workflows.
  */
 
 import type { PoolClient } from 'pg';

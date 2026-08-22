@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
 > **Last Updated**: 2026-08-22 12:25
-> **Progress**: 52/57 tasks (91%)
+> **Progress**: 53/57 tasks (93%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -150,7 +150,7 @@ where required, and free of secret/formula exposure.
 - [x] 4.6 Make covered state-changing admin mutations commit durable audit/outbox intent atomically; preserve denial on sink failure — affected admin services/repositories and audit module ✅ (completed: 2026-08-22 12:25 CEST; covered bulk/import mutations use one throwing transaction-bound audit writer and audit failure rolls back before success; pre-transaction session locking preserves fresh snapshots while non-throwing cleanup destroys ambiguous connections without revising committed results; focused unit 15/15, three consecutive PostgreSQL integration runs 17/17, type/lint/format passed, and final full `yarn verify` passed in 9m22s with pentest 224/224)
 - [x] 4.7 Run ST-25–ST-30 green through unit, integration, raw malformed transport, admin denial, and mutation rollback boundaries. ✅ (completed: 2026-08-22 12:43 CEST; required terminal-event specification 17/17, production boundary implementation 4/4, focused middleware/admin 34/34, administrative-data integration 17/17, lint/format, structure 70/70, and full `yarn verify` passed in 11m48s with server pentest 224/224)
 - [x] 4.8 Add unknown-field, redaction-canary, route-template, key-rotation, sink-failure, client-error, and atomicity implementation tests — `packages/server/tests/unit/security/security-decision-event.impl.test.ts` ✅ (completed: 2026-08-22 12:57 CEST; seven focused strict-schema, privacy-reference, route-normalization, key-rotation, exactly-once sink, parser-deduplication, and transaction-audit tests passed; lint/format, structure 70/70, and full `yarn verify` passed in 10m59s with pentest 224/224)
-- [ ] 4.9 Run Phase 4 targeted/P1/production-security/pentest checks and `yarn verify`; update logging, audit, configuration, and security docs.
+- [x] 4.9 Run Phase 4 targeted/P1/production-security/pentest checks and `yarn verify`; update logging, audit, configuration, and security docs. ✅ (completed: 2026-08-22 13:30 CEST; terminal specification 17/17, P1 selector 58/58, production-security tenant/admin behavior 17/17 with truthful registered exit 40 for pre-existing P1 product/incomplete gaps, standalone pentest 224/224, docs build, structure 70/70, and full `yarn verify` passed in 11m37s)
 
 Deliverable: every covered request has one independently attributable privacy-safe decision event,
 and covered authorized mutations cannot commit without durable audit intent.

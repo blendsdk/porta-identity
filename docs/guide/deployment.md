@@ -4,9 +4,11 @@ Guidance for deploying Porta to production environments using Docker.
 
 ::: tip Docker Hub
 The Porta Docker image is available on [Docker Hub](https://hub.docker.com/r/blendsdk/porta):
+
 ```bash
 docker pull blendsdk/porta:latest
 ```
+
 No git clone required — see the [Quick Start](./quickstart.md#docker-hub) for a
 standalone setup using just `docker-compose.yml` + `.env`.
 :::
@@ -22,31 +24,31 @@ services:
     image: blendsdk/porta:latest
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       NODE_ENV: production
-      PORT: "3000"
-      HOST: "0.0.0.0"
+      PORT: '3000'
+      HOST: '0.0.0.0'
       DATABASE_URL: postgresql://porta:${POSTGRES_PASSWORD}@postgres:5432/porta
       REDIS_URL: redis://redis:6379
       ISSUER_BASE_URL: https://auth.example.com
       COOKIE_KEYS: ${COOKIE_KEYS}
       SMTP_HOST: smtp.example.com
-      SMTP_PORT: "587"
+      SMTP_PORT: '587'
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: noreply@example.com
       LOG_LEVEL: info
       TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
-      TRUST_PROXY: "true"
-      PORTA_AUTO_MIGRATE: "false"
+      TRUST_PROXY: 'true'
+      PORTA_AUTO_MIGRATE: 'false'
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -62,7 +64,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U porta"]
+      test: ['CMD-SHELL', 'pg_isready -U porta']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -71,7 +73,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -89,28 +91,28 @@ Never use default passwords in production. Generate strong, unique values for
 
 ### Required for Production
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://porta:secret@postgres:5432/porta` |
-| `REDIS_URL` | Redis connection string | `redis://redis:6379` |
-| `ISSUER_BASE_URL` | Public-facing URL (must match your domain) | `https://auth.example.com` |
-| `COOKIE_KEYS` | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...` |
-| `TWO_FACTOR_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars = 32 bytes) | `0123456789abcdef...` |
-| `SMTP_HOST` | SMTP relay hostname | `smtp.sendgrid.net` |
-| `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_FROM` | Sender email address | `noreply@example.com` |
+| Variable                    | Description                                | Example                                         |
+| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| `DATABASE_URL`              | PostgreSQL connection string               | `postgresql://porta:secret@postgres:5432/porta` |
+| `REDIS_URL`                 | Redis connection string                    | `redis://redis:6379`                            |
+| `ISSUER_BASE_URL`           | Public-facing URL (must match your domain) | `https://auth.example.com`                      |
+| `COOKIE_KEYS`               | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...`                               |
+| `TWO_FACTOR_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars = 32 bytes)  | `0123456789abcdef...`                           |
+| `SMTP_HOST`                 | SMTP relay hostname                        | `smtp.sendgrid.net`                             |
+| `SMTP_PORT`                 | SMTP port                                  | `587`                                           |
+| `SMTP_FROM`                 | Sender email address                       | `noreply@example.com`                           |
 
 ### Optional
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | `production` | Runtime mode |
-| `PORT` | `3000` | HTTP listen port |
-| `HOST` | `0.0.0.0` | HTTP listen address |
-| `LOG_LEVEL` | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
-| `TRUST_PROXY` | `false` | Set to `true` when behind a TLS-terminating reverse proxy |
-| `PORTA_AUTO_MIGRATE` | `false` | Auto-run migrations on startup |
-| `PORTA_WAIT_TIMEOUT` | `60` | Seconds to wait for DB/Redis at startup |
+| Variable             | Default      | Description                                               |
+| -------------------- | ------------ | --------------------------------------------------------- |
+| `NODE_ENV`           | `production` | Runtime mode                                              |
+| `PORT`               | `3000`       | HTTP listen port                                          |
+| `HOST`               | `0.0.0.0`    | HTTP listen address                                       |
+| `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)          |
+| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy |
+| `PORTA_AUTO_MIGRATE` | `false`      | Auto-run migrations on startup                            |
+| `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                   |
 
 ### Generating Secrets
 
@@ -201,11 +203,11 @@ variable.
 
 For cloud deployments, use your provider's secret management service:
 
-| Provider | Service | Inject Via |
-|----------|---------|------------|
-| **AWS** | [Secrets Manager](https://aws.amazon.com/secrets-manager/) | ECS task definition `secrets` block, or Lambda env from SSM |
-| **GCP** | [Secret Manager](https://cloud.google.com/secret-manager) | Cloud Run `--set-secrets`, or GKE volume mount |
-| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault references, or AKS CSI driver |
+| Provider  | Service                                                            | Inject Via                                                  |
+| --------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **AWS**   | [Secrets Manager](https://aws.amazon.com/secrets-manager/)         | ECS task definition `secrets` block, or Lambda env from SSM |
+| **GCP**   | [Secret Manager](https://cloud.google.com/secret-manager)          | Cloud Run `--set-secrets`, or GKE volume mount              |
+| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault references, or AKS CSI driver         |
 
 Each service supports automatic rotation and audit logging. Refer to your provider's
 documentation for integration details.
@@ -328,10 +330,10 @@ environment to verify data integrity and measure restore time.
 
 **Suggested retention policy:**
 
-| Period | Frequency | Keep |
-|--------|-----------|------|
-| Daily | Every day | 7 days |
-| Weekly | Every Sunday | 4 weeks |
+| Period  | Frequency    | Keep      |
+| ------- | ------------ | --------- |
+| Daily   | Every day    | 7 days    |
+| Weekly  | Every Sunday | 4 weeks   |
 | Monthly | 1st of month | 12 months |
 
 Adjust based on your compliance requirements and storage budget.
@@ -363,6 +365,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO porta_migrate;
 ```
 
 Update your connection strings:
+
 - **Application** (`DATABASE_URL`): use `porta_app`
 - **Migrations** (`porta migrate up`): use `porta_migrate`
 
@@ -388,15 +391,15 @@ so that signing keys are encrypted at rest in the database.
 
 Porta uses Redis for **short-lived, ephemeral data** only:
 
-| Data Type | Purpose | TTL |
-|-----------|---------|-----|
-| OIDC Sessions | Login interaction state | Minutes |
-| Authorization Codes | PKCE auth code exchange | Minutes |
-| OIDC Interactions | Consent/login flow state | Minutes |
-| Rate Limit Counters | Brute-force protection | 60 seconds |
-| Tenant Cache | Organization lookup cache | 5 minutes |
-| Client Cache | Client metadata cache | 5 minutes |
-| RBAC Cache | Role/permission lookup cache | 5 minutes |
+| Data Type           | Purpose                      | TTL        |
+| ------------------- | ---------------------------- | ---------- |
+| OIDC Sessions       | Login interaction state      | Minutes    |
+| Authorization Codes | PKCE auth code exchange      | Minutes    |
+| OIDC Interactions   | Consent/login flow state     | Minutes    |
+| Rate Limit Counters | Brute-force protection       | 60 seconds |
+| Tenant Cache        | Organization lookup cache    | 5 minutes  |
+| Client Cache        | Client metadata cache        | 5 minutes  |
+| RBAC Cache          | Role/permission lookup cache | 5 minutes  |
 
 ### Data Loss Tolerance
 
@@ -517,11 +520,11 @@ docker exec porta-app node dist/cli/index.js keys list
 After generating a new key, the old key remains in the database for token verification.
 Wait for all existing tokens to expire before deactivating the old key:
 
-| Token Type | Default TTL | Wait Before Deactivation |
-|------------|-------------|--------------------------|
-| Access Token | 1 hour | 1 hour |
-| Refresh Token | 14 days | 14 days |
-| ID Token | 1 hour | 1 hour |
+| Token Type    | Default TTL | Wait Before Deactivation |
+| ------------- | ----------- | ------------------------ |
+| Access Token  | 1 hour      | 1 hour                   |
+| Refresh Token | 14 days     | 14 days                  |
+| ID Token      | 1 hour      | 1 hour                   |
 
 ```bash
 # 4. After the longest TTL has elapsed, deactivate the old key
@@ -595,6 +598,7 @@ Porta exposes two diagnostic endpoints:
 Confirms the server process is running and can reach PostgreSQL and Redis.
 
 **Response (healthy — 200):**
+
 ```json
 {
   "status": "ok",
@@ -606,6 +610,7 @@ Confirms the server process is running and can reach PostgreSQL and Redis.
 ```
 
 **Response (unhealthy — 503):**
+
 ```json
 {
   "status": "error",
@@ -621,11 +626,13 @@ Confirms the server process is running and can reach PostgreSQL and Redis.
 Verifies the server is ready to accept traffic by running a real DB query (`SELECT 1`) and a Redis `PING`, both with a **2-second timeout**. Returns `200` when ready, `503` when not.
 
 Use `/ready` for:
+
 - **Kubernetes readiness probes** — prevents traffic routing before the server is fully ready
 - **Load balancer health checks** — remove unhealthy instances from rotation
 - **Orchestrator startup checks** — wait for full connectivity before considering the container healthy
 
 Use `/health` for:
+
 - Docker `HEALTHCHECK` (already configured in the image)
 - Basic uptime monitoring (Uptime Robot, Pingdom, etc.)
 
@@ -633,7 +640,7 @@ Use `/health` for:
 
 ```yaml
 healthcheck:
-  test: ["CMD", "curl", "-f", "http://localhost:3000/ready"]
+  test: ['CMD', 'curl', '-f', 'http://localhost:3000/ready']
   interval: 30s
   timeout: 5s
   start_period: 30s
@@ -661,26 +668,32 @@ readinessProbe:
 
 Porta uses [pino](https://github.com/pinojs/pino) for structured logging:
 
-| `NODE_ENV` | Format | Behavior |
-|------------|--------|----------|
-| `development` | Pretty-printed (pino-pretty) | Human-readable, colorized |
-| `production` | JSON (one line per entry) | Machine-parseable, suitable for log aggregators |
-| `test` | Silent | No log output |
+| `NODE_ENV`    | Format                       | Behavior                                        |
+| ------------- | ---------------------------- | ----------------------------------------------- |
+| `development` | Pretty-printed (pino-pretty) | Human-readable, colorized                       |
+| `production`  | JSON (one line per entry)    | Machine-parseable, suitable for log aggregators |
+| `test`        | Silent                       | No log output                                   |
 
 ### PII Redaction
 
 Porta automatically redacts sensitive fields from log output to prevent personally identifiable information (PII) from leaking into log aggregators. The following fields are replaced with `[Redacted]` in all log entries:
 
-| Redacted Field | Reason |
-|----------------|--------|
-| `password` | User credentials |
-| `token` | Access/refresh tokens |
+| Redacted Field  | Reason                   |
+| --------------- | ------------------------ |
+| `password`      | User credentials         |
+| `token`         | Access/refresh tokens    |
 | `authorization` | Bearer tokens in headers |
-| `cookie` | Session cookies |
-| `refresh_token` | OIDC refresh tokens |
-| `client_secret` | OIDC client secrets |
+| `cookie`        | Session cookies          |
+| `refresh_token` | OIDC refresh tokens      |
+| `client_secret` | OIDC client secrets      |
 
 This redaction is always active regardless of `NODE_ENV` or `LOG_LEVEL`.
+
+For covered administrative and authentication requests, use the single structured
+`security.decision.v1` record as the terminal authorization/validation outcome. Correlate on its
+server-generated `requestId`; do not attempt to reconstruct a decision by joining ordinary request
+messages or audit rows. The event uses normalized route templates and closed reason codes and never
+contains raw request values or error diagnostics.
 
 In production, pipe JSON logs to your log aggregator (ELK, Datadog, CloudWatch, etc.):
 
@@ -787,16 +800,16 @@ When `METRICS_ENABLED=true`, Porta exposes a Prometheus-compatible `GET /metrics
 
 **Available metrics:**
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `porta_http_requests_total` | Counter | Total HTTP requests (labels: `method`, `status_code`, `path`) |
-| Default Node.js metrics | Various | CPU, memory, event loop lag, GC (via `collectDefaultMetrics()`) |
+| Metric                      | Type    | Description                                                     |
+| --------------------------- | ------- | --------------------------------------------------------------- |
+| `porta_http_requests_total` | Counter | Total HTTP requests (labels: `method`, `status_code`, `path`)   |
+| Default Node.js metrics     | Various | CPU, memory, event loop lag, GC (via `collectDefaultMetrics()`) |
 
 **Enable in Docker Compose:**
 
 ```yaml
 environment:
-  METRICS_ENABLED: "true"
+  METRICS_ENABLED: 'true'
 ```
 
 **Prometheus scrape config:**
@@ -820,17 +833,17 @@ The metrics endpoint is **unauthenticated**. If exposing Porta directly to the i
 
 Beyond Prometheus metrics, monitor:
 
-| Metric | Source | What to Watch |
-|--------|--------|---------------|
-| Health status | `GET /health` | Any non-200 response |
-| Readiness | `GET /ready` | 503 responses indicate DB/Redis connectivity issues |
-| Response times | Reverse proxy logs | P95 > 500ms |
-| Error rate | Application logs (`level: 50+`) | Spike in errors |
-| PostgreSQL connections | `pg_stat_activity` | Connection pool exhaustion |
-| Redis memory | `redis-cli info memory` | Memory approaching limits |
-| Disk usage | PostgreSQL data volume | Running out of space |
-| Rate limit hits | Audit log `security.rate_limited` | Brute-force attempts |
-| Account lockouts | Audit log `user.locked` | Credential-stuffing attacks |
+| Metric                 | Source                            | What to Watch                                       |
+| ---------------------- | --------------------------------- | --------------------------------------------------- |
+| Health status          | `GET /health`                     | Any non-200 response                                |
+| Readiness              | `GET /ready`                      | 503 responses indicate DB/Redis connectivity issues |
+| Response times         | Reverse proxy logs                | P95 > 500ms                                         |
+| Error rate             | Application logs (`level: 50+`)   | Spike in errors                                     |
+| PostgreSQL connections | `pg_stat_activity`                | Connection pool exhaustion                          |
+| Redis memory           | `redis-cli info memory`           | Memory approaching limits                           |
+| Disk usage             | PostgreSQL data volume            | Running out of space                                |
+| Rate limit hits        | Audit log `security.rate_limited` | Brute-force attempts                                |
+| Account lockouts       | Audit log `user.locked`           | Credential-stuffing attacks                         |
 
 ---
 
@@ -838,12 +851,12 @@ Beyond Prometheus metrics, monitor:
 
 Porta applies Redis-backed, per-IP rate limiting to sensitive endpoints:
 
-| Scope | Limit | Window | Endpoints |
-|-------|-------|--------|-----------|
-| **Token endpoint** | 30 requests | 5 minutes | `POST /:orgSlug/auth/token` |
-| **Admin API** (write ops) | 60 requests | 60 seconds | `POST/PUT/PATCH/DELETE /api/admin/*` |
-| **Introspection** | 100 requests | 60 seconds | `POST /:orgSlug/auth/token/introspection` |
-| **Login interactions** | Per existing auth rate limiter | — | `POST /:orgSlug/interaction/*` |
+| Scope                     | Limit                          | Window     | Endpoints                                 |
+| ------------------------- | ------------------------------ | ---------- | ----------------------------------------- |
+| **Token endpoint**        | 30 requests                    | 5 minutes  | `POST /:orgSlug/auth/token`               |
+| **Admin API** (write ops) | 60 requests                    | 60 seconds | `POST/PUT/PATCH/DELETE /api/admin/*`      |
+| **Introspection**         | 100 requests                   | 60 seconds | `POST /:orgSlug/auth/token/introspection` |
+| **Login interactions**    | Per existing auth rate limiter | —          | `POST /:orgSlug/interaction/*`            |
 
 When a rate limit is exceeded, the server returns `429 Too Many Requests` with a `Retry-After` header. Rate limit events are logged to the audit trail as `security.rate_limited`.
 
@@ -892,11 +905,11 @@ porta config set --key account_lockout_cooldown_minutes --value 30
 
 Porta enforces body parser size limits to prevent denial-of-service via oversized payloads:
 
-| Content Type | Limit |
-|-------------|-------|
-| `application/json` | 100 KB |
+| Content Type                        | Limit  |
+| ----------------------------------- | ------ |
+| `application/json`                  | 100 KB |
 | `application/x-www-form-urlencoded` | 100 KB |
-| `text/plain` | 100 KB |
+| `text/plain`                        | 100 KB |
 
 Requests exceeding these limits receive a `413 Payload Too Large` response.
 
