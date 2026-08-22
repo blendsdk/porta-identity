@@ -1,9 +1,9 @@
 # Roadmap: Test Assurance
 
 > **Feature-Set**: Test Assurance
-> **Status**: Executing — authorized product remediation is at its final full-gate task; unrelated named gaps remain
+> **Status**: Executing — authorized product remediation is complete; unrelated named gaps remain
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-08-22 19:15
+> **Last Updated**: 2026-08-22 21:33
 > **Progress**: 0 / 7 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -24,7 +24,7 @@
 | RD-03    | Coverage attribution and ratchets                    | [RD-03](requirements/RD-03-coverage-attribution-and-ratchets.md)                    | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02                                                                                       |
 | RD-04    | Functional contracts and compatibility               | [RD-04](requirements/RD-04-functional-contracts-and-compatibility.md)               | [test-assurance-program](plans/test-assurance-program/00-index.md)          | Executing | 🔄     | 2026-08-19 15:13 | packed protocol evidence admitted                                                                             |
 | ↳ DEF-2  | Clean packed-client evidence checkpoints             | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md) | Done      | ✅     | 2026-08-14 16:37 | AR-58 approved; Tasks 6.5–6.7 own delivery                                                                    |
-| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                | Executing | 🔄     | 2026-08-22 19:55 | product remediation at 65/66; only the final clean full-gate task remains                                     |
+| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                | Executing | 🔄     | 2026-08-22 21:33 | authorized product remediation complete at 66/66; unrelated blocked and deferred assurance gaps remain        |
 | ↳ DEF-3  | Advanced protocol consistency campaign               | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 19:40 | concurrency, response loss, restart, commit boundaries                                                        |
 | ↳ DEF-4  | Authorization-code atomic consumption                | —                                                                                   | —                                                                           | Blocked   | ⛔     | 2026-08-19 19:40 | Redis consume is read/modify/write; product fix needs separate authority                                      |
 | ↳ DEF-5  | Protocol control sensitivity campaign                | —                                                                                   | —                                                                           | Deferred  | ⏸️     | 2026-08-19 19:53 | no disposable protocol source variations in this program                                                      |
