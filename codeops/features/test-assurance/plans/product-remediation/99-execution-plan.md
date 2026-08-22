@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 01:42
-> **Progress**: 25/49 tasks (51%)
+> **Last Updated**: 2026-08-22 02:42
+> **Progress**: 26/52 tasks (50%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -30,12 +30,12 @@ to the exec-plan protocol.
 | Phase | Title | Tasks |
 | ---: | --- | ---: |
 | 1 | Enumeration-resistant password and recovery work | 17 |
-| 2 | Tenant-bound atomic magic links | 9 |
+| 2 | Tenant-bound atomic magic links | 12 |
 | 3 | Bulk/import/export product contracts | 10 |
 | 4 | Correlated security decisions and durable audit | 9 |
 | 5 | Black-box closure and documentation | 4 |
 
-**Total: 49 tasks across 5 phases.**
+**Total: 52 tasks across 5 phases.**
 
 ## Targeted verification bindings
 
@@ -97,7 +97,10 @@ timing remains explicitly diagnostic.
 - [x] 2.6 Run ST-07–ST-13 green through unit, integration, and public Alpha/Bravo boundaries. ✅ (completed: 2026-08-22 00:50 CEST; unchanged unit oracle 3/3, service-backed PostgreSQL/Redis/MailHog integration 7/7, and public magic-link E2E 6/6 green; retained server inventory 240 files and `yarn verify` passed)
 - [x] 2.7 Add transaction rollback, post-commit Redis failure, Lua concurrency, expiry, and privacy implementation tests — `packages/server/tests/unit/auth/magic-link-binding.impl.test.ts` ✅ (completed: 2026-08-22 01:11 CEST; five focused implementation cases cover durable-audit rollback, post-commit Redis failure, exact continuation races, expiry cleanup, and protected-value redaction; Phase 2 unit target 8/8, structure 70/70, and `yarn verify` passed)
 - [x] 2.8a Update magic-link/API/architecture documentation and run Phase 2 targeted, E2E, pentest, docs-build, and `yarn verify` checks. ✅ (completed: 2026-08-22 01:42 CEST; public and maintainer docs now describe outbox issuance, durable tenant/interaction authority, transactional consume, and Redis continuation behavior; targeted 8/8, live integration 7/7, E2E 6/6, pentest 224/224, docs build, structure 70/70, and `yarn verify` passed)
-- [ ] 2.8b From the clean pushed documentation checkpoint, run the production-security human-auth collector, repeated Phase 2 targeted/pentest checks, `yarn verify`, and the Phase 2 quality gate.
+- [x] 2.8b From the clean pushed documentation checkpoint, run the production-security human-auth collector, repeated Phase 2 targeted/pentest checks, `yarn verify`, and the Phase 2 quality gate. ✅ (completed: 2026-08-22 02:42 CEST; clean collector run `062a1b50-a27a-4f45-b8e5-9292fe75ed62` completed functional 7/7, second-factor 4/4, and tenant/admin 17/17 with the expected registered exit `40`, mode `0600`, exact commit/tree provenance, and zero active-run/Docker residue; the mandatory review recorded four Major corrections and left Phase 2 open)
+- [ ] 2.8c Extend the immutable ST-07–ST-13 oracle for exact live interaction/client authority, standalone delivered URLs, callback limiting, and real operational-log privacy; record the exact RED assertions.
+- [ ] 2.8d Implement live interaction/client authority admission at issuance and callback consumption, conditional standalone URLs, the protected callback limiter, privacy-safe logs, and authority-only token APIs; add focused implementation and public-boundary tests.
+- [ ] 2.8e From the clean pushed correction revision, rerun production-security evidence, Phase 2 unit/integration/E2E/pentest gates, documentation build, `yarn verify`, and one bounded quality re-review; close Phase 2 only if no Critical or Major remains.
 
 Deliverable: cross-tenant or wrong-interaction presentation cannot authenticate, mutate, or consume;
 intended use remains atomic and single-use.

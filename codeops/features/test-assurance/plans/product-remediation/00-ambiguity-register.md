@@ -323,3 +323,35 @@ smallest established sequence that binds evidence to the exact documented implem
 pattern and introduces no new mechanism. **Policy version**: 1. **Root Invocation ID**:
 `AD-TA-REMEDIATION-20260821`. **Reopen trigger**: the collector gains a reviewed content-addressed
 snapshot mode that safely binds uncommitted source.
+
+**AR-18 — Live magic-link interaction/client authority correction:** **Authority**: AI — delegated
+by `--auto-design`. **Eligibility**: security mechanism and internal dependency wiring inside the
+approved tenant-bound magic-link behavior; no public compatibility, product policy, or scope
+change. **Objective**: prevent an expired, missing, stale, or foreign provider interaction from
+consuming a bound artifact or mutating account/audit state. **Decision**: use one provider-backed
+interaction authority resolver at both delayed issuance and public callback presentation. For a
+bound artifact, resolve the exact UID through `oidc-provider`, obtain its client identifier, and
+pass that identifier into the existing PostgreSQL issuance/consumption transaction. The
+transaction locks and requires the current client to be active and owned by the route/job tenant
+before inserting or consuming the artifact. Standalone artifacts remain the explicit null-UID
+branch and their URLs omit the query entirely. The callback uses a dedicated fail-closed limiter
+whose key combines tenant, normalized socket peer, and a domain-separated keyed artifact digest;
+all rejection paths retain the same public failure. Operational logs replace raw interaction/user
+authority with closed event labels, and the evidence driver captures real serialized output.
+Generic token insertion statically excludes magic-link rows. **Evidence**: the current callback
+checks only stored/presented UID equality before commit; the provider exposes live Interaction
+lookup; the clients table owns current tenant/status; migration 023 already persists the exact UID;
+and the current worker constructs `?interaction=` even for null authority. **Rejected
+alternatives**: Redis organization mapping alone cannot prove current client authority; a
+router-only client lookup races the transaction; post-consumption validation is irreversible;
+duplicating client identity in a new migration adds backfill/state drift without stronger proof;
+and the existing fail-open limiter cannot enforce a verification boundary during Redis failure.
+**Strongest counterargument**: provider-backed lookup makes delayed issuance and callback
+availability depend on the short-lived interaction record. That is intentional fail-closed
+behavior for an interaction-bound artifact; users can request a fresh flow, while standalone
+artifacts do not take this dependency. **Confidence**: High. **Hardening**: an independent blind
+challenger selected the same provider resolver plus transaction-locked client design and rejected
+the Redis-only and duplicate-column alternatives. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-REMEDIATION-20260821`. **Reopen trigger**: provider Interaction lookup cannot expose the
+exact client identifier, or interaction lifetime becomes shorter than the approved recovery-job
+retry horizon.
