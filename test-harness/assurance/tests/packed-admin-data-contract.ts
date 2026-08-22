@@ -18,6 +18,8 @@ export interface PackedAdminDataRequirement {
   readonly surface: PackedAdminDataSurface;
   /** Expected public outcome. */
   readonly expectedOutcome: 'allowed' | 'rejected';
+  /** Exact public status required by the journey contract. */
+  readonly expectedStatus: 200 | 400;
   /** Whether the journey must leave protected state unchanged. */
   readonly requiresNonmutation: true;
 }

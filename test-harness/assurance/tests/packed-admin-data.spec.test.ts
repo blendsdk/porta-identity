@@ -38,14 +38,14 @@ function completeEvidence() {
       client: requirement.client,
       clientResult: {
         outcome: requirement.expectedOutcome,
-        status: requirement.expectedOutcome === 'allowed' ? 200 : 400,
+        status: requirement.expectedStatus,
         bodyDigest: digestA,
         recordCount: requirement.surface === 'export-users-json' ? 2 : null,
         publicFieldDigest: digestB,
       },
       independentRawResult: {
         outcome: requirement.expectedOutcome,
-        status: requirement.expectedOutcome === 'allowed' ? 200 : 400,
+        status: requirement.expectedStatus,
         bodyDigest: digestA,
         recordCount: requirement.surface === 'export-users-json' ? 2 : null,
         publicFieldDigest: digestB,
@@ -78,16 +78,17 @@ function completeEvidence() {
 
 test('should freeze the bounded non-destructive packed administrative-data matrix', () => {
   assert.deepEqual(
-    packedAdminDataRequirements.map(({ client, surface, expectedOutcome }) => [
+    packedAdminDataRequirements.map(({ client, surface, expectedOutcome, expectedStatus }) => [
       client,
       surface,
       expectedOutcome,
+      expectedStatus,
     ]),
     [
-      ['sdk', 'bulk-duplicate-rejection', 'rejected'],
-      ['sdk', 'import-dry-run', 'allowed'],
-      ['sdk', 'export-users-json', 'allowed'],
-      ['cli', 'export-users-json', 'allowed'],
+      ['sdk', 'bulk-duplicate-rejection', 'rejected', 400],
+      ['sdk', 'import-dry-run', 'allowed', 200],
+      ['sdk', 'export-users-json', 'allowed', 200],
+      ['cli', 'export-users-json', 'allowed', 200],
     ],
   );
   assert.equal(new Set(packedAdminDataRequirements.map(({ id }) => id)).size, 4);

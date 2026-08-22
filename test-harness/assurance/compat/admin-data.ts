@@ -143,6 +143,7 @@ export async function collectPackedAdminDataJourneys(
     const forbiddenObserved = Object.values(forbidden).some(Boolean);
     const passed =
       client.result.outcome === expectedResult &&
+      client.result.status === requirement.expectedStatus &&
       observationsMatch &&
       before === after &&
       !forbiddenObserved;
@@ -168,6 +169,7 @@ function validateJourney(
 ): void {
   const passed =
     journey.clientResult.outcome === requirement.expectedOutcome &&
+    journey.clientResult.status === requirement.expectedStatus &&
     JSON.stringify(journey.clientResult) === JSON.stringify(journey.independentRawResult) &&
     journey.stateDigestBefore === journey.stateDigestAfter &&
     !Object.values(journey.forbiddenOutputObserved).some(Boolean);

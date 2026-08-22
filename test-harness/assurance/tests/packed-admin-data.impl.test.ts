@@ -26,7 +26,7 @@ function driver(events: string[]): PackedAdminDataDriver {
       events.push(`client:${requirement.id}`);
       const result = {
         outcome: requirement.expectedOutcome,
-        status: requirement.expectedOutcome === 'allowed' ? 200 : 400,
+        status: requirement.expectedStatus,
         bodyDigest: digest,
         recordCount: requirement.surface === 'export-users-json' ? 2 : null,
         publicFieldDigest: digest,
@@ -49,7 +49,7 @@ function driver(events: string[]): PackedAdminDataDriver {
       events.push(`raw:${requirement.id}`);
       return {
         outcome: requirement.expectedOutcome,
-        status: requirement.expectedOutcome === 'allowed' ? 200 : 400,
+        status: requirement.expectedStatus,
         bodyDigest: digest,
         recordCount: requirement.surface === 'export-users-json' ? 2 : null,
         publicFieldDigest: digest,
@@ -91,6 +91,28 @@ test('should classify mismatched raw output and protected output as product fail
     },
   };
   const evidence = await collectPackedAdminDataJourneys(mismatch);
+  assert.equal(evidence[0]?.outcome, 'product-failure');
+});
+
+test('should classify a matching but incorrect public status as a product failure', async () => {
+  const events: string[] = [];
+  const base = driver(events);
+  const wrongStatus: PackedAdminDataDriver = {
+    ...base,
+    async executeClient(requirement) {
+      const observation = await base.executeClient(requirement);
+      return requirement.id === packedAdminDataRequirements[0]?.id
+        ? { ...observation, result: { ...observation.result, status: 500 } }
+        : observation;
+    },
+    async executeIndependentRaw(requirement) {
+      const observation = await base.executeIndependentRaw(requirement);
+      return requirement.id === packedAdminDataRequirements[0]?.id
+        ? { ...observation, status: 500 }
+        : observation;
+    },
+  };
+  const evidence = await collectPackedAdminDataJourneys(wrongStatus);
   assert.equal(evidence[0]?.outcome, 'product-failure');
 });
 

@@ -7,6 +7,7 @@ export const packedAdminDataRequirements: readonly PackedAdminDataRequirement[] 
     client: 'sdk',
     surface: 'bulk-duplicate-rejection',
     expectedOutcome: 'rejected',
+    expectedStatus: 400,
     requiresNonmutation: true,
   },
   {
@@ -14,6 +15,7 @@ export const packedAdminDataRequirements: readonly PackedAdminDataRequirement[] 
     client: 'sdk',
     surface: 'import-dry-run',
     expectedOutcome: 'allowed',
+    expectedStatus: 200,
     requiresNonmutation: true,
   },
   {
@@ -21,6 +23,7 @@ export const packedAdminDataRequirements: readonly PackedAdminDataRequirement[] 
     client: 'sdk',
     surface: 'export-users-json',
     expectedOutcome: 'allowed',
+    expectedStatus: 200,
     requiresNonmutation: true,
   },
   {
@@ -28,6 +31,7 @@ export const packedAdminDataRequirements: readonly PackedAdminDataRequirement[] 
     client: 'cli',
     surface: 'export-users-json',
     expectedOutcome: 'allowed',
+    expectedStatus: 200,
     requiresNonmutation: true,
   },
 ]);
