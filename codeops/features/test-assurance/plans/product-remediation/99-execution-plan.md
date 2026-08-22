@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 18:03
-> **Progress**: 62/65 tasks (95%)
+> **Last Updated**: 2026-08-22 18:41
+> **Progress**: 63/65 tasks (97%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -173,7 +173,7 @@ and covered authorized mutations cannot commit without durable audit intent.
 - [x] 5.2a Add the independently validated R5.17 requirement, case, task, and claim edge required by the governed aggregate. ✅ (completed: 2026-08-22 17:09 CEST; the first aggregate stopped safely after `assurance:validate` exposed the missing post-program requirement edge; executable nodes and human traceability now map R5.17 exactly to ST-52–ST-54, ST-57–ST-61, ST-63, Tasks 9.1–9.10, and CLAIM-R5-17; governance tests, JSON/Markdown formatting, diff checks, and full `yarn verify` passed in 10m15s with pentest 224/224)
 - [x] 5.2b Rebind the local observation staleness ratchet to the authorized R5.17 requirement content without changing coverage floors or promotion policy. ✅ (completed: 2026-08-22 17:25 CEST; the clean aggregate admitted traceability and then stopped safely when its internal suite detected the pre-remediation RD-05 digest; only the reviewed requirement identity and review metadata were advanced, the local coverage baseline remains unchanged and non-promoting, focused ratchet tests passed, and full `yarn verify` passed in 10m23s with pentest 224/224)
 - [x] 5.2c Review and advance the local-only coverage baseline to the exact clean post-remediation source set and monotonically higher covered counts. ✅ (completed: 2026-08-22 18:03 CEST; aggregate run `c6da28e1` completed all 16 children with 13 assured and only registered gaps retained, then its report correctly rejected an unreviewed total/path change; the reviewed production-security observation `53ff6f24` advances paths 139→150, statements 1483→1838, branches 399→580, functions 243→317, and lines 1462→1806 without promotion authority; focused ratchets passed and full `yarn verify` passed in 10m16s)
-- [ ] 5.2d Re-run the governed aggregate/report from the clean coverage-baseline checkpoint and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps.
+- [x] 5.2d Re-run the governed aggregate/report from the clean coverage-baseline checkpoint and prove DEF-7, DEF-10, DEF-12, and DEF-13 are superseded only by exact admitted evidence; preserve unrelated gaps. ✅ (completed: 2026-08-22 18:41 CEST; clean aggregate run `98473889-8a9c-4fff-9048-af5e0d0001aa` completed all 16 registered invocations with 14 assured, including the governed report, while truthfully retaining three authority-blocked, two security-project-incomplete, and four unqualified items; result and summary are mode 0600, the primary tree is unchanged, active-run state is absent, no run-labelled container remains, cleanup is complete, and full `yarn verify` passed in 10m36s with pentest 224/224)
 - [ ] 5.3 Update RD/traceability, both roadmaps, public docs, techdocs/ADR, and current test inventory with truthful claim status and no certification language.
 - [ ] 5.4 Run final `yarn test:structure`, `yarn test:ui`, `yarn test:pentest`, `yarn harness:test`, exact assurance roll-up, and `yarn verify`; confirm clean worktree and zero owned residue.
 
