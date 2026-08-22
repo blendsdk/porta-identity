@@ -9,6 +9,7 @@
 
 import fs from 'node:fs';
 import type { CommandModule } from 'yargs';
+import type { ExportEntityType, ExportFormat } from '@portaidentity/sdk';
 import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
@@ -19,10 +20,12 @@ import { success, info } from '../output.js';
 // ---------------------------------------------------------------------------
 
 interface ExportDownloadArgs extends GlobalOptions {
-  'entity-type': string;
-  format: string;
+  'entity-type': ExportEntityType;
+  format: ExportFormat;
   'org-id'?: string;
   'app-id'?: string;
+  'start-date'?: string;
+  'end-date'?: string;
   output?: string;
 }
 
@@ -43,15 +46,7 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('entity-type', {
               type: 'string',
               describe: 'Entity type to export',
-              choices: [
-                'organizations',
-                'applications',
-                'clients',
-                'users',
-                'roles',
-                'permissions',
-                'audit',
-              ] as const,
+              choices: ['organizations', 'clients', 'users', 'roles', 'audit'] as const,
               demandOption: true,
             })
             .option('format', {
@@ -68,6 +63,14 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               type: 'string',
               describe: 'Filter by application ID',
             })
+            .option('start-date', {
+              type: 'string',
+              describe: 'Inclusive ISO start date required for audit exports',
+            })
+            .option('end-date', {
+              type: 'string',
+              describe: 'Inclusive ISO end date required for audit exports',
+            })
             .option('output', {
               alias: 'o',
               type: 'string',
@@ -77,17 +80,12 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           try {
             const client = createClient(argv);
             const response = await client.exports.download({
-              entityType: argv['entity-type'] as
-                | 'organizations'
-                | 'applications'
-                | 'clients'
-                | 'users'
-                | 'roles'
-                | 'permissions'
-                | 'audit',
-              format: argv.format as 'csv' | 'json',
+              entityType: argv['entity-type'],
+              format: argv.format,
               organizationId: argv['org-id'],
               applicationId: argv['app-id'],
+              startDate: argv['start-date'],
+              endDate: argv['end-date'],
             });
 
             // The SDK returns a TransportResponse with raw body

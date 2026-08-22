@@ -206,9 +206,7 @@ describe('provision command handler', () => {
 
     await invokeProvision({ file: '/tmp/infra.json', 'dry-run': true });
 
-    expect(mockImports.provision).toHaveBeenCalledWith(
-      expect.objectContaining({ dryRun: true }),
-    );
+    expect(mockImports.provision).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Dry-run'));
   });
 
@@ -238,7 +236,7 @@ describe('provision command handler', () => {
     expect(handleError).toHaveBeenCalled();
   });
 
-  it('allows passwords with allow_passwords: true', async () => {
+  it('rejects the retired password override before network access', async () => {
     const fileWithPasswords = {
       ...minimalFile,
       allow_passwords: true,
@@ -250,11 +248,10 @@ describe('provision command handler', () => {
       ],
     };
     mockFileRead(fileWithPasswords);
-    mockImports.provision.mockResolvedValue(importResult);
-
     await invokeProvision({ file: '/tmp/infra.json' });
 
-    expect(mockImports.provision).toHaveBeenCalled();
+    expect(handleError).toHaveBeenCalled();
+    expect(mockImports.provision).not.toHaveBeenCalled();
   });
 
   it('handles errors', async () => {

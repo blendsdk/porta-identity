@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 07:38
-> **Progress**: 36/53 tasks (68%)
+> **Last Updated**: 2026-08-22 07:53
+> **Progress**: 37/53 tasks (70%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -121,7 +121,7 @@ intended use remains atomic and single-use.
 - [x] 3.4 Implement the closed import prevalidator/planner and remove secret-equivalent manifest inputs — `packages/server/src/lib/data-import.ts`, import schemas/types ✅ (completed: 2026-08-22 06:53 CEST; strict versioned schemas reject unknown, duplicate, and authentication-material inputs before mutation; deterministic dependency/collision planning is snapshot-ready; focused unit/contract 84/84, import/export integration 10/10, lint/type/format gates, and `yarn verify` passed in 8m52s)
 - [x] 3.5 Implement atomic merge/overwrite/dry-run execution, sanitized typed errors, and credential-after-commit handling — `packages/server/src/lib/data-import.ts`, `packages/server/src/routes/imports.ts` ✅ (completed: 2026-08-22 07:24 CEST; repeatable-read execution rolls back every non-skip failure, overwrite changes only approved mutable fields, dry-run returns boolean credential intent without effects, committed confidential credentials return once, and public/audit failures are sanitized; focused unit/contract 84/84, PostgreSQL integration 10/10, lint/type/format gates, and final `yarn verify` passed in 9m24s)
 - [x] 3.6 Implement dedicated export authorization, exact relationship scope, field policies, 10,000-row bound, audit-detail filtering, and CSV formula neutralization — `packages/server/src/routes/exports.ts`, `packages/server/src/lib/data-export.ts` ✅ (completed: 2026-08-22 07:38 CEST; every export requires dedicated plus entity-read authority, role scope proves tenant/application participation, all closed queries probe 10,001 rows, audit details use an event allowlist, and CSV formulas are neutralized before RFC quoting; focused unit/spec 12/12, PostgreSQL integration 10/10, lint/type/format gates, and `yarn verify` passed in 9m00s)
-- [ ] 3.7 Align SDK/CLI export types and public bulk/import/export documentation with the approved contract — `packages/sdk/`, `packages/cli/`, `docs/api/`, `docs/cli/`
+- [x] 3.7 Align SDK/CLI export types and public bulk/import/export documentation with the approved contract — `packages/sdk/`, `packages/cli/`, `docs/api/`, `docs/cli/` ✅ (completed: 2026-08-22 07:53 CEST; SDK and CLI expose exactly five export entities and complete audit scope, successful imports omit errors, dry-run credential intent is boolean-only, password provisioning is rejected before network access, and API/CLI docs plus the full example match the atomic bounded contract; SDK 7/7, CLI 16/16, structure 70/70, docs build, type/lint/format gates, and `yarn verify` passed in 8m51s)
 - [ ] 3.8 Run ST-14–ST-24 green through unit/integration/raw HTTP and packed-client boundaries.
 - [ ] 3.9 Add transaction, lock, infrastructure-stop, dry-run, credential-once, export-redaction, and compatibility implementation tests — `packages/server/tests/unit/admin/administrative-data.impl.test.ts`
 - [ ] 3.10 Run Phase 3 targeted/P1/compatibility/pentest checks, `yarn test:structure`, and `yarn verify`; update admin-data techdocs.

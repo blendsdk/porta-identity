@@ -184,7 +184,6 @@ interface FlatUser {
   locale?: string;
   status?: string;
   email_verified?: boolean;
-  password?: string;
 }
 
 interface FlatModule {
@@ -241,7 +240,6 @@ interface FlatManifest {
 interface ProvisioningFile {
   version: string;
   config?: Record<string, string | number | boolean>;
-  allow_passwords?: boolean;
   organizations: ProvisioningOrg[];
 }
 
@@ -320,6 +318,7 @@ interface ProvisioningUser {
   locale?: string;
   status?: string;
   email_verified?: boolean;
+  /** Password input is recognized only so the transformer can reject it before network access. */
   password?: string;
   roles?: Array<{ app: string; role: string }>;
   claims?: Array<{ app: string; claim: string; value: unknown }>;
@@ -355,16 +354,13 @@ function transformToManifest(input: ProvisioningFile): FlatManifest {
     user_claim_values: [],
   };
 
-  // Validate allow_passwords enforcement
-  if (!input.allow_passwords) {
-    for (const org of input.organizations) {
-      for (const user of org.users ?? []) {
-        if (user.password) {
-          throw new Error(
-            `User "${user.email}": password field requires "allow_passwords: true" at top level. ` +
-              'Password provisioning is for development/testing only.',
-          );
-        }
+  if ('allow_passwords' in input) {
+    throw new Error('Password provisioning is not supported');
+  }
+  for (const org of input.organizations) {
+    for (const user of org.users ?? []) {
+      if (user.password !== undefined) {
+        throw new Error('Password provisioning is not supported');
       }
     }
   }
@@ -396,7 +392,6 @@ function transformToManifest(input: ProvisioningFile): FlatManifest {
         locale: user.locale,
         status: user.status,
         email_verified: user.email_verified,
-        password: user.password,
       });
 
       for (const roleRef of user.roles ?? []) {
@@ -559,8 +554,8 @@ function displayResult(result: ImportResult, _mode: string): void {
   if (result.skipped.length > 0) {
     summaryRows.push(['Skipped', String(result.skipped.length)]);
   }
-  if (result.errors.length > 0) {
-    summaryRows.push(['Errors', String(result.errors.length)]);
+  if ((result.errors?.length ?? 0) > 0) {
+    summaryRows.push(['Errors', String(result.errors?.length ?? 0)]);
   }
 
   if (summaryRows.length > 0) {
@@ -603,12 +598,12 @@ function displayResult(result: ImportResult, _mode: string): void {
   }
 
   // Errors
-  if (result.errors.length > 0) {
+  if ((result.errors?.length ?? 0) > 0) {
     console.log();
-    printError(`${result.errors.length} error(s):`);
+    printError(`${result.errors?.length ?? 0} error(s):`);
     printTable(
       ['Type', 'Slug', 'Error'],
-      result.errors.map((e) => [formatTypeName(e.type), e.slug, e.error]),
+      (result.errors ?? []).map((e) => [formatTypeName(e.type), e.slug, e.error]),
     );
   } else {
     console.log(`  Errors: 0`);
@@ -622,9 +617,9 @@ function displayResult(result: ImportResult, _mode: string): void {
       ['Client', 'Client ID', 'Type', 'Secret', 'Label', 'Expires'],
       result.credentials.map((c) => [
         c.clientName,
-        c.clientId,
+        c.clientId ?? '—',
         c.clientType,
-        c.secretPlaintext ?? '—',
+        c.credentialWillBeGenerated ? 'would be generated' : (c.secretPlaintext ?? '—'),
         c.secretLabel ?? '—',
         c.secretExpiresAt ?? '—',
       ]),

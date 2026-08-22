@@ -6,10 +6,10 @@ The `porta` CLI is the admin tool for managing your Porta identity platform from
 
 The Porta CLI has two components:
 
-| Component | Package | Purpose |
-|-----------|---------|---------|
-| **Standalone CLI** | `@portaidentity/cli` | Full admin tool — 20+ commands, installs via npm |
-| **Server CLI** | `@portaidentity/server` | Infrastructure-only — init, migrate, seed, health |
+| Component          | Package                 | Purpose                                           |
+| ------------------ | ----------------------- | ------------------------------------------------- |
+| **Standalone CLI** | `@portaidentity/cli`    | Full admin tool — 20+ commands, installs via npm  |
+| **Server CLI**     | `@portaidentity/server` | Infrastructure-only — init, migrate, seed, health |
 
 The standalone CLI uses the **`@portaidentity/sdk`** under the hood, authenticating via OIDC (Auth Code + PKCE) to the Porta server's Admin API. The server CLI uses direct database access for bootstrapping operations.
 
@@ -75,20 +75,20 @@ Credentials are stored at `~/.porta/credentials.json` with `0600` permissions.
 
 Every standalone CLI command supports these global flags:
 
-| Flag | Description |
-|------|-------------|
-| `--server <url>` | Porta server URL (or set `PORTA_SERVER` env var) |
-| `--json` | Output results as JSON instead of formatted tables |
-| `--verbose` | Enable verbose/debug logging |
-| `--force` | Skip confirmation prompts |
-| `--insecure` | Allow self-signed TLS certificates |
+| Flag             | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `--server <url>` | Porta server URL (or set `PORTA_SERVER` env var)   |
+| `--json`         | Output results as JSON instead of formatted tables |
+| `--verbose`      | Enable verbose/debug logging                       |
+| `--force`        | Skip confirmation prompts                          |
+| `--insecure`     | Allow self-signed TLS certificates                 |
 
 Server CLI commands support:
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description             |
+| ---------------- | ----------------------- |
 | `--database-url` | Override `DATABASE_URL` |
-| `--redis-url` | Override `REDIS_URL` |
+| `--redis-url`    | Override `REDIS_URL`    |
 
 ## Output Formatting
 
@@ -103,38 +103,38 @@ When output is piped or redirected (no TTY), each value is printed on a single
 line for easy `grep`/`awk` processing. Use `--json` for fully machine-readable
 output.
 
-
 ## Command Reference
 
 ### Standalone CLI (`@portaidentity/cli`)
 
-| Command | Description |
-|---------|-------------|
-| `porta login` | Authenticate via OIDC (browser-based) |
-| `porta logout` | Clear stored credentials |
-| `porta whoami` | Display current identity |
-| `porta version` | Show CLI, SDK, and server version info |
-| `porta org` | Manage organizations (CRUD, status, branding, destroy) |
-| `porta app` | Manage applications, modules, roles, permissions, claims |
-| `porta client` | Manage OIDC clients and secrets |
-| `porta user` | Manage users (CRUD, status, password, roles, claims, 2FA) |
-| `porta keys` | Manage ES256 signing keys |
-| `porta config` | Manage system configuration |
-| `porta audit` | View audit log entries |
-| `porta health` | Check server health (via API) |
-| `porta provision` | Declarative environment setup from YAML/JSON |
-| `porta gui` | Attempt to launch the optional browser GUI dependency, which may be unavailable |
+| Command                  | Description                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `porta login`            | Authenticate via OIDC (browser-based)                                           |
+| `porta logout`           | Clear stored credentials                                                        |
+| `porta whoami`           | Display current identity                                                        |
+| `porta version`          | Show CLI, SDK, and server version info                                          |
+| `porta org`              | Manage organizations (CRUD, status, branding, destroy)                          |
+| `porta app`              | Manage applications, modules, roles, permissions, claims                        |
+| `porta client`           | Manage OIDC clients and secrets                                                 |
+| `porta user`             | Manage users (CRUD, status, password, roles, claims, 2FA)                       |
+| `porta keys`             | Manage ES256 signing keys                                                       |
+| `porta config`           | Manage system configuration                                                     |
+| `porta audit`            | View audit log entries                                                          |
+| `porta health`           | Check server health (via API)                                                   |
+| `porta provision`        | Declarative environment setup from YAML/JSON                                    |
+| `porta exports download` | Bounded allowlisted CSV/JSON administrative export                              |
+| `porta gui`              | Attempt to launch the optional browser GUI dependency, which may be unavailable |
 
 ### Server CLI (Infrastructure Only)
 
 These commands are available inside the Porta Docker container or development environment:
 
-| Command | Description |
-|---------|-------------|
-| `porta init` | Bootstrap admin infrastructure (direct-DB) |
-| `porta migrate` | Run database migrations (up/down/status) |
-| `porta seed` | Load development seed data |
-| `porta health` | Check DB + Redis connectivity (direct) |
+| Command          | Description                                |
+| ---------------- | ------------------------------------------ |
+| `porta init`     | Bootstrap admin infrastructure (direct-DB) |
+| `porta migrate`  | Run database migrations (up/down/status)   |
+| `porta seed`     | Load development seed data                 |
+| `porta health`   | Check DB + Redis connectivity (direct)     |
 | `porta user 2fa` | Admin 2FA status/disable/reset (direct-DB) |
 
 ## Detailed Documentation

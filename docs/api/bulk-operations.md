@@ -4,10 +4,10 @@ The bulk operations API enables performing status changes on multiple entities i
 
 ## Endpoints
 
-| Method | Path | Permission | Description |
-|--------|------|-----------|-------------|
-| `POST` | `/api/admin/bulk/organizations/status` | `org:update` | Bulk organization status change |
-| `POST` | `/api/admin/bulk/users/status` | `user:suspend` | Bulk user status change |
+| Method | Path                                   | Permission                                    | Description                           |
+| ------ | -------------------------------------- | --------------------------------------------- | ------------------------------------- |
+| `POST` | `/api/admin/bulk/organizations/status` | matching `admin:org:*` transition permission  | Bulk organization status change       |
+| `POST` | `/api/admin/bulk/users/status`         | matching `admin:user:*` transition permission | Tenant-scoped bulk user status change |
 
 ## Bulk Organization Status Change
 
@@ -27,19 +27,19 @@ Content-Type: application/json
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `ids` | UUID[] | Yes | Organization IDs (1-100) |
-| `action` | string | Yes | One of: `activate`, `suspend`, `archive` |
-| `reason` | string | No | Reason for the status change (max 500 chars) |
+| Field    | Type   | Required | Description                                  |
+| -------- | ------ | -------- | -------------------------------------------- |
+| `ids`    | UUID[] | Yes      | Organization IDs (1-100)                     |
+| `action` | string | Yes      | One of: `activate`, `suspend`, `archive`     |
+| `reason` | string | No       | Reason for the status change (max 500 chars) |
 
 ### Valid Organization Transitions
 
-| Action | From Status | To Status |
-|--------|-------------|-----------|
-| `activate` | suspended | active |
-| `suspend` | active | suspended |
-| `archive` | active, suspended | archived |
+| Action     | From Status       | To Status |
+| ---------- | ----------------- | --------- |
+| `activate` | suspended         | active    |
+| `suspend`  | active            | suspended |
+| `archive`  | active, suspended | archived  |
 
 ## Bulk User Status Change
 
@@ -60,22 +60,22 @@ Content-Type: application/json
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `ids` | UUID[] | Yes | User IDs (1-100) |
-| `action` | string | Yes | One of: `activate`, `deactivate`, `suspend`, `lock`, `unlock` |
-| `reason` | string | No | Reason for suspend/lock (max 500 chars) |
-| `organizationId` | UUID | Yes | Organization scope |
+| Field            | Type   | Required | Description                                                   |
+| ---------------- | ------ | -------- | ------------------------------------------------------------- |
+| `ids`            | UUID[] | Yes      | User IDs (1-100)                                              |
+| `action`         | string | Yes      | One of: `activate`, `deactivate`, `suspend`, `lock`, `unlock` |
+| `reason`         | string | No       | Reason for suspend/lock (max 500 chars)                       |
+| `organizationId` | UUID   | Yes      | Organization scope                                            |
 
 ### Valid User Transitions
 
-| Action | From Status | To Status |
-|--------|-------------|-----------|
-| `activate` | inactive, suspended | active |
-| `deactivate` | active | inactive |
-| `suspend` | active | suspended |
-| `lock` | active | locked |
-| `unlock` | locked | active |
+| Action       | From Status         | To Status |
+| ------------ | ------------------- | --------- |
+| `activate`   | inactive, suspended | active    |
+| `deactivate` | active              | inactive  |
+| `suspend`    | active              | suspended |
+| `lock`       | active              | locked    |
+| `unlock`     | locked              | active    |
 
 ## Response Format
 
@@ -90,6 +90,7 @@ Both endpoints return the same response format with per-item results:
     {
       "id": "uuid-1",
       "success": true,
+      "code": null,
       "previousStatus": "active",
       "newStatus": "suspended"
     },
@@ -102,8 +103,7 @@ Both endpoints return the same response format with per-item results:
     {
       "id": "uuid-3",
       "success": false,
-      "error": "Cannot suspend from status 'archived'",
-      "previousStatus": "archived"
+      "code": "not_found_or_not_authorized"
     }
   ]
 }
@@ -113,5 +113,9 @@ Both endpoints return the same response format with per-item results:
 
 - Maximum **100 items** per bulk operation
 - Items are processed individually, so partial success is possible
-- Each item uses `SELECT ... FOR UPDATE` to prevent concurrent modification
+- Duplicate IDs reject the complete request before access or mutation
+- Each item uses a tenant-qualified `SELECT ... FOR UPDATE` and a separate transaction containing
+  the update and durable audit row
+- If infrastructure stops after committed items, every remaining row is returned in order with
+  code `not_attempted` and one correlation ID; raw dependency diagnostics are never returned
 - All queries are parameterized (SQL injection safe)

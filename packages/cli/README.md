@@ -49,169 +49,170 @@ porta health --server https://your-porta-server.example.com
 
 Every command supports these flags:
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--server` | Porta server URL | `https://porta.local:3443` |
-| `--json` | Output as JSON (for scripting / CI) | `false` |
-| `--force` | Skip confirmation prompts | `false` |
-| `--insecure` | Disable TLS certificate verification | `false` |
+| Flag         | Description                          | Default                    |
+| ------------ | ------------------------------------ | -------------------------- |
+| `--server`   | Porta server URL                     | `https://porta.local:3443` |
+| `--json`     | Output as JSON (for scripting / CI)  | `false`                    |
+| `--force`    | Skip confirmation prompts            | `false`                    |
+| `--insecure` | Disable TLS certificate verification | `false`                    |
 
 ## Command Reference
 
 ### Authentication
 
-| Command | Description |
-|---------|-------------|
-| `porta login` | Authenticate via OIDC (Auth Code + PKCE) — opens browser |
-| `porta logout` | Clear stored credentials |
-| `porta whoami` | Display current identity (no network call) |
+| Command        | Description                                              |
+| -------------- | -------------------------------------------------------- |
+| `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser |
+| `porta logout` | Clear stored credentials                                 |
+| `porta whoami` | Display current identity (no network call)               |
 
 ### Organizations
 
-| Command | Description |
-|---------|-------------|
-| `porta org list` | List all organizations |
-| `porta org create` | Create a new organization |
-| `porta org show <id>` | Show organization details |
-| `porta org update <id>` | Update organization properties |
-| `porta org activate <id>` | Activate an organization |
-| `porta org suspend <id>` | Suspend an organization |
-| `porta org archive <id>` | Archive an organization |
+| Command                    | Description                                               |
+| -------------------------- | --------------------------------------------------------- |
+| `porta org list`           | List all organizations                                    |
+| `porta org create`         | Create a new organization                                 |
+| `porta org show <id>`      | Show organization details                                 |
+| `porta org update <id>`    | Update organization properties                            |
+| `porta org activate <id>`  | Activate an organization                                  |
+| `porta org suspend <id>`   | Suspend an organization                                   |
+| `porta org archive <id>`   | Archive an organization                                   |
 | `porta org destroy <slug>` | Permanently delete an organization and all child entities |
 
 ### Applications
 
-| Command | Description |
-|---------|-------------|
-| `porta app list` | List applications |
-| `porta app create` | Create a new application |
-| `porta app show <id>` | Show application details |
-| `porta app update <id>` | Update application properties |
-| `porta app activate <id>` | Activate an application |
-| `porta app suspend <id>` | Suspend an application |
-| `porta app archive <id>` | Archive an application |
+| Command                   | Description                   |
+| ------------------------- | ----------------------------- |
+| `porta app list`          | List applications             |
+| `porta app create`        | Create a new application      |
+| `porta app show <id>`     | Show application details      |
+| `porta app update <id>`   | Update application properties |
+| `porta app activate <id>` | Activate an application       |
+| `porta app suspend <id>`  | Suspend an application        |
+| `porta app archive <id>`  | Archive an application        |
 
 **Nested: Roles** (`porta app role ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta app role create <app-id>` | Create a role |
-| `porta app role list <app-id>` | List roles |
-| `porta app role show <app-id> <role-id>` | Show role details |
-| `porta app role update <app-id> <role-id>` | Update a role |
-| `porta app role archive <app-id> <role-id>` | Archive a role |
-| `porta app role assign-perm <app-id> <role-id> <perm-id>` | Assign permission to role |
+| Command                                                   | Description                 |
+| --------------------------------------------------------- | --------------------------- |
+| `porta app role create <app-id>`                          | Create a role               |
+| `porta app role list <app-id>`                            | List roles                  |
+| `porta app role show <app-id> <role-id>`                  | Show role details           |
+| `porta app role update <app-id> <role-id>`                | Update a role               |
+| `porta app role archive <app-id> <role-id>`               | Archive a role              |
+| `porta app role assign-perm <app-id> <role-id> <perm-id>` | Assign permission to role   |
 | `porta app role remove-perm <app-id> <role-id> <perm-id>` | Remove permission from role |
 
 **Nested: Permissions** (`porta app permission ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta app permission create <app-id>` | Create a permission |
-| `porta app permission list <app-id>` | List permissions |
-| `porta app permission show <app-id> <perm-id>` | Show permission details |
-| `porta app permission archive <app-id> <perm-id>` | Archive a permission |
+| Command                                           | Description             |
+| ------------------------------------------------- | ----------------------- |
+| `porta app permission create <app-id>`            | Create a permission     |
+| `porta app permission list <app-id>`              | List permissions        |
+| `porta app permission show <app-id> <perm-id>`    | Show permission details |
+| `porta app permission archive <app-id> <perm-id>` | Archive a permission    |
 
 **Nested: Claims** (`porta app claim ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta app claim create <app-id>` | Create a claim definition |
-| `porta app claim list <app-id>` | List claim definitions |
-| `porta app claim show <app-id> <claim-id>` | Show claim details |
-| `porta app claim update <app-id> <claim-id>` | Update a claim definition |
+| Command                                       | Description                |
+| --------------------------------------------- | -------------------------- |
+| `porta app claim create <app-id>`             | Create a claim definition  |
+| `porta app claim list <app-id>`               | List claim definitions     |
+| `porta app claim show <app-id> <claim-id>`    | Show claim details         |
+| `porta app claim update <app-id> <claim-id>`  | Update a claim definition  |
 | `porta app claim archive <app-id> <claim-id>` | Archive a claim definition |
 
 **Nested: Modules** (`porta app module ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta app module list <app-id>` | List application modules |
-| `porta app module enable <app-id>` | Enable a module |
-| `porta app module disable <app-id>` | Disable a module |
+| Command                             | Description              |
+| ----------------------------------- | ------------------------ |
+| `porta app module list <app-id>`    | List application modules |
+| `porta app module enable <app-id>`  | Enable a module          |
+| `porta app module disable <app-id>` | Disable a module         |
 
 ### Clients
 
-| Command | Description |
-|---------|-------------|
-| `porta client list` | List clients |
-| `porta client create` | Create a new client |
-| `porta client show <id>` | Show client details |
-| `porta client update <id>` | Update client properties |
-| `porta client activate <id>` | Activate a client |
-| `porta client suspend <id>` | Suspend a client |
-| `porta client archive <id>` | Archive a client |
+| Command                      | Description              |
+| ---------------------------- | ------------------------ |
+| `porta client list`          | List clients             |
+| `porta client create`        | Create a new client      |
+| `porta client show <id>`     | Show client details      |
+| `porta client update <id>`   | Update client properties |
+| `porta client activate <id>` | Activate a client        |
+| `porta client suspend <id>`  | Suspend a client         |
+| `porta client archive <id>`  | Archive a client         |
 
 **Nested: Secrets** (`porta client secret ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta client secret create <client-id>` | Generate a new client secret |
-| `porta client secret list <client-id>` | List client secrets |
-| `porta client secret revoke <client-id> <secret-id>` | Revoke a client secret |
+| Command                                              | Description                  |
+| ---------------------------------------------------- | ---------------------------- |
+| `porta client secret create <client-id>`             | Generate a new client secret |
+| `porta client secret list <client-id>`               | List client secrets          |
+| `porta client secret revoke <client-id> <secret-id>` | Revoke a client secret       |
 
 ### Users
 
-| Command | Description |
-|---------|-------------|
-| `porta user list <org-id>` | List users in an organization |
-| `porta user create <org-id>` | Create a new user |
-| `porta user show <org-id> <user-id>` | Show user details |
-| `porta user update <org-id> <user-id>` | Update user properties |
-| `porta user invite <org-id>` | Send a user invitation |
-| `porta user activate <org-id> <user-id>` | Activate a user |
-| `porta user suspend <org-id> <user-id>` | Suspend a user |
-| `porta user archive <org-id> <user-id>` | Archive a user |
+| Command                                  | Description                   |
+| ---------------------------------------- | ----------------------------- |
+| `porta user list <org-id>`               | List users in an organization |
+| `porta user create <org-id>`             | Create a new user             |
+| `porta user show <org-id> <user-id>`     | Show user details             |
+| `porta user update <org-id> <user-id>`   | Update user properties        |
+| `porta user invite <org-id>`             | Send a user invitation        |
+| `porta user activate <org-id> <user-id>` | Activate a user               |
+| `porta user suspend <org-id> <user-id>`  | Suspend a user                |
+| `porta user archive <org-id> <user-id>`  | Archive a user                |
 
 **Nested: Roles** (`porta user role ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta user role list <org-id> <user-id>` | List user's role assignments |
-| `porta user role assign <org-id> <user-id> <role-id>` | Assign a role to a user |
-| `porta user role remove <org-id> <user-id> <role-id>` | Remove a role from a user |
+| Command                                               | Description                  |
+| ----------------------------------------------------- | ---------------------------- |
+| `porta user role list <org-id> <user-id>`             | List user's role assignments |
+| `porta user role assign <org-id> <user-id> <role-id>` | Assign a role to a user      |
+| `porta user role remove <org-id> <user-id> <role-id>` | Remove a role from a user    |
 
 **Nested: Claims** (`porta user claim ...`)
 
-| Command | Description |
-|---------|-------------|
-| `porta user claim list <org-id> <user-id>` | List user's claim values |
-| `porta user claim set <org-id> <user-id>` | Set a claim value |
-| `porta user claim remove <org-id> <user-id> <claim-id>` | Remove a claim value |
+| Command                                                 | Description              |
+| ------------------------------------------------------- | ------------------------ |
+| `porta user claim list <org-id> <user-id>`              | List user's claim values |
+| `porta user claim set <org-id> <user-id>`               | Set a claim value        |
+| `porta user claim remove <org-id> <user-id> <claim-id>` | Remove a claim value     |
 
 ### Infrastructure
 
-| Command | Description |
-|---------|-------------|
-| `porta config list` | List system configuration |
-| `porta config get <key>` | Get a configuration value |
-| `porta config set <key> <value>` | Set a configuration value |
-| `porta keys list` | List signing keys |
-| `porta keys generate` | Generate a new signing key |
-| `porta keys rotate` | Rotate the active signing key |
-| `porta audit list` | View audit logs (with filters) |
-| `porta sessions list` | List active sessions |
-| `porta sessions revoke <session-id>` | Revoke a session |
-| `porta stats` | Display dashboard statistics |
-| `porta health` | Check server connectivity (no auth required) |
-| `porta bulk <action>` | Bulk status operations on orgs/users |
-| `porta exports <entity-type>` | Export data as CSV or JSON |
+| Command                                       | Description                                    |
+| --------------------------------------------- | ---------------------------------------------- |
+| `porta config list`                           | List system configuration                      |
+| `porta config get <key>`                      | Get a configuration value                      |
+| `porta config set <key> <value>`              | Set a configuration value                      |
+| `porta keys list`                             | List signing keys                              |
+| `porta keys generate`                         | Generate a new signing key                     |
+| `porta keys rotate`                           | Rotate the active signing key                  |
+| `porta audit list`                            | View audit logs (with filters)                 |
+| `porta sessions list`                         | List active sessions                           |
+| `porta sessions revoke <session-id>`          | Revoke a session                               |
+| `porta stats`                                 | Display dashboard statistics                   |
+| `porta health`                                | Check server connectivity (no auth required)   |
+| `porta bulk <action>`                         | Bulk status operations on orgs/users           |
+| `porta exports download --entity-type <type>` | Export bounded allowlisted data as CSV or JSON |
 
 ### Provisioning
 
-| Command | Description |
-|---------|-------------|
+| Command                         | Description                                    |
+| ------------------------------- | ---------------------------------------------- |
 | `porta provision --file <path>` | Apply a declarative YAML/JSON environment file |
 
-Supports `--mode merge|overwrite`, `--dry-run`, and `--json` flags.
+Supports `--mode merge|overwrite`, `--dry-run`, and `--json` flags. Provisioning files cannot
+contain passwords or other authentication material.
 
 ### Utilities
 
-| Command | Description |
-|---------|-------------|
-| `porta version` | Show CLI and SDK versions |
-| `porta doctor` | Run diagnostic checks (connectivity, auth, server compatibility) |
-| `porta completion` | Generate shell completion scripts (Bash, Zsh, Fish) |
+| Command            | Description                                                      |
+| ------------------ | ---------------------------------------------------------------- |
+| `porta version`    | Show CLI and SDK versions                                        |
+| `porta doctor`     | Run diagnostic checks (connectivity, auth, server compatibility) |
+| `porta completion` | Generate shell completion scripts (Bash, Zsh, Fish)              |
 
 ## Authentication
 
@@ -309,10 +310,10 @@ porta completion > ~/.config/fish/completions/porta.fish
 
 ## Related Packages
 
-| Package | Description |
-|---------|-------------|
+| Package                                                                  | Description                            |
+| ------------------------------------------------------------------------ | -------------------------------------- |
 | [`@portaidentity/sdk`](https://www.npmjs.com/package/@portaidentity/sdk) | TypeScript SDK for the Porta Admin API |
-| [`porta`](https://github.com/blendsdk/porta-identity) | Porta Identity Platform (OIDC server) |
+| [`porta`](https://github.com/blendsdk/porta-identity)                    | Porta Identity Platform (OIDC server)  |
 
 ## Requirements
 
