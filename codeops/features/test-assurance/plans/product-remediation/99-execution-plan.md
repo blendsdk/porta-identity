@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-08-22 11:15
-> **Progress**: 46/57 tasks (81%)
+> **Last Updated**: 2026-08-22 11:38
+> **Progress**: 47/57 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -144,7 +144,7 @@ where required, and free of secret/formula exposure.
 
 - [x] 4.1 [spec-author] Write immutable security-decision event specifications — `packages/server/tests/unit/security/security-decision-event.spec.test.ts` ✅ (completed: 2026-08-22 11:04 CEST; immutable 13-case terminal-event catalog, strict privacy fields, atomic audit/sink failure, and key-rotation oracle authored; focused spec 3/3, type/lint/format, structure 70/70, and full `yarn verify` passed in 9m42s with server unit 2,840, integration 343, E2E 129, pentest 224, SDK 404, and CLI 356 tests)
 - [x] 4.2 Run the isolated specifications and record exact RED for missing/duplicate events, raw data, caller correlation, and audit rollback. ✅ (completed: 2026-08-22 11:15 CEST; required mode exited 1 with exactly one failed/two passed and sole capability marker `SECURITY_DECISION_EVENT_CAPABILITY_MISSING`; normal full `yarn verify` remained green in 9m53s)
-- [ ] 4.3 Implement the strict event model, closed reason vocabulary, HKDF/HMAC protected references, and schema validator — `packages/server/src/security/decision-event.ts`
+- [x] 4.3 Implement the strict event model, closed reason vocabulary, HKDF/HMAC protected references, and schema validator — `packages/server/src/security/decision-event.ts` ✅ (completed: 2026-08-22 11:38 CEST; strict unknown-field-rejecting schema, closed reasons/details, domain-separated HKDF/HMAC references, active/retained key verification, and bounded input implemented; type/lint/format passed; an initial full gate had two load-sensitive timing ratios fail while the unchanged timing file passed 5/5 in isolation, and the authoritative unmodified rerun passed all four tasks in 9m34s with pentest 224/224)
 - [ ] 4.4 Implement correlation-first context, typed decision facts, minimal error mapping, and exactly-once terminal finalization — `packages/server/src/middleware/`, `packages/server/src/server.ts`
 - [ ] 4.5 Add sanitized Node `clientError` handling for transport parser failures without raw-packet inspection — `packages/server/src/index.ts`, server listener ownership
 - [ ] 4.6 Make covered state-changing admin mutations commit durable audit/outbox intent atomically; preserve denial on sink failure — affected admin services/repositories and audit module
