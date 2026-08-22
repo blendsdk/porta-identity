@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
 > **Last Updated**: 2026-08-22 12:25
-> **Progress**: 51/57 tasks (89%)
+> **Progress**: 52/57 tasks (91%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -149,7 +149,7 @@ where required, and free of secret/formula exposure.
 - [x] 4.5 Add sanitized Node `clientError` handling for transport parser failures without raw-packet inspection — `packages/server/src/index.ts`, server listener ownership ✅ (completed: 2026-08-22 12:06 CEST; one socket-deduplicated listener emits a fresh correlated closed transport event, returns only a fixed empty 400 when writable, never inspects/logs parser error or packet bytes, and uses bounded sink-failure accounting; type/lint/format passed and full `yarn verify` passed in 9m25s)
 - [x] 4.6 Make covered state-changing admin mutations commit durable audit/outbox intent atomically; preserve denial on sink failure — affected admin services/repositories and audit module ✅ (completed: 2026-08-22 12:25 CEST; covered bulk/import mutations use one throwing transaction-bound audit writer and audit failure rolls back before success; pre-transaction session locking preserves fresh snapshots while non-throwing cleanup destroys ambiguous connections without revising committed results; focused unit 15/15, three consecutive PostgreSQL integration runs 17/17, type/lint/format passed, and final full `yarn verify` passed in 9m22s with pentest 224/224)
 - [x] 4.7 Run ST-25–ST-30 green through unit, integration, raw malformed transport, admin denial, and mutation rollback boundaries. ✅ (completed: 2026-08-22 12:43 CEST; required terminal-event specification 17/17, production boundary implementation 4/4, focused middleware/admin 34/34, administrative-data integration 17/17, lint/format, structure 70/70, and full `yarn verify` passed in 11m48s with server pentest 224/224)
-- [ ] 4.8 Add unknown-field, redaction-canary, route-template, key-rotation, sink-failure, client-error, and atomicity implementation tests — `packages/server/tests/unit/security/security-decision-event.impl.test.ts`
+- [x] 4.8 Add unknown-field, redaction-canary, route-template, key-rotation, sink-failure, client-error, and atomicity implementation tests — `packages/server/tests/unit/security/security-decision-event.impl.test.ts` ✅ (completed: 2026-08-22 12:57 CEST; seven focused strict-schema, privacy-reference, route-normalization, key-rotation, exactly-once sink, parser-deduplication, and transaction-audit tests passed; lint/format, structure 70/70, and full `yarn verify` passed in 10m59s with pentest 224/224)
 - [ ] 4.9 Run Phase 4 targeted/P1/production-security/pentest checks and `yarn verify`; update logging, audit, configuration, and security docs.
 
 Deliverable: every covered request has one independently attributable privacy-safe decision event,
