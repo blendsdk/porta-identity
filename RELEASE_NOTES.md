@@ -1,4 +1,4 @@
-# Release Notes — v1.7.2
+# Release Notes — v1.7.3
 
 **Released**: 2026-08-26
 

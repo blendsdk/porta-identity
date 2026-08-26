@@ -5,7 +5,6 @@ import test from 'node:test';
 import { parse } from 'yaml';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
-const releaseVersion = '1.7.2';
 const packagePaths = [
   'packages/server/package.json',
   'packages/sdk/package.json',
@@ -55,6 +54,7 @@ test('should select one exact release toolchain and expose three release command
 
 test('should keep every publishable component on the coordinated release version', () => {
   const rootManifest = readRepositoryJson('package.json');
+  const releaseVersion = rootManifest.version;
   const manifests = packagePaths.map(readRepositoryJson);
 
   assert.equal(rootManifest.version, releaseVersion);
@@ -67,8 +67,16 @@ test('should keep every publishable component on the coordinated release version
     readRepositoryJson('packages/cli/package.json').dependencies?.['@portaidentity/sdk'],
     releaseVersion,
   );
-  assert.match(readRepositoryFile('packages/sdk/src/version.ts'), /SDK_VERSION = '1\.7\.2'/);
-  assert.match(readRepositoryFile('packages/cli/src/commands/version.ts'), /CLI_VERSION = '1\.7\.2'/);
+  assert.ok(
+    readRepositoryFile('packages/sdk/src/version.ts').includes(
+      `SDK_VERSION = '${releaseVersion}'`,
+    ),
+  );
+  assert.ok(
+    readRepositoryFile('packages/cli/src/commands/version.ts').includes(
+      `CLI_VERSION = '${releaseVersion}'`,
+    ),
+  );
 });
 
 test('should publish only an exact successful main candidate with provenance', () => {

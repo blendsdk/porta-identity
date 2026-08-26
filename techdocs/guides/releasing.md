@@ -92,11 +92,6 @@ docker pull blendsdk/porta:1.7.2
 docker inspect blendsdk/porta:1.7.2 --format '{{json .Config.Healthcheck.Test}}'
 ```
 
-Deprecate all versions of `@portaidentity/admin-gui` in a separate interactive 2FA-authenticated
-step. Use the explicitly approved retirement message and verify the registry warning; do not
-unpublish the package.
-
 ## npm references
 
 - [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
-- [Deprecating packages](https://docs.npmjs.com/deprecating-and-undeprecating-packages-or-package-versions/)
