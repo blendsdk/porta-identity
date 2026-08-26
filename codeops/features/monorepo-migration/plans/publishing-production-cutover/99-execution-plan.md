@@ -2,7 +2,7 @@
 
 > **Type**: Task (lightweight) · **Feature**: monorepo-migration · **CodeOps Artifact Schema**: 1
 > **Progress**: 7/8 tasks (88%)
-> **Last Updated**: 2026-08-26 11:25
+> **Last Updated**: 2026-08-26 11:58
 > **Phase baseline tree**: `6ea83f94feef9b8640bb1f56dfaed061d3594481`
 > **Scope mode**: strict
 > **Expected modification set**: release repository tests and scripts; root/package manifests and
@@ -117,6 +117,11 @@ on the feature branch must not publish packages, tags, releases, documentation, 
 - Automatic bootstrap fails on every pre-existing `1.7.0` target and directs exact-SHA recovery.
 - Privileged tag/manual Docker triggers and post-cutover digest verification remain accepted,
   deliberately simple operator boundaries.
+- The first main-branch release attempt passed CI but stopped before publication because npm
+  interpreted tarball paths without a `./` prefix as GitHub package shorthands. The recovery fix
+  has a red/green repository contract and a successful local `npm publish --dry-run` using the
+  exact explicit-local-path form. No npm version, release tag, GitHub Release, or Docker tag was
+  created by the failed attempt.
 
 **Verify**: release contract and repository-structure tests; Lockstep/version-sync preparation;
 package pack/install/smoke; workflow parsing and permission checks; `yarn docs:build`; and
