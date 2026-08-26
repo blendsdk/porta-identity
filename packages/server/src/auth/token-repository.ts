@@ -1,0 +1,754 @@
+/**
+ * Token repository — PostgreSQL CRUD for all three token tables.
+ *
+ * Password-reset and invitation tokens use shared allowlisted helpers. Magic-link issuance and
+ * consumption use dedicated authority-aware transactions so callers cannot omit tenant, live
+ * client, or interaction validation.
+ *
+ * Token lifecycle:
+ *   1. insertToken()          → store hash + expiry for a user
+ *   2. findValidToken()       → look up unused, non-expired token by hash
+ *   3. markTokenUsed()        → set used_at = NOW() after successful verification
+ *   4. invalidateUserTokens() → expire all active tokens for a user (when new token issued)
+ *   5. deleteExpiredTokens()  → cleanup old rows (housekeeping)
+ */
+
+import type { PoolClient } from 'pg';
+import { getPool } from '../lib/database.js';
+import { logger } from '../lib/logger.js';
+import type { UserStatus } from '../users/types.js';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Allowed token table names — used as an allowlist to prevent SQL injection */
+export type TokenTable = 'magic_link_tokens' | 'password_reset_tokens' | 'invitation_tokens';
+
+/** Token tables whose rows do not require magic-link tenant and interaction authority. */
+export type GenericInsertTokenTable = Exclude<TokenTable, 'magic_link_tokens'>;
+
+/** Row shape returned from any of the three token tables */
+export interface TokenRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
+}
+
+/**
+ * Extended token record for invitation tokens with optional details.
+ *
+ * The details JSONB column stores pre-assignment metadata (roles, claims,
+ * personal message) that should be applied when the invitation is accepted.
+ */
+export interface InvitationTokenRecord extends TokenRecord {
+  /** JSONB details stored with the invitation (roles, claims, personalMessage, inviterName) */
+  details: Record<string, unknown> | null;
+  /** User ID of the admin who created this invitation */
+  invitedBy: string | null;
+}
+
+/** Input for idempotently creating a recovery-job-owned token. */
+interface EnsureRecoveryTokenBaseInput {
+  /** Token table selected by the closed recovery job type. */
+  /** Durable recovery job UUID. */
+  readonly recoveryJobId: string;
+  /** Eligible account UUID. */
+  readonly userId: string;
+  /** Hash of the deterministic plaintext token. */
+  readonly tokenHash: string;
+  /** Expiration instant fixed by the first successful artifact transaction. */
+  readonly expiresAt: Date;
+}
+
+/** Recovery-token input whose durable authority belongs to one OIDC tenant and interaction. */
+export interface EnsureMagicLinkRecoveryTokenInput extends EnsureRecoveryTokenBaseInput {
+  /** Select the magic-link artifact table and its authority-aware insert path. */
+  readonly table: 'magic_link_tokens';
+  /** Organization that owns the artifact and resolved user. */
+  readonly organizationId: string;
+  /** Exact OIDC interaction authority, or null for an explicitly standalone artifact. */
+  readonly interactionUid: string | null;
+  /** Current OIDC client resolved from the provider-owned interaction. */
+  readonly clientId: string | null;
+}
+
+/** Recovery-token input for password reset, which has no OIDC interaction authority. */
+export interface EnsurePasswordResetRecoveryTokenInput extends EnsureRecoveryTokenBaseInput {
+  /** Select the password-reset artifact table. */
+  readonly table: 'password_reset_tokens';
+}
+
+/** Closed recovery-token input union that prevents authority-free magic-link insertion. */
+export type EnsureRecoveryTokenInput =
+  EnsureMagicLinkRecoveryTokenInput | EnsurePasswordResetRecoveryTokenInput;
+
+/** Durable artifact decision returned by idempotent recovery-token issuance. */
+export type EnsureRecoveryTokenResult = 'active' | 'superseded';
+
+/** Minimal ordering row for a durable recovery job. */
+interface RecoveryJobOrderRow {
+  created_at: Date;
+}
+
+/** Active-state observation for a job-owned recovery token. */
+interface RecoveryTokenStateRow {
+  active: boolean;
+}
+
+/** Ordering metadata for the newest job-owned artifact created for one user. */
+interface RecoveryTokenOrderRow {
+  recovery_job_id: string;
+  created_at: Date;
+}
+
+/** Raw database row shape (snake_case) from the token tables */
+interface TokenRow {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date;
+  used_at: Date | null;
+  created_at: Date;
+}
+
+/** Raw authority-aware row returned while a magic-link token and user are locked. */
+interface MagicLinkAuthorityRow extends TokenRow {
+  organization_id: string;
+  interaction_uid: string | null;
+  account_status: UserStatus;
+}
+
+/** Magic-link artifact whose persisted authority was selected under a database row lock. */
+export interface LockedMagicLinkToken extends TokenRecord {
+  /** Organization persisted when the artifact was issued. */
+  readonly organizationId: string;
+  /** Exact persisted interaction, or null for a standalone artifact. */
+  readonly interactionUid: string | null;
+  /** Lifecycle state observed while the owning account row is locked. */
+  readonly accountStatus: UserStatus;
+}
+
+/** Inputs required to validate and consume one magic-link artifact transactionally. */
+export interface ConsumeAuthorizedMagicLinkInput {
+  /** SHA-256 digest of the presented bearer artifact. */
+  readonly tokenHash: string;
+  /** Organization resolved from the public route. */
+  readonly organizationId: string;
+  /** Exact transport interaction, or null when the public request supplied none. */
+  readonly interactionUid: string | null;
+  /** Current interaction client, or null only for an explicitly standalone artifact. */
+  readonly clientId: string | null;
+  /** Validated request address retained only in the successful audit row. */
+  readonly ipAddress?: string;
+}
+
+/** Successful authority decision returned after the database transaction commits. */
+export interface ConsumedAuthorizedMagicLink {
+  /** Account authorized and updated by the consumed artifact. */
+  readonly userId: string;
+  /** Persisted interaction authority, or null for a standalone artifact. */
+  readonly interactionUid: string | null;
+}
+
+/** Extended row shape for invitation_tokens with details column */
+interface InvitationTokenRow extends TokenRow {
+  details: Record<string, unknown> | null;
+  invited_by: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Allowlist validation
+// ---------------------------------------------------------------------------
+
+/** Set of valid token table names for runtime validation */
+const VALID_TABLES = new Set<string>([
+  'magic_link_tokens',
+  'password_reset_tokens',
+  'invitation_tokens',
+]);
+
+/**
+ * Validate that the table name is in the allowlist.
+ * Throws immediately on invalid names — this is a programming error, not a user error.
+ *
+ * @param table - Table name to validate
+ * @throws Error if table name is not in the allowlist
+ */
+function assertValidTable(table: string): void {
+  if (!VALID_TABLES.has(table)) {
+    throw new Error(
+      `Invalid token table: "${table}". Must be one of: ${[...VALID_TABLES].join(', ')}`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Row mapping
+// ---------------------------------------------------------------------------
+
+/**
+ * Map a snake_case database row to a camelCase TokenRecord.
+ *
+ * @param row - Raw database row
+ * @returns Mapped TokenRecord with camelCase properties
+ */
+function mapRowToToken(row: TokenRow): TokenRecord {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    tokenHash: row.token_hash,
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CRUD operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a new token into the specified table.
+ *
+ * @param table - Target token table (magic_link_tokens | password_reset_tokens | invitation_tokens)
+ * @param userId - UUID of the user this token belongs to
+ * @param tokenHash - SHA-256 hex hash of the plaintext token
+ * @param expiresAt - When this token expires
+ */
+export async function insertToken(
+  table: GenericInsertTokenTable,
+  userId: string,
+  tokenHash: string,
+  expiresAt: Date,
+): Promise<void> {
+  assertValidTable(table);
+  const pool = getPool();
+
+  await pool.query(
+    `INSERT INTO ${table} (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [userId, tokenHash, expiresAt],
+  );
+
+  logger.debug({ table, userId }, 'Token inserted');
+}
+
+/**
+ * Create or observe the single token artifact owned by a recovery job.
+ *
+ * A transaction locks the user row as the shared serialization authority, reuses an existing job
+ * artifact, or invalidates an older artifact and inserts exactly one new row. A retry from an older
+ * job cannot replace authority created by any newer job, even after that authority is consumed or
+ * expires. SQL identifiers come exclusively from the closed table union.
+ *
+ * @param input - Recovery-job token authority and deterministic token facts.
+ */
+export async function ensureRecoveryJobToken(
+  input: EnsureRecoveryTokenInput,
+): Promise<EnsureRecoveryTokenResult> {
+  assertValidTable(input.table);
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const lockedUser = await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+      input.userId,
+    ]);
+    if (lockedUser.rowCount !== 1) {
+      throw new Error('Recovery artifact user disappeared before issuance');
+    }
+
+    const jobOrder = await client.query<RecoveryJobOrderRow>(
+      'SELECT created_at FROM auth_recovery_jobs WHERE id = $1',
+      [input.recoveryJobId],
+    );
+    const currentJob = jobOrder.rows[0];
+    if (!currentJob) {
+      throw new Error('Recovery job disappeared before artifact issuance');
+    }
+
+    if (input.table === 'magic_link_tokens') {
+      const clientMatches =
+        input.interactionUid === null && input.clientId === null
+          ? true
+          : input.interactionUid !== null &&
+            input.clientId !== null &&
+            (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
+      if (!clientMatches) {
+        await client.query('COMMIT');
+        return 'superseded';
+      }
+    }
+
+    const existing = await client.query<RecoveryTokenStateRow>(
+      `SELECT used_at IS NULL AND expires_at > NOW() AS active
+       FROM ${input.table}
+       WHERE recovery_job_id = $1`,
+      [input.recoveryJobId],
+    );
+    if (existing.rows[0]) {
+      await client.query('COMMIT');
+      return existing.rows[0].active ? 'active' : 'superseded';
+    }
+
+    const newestArtifact = await client.query<RecoveryTokenOrderRow>(
+      `SELECT token.recovery_job_id, job.created_at
+       FROM ${input.table} AS token
+       JOIN auth_recovery_jobs AS job ON job.id = token.recovery_job_id
+       WHERE token.user_id = $1
+         AND token.recovery_job_id IS NOT NULL
+       ORDER BY job.created_at DESC, job.id DESC
+       LIMIT 1`,
+      [input.userId],
+    );
+    const newest = newestArtifact.rows[0];
+    const currentCreatedAt = currentJob.created_at.getTime();
+    const newerArtifactExists =
+      newest !== undefined &&
+      (newest.created_at.getTime() > currentCreatedAt ||
+        (newest.created_at.getTime() === currentCreatedAt &&
+          newest.recovery_job_id > input.recoveryJobId));
+    if (newerArtifactExists) {
+      await client.query('COMMIT');
+      return 'superseded';
+    }
+
+    await client.query(
+      `UPDATE ${input.table}
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()`,
+      [input.userId],
+    );
+    if (input.table === 'magic_link_tokens') {
+      await client.query(
+        `INSERT INTO magic_link_tokens
+           (user_id, token_hash, expires_at, recovery_job_id, organization_id, interaction_uid)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          input.userId,
+          input.tokenHash,
+          input.expiresAt,
+          input.recoveryJobId,
+          input.organizationId,
+          input.interactionUid,
+        ],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, recovery_job_id)
+         VALUES ($1, $2, $3, $4)`,
+        [input.userId, input.tokenHash, input.expiresAt, input.recoveryJobId],
+      );
+    }
+    await client.query('COMMIT');
+    return 'active';
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Lock and validate the current client tenant inside an artifact transaction.
+ *
+ * Client ownership is checked in the same transaction that inserts or consumes the artifact so a
+ * concurrent revocation cannot pass an earlier route-only check and then gain authority.
+ *
+ * @param client - Active PostgreSQL transaction.
+ * @param clientId - Public OIDC client identifier resolved from the live interaction.
+ * @param organizationId - Tenant which must currently own the active client.
+ * @returns True only when one current active client row is locked.
+ */
+async function lockActiveClientAuthority(
+  client: PoolClient,
+  clientId: string,
+  organizationId: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `SELECT id
+     FROM clients
+     WHERE client_id = $1
+       AND organization_id = $2
+       AND status = 'active'
+     FOR SHARE`,
+    [clientId, organizationId],
+  );
+  return result.rowCount === 1;
+}
+
+/**
+ * Find a valid (unused, not expired) token by its hash.
+ *
+ * Checks both `used_at IS NULL` and `expires_at > NOW()` in a single query
+ * for efficiency. Returns null if no matching valid token exists.
+ *
+ * @param table - Target token table
+ * @param tokenHash - SHA-256 hex hash to look up
+ * @returns The token record if valid, or null if not found/expired/used
+ */
+export async function findValidToken(
+  table: TokenTable,
+  tokenHash: string,
+): Promise<TokenRecord | null> {
+  assertValidTable(table);
+  const pool = getPool();
+
+  const result = await pool.query<TokenRow>(
+    `SELECT id, user_id, token_hash, expires_at, used_at, created_at
+     FROM ${table}
+     WHERE token_hash = $1
+       AND used_at IS NULL
+       AND expires_at > NOW()`,
+    [tokenHash],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapRowToToken(result.rows[0]);
+}
+
+/**
+ * Find a valid token only when its user belongs to the resolved organization.
+ *
+ * Tenant binding is enforced in the lookup itself so a valid token presented under another
+ * tenant is indistinguishable from an invalid token and cannot reach account mutation.
+ *
+ * @param table - Target token table.
+ * @param tokenHash - SHA-256 token digest.
+ * @param organizationId - Tenant authority resolved from the public route.
+ * @returns The valid tenant-owned token, or null.
+ */
+export async function findValidTokenForOrganization(
+  table: TokenTable,
+  tokenHash: string,
+  organizationId: string,
+): Promise<TokenRecord | null> {
+  assertValidTable(table);
+  const pool = getPool();
+  const result = await pool.query<TokenRow>(
+    `SELECT token.id, token.user_id, token.token_hash,
+            token.expires_at, token.used_at, token.created_at
+     FROM ${table} AS token
+     JOIN users AS account ON account.id = token.user_id
+     WHERE token.token_hash = $1
+       AND account.organization_id = $2
+       AND token.used_at IS NULL
+       AND token.expires_at > NOW()`,
+    [tokenHash, organizationId],
+  );
+
+  return result.rows[0] ? mapRowToToken(result.rows[0]) : null;
+}
+
+/**
+ * Lock one valid magic-link artifact together with its tenant-owned user.
+ *
+ * Legacy rows without persisted organization authority do not match. The caller must keep the
+ * supplied client transaction open while validating interaction authority and applying all
+ * successful state changes.
+ *
+ * @param client - Active PostgreSQL transaction client.
+ * @param tokenHash - SHA-256 digest of the presented artifact.
+ * @param organizationId - Organization resolved from the public route.
+ * @returns The locked authority record, or null for every invalid authority state.
+ */
+export async function findAndLockMagicLinkToken(
+  client: PoolClient,
+  tokenHash: string,
+  organizationId: string,
+): Promise<LockedMagicLinkToken | null> {
+  const result = await client.query<MagicLinkAuthorityRow>(
+    `SELECT token.id, token.user_id, token.token_hash, token.expires_at, token.used_at,
+            token.created_at, token.organization_id, token.interaction_uid,
+            account.status AS account_status
+     FROM magic_link_tokens AS token
+     JOIN users AS account
+       ON account.id = token.user_id
+      AND account.organization_id = token.organization_id
+     WHERE token.token_hash = $1
+       AND token.organization_id = $2
+       AND token.authority_bound = TRUE
+       AND token.used_at IS NULL
+       AND token.expires_at > NOW()
+     FOR UPDATE OF token, account`,
+    [tokenHash, organizationId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...mapRowToToken(row),
+    organizationId: row.organization_id,
+    interactionUid: row.interaction_uid,
+    accountStatus: row.account_status,
+  };
+}
+
+/**
+ * Conditionally consume a previously locked magic-link artifact.
+ *
+ * The predicates are repeated at mutation time so expiry or accidental prior consumption cannot
+ * be converted into a successful use. The caller must roll back when this function returns false.
+ *
+ * @param client - Active PostgreSQL transaction client that owns the artifact lock.
+ * @param tokenId - UUID of the locked magic-link artifact.
+ * @returns True only when exactly one still-valid row was consumed.
+ */
+export async function consumeLockedMagicLinkToken(
+  client: PoolClient,
+  tokenId: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE magic_link_tokens
+     SET used_at = NOW()
+     WHERE id = $1
+       AND used_at IS NULL
+       AND expires_at > NOW()
+     RETURNING id`,
+    [tokenId],
+  );
+  return result.rowCount === 1;
+}
+
+/**
+ * Validate all durable authority and apply one magic-link login in a single transaction.
+ *
+ * The artifact and account rows remain locked from lookup through consumption, account update,
+ * and audit insertion. Every authority mismatch rolls back before mutation, including a missing,
+ * changed, or unexpectedly supplied interaction identifier. Cache and Redis continuation work
+ * deliberately happen after this durable transaction because they are separate stores.
+ *
+ * @param input - Route tenant, presented interaction, artifact digest, and safe request metadata.
+ * @returns The committed account authority, or null for every public rejection condition.
+ */
+export async function consumeAuthorizedMagicLink(
+  input: ConsumeAuthorizedMagicLinkInput,
+): Promise<ConsumedAuthorizedMagicLink | null> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const clientMatches =
+      input.interactionUid === null && input.clientId === null
+        ? true
+        : input.interactionUid !== null &&
+          input.clientId !== null &&
+          (await lockActiveClientAuthority(client, input.clientId, input.organizationId));
+    if (!clientMatches) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const token = await findAndLockMagicLinkToken(client, input.tokenHash, input.organizationId);
+    const authorityMatches =
+      token !== null &&
+      token.accountStatus === 'active' &&
+      token.interactionUid === input.interactionUid;
+    if (!authorityMatches) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const consumed = await consumeLockedMagicLinkToken(client, token.id);
+    if (!consumed) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const accountUpdate = await client.query(
+      `UPDATE users
+       SET email_verified = TRUE,
+           last_login_at = NOW(),
+           login_count = login_count + 1,
+           failed_login_count = 0,
+           last_failed_login_at = NULL
+       WHERE id = $1
+         AND organization_id = $2
+         AND status = 'active'
+       RETURNING id`,
+      [token.userId, input.organizationId],
+    );
+    if (accountUpdate.rowCount !== 1) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    await client.query(
+      `INSERT INTO audit_log (
+         organization_id, user_id, event_type, event_category, description,
+         metadata, ip_address
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        input.organizationId,
+        token.userId,
+        'user.login.magic_link',
+        'authentication',
+        'Magic link login successful',
+        '{}',
+        input.ipAddress ?? null,
+      ],
+    );
+    await client.query('COMMIT');
+    return { userId: token.userId, interactionUid: token.interactionUid };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Mark a token as used by setting used_at = NOW().
+ *
+ * Called after successful token verification to prevent reuse.
+ * This is a single-use pattern — once marked, the token cannot be found by findValidToken.
+ *
+ * @param table - Target token table
+ * @param tokenId - UUID of the token row to mark
+ */
+export async function markTokenUsed(table: TokenTable, tokenId: string): Promise<void> {
+  assertValidTable(table);
+  const pool = getPool();
+
+  await pool.query(`UPDATE ${table} SET used_at = NOW() WHERE id = $1`, [tokenId]);
+
+  logger.debug({ table, tokenId }, 'Token marked as used');
+}
+
+/**
+ * Delete expired or used tokens older than a given cutoff date.
+ *
+ * Housekeeping function to prevent token tables from growing indefinitely.
+ * Removes tokens where expires_at < cutoff OR (used_at IS NOT NULL AND used_at < cutoff).
+ *
+ * @param table - Target token table
+ * @param olderThan - Cutoff date — tokens expired/used before this are deleted
+ * @returns Number of rows deleted
+ */
+export async function deleteExpiredTokens(table: TokenTable, olderThan: Date): Promise<number> {
+  assertValidTable(table);
+  const pool = getPool();
+
+  const result = await pool.query(
+    `DELETE FROM ${table}
+     WHERE expires_at < $1
+        OR (used_at IS NOT NULL AND used_at < $1)`,
+    [olderThan],
+  );
+
+  const count = result.rowCount ?? 0;
+  if (count > 0) {
+    logger.info({ table, count, olderThan: olderThan.toISOString() }, 'Expired tokens cleaned up');
+  }
+
+  return count;
+}
+
+/**
+ * Invalidate all unused tokens for a user in a table.
+ *
+ * Sets used_at = NOW() on all active (unused, non-expired) tokens.
+ * Called when a new token is issued to ensure only the latest token is valid.
+ * This prevents token accumulation and confusion from multiple active tokens.
+ *
+ * @param table - Target token table
+ * @param userId - UUID of the user whose tokens should be invalidated
+ */
+export async function invalidateUserTokens(table: TokenTable, userId: string): Promise<void> {
+  assertValidTable(table);
+  const pool = getPool();
+
+  const result = await pool.query(
+    `UPDATE ${table}
+     SET used_at = NOW()
+     WHERE user_id = $1
+       AND used_at IS NULL`,
+    [userId],
+  );
+
+  const count = result.rowCount ?? 0;
+  if (count > 0) {
+    logger.debug({ table, userId, count }, 'User tokens invalidated');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Invitation-specific operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert an invitation token with optional details and inviter metadata.
+ *
+ * Unlike the generic insertToken(), this stores additional JSONB details
+ * (pre-assigned roles, claims, personal message) and tracks who sent the invite.
+ *
+ * @param userId - UUID of the invited user
+ * @param tokenHash - SHA-256 hex hash of the plaintext token
+ * @param expiresAt - When this invitation expires
+ * @param details - Optional JSONB details (roles, claims, personalMessage, inviterName)
+ * @param invitedBy - Optional UUID of the admin who created this invitation
+ */
+export async function insertInvitationToken(
+  userId: string,
+  tokenHash: string,
+  expiresAt: Date,
+  details?: Record<string, unknown> | null,
+  invitedBy?: string | null,
+): Promise<void> {
+  const pool = getPool();
+
+  await pool.query(
+    `INSERT INTO invitation_tokens (user_id, token_hash, expires_at, details, invited_by)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, tokenHash, expiresAt, details ? JSON.stringify(details) : null, invitedBy ?? null],
+  );
+
+  logger.debug({ userId, hasDetails: !!details }, 'Invitation token inserted');
+}
+
+/**
+ * Find a valid invitation token with its details metadata.
+ *
+ * Returns the full InvitationTokenRecord including the details JSONB
+ * column, which stores pre-assignment metadata for roles, claims, etc.
+ *
+ * @param tokenHash - SHA-256 hex hash to look up
+ * @returns The invitation token record with details, or null if not found/expired/used
+ */
+export async function findValidInvitationToken(
+  tokenHash: string,
+): Promise<InvitationTokenRecord | null> {
+  const pool = getPool();
+
+  const result = await pool.query<InvitationTokenRow>(
+    `SELECT id, user_id, token_hash, expires_at, used_at, created_at, details, invited_by
+     FROM invitation_tokens
+     WHERE token_hash = $1
+       AND used_at IS NULL
+       AND expires_at > NOW()`,
+    [tokenHash],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    userId: row.user_id,
+    tokenHash: row.token_hash,
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
+    details: row.details,
+    invitedBy: row.invited_by,
+  };
+}

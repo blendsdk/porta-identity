@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "assurance/**/*.ts",
+    "fixtures/**/*.ts",
+    "scripts/lifecycle.ts",
+    "scripts/bootstrap.ts",
+    "scripts/managed-client-bootstrap.ts",
+    "scripts/seed.ts",
+    "tests/global-setup.ts",
+    "tests/helpers.ts"
+  ],
+  "exclude": ["node_modules", ".assurance-results"]
+}

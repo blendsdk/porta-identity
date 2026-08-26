@@ -1,14 +1,17 @@
 import { test, expect } from '@playwright/test';
 import {
-  startMagicLinkFlow, waitForEmail, extractMagicLink,
-  clearMailHog, TEST_USER,
+  startMagicLinkFlow,
+  waitForEmail,
+  extractMagicLink,
+  clearMailHog,
+  TEST_USER,
 } from './helpers';
 
 test.describe('BFF — Magic Link Login Flow', () => {
   test.beforeEach(async () => {
     await clearMailHog();
     // Wait to avoid rate limiting from previous magic link test
-    await new Promise(r => setTimeout(r, 3_000));
+    await new Promise((r) => setTimeout(r, 3_000));
   });
 
   test('magic link email is sent and contains valid link', async ({ page }) => {
@@ -28,6 +31,6 @@ test.describe('BFF — Magic Link Login Flow', () => {
 
     // 5. Verify the magic link URL is well-formed
     expect(magicLinkUrl).toContain('/auth/magic-link/');
-    expect(magicLinkUrl).toContain('porta.local:3443');
+    expect(new URL(magicLinkUrl).origin).toBe(process.env.HARNESS_PORTA_URL);
   });
 });

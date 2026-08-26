@@ -1,14 +1,4 @@
-# ──────────────────────────────────────────────────────────
-# Porta Release — Semantic Release + npm Publishing
-#
-# Runs on main branch after CI passes.
-# Analyzes commits, determines version, publishes:
-#   @portaidentity/sdk → npm
-#   @portaidentity/cli → npm
-# Creates GitHub release + git tag.
-# Docker workflow triggers on v* tags (separate workflow).
-# ──────────────────────────────────────────────────────────
-
+# Publishes the exact revision that passed the main-branch Build and Test workflow.
 name: Release
 
 on:
@@ -18,40 +8,130 @@ on:
     types: [completed]
 
 permissions:
+  actions: write
   contents: write
-  issues: write
-  pull-requests: write
   id-token: write
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Semantic Release
+    name: Publish coordinated release
     runs-on: ubuntu-latest
-    # Only run if CI succeeded and it was a push (not a PR)
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
 
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 22.22.2
           cache: yarn
+          registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
+      - name: Install pinned release tools
         run: yarn install --frozen-lockfile
 
-      - name: Build all workspaces
-        run: |
-          yarn build
-          yarn build:sdk
-          yarn build:cli
+      - name: Build publishable packages
+        run: yarn build
 
-      - name: Run semantic-release
+      - name: Validate committed candidate
+        id: candidate
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          test "$EVENT_SHA" = "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          yarn release:preflight
+          node_modules/.bin/npm --version
+          version=$(node --input-type=module -e "import manifest from './package.json' with { type: 'json' }; process.stdout.write(manifest.version)")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Pack and fingerprint 1.7.0 bootstrap artifacts
+        if: steps.candidate.outputs.version == '1.7.0'
+        run: |
+          mkdir release-artifacts
+          node_modules/.bin/npm pack --workspace @portaidentity/server --pack-destination release-artifacts
+          node_modules/.bin/npm pack --workspace @portaidentity/sdk --pack-destination release-artifacts
+          node_modules/.bin/npm pack --workspace @portaidentity/cli --pack-destination release-artifacts
+          sha256sum release-artifacts/*.tgz | tee release-artifacts/SHA256SUMS
+
+      # npm Trusted Publishing is configured against blendsdk/porta-identity and release.yml.
+      - name: Publish 1.7.0 bootstrap candidate
+        if: steps.candidate.outputs.version == '1.7.0'
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test "${{ steps.candidate.outputs.version }}" = '1.7.0'
+          package_integrity() {
+            printf 'sha512-'
+            openssl dgst -sha512 -binary "$1" | openssl base64 -A
+          }
+          publish_if_absent() {
+            package_name="$1"
+            package_tarball="$2"
+            expected_integrity=$(package_integrity "$package_tarball")
+            if node_modules/.bin/npm view "$package_name@1.7.0" version --json >/dev/null 2>&1; then
+              published_integrity=$(node_modules/.bin/npm view "$package_name@1.7.0" dist.integrity)
+              test "$published_integrity" = "$expected_integrity"
+              echo "$package_name@1.7.0 already exists; automatic bootstrap stops; use exact-SHA recovery" >&2
+              return 1
+            else
+              node_modules/.bin/npm publish "$package_tarball" --access public --tag latest --provenance
+            fi
+            published_integrity=$(node_modules/.bin/npm view "$package_name@1.7.0" dist.integrity)
+            test "$published_integrity" = "$expected_integrity"
+          }
+          publish_if_absent '@portaidentity/server' 'release-artifacts/portaidentity-server-1.7.0.tgz'
+          publish_if_absent '@portaidentity/sdk' 'release-artifacts/portaidentity-sdk-1.7.0.tgz'
+          publish_if_absent '@portaidentity/cli' 'release-artifacts/portaidentity-cli-1.7.0.tgz'
+
+      - name: Publish with npm Trusted Publishing
+        if: steps.candidate.outputs.version != '1.7.0'
+        run: yarn release:publish
+
+      - name: Verify registry and create release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+        shell: bash
+        run: |
+          for package_name in server sdk cli; do
+            published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version)
+            test "$published" = "$RELEASE_VERSION"
+            provenance=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.attestations.provenance.predicateType)
+            test "$provenance" = 'https://slsa.dev/provenance/v1'
+          done
+
+          remote_tag_sha=$(git ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')
+          if [ -n "$remote_tag_sha" ]; then
+            test "$remote_tag_sha" = "$RELEASE_SHA"
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$RELEASE_TAG" \
+              -f sha="$RELEASE_SHA"
+          fi
+
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --notes-file RELEASE_NOTES.md
+
+      - name: Dispatch tested Docker release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh workflow run docker.yml
+          --ref main
+          -f tag=${{ steps.candidate.outputs.tag }}
+          -f sha=${{ github.event.workflow_run.head_sha }}

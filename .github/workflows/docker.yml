@@ -1,77 +1,87 @@
-# ──────────────────────────────────────────────────────────
-# Porta Docker — Build & Push to Docker Hub
-#
-# Triggers:
-#   - workflow_dispatch: Manual trigger from GitHub Actions UI → "latest"
-#   - workflow_run: After "Build and Test" succeeds on main → "latest"
-#   - Git tag v* → semver tags (e.g. v1.2.3 → 1.2.3, 1.2, 1, latest)
-#
-# Also syncs docker/DOCKERHUB.md to the Docker Hub repo description.
-#
-# Prerequisites (one-time setup):
-#   1. Create Docker Hub org "blendsdk" with repo "porta"
-#   2. Add GitHub secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
-# ──────────────────────────────────────────────────────────
-
+# Publishes one tested release revision under all supported Docker aliases.
 name: Docker Release
 
 on:
-  # Manual trigger from GitHub Actions UI
-  workflow_dispatch:
-
-  # Auto-publish after CI passes on main
-  workflow_run:
-    workflows: ["Build and Test"]
-    types: [completed]
-    branches: [main]
-
-  # Run directly on version tags (CI already passed on main before tagging)
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing semantic release tag, including the v prefix
+        required: true
+        type: string
+      sha:
+        description: Tested commit that the release tag must resolve to
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 concurrency:
-  group: docker-${{ github.ref }}
-  cancel-in-progress: true
+  group: docker-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
-    name: Build & Push
+    name: Build and push release image
     runs-on: ubuntu-latest
-    # Skip if triggered by workflow_run but CI failed
-    if: >-
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      # Generate Docker image tags based on trigger type
-      - name: Docker meta
+      - name: Validate release tag and tested revision
+        id: release
+        env:
+          DISPATCH_SHA: ${{ inputs.sha }}
+          DISPATCH_TAG: ${{ inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_SHA: ${{ github.sha }}
+          PUSH_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
+            release_tag="$DISPATCH_TAG"
+            expected_sha="$DISPATCH_SHA"
+          else
+            release_tag="$PUSH_TAG"
+            expected_sha="$PUSH_SHA"
+          fi
+
+          [[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git fetch --force origin "refs/tags/$release_tag:refs/tags/$release_tag"
+          tag_sha=$(git rev-list -n 1 "$release_tag")
+          test "$tag_sha" = "$expected_sha"
+          test "$(git rev-parse HEAD)" = "$expected_sha"
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: blendsdk/porta
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ steps.release.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.release.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ steps.release.outputs.tag }}
+            type=raw,value=latest
 
-      # Set up multi-platform build support
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # Authenticate with Docker Hub
-      - name: Login to Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Build and push multi-platform image
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -84,10 +94,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Sync docker/DOCKERHUB.md to Docker Hub repo description
-      # Only runs on tag pushes (not workflow_run)
       - name: Update Docker Hub description
-        if: github.event_name == 'push'
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}

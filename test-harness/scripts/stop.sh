@@ -1,29 +1,9 @@
 #!/usr/bin/env bash
-# OIDC Test Harness — Stop all services
-# Kills SPA/BFF dev servers, Docker containers, and prunes stopped containers.
-# See: plans/oidc-test-harness/03-docker-infrastructure.md
+# Retained compatibility entry point for exact owner-fenced cleanup.
 set -euo pipefail
 
-echo "=== OIDC Test Harness: STOP ==="
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# 1. Kill SPA and BFF dev servers (if running)
-echo "Stopping SPA and BFF servers..."
-pkill -f "sirv test-harness/spa" 2>/dev/null || true
-pkill -f "tsx test-harness/bff/server.ts" 2>/dev/null || true
-
-# 2. Docker Compose down with volume removal
-echo "Stopping harness Docker services..."
-docker compose -f test-harness/docker-compose.yml down -v 2>/dev/null || true
-
-# 3. Stop ALL running Docker containers (nuclear approach per AR-12)
-echo "Stopping all Docker containers..."
-docker stop $(docker ps -q) 2>/dev/null || true
-
-# 4. Prune stopped containers
-docker container prune -f 2>/dev/null || true
-
-echo "Stopping SPA and BFF"
-kill -9 $(lsof -ti:4100) 2>/dev/null || true
-kill -9 $(lsof -ti:4101) 2>/dev/null || true
-
-echo "=== All stopped ==="
+cd "$PROJECT_ROOT"
+exec node --import tsx test-harness/scripts/lifecycle.ts stop "$@"

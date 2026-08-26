@@ -56,14 +56,16 @@ function log(msg: string) {
 }
 
 /** Print generated client credentials in a readable format */
-function printCredentials(credentials: Array<{
-  clientName: string;
-  clientId: string;
-  clientType: string;
-  secretPlaintext?: string;
-  secretLabel?: string;
-  secretExpiresAt?: string;
-}>) {
+function printCredentials(
+  credentials: Array<{
+    clientName: string;
+    clientId: string;
+    clientType: string;
+    secretPlaintext?: string;
+    secretLabel?: string;
+    secretExpiresAt?: string;
+  }>,
+) {
   if (credentials.length === 0) return;
   log('  📋 Credentials:');
   for (const c of credentials) {
@@ -155,11 +157,13 @@ async function main() {
   log('   Testing the import engine end-to-end against a real DB\n');
 
   // Dynamic imports (ensures LOG_LEVEL=fatal is set first)
-  const { connectDatabase, disconnectDatabase, getPool } = await import('../src/lib/database.js');
-  const { connectRedis, disconnectRedis } = await import('../src/lib/redis.js');
-  const { runMigrations } = await import('../src/lib/migrator.js');
-  const { importData } = await import('../src/lib/data-import.js');
-  const { transformToManifest, provisioningSchema } = await import('../src/cli/commands/provision.js');
+  const { connectDatabase, disconnectDatabase, getPool } =
+    await import('../packages/server/src/lib/database.js');
+  const { connectRedis, disconnectRedis } = await import('../packages/server/src/lib/redis.js');
+  const { runMigrations } = await import('../packages/server/src/lib/migrator.js');
+  const { importData } = await import('../packages/server/src/lib/data-import.js');
+  const { transformToManifest, provisioningSchema } =
+    await import('../packages/server/src/cli/commands/provision.js');
 
   await connectDatabase();
   await connectRedis();
@@ -184,7 +188,9 @@ async function main() {
     await pool.query(`DELETE FROM organizations WHERE slug LIKE 'smoke-%'`);
     await pool.query(`DELETE FROM organizations WHERE slug IN ('acme', 'enterprise')`);
     // Applications are global (no org FK) — clean those too
-    await pool.query(`DELETE FROM applications WHERE slug IN ('web-portal', 'erp', 'customer-portal', 'smoke-app', 'smoke-dryapp')`);
+    await pool.query(
+      `DELETE FROM applications WHERE slug IN ('web-portal', 'erp', 'customer-portal', 'smoke-app', 'smoke-dryapp')`,
+    );
     log('  ✅ Clean slate\n');
 
     // ==================================================================
@@ -210,8 +216,14 @@ async function main() {
         } else if (!hasOrg || !hasApp || !hasClient) {
           fail(name, `Missing expected entities. Created types: ${createdTypes.join(', ')}`, t);
         } else {
-          const creds = result.credentials.filter((c) => c.clientType === 'confidential' && c.secretPlaintext);
-          pass(name, `Created: ${result.created.length}, Credentials: ${creds.length} confidential secrets`, t);
+          const creds = result.credentials.filter(
+            (c) => c.clientType === 'confidential' && c.secretPlaintext,
+          );
+          pass(
+            name,
+            `Created: ${result.created.length}, Credentials: ${creds.length} confidential secrets`,
+            t,
+          );
           printCredentials(result.credentials);
           saveTestOutput('test-1-simple', { manifest, result });
         }
@@ -242,7 +254,7 @@ async function main() {
           pass(
             name,
             `Created: ${result.created.length} (${roleCount} roles, ${permCount} perms, ${claimCount} claims), ` +
-            `Mappings: ${mappingCount}, Config: ${hasConfig}`,
+              `Mappings: ${mappingCount}, Config: ${hasConfig}`,
             t,
           );
           printCredentials(result.credentials);
@@ -391,12 +403,20 @@ organizations:
         ];
 
         if (!manifestChecks.every(Boolean)) {
-          fail(name, `Manifest shape incorrect: orgs=${manifest.organizations.length}, apps=${manifest.applications.length}, clients=${manifest.clients.length}, users=${manifest.users?.length}, modules=${manifest.application_modules?.length}, role_assignments=${manifest.user_role_assignments?.length}, claim_values=${manifest.user_claim_values?.length}`, t);
+          fail(
+            name,
+            `Manifest shape incorrect: orgs=${manifest.organizations.length}, apps=${manifest.applications.length}, clients=${manifest.clients.length}, users=${manifest.users?.length}, modules=${manifest.application_modules?.length}, role_assignments=${manifest.user_role_assignments?.length}, claim_values=${manifest.user_claim_values?.length}`,
+            t,
+          );
         } else {
           // Check password hashing happened (should be Argon2id hash, not plaintext)
           const aliceUser = manifest.users!.find((u) => u.email === 'alice@smoke-test.local');
           if (!aliceUser?.password_hash || !aliceUser.password_hash.startsWith('$argon2id$')) {
-            fail(name, `Password not hashed correctly: ${aliceUser?.password_hash?.substring(0, 20)}...`, t);
+            fail(
+              name,
+              `Password not hashed correctly: ${aliceUser?.password_hash?.substring(0, 20)}...`,
+              t,
+            );
           } else {
             // Now import
             const result = await importData(manifest, 'merge');
@@ -410,11 +430,15 @@ organizations:
               pass(
                 name,
                 `Created: ${result.created.length} entities, ${userCount} users, ${modCount} modules, ` +
-                `${creds.length} secrets, passwords hashed with Argon2id`,
+                  `${creds.length} secrets, passwords hashed with Argon2id`,
                 t,
               );
               printCredentials(result.credentials);
-              saveTestOutput('test-3-full-feature', { yamlSource: fullFeatureYaml, manifest, result });
+              saveTestOutput('test-3-full-feature', {
+                yamlSource: fullFeatureYaml,
+                manifest,
+                result,
+              });
             }
           }
         }
@@ -443,11 +467,21 @@ organizations:
         } else {
           // Role-permission mappings use ON CONFLICT DO NOTHING and always report as 'created'
           // even on re-run — this is expected behavior (idempotent INSERT, not a real creation)
-          const nonMappingCreated = result.created.filter((e) => e.type !== 'role_permission_mapping');
+          const nonMappingCreated = result.created.filter(
+            (e) => e.type !== 'role_permission_mapping',
+          );
           if (nonMappingCreated.length > 0) {
-            fail(name, `Unexpected non-mapping created: ${nonMappingCreated.map((e) => `${e.type}:${e.slug}`).join(', ')}`, t);
+            fail(
+              name,
+              `Unexpected non-mapping created: ${nonMappingCreated.map((e) => `${e.type}:${e.slug}`).join(', ')}`,
+              t,
+            );
           } else {
-            pass(name, `Skipped: ${result.skipped.length}, Mapping re-inserts: ${result.created.length} (idempotent ✓)`, t);
+            pass(
+              name,
+              `Skipped: ${result.skipped.length}, Mapping re-inserts: ${result.created.length} (idempotent ✓)`,
+              t,
+            );
           }
         }
       } catch (err) {
@@ -471,7 +505,11 @@ organizations:
         if (result.errors.length > 0) {
           fail(name, `Import errors: ${JSON.stringify(result.errors)}`, t);
         } else if (result.updated.length === 0) {
-          fail(name, `Expected entities to be updated in overwrite mode, got 0 updates. Created: ${result.created.length}, Skipped: ${result.skipped.length}`, t);
+          fail(
+            name,
+            `Expected entities to be updated in overwrite mode, got 0 updates. Created: ${result.created.length}, Skipped: ${result.skipped.length}`,
+            t,
+          );
         } else {
           pass(name, `Updated: ${result.updated.length}, Created: ${result.created.length}`, t);
           printCredentials(result.credentials);
@@ -513,7 +551,11 @@ organizations:
         if (rows.length > 0) {
           fail(name, 'Dry-run created entities in the database!', t);
         } else {
-          pass(name, `Dry-run result — would create: ${result.created.length}, DB rows: 0 (correct)`, t);
+          pass(
+            name,
+            `Dry-run result — would create: ${result.created.length}, DB rows: 0 (correct)`,
+            t,
+          );
           saveTestOutput('test-6-dryrun', { yamlSource: dryRunYaml, manifest, result });
         }
       } catch (err) {
@@ -536,7 +578,9 @@ organizations:
         const { rows: orgs } = await pool.query(
           `SELECT slug FROM organizations WHERE slug IN ('acme', 'enterprise', 'smoke-full') ORDER BY slug`,
         );
-        checks.push(`Orgs(${orgs.length}): ${orgs.map((r: { slug: string }) => r.slug).join(', ')}`);
+        checks.push(
+          `Orgs(${orgs.length}): ${orgs.map((r: { slug: string }) => r.slug).join(', ')}`,
+        );
         if (orgs.length < 3) allGood = false;
 
         // Check smoke-full org has branding (columns are branding_primary_color, branding_company_name)
@@ -544,15 +588,21 @@ organizations:
           `SELECT branding_primary_color, branding_company_name FROM organizations WHERE slug = 'smoke-full'`,
         );
         const branding = brandingRows[0];
-        const brandingOk = branding?.branding_primary_color === '#ff6600' && branding?.branding_company_name === 'Smoke Test Corp';
-        checks.push(`Branding: ${brandingOk ? '✓' : `primary_color=${branding?.branding_primary_color}, company_name=${branding?.branding_company_name}`}`);
+        const brandingOk =
+          branding?.branding_primary_color === '#ff6600' &&
+          branding?.branding_company_name === 'Smoke Test Corp';
+        checks.push(
+          `Branding: ${brandingOk ? '✓' : `primary_color=${branding?.branding_primary_color}, company_name=${branding?.branding_company_name}`}`,
+        );
         if (!brandingOk) allGood = false;
 
         // Check apps exist
         const { rows: apps } = await pool.query(
           `SELECT slug FROM applications WHERE slug IN ('web-portal', 'erp', 'customer-portal', 'smoke-app') ORDER BY slug`,
         );
-        checks.push(`Apps(${apps.length}): ${apps.map((r: { slug: string }) => r.slug).join(', ')}`);
+        checks.push(
+          `Apps(${apps.length}): ${apps.map((r: { slug: string }) => r.slug).join(', ')}`,
+        );
         if (apps.length < 3) allGood = false;
 
         // Check clients exist
@@ -566,7 +616,9 @@ organizations:
         const { rows: users } = await pool.query(
           `SELECT email, status FROM users WHERE email LIKE '%@smoke-test.local' ORDER BY email`,
         );
-        checks.push(`Users(${users.length}): ${users.map((r: { email: string; status: string }) => `${r.email}(${r.status})`).join(', ')}`);
+        checks.push(
+          `Users(${users.length}): ${users.map((r: { email: string; status: string }) => `${r.email}(${r.status})`).join(', ')}`,
+        );
         if (users.length < 2) allGood = false;
 
         // Check roles
@@ -575,7 +627,9 @@ organizations:
            JOIN applications a ON r.application_id = a.id
            WHERE a.slug = 'smoke-app' ORDER BY r.slug`,
         );
-        checks.push(`Roles(${roles.length}): ${roles.map((r: { slug: string }) => r.slug).join(', ')}`);
+        checks.push(
+          `Roles(${roles.length}): ${roles.map((r: { slug: string }) => r.slug).join(', ')}`,
+        );
         if (roles.length < 2) allGood = false;
 
         // Check application modules from Test 3
@@ -584,7 +638,9 @@ organizations:
            JOIN applications a ON am.application_id = a.id
            WHERE a.slug = 'smoke-app' ORDER BY am.slug`,
         );
-        checks.push(`Modules(${modules.length}): ${modules.map((r: { slug: string }) => r.slug).join(', ')}`);
+        checks.push(
+          `Modules(${modules.length}): ${modules.map((r: { slug: string }) => r.slug).join(', ')}`,
+        );
         if (modules.length < 2) allGood = false;
 
         // Check user-role assignments from Test 3
@@ -595,7 +651,9 @@ organizations:
            JOIN roles r ON ur.role_id = r.id
            WHERE u.email LIKE '%@smoke-test.local' ORDER BY u.email`,
         );
-        checks.push(`Assignments(${roleAssignments.length}): ${roleAssignments.map((r: { email: string; role_slug: string }) => `${r.email}→${r.role_slug}`).join(', ')}`);
+        checks.push(
+          `Assignments(${roleAssignments.length}): ${roleAssignments.map((r: { email: string; role_slug: string }) => `${r.email}→${r.role_slug}`).join(', ')}`,
+        );
         if (roleAssignments.length < 2) allGood = false;
 
         if (allGood) {
@@ -607,7 +665,6 @@ organizations:
         fail(name, String(err), t);
       }
     }
-
   } finally {
     // ------------------------------------------------------------------
     // Cleanup: Remove smoke-test data

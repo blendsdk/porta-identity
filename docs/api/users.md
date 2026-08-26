@@ -418,7 +418,7 @@ In addition to the org-scoped routes above, a set of **standalone user routes** 
 
 **Base path:** `/api/admin/users/:userId`
 
-These routes are primarily used by the Admin GUI SPA, where the user detail page navigates by user ID only. They delegate to the same service functions and require the same admin authentication and RBAC permissions as the org-scoped routes.
+These routes support administrative clients that navigate by user ID without an organization slug. They delegate to the same service functions and require the same admin authentication and RBAC permissions as the organization-scoped routes.
 
 ### Available Standalone Endpoints
 

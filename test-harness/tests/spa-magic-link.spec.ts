@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 import {
-  startMagicLinkFlow, waitForEmail, extractMagicLink,
-  clearMailHog, TEST_USER,
+  startMagicLinkFlow,
+  waitForEmail,
+  extractMagicLink,
+  clearMailHog,
+  TEST_USER,
 } from './helpers';
 
 test.describe('SPA — Magic Link Login Flow', () => {
@@ -30,6 +33,6 @@ test.describe('SPA — Magic Link Login Flow', () => {
 
     // 5. Verify the magic link URL is well-formed
     expect(magicLinkUrl).toContain('/auth/magic-link/');
-    expect(magicLinkUrl).toContain('porta.local:3443');
+    expect(new URL(magicLinkUrl).origin).toBe(process.env.HARNESS_PORTA_URL);
   });
 });

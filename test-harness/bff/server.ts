@@ -13,8 +13,6 @@
  *   GET /userinfo   — UserInfo (server-side call to Porta)
  *   GET /refresh    — Token refresh (server-side call to Porta)
  *   GET /logout     — RP-initiated logout (clear session + redirect to Porta)
- *
- * See: plans/oidc-test-harness/05-bff-harness.md
  */
 
 // ⚠️ TEST HARNESS ONLY — trust self-signed cert for HTTPS calls to Porta via nginx
@@ -27,16 +25,41 @@ import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as openidClient from 'openid-client';
+import { z } from 'zod';
+
+import { readProtectedRuntimeCredential } from '../fixtures/fixture-runtime-files.js';
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
 const configPath = resolve(import.meta.dirname!, '../config.generated.json');
-const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+const config = z
+  .object({
+    orgSlug: z.string().min(1),
+    bff: z.object({
+      clientId: z.string().min(1),
+      clientSecretCredentialRef: z.string().startsWith('credential:'),
+      redirectUri: z.string().url(),
+      postLogoutRedirectUri: z.string().url(),
+      scope: z.string().min(1),
+    }),
+    porta: z.object({ baseUrl: z.string().url() }),
+  })
+  .passthrough()
+  .parse(JSON.parse(readFileSync(configPath, 'utf-8')));
+const credentialPath = process.env.HARNESS_FIXTURE_CREDENTIALS;
+if (credentialPath === undefined) throw new Error('HARNESS_FIXTURE_CREDENTIALS is required');
+const clientSecret = readProtectedRuntimeCredential(
+  credentialPath,
+  config.bff.clientSecretCredentialRef,
+);
 
-const PORT = 4101;
-const PORTA_BASE_URL: string = config.porta.baseUrl; // https://localhost:3443
+const PORT = Number.parseInt(process.env.HARNESS_BFF_PORT ?? '4101', 10);
+if (!Number.isSafeInteger(PORT) || PORT < 1024 || PORT > 65_535) {
+  throw new Error('HARNESS_BFF_PORT must be a valid non-privileged TCP port');
+}
+const PORTA_BASE_URL: string = config.porta.baseUrl;
 const ORG_SLUG: string = config.orgSlug; // test-org
 
 console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
@@ -45,21 +68,16 @@ console.log(`[BFF] Config loaded — client_id: ${config.bff.clientId}`);
 // openid-client v6 discovery
 // ---------------------------------------------------------------------------
 
-console.log(
-  `[BFF] Discovering OIDC config from ${PORTA_BASE_URL}/${ORG_SLUG}/.well-known/openid-configuration`,
-);
-
-const oidcConfig = await openidClient.discovery(
-  new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
-  config.bff.clientId,
-  config.bff.clientSecret,
-  openidClient.ClientSecretPost(config.bff.clientSecret),
-  {
-    execute: [openidClient.allowInsecureRequests],
-  },
-);
-
-console.log('[BFF] OIDC discovery complete');
+/** Discovers the current reset-scoped client only when a protocol operation needs it. */
+function discoverOidcClient(): ReturnType<typeof openidClient.discovery> {
+  return openidClient.discovery(
+    new URL(`${PORTA_BASE_URL}/${ORG_SLUG}`),
+    config.bff.clientId,
+    clientSecret,
+    openidClient.ClientSecretPost(clientSecret),
+    { execute: [openidClient.allowInsecureRequests] },
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Koa App
@@ -98,6 +116,7 @@ router.get('/', async (ctx) => {
 
 // GET /login — Start OIDC auth flow
 router.get('/login', async (ctx) => {
+  const oidcConfig = await discoverOidcClient();
   const code_verifier = openidClient.randomPKCECodeVerifier();
   const code_challenge = await openidClient.calculatePKCECodeChallenge(code_verifier);
   const state = crypto.randomUUID();
@@ -125,6 +144,7 @@ router.get('/login', async (ctx) => {
 // GET /callback — Handle OIDC callback
 router.get('/callback', async (ctx) => {
   try {
+    const oidcConfig = await discoverOidcClient();
     const code_verifier = ctx.session?.code_verifier;
     const expectedState = ctx.session?.state;
     const expectedNonce = ctx.session?.nonce;
@@ -173,6 +193,7 @@ router.get('/introspect', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const result = await openidClient.tokenIntrospection(oidcConfig, tokens.access_token);
     console.log('[BFF] Introspection complete');
     ctx.body = renderResult('Introspection Result', result);
@@ -192,6 +213,7 @@ router.get('/userinfo', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const result = await openidClient.fetchUserInfo(
       oidcConfig,
       tokens.access_token,
@@ -215,6 +237,7 @@ router.get('/refresh', async (ctx) => {
   }
 
   try {
+    const oidcConfig = await discoverOidcClient();
     const newTokens = await openidClient.refreshTokenGrant(oidcConfig, tokens.refresh_token);
 
     const oldAccessToken = tokens.access_token;
@@ -243,6 +266,7 @@ router.get('/refresh', async (ctx) => {
 
 // GET /logout — RP-initiated logout
 router.get('/logout', async (ctx) => {
+  const oidcConfig = await discoverOidcClient();
   const idToken = ctx.session?.tokens?.id_token;
   ctx.session = null;
 
@@ -262,8 +286,8 @@ router.get('/logout', async (ctx) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[BFF] Server running at http://app.test:${PORT}`);
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[BFF] Server running at http://app-harness.ci.portaidentity.com:${PORT}`);
 });
 
 // ---------------------------------------------------------------------------

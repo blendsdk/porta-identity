@@ -10,7 +10,7 @@ yarn add @portaidentity/sdk
 npm install @portaidentity/sdk
 ```
 
-The package is located at `packages/porta-sdk/` in the monorepo.
+The package is located at `packages/sdk/` in the monorepo.
 
 ## Quick Start (Node.js)
 
@@ -103,7 +103,7 @@ The `PortaClient` provides 20 domain namespaces:
 | `applications` | App CRUD, modules | `list`, `get`, `create`, `update`, `archive`, `listModules`, `addModule` |
 | `clients` | Client CRUD, secrets | `list`, `get`, `create`, `update`, `revoke`, `generateSecret` |
 | `users` | Org-scoped user CRUD, invite, password, status, GDPR | `list`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `suspend`, `unsuspend`, `deactivate`, `reactivate`, `lock`, `unlock`, `exportData`, `purge` |
-| `usersById` | Org-less user ops (Admin GUI SPA) | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory` |
+| `usersById` | Organization-independent user operations | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory` |
 | `roles` | Application roles, permission mapping | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission` |
 | `permissions` | Application permissions | `list`, `get`, `create`, `archive` |
 | `userRoles` | User-role assignments | `list`, `assign`, `remove` |
@@ -121,7 +121,7 @@ The `PortaClient` provides 20 domain namespaces:
 | `imports` | Declarative provisioning | `provision` |
 
 The `users` domain mirrors the org-scoped user routes; `usersById` mirrors the
-org-less standalone user routes used by the Admin GUI SPA. `stats.get()` returns
+organization-independent user routes used by administrative clients. `stats.get()` returns
 the system-wide `StatsOverview` (`GET /stats/overview`), and
 `stats.getOrganizationStats(orgId)` returns per-org `OrgStats`.
 

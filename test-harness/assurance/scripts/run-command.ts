@@ -1,0 +1,1467 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import process from 'node:process';
+
+import {
+  assuranceCommandActions,
+  commandContracts,
+  commandContractVersion,
+  exitPrecedence,
+  exitTaxonomy,
+  isAssuranceCommandAction,
+  rootAliasForAction,
+  selectAssuranceExitCode,
+} from '../commands.js';
+import { redSignatureRegistrySchema } from '../schema.js';
+import {
+  coverageEnvironment,
+  createCoverageWorkspace,
+  extractRawCoverage,
+  gracefullyFlushPorta,
+  inspectPortaContainer,
+  readActiveCoverageRun,
+  writeCaptureManifest,
+} from '../coverage/index.js';
+import {
+  removeCoverageObservation,
+  runManagedCoverageConversion,
+  withOwnedHarnessStack,
+  writeCoverageFailureArtifact,
+  type CoverageFailureStage,
+} from './coverage-orchestration.js';
+import { isFullCatalogSelection, runCuratedFault, runCuratedFaultCatalog } from '../fault/index.js';
+import { recoverMutationPilotRun, runMutationPilot } from '../mutation/index.js';
+import { runTenantAdminControlSensitivity } from '../control-sensitivity/command.js';
+import { recoverLocalControlSensitivityRun } from '../control-sensitivity/local-runtime.js';
+import { isTenantAdminControlCheckId } from '../control-sensitivity/registry.js';
+import {
+  isPackedCompatibilitySelector,
+  recoverPackedConsumerRun,
+  runPackedCompatibilityFoundation,
+} from '../compat/index.js';
+import {
+  isHumanAuthBaselineCaseId,
+  isP1BaselineCaseId,
+  isProtocolBaselineCaseId,
+  isTenantAdminBaselineCaseId,
+  recordHumanAuthBaseline,
+  recordP1Baseline,
+  recordProtocolBaseline,
+  recordTenantAdminBaseline,
+} from '../baseline/index.js';
+import { isStabilityCommand, runStabilityCampaign } from '../stability/index.js';
+import {
+  admitKnownIncompleteCollector,
+  aggregateChildRegistry,
+  runAssuranceAggregate,
+} from '../aggregate/index.js';
+import {
+  AssuranceCleanupError,
+  AssuranceSetupError,
+  renderFoundationReport,
+  runFoundationValidation,
+} from './foundation-artifacts.js';
+import { runManagedChild } from './managed-child.js';
+import {
+  shouldContinueAfterProductionExposure,
+  shouldRunProductionSecurityBlocks,
+} from './harness-profile-admission.js';
+import { matchRedSignature } from './validate-assurance.js';
+import { environmentForManifest } from '../../fixtures/lifecycle-runtime.js';
+import { inspectFoundationProvenance } from './source-provenance.js';
+
+/** Exit code used when a command's owning phase has not installed its handler yet. */
+const setupFailureExit = 30;
+
+/** Exit code used when the internal test runner reports an assertion or collection failure. */
+const testFailureExit = 21;
+
+/** Exit code used when a bounded child process exceeds the command contract. */
+const timeoutExit = 70;
+
+/** Maximum TAP output retained while matching one exact RED signature. */
+const redOutputLimitBytes = 256 * 1024;
+
+/** Shell-free child definitions for RED cases installed by their owning phase. */
+const redCommands: Readonly<
+  Record<string, { readonly display: string; readonly args: readonly string[] }>
+> = {
+  'lifecycle-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    ],
+  },
+  'fixture-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    ],
+  },
+  'coverage-current-failure': {
+    display: 'yarn tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    ],
+  },
+  'fault-runner-missing': {
+    display: 'yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    ],
+  },
+  'packed-consumer-missing': {
+    display:
+      'yarn tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    args: [
+      '--import',
+      'tsx',
+      '--test',
+      'test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    ],
+  },
+};
+
+/** Complete lifecycle suite shared by progressive and final lifecycle selectors. */
+const lifecycleTestFiles = [
+  'test-harness/assurance/tests/lifecycle-leasing.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-cleanup.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-compatibility.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-outcomes.spec.test.ts',
+  'test-harness/assurance/tests/reset-success.spec.test.ts',
+  'test-harness/assurance/tests/reset-interruptions.spec.test.ts',
+  'test-harness/assurance/tests/reset-recovery.spec.test.ts',
+  'test-harness/assurance/tests/reset-verification.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-recovery.impl.test.ts',
+  'test-harness/assurance/tests/lifecycle-runtime.impl.test.ts',
+  'test-harness/assurance/tests/reset-finalization.impl.test.ts',
+  'test-harness/assurance/tests/lifecycle-quality-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-intent-safety.spec.test.ts',
+  'test-harness/assurance/tests/lifecycle-operation-serialization.spec.test.ts',
+] as const;
+
+/** Immutable tenant/admin specifications that must stay green before baseline evidence is written. */
+const tenantAdminSpecificationFiles = [
+  'test-harness/assurance/tests/tenant-admin-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/tenant-oidc-isolation.spec.test.ts',
+  'test-harness/assurance/tests/control-plane-authorization.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-boundary.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-transitions.spec.test.ts',
+] as const;
+
+/** Implementation-level guards for live tenant/admin orchestration and evidence helpers. */
+const tenantAdminImplementationFiles = [
+  'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
+] as const;
+
+/** Functional human-auth specifications executed only through the live security harness. */
+const humanAuthFunctionalSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+] as const;
+
+/** Second-factor specifications executed only through the live security harness. */
+const humanAuthSecondFactorSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+] as const;
+
+/** Independently selectable invariant-specific tenant/admin fault specifications. */
+const tenantAdminFaultSpecificationFiles = [
+  'test-harness/assurance/tests/tenant-admin-fault-requirements.spec.test.ts',
+  'test-harness/assurance/tests/tenant-read-scope-fault.spec.test.ts',
+  'test-harness/assurance/tests/tenant-write-scope-fault.spec.test.ts',
+  'test-harness/assurance/tests/issuer-separation-fault.spec.test.ts',
+  'test-harness/assurance/tests/organization-cache-separation-fault.spec.test.ts',
+  'test-harness/assurance/tests/stale-authority-fault.spec.test.ts',
+  'test-harness/assurance/tests/admin-organization-membership-fault.spec.test.ts',
+  'test-harness/assurance/tests/admin-permission-rbac-fault.spec.test.ts',
+] as const;
+
+/** Immutable OIDC, token, and distributed-consumption protocol specifications. */
+const protocolSpecificationFiles = [
+  'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/protocol-consistency.spec.test.ts',
+] as const;
+
+/** Protocol specifications that currently have a live public-boundary adapter. */
+const protocolLiveSpecificationFiles = [
+  'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
+] as const;
+
+/** Immutable human-authentication and recovery specifications. */
+const humanAuthSpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-slice-profiles.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-boundaries.spec.test.ts',
+] as const;
+
+/** Immutable validation and exposure requirement specifications. */
+const validationExposureSpecificationFiles = [
+  'test-harness/assurance/tests/validation-exposure.spec.test.ts',
+  'test-harness/assurance/tests/admin-data.spec.test.ts',
+] as const;
+
+/** Human-authentication specifications and candidate audit required before baseline evidence. */
+const humanAuthBaselineSpecificationFiles = [
+  ...humanAuthSpecificationFiles,
+  'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
+] as const;
+
+/** P1 specifications and candidate audit required before baseline evidence. */
+const p1BaselineSpecificationFiles = [
+  ...validationExposureSpecificationFiles,
+  'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+] as const;
+
+/** Immutable packed-client P1 read specifications. */
+const p1PackedReadSpecificationFiles = [
+  'test-harness/assurance/tests/p1-packed-read.spec.test.ts',
+] as const;
+
+/** Internal governance files referenced by ordinary and aggregate selectors without duplication. */
+const governanceTestFiles = [
+  'test-harness/assurance/tests/assurance.spec.test.ts',
+  'test-harness/assurance/tests/commands.impl.test.ts',
+  'test-harness/assurance/tests/evidence.impl.test.ts',
+  'test-harness/assurance/tests/governance.impl.test.ts',
+] as const;
+
+/** Deduplicated service-free files owned by the versioned local aggregate. */
+const assuranceAllInternalFiles = [
+  ...governanceTestFiles,
+  ...lifecycleTestFiles,
+  'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+  'test-harness/assurance/tests/assurance-project-collection.spec.test.ts',
+  'test-harness/assurance/tests/assurance-source-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/coverage-envelope-and-provenance.spec.test.ts',
+  'test-harness/assurance/tests/coverage-mapping-and-reproducibility.spec.test.ts',
+  'test-harness/assurance/tests/coverage-observation-policy.spec.test.ts',
+  'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+  'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
+  'test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts',
+  'test-harness/assurance/tests/fault-catalog-campaign.impl.test.ts',
+  'test-harness/assurance/tests/mutation-pilot.spec.test.ts',
+  'test-harness/assurance/tests/mutation-pilot.impl.test.ts',
+  'test-harness/assurance/tests/command-outcome-matrix.spec.test.ts',
+  'test-harness/assurance/tests/command-outcome-campaign.impl.test.ts',
+  'test-harness/assurance/tests/stability-campaign.spec.test.ts',
+  'test-harness/assurance/tests/stability-campaign.impl.test.ts',
+  'test-harness/assurance/tests/assurance-ratchets.spec.test.ts',
+  'test-harness/assurance/tests/assurance-ratchets.impl.test.ts',
+  ...tenantAdminSpecificationFiles,
+  ...tenantAdminImplementationFiles,
+  ...tenantAdminFaultSpecificationFiles,
+  ...protocolSpecificationFiles,
+  ...humanAuthSpecificationFiles,
+  'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+  'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+  'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
+  ...validationExposureSpecificationFiles,
+  ...p1PackedReadSpecificationFiles,
+  'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+  'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+  'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+  'test-harness/assurance/tests/p1-request-material.impl.test.ts',
+  'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
+  'test-harness/assurance/tests/assurance-all-aggregate.spec.test.ts',
+  'test-harness/assurance/tests/assurance-all-aggregate.impl.test.ts',
+] as const;
+
+/** Registered selector-to-specification mappings for internal Node suites. */
+const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
+  'assurance-foundation': ['test-harness/assurance/tests/assurance-foundation.impl.test.ts'],
+  'assurance-signal-probe': ['test-harness/assurance/tests/signal-probe.impl.fixture.ts'],
+  lifecycle: lifecycleTestFiles,
+  'lifecycle-all': lifecycleTestFiles,
+  'fixture-ontology': [
+    'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+    'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
+  ],
+  'project-collection': ['test-harness/assurance/tests/assurance-project-collection.spec.test.ts'],
+  'coverage-pipeline': [
+    'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
+    'test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-flush-container.impl.test.ts',
+    'test-harness/assurance/tests/coverage-orchestration.impl.test.ts',
+    'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
+  ],
+  'coverage-all': [
+    'test-harness/assurance/tests/coverage-envelope-and-provenance.spec.test.ts',
+    'test-harness/assurance/tests/coverage-mapping-and-reproducibility.spec.test.ts',
+    'test-harness/assurance/tests/coverage-observation-policy.spec.test.ts',
+    'test-harness/assurance/tests/coverage-dependencies.impl.test.ts',
+    'test-harness/assurance/tests/coverage-capture.impl.test.ts',
+    'test-harness/assurance/tests/coverage-flush-container.impl.test.ts',
+    'test-harness/assurance/tests/coverage-orchestration.impl.test.ts',
+    'test-harness/assurance/tests/coverage-classification.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion.impl.test.ts',
+    'test-harness/assurance/tests/coverage-conversion-hardening.impl.test.ts',
+  ],
+  'fault-runner': [
+    'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/fault-validation.spec.test.ts',
+    'test-harness/assurance/tests/fault-classification.spec.test.ts',
+    'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
+    'test-harness/assurance/tests/fault-runner.impl.test.ts',
+  ],
+  'fault-catalog-campaign': [
+    'test-harness/assurance/tests/fault-catalog-campaign.spec.test.ts',
+    'test-harness/assurance/tests/fault-catalog-campaign.impl.test.ts',
+  ],
+  'mutation-pilot': [
+    'test-harness/assurance/tests/mutation-pilot.spec.test.ts',
+    'test-harness/assurance/tests/mutation-pilot.impl.test.ts',
+  ],
+  'command-outcome-matrix': ['test-harness/assurance/tests/command-outcome-matrix.spec.test.ts'],
+  'assurance-command-signals': [
+    'test-harness/assurance/tests/command-outcome-matrix.spec.test.ts',
+    'test-harness/assurance/tests/command-outcome-campaign.impl.test.ts',
+  ],
+  'stability-campaign': [
+    'test-harness/assurance/tests/stability-campaign.spec.test.ts',
+    'test-harness/assurance/tests/stability-campaign.impl.test.ts',
+  ],
+  'assurance-ratchets': [
+    'test-harness/assurance/tests/assurance-ratchets.spec.test.ts',
+    'test-harness/assurance/tests/assurance-ratchets.impl.test.ts',
+  ],
+  'stability-coverage-probe': ['test-harness/assurance/tests/coverage-classification.impl.test.ts'],
+  'stability-compat-probe': ['test-harness/assurance/tests/packed-tenant-admin.impl.test.ts'],
+  'packed-consumer': [
+    'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
+    'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
+    'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
+    'test-harness/assurance/tests/packed-consumer.impl.test.ts',
+  ],
+  'fault-packed-foundations': [
+    'test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/fault-validation.spec.test.ts',
+    'test-harness/assurance/tests/fault-classification.spec.test.ts',
+    'test-harness/assurance/tests/fault-cleanup.spec.test.ts',
+    'test-harness/assurance/tests/fault-runner.impl.test.ts',
+    'test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+    'test-harness/assurance/tests/packed-client-installation.spec.test.ts',
+    'test-harness/assurance/tests/packed-client-resolution.spec.test.ts',
+    'test-harness/assurance/tests/packed-cli-credential-isolation.spec.test.ts',
+    'test-harness/assurance/tests/packed-consumer.impl.test.ts',
+  ],
+  'tenant-admin-specs': tenantAdminSpecificationFiles,
+  'tenant-admin-all': [...tenantAdminSpecificationFiles, ...tenantAdminImplementationFiles],
+  'tenant-admin-baseline': ['test-harness/assurance/tests/tenant-admin-baseline.impl.test.ts'],
+  'tenant-admin-fault-specs': tenantAdminFaultSpecificationFiles,
+  'tenant-admin-control-check-specs': tenantAdminFaultSpecificationFiles,
+  'tenant-admin-faults': [
+    ...tenantAdminFaultSpecificationFiles,
+    'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
+  ],
+  'tenant-admin-control-checks': [
+    ...tenantAdminFaultSpecificationFiles,
+    'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
+  ],
+  'tenant-admin-control-sensitivity': [
+    ...tenantAdminFaultSpecificationFiles,
+    'test-harness/assurance/tests/tenant-admin-control-sensitivity.impl.test.ts',
+  ],
+  'protocol-specs': protocolSpecificationFiles,
+  'protocol-jose': ['test-harness/assurance/tests/protocol-live-jose.impl.test.ts'],
+  'human-auth-specs': humanAuthSpecificationFiles,
+  'validation-exposure-specs': validationExposureSpecificationFiles,
+  'p1-specs': [...validationExposureSpecificationFiles, ...p1PackedReadSpecificationFiles],
+  'p1-production-exposure': [
+    'test-harness/assurance/tests/production-exposure.impl.test.ts',
+    'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
+  ],
+  'p1-implementation': [
+    'test-harness/assurance/tests/p1-request-material.impl.test.ts',
+    'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+    'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  ],
+  'p1-all': [
+    ...validationExposureSpecificationFiles,
+    'test-harness/assurance/tests/p1-baseline.spec.test.ts',
+    'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+    ...p1PackedReadSpecificationFiles,
+    'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+    'test-harness/assurance/tests/p1-request-material.impl.test.ts',
+    'test-harness/assurance/tests/production-exposure.impl.test.ts',
+  ],
+  'p1-baseline': [
+    ...p1BaselineSpecificationFiles,
+    'test-harness/assurance/tests/p1-baseline.impl.test.ts',
+  ],
+  'p1-packed': [
+    ...p1PackedReadSpecificationFiles,
+    'test-harness/assurance/tests/p1-packed-read.impl.test.ts',
+  ],
+  'human-auth-cross-site-specs': [
+    'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+  ],
+  'human-auth-functional-specs': [
+    'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+  ],
+  'human-auth-second-factor-specs': [
+    'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+  ],
+  'human-auth-live': [
+    'test-harness/assurance/tests/harness-profile-admission.impl.test.ts',
+    'test-harness/assurance/tests/human-auth-functional-observations.impl.test.ts',
+    'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+    'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
+  ],
+  'human-auth-all': [
+    ...humanAuthSpecificationFiles,
+    'test-harness/assurance/tests/human-auth-cross-site.spec.test.ts',
+    'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
+    'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
+    'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+    'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
+    'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
+  ],
+  'human-auth-baseline': [
+    'test-harness/assurance/tests/human-auth-baseline.spec.test.ts',
+    'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
+  ],
+  'tenant-admin-packed': [
+    'test-harness/assurance/tests/packed-sdk-tenant-admin.spec.test.ts',
+    'test-harness/assurance/tests/packed-cli-tenant-admin.spec.test.ts',
+    'test-harness/assurance/tests/packed-tenant-admin.impl.test.ts',
+  ],
+  'protocol-packed': [
+    'test-harness/assurance/tests/packed-cli-protocol.spec.test.ts',
+    'test-harness/assurance/tests/packed-sdk-protocol.spec.test.ts',
+    'test-harness/assurance/tests/packed-protocol.impl.test.ts',
+  ],
+  'assurance-governance': governanceTestFiles,
+  'assurance-all-aggregate': [
+    'test-harness/assurance/tests/production-exposure-collector.spec.test.ts',
+    'test-harness/assurance/tests/assurance-all-aggregate.spec.test.ts',
+    'test-harness/assurance/tests/assurance-all-aggregate.impl.test.ts',
+  ],
+  'assurance-all-internal-v1': [...new Set(assuranceAllInternalFiles)],
+};
+
+/** Complete fixture specification and implementation files used by the fixture rollup. */
+const fixtureRollupFiles = [
+  'test-harness/assurance/tests/fixture-ontology.spec.test.ts',
+  'test-harness/assurance/tests/assurance-project-collection.spec.test.ts',
+  'test-harness/assurance/tests/fixture-isolation-and-repeatability.spec.test.ts',
+  'test-harness/assurance/tests/assurance-source-boundaries.spec.test.ts',
+  'test-harness/assurance/tests/fixture-runtime-files.impl.test.ts',
+] as const;
+
+/** Converts one managed child outcome to the stable assurance exit taxonomy. */
+function managedChildExit(
+  result: Awaited<ReturnType<typeof runManagedChild>>,
+  nonzeroExit: number,
+): number {
+  if (result.cleanupFailed) return 60;
+  if (result.forwardedSignal === 'SIGINT') return 130;
+  if (result.forwardedSignal === 'SIGTERM') return 143;
+  if (result.timedOut) return timeoutExit;
+  if (result.setupFailed) return setupFailureExit;
+  if (result.code === 0) return 0;
+  if (result.code !== null && [20, 21, 30, 40, 50, 60, 70, 130, 143].includes(result.code)) {
+    return result.code;
+  }
+  return nonzeroExit;
+}
+
+/** Runs one shell-free lifecycle action used by an internal live-boundary suite. */
+async function runLifecycleAction(
+  action: 'start' | 'stop' | 'reset' | 'restart-porta' | 'project',
+  project?: string,
+  profile?: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
+  const actionOptions =
+    action === 'start'
+      ? ['--ci', ...(profile === undefined ? [] : ['--profile', profile])]
+      : action === 'project' && project !== undefined
+        ? ['--name', project]
+        : [];
+  return runManagedChild(
+    process.execPath,
+    ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', action, ...actionOptions],
+    {
+      cwd: process.cwd(),
+      env: environment,
+      stdio: 'inherit',
+      timeoutMilliseconds:
+        action === 'start' ? 900_000 : action === 'project' ? 1_800_000 : 120_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
+
+/** Stops or recovers any durable run left by an interrupted or failed start attempt. */
+async function cleanupHarnessStack(environment: NodeJS.ProcessEnv = process.env): Promise<number> {
+  const stop = await runLifecycleAction('stop', undefined, undefined, environment);
+  return managedChildExit(stop, 60) === 0 ? 0 : 60;
+}
+
+/** Owns one profile stack across a callback and always applies cleanup-failure precedence. */
+async function withHarnessStack(
+  profile: string,
+  work: () => Promise<number>,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<number> {
+  return withOwnedHarnessStack(
+    async () => {
+      const start = await runLifecycleAction('start', undefined, profile, environment);
+      return managedChildExit(start, setupFailureExit);
+    },
+    () => cleanupHarnessStack(environment),
+    work,
+  );
+}
+
+/** Captures one fixed-seed harness project from the owned Dockerized Porta process. */
+async function runCoverageCommand(options: readonly string[]): Promise<void> {
+  if (
+    options.length !== 6 ||
+    options[0] !== '--project' ||
+    options[2] !== '--profile' ||
+    options[4] !== '--seed'
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --project <project> --profile <profile> --seed <seed>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const project = options[1];
+  const profile = options[3];
+  const seed = options[5];
+  if (project !== 'protocol' && project !== 'security') {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${project ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (profile !== 'operational' && profile !== 'production-security') {
+    process.stderr.write(`ASSURANCE_PROFILE_UNREGISTERED: ${profile ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (seed !== 'coverage-baseline') {
+    process.stderr.write(`ASSURANCE_SEED_UNREGISTERED: ${seed ?? ''}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const workspace = createCoverageWorkspace(process.cwd(), project, profile);
+  const interruption = new AbortController();
+  let interruptedExit: 130 | 143 | undefined;
+  const interrupt = (exitCode: 130 | 143): void => {
+    interruptedExit ??= exitCode;
+    interruption.abort();
+  };
+  const onSigint = (): void => interrupt(130);
+  const onSigterm = (): void => interrupt(143);
+  process.on('SIGINT', onSigint);
+  process.on('SIGTERM', onSigterm);
+  let terminalStage: CoverageFailureStage = 'startup';
+  try {
+    let environment: NodeJS.ProcessEnv;
+    try {
+      environment = coverageEnvironment(workspace);
+    } catch {
+      process.exitCode = setupFailureExit;
+      removeCoverageObservation(workspace);
+      writeCoverageFailureArtifact(workspace, {
+        stage: 'startup',
+        exitCode: setupFailureExit,
+        classification: exitTaxonomy[setupFailureExit],
+        project,
+        profile,
+        seed,
+      });
+      process.stderr.write('ASSURANCE_COVERAGE_FAILED: stage=startup\n');
+      return;
+    }
+    const result = await withHarnessStack(
+      profile,
+      async () => {
+        let stage: CoverageFailureStage = 'active-run';
+        try {
+          const activeRun = readActiveCoverageRun(process.cwd());
+          stage = 'container-inspect';
+          const container = await inspectPortaContainer(
+            process.cwd(),
+            workspace,
+            activeRun,
+            interruption.signal,
+          );
+          stage = 'project';
+          const projectResult = await runLifecycleAction(
+            'project',
+            project,
+            undefined,
+            environment,
+          );
+          const projectExit = managedChildExit(projectResult, testFailureExit);
+          stage = 'graceful-stop';
+          await gracefullyFlushPorta(process.cwd(), container);
+          if (projectExit !== 0 || interruptedExit !== undefined) {
+            terminalStage = 'project';
+            return interruptedExit ?? projectExit;
+          }
+          stage = 'raw-extract';
+          await extractRawCoverage(process.cwd(), workspace, container, interruption.signal);
+          stage = 'raw-validate';
+          terminalStage = stage;
+          const manifest = await writeCaptureManifest(process.cwd(), workspace, container, {
+            seed,
+            project,
+            profile,
+          });
+          if (manifest.flushStatus !== 'complete') return 40;
+          stage = 'conversion';
+          terminalStage = stage;
+          if (interruptedExit !== undefined) return interruptedExit;
+          const conversion = await runManagedCoverageConversion(process.cwd(), workspace);
+          const conversionExit = managedChildExit(conversion, 40);
+          if (conversionExit !== 0) {
+            terminalStage = stage;
+            return interruptedExit ?? conversionExit;
+          }
+          stage = 'observation';
+          terminalStage = stage;
+          return interruptedExit ?? 0;
+        } catch {
+          terminalStage = stage;
+          return interruptedExit ?? 40;
+        }
+      },
+      environment,
+    );
+    process.exitCode = result;
+    if (result === 0) {
+      process.stdout.write(
+        `ASSURANCE_COVERAGE_CAPTURE=${workspace.manifestPath}\nASSURANCE_COVERAGE_REPORT=${workspace.reportDirectory}\n`,
+      );
+    } else {
+      removeCoverageObservation(workspace);
+      const stage: CoverageFailureStage = result === 60 ? 'cleanup' : terminalStage;
+      const classification = exitTaxonomy[result as keyof typeof exitTaxonomy] ?? 'unknown-failure';
+      writeCoverageFailureArtifact(workspace, {
+        stage,
+        exitCode: result,
+        classification,
+        project,
+        profile,
+        seed,
+      });
+      process.stderr.write(`ASSURANCE_COVERAGE_FAILED: stage=${stage}\n`);
+    }
+  } finally {
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
+  }
+}
+
+/** Executes one allowlisted Playwright project against an owned operational stack. */
+async function runHarnessCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 4 || options[0] !== '--project' || options[2] !== '--profile') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --project <project> --profile <profile>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const project = options[1] ?? '';
+  const profile = options[3] ?? '';
+  if (!['spa', 'bff', 'protocol', 'security', 'compatibility'].includes(project)) {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${project}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (!['operational', 'production-security'].includes(profile)) {
+    process.stderr.write(`ASSURANCE_PROFILE_UNREGISTERED: ${profile}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  process.exitCode = await withHarnessStack(profile, async () => {
+    let retainedProductExit = 0;
+    const projectResult = await runLifecycleAction('project', project);
+    const projectExit = managedChildExit(projectResult, testFailureExit);
+    if (projectExit !== 0) return projectExit;
+
+    if (project === 'security') {
+      const productionExposureReset = await runLifecycleAction('reset');
+      const productionExposureResetExit = managedChildExit(
+        productionExposureReset,
+        setupFailureExit,
+      );
+      if (productionExposureResetExit !== 0) return productionExposureResetExit;
+      const productionExposureActive = readActiveCoverageRun(process.cwd());
+      const productionExposureResult = await runProductionExposureCollector(
+        Object.freeze({
+          ...environmentForManifest(productionExposureActive.lease.manifest),
+          PORTA_ASSURANCE_PROJECT: 'security',
+          PORTA_ASSURANCE_PRODUCTION_EXPOSURE_ADAPTER: 'live',
+        }),
+      );
+      const productionExposureExit = managedChildExit(productionExposureResult, testFailureExit);
+      const registeredInvocation = aggregateChildRegistry
+        .flatMap((child) => child.invocations)
+        .find((invocation) => invocation.id === `harness-security-${profile}`);
+      let knownIncompleteAdmitted = false;
+      if (productionExposureExit === 40 && registeredInvocation !== undefined) {
+        try {
+          knownIncompleteAdmitted = admitKnownIncompleteCollector({
+            repositoryRoot: process.cwd(),
+            invocation: registeredInvocation,
+            artifactReference: `test-harness/.assurance-results/${productionExposureActive.lease.manifest.runId}/production-exposure/${profile}/observation.json`,
+            provenance: inspectFoundationProvenance(process.cwd()),
+            cleanupComplete: !productionExposureResult.cleanupFailed,
+          });
+        } catch {
+          knownIncompleteAdmitted = false;
+        }
+      }
+      if (!shouldContinueAfterProductionExposure(productionExposureExit, knownIncompleteAdmitted)) {
+        return productionExposureExit;
+      }
+      retainedProductExit = productionExposureExit;
+
+      if (!shouldRunProductionSecurityBlocks(project, profile)) return productionExposureExit;
+    }
+
+    if (project === 'protocol') {
+      const reset = await runLifecycleAction('reset');
+      const resetExit = managedChildExit(reset, setupFailureExit);
+      if (resetExit !== 0) return resetExit;
+      const active = readActiveCoverageRun(process.cwd());
+      const liveSpecifications = await runNodeSuite(
+        protocolLiveSpecificationFiles,
+        undefined,
+        Object.freeze({
+          ...environmentForManifest(active.lease.manifest),
+          PORTA_ASSURANCE_PROTOCOL_ADAPTER: 'live',
+        }),
+      );
+      return managedChildExit(liveSpecifications, testFailureExit);
+    }
+
+    if (!shouldRunProductionSecurityBlocks(project, profile)) return projectExit;
+
+    const reset = await runLifecycleAction('reset');
+    const resetExit = managedChildExit(reset, setupFailureExit);
+    if (resetExit !== 0) return selectAssuranceExitCode([retainedProductExit, resetExit]);
+
+    const active = readActiveCoverageRun(process.cwd());
+    const functionalSpecifications = await runNodeSuite(
+      humanAuthFunctionalSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(active.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER: 'live',
+      }),
+    );
+    const functionalExit = managedChildExit(functionalSpecifications, testFailureExit);
+    if (functionalExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, functionalExit]);
+    }
+
+    const secondFactorReset = await runLifecycleAction('reset');
+    const secondFactorResetExit = managedChildExit(secondFactorReset, setupFailureExit);
+    if (secondFactorResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, secondFactorResetExit]);
+    }
+    const secondFactorActive = readActiveCoverageRun(process.cwd());
+    const secondFactorSpecifications = await runNodeSuite(
+      humanAuthSecondFactorSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(secondFactorActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_SECOND_FACTOR_ADAPTER: 'live',
+      }),
+    );
+    const secondFactorExit = managedChildExit(secondFactorSpecifications, testFailureExit);
+    if (secondFactorExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, secondFactorExit]);
+    }
+
+    const tenantAdminReset = await runLifecycleAction('reset');
+    const tenantAdminResetExit = managedChildExit(tenantAdminReset, setupFailureExit);
+    if (tenantAdminResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, tenantAdminResetExit]);
+    }
+    const tenantAdminActive = readActiveCoverageRun(process.cwd());
+    const tenantAdminSpecifications = await runNodeSuite(
+      tenantAdminSpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(tenantAdminActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_TENANT_ADMIN_ADAPTER: 'live',
+      }),
+    );
+    const tenantAdminExit = managedChildExit(tenantAdminSpecifications, testFailureExit);
+    return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
+  });
+}
+
+/** Runs a bounded internal Node suite with an optional exact test-name selector. */
+function runNodeSuite(
+  files: readonly string[],
+  testNamePattern?: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<Awaited<ReturnType<typeof runManagedChild>>> {
+  return runManagedChild(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      '--test',
+      '--test-concurrency=1',
+      ...(testNamePattern === undefined ? [] : [`--test-name-pattern=${testNamePattern}`]),
+      ...files,
+    ],
+    {
+      cwd: process.cwd(),
+      env: environment,
+      stdio: 'inherit',
+      timeoutMilliseconds: 900_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
+
+/** Runs the taxonomy-preserving production-exposure collector in one managed child. */
+function runProductionExposureCollector(environment: NodeJS.ProcessEnv) {
+  return runManagedChild(
+    process.execPath,
+    ['--import', 'tsx', 'test-harness/assurance/production-exposure/run-collector.ts'],
+    {
+      cwd: process.cwd(),
+      env: environment,
+      stdio: 'inherit',
+      timeoutMilliseconds: 900_000,
+      terminationGraceMilliseconds: 10_000,
+      cleanup: () => undefined,
+    },
+  );
+}
+
+/** Runs all fixture cases across separately owned operational and production-security stacks. */
+async function runFixtureRollup(): Promise<void> {
+  const operationalExit = await withHarnessStack('operational', async () => {
+    const operational = await runNodeSuite(fixtureRollupFiles);
+    const suiteExit = managedChildExit(operational, testFailureExit);
+    if (suiteExit !== 0) return suiteExit;
+    const profiles = await runNodeSuite(
+      ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+      'separate every runtime credential|expose only the exact operational|operational profile',
+    );
+    return managedChildExit(profiles, testFailureExit);
+  });
+  if (operationalExit !== 0) {
+    process.exitCode = operationalExit;
+    return;
+  }
+  process.exitCode = await withHarnessStack('production-security', async () => {
+    const profile = await runNodeSuite(
+      ['test-harness/assurance/tests/assurance-profiles-and-secrets.spec.test.ts'],
+      '^should verify every public postcondition for the production-security profile$',
+    );
+    const profileExit = managedChildExit(profile, testFailureExit);
+    if (profileExit !== 0) return profileExit;
+    const project = await runLifecycleAction('project', 'security');
+    return managedChildExit(project, testFailureExit);
+  });
+}
+
+/** Serializes the complete frozen command contract for repository checks and operators. */
+function describeAllContracts(): string {
+  return JSON.stringify({
+    version: commandContractVersion,
+    commands: commandContracts,
+    exitTaxonomy,
+    exitPrecedence,
+  });
+}
+
+/** Prints one command's selector, prerequisites, timeout, artifacts, and recovery contract. */
+function printCommandHelp(action: (typeof assuranceCommandActions)[number]): void {
+  const alias = rootAliasForAction(action);
+  const contract = commandContracts[alias];
+  const selector = contract.selectorGrammar === '' ? '' : ` ${contract.selectorGrammar}`;
+
+  process.stdout.write(
+    [
+      `Usage: yarn ${alias}${selector}`,
+      `Timeout: ${contract.timeout}`,
+      `Artifacts: test-harness/.assurance-results/<run-id>/${contract.artifactSubdirectory}`,
+      `Prerequisites: ${contract.prerequisites.join('; ')}`,
+      `Signals: ${contract.signalContract}`,
+      `Cleanup: ${contract.cleanupContract}`,
+    ].join('\n') + '\n',
+  );
+}
+
+/** Reports a deterministic setup failure until a later phase installs the command handler. */
+function reportUnavailable(action: (typeof assuranceCommandActions)[number]): void {
+  process.stderr.write(
+    `ASSURANCE_HANDLER_UNAVAILABLE: assurance:${action} is registered but its handler is not installed\n`,
+  );
+  process.exitCode = setupFailureExit;
+}
+
+/** Executes one registered internal Node test suite without passing input through a shell. */
+async function runInternalTests(options: readonly string[]): Promise<void> {
+  const normalizedOptions = options.length === 0 ? ['--select', 'assurance-governance'] : options;
+  if (normalizedOptions.length !== 2 || normalizedOptions[0] !== '--select') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --select <registered-suite|ST-ID|internal-test-path>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const selector = normalizedOptions[1] ?? '';
+  if (selector === 'fixtures-all') {
+    await runFixtureRollup();
+    return;
+  }
+  const selectedTests = internalTestSuites[selector];
+  if (selectedTests === undefined) {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${selector}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const ownsFixtureStack = selector === 'fixture-ontology';
+  const execute = async (): Promise<number> => {
+    const result = await runManagedChild(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        '--test',
+        ...(selector === 'assurance-all-internal-v1' ? ['--test-concurrency=1'] : []),
+        ...selectedTests,
+      ],
+      {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: 'inherit',
+        timeoutMilliseconds: ownsFixtureStack ? 900_000 : 120_000,
+        terminationGraceMilliseconds: 2_000,
+        cleanup: () => undefined,
+      },
+    );
+    return managedChildExit(result, testFailureExit);
+  };
+  process.exitCode = ownsFixtureStack
+    ? await withHarnessStack('operational', execute)
+    : await execute();
+}
+
+/** Runs one allowlisted RED child and accepts only its exact registered assertion failure. */
+async function runRedCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 4 || options[0] !== '--case' || options[2] !== '--signature') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --case <ST-ID> --signature <signature-id>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const caseId = options[1] ?? '';
+  const signatureId = options[3] ?? '';
+  const command = redCommands[signatureId];
+  if (command === undefined) {
+    process.stderr.write('ASSURANCE_RED_UNAVAILABLE: signature handler is not installed\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  try {
+    const registry = redSignatureRegistrySchema.parse(
+      JSON.parse(
+        readFileSync(resolve(process.cwd(), 'test-harness/assurance/red-signatures.json'), 'utf8'),
+      ),
+    );
+    const signature = registry.signatures.find((candidate) => candidate.id === signatureId);
+    if (
+      signature === undefined ||
+      signature.command !== command.display ||
+      signature.normalizedFailureExit !== testFailureExit
+    ) {
+      throw new Error('registered RED command contract does not match its handler');
+    }
+
+    const result = await runManagedChild(process.execPath, command.args, {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: 'pipe',
+      maxOutputBytes: redOutputLimitBytes,
+      timeoutMilliseconds: 120_000,
+      terminationGraceMilliseconds: 2_000,
+      cleanup: () => undefined,
+    });
+    if (result.cleanupFailed) {
+      process.exitCode = 60;
+      return;
+    }
+    if (result.forwardedSignal === 'SIGINT') {
+      process.exitCode = 130;
+      return;
+    }
+    if (result.forwardedSignal === 'SIGTERM') {
+      process.exitCode = 143;
+      return;
+    }
+    if (result.timedOut) {
+      process.exitCode = timeoutExit;
+      return;
+    }
+    if (result.setupFailed || result.outputTruncated || result.code === null) {
+      process.exitCode = setupFailureExit;
+      return;
+    }
+
+    const boundedOutput = `${result.stdout}\n${result.stderr}`;
+    matchRedSignature(registry, caseId, signatureId, result.code, boundedOutput);
+    if (!/(?:^|\n)# pass 0(?:\r?\n|$)/u.test(boundedOutput)) {
+      throw new Error('RED child did not report zero passing cases');
+    }
+    if (!/(?:^|\n)# fail 1(?:\r?\n|$)/u.test(boundedOutput)) {
+      throw new Error('RED child did not report exactly one failing case');
+    }
+    if (boundedOutput.split(signature.marker).length !== 2) {
+      throw new Error('RED marker must occur exactly once');
+    }
+
+    process.stdout.write(
+      `ASSURANCE_RED_MATCHED: case=${caseId} signature=${signatureId} raw-exit=${result.code}\n`,
+    );
+  } catch (error) {
+    process.stderr.write(`ASSURANCE_RED_REJECTED: ${errorMessage(error)}\n`);
+    process.exitCode = testFailureExit;
+  }
+}
+
+/** Records strict RED evidence only after the owning immutable specifications remain green. */
+async function runBaselineCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 2 || options[0] !== '--case') {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: expected --case <ST-ID>\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const caseId = options[1] ?? '';
+  const tenantAdminCase = isTenantAdminBaselineCaseId(caseId);
+  const protocolCase = isProtocolBaselineCaseId(caseId);
+  const humanAuthCase = isHumanAuthBaselineCaseId(caseId);
+  const p1Case = isP1BaselineCaseId(caseId);
+  if (!tenantAdminCase && !protocolCase && !humanAuthCase && !p1Case) {
+    process.stderr.write(`ASSURANCE_SELECTOR_UNREGISTERED: ${caseId}\n`);
+    process.exitCode = setupFailureExit;
+    return;
+  }
+
+  const specificationFiles = tenantAdminCase
+    ? tenantAdminSpecificationFiles
+    : protocolCase
+      ? protocolSpecificationFiles
+      : humanAuthCase
+        ? humanAuthBaselineSpecificationFiles
+        : p1BaselineSpecificationFiles;
+  const specifications = await runNodeSuite(specificationFiles);
+  const specificationExit = managedChildExit(specifications, testFailureExit);
+  if (specificationExit !== 0) {
+    process.exitCode = specificationExit;
+    return;
+  }
+
+  try {
+    const recorded = tenantAdminCase
+      ? recordTenantAdminBaseline(process.cwd(), caseId)
+      : protocolCase
+        ? recordProtocolBaseline(process.cwd(), caseId)
+        : humanAuthCase
+          ? recordHumanAuthBaseline(process.cwd(), caseId)
+          : recordP1Baseline(process.cwd(), caseId);
+    const artifact = `test-harness/.assurance-results/${recorded.result.runId}/baseline/${caseId}/result.json`;
+    process.stdout.write(
+      `ASSURANCE_BASELINE_RECORDED: run=${recorded.result.runId} case=${caseId} classification=${recorded.result.classification} reason=${recorded.result.reason} artifact=${artifact}\n`,
+    );
+  } catch {
+    process.stderr.write('ASSURANCE_BASELINE_FAILED: stage=evidence\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
+/** Executes or recovers one exact registered local tenant/admin control check. */
+async function runControlCheckCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover') {
+    const runId = options[1] ?? '';
+    const recovered = await recoverLocalControlSensitivityRun(process.cwd(), runId);
+    if (!recovered) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
+  if (options.length !== 2 || options[0] !== '--check') {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: expected --check <registered-check>\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const selectedId = options[1] ?? '';
+    if (!isTenantAdminControlCheckId(selectedId)) {
+      throw new Error('tenant/admin control check is not registered');
+    }
+    const result = await runTenantAdminControlSensitivity(process.cwd(), selectedId);
+    process.stdout.write(
+      `ASSURANCE_CONTROL_CHECK_RESULT: run=${result.runId} outcome=${result.outcome} artifact=${result.artifactPath}\n`,
+    );
+    if (result.recoveryCommand !== undefined) {
+      process.stderr.write(
+        `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+      );
+    }
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_CONTROL_CHECK_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
+/** Executes one exact registered curated-fault tuple through the disposable runner. */
+async function runFaultCommand(options: readonly string[]): Promise<void> {
+  if (
+    options.length !== 6 ||
+    options[0] !== '--fault' ||
+    options[2] !== '--claim' ||
+    options[4] !== '--sentinel'
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --fault <fault-id> --claim <claim-id> --sentinel <sentinel-id>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const selection = {
+      faultId: options[1] ?? '',
+      claimId: options[3] ?? '',
+      sentinelId: options[5] ?? '',
+    };
+    if (isFullCatalogSelection(selection)) {
+      const result = await runCuratedFaultCatalog(process.cwd());
+      const counts = result.counts;
+      process.stdout.write(
+        `ASSURANCE_FAULT_CATALOG_RESULT: run=${result.runId} killed=${counts.killed} survived=${counts.survived} invalid=${counts.invalid} infrastructure=${counts.infrastructure} timeout=${counts.timeout} notRun=${counts.notRun} artifact=${result.artifactPath}\n`,
+      );
+      if (result.recoveryCommand !== undefined) {
+        process.stderr.write(
+          `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+        );
+      }
+      process.exitCode = result.exitCode;
+      return;
+    }
+    const result = await runCuratedFault(process.cwd(), selection);
+    process.stdout.write(
+      `ASSURANCE_FAULT_RESULT: run=${result.runId} classification=${result.classification} artifact=${result.artifactPath}\n`,
+    );
+    if (result.recoveryCommand !== undefined) {
+      process.stderr.write(
+        `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+      );
+    }
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_FAULT_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
+/** Runs the packed current-client foundation against one owned operational harness stack. */
+async function runCompatibilityCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover') {
+    const runId = options[1] ?? '';
+    if (!recoverPackedConsumerRun(process.cwd(), runId)) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
+  const selectedValue = options[1] ?? '';
+  if (
+    options.length !== 2 ||
+    options[0] !== '--select' ||
+    !isPackedCompatibilitySelector(selectedValue)
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --select <ST-69|ST-70|ST-71|ST-72|ST-73|tenant-admin|admin-data|p1-admin|protocol|compatibility>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  const selector = selectedValue;
+  process.exitCode = await withHarnessStack('operational', async () => {
+    try {
+      const result = await runPackedCompatibilityFoundation(process.cwd(), selector);
+      if (result.exitCode === 0) {
+        process.stdout.write(
+          `ASSURANCE_COMPAT_RESULT: run=${result.runId} selector=${result.selector} artifact=${result.artifactPath}\n`,
+        );
+      } else if (result.recoveryCommand !== undefined) {
+        process.stderr.write(
+          `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+        );
+      } else {
+        process.stderr.write('ASSURANCE_COMPAT_FAILED: stage=foundation\n');
+      }
+      return result.exitCode;
+    } catch {
+      process.stderr.write('ASSURANCE_COMPAT_FAILED: stage=foundation\n');
+      return setupFailureExit;
+    }
+  });
+}
+
+/** Executes or recovers the one closed local mutation-pilot command. */
+async function runMutationCommand(options: readonly string[]): Promise<void> {
+  if (options.length === 2 && options[0] === '--recover') {
+    const runId = options[1] ?? '';
+    if (!recoverMutationPilotRun(process.cwd(), runId)) {
+      process.stderr.write(`ASSURANCE_CLEANUP_FAILED: run=${runId}\n`);
+      process.exitCode = 60;
+      return;
+    }
+    process.stdout.write(`ASSURANCE_CLEANUP_COMPLETE: run=${runId}\n`);
+    return;
+  }
+  if (options.length !== 2 || options[0] !== '--select' || options[1] !== 'bounded-pilot') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --select bounded-pilot or --recover <run-uuid>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  let result;
+  try {
+    result = await runMutationPilot(process.cwd());
+  } catch {
+    process.stderr.write('ASSURANCE_MUTATION_FAILED: stage=preflight\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  process.exitCode = result.exitCode;
+  if (result.exitCode === 0) {
+    process.stdout.write(
+      `ASSURANCE_MUTATION_RESULT: run=${result.runId} decision=${result.decision} artifact=${result.artifactPath}\n`,
+    );
+  } else if (result.recoveryCommand !== undefined) {
+    process.stderr.write(
+      `ASSURANCE_CLEANUP_FAILED: run=${result.runId} recovery=${result.recoveryCommand}\n`,
+    );
+  } else {
+    process.stderr.write(`ASSURANCE_MUTATION_FAILED: run=${result.runId}\n`);
+  }
+}
+
+/** Returns a minimal diagnostic message without serializing an exception or stack. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown assurance command failure';
+}
+
+/** Validates committed foundation definitions and creates one ignored evidence run. */
+function runValidationCommand(options: readonly string[]): void {
+  if (options.length !== 0) {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: assurance:validate accepts no options\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const runId = runFoundationValidation(process.cwd());
+    process.stdout.write(`ASSURANCE_RUN_ID=${runId}\n`);
+  } catch (error) {
+    if (error instanceof AssuranceCleanupError) {
+      process.stderr.write(
+        `ASSURANCE_CLEANUP_FAILED: run=${error.runId} recovery=${error.recoveryCommand}\n`,
+      );
+      process.exitCode = 60;
+      return;
+    }
+    if (error instanceof AssuranceSetupError) {
+      process.stderr.write(`ASSURANCE_SETUP_FAILED: ${errorMessage(error)}\n`);
+      process.exitCode = setupFailureExit;
+      return;
+    }
+    process.stderr.write(`ASSURANCE_VALIDATION_FAILED: ${errorMessage(error)}\n`);
+    process.exitCode = testFailureExit;
+  }
+}
+
+/** Renders one sanitized validation run bound to one exact coverage run. */
+function runReportCommand(options: readonly string[]): void {
+  if (options.length !== 4 || options[0] !== '--run' || options[2] !== '--coverage-run') {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --run <run-uuid> --coverage-run <coverage-run-uuid>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const reportPath = renderFoundationReport(process.cwd(), options[1] ?? '', options[3] ?? '');
+    process.stdout.write(`ASSURANCE_REPORT=${reportPath}\n`);
+  } catch (error) {
+    process.stderr.write(`ASSURANCE_REPORT_FAILED: ${errorMessage(error)}\n`);
+    process.exitCode = testFailureExit;
+  }
+}
+
+/** Runs one exact versioned stability candidate without recursive command selection. */
+async function runStabilityCommand(options: readonly string[]): Promise<void> {
+  const selectedCommand = options[1] ?? '';
+  if (
+    options.length !== 4 ||
+    options[0] !== '--command' ||
+    options[2] !== '--seed-set' ||
+    !isStabilityCommand(selectedCommand)
+  ) {
+    process.stderr.write(
+      'ASSURANCE_SELECTOR_INVALID: expected --command <test|harness|coverage|fault|compat> --seed-set <registered-set>\n',
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const result = await runStabilityCampaign(process.cwd(), selectedCommand, options[3] ?? '');
+    process.stdout.write(
+      `ASSURANCE_STABILITY_RESULT: run=${result.runId} candidate=${result.candidateId} qualified=${String(result.qualified)} artifact=${result.artifactPath}\n`,
+    );
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_STABILITY_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
+/** Executes the complete closed local aggregate without admitting caller-selected children. */
+async function runAllCommand(options: readonly string[]): Promise<void> {
+  if (options.length !== 0) {
+    process.stderr.write('ASSURANCE_SELECTOR_INVALID: assurance:all accepts no options\n');
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  try {
+    const result = await runAssuranceAggregate(process.cwd());
+    process.stdout.write(
+      `ASSURANCE_ALL_RESULT: run=${result.runId} assured=${result.counts.assured} blocked=${result.counts.blocked} incomplete=${result.counts.incomplete} survived=${result.counts.survived} unqualified=${result.counts.unqualified} artifact=${result.artifactPath} summary=${result.summaryPath}\n`,
+    );
+    process.exitCode = result.exitCode;
+  } catch {
+    process.stderr.write('ASSURANCE_ALL_FAILED: stage=setup\n');
+    process.exitCode = setupFailureExit;
+  }
+}
+
+/** Runs the root dispatcher without interpreting untrusted input as code or shell syntax. */
+async function main(arguments_: readonly string[]): Promise<void> {
+  const [action, ...options] = arguments_;
+
+  if (action === '--describe-all' && options.length === 0) {
+    process.stdout.write(`${describeAllContracts()}\n`);
+    return;
+  }
+  if (action === undefined || !isAssuranceCommandAction(action)) {
+    process.stderr.write(
+      `ASSURANCE_COMMAND_INVALID: expected one of ${assuranceCommandActions.join(', ')}\n`,
+    );
+    process.exitCode = setupFailureExit;
+    return;
+  }
+  if (options.length === 1 && (options[0] === '--help' || options[0] === '-h')) {
+    printCommandHelp(action);
+    return;
+  }
+  if (action === 'test') {
+    await runInternalTests(options);
+    return;
+  }
+  if (action === 'red') {
+    await runRedCommand(options);
+    return;
+  }
+  if (action === 'baseline') {
+    await runBaselineCommand(options);
+    return;
+  }
+  if (action === 'harness') {
+    await runHarnessCommand(options);
+    return;
+  }
+  if (action === 'coverage') {
+    await runCoverageCommand(options);
+    return;
+  }
+  if (action === 'fault') {
+    await runFaultCommand(options);
+    return;
+  }
+  if (action === 'mutation') {
+    await runMutationCommand(options);
+    return;
+  }
+  if (action === 'control-check') {
+    await runControlCheckCommand(options);
+    return;
+  }
+  if (action === 'compat') {
+    await runCompatibilityCommand(options);
+    return;
+  }
+  if (action === 'validate') {
+    runValidationCommand(options);
+    return;
+  }
+  if (action === 'report') {
+    runReportCommand(options);
+    return;
+  }
+  if (action === 'stability') {
+    await runStabilityCommand(options);
+    return;
+  }
+  if (action === 'all') {
+    await runAllCommand(options);
+    return;
+  }
+
+  reportUnavailable(action);
+}
+
+await main(process.argv.slice(2));

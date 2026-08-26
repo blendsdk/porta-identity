@@ -1,0 +1,11 @@
+diff --git a/test-harness/assurance/fault/fixtures/foundation-control.mjs b/test-harness/assurance/fault/fixtures/foundation-control.mjs
+--- a/test-harness/assurance/fault/fixtures/foundation-control.mjs
++++ b/test-harness/assurance/fault/fixtures/foundation-control.mjs
+@@ -1,5 +1,5 @@
+ /** Independent controls changed only inside the disposable foundation fault worktree. */
+ export const foundationControls = Object.freeze({
+-  alpha: true,
+-  bravo: true,
++  alpha: false,
++  bravo: false,
+ });

@@ -24,7 +24,7 @@ test.describe('BFF — Token Refresh & Logout', () => {
     await handleSignOutConfirmation(page);
 
     // 6. Verify back on BFF, logged out
-    await page.waitForURL('**/app.test:4101/**', { timeout: 15_000 });
+    await page.waitForURL(`${process.env.HARNESS_BFF_URL}/**`, { timeout: 15_000 });
     await expect(page.locator('[data-testid="status"]')).toContainText('NOT LOGGED IN');
     await expect(page.locator('[data-testid="login-btn"]')).toBeVisible();
   });
