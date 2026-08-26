@@ -126,6 +126,10 @@ on the feature branch must not publish packages, tags, releases, documentation, 
   three exact Trusted Publisher mappings were confirmed, the workflow and repository contracts
   now forbid npm token variables, the GitHub `NPM_TOKEN` secret was deleted, and Lockstep prepared
   the coordinated tokenless `1.7.1` candidate.
+- The first tokenless `1.7.1` attempt reached Lockstep publication but Yarn changed the effective
+  registry to `https://registry.yarnpkg.com`, which cannot perform npm's OIDC exchange. No `1.7.1`
+  package was published. The recovery keeps the same immutable candidate and explicitly pins
+  Lockstep's npm subprocess to `https://registry.npmjs.org`.
 
 **Verify**: release contract and repository-structure tests; Lockstep/version-sync preparation;
 package pack/install/smoke; workflow parsing and permission checks; `yarn docs:build`; and

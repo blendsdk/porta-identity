@@ -67,8 +67,10 @@ node_modules/.bin/npm trust github @portaidentity/cli --repo blendsdk/porta-iden
 npm does not validate the mapping when it is saved. Record the three settings as readiness
 evidence; the first end-to-end tokenless acceptance proof occurs on the next version.
 
-Normal releases run `yarn release:publish` on a GitHub-hosted runner with `id-token: write`; npm
-exchanges the workflow identity for a short-lived credential and publishes provenance. The
+Normal releases run `yarn release:publish` on a GitHub-hosted runner with `id-token: write`. The
+script pins the publish registry to `https://registry.npmjs.org` so Yarn cannot redirect
+Lockstep's npm subprocess to its package mirror; npm then exchanges the workflow identity for a
+short-lived credential and publishes provenance. The
 bootstrap token must remain absent from the workflow and should be revoked after the first
 tokenless release succeeds.
 
