@@ -24,7 +24,7 @@ yarn add @portaidentity/sdk
 
 ## Quick Start
 
-### Browser (Admin GUI / BFF)
+### Browser
 
 ```typescript
 import { createPortaClient, createBrowserTransport } from '@portaidentity/sdk/browser';

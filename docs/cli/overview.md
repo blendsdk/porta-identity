@@ -123,7 +123,6 @@ output.
 | `porta health`           | Check server health (via API)                                                   |
 | `porta provision`        | Declarative environment setup from YAML/JSON                                    |
 | `porta exports download` | Bounded allowlisted CSV/JSON administrative export                              |
-| `porta gui`              | Attempt to launch the optional browser GUI dependency, which may be unavailable |
 
 ### Server CLI (Infrastructure Only)
 
@@ -146,4 +145,3 @@ These commands are available inside the Porta Docker container or development en
 - [Users](./users.md) — `porta user` with status, password, roles, claims, 2FA
 - [Infrastructure](./infrastructure.md) — `porta migrate`, `porta seed`, `porta health`
 - [Provisioning](./provisioning.md) — `porta provision` declarative setup
-- [`porta gui` compatibility](/guide/admin-gui) — Availability and fallback guidance
