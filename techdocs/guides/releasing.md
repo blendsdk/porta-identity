@@ -24,47 +24,28 @@ yarn verify
 commit the manifests, derived constants, changelogs, and release notes together. A successful
 `Build and Test` run for that exact `main` revision is the only automatic release trigger.
 
-## One-time 1.7.0 bootstrap
+## Completed 1.7.0 bootstrap
 
-The server package does not exist on npm before this coordinated release, so npm Trusted
-Publishing cannot be configured for it yet. Keep the existing npm publishing token only for this
-bootstrap window.
+The first server package was published as `1.7.0` to establish the npm package before Trusted
+Publishing could be configured. That bootstrap is complete; normal releases must not use an npm
+token.
 
-Before merging, an npm organization owner must confirm:
+The retained bootstrap evidence is:
 
-- `node_modules/.bin/npm whoami` identifies the expected account and the npm website shows that account as an
-  owner or maintainer of the `@portaidentity` scope.
+- `node_modules/.bin/npm whoami` identifies the expected `@portaidentity` organization owner.
 - `node_modules/.bin/npm owner ls @portaidentity/sdk` and
-  `node_modules/.bin/npm owner ls @portaidentity/cli` include that account; confirm its
-  organization role on npmjs.com.
-- `node_modules/.bin/npm view @portaidentity/server@1.7.0 version`,
-  `node_modules/.bin/npm view @portaidentity/sdk@1.7.0 version`, and
-  `node_modules/.bin/npm view @portaidentity/cli@1.7.0 version` all report the target version as
-  absent.
-- `node_modules/.bin/npm token list --json` identifies the bounded automation token by ID and confirms its package
-  access and expiry. Never copy the token value into a log, issue, or release record.
-- the GitHub `NPM_TOKEN` secret refers to that same token.
+  `node_modules/.bin/npm owner ls @portaidentity/cli` include that account.
+- `node_modules/.bin/npm view @portaidentity/server@1.7.0 version` reports the public bootstrap
+  package and its provenance predicate is `https://slsa.dev/provenance/v1`.
+- all three packages have a GitHub Actions Trusted Publisher for `blendsdk/porta-identity` and
+  `release.yml` with publish permission.
 
-The bootstrap workflow packs all three packages once, prints their SHA-256 hashes, and publishes
-the packages in this order: server, SDK, CLI. An automatic rerun stops if any target version
-already exists, even when its bytes match. It never overwrites or unpublishes a version.
-
-### Partial recovery
-
-Stop if a publish fails. At the exact release commit, install with the frozen lockfile, build,
-run `yarn release:preflight`, and recreate the three tarballs. Compare their SHA-256 hashes with
-the hashes in the failed workflow log. Publish only packages whose exact version is still absent,
-in server/SDK/CLI order, with `--access public --tag latest --provenance`. Keep
-`NODE_AUTH_TOKEN` scoped to those commands only.
-
-Do not create `v1.7.0` until all three `npm view` checks return `1.7.0`. If the tag exists,
-verify that it resolves to the tested commit; never move it. Create a missing GitHub Release from
-`RELEASE_NOTES.md`, then rerun `docker.yml` with tag `v1.7.0` and the tested SHA.
+The `1.7.0` attempt published only the server package. The coordinated public release resumes at
+`1.7.1`; no workflow may overwrite or unpublish the partial version.
 
 ## Trusted Publishing cutover
 
-After all three packages are visible, configure the same Trusted Publisher separately for each
-package:
+Configure the same Trusted Publisher separately for each package:
 
 | Field             | Value            |
 | ----------------- | ---------------- |
@@ -86,11 +67,10 @@ node_modules/.bin/npm trust github @portaidentity/cli --repo blendsdk/porta-iden
 npm does not validate the mapping when it is saved. Record the three settings as readiness
 evidence; the first end-to-end tokenless acceptance proof occurs on the next version.
 
-Remove the bootstrap block and every `NPM_TOKEN` reference from `release.yml`, delete the GitHub
-secret, revoke the identified npm token with `node_modules/.bin/npm token revoke <token-id>`, and
-confirm `node_modules/.bin/npm token list --json` no longer contains it. Future releases run `yarn release:publish` on a
-GitHub-hosted runner with `id-token: write`; npm exchanges the workflow identity for a short-lived
-credential and publishes provenance.
+Normal releases run `yarn release:publish` on a GitHub-hosted runner with `id-token: write`; npm
+exchanges the workflow identity for a short-lived credential and publishes provenance. The
+bootstrap token must remain absent from the workflow and should be revoked after the first
+tokenless release succeeds.
 
 ## Docker acceptance
 

@@ -27,7 +27,7 @@ import { fetchHealthStatus } from '../auth/metadata.js';
  * CLI version — read from package.json at build time.
  * This must be kept in sync with package.json version.
  */
-export const CLI_VERSION = '1.7.0';
+export const CLI_VERSION = '1.7.1';
 
 // ---------------------------------------------------------------------------
 // Command Definition

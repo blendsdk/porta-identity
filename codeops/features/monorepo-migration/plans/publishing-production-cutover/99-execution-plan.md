@@ -2,7 +2,7 @@
 
 > **Type**: Task (lightweight) · **Feature**: monorepo-migration · **CodeOps Artifact Schema**: 1
 > **Progress**: 7/8 tasks (88%)
-> **Last Updated**: 2026-08-26 11:58
+> **Last Updated**: 2026-08-26 12:48
 > **Phase baseline tree**: `6ea83f94feef9b8640bb1f56dfaed061d3594481`
 > **Scope mode**: strict
 > **Expected modification set**: release repository tests and scripts; root/package manifests and
@@ -13,13 +13,12 @@
 
 Repair the existing release path without redesigning it. After successful CI for a push to
 `main`, use `@blendsdk/lockstep` to publish `@portaidentity/server`, `@portaidentity/sdk`, and
-`@portaidentity/cli` together at `1.7.0` with npm provenance. The first coordinated release uses
-the existing npm token once because it creates the previously unpublished server package. After
-that release, configure all three packages for npm Trusted Publishing and remove the publishing
-token so future releases use short-lived GitHub OIDC credentials.
+`@portaidentity/cli` together with npm provenance. The bootstrap created only the server at
+`1.7.0`; the coordinated release therefore resumes immutably at `1.7.1` using npm Trusted
+Publishing and short-lived GitHub OIDC credentials.
 
-Push `v1.7.0` and its GitHub Release, then let the existing tag-driven Docker workflow publish the
-same release as the working `blendsdk/porta` image tags `1.7.0`, `1.7`, `1`, and `latest`. Keep the
+Push `v1.7.1` and its GitHub Release, then let the existing tag-driven Docker workflow publish the
+same release as the working `blendsdk/porta` image tags `1.7.1`, `1.7`, `1`, and `latest`. Keep the
 independent documentation workflow unchanged.
 
 Merging the verified release change to `main` is the release go/no-go. Preparation and validation
@@ -85,29 +84,29 @@ on the feature branch must not publish packages, tags, releases, documentation, 
 - [~] T-02.8 Present the verified diff and release checklist for explicit approval to integrate.
       Do not push, merge, or mutate `main` from this task without that approval. Once the approved
       change reaches `main`, observe the existing automatic release path and verify all three npm
-      packages at `1.7.0`, provenance, `v1.7.0`, the GitHub Release, the four Docker tags and a
+      packages at the coordinated recovery version `1.7.1`, provenance, `v1.7.1`, the GitHub
+      Release, the four Docker tags and a
       runnable image, and the admin-GUI deprecation. Complete the one-time Trusted Publisher
       configuration and token revocation; record the exact three mappings, GitHub secret absence,
       revoked-token identity/status, supported toolchain, and durable workflow's lack of token
-      variables. Record end-to-end tokenless npm acceptance as pending until the next version.
-      Stop on any mismatch and use T-02.6 recovery. ⏳ (integration approval pending:
-      2026-08-26 11:09)
+      variables. The `1.7.1` release is the end-to-end tokenless npm acceptance proof. Stop on any
+      mismatch and use immutable-version recovery. ⏳ (tokenless `1.7.1` candidate prepared:
+      2026-08-26 12:48)
 
 ## Release invariants
 
 - Semantic Release and Lockstep never coexist as release owners.
 - Only a successful CI revision from a push to `main` may publish; pull requests and feature
   branches never receive publishing credentials.
-- The npm token is exposed only to allowlisted publish/recovery commands during the bounded
-  `1.7.0` bootstrap window and is revoked after all packages are observed and Trusted Publishing
-  is configured. Subsequent release jobs contain no npm publishing token. Docker
+- The bounded `1.7.0` bootstrap is closed. Release jobs contain no npm publishing token and the
+  GitHub `NPM_TOKEN` secret is absent. Docker
   credentials remain publish-step secrets. No secret value is printed, persisted, or added to an
   artifact.
 - Trusted Publishing is configured separately for all three npm packages against the exact public
   repository and `release.yml`; GitHub-hosted release jobs grant `id-token: write` and satisfy the
   current npm CLI and Node version floors.
-- Package versions are immutable. Partial recovery uses the same release commit and publishes only
-  artifacts that are still absent.
+- Package versions are immutable. The partial `1.7.0` server version remains untouched; the next
+  coordinated version is `1.7.1`.
 - The Docker image is built from the release tag and must start successfully before cutover is
   considered complete.
 
@@ -122,6 +121,11 @@ on the feature branch must not publish packages, tags, releases, documentation, 
   has a red/green repository contract and a successful local `npm publish --dry-run` using the
   exact explicit-local-path form. No npm version, release tag, GitHub Release, or Docker tag was
   created by the failed attempt.
+- The corrected bootstrap published `@portaidentity/server@1.7.0` with provenance, then stopped on
+  npm's immediate public-visibility read. The package was made public without overwriting it. All
+  three exact Trusted Publisher mappings were confirmed, the workflow and repository contracts
+  now forbid npm token variables, the GitHub `NPM_TOKEN` secret was deleted, and Lockstep prepared
+  the coordinated tokenless `1.7.1` candidate.
 
 **Verify**: release contract and repository-structure tests; Lockstep/version-sync preparation;
 package pack/install/smoke; workflow parsing and permission checks; `yarn docs:build`; and

@@ -5,7 +5,7 @@ import test from 'node:test';
 import { parse } from 'yaml';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
-const releaseVersion = '1.7.0';
+const releaseVersion = '1.7.1';
 const packagePaths = [
   'packages/server/package.json',
   'packages/sdk/package.json',
@@ -67,11 +67,12 @@ test('should keep every publishable component on the coordinated release version
     readRepositoryJson('packages/cli/package.json').dependencies?.['@portaidentity/sdk'],
     releaseVersion,
   );
-  assert.match(readRepositoryFile('packages/sdk/src/version.ts'), /SDK_VERSION = '1\.7\.0'/);
-  assert.match(readRepositoryFile('packages/cli/src/commands/version.ts'), /CLI_VERSION = '1\.7\.0'/);
+  assert.match(readRepositoryFile('packages/sdk/src/version.ts'), /SDK_VERSION = '1\.7\.1'/);
+  assert.match(readRepositoryFile('packages/cli/src/commands/version.ts'), /CLI_VERSION = '1\.7\.1'/);
 });
 
 test('should publish only an exact successful main candidate with provenance', () => {
+  const manifest = readRepositoryJson('package.json');
   const workflow = readWorkflow('.github/workflows/release.yml');
   const source = readRepositoryFile('.github/workflows/release.yml');
 
@@ -82,8 +83,8 @@ test('should publish only an exact successful main candidate with provenance', (
   assert.match(source, /github\.event\.workflow_run\.head_sha/);
   assert.match(source, /yarn release:preflight/);
   assert.match(source, /yarn release:publish/);
-  assert.match(source, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
-  assert.match(source, /--provenance|NPM_CONFIG_PROVENANCE:\s*true/);
+  assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN/);
+  assert.match(manifest.scripts?.['release:publish'] ?? '', /--provenance/);
   assert.doesNotMatch(source, /semantic-release/);
   assert.doesNotMatch(source, /\byarn\s+build:(?:sdk|cli)\b/);
 });
@@ -103,13 +104,14 @@ test('should dispatch Docker from the verified release tag and publish one image
   assert.doesNotMatch(source, /github\.event_name == 'workflow_run'/);
 });
 
-test('should retain a tokenless trusted-publishing path after bootstrap', () => {
+test('should publish through tokenless npm Trusted Publishing', () => {
   const source = readRepositoryFile('.github/workflows/release.yml');
 
   assert.match(source, /npm\s+(?:--version|exec)/);
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
-  assert.match(source, /release\.yml/);
+  assert.match(source, /run:\s*yarn release:publish/);
+  assert.doesNotMatch(source, /bootstrap|publish_if_absent/);
 });
 
 test('should remove stale release ownership and retired workspace paths', () => {
