@@ -53,7 +53,6 @@ export default withMermaid(
             text: 'Operations',
             items: [
               { text: 'Deployment', link: '/guide/deployment' },
-              { text: 'Admin GUI', link: '/guide/admin-gui' },
               { text: 'Setup Alternatives', link: '/guide/setup-alternatives' },
               { text: 'FAQ', link: '/guide/faq' },
             ],

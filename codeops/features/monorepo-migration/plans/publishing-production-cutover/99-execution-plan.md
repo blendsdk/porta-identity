@@ -1,8 +1,8 @@
 # Task T-02: Publishing and production cutover
 
 > **Type**: Task (lightweight) · **Feature**: monorepo-migration · **CodeOps Artifact Schema**: 1
-> **Progress**: 7/8 tasks (88%)
-> **Last Updated**: 2026-08-26 13:24
+> **Progress**: 8/8 tasks (100%)
+> **Last Updated**: 2026-08-26 14:59
 > **Phase baseline tree**: `6ea83f94feef9b8640bb1f56dfaed061d3594481`
 > **Scope mode**: strict
 > **Expected modification set**: release repository tests and scripts; root/package manifests and
@@ -80,19 +80,20 @@ on the feature branch must not publish packages, tags, releases, documentation, 
       `docker build --file docker/Dockerfile --tag porta-release-preflight .`. Confirm preparation
       creates no commit or tag and that verification leaves registry state unchanged. Do not run
       the application integration, E2E, penetration, or compatibility suites solely to author
-      deployment automation; the user explicitly narrowed this gate on 2026-08-26. ⏳
+      deployment automation; the user explicitly narrowed this gate on 2026-08-26. ✅
       (completed: 2026-08-26 11:09)
-- [~] T-02.8 Present the verified diff and release checklist for explicit approval to integrate.
+- [x] T-02.8 Present the verified diff and release checklist for explicit approval to integrate.
       Do not push, merge, or mutate `main` from this task without that approval. Once the approved
       change reaches `main`, observe the existing automatic release path and verify all three npm
       packages at the coordinated recovery version `1.7.2`, provenance, `v1.7.2`, the GitHub
       Release, the four Docker tags and a
       runnable image, and the admin-GUI deprecation. Complete the one-time Trusted Publisher
       configuration and token revocation; record the exact three mappings, GitHub secret absence,
-      revoked-token identity/status, supported toolchain, and durable workflow's lack of token
-      variables. The `1.7.2` release is the end-to-end tokenless npm acceptance proof. Stop on any
-      mismatch and use immutable-version recovery. ⏳ (tokenless `1.7.2` candidate prepared:
-      2026-08-26 13:24)
+      bootstrap-token purpose and user-confirmed revocation status, supported toolchain, and the
+      durable workflow's lack of token variables. The `1.7.2` release is the end-to-end tokenless
+      npm acceptance proof. Stop on any
+      mismatch and use immutable-version recovery. ✅ (completed: 2026-08-26 14:59; all release,
+      provenance, image, token-removal, package-retirement, and documentation checks passed)
 
 ## Release invariants
 
@@ -135,6 +136,17 @@ on the feature branch must not publish packages, tags, releases, documentation, 
   registry briefly returned `404` during the immediate verification read. No tag, GitHub Release,
   or Docker dispatch was created. The immutable recovery advances to `1.7.2` and adds only a
   bounded visibility retry before integrity and provenance verification.
+- The tokenless `1.7.2` recovery published all three packages with SLSA provenance, created the
+  matching Git tag and GitHub Release, and published one verified Docker digest as `1.7.2`, `1.7`,
+  `1`, and `latest`. Trusted Publisher IDs are `bb744281-5da4-4cc0-90fa-d19d22bd301b` (server),
+  `2fa736f8-25ce-4c18-b1f9-35bdb011142f` (SDK), and
+  `93e5b824-5c9f-4870-9f2c-41476b860268` (CLI). The GitHub `NPM_TOKEN` secret is absent and the
+  user confirmed that the temporary bootstrap publishing token was revoked from npm. npm no longer
+  lists revoked token identities, so the post-revocation evidence records its bounded purpose and
+  confirmed status rather than inventing an unavailable token ID.
+- All 13 published `@portaidentity/admin-gui` versions carry the approved registry warning. Public,
+  package, Docker Hub, and maintainer documentation omit the retired package and command; the
+  documentation-boundary specification, VitePress build, and full `yarn verify` pass.
 
 **Verify**: release contract and repository-structure tests; Lockstep/version-sync preparation;
 package pack/install/smoke; workflow parsing and permission checks; `yarn docs:build`; and

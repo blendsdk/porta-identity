@@ -154,7 +154,7 @@ This interactive command creates:
 
 - The super-admin organization
 - The admin application with RBAC permissions
-- A PKCE public client for CLI and Admin GUI authentication
+- A PKCE public client for CLI authentication
 - Your first admin user (you'll be prompted for email, name, and password)
 
 Or run it non-interactively:

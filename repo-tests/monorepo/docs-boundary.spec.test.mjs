@@ -232,41 +232,38 @@ test('should document only the retained public packages and current package path
   }
 });
 
-// Existing porta gui guidance remains factual and does not promise the deferred terminal interface.
-test('should retain porta gui documentation without inventing future TUI behavior', () => {
-  const publicMarkdownFiles = findPhysicalFiles(
+// Published and maintainer documentation omit the retired browser administration package.
+test('should omit admin GUI references from documentation surfaces', () => {
+  const publicTextSourcePattern =
+    /\.(?:c?js|css|html|jsx|json|md|mjs|svg|tsx?|vue|ya?ml)$/i;
+  const publicDocumentationFiles = findPhysicalFiles(
     'docs',
-    (name) => name.endsWith('.md'),
-    new Set(['.vitepress', 'implementation-details']),
+    (name) => publicTextSourcePattern.test(name),
+    new Set(['cache', 'dist', 'implementation-details']),
   );
-  const publicMarkdown = publicMarkdownFiles
-    .map((filePath) => readRepositoryFile(filePath))
-    .join('\n');
-  const compatibilityGuide = readRepositoryFile('docs/guide/admin-gui.md');
-  const otherPublicMarkdown = publicMarkdownFiles
-    .filter((filePath) => filePath !== 'docs/guide/admin-gui.md')
+  const maintainerDocumentationFiles = findPhysicalFiles('techdocs', (name) =>
+    name.endsWith('.md'),
+  );
+  const packageReadmes = findPhysicalFiles(
+    'packages',
+    (name) => name === 'README.md',
+    new Set(['coverage', 'dist', 'node_modules']),
+  );
+  const documentation = [
+    ...publicDocumentationFiles,
+    ...maintainerDocumentationFiles,
+    ...packageReadmes,
+    'README.md',
+    'docker/DOCKERHUB.md',
+  ]
     .map((filePath) => readRepositoryFile(filePath))
     .join('\n');
 
-  assert.match(
-    publicMarkdown,
-    /\bporta\s+gui\b/i,
-    'public docs must retain guidance for the existing porta gui command',
-  );
+  assert.equal(isRepositoryPath('docs/guide/admin-gui.md', 'file'), false);
   assert.doesNotMatch(
-    publicMarkdown,
-    /\bTUI\b|terminal[- ](?:based[- ]?)?(?:user interface|UI)\b|\bjsvision\b/i,
-    'public docs must not invent behavior for the deferred terminal admin interface',
-  );
-  assert.match(
-    compatibilityGuide,
-    /former Admin GUI source workspace[\s\S]*optional GUI is unavailable/i,
-    'the compatibility guide must explain that the removed GUI workspace may be unavailable',
-  );
-  assert.doesNotMatch(
-    otherPublicMarkdown,
-    /\bAdmin GUI\b|@portaidentity\/admin-gui|packages\/porta-admin-gui/i,
-    'public pages outside the compatibility guide must not present the removed Admin GUI as current',
+    documentation,
+    /\bporta\s+gui\b|\badmin[- ]gui\b|@portaidentity\/admin-gui|packages\/porta-admin-gui/i,
+    'documentation must not reference the retired browser administration package or command',
   );
 });
 
