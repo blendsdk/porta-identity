@@ -5,7 +5,7 @@ import test from 'node:test';
 import { parse } from 'yaml';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
-const releaseVersion = '1.7.1';
+const releaseVersion = '1.7.2';
 const packagePaths = [
   'packages/server/package.json',
   'packages/sdk/package.json',
@@ -67,8 +67,8 @@ test('should keep every publishable component on the coordinated release version
     readRepositoryJson('packages/cli/package.json').dependencies?.['@portaidentity/sdk'],
     releaseVersion,
   );
-  assert.match(readRepositoryFile('packages/sdk/src/version.ts'), /SDK_VERSION = '1\.7\.1'/);
-  assert.match(readRepositoryFile('packages/cli/src/commands/version.ts'), /CLI_VERSION = '1\.7\.1'/);
+  assert.match(readRepositoryFile('packages/sdk/src/version.ts'), /SDK_VERSION = '1\.7\.2'/);
+  assert.match(readRepositoryFile('packages/cli/src/commands/version.ts'), /CLI_VERSION = '1\.7\.2'/);
 });
 
 test('should publish only an exact successful main candidate with provenance', () => {
@@ -111,6 +111,8 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
   assert.match(source, /run:\s*yarn release:publish/);
+  assert.match(source, /for attempt in \{1\.\.12\}/);
+  assert.match(source, /sleep 5/);
   assert.match(
     readRepositoryJson('package.json').scripts?.['release:publish'] ?? '',
     /npm_config_registry=https:\/\/registry\.npmjs\.org/,

@@ -3,7 +3,7 @@
 > **Feature-Set**: Monorepo Migration
 > **Status**: Migration complete; publishing cutover executing
 > **Created**: 2026-08-08
-> **Last Updated**: 2026-08-26 12:48
+> **Last Updated**: 2026-08-26 13:24
 > **Progress**: 74 / 74 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
@@ -16,4 +16,4 @@
 | ID   | Title                             | RD  | Plan                                                             | Stage     | Status | Last Updated     | Depends-on / Blocker                                              |
 | ---- | --------------------------------- | --- | ---------------------------------------------------------------- | --------- | ------ | ---------------- | ----------------------------------------------------------------- |
 | T-01 | Migrate Porta to a monorepo       | —   | [monorepo-migration](plans/monorepo-migration/00-index.md)       | Done      | ✅     | 2026-08-09 00:45 | Complete; publishing remains deferred to T-02                     |
-| T-02 | Publishing and production cutover | —   | [plan](plans/publishing-production-cutover/99-execution-plan.md) | Executing | 🔄     | 2026-08-26 12:48 | 7/8 complete; tokenless coordinated 1.7.1 candidate prepared |
+| T-02 | Publishing and production cutover | —   | [plan](plans/publishing-production-cutover/99-execution-plan.md) | Executing | 🔄     | 2026-08-26 13:24 | 7/8 complete; immutable 1.7.2 recovery prepared |

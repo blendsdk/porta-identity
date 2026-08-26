@@ -40,8 +40,10 @@ The retained bootstrap evidence is:
 - all three packages have a GitHub Actions Trusted Publisher for `blendsdk/porta-identity` and
   `release.yml` with publish permission.
 
-The `1.7.0` attempt published only the server package. The coordinated public release resumes at
-`1.7.1`; no workflow may overwrite or unpublish the partial version.
+The `1.7.0` attempt published only the server package. All three `1.7.1` packages were later
+published tokenlessly, but npm registry propagation stopped the workflow before tagging. The
+coordinated tagged release resumes at `1.7.2`; no workflow may overwrite or unpublish an existing
+version.
 
 ## Trusted Publishing cutover
 
@@ -78,16 +80,16 @@ tokenless release succeeds.
 
 The release workflow dispatches `docker.yml` because a tag pushed with `GITHUB_TOKEN` does not
 start another workflow. The Docker workflow independently verifies that the semantic tag resolves
-to the supplied tested SHA, then publishes one multi-platform image digest as `1.7.0`, `1.7`,
+to the supplied tested SHA, then publishes one multi-platform image digest as `1.7.2`, `1.7`,
 `1`, and `latest`.
 
-Confirm that all four Docker Hub tags resolve to the expected digest. Start `1.7.0` with the same
+Confirm that all four Docker Hub tags resolve to the expected digest. Start `1.7.2` with the same
 required PostgreSQL, Redis, issuer, cookie, SMTP, and signing-key configuration used in production,
 then require its `/health` endpoint to become healthy before cutover:
 
 ```bash
-docker pull blendsdk/porta:1.7.0
-docker inspect blendsdk/porta:1.7.0 --format '{{json .Config.Healthcheck.Test}}'
+docker pull blendsdk/porta:1.7.2
+docker inspect blendsdk/porta:1.7.2 --format '{{json .Config.Healthcheck.Test}}'
 ```
 
 Deprecate all versions of `@portaidentity/admin-gui` in a separate interactive 2FA-authenticated
