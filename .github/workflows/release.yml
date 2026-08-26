@@ -79,7 +79,16 @@ jobs:
             openssl dgst -sha512 -binary "$1" | openssl base64 -A
           }
           for package_name in server sdk cli; do
-            published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version)
+            published=''
+            for attempt in {1..12}; do
+              published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
+              if [ "$published" = "$RELEASE_VERSION" ]; then
+                break
+              fi
+              if [ "$attempt" -lt 12 ]; then
+                sleep 5
+              fi
+            done
             test "$published" = "$RELEASE_VERSION"
             expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
             published_integrity=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.integrity)

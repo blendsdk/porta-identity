@@ -152,7 +152,7 @@ test('should identify the server package and its executable entry points', () =>
   );
   assert.equal(
     serverManifest.version,
-    '1.7.1',
+    '1.7.2',
     'server package must use the coordinated public release version',
   );
   assert.equal(

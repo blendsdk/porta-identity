@@ -2,7 +2,7 @@
 
 > **Type**: Task (lightweight) · **Feature**: monorepo-migration · **CodeOps Artifact Schema**: 1
 > **Progress**: 7/8 tasks (88%)
-> **Last Updated**: 2026-08-26 12:48
+> **Last Updated**: 2026-08-26 13:24
 > **Phase baseline tree**: `6ea83f94feef9b8640bb1f56dfaed061d3594481`
 > **Scope mode**: strict
 > **Expected modification set**: release repository tests and scripts; root/package manifests and
@@ -14,11 +14,12 @@
 Repair the existing release path without redesigning it. After successful CI for a push to
 `main`, use `@blendsdk/lockstep` to publish `@portaidentity/server`, `@portaidentity/sdk`, and
 `@portaidentity/cli` together with npm provenance. The bootstrap created only the server at
-`1.7.0`; the coordinated release therefore resumes immutably at `1.7.1` using npm Trusted
-Publishing and short-lived GitHub OIDC credentials.
+`1.7.0`. Tokenless publishing succeeded for all three packages at `1.7.1`, but registry propagation
+prevented release tagging. The coordinated tagged release therefore resumes immutably at `1.7.2`
+using npm Trusted Publishing and short-lived GitHub OIDC credentials.
 
-Push `v1.7.1` and its GitHub Release, then let the existing tag-driven Docker workflow publish the
-same release as the working `blendsdk/porta` image tags `1.7.1`, `1.7`, `1`, and `latest`. Keep the
+Push `v1.7.2` and its GitHub Release, then let the existing tag-driven Docker workflow publish the
+same release as the working `blendsdk/porta` image tags `1.7.2`, `1.7`, `1`, and `latest`. Keep the
 independent documentation workflow unchanged.
 
 Merging the verified release change to `main` is the release go/no-go. Preparation and validation
@@ -84,14 +85,14 @@ on the feature branch must not publish packages, tags, releases, documentation, 
 - [~] T-02.8 Present the verified diff and release checklist for explicit approval to integrate.
       Do not push, merge, or mutate `main` from this task without that approval. Once the approved
       change reaches `main`, observe the existing automatic release path and verify all three npm
-      packages at the coordinated recovery version `1.7.1`, provenance, `v1.7.1`, the GitHub
+      packages at the coordinated recovery version `1.7.2`, provenance, `v1.7.2`, the GitHub
       Release, the four Docker tags and a
       runnable image, and the admin-GUI deprecation. Complete the one-time Trusted Publisher
       configuration and token revocation; record the exact three mappings, GitHub secret absence,
       revoked-token identity/status, supported toolchain, and durable workflow's lack of token
-      variables. The `1.7.1` release is the end-to-end tokenless npm acceptance proof. Stop on any
-      mismatch and use immutable-version recovery. ⏳ (tokenless `1.7.1` candidate prepared:
-      2026-08-26 12:48)
+      variables. The `1.7.2` release is the end-to-end tokenless npm acceptance proof. Stop on any
+      mismatch and use immutable-version recovery. ⏳ (tokenless `1.7.2` candidate prepared:
+      2026-08-26 13:24)
 
 ## Release invariants
 
@@ -105,8 +106,8 @@ on the feature branch must not publish packages, tags, releases, documentation, 
 - Trusted Publishing is configured separately for all three npm packages against the exact public
   repository and `release.yml`; GitHub-hosted release jobs grant `id-token: write` and satisfy the
   current npm CLI and Node version floors.
-- Package versions are immutable. The partial `1.7.0` server version remains untouched; the next
-  coordinated version is `1.7.1`.
+- Package versions are immutable. Published `1.7.0` and `1.7.1` artifacts remain untouched; the
+  next coordinated tagged version is `1.7.2`.
 - The Docker image is built from the release tag and must start successfully before cutover is
   considered complete.
 
@@ -130,6 +131,10 @@ on the feature branch must not publish packages, tags, releases, documentation, 
   registry to `https://registry.yarnpkg.com`, which cannot perform npm's OIDC exchange. No `1.7.1`
   package was published. The recovery keeps the same immutable candidate and explicitly pins
   Lockstep's npm subprocess to `https://registry.npmjs.org`.
+- The corrected retry published all three `1.7.1` packages tokenlessly with provenance, then npm's
+  registry briefly returned `404` during the immediate verification read. No tag, GitHub Release,
+  or Docker dispatch was created. The immutable recovery advances to `1.7.2` and adds only a
+  bounded visibility retry before integrity and provenance verification.
 
 **Verify**: release contract and repository-structure tests; Lockstep/version-sync preparation;
 package pack/install/smoke; workflow parsing and permission checks; `yarn docs:build`; and
