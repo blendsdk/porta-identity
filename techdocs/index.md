@@ -7,7 +7,7 @@ techdocs: true
 > **Project**: Porta
 > **Type**: Multi-tenant OIDC Provider (API / SaaS)
 > **Tech Stack**: TypeScript, Koa, node-oidc-provider, PostgreSQL, Redis
-> **Last Updated**: 2026-08-21
+> **Last Updated**: 2026-08-26
 
 ---
 
@@ -40,6 +40,7 @@ see the [main documentation](../docs/).
 | [Decision Log](decisions/index.md)                            | Architecture Decision Records (ADRs)                                          |
 | [Getting Started](guides/getting-started.md)                  | Developer setup, prerequisites, first run                                     |
 | [Development Workflow](guides/development.md)                 | Coding patterns, testing, module conventions                                  |
+| [Release Operations](guides/releasing.md)                     | Lockstep npm release, Trusted Publishing cutover, and Docker verification     |
 | [SDK CLI Migration Record](guides/sdk-cli-migration.md)       | Historical rationale for adopting the shared SDK in the CLI                   |
 | [Deployment](guides/deployment.md)                            | Production deployment, Docker, environment config                             |
 | [Configuration Reference](reference/configuration.md)         | All environment variables, config options, defaults                           |

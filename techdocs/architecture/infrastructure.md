@@ -1,6 +1,6 @@
 # Infrastructure
 
-> **Last Updated**: 2026-08-21
+> **Last Updated**: 2026-08-26
 
 ## Overview
 
@@ -118,12 +118,12 @@ docker exec -it porta porta <command>
 
 Four workflow files exist in `.github/workflows/`:
 
-| Workflow             | Trigger                                    | Purpose                                                                                                    |
-| -------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `build-and-test.yml` | Push/PR to any branch                      | Verify the monorepo, UI, retained OIDC harness, public docs, production image, and production dependencies |
-| `docker.yml`         | Manual, successful main CI, or version tag | Build and publish the Docker image                                                                         |
-| `docs.yml`           | Main documentation changes or manual       | Build and deploy public VitePress docs to GitHub Pages                                                     |
-| `release.yml`        | Successful main CI                         | Run semantic release and npm publication                                                                   |
+| Workflow             | Trigger                                  | Purpose                                                                                                    |
+| -------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `build-and-test.yml` | Push/PR to any branch                    | Verify the monorepo, UI, retained OIDC harness, public docs, production image, and production dependencies |
+| `docker.yml`         | Version tag or verified release dispatch | Build one tested revision and publish four Docker aliases                                                  |
+| `docs.yml`           | Main documentation changes or manual     | Build and deploy public VitePress docs to GitHub Pages                                                     |
+| `release.yml`        | Successful main CI                       | Publish the committed Lockstep candidate, then tag and dispatch its Docker build                           |
 
 The branch workflow is read-only for the test-assurance program. New assurance commands remain
 local/on-demand; their verified proposal recommends no CI adoption until real command-stage signal
@@ -145,7 +145,7 @@ graph LR
 
 ```mermaid
 graph LR
-    TAG[Git Tag] --> DOCKER[docker build]
+    TAG[Release tag + tested SHA] --> DOCKER[docker build]
     DOCKER --> PUSH[Push to Docker Hub<br/>blendsdk/porta]
     PUSH --> LATEST[Tag: latest + version]
 ```

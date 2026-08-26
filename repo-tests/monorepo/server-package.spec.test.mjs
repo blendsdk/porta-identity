@@ -141,7 +141,7 @@ test('should keep all server-owned directories inside the server package', () =>
   );
 });
 
-// The server package retains the synchronized baseline version and exposes its executable entry points.
+// The server package carries the coordinated public release version and exposes its executable entry points.
 test('should identify the server package and its executable entry points', () => {
   const serverManifest = readRepositoryJson('packages/server/package.json');
 
@@ -152,8 +152,8 @@ test('should identify the server package and its executable entry points', () =>
   );
   assert.equal(
     serverManifest.version,
-    '1.6.2',
-    'server package must remain at the synchronized pre-release baseline version',
+    '1.7.0',
+    'server package must use the coordinated public release version',
   );
   assert.equal(
     'main' in serverManifest,

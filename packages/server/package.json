@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/server",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Multi-tenant OIDC provider built on node-oidc-provider, Koa, and TypeScript",
   "type": "module",
   "license": "MIT",
@@ -11,7 +11,10 @@
     "dist",
     "locales",
     "migrations",
-    "templates"
+    "templates",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "../../node_modules/@typescript/native/bin/tsc",

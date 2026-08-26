@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/sdk",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Universal TypeScript SDK for the Porta Admin API",
   "type": "module",
   "exports": {
@@ -22,7 +22,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "../../node_modules/@typescript/native/bin/tsc",

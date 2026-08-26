@@ -1,13 +1,16 @@
 {
   "name": "@portaidentity/cli",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Standalone CLI for the Porta Identity Platform",
   "type": "module",
   "bin": {
     "porta": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "../../node_modules/@typescript/native/bin/tsc",
@@ -19,7 +22,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@portaidentity/sdk": "1.6.2",
+    "@portaidentity/sdk": "1.7.0",
     "chalk": "^6.0.0",
     "cli-table3": "^0.6.5",
     "jose": "^6.2.8",
