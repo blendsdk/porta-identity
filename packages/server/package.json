@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/server",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Multi-tenant OIDC provider built on node-oidc-provider, Koa, and TypeScript",
   "type": "module",
   "license": "MIT",
