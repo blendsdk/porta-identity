@@ -64,7 +64,7 @@
     "deps:update": "ncu -u --root --workspaces -x \"@portaidentity/*\" && rm -rf node_modules yarn.lock && yarn install && yarn verify",
     "release:prepare": "lockstep version --type auto --no-git-commit && node scripts/sync-versions.js",
     "release:preflight": "node scripts/release-preflight.js && node scripts/sync-versions.js --check",
-    "release:publish": "yarn release:preflight && lockstep publish --tag latest --provenance"
+    "release:publish": "yarn release:preflight && npm_config_registry=https://registry.npmjs.org lockstep publish --tag latest --provenance"
   },
   "devDependencies": {
     "@bcoe/v8-coverage": "1.0.2",

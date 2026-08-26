@@ -111,6 +111,10 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
   assert.match(source, /run:\s*yarn release:publish/);
+  assert.match(
+    readRepositoryJson('package.json').scripts?.['release:publish'] ?? '',
+    /npm_config_registry=https:\/\/registry\.npmjs\.org/,
+  );
   assert.doesNotMatch(source, /bootstrap|publish_if_absent/);
 });
 
