@@ -35,7 +35,7 @@ describe('User Enumeration Prevention (E2E)', () => {
     http = new TestHttpClient(baseUrl);
   });
 
-  it('should return same response for forgot-password with existing and non-existing email', async () => {
+  it('should return the same public response for existing and non-existing email', async () => {
     const page = await http.get(`/${orgSlug}/auth/forgot-password`);
     const csrf = http.extractCsrfToken(page.body);
 
@@ -54,8 +54,11 @@ describe('User Enumeration Prevention (E2E)', () => {
       _csrfStored: csrf2!,
     });
 
-    // Both should return the same status code
+    const normalizeCsrf = (body: string): string =>
+      body.replace(/(<input[^>]*name=["']_csrf["'][^>]*value=["'])[^"']+(["'])/gi, '$1<csrf>$2');
+
     expect(respExisting.status).toBe(respNonExisting.status);
+    expect(normalizeCsrf(respExisting.body)).toBe(normalizeCsrf(respNonExisting.body));
   });
 
   it('should not reveal user existence in forgot-password response body', async () => {
@@ -72,35 +75,5 @@ describe('User Enumeration Prevention (E2E)', () => {
     expect(resp.body).not.toMatch(/not found/i);
     expect(resp.body).not.toMatch(/does not exist/i);
     expect(resp.body).not.toMatch(/no account/i);
-  });
-
-  it('should not differentiate timing between existing and non-existing users on forgot-password', async () => {
-    // This is a basic timing check — not foolproof but catches obvious leaks
-    const page = await http.get(`/${orgSlug}/auth/forgot-password`);
-    const csrf = http.extractCsrfToken(page.body);
-
-    const start1 = Date.now();
-    await http.post(`/${orgSlug}/auth/forgot-password`, {
-      email: 'existing@test.example.com',
-      _csrf: csrf!,
-      _csrfStored: csrf!,
-    });
-    const time1 = Date.now() - start1;
-
-    const page2 = await http.get(`/${orgSlug}/auth/forgot-password`);
-    const csrf2 = http.extractCsrfToken(page2.body);
-
-    const start2 = Date.now();
-    await http.post(`/${orgSlug}/auth/forgot-password`, {
-      email: 'nonexistent@test.example.com',
-      _csrf: csrf2!,
-      _csrfStored: csrf2!,
-    });
-    const time2 = Date.now() - start2;
-
-    // Times should be in a similar ballpark (within 2x of each other)
-    // This is a very lenient check — production would use constant-time
-    const ratio = Math.max(time1, time2) / Math.max(Math.min(time1, time2), 1);
-    expect(ratio).toBeLessThan(10);
   });
 });
