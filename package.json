@@ -1,6 +1,6 @@
 {
   "name": "@portaidentity/monorepo",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Monorepo for the Porta Identity server, SDK, and CLI",
   "private": true,
   "type": "module",

@@ -143,6 +143,7 @@ test('should keep all server-owned directories inside the server package', () =>
 
 // The server package carries the coordinated public release version and exposes its executable entry points.
 test('should identify the server package and its executable entry points', () => {
+  const rootManifest = readRepositoryJson('package.json');
   const serverManifest = readRepositoryJson('packages/server/package.json');
 
   assert.equal(
@@ -152,7 +153,7 @@ test('should identify the server package and its executable entry points', () =>
   );
   assert.equal(
     serverManifest.version,
-    '1.7.2',
+    rootManifest.version,
     'server package must use the coordinated public release version',
   );
   assert.equal(
