@@ -33,6 +33,13 @@ test('should fail closed when source identity or published package integrity dif
   assert.match(workflow, /dist\.integrity/);
   assert.match(workflow, /dist\.attestations\.provenance\.predicateType/);
   assert.match(workflow, /automatic bootstrap stops; use exact-SHA recovery/);
+  for (const packageName of ['server', 'sdk', 'cli']) {
+    assert.ok(
+      workflow.includes(
+        `publish_if_absent '@portaidentity/${packageName}' './release-artifacts/portaidentity-${packageName}-1.7.0.tgz'`,
+      ),
+    );
+  }
   assert.doesNotMatch(workflow, /git push origin/);
 });
 

@@ -92,9 +92,9 @@ jobs:
             published_integrity=$(node_modules/.bin/npm view "$package_name@1.7.0" dist.integrity)
             test "$published_integrity" = "$expected_integrity"
           }
-          publish_if_absent '@portaidentity/server' 'release-artifacts/portaidentity-server-1.7.0.tgz'
-          publish_if_absent '@portaidentity/sdk' 'release-artifacts/portaidentity-sdk-1.7.0.tgz'
-          publish_if_absent '@portaidentity/cli' 'release-artifacts/portaidentity-cli-1.7.0.tgz'
+          publish_if_absent '@portaidentity/server' './release-artifacts/portaidentity-server-1.7.0.tgz'
+          publish_if_absent '@portaidentity/sdk' './release-artifacts/portaidentity-sdk-1.7.0.tgz'
+          publish_if_absent '@portaidentity/cli' './release-artifacts/portaidentity-cli-1.7.0.tgz'
 
       - name: Publish with npm Trusted Publishing
         if: steps.candidate.outputs.version != '1.7.0'
