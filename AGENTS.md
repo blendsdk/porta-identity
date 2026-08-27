@@ -4,7 +4,7 @@
 
 ## Project profile
 
-- Porta is a Node.js 22+, TypeScript ESM identity platform built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
+- Porta is a Node.js 22+ TypeScript ESM identity platform; active feature development uses the current Node.js 24 LTS release. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
 - Yarn Classic 1.x and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
 - `main` is the production branch and remains strictly off limits. `monorepo-migrate` is the verified migration checkpoint; conflict resolution for the pull request into `develop` runs on `monorepo-develop-integration` in the separate `v6` worktree.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
@@ -13,19 +13,20 @@
 
 Run commands from the repository root.
 
-| Purpose             | Command                          | Validation                                                                                                               |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Install             | `yarn install --frozen-lockfile` | Passed on 2026-08-08 in the migration worktree                                                                           |
-| Full verification   | `yarn verify`                    | Passed on 2026-08-23: 70 structure; server unit 2,861, integration 363, E2E 129, and pentest 224; SDK 404; CLI 356 tests |
-| Structure tests     | `yarn test:structure`            | Node repository-contract tests; no services required                                                                     |
-| Unit tests          | `yarn test:unit`                 | Runs the server unit project                                                                                             |
-| Integration tests   | `yarn test:integration`          | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| End-to-end tests    | `yarn test:e2e`                  | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| Penetration tests   | `yarn test:pentest`              | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| Browser tests       | `yarn test:ui`                   | Requires Playwright Chromium and test infrastructure                                                                     |
-| OIDC harness        | `yarn harness:test`              | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                 |
-| Documentation build | `yarn docs:build`                | Declared by root package scripts                                                                                         |
-| Dependency check    | `yarn deps:check`                | Checks root and active workspaces while excluding internal workspace packages                                            |
+| Purpose             | Command                                    | Validation                                                                                                               |
+| ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Install             | `yarn install --frozen-lockfile`           | Passed on 2026-08-08 in the migration worktree                                                                           |
+| Full verification   | `yarn verify`                              | Passed on 2026-08-23: 70 structure; server unit 2,861, integration 363, E2E 129, and pentest 224; SDK 404; CLI 356 tests |
+| CLI verification    | `yarn workspace @portaidentity/cli verify` | Runs CLI lint, typecheck, tests, and build without server suites                                                         |
+| Structure tests     | `yarn test:structure`                      | Node repository-contract tests; no services required                                                                     |
+| Unit tests          | `yarn test:unit`                           | Runs the server unit project                                                                                             |
+| Integration tests   | `yarn test:integration`                    | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| End-to-end tests    | `yarn test:e2e`                            | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| Penetration tests   | `yarn test:pentest`                        | Requires PostgreSQL, Redis, and MailHog                                                                                  |
+| Browser tests       | `yarn test:ui`                             | Requires Playwright Chromium and test infrastructure                                                                     |
+| OIDC harness        | `yarn harness:test`                        | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                 |
+| Documentation build | `yarn docs:build`                          | Declared by root package scripts                                                                                         |
+| Dependency check    | `yarn deps:check`                          | Checks root and active workspaces while excluding internal workspace packages                                            |
 
 `yarn verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
 
@@ -34,8 +35,9 @@ Run commands from the repository root.
 - Before implementation, identify the affected public and security boundaries and write or update
   immutable specification tests first. During implementation, run the narrow unit, integration,
   E2E, UI, or harness selector that gives the fastest relevant feedback.
-- Before every commit, run `yarn verify`. It already includes the server penetration suite. Never
-  delete, skip, weaken, or retry-away a failing security assertion.
+- Before every commit, run verification for every affected workspace plus `yarn test:structure`.
+  Use `yarn verify` when server behavior or multiple product workspaces change. Never delete, skip,
+  weaken, or retry-away a failing security assertion.
 - For browser-facing behavior, also run `yarn test:ui`. For retained SPA/BFF behavior, run
   `yarn harness:test`; both remain outside `yarn verify`.
 - For authentication, OIDC/token, tenant isolation, administrative authorization, sessions,
@@ -55,7 +57,7 @@ Run commands from the repository root.
 
 - `packages/server/`: public identity-server package, including source, behavioral tests, migrations, templates, locales, and package-local tool configuration.
 - `packages/sdk/`: public TypeScript SDK.
-- `packages/cli/`: public administrative CLI. Its optional `porta gui` command is intentionally retained while non-blocking; the former GUI workspace is removed.
+- `packages/cli/`: public administrative CLI. The embedded `porta admin` terminal application lives here; the former GUI workspace and optional GUI loader are retired.
 - `repo-tests/monorepo/`: fast repository-structure specifications and implementation diagnostics.
 - `test-harness/`: retained external black-box SPA/BFF harness and Playwright tests.
 - `docker/`: development and production container assets.

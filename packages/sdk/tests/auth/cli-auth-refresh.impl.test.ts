@@ -27,6 +27,23 @@ function expired(): StoredCredentials {
 }
 
 describe('durable refresh implementation edges', () => {
+  it('should pass caller cancellation to the refresh request', async () => {
+    readCredentials.mockResolvedValue(JSON.stringify(expired()));
+    const controller = new AbortController();
+    const fetchMock = vi.fn().mockRejectedValueOnce(new DOMException('aborted', 'AbortError'));
+    vi.stubGlobal('fetch', fetchMock);
+    const auth = createCliAuth({
+      credentialsPath: '/tmp/porta-refresh.json',
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    await expect(auth.getToken()).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();

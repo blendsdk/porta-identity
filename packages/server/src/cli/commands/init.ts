@@ -198,7 +198,7 @@ function printSuccessBox(
     '║  2. Authenticate:      porta login                          ║',
   );
   console.log(
-    '║  3. Launch admin GUI:  porta gui                            ║',
+    '║  3. Open administration: porta admin                        ║',
   );
   console.log(
     '╚══════════════════════════════════════════════════════════════╝',

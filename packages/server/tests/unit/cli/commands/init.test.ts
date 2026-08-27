@@ -158,26 +158,6 @@ const fakeAdminClient = {
   status: 'active' as const,
 };
 
-/** Fake admin GUI confidential client (Step 7b in init) */
-const fakeGuiClient = {
-  id: 'client-gui-id',
-  clientId: 'porta-gui-xyz789',
-  clientName: 'Porta Admin GUI',
-  clientType: 'confidential' as const,
-  applicationType: 'web' as const,
-  status: 'active' as const,
-};
-
-/** Fake secret result returned by generateSecret for the GUI client */
-const fakeGuiSecretResult = {
-  id: 'secret-gui-id',
-  clientId: 'client-gui-id',
-  label: 'Initial secret (porta init)',
-  plaintext: 'super-secret-gui-plaintext-abc123',
-  expiresAt: null,
-  createdAt: new Date(),
-};
-
 const fakeAdminUser = {
   id: 'user-admin-id',
   email: 'admin@example.com',
@@ -236,14 +216,10 @@ describe('CLI Init Command', () => {
     vi.mocked(getApplicationBySlug).mockResolvedValue(null);
     vi.mocked(createApplication).mockResolvedValue(fakeAdminApp as never);
 
-    // createClient is called twice: first for CLI (public), then for GUI (confidential).
-    // Use mockResolvedValueOnce to return different clients per call.
-    vi.mocked(createClient)
-      .mockResolvedValueOnce({ client: fakeAdminClient as never, secret: null })
-      .mockResolvedValueOnce({ client: fakeGuiClient as never, secret: null });
-
-    // generateSecret is called once for the GUI confidential client
-    vi.mocked(generateSecret).mockResolvedValue(fakeGuiSecretResult as never);
+    vi.mocked(createClient).mockResolvedValue({
+      client: fakeAdminClient as never,
+      secret: null,
+    });
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
     vi.mocked(reactivateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
@@ -340,14 +316,13 @@ describe('CLI Init Command', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Admin GUI client creation (Step 7b)
+  // Public administration client creation
   // -------------------------------------------------------------------------
 
   describe('admin client creation', () => {
-    it('should create a single public CLI client (shared by CLI and GUI)', async () => {
+    it('should create a single public administration client', async () => {
       await runInit(createArgv());
 
-      // createClient should be called once — the public CLI/GUI client
       expect(createClient).toHaveBeenCalledTimes(1);
 
       expect(createClient).toHaveBeenCalledWith(

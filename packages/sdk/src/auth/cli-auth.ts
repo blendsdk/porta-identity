@@ -31,6 +31,8 @@ export interface CliAuthOptions {
   readonly credentialsPath?: string;
   /** Optional durable persistence supplied by the CLI. */
   readonly credentialPersistence?: CliCredentialPersistence;
+  /** Optional caller-owned cancellation for refresh network requests. */
+  readonly signal?: AbortSignal;
 }
 
 /** User identity retained in the CLI credential snapshot. */
@@ -245,6 +247,7 @@ export function createCliAuth(options: CliAuthOptions = {}): AuthProvider {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
+        signal: options.signal,
       });
     } catch {
       throw latchRefreshFailure(

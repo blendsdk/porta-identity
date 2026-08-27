@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-27 17:56
-> **Progress**: 20/55 tasks (36%)
+> **Last Updated**: 2026-08-27 18:38
+> **Progress**: 34/55 tasks (62%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -97,39 +97,41 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 ## Phase 2: `porta admin` and JSVision Shell
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `3f5b6c9d304a989fd2d8bed6f7fe91d55bf35081`
 > **Scope mode**: strict
-> **Expected modification set**: CLI manifest/lockfile; command registration; `packages/cli/src/admin/`; server initialization guidance/specification; staged/refreshed project guidance; focused CLI/repository tests; execution evidence
+> **Expected modification set**: CLI manifest/lockfile; command registration; `packages/cli/src/admin/`; SDK refresh cancellation and focused test; server initialization guidance/specification; staged/refreshed project guidance; focused affected-package/repository tests; execution evidence
 > **Lenses**: security · api-surface
 
 ### Step 2.1: Write the immutable command and application oracle
 
 **Reference**: [Command and TUI Shell](03-01-command-and-tui-shell.md) · ST-19–ST-31, ST-39 · AR-2–AR-4, AR-18–AR-22, AR-26
 
-- [ ] 2.1.1 [spec-author] Write command/preflight/server-origin specifications ST-19–ST-24, including server initialization guidance — `packages/cli/tests/admin/command.spec.test.ts`, `packages/server/tests/unit/cli/commands/init-admin-guidance.spec.test.ts`
-- [ ] 2.1.2 [spec-author] Write real headless JSVision layout/action/lifecycle specifications ST-25–ST-31 plus the packed CLI-to-playground authentication specification ST-41 — `packages/cli/tests/admin/application.spec.test.ts`, `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`
-- [ ] 2.1.3 [spec-author] Write CLI dependency/package/source boundary portion of ST-39 — `repo-tests/monorepo/admin-playground.spec.test.mjs`
-- [ ] 2.1.4 Run Phase 2 specifications including ST-41 and record capability-specific red results; ST-41 remains red until the playground exists — focused CLI Vitest and Node selectors
+- [x] 2.1.1 [spec-author] Write command/preflight/server-origin specifications ST-19–ST-24, including server initialization guidance — `packages/cli/tests/admin/command.spec.test.ts`, `packages/server/tests/unit/cli/commands/init-admin-guidance.spec.test.ts` ✅ (completed: 2026-08-27 18:05)
+- [x] 2.1.2 [spec-author] Write real headless JSVision layout/action/lifecycle specifications ST-25–ST-31 plus the packed CLI-to-playground authentication specification ST-41 — `packages/cli/tests/admin/application.spec.test.ts`, `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs` ✅ (completed: 2026-08-27 18:05)
+- [x] 2.1.3 [spec-author] Write CLI dependency/package/source boundary portion of ST-39 — `repo-tests/monorepo/admin-playground.spec.test.mjs` ✅ (completed: 2026-08-27 18:05)
+- [x] 2.1.4 Run Phase 2 specifications including ST-41 and record capability-specific red results; ST-41 remains red until the playground exists — focused CLI Vitest and Node selectors ✅ (completed: 2026-08-27 18:05)
+
+**Red evidence (Node 24.20.0, 2026-08-27)**: the focused CLI selector failed because JSVision and the `admin` source boundary are absent (14 command failures, 3 existing origin behaviors passing); the focused server guidance test failed on retained `porta gui`; the source/package boundary selector failed 3 of 4 cases while confirming the existing-workflow/no-separate-package constraint; and ST-41 failed because the Phase 3 playground and journey driver do not yet exist.
 
 ### Step 2.2: Implement the embedded application shell
 
 **Reference**: [Command and TUI Shell §Proposed Source Boundaries](03-01-command-and-tui-shell.md#proposed-source-boundaries), [§State Model](03-01-command-and-tui-shell.md#state-model), [§Terminal Lifecycle](03-01-command-and-tui-shell.md#terminal-lifecycle)
 
-- [ ] 2.2.1 Add lockstep direct JSVision core/UI dependencies through Yarn Classic — `packages/cli/package.json`, `yarn.lock`
-- [ ] 2.2.2 Add documented application/session state and narrow admin public entry point — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/index.ts`
-- [ ] 2.2.3 Implement responsive presentation, menus, authentication dialog, summary, shortcuts, and resize view — `packages/cli/src/admin/presentation.ts`
-- [ ] 2.2.4 Implement application routing, at most one current-operation `AbortController` freshly created per login/Retry/Reauthenticate attempt, temporary `SIGINT`/`SIGTERM`/`SIGHUP` handlers, native/headless host injection, and idempotent finalization — `packages/cli/src/admin/application.ts`
-- [ ] 2.2.5 Add the thin `admin` command and strict TTY/automation-mode preflight — `packages/cli/src/commands/admin.ts`, `packages/cli/src/index.ts`
-- [ ] 2.2.6 Remove the retired GUI command/loader, replace server initialization guidance with `porta admin`, and refresh project guidance through `codeops:analyze-project` after the immutable specification is red — `packages/cli/src/commands/gui.ts`, `packages/server/src/cli/commands/init.ts`, server init tests, `AGENTS.md`
-- [ ] 2.2.7 Run ST-19–ST-31 and ST-39 to green; correct implementation only — focused CLI Vitest and Node structure selectors
+- [x] 2.2.1 Add lockstep direct JSVision core/UI dependencies through Yarn Classic — `packages/cli/package.json`, `yarn.lock` ✅ (completed: 2026-08-27 18:18)
+- [x] 2.2.2 Add documented application/session state and narrow admin public entry point — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-08-27 18:18)
+- [x] 2.2.3 Implement responsive presentation, menus, authentication dialog, summary, shortcuts, and resize view — `packages/cli/src/admin/presentation.ts` ✅ (completed: 2026-08-27 18:37)
+- [x] 2.2.4 Implement application routing, at most one current-operation `AbortController` freshly created per login/Retry/Reauthenticate attempt, temporary `SIGINT`/`SIGTERM`/`SIGHUP` handlers for injected/headless runners, native host signal ownership, and idempotent finalization — `packages/cli/src/admin/application.ts` ✅ (completed: 2026-08-27 18:37)
+- [x] 2.2.5 Add the thin `admin` command and strict TTY/automation-mode preflight — `packages/cli/src/commands/admin.ts`, `packages/cli/src/index.ts` ✅ (completed: 2026-08-27 18:37)
+- [x] 2.2.6 Remove the retired GUI command/loader, replace server initialization guidance with `porta admin`, and refresh project guidance through `codeops:analyze-project` after the immutable specification is red — `packages/cli/src/commands/gui.ts`, `packages/server/src/cli/commands/init.ts`, server init tests, `AGENTS.md` ✅ (completed: 2026-08-27 18:18)
+- [x] 2.2.7 Run ST-19–ST-31 and ST-39 to green; correct implementation only — focused CLI Vitest and Node structure selectors ✅ (completed: 2026-08-27 18:37)
 
 ### Step 2.3: Harden terminal behavior
 
 **Reference**: [Testing Strategy §Implementation Tests](07-testing-strategy.md#implementation-tests) · AR-19, AR-21, AR-26
 
-- [ ] 2.3.1 Add focus, resize-boundary, event-disposal, non-colour, and redaction implementation tests — `packages/cli/tests/admin/application.impl.test.ts`
-- [ ] 2.3.2 Add PTY installed-build launch/keyboard-quit coverage everywhere plus `SIGINT`/`SIGTERM`/`SIGHUP` restoration/exit smoke on supported POSIX hosts, including handler removal and no double finalization — `packages/cli/tests/admin/application.pty.impl.test.ts`, `packages/cli/vitest.config.ts`
-- [ ] 2.3.3 Run frozen install, focused headless/PTY tests, CLI verification, and repository structure tests — `yarn install --frozen-lockfile`, focused selectors, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`
+- [x] 2.3.1 Add focus, resize-boundary, event-disposal, non-colour, and redaction implementation tests — `packages/cli/tests/admin/application.impl.test.ts` ✅ (completed: 2026-08-27 18:37)
+- [x] 2.3.2 Add PTY installed-build launch/keyboard-quit coverage everywhere plus `SIGINT`/`SIGTERM`/`SIGHUP` restoration/exit smoke on supported POSIX hosts, including handler removal and no double finalization — `packages/cli/tests/admin/application.pty.impl.test.ts`, `packages/cli/vitest.config.ts` ✅ (completed: 2026-08-27 18:18)
+- [x] 2.3.3 Run frozen install, focused headless/PTY tests, the focused server initialization-guidance unit test, affected CLI/SDK verification, and repository structure tests — `yarn install --frozen-lockfile`, focused selectors, `yarn workspace @portaidentity/server vitest run --project unit tests/unit/cli/commands/init-admin-guidance.spec.test.ts`, `yarn workspace @portaidentity/cli verify`, `yarn workspace @portaidentity/sdk verify`, `yarn test:structure` ✅ (completed: 2026-08-27 18:37)
 
 **Deliverables**:
 
@@ -137,7 +139,9 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 - Presentation is responsive, keyboard-complete, non-colour-safe, and reliably restores the terminal.
 - No administrative feature screen or JSVision dependency beyond core/UI enters scope.
 
-**Verify**: `yarn workspace @portaidentity/cli verify && yarn test:structure`
+**Verification evidence (Node 24.20.0, 2026-08-27 18:43):** frozen install passed; CLI verification passed 39 files/443 tests plus lint, typecheck, and build; SDK verification passed 33 files/413 tests plus lint, typecheck, and build; repository structure passed 83 tests; the focused server initialization-guidance selector passed 1 test. Full Porta server verification was intentionally not run because server behavior was untouched. The independent Phase 2 review and bounded rereview are recorded in `09-phase-2-quality-review.md`; all critical and major findings are resolved.
+
+**Verify**: `yarn workspace @portaidentity/server vitest run --project unit tests/unit/cli/commands/init-admin-guidance.spec.test.ts && yarn workspace @portaidentity/cli verify && yarn workspace @portaidentity/sdk verify && yarn test:structure`
 
 ---
 

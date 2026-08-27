@@ -1,8 +1,19 @@
 /** Server-bound session verification for the embedded Porta admin UI. */
 
 import type { StoredCredentials } from '../credential-store.js';
+import {
+  createCliCredentialPersistence,
+  getCredentialsPath,
+  loadCredentials,
+  saveCredentialsDurably,
+} from '../credential-store.js';
+import { createCliAuth } from '@portaidentity/sdk/node';
 import type { CliAuthOperationOptions, VerifiedIdentity } from '../auth/types.js';
+import { authenticateCliSession } from '../auth/login-coordinator.js';
+import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
+import type { AdminApplicationSession } from './application.js';
+import type { AdminConnectionState } from './state.js';
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -69,7 +80,104 @@ export type SessionVerificationResult =
   | { readonly status: 'unavailable' }
   | { readonly status: 'configuration-failure' };
 
-/** Accepts only an HTTPS origin and returns its canonical URL. */
+/** Initial state and operations supplied to one administration application. */
+export interface PreparedAdminSession {
+  /** State rendered while the first live verification begins. */
+  readonly initialState: AdminConnectionState;
+  /** Shared verification and login operations. */
+  readonly session: AdminApplicationSession;
+}
+
+/** Maps a live verification result to the application state model. */
+function toApplicationState(server: URL, result: SessionVerificationResult): AdminConnectionState {
+  if (result.status === 'authenticated') {
+    return { kind: 'authenticated', server, identity: result.identity };
+  }
+  return {
+    kind: 'unauthenticated',
+    server,
+    reason: result.status === 'unauthenticated' ? 'unauthenticated' : result.status,
+  };
+}
+
+/** Creates the live verification and browser-login capabilities used by `porta admin`. */
+export function prepareAdminSession(
+  serverInput: URL,
+  interaction: LoginInteraction,
+): PreparedAdminSession {
+  const server = normalizeServerOrigin(serverInput);
+
+  /** Verifies the latest credential snapshot against live UserInfo. */
+  const verify = async (signal: AbortSignal): Promise<AdminConnectionState> => {
+    const credentials = loadCredentials();
+    if (!credentials) return { kind: 'unauthenticated', server };
+    const auth = createCliAuth({
+      credentialsPath: getCredentialsPath(),
+      credentialPersistence: createCliCredentialPersistence({
+        credentialsPath: getCredentialsPath(),
+        lockTimeoutMs: 5_000,
+        signal,
+      }),
+      signal,
+    });
+    const state = toApplicationState(
+      server,
+      await verifyStoredSession(
+        {
+          selectedServer: server,
+          credentials,
+          getAccessToken: () => auth.getToken(),
+        },
+        { signal },
+      ),
+    );
+    return state;
+  };
+
+  /** Runs the shared login coordinator and retains cancellation as a distinct result. */
+  const login = async (signal: AbortSignal) => {
+    const current = loadCredentials();
+    return authenticateCliSession(
+      {
+        server,
+        currentServer: current ? normalizeServerOrigin(current.server) : undefined,
+        persistCredentials: (credentials) => saveCredentialsDurably(credentials, signal),
+      },
+      interaction,
+      { signal },
+    );
+  };
+
+  /** Authenticates when no prior verified identity needs to be preserved. */
+  const authenticate = async (signal: AbortSignal): Promise<AdminConnectionState> => {
+    const result = await login(signal);
+    if (result.status !== 'authenticated') return { kind: 'unauthenticated', server };
+    const state = { kind: 'authenticated', server, identity: result.identity } as const;
+    return state;
+  };
+
+  /** Reauthenticates without discarding the live identity when the user declines or cancels. */
+  const reauthenticate = async (signal: AbortSignal): Promise<AdminConnectionState | undefined> => {
+    const result = await login(signal);
+    return result.status === 'authenticated'
+      ? { kind: 'authenticated', server, identity: result.identity }
+      : undefined;
+  };
+
+  const hasCredentials = loadCredentials() !== null;
+  return {
+    initialState: hasCredentials
+      ? { kind: 'verifying', server, canCancel: true }
+      : { kind: 'unauthenticated', server },
+    session: {
+      verify,
+      authenticate,
+      retry: verify,
+      reauthenticate,
+    },
+  };
+}
+
 /** Returns a safe subset of a subject-matched UserInfo response. */
 function validateUserInfo(value: unknown, originalSubject: string): VerifiedIdentity {
   if (!value || typeof value !== 'object') throw new Error('Authentication failed');
