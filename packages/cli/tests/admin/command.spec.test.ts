@@ -49,6 +49,7 @@ function storedCredentials(server: string) {
 
 describe('admin command surface', () => {
   const originalPortaServer = process.env.PORTA_SERVER;
+  const originalTlsRejection = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,6 +63,11 @@ describe('admin command surface', () => {
       delete process.env.PORTA_SERVER;
     } else {
       process.env.PORTA_SERVER = originalPortaServer;
+    }
+    if (originalTlsRejection === undefined) {
+      delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    } else {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalTlsRejection;
     }
   });
 
@@ -137,6 +143,36 @@ describe('admin command surface', () => {
         showInsecureWarning: true,
       }),
     );
+  });
+
+  it('should suppress only the redundant Node insecure-TLS warning while the TUI is active', async () => {
+    const { runAdminCommand } = await import('../../src/commands/admin.js');
+    const forwardedWarnings: Array<string | Error> = [];
+    const originalEmitWarning = process.emitWarning;
+    process.emitWarning = vi.fn((warning: string | Error) => {
+      forwardedWarnings.push(warning);
+    });
+    const dependencies = commandDependencies({
+      runApplication: vi.fn(async () => {
+        process.emitWarning(
+          "Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.",
+        );
+        process.emitWarning('unrelated runtime warning');
+        return 0;
+      }),
+    });
+
+    try {
+      expect(
+        await runAdminCommand(
+          { ...baseArguments, server: 'https://porta.example.test', insecure: true },
+          dependencies,
+        ),
+      ).toBe(0);
+      expect(forwardedWarnings).toEqual(['unrelated runtime warning']);
+    } finally {
+      process.emitWarning = originalEmitWarning;
+    }
   });
 
   it('should never permit insecure mode to admit an HTTP origin', async () => {

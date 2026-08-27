@@ -2,6 +2,7 @@
  * Public behavior specifications for the embedded terminal administration shell.
  */
 
+import { defaultTheme } from '@jsvision/core';
 import { createApplication } from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -46,8 +47,11 @@ describe('admin application shell', () => {
       initialState: authenticatedState(),
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
+        const buffer = application.loop.renderRoot.buffer();
         const frame = frameText(application);
 
+        expect(buffer.get(0, 1)?.bg).toBe(defaultTheme.window.bg);
+        expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.window.bg);
         expect(frame).toContain('Application');
         expect(frame).toContain('Quit');
         expect(frame).toContain('Session');

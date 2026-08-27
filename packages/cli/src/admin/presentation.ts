@@ -111,14 +111,15 @@ class AdminSummaryView extends View {
 
   /** Draws the responsive normal, compact, or resize-only presentation. */
   draw(context: DrawContext): void {
-    context.fill(' ');
+    const bodyStyle = context.color('window');
+    context.fill(' ', bodyStyle);
     const { width, height } = context.size;
     const recoverable = width >= COMPACT_WIDTH && height >= COMPACT_HEIGHT;
     this.reportRecoverableGeometry(recoverable);
     if (!recoverable) {
-      context.text(1, 1, 'Terminal too small.');
-      context.text(1, 2, `Resize to at least ${COMPACT_WIDTH}x${COMPACT_HEIGHT}.`);
-      context.text(1, Math.max(3, height - 2), 'Alt-X Quit');
+      context.text(1, 1, 'Terminal too small.', bodyStyle);
+      context.text(1, 2, `Resize to at least ${COMPACT_WIDTH}x${COMPACT_HEIGHT}.`, bodyStyle);
+      context.text(1, Math.max(3, height - 2), 'Alt-X Quit', bodyStyle);
       return;
     }
 
@@ -126,7 +127,7 @@ class AdminSummaryView extends View {
     const compact = width < NORMAL_WIDTH || height < NORMAL_HEIGHT;
     const lines = compact ? this.compactLines(state) : this.normalLines(state);
     for (let index = 0; index < lines.length && index < height; index += 1) {
-      context.text(compact ? 1 : 2, index, lines[index] ?? '');
+      context.text(compact ? 1 : 2, index, lines[index] ?? '', bodyStyle);
     }
   }
 
