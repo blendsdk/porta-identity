@@ -24,8 +24,8 @@ import { createInterface } from 'node:readline';
  * @param message - The confirmation question
  * @returns true if the user answers 'y' or 'yes'
  */
-export async function confirm(message: string): Promise<boolean> {
-  const answer = await question(`${message} [y/N] `);
+export async function confirm(message: string, signal?: AbortSignal): Promise<boolean> {
+  const answer = await question(`${message} [y/N] `, signal);
   return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }
 
@@ -54,14 +54,29 @@ export async function confirmTyped(message: string, expected: string): Promise<b
  * @param prompt - The prompt message to display
  * @returns The user's input string
  */
-export async function question(prompt: string): Promise<string> {
+export async function question(prompt: string, signal?: AbortSignal): Promise<string> {
   const rl = createInterface({
     input: process.stdin,
     output: process.stderr, // Prompt on stderr so stdout stays clean for piping
   });
 
-  return new Promise<string>((resolve) => {
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const abort = (): void => {
+      if (settled) return;
+      settled = true;
+      rl.close();
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    signal?.addEventListener('abort', abort, { once: true });
     rl.question(prompt, (answer) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', abort);
       rl.close();
       resolve(answer.trim());
     });

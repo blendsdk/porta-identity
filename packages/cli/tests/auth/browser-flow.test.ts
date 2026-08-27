@@ -7,7 +7,6 @@
  * strip `offline_access` (without it, no refresh_token is issued).
  */
 
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
@@ -35,8 +34,9 @@ vi.mock('../../src/prompt.js', () => ({
   question: vi.fn(),
 }));
 
-vi.mock('jose', () => ({
-  decodeJwt: vi.fn().mockReturnValue({
+vi.mock('../../src/auth/id-token-verifier.js', () => ({
+  fetchIssuerJwks: vi.fn().mockResolvedValue({ keys: [] }),
+  verifyCliIdToken: vi.fn().mockResolvedValue({
     sub: 'user-123',
     email: 'admin@example.com',
     name: 'Admin User',
@@ -126,7 +126,6 @@ describe('browser-flow', () => {
       // stripping `offline_access` (which would suppress the refresh token).
       expect(url.searchParams.get('prompt')).toBe('login consent');
     });
-
 
     it('includes all required OIDC parameters', async () => {
       const { url } = await runFlowCapturingUrl();

@@ -41,9 +41,9 @@ describe('metadata', () => {
     it('throws on connection failure', async () => {
       globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
 
-      await expect(fetchAdminMetadata('https://unreachable.example.com'))
-        .rejects
-        .toThrow('Cannot connect to https://unreachable.example.com');
+      await expect(fetchAdminMetadata('https://unreachable.example.com')).rejects.toThrow(
+        'Cannot connect to the Porta server',
+      );
     });
 
     it('throws on 503 (not initialized)', async () => {
@@ -52,9 +52,9 @@ describe('metadata', () => {
         status: 503,
       });
 
-      await expect(fetchAdminMetadata('https://porta.local:3443'))
-        .rejects
-        .toThrow('Server not initialized');
+      await expect(fetchAdminMetadata('https://porta.local:3443')).rejects.toThrow(
+        'Server not initialized',
+      );
     });
 
     it('throws on other HTTP errors', async () => {
@@ -63,9 +63,25 @@ describe('metadata', () => {
         status: 500,
       });
 
-      await expect(fetchAdminMetadata('https://porta.local:3443'))
-        .rejects
-        .toThrow('Cannot fetch admin metadata: HTTP 500');
+      await expect(fetchAdminMetadata('https://porta.local:3443')).rejects.toThrow(
+        'Cannot fetch admin metadata: HTTP 500',
+      );
+    });
+
+    it('rejects metadata whose issuer is not bound to the selected origin and organization', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            issuer: 'https://attacker.example.test/porta-admin',
+            clientId: 'test-client-id',
+            orgSlug: 'porta-admin',
+          }),
+      });
+
+      await expect(fetchAdminMetadata('https://porta.local:3443')).rejects.toThrow(
+        'Authentication failed',
+      );
     });
   });
 

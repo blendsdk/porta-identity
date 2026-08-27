@@ -217,17 +217,14 @@ describe('createCliAuth', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should treat missing expiresAt as not expired', async () => {
-      // No expiresAt field — should not trigger refresh
+    it('should reject credentials that omit expiresAt', async () => {
       const creds = createCredentials();
       // @ts-expect-error — testing missing field scenario
       delete creds.expiresAt;
       mockFileContents(creds);
 
       const auth = createCliAuth({ credentialsPath: '/tmp/test-creds.json' });
-      const token = await auth.getToken();
-
-      expect(token).toBe(creds.accessToken);
+      await expect(auth.getToken()).rejects.toThrow(/missing required fields/);
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -273,9 +270,7 @@ describe('createCliAuth', () => {
         expiresAt: new Date(Date.now() - 60_000).toISOString(),
       });
       mockFileContents(creds);
-      mockFetch.mockResolvedValueOnce(
-        createRefreshResponse('refreshed-token', 7200),
-      );
+      mockFetch.mockResolvedValueOnce(createRefreshResponse('refreshed-token', 7200));
 
       const auth = createCliAuth({ credentialsPath: '/tmp/test-creds.json' });
       await auth.getToken();
@@ -408,12 +403,13 @@ describe('createCliAuth', () => {
       expect(error.message).toMatch(/not found/);
     });
 
-    it('should include file path in not-found error message', async () => {
+    it('should not expose the credential path in a not-found error message', async () => {
       mockFileNotFound();
 
       const auth = createCliAuth({ credentialsPath: '/tmp/nonexistent.json' });
 
-      await expect(auth.getToken()).rejects.toThrow(/\/tmp\/nonexistent\.json/);
+      const error = await auth.getToken().catch((caught: Error) => caught);
+      expect(error.message).not.toContain('/tmp/nonexistent.json');
     });
 
     it('should suggest porta login when file not found', async () => {
@@ -521,7 +517,7 @@ describe('createCliAuth', () => {
 
       const auth = createCliAuth({ credentialsPath: '/tmp/test-creds.json' });
 
-      await expect(auth.getToken()).rejects.toThrow(/Connection refused/);
+      await expect(auth.getToken()).rejects.toMatchObject({ code: 'REFRESH_INDETERMINATE' });
     });
 
     it('should suggest porta login on refresh failure', async () => {

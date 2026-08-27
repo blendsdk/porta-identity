@@ -20,8 +20,15 @@ vi.mock('node:os', async () => {
 });
 
 // Import after mock setup
-const { loadCredentials, saveCredentials, clearCredentials, hasCredentials, getCredentialsPath, isTokenExpired } =
-  await import('../src/credential-store.js');
+const {
+  loadCredentials,
+  saveCredentials,
+  saveCredentialsDurably,
+  clearCredentials,
+  hasCredentials,
+  getCredentialsPath,
+  isTokenExpired,
+} = await import('../src/credential-store.js');
 
 // ---------------------------------------------------------------------------
 // Test Fixtures
@@ -88,6 +95,17 @@ describe('credential-store', () => {
   });
 
   describe('saveCredentials', () => {
+    it('durably creates a fresh owner-only credential directory before locking', async () => {
+      const portaDirectory = join(TEST_HOME, '.porta');
+      const credentials = makeCredentials();
+      expect(existsSync(portaDirectory)).toBe(false);
+
+      await saveCredentialsDurably(credentials);
+
+      expect(loadCredentials()).toEqual(credentials);
+      expect(existsSync(join(portaDirectory, 'credentials.json.lock'))).toBe(true);
+    });
+
     it('creates the .porta directory and writes credentials', () => {
       const creds = makeCredentials();
       saveCredentials(creds);

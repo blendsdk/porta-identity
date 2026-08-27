@@ -108,31 +108,19 @@ describe('provision command handler', () => {
   }
 
   async function invokeProvision(extraArgs: Record<string, unknown> = {}) {
-    const yargs = (await import('yargs')).default;
     const cmd = await getCommand();
-
-    const args = ['provision'];
-    for (const [key, value] of Object.entries(extraArgs)) {
-      if (typeof value === 'boolean') {
-        if (value) args.push(`--${key}`);
-      } else {
-        args.push(`--${key}`, String(value));
-      }
-    }
-
-    try {
-      await yargs(args)
-        .command(cmd)
-        .option('json', { type: 'boolean', default: false })
-        .option('verbose', { type: 'boolean', default: false })
-        .option('insecure', { type: 'boolean', default: false })
-        .option('force', { type: 'boolean', default: false })
-        .option('server', { type: 'string' })
-        .fail(false)
-        .parse();
-    } catch {
-      // yargs may throw
-    }
+    if (typeof cmd.handler !== 'function') throw new Error('Provision handler is unavailable');
+    await cmd.handler({
+      $0: 'porta',
+      _: ['provision'],
+      file: typeof extraArgs.file === 'string' ? extraArgs.file : '',
+      mode: extraArgs.mode === 'overwrite' ? 'overwrite' : 'merge',
+      'dry-run': extraArgs['dry-run'] === true,
+      json: extraArgs.json === true,
+      verbose: false,
+      insecure: false,
+      force: false,
+    });
   }
 
   function mockFileRead(data: object) {

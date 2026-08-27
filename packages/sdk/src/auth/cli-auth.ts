@@ -1,268 +1,352 @@
 /**
- * CliAuth — reuse Porta CLI stored credentials as an authentication provider.
+ * Authentication backed by credentials created by the Porta CLI.
  *
- * Reads credentials from `~/.porta/credentials.json` (the file created by
- * `porta login`) and uses them for API authentication. Handles token expiry
- * detection and automatic refresh via the refresh_token grant.
- *
- * Key behaviors:
- * - Reads credentials file on first `getToken()` call, caches in memory
- * - Checks `expiresAt` with 60s safety buffer to detect near-expired tokens
- * - `refreshToken()` re-reads the file (CLI may have refreshed) then
- *   POSTs refresh_token grant to the token endpoint
- * - Does NOT write back to the credentials file — only the CLI writes
- *
- * @example
- * ```typescript
- * import { createCliAuth } from '@portaidentity/sdk';
- *
- * // Uses default ~/.porta/credentials.json
- * const auth = createCliAuth();
- * const client = createPortaClient({ baseUrl: '...', auth });
- *
- * // Custom path for testing
- * const auth2 = createCliAuth({ credentialsPath: '/tmp/test-creds.json' });
- * ```
+ * The default provider remains memory-only. CLI consumers may opt into a
+ * transaction that persists refresh-token rotation before a new access token
+ * becomes observable.
  *
  * @module auth/cli-auth
  */
 
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { AuthProvider } from './types.js';
+import { join } from 'node:path';
 import { PortaAuthenticationError } from '../errors/index.js';
+import type { AuthProvider } from './types.js';
 
-// ---------------------------------------------------------------------------
-// Options & credential types
-// ---------------------------------------------------------------------------
-
-/**
- * Options for creating a CLI auth provider.
- */
-export interface CliAuthOptions {
-  /** Path to credentials file (default: '~/.porta/credentials.json') */
-  credentialsPath?: string;
+/** Consumer-owned persistence hooks for a durable refresh transaction. */
+export interface CliCredentialPersistence {
+  /** Runs an operation while holding the consumer's refresh lock. */
+  readonly withRefreshLock: <T>(operation: () => Promise<T>) => Promise<T>;
+  /** Atomically replaces the previous stored snapshot with the refreshed one. */
+  readonly persistRefreshedCredentials: (
+    previous: StoredCredentials,
+    refreshed: StoredCredentials,
+  ) => Promise<void>;
 }
 
-/**
- * Shape of the credentials file written by `porta login`.
- *
- * This matches the `StoredCredentials` interface from the CLI's token-store
- * module. The SDK only reads these fields — it never writes them.
- */
+/** Options for creating a CLI credential authentication provider. */
+export interface CliAuthOptions {
+  /** Path to the credentials file. Defaults to `~/.porta/credentials.json`. */
+  readonly credentialsPath?: string;
+  /** Optional durable persistence supplied by the CLI. */
+  readonly credentialPersistence?: CliCredentialPersistence;
+}
+
+/** User identity retained in the CLI credential snapshot. */
+export interface StoredUserInfo {
+  /** Stable OIDC subject identifier. */
+  readonly sub: string;
+  /** Display email accepted during login. */
+  readonly email: string;
+  /** Optional display name accepted during login. */
+  readonly name?: string;
+}
+
+/** Credentials written by `porta login` and consumed by the SDK. */
 export interface StoredCredentials {
-  /** Porta server URL (e.g., 'https://porta.local:3443') */
-  server: string;
-  /** Organization slug for the admin org (e.g., 'porta-admin') */
-  orgSlug: string;
-  /** OIDC client_id used for the login flow */
-  clientId: string;
-  /** JWT access token for API requests */
-  accessToken: string;
-  /** Refresh token for obtaining new access tokens */
-  refreshToken: string;
-  /** OIDC ID token containing user identity claims */
-  idToken: string;
-  /** ISO 8601 datetime when the access token expires */
-  expiresAt: string;
-  /** Decoded user identity from the ID token */
-  userInfo: {
-    /** OIDC subject identifier (user ID) */
-    sub: string;
-    /** User email address */
-    email: string;
-    /** User display name */
-    name?: string;
+  /** Porta server origin. */
+  readonly server: string;
+  /** Organization slug used by the CLI client. */
+  readonly orgSlug: string;
+  /** Public OIDC client identifier. */
+  readonly clientId: string;
+  /** Current bearer access token. */
+  readonly accessToken: string;
+  /** Optional refresh token; omission means interactive login is required. */
+  readonly refreshToken?: string;
+  /** Last validated ID token. */
+  readonly idToken: string;
+  /** ISO timestamp at which the access token expires. */
+  readonly expiresAt: string;
+  /** Last validated display identity. */
+  readonly userInfo: StoredUserInfo;
+}
+
+/** Validated subset of an OIDC refresh response. */
+interface RefreshTokenResponse {
+  readonly accessToken: string;
+  readonly refreshToken?: string;
+  readonly idToken?: string;
+  readonly expiresIn?: number;
+}
+
+/** A validated write that may be retried without replaying its grant. */
+interface PendingCredentialWrite {
+  readonly previous: StoredCredentials;
+  readonly refreshed: StoredCredentials;
+}
+
+const DEFAULT_CREDENTIALS_PATH = join(homedir(), '.porta', 'credentials.json');
+const EXPIRY_BUFFER_MS = 60_000;
+const ORGANIZATION_SLUG = /^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/;
+
+/** Creates a categorized authentication error without exposing remote detail. */
+function authenticationError(message: string, code?: string): PortaAuthenticationError {
+  const error = new PortaAuthenticationError({ message });
+  if (code) {
+    Object.defineProperty(error, 'code', { configurable: true, enumerable: true, value: code });
+  }
+  return error;
+}
+
+/** Returns true when a value is a non-empty string. */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+/** Validates untrusted JSON as a complete stored credential snapshot. */
+function parseStoredCredentials(value: unknown): StoredCredentials {
+  if (!value || typeof value !== 'object') {
+    throw authenticationError(
+      "Invalid credentials: missing required fields. Run 'porta login' again.",
+    );
+  }
+  const candidate = value as Record<string, unknown>;
+  const userInfo = candidate.userInfo;
+  if (
+    !isNonEmptyString(candidate.server) ||
+    !isNonEmptyString(candidate.orgSlug) ||
+    !ORGANIZATION_SLUG.test(candidate.orgSlug) ||
+    !isNonEmptyString(candidate.clientId) ||
+    !isNonEmptyString(candidate.accessToken) ||
+    (candidate.refreshToken !== undefined && typeof candidate.refreshToken !== 'string') ||
+    !isNonEmptyString(candidate.idToken) ||
+    !isNonEmptyString(candidate.expiresAt) ||
+    Number.isNaN(Date.parse(candidate.expiresAt)) ||
+    !userInfo ||
+    typeof userInfo !== 'object'
+  ) {
+    throw authenticationError(
+      "Invalid credentials: missing required fields. Run 'porta login' again.",
+    );
+  }
+  const identity = userInfo as Record<string, unknown>;
+  if (
+    !isNonEmptyString(identity.sub) ||
+    typeof identity.email !== 'string' ||
+    (identity.name !== undefined && typeof identity.name !== 'string')
+  ) {
+    throw authenticationError("Invalid credentials. Run 'porta login' again.");
+  }
+  try {
+    const server = new URL(candidate.server);
+    if (
+      server.protocol !== 'https:' ||
+      server.username ||
+      server.password ||
+      !/^\/*$/.test(server.pathname) ||
+      server.search ||
+      server.hash
+    ) {
+      throw new Error('invalid server');
+    }
+  } catch {
+    throw authenticationError("Invalid credentials. Run 'porta login' again.");
+  }
+
+  return {
+    server: candidate.server,
+    orgSlug: candidate.orgSlug,
+    clientId: candidate.clientId,
+    accessToken: candidate.accessToken,
+    refreshToken: isNonEmptyString(candidate.refreshToken) ? candidate.refreshToken : undefined,
+    idToken: candidate.idToken,
+    expiresAt: candidate.expiresAt,
+    userInfo: { sub: identity.sub, email: identity.email, name: identity.name },
   };
 }
 
-/**
- * Shape of the OIDC token endpoint response for refresh_token grant.
- */
-interface RefreshTokenResponse {
-  access_token: string;
-  refresh_token?: string;
-  id_token?: string;
-  expires_in?: number;
+/** Validates the security-relevant fields returned by the token endpoint. */
+function parseRefreshResponse(value: unknown): RefreshTokenResponse {
+  if (!value || typeof value !== 'object') {
+    throw authenticationError('Token refresh returned an invalid response.');
+  }
+  const candidate = value as Record<string, unknown>;
+  if (
+    !isNonEmptyString(candidate.access_token) ||
+    (candidate.refresh_token !== undefined && !isNonEmptyString(candidate.refresh_token)) ||
+    (candidate.id_token !== undefined && !isNonEmptyString(candidate.id_token)) ||
+    (candidate.expires_in !== undefined &&
+      (typeof candidate.expires_in !== 'number' ||
+        !Number.isFinite(candidate.expires_in) ||
+        candidate.expires_in <= 0))
+  ) {
+    throw authenticationError(
+      candidate.access_token === undefined
+        ? 'Token refresh response missing access_token.'
+        : 'Token refresh returned an invalid response.',
+    );
+  }
+  return {
+    accessToken: candidate.access_token,
+    refreshToken: candidate.refresh_token,
+    idToken: candidate.id_token,
+    expiresIn: candidate.expires_in,
+  };
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Default path to the credentials file */
-const DEFAULT_CREDENTIALS_DIR = '.porta';
-const DEFAULT_CREDENTIALS_FILE = 'credentials.json';
-
-/**
- * Safety buffer (in seconds) for token expiry checks.
- * Matches the CLI's 60-second buffer to avoid clock skew issues.
- */
-const EXPIRY_BUFFER_SECONDS = 60;
-
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
-
-/**
- * Creates a CLI credentials authentication provider.
- *
- * Returns an {@link AuthProvider} that reads the Porta CLI's stored
- * credentials file and uses them for API authentication. The provider
- * caches credentials in memory and handles token refresh transparently.
- *
- * **Important:** This provider does NOT write back to the credentials file.
- * Only the CLI (`porta login`, `porta logout`) manages the file. The SDK
- * refreshes tokens in-memory only.
- *
- * @param options - Optional configuration (credentials file path)
- * @returns An AuthProvider backed by CLI stored credentials
- */
+/** Creates an authentication provider over the Porta CLI credential file. */
 export function createCliAuth(options: CliAuthOptions = {}): AuthProvider {
-  const credentialsPath =
-    options.credentialsPath ??
-    join(homedir(), DEFAULT_CREDENTIALS_DIR, DEFAULT_CREDENTIALS_FILE);
+  const credentialsPath = options.credentialsPath ?? DEFAULT_CREDENTIALS_PATH;
+  const persistence = options.credentialPersistence;
+  let cached: StoredCredentials | undefined;
+  let refreshInFlight: Promise<string> | undefined;
+  let pendingWrite: PendingCredentialWrite | undefined;
+  let terminalRefreshFailure: PortaAuthenticationError | undefined;
 
-  /** In-memory cached credentials — null until first read */
-  let cached: StoredCredentials | null = null;
+  /** Latches a post-dispatch failure so a rotated grant is never replayed. */
+  function latchRefreshFailure(error: PortaAuthenticationError): PortaAuthenticationError {
+    if (!('code' in error)) {
+      Object.defineProperty(error, 'code', {
+        configurable: true,
+        enumerable: true,
+        value: 'REFRESH_INDETERMINATE',
+      });
+    }
+    terminalRefreshFailure = error;
+    return error;
+  }
 
-  /**
-   * Reads and parses the credentials file from disk.
-   *
-   * @throws PortaAuthenticationError if file not found or unreadable
-   */
+  /** Reads and validates the latest on-disk credential snapshot. */
   async function readCredentialsFile(): Promise<StoredCredentials> {
     try {
-      const content = await readFile(credentialsPath, 'utf-8');
-      const parsed = JSON.parse(content) as StoredCredentials;
-
-      // Validate minimum required fields
-      if (!parsed.accessToken || !parsed.server || !parsed.orgSlug) {
-        throw new PortaAuthenticationError({
-          message: `Invalid credentials file at ${credentialsPath}: missing required fields. Run 'porta login' to re-authenticate.`,
-        });
-      }
-
-      return parsed;
+      return parseStoredCredentials(JSON.parse(await readFile(credentialsPath, 'utf-8')));
     } catch (error) {
-      // File not found — user hasn't logged in yet
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new PortaAuthenticationError({
-          message: `Credentials file not found at ${credentialsPath}. Run 'porta login' first.`,
-        });
+      if (error instanceof PortaAuthenticationError) throw error;
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+        throw authenticationError("Credentials not found. Run 'porta login' first.");
       }
-
-      // Re-throw PortaAuthenticationError (from validation above or nested)
-      if (error instanceof PortaAuthenticationError) {
-        throw error;
-      }
-
-      // JSON parse error or other read failure
-      throw new PortaAuthenticationError({
-        message: `Failed to read credentials file at ${credentialsPath}: ${(error as Error).message}`,
-      });
+      throw authenticationError("Unable to read credentials. Run 'porta login' again.");
     }
   }
 
-  /**
-   * Checks whether the access token is expired or about to expire.
-   * Uses a 60-second safety buffer matching the CLI's behavior.
-   */
-  function isTokenExpired(creds: StoredCredentials): boolean {
-    if (!creds.expiresAt) return false;
-    const expiresAtMs = new Date(creds.expiresAt).getTime();
-    return Date.now() >= expiresAtMs - EXPIRY_BUFFER_SECONDS * 1000;
+  /** Determines whether a token is expired or within the safety buffer. */
+  function isExpired(credentials: StoredCredentials): boolean {
+    return Date.now() >= Date.parse(credentials.expiresAt) - EXPIRY_BUFFER_MS;
   }
 
-  /**
-   * Refreshes the access token using the refresh_token grant.
-   *
-   * POSTs to the OIDC token endpoint (`/{orgSlug}/token`) with
-   * grant_type=refresh_token. Updates the in-memory cache but does
-   * NOT write back to the credentials file.
-   *
-   * @throws PortaAuthenticationError if refresh fails or missing refresh_token
-   */
-  async function refreshWithGrant(
-    creds: StoredCredentials,
-  ): Promise<string> {
-    if (!creds.refreshToken) {
-      throw new PortaAuthenticationError({
-        message: "Cannot refresh token: no refresh_token available. Run 'porta login' again.",
-      });
+  /** Dispatches exactly one refresh grant and validates its response. */
+  async function dispatchRefresh(previous: StoredCredentials): Promise<StoredCredentials> {
+    if (!previous.refreshToken) {
+      throw authenticationError(
+        "Cannot refresh token: no refresh_token available. Run 'porta login' again.",
+      );
     }
-
-    // Construct token endpoint from server URL and org slug
-    const tokenUrl = `${creds.server}/${creds.orgSlug}/token`;
-
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
-      client_id: creds.clientId,
-      refresh_token: creds.refreshToken,
+      client_id: previous.clientId,
+      refresh_token: previous.refreshToken,
     });
 
     let response: Response;
     try {
-      response = await fetch(tokenUrl, {
+      response = await fetch(`${previous.server}/${previous.orgSlug}/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
       });
-    } catch (error) {
-      throw new PortaAuthenticationError({
-        message: `Token refresh request failed: ${(error as Error).message}. Run 'porta login' again.`,
-      });
+    } catch {
+      throw latchRefreshFailure(
+        authenticationError(
+          "Token refresh outcome is unknown. Run 'porta login' again.",
+          'REFRESH_INDETERMINATE',
+        ),
+      );
     }
-
     if (!response.ok) {
-      throw new PortaAuthenticationError({
-        message: `Token refresh failed (${response.status}). Run 'porta login' again.`,
-      });
+      throw latchRefreshFailure(
+        authenticationError(
+          `Token refresh was rejected (${response.status}). Run 'porta login' again.`,
+          'REFRESH_REJECTED',
+        ),
+      );
     }
 
-    const data = (await response.json()) as RefreshTokenResponse;
-
-    if (!data.access_token) {
-      throw new PortaAuthenticationError({
-        message: "Token refresh response missing access_token. Run 'porta login' again.",
-      });
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      throw latchRefreshFailure(authenticationError('Token refresh returned an invalid response.'));
     }
-
-    // Update in-memory cache with new tokens (don't write to file)
-    cached = {
-      ...creds,
-      accessToken: data.access_token,
-      // Preserve existing tokens if server doesn't rotate them
-      refreshToken: data.refresh_token ?? creds.refreshToken,
-      idToken: data.id_token ?? creds.idToken,
-      expiresAt: data.expires_in
-        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
-        : creds.expiresAt,
+    let refreshed: RefreshTokenResponse;
+    try {
+      refreshed = parseRefreshResponse(data);
+    } catch (error) {
+      throw latchRefreshFailure(
+        error instanceof PortaAuthenticationError
+          ? error
+          : authenticationError('Token refresh returned an invalid response.'),
+      );
+    }
+    return {
+      ...previous,
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken ?? previous.refreshToken,
+      idToken: refreshed.idToken ?? previous.idToken,
+      expiresAt: refreshed.expiresIn
+        ? new Date(Date.now() + refreshed.expiresIn * 1000).toISOString()
+        : previous.expiresAt,
     };
+  }
 
-    return data.access_token;
+  /** Commits a durable refresh, retaining a failed write for same-write retry. */
+  async function refreshDurably(): Promise<string> {
+    if (!persistence) throw new Error('Durable refresh requires persistence hooks');
+    return persistence.withRefreshLock(async () => {
+      if (pendingWrite) {
+        await persistence.persistRefreshedCredentials(
+          pendingWrite.previous,
+          pendingWrite.refreshed,
+        );
+        cached = pendingWrite.refreshed;
+        pendingWrite = undefined;
+        return cached.accessToken;
+      }
+      if (terminalRefreshFailure) throw terminalRefreshFailure;
+
+      const current = await readCredentialsFile();
+      if (!isExpired(current)) {
+        cached = current;
+        return current.accessToken;
+      }
+      const refreshed = await dispatchRefresh(current);
+      pendingWrite = { previous: current, refreshed };
+      await persistence.persistRefreshedCredentials(current, refreshed);
+      pendingWrite = undefined;
+      cached = refreshed;
+      return refreshed.accessToken;
+    });
+  }
+
+  /** Coalesces callers onto one immutable refresh transaction. */
+  function refreshOnce(): Promise<string> {
+    if (terminalRefreshFailure) return Promise.reject(terminalRefreshFailure);
+    if (!refreshInFlight) {
+      const operation = persistence
+        ? refreshDurably()
+        : (async () => {
+            const previous = cached ?? (await readCredentialsFile());
+            cached = await dispatchRefresh(previous);
+            return cached.accessToken;
+          })();
+      refreshInFlight = operation.finally(() => {
+        refreshInFlight = undefined;
+      });
+    }
+    return refreshInFlight;
   }
 
   return {
     async getToken(): Promise<string> {
-      // Read from file on first call
-      if (!cached) {
-        cached = await readCredentialsFile();
-      }
-
-      // If expired, try to refresh using the refresh_token grant
-      if (isTokenExpired(cached)) {
-        return refreshWithGrant(cached);
-      }
-
-      return cached.accessToken;
+      if (terminalRefreshFailure) throw terminalRefreshFailure;
+      cached ??= await readCredentialsFile();
+      return isExpired(cached) || pendingWrite ? refreshOnce() : cached.accessToken;
     },
-
     async refreshToken(): Promise<string> {
-      // Re-read from file — the CLI may have refreshed since we last read
+      if (terminalRefreshFailure) throw terminalRefreshFailure;
       cached = await readCredentialsFile();
-      return refreshWithGrant(cached);
+      return refreshOnce();
     },
   };
 }
