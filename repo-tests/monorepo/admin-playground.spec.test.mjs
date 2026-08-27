@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
+import { parse } from 'yaml';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 
@@ -19,6 +21,16 @@ function readRepositoryJson(repositoryPath) {
   } catch (error) {
     throw new Error(`Expected ${repositoryPath} to contain valid JSON`, { cause: error });
   }
+}
+
+/**
+ * Reads a UTF-8 repository file.
+ *
+ * @param {string} repositoryPath Path relative to the repository root.
+ * @returns {string} File contents.
+ */
+function readRepositoryFile(repositoryPath) {
+  return readFileSync(resolve(repositoryRoot, repositoryPath), 'utf8');
 }
 
 /**
@@ -164,4 +176,122 @@ test('should avoid a separate admin workflow when the admin shell follows the ex
     false,
     'the admin shell must not create a separate workspace package',
   );
+});
+
+test('should expose one root lifecycle command when the playground belongs to the repository', () => {
+  const rootManifest = readRepositoryJson('package.json');
+
+  assert.match(
+    rootManifest.scripts?.['admin:env'] ?? '',
+    /^node (?:\.\/)?docker\/admin-playground\/scripts\/admin-env\.mjs$/,
+    'the root command must delegate directly to the owned lifecycle entry point',
+  );
+
+  for (const repositoryPath of [
+    'docker/admin-playground/compose.yml',
+    'docker/admin-playground/nginx.conf',
+    'docker/admin-playground/scripts/admin-env.mjs',
+    'docker/admin-playground/scripts/check-prerequisites.mjs',
+    'docker/admin-playground/.gitignore',
+  ]) {
+    assert.equal(isRepositoryFile(repositoryPath), true, `${repositoryPath} must exist`);
+  }
+});
+
+test('should fail closed on DNS drift when the fixed playground hostname is checked', () => {
+  const prerequisiteSource = readRepositoryFile(
+    'docker/admin-playground/scripts/check-prerequisites.mjs',
+  );
+  const lifecycleSource = readRepositoryFile('docker/admin-playground/scripts/admin-env.mjs');
+
+  assert.match(
+    prerequisiteSource,
+    /porta-admin-playground\.ci\.portaidentity\.com/,
+    'DNS preflight must own the fixed playground hostname',
+  );
+  assert.match(prerequisiteSource, /resolve4/, 'DNS preflight must inspect every IPv4 answer');
+  assert.match(prerequisiteSource, /resolve6/, 'DNS preflight must inspect IPv6 answers');
+  assert.match(
+    prerequisiteSource,
+    /127\.0\.0\.1/,
+    'DNS preflight must require the exact IPv4 loopback address',
+  );
+  assert.match(
+    lifecycleSource,
+    /check-prerequisites|checkPrerequisites|runPreflight/,
+    'the lifecycle must run prerequisite checks before starting Compose',
+  );
+});
+
+test('should publish only loopback HTTPS and MailHog UI ports when Compose is rendered', () => {
+  const compose = parse(readRepositoryFile('docker/admin-playground/compose.yml'));
+
+  assert.equal(compose.name, 'porta-admin-playground', 'Compose project identity must be fixed');
+  assert.deepEqual(
+    compose.services?.nginx?.ports,
+    ['127.0.0.1:${PORTA_ADMIN_HTTPS_PORT:-3543}:443'],
+    'nginx must expose only the configurable loopback HTTPS port',
+  );
+  assert.deepEqual(
+    compose.services?.mailhog?.ports,
+    ['127.0.0.1:${PORTA_ADMIN_MAILHOG_PORT:-8026}:8025'],
+    'MailHog must expose only its configurable loopback web port',
+  );
+
+  for (const serviceName of ['porta', 'postgres', 'redis']) {
+    assert.equal(
+      'ports' in (compose.services?.[serviceName] ?? {}),
+      false,
+      `${serviceName} must remain internal to the playground network`,
+    );
+  }
+
+  assert.doesNotMatch(
+    JSON.stringify(compose),
+    /0\.0\.0\.0:/,
+    'the playground must not publish a service on every host interface',
+  );
+});
+
+test('should bound reset to exact owned volumes when destructive lifecycle code is inspected', () => {
+  const compose = parse(readRepositoryFile('docker/admin-playground/compose.yml'));
+  const lifecycleSource = readRepositoryFile('docker/admin-playground/scripts/admin-env.mjs');
+  const ownedVolumeNames = Object.keys(compose.volumes ?? {});
+
+  assert.ok(ownedVolumeNames.length > 0, 'the playground must declare named persistent volumes');
+  assert.match(
+    lifecycleSource,
+    /reset porta-admin-playground/,
+    'interactive reset must require the exact typed confirmation phrase',
+  );
+
+  for (const volumeName of ownedVolumeNames) {
+    assert.match(
+      lifecycleSource,
+      new RegExp(`['\"]${volumeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]`),
+      `reset must explicitly allowlist the ${volumeName} volume`,
+    );
+  }
+
+  assert.doesNotMatch(
+    lifecycleSource,
+    /docker\s+(?:system|volume)\s+prune|rm\s+-rf|\*.*volume|volume.*\*/i,
+    'reset must not use broad deletion or wildcard volume selection',
+  );
+});
+
+test('should keep generated runtime assets untracked when playground state is persisted locally', () => {
+  const ignoreRules = readRepositoryFile('docker/admin-playground/.gitignore');
+  const trackedRuntimeFiles = execFileSync(
+    'git',
+    ['ls-files', '--', 'docker/admin-playground/runtime'],
+    { cwd: repositoryRoot, encoding: 'utf8' },
+  ).trim();
+
+  assert.match(
+    ignoreRules,
+    /(?:^|\n)runtime\/(?:\n|$)/,
+    'the entire runtime directory must be ignored',
+  );
+  assert.equal(trackedRuntimeFiles, '', 'generated infrastructure secrets must not be committed');
 });

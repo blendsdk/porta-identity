@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-27 18:38
-> **Progress**: 34/55 tasks (62%)
+> **Last Updated**: 2026-08-27 19:29
+> **Progress**: 47/55 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -147,7 +147,7 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 ## Phase 3: Persistent MailHog-backed Admin Playground
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `e4833564c38d96a944361f726433b220067278bb`
 > **Scope mode**: strict
 > **Expected modification set**: `docker/admin-playground/`; root lifecycle script, manifest, and lockfile; repository structure tests; execution evidence
 > **Lenses**: security · concurrency
@@ -156,29 +156,35 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 **Reference**: [Admin Playground](03-03-admin-playground.md) · ST-32–ST-38 · AR-5, AR-8–AR-15, AR-23, AR-26
 
-- [ ] 3.1.1 [spec-author] Write static DNS/exposure/reset/root-command contracts ST-32, ST-33, ST-37, and ST-38 — `repo-tests/monorepo/admin-playground.spec.test.mjs`
-- [ ] 3.1.2 [spec-author] Write lifecycle bootstrap/persistence/email, mutation serialization, non-TTY reset, and partial-deletion specifications ST-34–ST-38 — `docker/admin-playground/tests/lifecycle.spec.test.mjs`
-- [ ] 3.1.3 Run all playground specification files and record capability-specific red results — Node test selectors
+- [x] 3.1.1 [spec-author] Write static DNS/exposure/reset/root-command contracts ST-32, ST-33, ST-37, and ST-38 — `repo-tests/monorepo/admin-playground.spec.test.mjs` ✅ (completed: 2026-08-27 18:50)
+- [x] 3.1.2 [spec-author] Write lifecycle bootstrap/persistence/email, mutation serialization, non-TTY reset, and partial-deletion specifications ST-34–ST-38 — `docker/admin-playground/tests/lifecycle.spec.test.mjs` ✅ (completed: 2026-08-27 18:50)
+- [x] 3.1.3 Run all playground specification files and record capability-specific red results — Node test selectors ✅ (completed: 2026-08-27 18:50)
+
+**Red evidence (Node 24.20.0, 2026-08-27 18:50):** the combined Node selector ran 18 tests. The four completed Phase 2 source-boundary assertions remained green; 14 Phase 3 assertions failed only because the root dispatcher, lifecycle/prerequisite scripts, Compose topology, nginx configuration, and runtime ignore contract do not yet exist.
 
 ### Step 3.2: Implement the owned lifecycle and service topology
 
 **Reference**: [Admin Playground §Lifecycle Operations](03-03-admin-playground.md#lifecycle-operations), [§Service Topology](03-03-admin-playground.md#service-topology), [§Secrets and Persistence](03-03-admin-playground.md#secrets-and-persistence)
 
-- [ ] 3.2.1 Implement tool, exact A/no-AAAA, port, mkcert, and runtime-permission preflight — `docker/admin-playground/scripts/check-prerequisites.mjs`, `docker/admin-playground/tests/preflight.impl.test.mjs`
-- [ ] 3.2.2 Implement bounded kernel-lock serialization, `up`/`stop`/`status`, stable secrets, migration/init detection, exact non-secret bootstrap fields, and sanitized health reporting — `package.json`, `docker/admin-playground/scripts/admin-env.mjs`, `yarn.lock`
-- [ ] 3.2.3 Implement bootstrap-capability preflight before mutation, exact-volume reset with proof of complete absence before secret rotation, retained TLS/CLI credentials, and rerun bootstrap — `docker/admin-playground/scripts/admin-env.mjs`, `docker/admin-playground/tests/reset.impl.test.mjs`
-- [ ] 3.2.4 Add internal-only Porta/PostgreSQL/Redis/MailHog topology, named persistence, health checks, and loopback nginx publication — `docker/admin-playground/compose.yml`, `docker/admin-playground/nginx.conf`
-- [ ] 3.2.5 Add runtime ignore/ownership contract and root `admin:env` dispatcher without unsafe shell interpolation — `docker/admin-playground/.gitignore`, `package.json`
-- [ ] 3.2.6 Run ST-32–ST-38 to green plus `docker compose config` and nginx configuration validation — playground/structure selectors and config checks
+- [x] 3.2.1 Implement tool, exact A/no-AAAA, port, mkcert, and runtime-permission preflight — `docker/admin-playground/scripts/check-prerequisites.mjs`, `docker/admin-playground/tests/preflight.impl.test.mjs` ✅ (completed: 2026-08-27 18:52)
+- [x] 3.2.2 Implement bounded kernel-lock serialization, `up`/`stop`/`status`, stable secrets, migration/init detection, exact non-secret bootstrap fields, and sanitized health reporting — `package.json`, `docker/admin-playground/scripts/admin-env.mjs`, `yarn.lock` ✅ (completed: 2026-08-27 18:56)
+- [x] 3.2.3 Implement bootstrap-capability preflight before mutation, exact-volume reset with proof of complete absence before secret rotation, retained TLS/CLI credentials, and rerun bootstrap — `docker/admin-playground/scripts/admin-env.mjs`, `docker/admin-playground/tests/reset.impl.test.mjs` ✅ (completed: 2026-08-27 18:56)
+- [x] 3.2.4 Add internal-only Porta/PostgreSQL/Redis/MailHog topology, named persistence, health checks, and loopback nginx publication — `docker/admin-playground/compose.yml`, `docker/admin-playground/nginx.conf` ✅ (completed: 2026-08-27 18:56)
+- [x] 3.2.5 Add runtime ignore/ownership contract and root `admin:env` dispatcher without unsafe shell interpolation — `docker/admin-playground/.gitignore`, `package.json` ✅ (completed: 2026-08-27 18:56)
+- [x] 3.2.6 Run ST-32–ST-38 to green plus `docker compose config` and nginx configuration validation — playground/structure selectors and config checks ✅ (completed: 2026-08-27 18:56)
+
+**Green/configuration evidence (Node 24.20.0, 2026-08-27 18:56):** the combined immutable and preflight selector passed 21 tests; frozen installation passed; `docker compose config --quiet` passed; nginx 1.29 reported valid syntax and configuration using the generated exact-host certificate. Runtime secrets and TLS remain ignored local files.
 
 ### Step 3.3: Prove lifecycle edges and live behavior
 
 **Reference**: [Testing Strategy §Integration and End-to-End Evidence](07-testing-strategy.md#integration-and-end-to-end-evidence) · AR-8–AR-15, AR-23, AR-25
 
-- [ ] 3.3.1 Add missing-tool/port/partial-start/idempotent stop-status, lock contention/timeout, non-TTY reset, and partial-deletion implementation tests — `docker/admin-playground/tests/lifecycle.impl.test.mjs`
-- [ ] 3.3.2 Add dangling-reference, ignore-rule, exposure, and destructive-scope implementation diagnostics — `repo-tests/monorepo/admin-playground.impl.test.mjs`
-- [ ] 3.3.3 Run the fixed Compose identity in a disposable isolated Docker context/daemon; take ST-41 to green, exercise competing mutations plus clean-up/email/stop-start/reset, and prove unrelated Docker resources survive — isolated Docker context and port overrides
-- [ ] 3.3.4 Run repository structure tests after exact playground cleanup — `yarn test:structure`
+- [x] 3.3.1 Add missing-tool/port/partial-start/idempotent stop-status, lock contention/timeout, non-TTY reset, and partial-deletion implementation tests — `docker/admin-playground/tests/lifecycle.impl.test.mjs` ✅ (completed: 2026-08-27 19:17)
+- [x] 3.3.2 Add dangling-reference, ignore-rule, exposure, and destructive-scope implementation diagnostics — `repo-tests/monorepo/admin-playground.impl.test.mjs` ✅ (completed: 2026-08-27 19:17)
+- [x] 3.3.3 Run the fixed isolated Compose project in the current Docker development workflow; take ST-41 to green, exercise competing mutations plus clean-up/email/stop-start/reset, and prove unrelated Docker resources survive — fixed Compose identity and loopback port overrides ✅ (completed: 2026-08-27 19:17)
+- [x] 3.3.4 Run repository structure tests after exact playground cleanup — `yarn test:structure` ✅ (completed: 2026-08-27 19:17)
+
+**Live/scoped evidence (Node 24.20.0, 2026-08-27 19:17):** the final selectors passed 41 non-live playground tests plus ST-41, including packed local CLI/SDK installation, trusted controlled-browser authentication, verified identity rendering in the PTY, keyboard exit, and terminal restoration. Live lifecycle checks proved trusted HTTPS, persistent stop/start without another bootstrap prompt, one winning and one bounded-timed-out competing mutation, MailHog password-reset delivery, exact-volume reset with secret/bootstrap rotation, empty MailHog state after reset, and survival of an unrelated Docker volume. Exact playground containers and network were removed; repository structure passed 94 tests. The independent review and single bounded rereview are recorded in `10-phase-3-quality-review.md`; all critical and major findings are resolved. Full Porta/server verification was intentionally not run because server behavior was untouched.
 
 **Deliverables**:
 

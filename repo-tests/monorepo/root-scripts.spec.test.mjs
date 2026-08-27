@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const supportedScripts = [
+  'admin:env',
   'assurance:all',
   'assurance:baseline',
   'assurance:compat',
