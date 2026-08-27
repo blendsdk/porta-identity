@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-27 19:45
-> **Progress**: 54/55 tasks (98%)
+> **Last Updated**: 2026-08-27 20:11
+> **Progress**: 55/55 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -221,7 +221,9 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 - [x] 4.2.1 Add package-local CLI/SDK coverage scripts and exact per-glob thresholds; run CLI/SDK and built-in Node playground coverage and require the 90/80/60 line gates to pass — package manifests and coverage configurations ✅ (completed: 2026-08-27 19:42)
 - [x] 4.2.2 Run `yarn deps:check`, `yarn audit --groups dependencies --level high`, lockfile/integrity review, focused native-lock adapter tests, and the packed CLI smoke through Porta's existing Node 24 LTS development workflow — dependency and package evidence ✅ (completed: 2026-08-27 19:45)
-- [ ] 4.2.3 Pack/install CLI and SDK into isolated consumers; run ST-41, packed PTY smoke, affected CLI/SDK package verification, repository structure tests, and clean-revision `yarn assurance:compat --select protocol`; require scoped gates to pass, review the compatibility outcome under its registered taxonomy, and confirm no generated/sensitive/out-of-scope files
+- [x] 4.2.3 Pack/install CLI and SDK into isolated consumers; run ST-41, packed PTY smoke, affected CLI/SDK package verification, repository structure tests, and clean-revision `yarn assurance:compat --select protocol`; require scoped gates to pass, review the compatibility outcome under its registered taxonomy, and confirm no generated/sensitive/out-of-scope files ✅ (completed: 2026-08-27 20:11)
+
+**Final scoped evidence (Node 24.20.0, 2026-08-27 20:11):** affected CLI verification passed 41 files/453 tests and SDK verification passed 33 files/414 tests, with lint, typecheck, and build green; repository structure passed 96 tests; public docs, dependency audit, package-local coverage, packed non-TTY/PTY consumers, and the live ST-41 playground journey passed. Clean revision `af6d01a9` produced accepted protocol compatibility run `96dbac51-0b62-4945-aad5-7c15cc7ae9bc`, including independently verified nonce-bound ID token evidence, consumed-refresh rejection, unchanged primary tree, and zero owned consumer residue. Exact playground containers and volumes were removed after the live journey, and the tracked tree contains no generated or sensitive artifact. Full Porta/server verification was intentionally excluded because server implementation was untouched.
 
 **Deliverables**:
 
