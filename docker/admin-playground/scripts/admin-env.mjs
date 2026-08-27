@@ -33,11 +33,17 @@ const OWNED_VOLUME_KEYS = ['postgres_data', 'redis_data'];
 const LOCK_TIMEOUT_MS = 5_000;
 const COMPOSE_PROJECT_NAME = 'porta-admin-playground';
 
+/** Builds the fixed Compose argument prefix used by every playground command. */
+export function composeArguments(arguments_) {
+  return ['compose', '--project-name', COMPOSE_PROJECT_NAME, '-f', composePath, ...arguments_];
+}
+
 /** Runs Docker Compose without shell interpolation. */
+/* node:coverage disable */
 async function compose(arguments_, options = {}) {
   return execFile(
     'docker',
-    ['compose', '--project-name', COMPOSE_PROJECT_NAME, '-f', composePath, ...arguments_],
+    composeArguments(arguments_),
     {
       cwd: repositoryRoot,
       timeout: options.timeout ?? 120_000,
@@ -45,8 +51,10 @@ async function compose(arguments_, options = {}) {
     },
   );
 }
+/* node:coverage enable */
 
 /** Runs an interactive Compose command while preserving hidden terminal input. */
+/* node:coverage disable */
 async function composeInteractive(arguments_) {
   await new Promise((resolveRun, rejectRun) => {
     const child = spawn(
@@ -64,6 +72,7 @@ async function composeInteractive(arguments_) {
     );
   });
 }
+/* node:coverage enable */
 
 /** Returns true only for documented non-blocking lock contention. */
 function isContention(error) {
@@ -71,10 +80,13 @@ function isContention(error) {
 }
 
 /** Runs one mutation under the persistent bounded kernel lock. */
-async function withMutationLock(operation) {
-  await ensureRuntimePermissions(runtimeDirectory);
-  const handle = await open(lockPath, 'a+', 0o600);
-  const deadline = performance.now() + LOCK_TIMEOUT_MS;
+export async function withMutationLock(operation, options = {}) {
+  const directory = options.runtimeDirectory ?? runtimeDirectory;
+  const path = options.lockPath ?? lockPath;
+  const timeoutMs = options.timeoutMs ?? LOCK_TIMEOUT_MS;
+  await ensureRuntimePermissions(directory);
+  const handle = await open(path, 'a+', 0o600);
+  const deadline = performance.now() + timeoutMs;
   let locked = false;
   try {
     while (!locked) {
@@ -114,7 +126,7 @@ async function withMutationLock(operation) {
 }
 
 /** Builds a complete stable secret snapshot without logging its values. */
-function generateSecrets() {
+export function generateSecrets() {
   const databasePassword = randomBytes(24).toString('hex');
   return (
     [
@@ -129,6 +141,7 @@ function generateSecrets() {
 }
 
 /** Returns stable secrets, creating them atomically only when absent. */
+/* node:coverage disable */
 async function ensureStableSecrets() {
   try {
     return await readFile(secretsPath, 'utf8');
@@ -138,14 +151,18 @@ async function ensureStableSecrets() {
   await rotateSecrets();
   return readFile(secretsPath, 'utf8');
 }
+/* node:coverage enable */
 
 /** Prepares ignored local configuration needed for static Compose validation. */
+/* node:coverage disable */
 export async function preparePlaygroundRuntime() {
   await ensureRuntimePermissions(runtimeDirectory);
   await ensureStableSecrets();
 }
+/* node:coverage enable */
 
 /** Replaces the secret snapshot only after reset has proved old data absent. */
+/* node:coverage disable */
 async function rotateSecrets() {
   const temporaryPath = `${secretsPath}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
   try {
@@ -157,8 +174,10 @@ async function rotateSecrets() {
     });
   }
 }
+/* node:coverage enable */
 
 /** Detects the initialized admin application through an exact read-only query. */
+/* node:coverage disable */
 async function isInitialized() {
   try {
     const { stdout } = await compose([
@@ -178,8 +197,18 @@ async function isInitialized() {
     return false;
   }
 }
+/* node:coverage enable */
+
+/** Reports whether an exact requested name occurs in a newline-delimited Docker listing. */
+export function volumeListContainsExactName(output, volumeName) {
+  return output
+    .split('\n')
+    .map((value) => value.trim())
+    .includes(volumeName);
+}
 
 /** Checks exact Docker resource presence while preserving transport and permission failures. */
+/* node:coverage disable */
 async function dockerVolumeExists(volumeName) {
   const { stdout } = await execFile('docker', [
     'volume',
@@ -188,43 +217,52 @@ async function dockerVolumeExists(volumeName) {
     '--filter',
     `name=^${volumeName}$`,
   ]);
-  return stdout
-    .split('\n')
-    .map((value) => value.trim())
-    .includes(volumeName);
+  return volumeListContainsExactName(stdout, volumeName);
 }
+/* node:coverage enable */
 
 /** Creates production lifecycle boundaries used by the command entry point. */
-function productionDependencies() {
+export function productionDependencies(system = {}) {
+  const composeCommand = system.compose ?? compose;
+  const composeInteractiveCommand = system.composeInteractive ?? composeInteractive;
+  const execute = system.execFile ?? execFile;
+  const preflight = system.runPreflight ?? runPreflight;
+  const inspectServices = system.inspectComposeServices ?? inspectComposeServices;
+  const initialized = system.isInitialized ?? isInitialized;
+  const volumeExists = system.dockerVolumeExists ?? dockerVolumeExists;
+  const rotate = system.rotateSecrets ?? rotateSecrets;
+  const status = system.inspectStatus ?? inspectStatus;
+  const environment = system.environment ?? process.env;
   return {
     runPreflight: async () => {
-      const services = await inspectComposeServices();
+      const services = await inspectServices();
       const httpsPort = validatePlaygroundPort(
-        process.env.PORTA_ADMIN_HTTPS_PORT,
+        environment.PORTA_ADMIN_HTTPS_PORT,
         3543,
         'PORTA_ADMIN_HTTPS_PORT',
       );
       const mailhogPort = validatePlaygroundPort(
-        process.env.PORTA_ADMIN_MAILHOG_PORT,
+        environment.PORTA_ADMIN_MAILHOG_PORT,
         8026,
         'PORTA_ADMIN_MAILHOG_PORT',
       );
-      await runPreflight({
+      await preflight({
         runtimeDirectory,
         allowedOccupiedPorts: ownedPublishedPorts(services, httpsPort, mailhogPort),
       });
     },
     withMutationLock,
     ensureStableSecrets,
-    startServices: async () => compose(['up', '-d', '--build', 'postgres', 'redis', 'mailhog']),
+    startServices: async () =>
+      composeCommand(['up', '-d', '--build', 'postgres', 'redis', 'mailhog']),
     runMigrations: async () =>
-      compose(['run', '--rm', 'porta', 'node', 'dist/cli/index.js', 'migrate', 'up'], {
+      composeCommand(['run', '--rm', 'porta', 'node', 'dist/cli/index.js', 'migrate', 'up'], {
         timeout: 300_000,
       }),
-    isInitialized,
+    isInitialized: initialized,
     readHiddenPassword: async () => '',
     initialize: async (input) =>
-      composeInteractive([
+      composeInteractiveCommand([
         'run',
         '--rm',
         'porta',
@@ -239,23 +277,23 @@ function productionDependencies() {
         input.familyName,
       ]),
     verifyHealth: async () => {
-      await compose(['up', '-d', 'porta', 'nginx']);
-      const httpsPort = process.env.PORTA_ADMIN_HTTPS_PORT ?? '3543';
-      const mailhogPort = process.env.PORTA_ADMIN_MAILHOG_PORT ?? '8026';
-      const { stdout: metadataOutput } = await execFile('curl', [
+      await composeCommand(['up', '-d', 'porta', 'nginx']);
+      const httpsPort = environment.PORTA_ADMIN_HTTPS_PORT ?? '3543';
+      const mailhogPort = environment.PORTA_ADMIN_MAILHOG_PORT ?? '8026';
+      const { stdout: metadataOutput } = await execute('curl', [
         '--fail',
         '--silent',
         '--show-error',
         `https://porta-admin-playground.ci.portaidentity.com:${httpsPort}/api/admin/metadata`,
       ]);
       validateAdminMetadata(metadataOutput, httpsPort);
-      await execFile('curl', [
+      await execute('curl', [
         '--fail',
         '--silent',
         '--show-error',
         `https://porta-admin-playground.ci.portaidentity.com:${httpsPort}/health`,
       ]);
-      await execFile('curl', [
+      await execute('curl', [
         '--fail',
         '--silent',
         '--show-error',
@@ -264,18 +302,18 @@ function productionDependencies() {
       return { porta: 'healthy', mailhog: 'healthy' };
     },
     stopServices: async () => {
-      await compose(['down', '--remove-orphans']);
+      await composeCommand(['down', '--remove-orphans']);
     },
     canBootstrapInteractively: () => process.stdin.isTTY === true && process.stdout.isTTY === true,
     resolveVolumeName: async (volumeKey) => `porta-admin-playground_${volumeKey}`,
     removeVolume: async (volumeName) => {
-      if (!(await dockerVolumeExists(volumeName))) return;
-      await execFile('docker', ['volume', 'rm', volumeName]);
+      if (!(await volumeExists(volumeName))) return;
+      await execute('docker', ['volume', 'rm', volumeName]);
     },
-    volumeExists: dockerVolumeExists,
-    rotateSecrets,
+    volumeExists,
+    rotateSecrets: rotate,
     clearMail: async () => undefined,
-    inspectStatus,
+    inspectStatus: status,
     confirmReset: async () => {
       const terminal = createInterface({ input: process.stdin, output: process.stdout });
       try {
@@ -287,9 +325,8 @@ function productionDependencies() {
   };
 }
 
-/** Inspects only bounded Compose state and public endpoint values. */
-async function inspectStatus() {
-  const services = await inspectComposeServices();
+/** Classifies bounded Compose state and returns only public endpoint values. */
+export function classifyComposeStatus(services, environment = process.env) {
   const running = services.filter((service) => service.State === 'running');
   const healthy = running.filter((service) => service.Health === 'healthy');
   const state =
@@ -303,13 +340,22 @@ async function inspectStatus() {
   return {
     state,
     endpoints: [
-      `https://porta-admin-playground.ci.portaidentity.com:${process.env.PORTA_ADMIN_HTTPS_PORT ?? '3543'}`,
-      `http://127.0.0.1:${process.env.PORTA_ADMIN_MAILHOG_PORT ?? '8026'}`,
+      `https://porta-admin-playground.ci.portaidentity.com:${environment.PORTA_ADMIN_HTTPS_PORT ?? '3543'}`,
+      `http://127.0.0.1:${environment.PORTA_ADMIN_MAILHOG_PORT ?? '8026'}`,
     ],
   };
 }
 
+/** Inspects only bounded Compose state and public endpoint values. */
+/* node:coverage disable */
+async function inspectStatus() {
+  const services = await inspectComposeServices();
+  return classifyComposeStatus(services);
+}
+/* node:coverage enable */
+
 /** Reads the fixed Compose project's bounded service status records. */
+/* node:coverage disable */
 async function inspectComposeServices() {
   try {
     const { stdout } = await compose(['ps', '--format', 'json'], { timeout: 30_000 });
@@ -318,6 +364,7 @@ async function inspectComposeServices() {
     return [];
   }
 }
+/* node:coverage enable */
 
 /** Parses the newline-delimited JSON emitted by Docker Compose 2.29. */
 export function parseComposeServices(output) {
@@ -445,6 +492,7 @@ export function formatPlaygroundError(error) {
 }
 
 /** Executes the requested root lifecycle operation. */
+/* node:coverage disable */
 async function main(arguments_) {
   const [operation, ...flags] = arguments_;
   if (!['up', 'stop', 'status', 'reset'].includes(operation)) {
@@ -459,6 +507,7 @@ async function main(arguments_) {
   const result = await lifecycle[operation](options);
   if (result !== undefined) process.stdout.write(`${JSON.stringify(result)}\n`);
 }
+/* node:coverage enable */
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => {

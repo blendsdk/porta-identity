@@ -40,6 +40,7 @@ see the [main documentation](../docs/).
 | [Decision Log](decisions/index.md)                            | Architecture Decision Records (ADRs)                                          |
 | [Getting Started](guides/getting-started.md)                  | Developer setup, prerequisites, first run                                     |
 | [Development Workflow](guides/development.md)                 | Coding patterns, testing, module conventions                                  |
+| [Admin Playground](guides/admin-playground.md)                | Local admin shell, MailHog, persistence, reset, and troubleshooting           |
 | [Release Operations](guides/releasing.md)                     | Lockstep npm release, Trusted Publishing cutover, and Docker verification     |
 | [SDK CLI Migration Record](guides/sdk-cli-migration.md)       | Historical rationale for adopting the shared SDK in the CLI                   |
 | [Deployment](guides/deployment.md)                            | Production deployment, Docker, environment config                             |

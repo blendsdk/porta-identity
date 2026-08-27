@@ -43,14 +43,21 @@ vi.mock('../../src/auth/id-token-verifier.js', () => ({
   }),
 }));
 
+vi.mock('open', () => ({ default: vi.fn() }));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { executeBrowserFlow } from '../../src/auth/browser-flow.js';
+import { exchangeAuthorizationCode, executeBrowserFlow } from '../../src/auth/browser-flow.js';
 import { fetchAdminMetadata } from '../../src/auth/metadata.js';
-import { parseCallbackUrl, isContainerized } from '../../src/auth/callback-server.js';
+import {
+  parseCallbackUrl,
+  isContainerized,
+  startCallbackServer,
+} from '../../src/auth/callback-server.js';
 import { question } from '../../src/prompt.js';
+import open from 'open';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -70,6 +77,12 @@ describe('browser-flow', () => {
     // Callback server helpers
     vi.mocked(isContainerized).mockReturnValue(false);
     vi.mocked(parseCallbackUrl).mockReturnValue('test-auth-code');
+    vi.mocked(startCallbackServer).mockResolvedValue({
+      port: 49152,
+      authCode: Promise.resolve('test-auth-code'),
+      close: vi.fn(),
+    });
+    vi.mocked(open).mockResolvedValue(undefined);
 
     // Manual-mode prompt returns a callback URL
     vi.mocked(question).mockResolvedValue(
@@ -167,6 +180,71 @@ describe('browser-flow', () => {
           name: 'Admin User',
         },
       });
+    });
+  });
+
+  describe('automatic browser mode', () => {
+    it('should open the authorization URL and await the loopback callback', async () => {
+      const messages: string[] = [];
+      const result = await executeBrowserFlow(
+        { server: 'https://porta.local:3443' },
+        (message) => messages.push(message),
+      );
+
+      expect(open).toHaveBeenCalledWith(expect.stringContaining('redirect_uri=http'));
+      expect(messages).toContain('Waiting for authentication...');
+      expect(result.accessToken).toBe('test-access-token');
+    });
+
+    it('should expose the same authorization URL when browser opening fails', async () => {
+      vi.mocked(open).mockRejectedValueOnce(new Error('browser unavailable'));
+      const messages: string[] = [];
+
+      await executeBrowserFlow({ server: 'https://porta.local:3443' }, (message) =>
+        messages.push(message),
+      );
+
+      expect(messages.join('\n')).toContain('Could not open browser');
+      expect(messages.join('\n')).toContain('/porta-admin/auth?');
+    });
+  });
+
+  describe('authorization-code response validation', () => {
+    const exchange = () =>
+      exchangeAuthorizationCode(
+        {
+          tokenEndpoint: 'https://porta.example.test/porta-admin/token',
+          code: 'code',
+          redirectUri: 'http://127.0.0.1/callback',
+          clientId: 'porta-cli',
+          codeVerifier: 'verifier',
+        },
+        { signal: new AbortController().signal },
+      );
+
+    it('should reject unsuccessful, malformed, and non-object token responses', async () => {
+      globalThis.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(new Response('', { status: 400 }))
+        .mockResolvedValueOnce(new Response('{', { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response('null', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        );
+
+      await expect(exchange()).rejects.toThrow('Authentication failed');
+      await expect(exchange()).rejects.toThrow('Authentication failed');
+      await expect(exchange()).rejects.toThrow('Authentication failed');
+    });
+
+    it('should reject token responses with invalid required fields', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ access_token: '', id_token: 'id', expires_in: 3600 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      await expect(exchange()).rejects.toThrow('Authentication failed');
     });
   });
 });

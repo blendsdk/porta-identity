@@ -1,15 +1,25 @@
 import assert from 'node:assert/strict';
+import { execFile as execFileCallback } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 import {
   ensureRuntimePermissions,
+  ensureTrustedCertificate,
   requireTool,
+  runPreflight,
   validatePlaygroundPort,
   verifyLoopbackPortAvailable,
   verifyPlaygroundDns,
 } from '../scripts/check-prerequisites.mjs';
+
+const execFile = promisify(execFileCallback);
+
+test('should require an explicit bounded runtime directory', async () => {
+  await assert.rejects(runPreflight(), /runtime directory is required/);
+});
 
 test('should reject invalid or privileged configured ports', () => {
   for (const value of ['abc', '0', '443', '65536', '12.5']) {
@@ -86,4 +96,26 @@ test('should create owner-only runtime directories', async () => {
   } finally {
     await rm(parent, { recursive: true, force: true });
   }
+});
+
+test('should generate and revalidate the exact trusted playground certificate', async () => {
+  const parent = await mkdtemp(resolve(tmpdir(), 'porta-admin-certificate-'));
+  const runtime = resolve(parent, 'runtime');
+  try {
+    await ensureRuntimePermissions(runtime);
+    const generated = await ensureTrustedCertificate(runtime, execFile);
+    const retained = await ensureTrustedCertificate(runtime, execFile);
+    assert.deepEqual(retained, generated);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+});
+
+test('should reject an unavailable trusted local certificate authority', async () => {
+  await assert.rejects(
+    ensureTrustedCertificate('/tmp/unused-porta-runtime', async () => {
+      throw new Error('mkcert unavailable');
+    }),
+    /local CA is unavailable or untrusted/,
+  );
 });

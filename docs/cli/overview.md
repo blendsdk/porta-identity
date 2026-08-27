@@ -71,6 +71,23 @@ porta logout
 
 Credentials are stored at `~/.porta/credentials.json` with `0600` permissions.
 
+## Interactive Administration Shell
+
+Open the terminal administration shell against an operator-owned HTTPS server:
+
+```bash
+porta admin --server https://identity.example.com
+```
+
+The shell requires interactive stdin and stdout, so it cannot be combined with `--json` or
+`--force`. It uses the CLI's browser-based OIDC Authorization Code with PKCE flow, with the manual
+authorization URL and callback flow available when a browser cannot be opened. The shell displays
+the selected server, authentication state, and verified identity. Use `Ctrl-R` to reauthenticate;
+changing to another server requires explicit credential-replacement confirmation.
+
+This is the administration shell foundation, not a complete set of administration screens. Using
+`--insecure` disables TLS certificate validation and leaves a persistent warning in the shell.
+
 ## Global Options
 
 Every standalone CLI command supports these global flags:
@@ -107,22 +124,23 @@ output.
 
 ### Standalone CLI (`@portaidentity/cli`)
 
-| Command                  | Description                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| `porta login`            | Authenticate via OIDC (browser-based)                                           |
-| `porta logout`           | Clear stored credentials                                                        |
-| `porta whoami`           | Display current identity                                                        |
-| `porta version`          | Show CLI, SDK, and server version info                                          |
-| `porta org`              | Manage organizations (CRUD, status, branding, destroy)                          |
-| `porta app`              | Manage applications, modules, roles, permissions, claims                        |
-| `porta client`           | Manage OIDC clients and secrets                                                 |
-| `porta user`             | Manage users (CRUD, status, password, roles, claims, 2FA)                       |
-| `porta keys`             | Manage ES256 signing keys                                                       |
-| `porta config`           | Manage system configuration                                                     |
-| `porta audit`            | View audit log entries                                                          |
-| `porta health`           | Check server health (via API)                                                   |
-| `porta provision`        | Declarative environment setup from YAML/JSON                                    |
-| `porta exports download` | Bounded allowlisted CSV/JSON administrative export                              |
+| Command                  | Description                                                |
+| ------------------------ | ---------------------------------------------------------- |
+| `porta login`            | Authenticate via OIDC (browser-based)                      |
+| `porta logout`           | Clear stored credentials                                   |
+| `porta whoami`           | Display current identity                                   |
+| `porta admin`            | Open the interactive verified-session administration shell |
+| `porta version`          | Show CLI, SDK, and server version info                     |
+| `porta org`              | Manage organizations (CRUD, status, branding, destroy)     |
+| `porta app`              | Manage applications, modules, roles, permissions, claims   |
+| `porta client`           | Manage OIDC clients and secrets                            |
+| `porta user`             | Manage users (CRUD, status, password, roles, claims, 2FA)  |
+| `porta keys`             | Manage ES256 signing keys                                  |
+| `porta config`           | Manage system configuration                                |
+| `porta audit`            | View audit log entries                                     |
+| `porta health`           | Check server health (via API)                              |
+| `porta provision`        | Declarative environment setup from YAML/JSON               |
+| `porta exports download` | Bounded allowlisted CSV/JSON administrative export         |
 
 ### Server CLI (Infrastructure Only)
 

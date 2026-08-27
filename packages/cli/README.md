@@ -65,6 +65,7 @@ Every command supports these flags:
 | `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser |
 | `porta logout` | Clear stored credentials                                 |
 | `porta whoami` | Display current identity (no network call)               |
+| `porta admin`  | Open the interactive administration shell foundation     |
 
 ### Organizations
 
@@ -232,6 +233,25 @@ porta login --server https://porta.example.com
 # Explicit headless mode
 porta login --server https://porta.example.com --no-browser
 ```
+
+## Interactive Administration Shell
+
+`porta admin` opens the terminal administration shell for a Porta server. This milestone shows
+the selected server, authentication state, and verified identity; administration data screens are
+not included yet.
+
+```bash
+porta admin --server https://identity.example.com
+```
+
+The command requires interactive stdin and stdout. It rejects `--json` and `--force`. Login uses
+the same OIDC Authorization Code with PKCE flow as `porta login`: the CLI opens a browser when
+available and offers the manual authorization URL/callback flow when it cannot. After verification,
+the shell displays the server-bound identity. Use `Ctrl-R` to reauthenticate; replacing credentials
+for a different server requires explicit confirmation.
+
+Use `--insecure` only for deliberate local testing. The shell displays a persistent warning because
+that flag disables TLS certificate validation.
 
 ## Declarative Provisioning
 

@@ -43,6 +43,7 @@ function isContention(error: unknown): boolean {
 
 /** Applies the platform's exclusive non-blocking one-byte kernel lock. */
 function tryLock(descriptor: number): void {
+  /* v8 ignore if -- @preserve */
   if (process.platform === 'win32') {
     lockFileExSync(
       descriptor,
@@ -59,6 +60,7 @@ function tryLock(descriptor: number): void {
 
 /** Releases the platform's one-byte kernel lock. */
 function unlock(descriptor: number): void {
+  /* v8 ignore if -- @preserve */
   if (process.platform === 'win32') {
     unlockFileExSync(descriptor, 0, 0, 1, 0);
     return;

@@ -27,6 +27,13 @@ function expired(): StoredCredentials {
 }
 
 describe('durable refresh implementation edges', () => {
+  it('should reject a non-object stored credential document', async () => {
+    readCredentials.mockResolvedValue('null');
+    const auth = createCliAuth({ credentialsPath: '/tmp/credentials.json' });
+
+    await expect(auth.getToken()).rejects.toThrow('missing required fields');
+  });
+
   it('should pass caller cancellation to the refresh request', async () => {
     readCredentials.mockResolvedValue(JSON.stringify(expired()));
     const controller = new AbortController();

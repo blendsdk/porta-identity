@@ -3,7 +3,7 @@
 import { createApplication } from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 import { runAdminApplication, type AdminSignalSource } from '../../src/admin/application.js';
-import type { AdminConnectionState } from '../../src/admin/state.js';
+import { adminStateServer, type AdminConnectionState } from '../../src/admin/state.js';
 
 const server = new URL('https://porta.example.test');
 
@@ -24,6 +24,11 @@ async function settle(): Promise<void> {
 }
 
 describe('admin application implementation', () => {
+  it('should return a server only for states that carry one', () => {
+    expect(adminStateServer({ kind: 'selecting-server' })).toBeUndefined();
+    expect(adminStateServer({ kind: 'unauthenticated', server })).toBe(server);
+  });
+
   it('should reflow across normal compact and resize-only geometry', async () => {
     await runAdminApplication({
       server,

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-27 19:29
-> **Progress**: 47/55 tasks (85%)
+> **Last Updated**: 2026-08-27 19:45
+> **Progress**: 54/55 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -198,7 +198,7 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 ## Phase 4: Documentation, Package Proof, and Final Evidence
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `0c10b11e44afa85ea45ca4c08838001a372827cd`
 > **Scope mode**: strict
 > **Expected modification set**: CLI package/public docs; CLI/SDK coverage configuration and package scripts; `techdocs/`; doc boundary test; package/integrated-login smoke fixtures; execution evidence
 > **Lenses**: security · api-surface
@@ -207,18 +207,20 @@ Implement secure OIDC/credential foundations first, then the embedded JSVision s
 
 **Reference**: [Packaging and Documentation](03-04-packaging-and-documentation.md) · ST-40 · AR-2, AR-18, AR-24–AR-26
 
-- [ ] 4.1.1 [spec-author] Write public-versus-technical documentation specification ST-40 — `repo-tests/monorepo/admin-ui-docs.spec.test.mjs`
-- [ ] 4.1.2 Run ST-40 and record the expected red result — Node structure selector
-- [ ] 4.1.3 Update package/public CLI usage for generic `porta admin` behavior with no reserved CI namespace — `packages/cli/README.md`, `docs/cli/overview.md`
-- [ ] 4.1.4 Add exact maintainer playground/MailHog/persistence/reset/troubleshooting guide and navigation link — `techdocs/guides/admin-playground.md`, applicable `techdocs` index
-- [ ] 4.1.5 Run ST-40 to green and build public VitePress docs; correct docs rather than weakening the scope oracle — Node selector and `yarn docs:build`
+- [x] 4.1.1 [spec-author] Write public-versus-technical documentation specification ST-40 — `repo-tests/monorepo/admin-ui-docs.spec.test.mjs` ✅ (completed: 2026-08-27 19:33)
+- [x] 4.1.2 Run ST-40 and record the expected red result — Node structure selector ✅ (completed: 2026-08-27 19:33)
+- [x] 4.1.3 Update package/public CLI usage for generic `porta admin` behavior with no reserved CI namespace — `packages/cli/README.md`, `docs/cli/overview.md` ✅ (completed: 2026-08-27 19:35)
+- [x] 4.1.4 Add exact maintainer playground/MailHog/persistence/reset/troubleshooting guide and navigation link — `techdocs/guides/admin-playground.md`, applicable `techdocs` index ✅ (completed: 2026-08-27 19:35)
+- [x] 4.1.5 Run ST-40 to green and build public VitePress docs; correct docs rather than weakening the scope oracle — Node selector and `yarn docs:build` ✅ (completed: 2026-08-27 19:35)
+
+**Red evidence (Node 24.20.0, 2026-08-27 19:33):** ST-40 ran two tests and both failed on the intended missing documentation capabilities: public CLI docs do not yet list `porta admin` with a generic HTTPS server example, and technical docs do not yet contain and link one focused playground/MailHog/reset/non-production guide.
 
 ### Step 4.2: Produce final package and security evidence
 
 **Reference**: [Packaging and Documentation §Dependency and Package Contract](03-04-packaging-and-documentation.md#dependency-and-package-contract), [Testing Strategy §Integration and End-to-End Evidence](07-testing-strategy.md#integration-and-end-to-end-evidence) · AR-17, AR-25
 
-- [ ] 4.2.1 Add package-local CLI/SDK coverage scripts and exact per-glob thresholds; run CLI/SDK and built-in Node playground coverage and require the 90/80/60 line gates to pass — package manifests and coverage configurations
-- [ ] 4.2.2 Run `yarn deps:check`, `yarn audit --groups dependencies --level high`, lockfile/integrity review, focused native-lock adapter tests, and the packed CLI smoke through Porta's existing Node 24 LTS development workflow — dependency and package evidence
+- [x] 4.2.1 Add package-local CLI/SDK coverage scripts and exact per-glob thresholds; run CLI/SDK and built-in Node playground coverage and require the 90/80/60 line gates to pass — package manifests and coverage configurations ✅ (completed: 2026-08-27 19:42)
+- [x] 4.2.2 Run `yarn deps:check`, `yarn audit --groups dependencies --level high`, lockfile/integrity review, focused native-lock adapter tests, and the packed CLI smoke through Porta's existing Node 24 LTS development workflow — dependency and package evidence ✅ (completed: 2026-08-27 19:45)
 - [ ] 4.2.3 Pack/install CLI and SDK into isolated consumers; run ST-41, packed PTY smoke, affected CLI/SDK package verification, repository structure tests, and clean-revision `yarn assurance:compat --select protocol`; require scoped gates to pass, review the compatibility outcome under its registered taxonomy, and confirm no generated/sensitive/out-of-scope files
 
 **Deliverables**:

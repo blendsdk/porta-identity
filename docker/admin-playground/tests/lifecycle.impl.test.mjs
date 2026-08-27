@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import test from 'node:test';
 import {
+  classifyComposeStatus,
+  composeArguments,
   createAdminPlaygroundLifecycle,
   formatPlaygroundError,
+  generateSecrets,
   ownedPublishedPorts,
   parseComposeServices,
+  productionDependencies,
   validateAdminMetadata,
+  volumeListContainsExactName,
+  withMutationLock,
 } from '../scripts/admin-env.mjs';
 import { requireTool, verifyLoopbackPortAvailable } from '../scripts/check-prerequisites.mjs';
 
@@ -16,6 +25,126 @@ test('should classify a missing required tool without exposing process diagnosti
     }),
     (error) => error.message === 'Required tool is unavailable: missing-tool.',
   );
+});
+
+test('should generate complete non-empty playground secrets without exposing their values', () => {
+  const entries = Object.fromEntries(
+    generateSecrets()
+      .trim()
+      .split('\n')
+      .map((line) => line.split('=', 2)),
+  );
+  assert.match(entries.DATABASE_URL, /^postgresql:\/\/porta:[0-9a-f]{48}@postgres:5432\/porta$/);
+  assert.equal(entries.POSTGRES_PASSWORD.length, 48);
+  assert.ok(entries.COOKIE_KEYS.length >= 43);
+  assert.equal(entries.TWO_FACTOR_ENCRYPTION_KEY.length, 64);
+  assert.equal(entries.SIGNING_KEY_ENCRYPTION_KEY.length, 64);
+});
+
+test('should build fixed Compose commands and classify exact Docker volume names', () => {
+  assert.deepEqual(composeArguments(['ps']), [
+    'compose',
+    '--project-name',
+    'porta-admin-playground',
+    '-f',
+    resolve(import.meta.dirname, '../compose.yml'),
+    'ps',
+  ]);
+  assert.equal(volumeListContainsExactName('owned\nunrelated\n', 'owned'), true);
+  assert.equal(volumeListContainsExactName('owned-extra\n', 'owned'), false);
+});
+
+test('should classify missing stopped partial and healthy Compose states', () => {
+  const environment = { PORTA_ADMIN_HTTPS_PORT: '4550', PORTA_ADMIN_MAILHOG_PORT: '9026' };
+  assert.equal(classifyComposeStatus([], environment).state, 'missing');
+  assert.equal(classifyComposeStatus([{ State: 'exited' }], environment).state, 'stopped');
+  assert.equal(classifyComposeStatus([{ State: 'running', Health: 'starting' }], environment).state, 'partial');
+  const healthy = Array.from({ length: 5 }, (_value, index) => ({
+    State: 'running',
+    Health: index < 4 ? 'healthy' : '',
+  }));
+  assert.deepEqual(classifyComposeStatus(healthy, environment), {
+    state: 'healthy',
+    endpoints: [
+      'https://porta-admin-playground.ci.portaidentity.com:4550',
+      'http://127.0.0.1:9026',
+    ],
+  });
+});
+
+test('should wire production lifecycle policy through injected system adapters', async () => {
+  const events = [];
+  const services = [
+    {
+      Service: 'nginx',
+      State: 'running',
+      Publishers: [{ URL: '127.0.0.1', PublishedPort: 4550, TargetPort: 443 }],
+    },
+  ];
+  const dependencies = productionDependencies({
+    compose: async (arguments_) => events.push(`compose:${arguments_.join(' ')}`),
+    composeInteractive: async (arguments_) => events.push(`interactive:${arguments_.join(' ')}`),
+    execFile: async (command, arguments_) => {
+      events.push(`exec:${command}:${arguments_.join(' ')}`);
+      return {
+        stdout: arguments_.some((value) => String(value).includes('/api/admin/metadata'))
+          ? JSON.stringify({
+              issuer:
+                'https://porta-admin-playground.ci.portaidentity.com:4550/porta-admin',
+              orgSlug: 'porta-admin',
+              clientId: 'porta-cli',
+            })
+          : '',
+      };
+    },
+    runPreflight: async (options) => events.push(`preflight:${options.allowedOccupiedPorts}`),
+    inspectComposeServices: async () => services,
+    isInitialized: async () => true,
+    dockerVolumeExists: async (name) => name === 'present',
+    rotateSecrets: async () => events.push('rotate'),
+    inspectStatus: async () => ({ state: 'healthy', endpoints: [] }),
+    environment: { PORTA_ADMIN_HTTPS_PORT: '4550', PORTA_ADMIN_MAILHOG_PORT: '9026' },
+  });
+
+  await dependencies.runPreflight();
+  await dependencies.startServices();
+  await dependencies.runMigrations();
+  await dependencies.initialize({
+    email: 'admin@example.test',
+    givenName: 'Admin',
+    familyName: 'User',
+  });
+  assert.deepEqual(await dependencies.verifyHealth(), { porta: 'healthy', mailhog: 'healthy' });
+  await dependencies.stopServices();
+  await dependencies.removeVolume('absent');
+  await dependencies.removeVolume('present');
+  await dependencies.rotateSecrets();
+  assert.deepEqual(await dependencies.inspectStatus(), { state: 'healthy', endpoints: [] });
+  assert.equal(await dependencies.resolveVolumeName('postgres_data'), 'porta-admin-playground_postgres_data');
+  assert.equal(dependencies.canBootstrapInteractively(), false);
+  assert.ok(events.some((event) => event.includes('preflight:4550')));
+  assert.ok(events.some((event) => event.includes('compose:up -d porta nginx')));
+  assert.ok(events.some((event) => event.includes('exec:docker:volume rm present')));
+});
+
+test('should acquire and release the direct native lifecycle lock around one mutation', async () => {
+  const parent = await mkdtemp(resolve(tmpdir(), 'porta-admin-lock-'));
+  const runtimeDirectory = resolve(parent, 'runtime');
+  const lockPath = resolve(runtimeDirectory, 'lifecycle.lock');
+  const events = [];
+  try {
+    await withMutationLock(
+      async () => {
+        events.push('start');
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 5));
+        events.push('end');
+      },
+      { runtimeDirectory, lockPath, timeoutMs: 1_000 },
+    );
+    assert.deepEqual(events, ['start', 'end']);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
 });
 
 test('should replace unexpected process diagnostics with one public failure', () => {

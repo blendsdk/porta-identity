@@ -154,6 +154,7 @@ export async function runPreflight(options = {}) {
   await requireTool('docker', runner);
   await requireTool('docker', runner, ['compose', 'version'], 'docker compose');
   await requireTool('mkcert', runner);
+  await requireTool('curl', runner);
   await verifyPlaygroundDns(options);
   await ensureRuntimePermissions(runtimeDirectory);
   const allowedOccupiedPorts = new Set(options.allowedOccupiedPorts ?? []);
