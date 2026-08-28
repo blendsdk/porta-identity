@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:09
-> **Progress**: 16/31 tasks (52%)
+> **Last Updated**: 2026-08-28 13:15
+> **Progress**: 17/31 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -79,7 +79,7 @@ mapping, and green Phase 1 tests.
 ## Phase 2: Dialogs, Menus, and Landing Presentation
 
 > **Phase baseline tree**: `3ef4da31558b92a275804b0250f08ecb607af84b`
-> **Expected modification set**: `packages/cli/src/admin/{application,index,organization-dialogs,presentation,state}.ts`, `packages/cli/tests/admin/{application,organization-dialogs}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, this execution plan, the ambiguity register, and the execution review
+> **Expected modification set**: `packages/cli/src/admin/{application,index,organization-dialogs,presentation,state}.ts`, `packages/cli/tests/admin/{application,organization-dialogs}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, the CLI test-inventory count in `repo-tests/monorepo/server-package.spec.test.mjs`, this execution plan, the ambiguity register, and the execution review
 > **Scope mode**: strict — existing JSVision application only; no new UI framework, dependency, workspace, workflow, or runtime matrix
 
 ### Step 2.1: Specification Tests
@@ -100,7 +100,7 @@ mapping, and green Phase 1 tests.
 
 ### Step 2.3: Implementation Tests and Verification
 
-- [ ] 2.3.1 Add dialog signal/focus/list/button and presentation geometry diagnostics — `packages/cli/tests/admin/organization-dialogs.impl.test.ts`, `packages/cli/tests/admin/application.impl.test.ts`
+- [x] 2.3.1 Add dialog signal/focus/list/button and presentation geometry diagnostics — `packages/cli/tests/admin/organization-dialogs.impl.test.ts`, `packages/cli/tests/admin/application.impl.test.ts` ✅ (completed: 2026-08-28 13:15; 45 files and 530 CLI tests plus 96 structure tests passed)
 - [ ] 2.3.2 Run the complete CLI package verification for the finished Phase 2 UI
 
 **Deliverables:** keyboard-complete dialogs and menus, responsive organization landing view, and

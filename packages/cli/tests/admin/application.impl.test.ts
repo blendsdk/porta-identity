@@ -6,6 +6,20 @@ import { runAdminApplication, type AdminSignalSource } from '../../src/admin/app
 import { adminStateServer, type AdminConnectionState } from '../../src/admin/state.js';
 
 const server = new URL('https://porta.example.test');
+const noOrganizationCapabilities = {
+  canReadOrganizations: false,
+  canCreateOrganizations: false,
+};
+
+/** Creates one authenticated implementation-test state. */
+function authenticatedState(): AdminConnectionState {
+  return {
+    kind: 'authenticated',
+    server,
+    identity: { sub: 'subject-1', email: 'admin@example.test' },
+    capabilities: noOrganizationCapabilities,
+  };
+}
 
 /** Reads plain cell content from a real JSVision application. */
 function frameText(application: ReturnType<typeof createApplication>): string {
@@ -35,9 +49,13 @@ describe('admin application implementation', () => {
       insecure: false,
       viewport: { width: 80, height: 24 },
       initialState: {
-        kind: 'authenticated',
-        server,
-        identity: { sub: 'subject-1', email: 'admin@example.test' },
+        ...authenticatedState(),
+        organization: {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Selected Organization',
+          slug: 'selected-organization',
+          status: 'active',
+        },
       },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
@@ -56,7 +74,7 @@ describe('admin application implementation', () => {
     });
   });
 
-  it('should route keyboard shortcuts and preserve identity when reauthentication is cancelled', async () => {
+  it('should route keyboard shortcuts and preserve authenticated state when reauthentication is cancelled', async () => {
     let operationSignal: AbortSignal | undefined;
     const reauthenticate = vi.fn(
       (signal: AbortSignal) =>
@@ -69,11 +87,7 @@ describe('admin application implementation', () => {
       server,
       insecure: false,
       viewport: { width: 80, height: 24 },
-      initialState: {
-        kind: 'authenticated',
-        server,
-        identity: { sub: 'subject-1', email: 'admin@example.test' },
-      },
+      initialState: authenticatedState(),
       session: { reauthenticate },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
@@ -98,25 +112,21 @@ describe('admin application implementation', () => {
         });
         await settle();
         expect(operationSignal?.aborted).toBe(true);
-        expect(frameText(application)).toContain('admin@example.test');
+        expect(frameText(application)).not.toContain('admin@example.test');
         expect(frameText(application)).toContain('Authenticated');
         return 0;
       },
     });
   });
 
-  it('should preserve identity when the session reports a dialog-level reauthentication cancellation', async () => {
+  it('should preserve authenticated state after dialog-level reauthentication cancellation', async () => {
     const reauthenticate = vi.fn().mockResolvedValue(undefined);
 
     await runAdminApplication({
       server,
       insecure: false,
       viewport: { width: 80, height: 24 },
-      initialState: {
-        kind: 'authenticated',
-        server,
-        identity: { sub: 'subject-1', email: 'admin@example.test' },
-      },
+      initialState: authenticatedState(),
       session: { reauthenticate },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
@@ -124,7 +134,7 @@ describe('admin application implementation', () => {
         await settle();
 
         expect(reauthenticate).toHaveBeenCalledOnce();
-        expect(frameText(application)).toContain('admin@example.test');
+        expect(frameText(application)).not.toContain('admin@example.test');
         expect(frameText(application)).toContain('Authenticated');
         return 0;
       },
@@ -150,6 +160,7 @@ describe('admin application implementation', () => {
       kind: 'authenticated',
       server,
       identity: { sub: 'subject-1', email: 'admin@example.test' },
+      capabilities: { canReadOrganizations: true, canCreateOrganizations: true },
     } satisfies AdminConnectionState);
 
     await runAdminApplication({
@@ -161,12 +172,18 @@ describe('admin application implementation', () => {
       applicationRunner: async (application) => {
         expect(application.loop.isCommandEnabled('authenticate')).toBe(true);
         expect(application.loop.isCommandEnabled('reauthenticate')).toBe(false);
+        expect(application.loop.isCommandEnabled('who-am-i')).toBe(false);
+        expect(application.loop.isCommandEnabled('create-organization')).toBe(false);
+        expect(application.loop.isCommandEnabled('switch-organization')).toBe(false);
 
         application.loop.emitCommand('authenticate');
         await settle();
 
         expect(application.loop.isCommandEnabled('authenticate')).toBe(false);
         expect(application.loop.isCommandEnabled('reauthenticate')).toBe(true);
+        expect(application.loop.isCommandEnabled('who-am-i')).toBe(true);
+        expect(application.loop.isCommandEnabled('create-organization')).toBe(true);
+        expect(application.loop.isCommandEnabled('switch-organization')).toBe(true);
         return 0;
       },
     });
@@ -214,6 +231,7 @@ describe('admin application implementation', () => {
         kind: 'authenticated',
         server,
         identity: { sub: 'subject-1', email: 'admin@example.test', name: hostileName },
+        capabilities: noOrganizationCapabilities,
       },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {

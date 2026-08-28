@@ -1,7 +1,7 @@
 /** Lifecycle and command routing for one embedded administration application. */
 
 import { createHost, cursor, resolveCapabilities } from '@jsvision/core';
-import type { CapabilityProfile } from '@jsvision/core';
+import type { CapabilityProfile, Keymap } from '@jsvision/core';
 import { Commands, confirm, createApplication, createKeymap, inputBox, signal } from '@jsvision/ui';
 import type {
   Application,
@@ -283,6 +283,19 @@ export async function runAdminApplication(
     options.viewport,
     caps.unicode.utf8,
   );
+  let currentController: AbortController | undefined;
+  const standardKeymap = createKeymap({
+    'ctrl+t': ADMIN_COMMANDS.retry,
+    'ctrl+r': ADMIN_COMMANDS.reauthenticate,
+    'alt+x': Commands.quit,
+  });
+  const applicationKeymap: Keymap = {
+    // Escape remains a raw dialog key unless an application operation currently owns cancellation.
+    lookup: (event) =>
+      event.key === 'escape' && currentController
+        ? ADMIN_COMMANDS.cancel
+        : standardKeymap.lookup(event),
+  };
   const factory = options.applicationFactory ?? createApplication;
   const application = factory({
     content: presentation.content,
@@ -291,19 +304,15 @@ export async function runAdminApplication(
     viewport: options.viewport,
     systemClipboard: false,
     caps,
-    keymap: createKeymap({
-      'ctrl+t': ADMIN_COMMANDS.retry,
-      'ctrl+r': ADMIN_COMMANDS.reauthenticate,
-      'alt+x': Commands.quit,
-    }),
+    keymap: applicationKeymap,
   });
   const dialogHost = createAdminDialogHost(application, presentation);
   const interaction = createAdminInteraction(application, dialogHost);
 
   let disposed = false;
   let finalized = false;
-  let currentController: AbortController | undefined;
   let currentOperationFallback: AdminConnectionState | undefined;
+  let identityDialogOpen = false;
   let session = options.session;
   let signalExitCode: AdminExitCode | undefined;
 
@@ -379,14 +388,20 @@ export async function runAdminApplication(
     ),
     application.onCommand(ADMIN_COMMANDS.whoAmI, () => {
       const state = presentation.getState();
-      if (state.kind !== 'authenticated' || currentController || disposed) return;
-      void showWhoAmIDialog(
-        dialogHost,
-        state,
-        options.showInsecureWarning ?? options.insecure,
-      ).catch(() => undefined);
+      if (state.kind !== 'authenticated' || currentController || identityDialogOpen || disposed)
+        return;
+      identityDialogOpen = true;
+      void showWhoAmIDialog(dialogHost, state, options.showInsecureWarning ?? options.insecure)
+        .catch(() => undefined)
+        .finally(() => {
+          identityDialogOpen = false;
+        });
     }),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
+      if (identityDialogOpen) {
+        application.loop.endModal(Commands.cancel);
+        return;
+      }
       const fallback = currentOperationFallback;
       currentController?.abort();
       currentController = undefined;

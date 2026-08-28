@@ -135,15 +135,6 @@ class AdminLandingView extends View {
       event.handled = true;
       return;
     }
-    if (
-      event.event.type === 'key' &&
-      event.event.key === 'escape' &&
-      (this.readState().kind === 'authenticating' || this.readState().kind === 'verifying')
-    ) {
-      event.emit?.(ADMIN_COMMANDS.cancel);
-      event.handled = true;
-      return;
-    }
     super.onEvent(event);
   }
 
