@@ -70,6 +70,8 @@ control terminal affordances but never replace server authorization. Organizatio
 cross a narrow service boundary that retains only validated `id`, `name`, `slug`, and `status`
 fields and maps remote failures to fixed local categories. The selected organization remains
 in-memory application context and does not change the authenticated server or credential profile.
+The application owns modal lifecycle and command routing, while focused JSVision dialogs render
+trusted identity details and bounded organization choice/create inputs using the default theme.
 
 ### Domain Modules
 
