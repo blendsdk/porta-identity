@@ -4,7 +4,7 @@
 
 import { defaultTheme } from '@jsvision/core';
 import { createApplication } from '@jsvision/ui';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runAdminApplication } from '../../src/admin/application.js';
 import type { AdminConnectionState } from '../../src/admin/state.js';
@@ -15,6 +15,28 @@ const verifiedIdentity = {
   email: 'admin@example.test',
   name: 'Verified Admin',
 };
+const noOrganizationCapabilities = {
+  canReadOrganizations: false,
+  canCreateOrganizations: false,
+};
+const terminalCapabilities = vi.hoisted(() => ({ utf8: true }));
+
+vi.mock('@jsvision/core', async (importOriginal) => {
+  const original = await importOriginal();
+  return {
+    ...original,
+    resolveCapabilities: (...args: []) => {
+      const resolution = original.resolveCapabilities(...args);
+      return {
+        ...resolution,
+        profile: {
+          ...resolution.profile,
+          unicode: { ...resolution.profile.unicode, utf8: terminalCapabilities.utf8 },
+        },
+      };
+    },
+  };
+});
 
 /** Reads the visible text from the real JSVision frame buffer. */
 function frameText(application: ReturnType<typeof createApplication>): string {
@@ -32,10 +54,44 @@ async function settleApplication(): Promise<void> {
   await Promise.resolve();
 }
 
-/** Creates an authenticated state using only live-verified display claims. */
-function authenticatedState(identity = verifiedIdentity): AdminConnectionState {
-  return { kind: 'authenticated', server, identity };
+/** Sends one decoded keyboard event through the real JSVision loop. */
+function press(
+  application: ReturnType<typeof createApplication>,
+  key: string,
+  modifiers: { alt?: boolean } = {},
+): void {
+  application.loop.dispatch({
+    type: 'key',
+    key,
+    ctrl: false,
+    alt: modifiers.alt ?? false,
+    shift: false,
+    ...(key.length === 1 ? { codepoint: key.codePointAt(0) } : {}),
+  });
 }
+
+/** Creates an authenticated state using only live-verified display claims. */
+function authenticatedState(
+  identity = verifiedIdentity,
+  organization?: {
+    readonly id: string;
+    readonly name: string;
+    readonly slug: string;
+    readonly status: 'active' | 'suspended' | 'archived';
+  },
+): AdminConnectionState {
+  return {
+    kind: 'authenticated',
+    server,
+    identity,
+    capabilities: noOrganizationCapabilities,
+    ...(organization ? { organization } : {}),
+  };
+}
+
+beforeEach(() => {
+  terminalCapabilities.utf8 = true;
+});
 
 describe('admin application shell', () => {
   // The established shell keeps its theme, normalized server, state, and shortcut evidence.
@@ -60,8 +116,39 @@ describe('admin application shell', () => {
     });
   });
 
-  // The pre-navigation shell keeps its replaceable menu and summary assertions isolated.
-  it('should render the pre-navigation menus and identity summary at 80x24', async () => {
+  // Authenticated navigation presents organization work without exposing identity on the landing area.
+  it('should render UTF-8 navigation and an unselected organization landing at 80x24', async () => {
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: authenticatedState(),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        const landing = frameText(application);
+
+        expect(landing).toContain('☰ Menu');
+        expect(landing).toContain('Organizations');
+        expect(landing).toContain('Choose or create an organization.');
+        expect(landing).not.toContain('Verified Admin');
+        expect(landing).not.toContain('admin@example.test');
+        expect(landing).not.toMatch(/Applications|Clients|Users|Signing Keys|Dashboard|Metrics/);
+
+        press(application, 'm', { alt: true });
+        await settleApplication();
+        const menu = frameText(application);
+        expect(menu).toMatch(/Who am I(?:…|\.\.\.)/);
+        expect(menu).toContain('Reauthenticate');
+        expect(menu).toContain('Quit');
+        return 0;
+      },
+    });
+  });
+
+  // Terminals without usable UTF-8 receive the plain ASCII top-level menu label.
+  it('should render an ASCII Menu label when UTF-8 is unavailable', async () => {
+    terminalCapabilities.utf8 = false;
+
     await runAdminApplication({
       server,
       insecure: false,
@@ -71,15 +158,94 @@ describe('admin application shell', () => {
       applicationRunner: async (application) => {
         const frame = frameText(application);
 
-        expect(frame).toContain('Application');
-        expect(frame).toContain('Quit');
-        expect(frame).toContain('Session');
-        expect(frame).toContain('Reauthenticate');
-        expect(frame).toContain('Verified Admin');
-        expect(frame).toContain('admin@example.test');
-        expect(frame).not.toMatch(
-          /Organizations|Applications|Clients|Users|Signing Keys|Audit Log|Dashboard|Metrics/,
-        );
+        expect(frame).toContain('Menu');
+        expect(frame).not.toContain('☰');
+        expect(frame).toContain('Organizations');
+        return 0;
+      },
+    });
+  });
+
+  // Capability-gated organization actions remain discoverable and explain why they cannot run.
+  it('should show fixed disabled reasons in the Organizations menu', async () => {
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: authenticatedState(),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        press(application, 'o', { alt: true });
+        await settleApplication();
+        const frame = frameText(application);
+
+        expect(frame).toMatch(/Create organization(?:…|\.\.\.) \(requires organization create\)/);
+        expect(frame).toMatch(/Switch organization(?:…|\.\.\.) \(requires organization read\)/);
+        return 0;
+      },
+    });
+  });
+
+  it.each([
+    ['enter', false],
+    ['escape', true],
+  ])('should route Who am I and restore focus after %s', async (closingKey, insecure) => {
+    // Real menu routing opens trusted identity details, applies the TLS warning condition, and restores prior focus.
+    await runAdminApplication({
+      server,
+      insecure,
+      viewport: { width: 80, height: 24 },
+      initialState: authenticatedState(),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        const previousFocus = application.loop.getFocused();
+        press(application, 'm', { alt: true });
+        press(application, 'enter');
+        await settleApplication();
+        const modal = frameText(application);
+
+        expect(modal).toContain('https://porta.example.test');
+        expect(modal).toContain('Authenticated');
+        expect(modal).toContain('Verified Admin');
+        expect(modal).toContain('admin@example.test');
+        expect(modal.toLowerCase().includes('insecure tls')).toBe(insecure);
+
+        press(application, closingKey);
+        await settleApplication();
+        expect(application.loop.getFocused()).toBe(previousFocus);
+        expect(frameText(application)).not.toContain('admin@example.test');
+        return 0;
+      },
+    });
+  });
+
+  it.each([
+    [80, 24],
+    [48, 12],
+  ])('should render only selected organization context at %ix%i', async (width, height) => {
+    // A selected organization landing shows bounded tenant context and no identity or future modules.
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width, height },
+      initialState: authenticatedState(verifiedIdentity, {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Selected Organization',
+        slug: 'selected-organization',
+        status: 'suspended',
+      }),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        const frame = frameText(application);
+
+        expect(frame).toContain('Selected Organization');
+        expect(frame).toContain('selected-organization');
+        expect(frame).toContain('suspended');
+        expect(frame).toContain('porta.example.test');
+        expect(frame).not.toContain('Verified Admin');
+        expect(frame).not.toContain('admin@example.test');
+        expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Users|Signing Keys/);
+        expect(frame.length).toBeLessThanOrEqual(width * height + height - 1);
         return 0;
       },
     });
@@ -94,6 +260,8 @@ describe('admin application shell', () => {
       initialState: authenticatedState(),
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
+        press(application, 'm', { alt: true });
+        await settleApplication();
         const frame = frameText(application);
         const plainAscii = frame.replace(/[^\x20-\x7e\n]/g, '');
 
