@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:29
-> **Progress**: 5/31 tasks (16%)
+> **Last Updated**: 2026-08-28 12:30
+> **Progress**: 6/31 tasks (19%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -62,7 +62,7 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 
 - [x] 1.2.1 Add documented capability/context/result types and the order-preserving validation/error wrapper — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/organization-service.ts`, `packages/cli/vitest.config.ts` ✅ (completed: 2026-08-28 12:25)
 - [x] 1.2.2 Carry ephemeral capabilities through live UserInfo verification/login without changing persisted credentials — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/auth/login-coordinator.ts` ✅ (completed: 2026-08-28 12:29; mechanical target correction: the verified-session type is owned by `login-coordinator.ts`)
-- [ ] 1.2.3 Run the Phase 1 capability, service, and reconciliation specifications and make the implementation green without changing expectations
+- [x] 1.2.3 Run the Phase 1 capability, service, and reconciliation specifications and make the implementation green without changing expectations ✅ (completed: 2026-08-28 12:30; 47/47 focused specifications green)
 
 ### Step 1.3: Implementation Tests and Verification
 
