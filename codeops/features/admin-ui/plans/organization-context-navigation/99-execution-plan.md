@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:16
-> **Progress**: 1/31 tasks (3%)
+> **Last Updated**: 2026-08-28 12:20
+> **Progress**: 2/31 tasks (6%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -55,7 +55,7 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 **Reference**: [03-01](03-01-organization-state-and-service.md) · ST-01–ST-10 and service portions of ST-28–ST-30 · AR-1–AR-3, AR-6–AR-8
 
 - [x] 1.1.1 [spec-author] Add capability/session specification cases ST-01–ST-05 — `packages/cli/tests/admin/session.spec.test.ts` ✅ (completed: 2026-08-28 12:16)
-- [ ] 1.1.2 [spec-author] Add organization service cases ST-06–ST-10 plus sanitized reconciliation outcomes from ST-28–ST-30 — `packages/cli/tests/admin/organization-service.spec.test.ts`
+- [x] 1.1.2 [spec-author] Add organization service cases ST-06–ST-10 plus sanitized reconciliation outcomes from ST-28–ST-30 — `packages/cli/tests/admin/organization-service.spec.test.ts` ✅ (completed: 2026-08-28 12:20)
 - [ ] 1.1.3 Run the two focused specification suites and record the expected red result before production changes
 
 ### Step 1.2: Implementation and Green Phase
