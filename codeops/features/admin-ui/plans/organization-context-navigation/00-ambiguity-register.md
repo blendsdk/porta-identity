@@ -1,7 +1,7 @@
 ## Ambiguity Register: Organization Context and Navigation Plan
 
-> **Status**: ✅ GATE PASSED — all 15 items resolved
-> **Last Updated**: 2026-08-28 13:29
+> **Status**: ✅ GATE PASSED — all 16 items resolved
+> **Last Updated**: 2026-08-28 13:39
 
 |   # | Category                     | Ambiguity / Gap                                                                                                                                     | Options Presented                                                                                                                                                                                | User Decision                                                     | Status      |
 | --: | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------- |
@@ -20,6 +20,7 @@
 |  13 | Testing (runtime)            | How should retained authentication tests prove identity replacement after identity moves off the landing view?                                      | A: inspect identity through the real Who am I dialog / B: retain identity text on the landing view                                                                                               | AI selected A under delegated auto-design authority               | ✅ Resolved |
 |  14 | Internal interface (runtime) | Where should direct application tests and prepared production sessions supply organization operations?                                              | A: add optional `organizations` to the existing `AdminApplicationSession` / B: add a separate top-level application option and dialog-choice test seams                                          | AI selected A under delegated auto-design authority               | ✅ Resolved |
 |  15 | Test structure (runtime)     | Where should the large Phase 3 organization-workflow specification block live when adding it to the existing file would make that file 1,060 lines? | A: one focused `application.organization.spec.test.ts` file / B: retain the oversized mixed file                                                                                                 | AI selected A under delegated auto-design authority               | ✅ Resolved |
+|  16 | Source structure (runtime)   | How should the application coordinator remain below the source-file limit after adding the approved workflows?                                      | A: extract only the pre-existing native terminal host adapter to `application-runtime.ts` / B: introduce an organization-workflow manager                                                        | AI selected A under delegated auto-design authority               | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -108,3 +109,16 @@ duplicates a few test helpers, but that is smaller than introducing shared test 
 Confidence: High. Hardening: one concern file is the minimum structural correction; no abstraction
 or production change is added. Policy version: 1. Root invocation ID:
 `ad-20260828-admin-ui-rd02`. Reopen trigger: the focused file itself exceeds the project limit.
+
+**AR-16 (runtime):** Authority: AI — delegated by `--auto-design`. Eligibility: internal source-file
+organization with no behavioral effect. Objective: retain one readable application coordinator
+without adding a workflow layer. Decision: extract only the pre-existing native JSVision host
+adapter into `application-runtime.ts`; organization orchestration remains in `application.ts`.
+Evidence: the coordinator reached 757 lines, while the native adapter is an independent existing
+terminal-I/O concern. Rejected alternative: an organization-workflow manager adds an abstraction to
+new behavior that is still small enough to remain local. Strongest counterargument: one additional
+module adds an import, but it cleanly removes terminal I/O from state coordination. Confidence:
+High. Hardening: this is a mechanical move of existing code and introduces no new behavior,
+dependency, or framework. Policy version: 1. Root invocation ID:
+`ad-20260828-admin-ui-rd02`. Reopen trigger: application orchestration again exceeds the project
+limit.

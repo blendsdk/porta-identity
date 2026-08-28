@@ -45,6 +45,15 @@ const FAILURE_LABELS = {
   'storage-failure': 'Credentials could not be stored.',
 } as const;
 
+/** Fixed public descriptions for organization-operation failures. */
+const ORGANIZATION_FAILURE_LABELS = {
+  validation: 'Validation failed',
+  unauthorized: 'Not authorized',
+  conflict: 'Conflict',
+  unavailable: 'Service unavailable',
+  'invalid-response': 'Invalid server response',
+} as const;
+
 /** Menu bar that keeps Alt-M stable while displaying the literal hamburger label. */
 class AdminMenuBar extends MenuBar {
   /** Opens the global menu on Alt-M and delegates every other event to JSVision. */
@@ -197,6 +206,8 @@ class AdminLandingView extends View {
     maximumWidth: number,
   ): void {
     if (state.kind !== 'authenticated') return;
+    if (state.organizationFailure)
+      lines.push(ORGANIZATION_FAILURE_LABELS[state.organizationFailure]);
     if (!state.organization) {
       lines.push('Choose or create an organization.');
       return;

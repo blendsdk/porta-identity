@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:31
-> **Progress**: 20/31 tasks (65%)
+> **Last Updated**: 2026-08-28 13:43
+> **Progress**: 21/31 tasks (68%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -113,7 +113,7 @@ green Phase 2 tests.
 ## Phase 3: Application Workflows and Production Wiring
 
 > **Phase baseline tree**: `e2f7b5a0364f9b42292003cbe43078ee00584659`
-> **Expected modification set**: `packages/cli/src/admin/{application,session-service}.ts`, `packages/cli/src/commands/admin.ts`, `packages/cli/tests/admin/{application,application.organization,application.pty,command,session,session-wiring}.{spec,impl}.test.ts`, the CLI test-inventory count in `repo-tests/monorepo/server-package.spec.test.mjs`, this execution plan, the ambiguity register, and the execution review
+> **Expected modification set**: `packages/cli/src/admin/{application,application-runtime,presentation,session-service}.ts`, `packages/cli/src/commands/admin.ts`, `packages/cli/tests/admin/{application,application.organization,application.pty,command,session,session-wiring}.{spec,impl}.test.ts`, the CLI test-inventory count in `repo-tests/monorepo/server-package.spec.test.mjs`, this execution plan, the ambiguity register, and the execution review
 > **Scope mode**: strict — approved in-memory organization workflow and lazy existing-SDK wiring only; no server, SDK, dependency, workflow, matrix, search, or pagination changes
 
 ### Step 3.1: Specification Tests
@@ -125,7 +125,7 @@ green Phase 2 tests.
 
 ### Step 3.2: Implementation and Green Phase
 
-- [ ] 3.2.1 Implement single-owner organization command orchestration, auto-choice, atomic switch/create, recovery gate, and reauthentication reconciliation — `packages/cli/src/admin/application.ts`
+- [x] 3.2.1 Implement single-owner organization command orchestration, auto-choice, atomic switch/create, recovery gate, and reauthentication reconciliation — `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/application-runtime.ts`, `packages/cli/src/admin/presentation.ts` ✅ (completed: 2026-08-28 13:43; 37/37 focused application specifications green; mechanical target corrections: landing presentation owns the existing fixed organization-failure field, and the pre-existing native terminal adapter moved intact to keep the coordinator within its file limit)
 - [ ] 3.2.2 Add lazy authenticated organization-domain wiring while reusing `createClient()` unchanged — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts`
 - [ ] 3.2.3 Run the Phase 3-owned portions of ST-14, ST-17, ST-20–ST-32, and ST-35 and make the implementation green without changing specification expectations
 

@@ -1,7 +1,7 @@
 /** Lifecycle and command routing for one embedded administration application. */
 
-import { createHost, cursor, resolveCapabilities } from '@jsvision/core';
-import type { CapabilityProfile, Keymap } from '@jsvision/core';
+import { resolveCapabilities } from '@jsvision/core';
+import type { Keymap } from '@jsvision/core';
 import { Commands, confirm, createApplication, createKeymap, inputBox, signal } from '@jsvision/ui';
 import type {
   Application,
@@ -12,9 +12,20 @@ import type {
 } from '@jsvision/ui';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
-import { showWhoAmIDialog } from './organization-dialogs.js';
+import { createAdminDialogSurface, runNativeAdminApplication } from './application-runtime.js';
+import {
+  showCreateOrganizationDialog,
+  showOrganizationChooser,
+  showWhoAmIDialog,
+} from './organization-dialogs.js';
+import type { AdminOrganizationOperations } from './organization-service.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
-import { canRetryAdminState, type AdminConnectionState } from './state.js';
+import {
+  canRetryAdminState,
+  type AdminConnectionState,
+  type AdminOrganizationContext,
+  type AdminOrganizationFailureKind,
+} from './state.js';
 
 /** Supported administration process outcomes. */
 export type AdminExitCode = 0 | 1 | 2 | 129 | 130 | 143;
@@ -29,6 +40,8 @@ export interface AdminApplicationSession {
   readonly retry?: (signal: AbortSignal) => Promise<AdminConnectionState | undefined>;
   /** Starts a fresh replacement login for an existing verified identity. */
   readonly reauthenticate?: (signal: AbortSignal) => Promise<AdminConnectionState | undefined>;
+  /** Organization operations bound lazily to the verified server session. */
+  readonly organizations?: AdminOrganizationOperations;
 }
 
 /** State and operations prepared after the application has a selected server. */
@@ -99,68 +112,6 @@ const POSIX_SIGNAL_CODES = {
 /** Converts an arbitrary application result to a documented process outcome. */
 function normalizeExitCode(value: number): AdminExitCode {
   return value === 1 || value === 2 || value === 129 || value === 130 || value === 143 ? value : 0;
-}
-
-/** Runs the native terminal host while letting the application finish signal cancellation first. */
-async function runNativeAdminApplication(
-  application: Application,
-  caps: CapabilityProfile,
-  onSignal: (code: AdminExitCode) => void,
-): Promise<number> {
-  const output = process.stdout;
-  let lastCaret: { readonly x: number; readonly y: number } | null = null;
-  let pendingFrame: Parameters<ReturnType<typeof createHost>['render']>[0] | null = null;
-  let resolveQuit: (code: number) => void = () => undefined;
-  const quit = new Promise<number>((resolve) => {
-    resolveQuit = resolve;
-  });
-  const unregisterQuit = application.onCommand(Commands.quit, () => resolveQuit(0));
-  const host = createHost({
-    caps,
-    input: process.stdin,
-    output,
-    exitOnSignal: false,
-    warnAmbiguousWidth: true,
-    adaptAmbiguousWidth: true,
-    onInput: (event) => application.loop.dispatch(event),
-    onResize: (event) => application.loop.resize({ width: event.columns, height: event.rows }),
-    onResume: () => {
-      output.write(
-        lastCaret === null
-          ? cursor.hide()
-          : cursor.show() + cursor.to(lastCaret.y + 1, lastCaret.x + 1),
-      );
-    },
-    onBeforeExit: (code) => onSignal(normalizeExitCode(code)),
-  });
-
-  application.loop.onFrame = (buffer) => {
-    pendingFrame = buffer;
-  };
-  application.loop.onCaret = (cell) => {
-    lastCaret = cell;
-    const caret = cell === null ? cursor.hide() : cursor.show() + cursor.to(cell.y + 1, cell.x + 1);
-    if (pendingFrame) {
-      const frame = pendingFrame;
-      pendingFrame = null;
-      host.render(frame, caret);
-    } else {
-      output.write(caret);
-    }
-  };
-
-  try {
-    await host.start();
-    host.render(application.loop.renderRoot.buffer());
-    application.loop.refreshCaret();
-    return await quit;
-  } finally {
-    application.loop.stop();
-    await host.stop();
-    application.loop.onFrame = undefined;
-    application.loop.onCaret = undefined;
-    unregisterQuit();
-  }
 }
 
 /** Converts a cancelled dialog into the same cancellation used by the login coordinator. */
@@ -250,24 +201,6 @@ function createAdminInteraction(
   };
 }
 
-/** Creates the shared modal surface over the administration landing view. */
-function createAdminDialogHost(
-  application: Application,
-  presentation: ReturnType<typeof createAdminPresentation>,
-): ModalDialogHost {
-  return {
-    i18n: application.i18n,
-    loop: application.loop,
-    desktop: {
-      addWindow: (window) => presentation.content.add(window),
-      removeWindow: (window) => presentation.content.remove(window),
-      get bounds() {
-        return presentation.content.bounds;
-      },
-    },
-  };
-}
-
 /** Starts one administration application and always releases its resources. */
 export async function runAdminApplication(
   options: AdminApplicationOptions,
@@ -284,6 +217,7 @@ export async function runAdminApplication(
     caps.unicode.utf8,
   );
   let currentController: AbortController | undefined;
+  let organizationDialogOpen = false;
   const standardKeymap = createKeymap({
     'ctrl+t': ADMIN_COMMANDS.retry,
     'ctrl+r': ADMIN_COMMANDS.reauthenticate,
@@ -292,7 +226,7 @@ export async function runAdminApplication(
   const applicationKeymap: Keymap = {
     // Escape remains a raw dialog key unless an application operation currently owns cancellation.
     lookup: (event) =>
-      event.key === 'escape' && currentController
+      event.key === 'escape' && (currentController || organizationDialogOpen)
         ? ADMIN_COMMANDS.cancel
         : standardKeymap.lookup(event),
   };
@@ -306,13 +240,16 @@ export async function runAdminApplication(
     caps,
     keymap: applicationKeymap,
   });
-  const dialogHost = createAdminDialogHost(application, presentation);
+  const dialogSurface = createAdminDialogSurface(application, presentation);
+  const dialogHost = dialogSurface.host;
   const interaction = createAdminInteraction(application, dialogHost);
 
   let disposed = false;
   let finalized = false;
   let currentOperationFallback: AdminConnectionState | undefined;
   let identityDialogOpen = false;
+  let organizationGeneration = 0;
+  let createRecoveryRequired = false;
   let session = options.session;
   let signalExitCode: AdminExitCode | undefined;
 
@@ -329,21 +266,174 @@ export async function runAdminApplication(
     application.loop.enableCommand(ADMIN_COMMANDS.whoAmI, state.kind === 'authenticated');
     application.loop.enableCommand(
       ADMIN_COMMANDS.createOrganization,
-      state.kind === 'authenticated' && state.capabilities.canCreateOrganizations,
+      state.kind === 'authenticated' &&
+        state.capabilities.canCreateOrganizations &&
+        !createRecoveryRequired &&
+        !organizationDialogOpen &&
+        !currentController,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.switchOrganization,
-      state.kind === 'authenticated' && state.capabilities.canReadOrganizations,
+      state.kind === 'authenticated' &&
+        state.capabilities.canReadOrganizations &&
+        !organizationDialogOpen &&
+        !currentController,
     );
-    application.loop.enableCommand(ADMIN_COMMANDS.cancel, currentController !== undefined);
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.cancel,
+      currentController !== undefined || organizationDialogOpen,
+    );
   };
+
+  /** Builds authenticated state without retaining a stale organization failure. */
+  const authenticatedState = (
+    state: Extract<AdminConnectionState, { readonly kind: 'authenticated' }>,
+    organization?: AdminOrganizationContext,
+    organizationFailure?: AdminOrganizationFailureKind,
+  ): AdminConnectionState => ({
+    kind: 'authenticated',
+    server: state.server,
+    identity: state.identity,
+    capabilities: state.capabilities,
+    ...(organization ? { organization } : {}),
+    ...(organizationFailure ? { organizationFailure } : {}),
+  });
+
+  /** Returns true while a logical organization operation may still publish a result. */
+  const ownsOrganizationGeneration = (generation: number): boolean =>
+    !disposed && organizationDialogOpen && generation === organizationGeneration;
+
+  /** Closes the current organization modal and rejects all of its late continuations. */
+  const cancelOrganizationWork = (): void => {
+    if (!organizationDialogOpen) return;
+    organizationGeneration += 1;
+    organizationDialogOpen = false;
+    application.loop.endModal(Commands.cancel);
+    dialogSurface.removeAll();
+    setState(presentation.getState());
+  };
+
+  /** Enters the established unauthenticated state after a final organization 401. */
+  const invalidateSession = (): void => {
+    createRecoveryRequired = false;
+    cancelOrganizationWork();
+    const operationServer = server;
+    if (operationServer) setState({ kind: 'unauthenticated', server: operationServer });
+  };
+
+  /** Opens the bounded create form and owns exactly one submitted service call. */
+  function startCreateOrganization(): void {
+    const state = presentation.getState();
+    const operations = session?.organizations;
+    if (
+      state.kind !== 'authenticated' ||
+      !state.capabilities.canCreateOrganizations ||
+      createRecoveryRequired ||
+      !operations ||
+      currentController ||
+      organizationDialogOpen ||
+      identityDialogOpen ||
+      disposed
+    ) {
+      return;
+    }
+
+    const generation = ++organizationGeneration;
+    organizationDialogOpen = true;
+    setState(state);
+    void showCreateOrganizationDialog(dialogHost)
+      .then(async (choice) => {
+        if (!ownsOrganizationGeneration(generation) || choice.kind === 'cancel') return;
+        createRecoveryRequired = true;
+        setState(presentation.getState());
+        const result = await operations.create(choice.input);
+        if (!ownsOrganizationGeneration(generation)) return;
+        if (result.kind === 'session-invalid') {
+          invalidateSession();
+          return;
+        }
+        if (result.kind === 'success') {
+          createRecoveryRequired = false;
+          setState(authenticatedState(state, result.value));
+          return;
+        }
+        createRecoveryRequired =
+          result.failure === 'unavailable' || result.failure === 'invalid-response';
+        setState(authenticatedState(state, state.organization, result.failure));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!ownsOrganizationGeneration(generation)) return;
+        organizationDialogOpen = false;
+        setState(presentation.getState());
+      });
+  }
+
+  /** Opens organization choice with one complete, order-preserving list request when authorized. */
+  function startOrganizationChooser(): void {
+    const state = presentation.getState();
+    const operations = session?.organizations;
+    if (
+      state.kind !== 'authenticated' ||
+      !operations ||
+      currentController ||
+      organizationDialogOpen ||
+      identityDialogOpen ||
+      disposed
+    ) {
+      return;
+    }
+
+    const generation = ++organizationGeneration;
+    organizationDialogOpen = true;
+    setState(state);
+    const organizations = state.capabilities.canReadOrganizations
+      ? operations.listAll()
+      : undefined;
+    if (organizations) {
+      void organizations.then((result) => {
+        if (!ownsOrganizationGeneration(generation)) return;
+        if (result.kind === 'session-invalid') {
+          invalidateSession();
+        } else if (result.kind === 'success') {
+          createRecoveryRequired = false;
+          setState(presentation.getState());
+        }
+      });
+    }
+
+    let next: 'create' | 'reauthenticate' | undefined;
+    void showOrganizationChooser(dialogHost, {
+      capabilities: state.capabilities,
+      ...(organizations ? { organizations } : {}),
+    })
+      .then((choice) => {
+        if (!ownsOrganizationGeneration(generation)) return;
+        if (choice.kind === 'switch') {
+          setState(authenticatedState(state, choice.organization));
+        } else if (choice.kind === 'create') {
+          next = 'create';
+        } else if (choice.kind === 'reauthenticate') {
+          next = 'reauthenticate';
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!ownsOrganizationGeneration(generation)) return;
+        organizationDialogOpen = false;
+        setState(presentation.getState());
+        if (next === 'create') startCreateOrganization();
+        else if (next === 'reauthenticate') startReauthentication();
+      });
+  }
 
   /** Runs at most one caller-cancellable session operation at a time. */
   const startOperation = (
     operation: ((signal: AbortSignal) => Promise<AdminConnectionState | undefined>) | undefined,
     preserveCurrentState = false,
   ): void => {
-    if (!operation || currentController || disposed) return;
+    if (!operation || currentController || organizationDialogOpen || identityDialogOpen || disposed)
+      return;
     const operationServer = server;
     if (!operationServer) return;
     const controller = new AbortController();
@@ -354,10 +444,12 @@ export async function runAdminApplication(
     } else {
       setState(presentation.getState());
     }
+    let openOrganizationChoice = false;
     void operation(controller.signal)
       .then((state) => {
         if (state && !disposed && currentController === controller && !controller.signal.aborted) {
           setState(state);
+          openOrganizationChoice = state.kind === 'authenticated' && !state.organization;
         }
       })
       .catch(() => {
@@ -376,19 +468,97 @@ export async function runAdminApplication(
           currentController = undefined;
           currentOperationFallback = undefined;
           setState(presentation.getState());
+          if (openOrganizationChoice) startOrganizationChooser();
         }
       });
   };
 
+  /** Reauthenticates and reconciles an existing organization before releasing operation ownership. */
+  function startReauthentication(): void {
+    const operation = session?.reauthenticate;
+    if (!operation || currentController || organizationDialogOpen || identityDialogOpen || disposed)
+      return;
+    const operationServer = server;
+    if (!operationServer) return;
+    const previous = presentation.getState();
+    const controller = new AbortController();
+    currentController = controller;
+    currentOperationFallback = previous;
+    setState(previous);
+    let openOrganizationChoice = false;
+
+    /** Releases reauthentication ownership before a follow-up chooser may open. */
+    const release = (): void => {
+      if (currentController !== controller) return;
+      currentController = undefined;
+      currentOperationFallback = undefined;
+      setState(presentation.getState());
+      if (openOrganizationChoice) startOrganizationChooser();
+    };
+
+    void operation(controller.signal)
+      .then(async (state) => {
+        if (!state || disposed || currentController !== controller || controller.signal.aborted) {
+          return;
+        }
+        if (state.kind !== 'authenticated') {
+          setState(state);
+          release();
+          return;
+        }
+        if (previous.kind !== 'authenticated' || !previous.organization) {
+          setState(state);
+          openOrganizationChoice = !state.organization;
+          release();
+          return;
+        }
+
+        const replacement = authenticatedState(state, previous.organization);
+        setState(replacement);
+        const operations = session?.organizations;
+        if (!operations) {
+          release();
+          return;
+        }
+        const result = await operations.reconcile(previous.organization.id);
+        if (disposed || currentController !== controller || controller.signal.aborted) return;
+        if (result.kind === 'session-invalid') {
+          createRecoveryRequired = false;
+          setState({ kind: 'unauthenticated', server: operationServer });
+        } else if (result.kind === 'match') {
+          setState(authenticatedState(state, result.organization));
+        } else if (
+          result.kind === 'absent' ||
+          result.kind === 'matching-invalid' ||
+          (result.kind === 'failure' && result.failure === 'unauthorized')
+        ) {
+          setState(state);
+          openOrganizationChoice = true;
+        } else {
+          setState(authenticatedState(state, previous.organization, result.failure));
+        }
+      })
+      .catch(() => {
+        if (!disposed && currentController === controller && !controller.signal.aborted) {
+          setState(previous);
+        }
+      })
+      .finally(release);
+  }
+
   const unregisterCommands = [
     application.onCommand(ADMIN_COMMANDS.authenticate, () => startOperation(session?.authenticate)),
     application.onCommand(ADMIN_COMMANDS.retry, () => startOperation(session?.retry)),
-    application.onCommand(ADMIN_COMMANDS.reauthenticate, () =>
-      startOperation(session?.reauthenticate, true),
-    ),
+    application.onCommand(ADMIN_COMMANDS.reauthenticate, startReauthentication),
     application.onCommand(ADMIN_COMMANDS.whoAmI, () => {
       const state = presentation.getState();
-      if (state.kind !== 'authenticated' || currentController || identityDialogOpen || disposed)
+      if (
+        state.kind !== 'authenticated' ||
+        currentController ||
+        organizationDialogOpen ||
+        identityDialogOpen ||
+        disposed
+      )
         return;
       identityDialogOpen = true;
       void showWhoAmIDialog(dialogHost, state, options.showInsecureWarning ?? options.insecure)
@@ -397,9 +567,15 @@ export async function runAdminApplication(
           identityDialogOpen = false;
         });
     }),
+    application.onCommand(ADMIN_COMMANDS.createOrganization, startCreateOrganization),
+    application.onCommand(ADMIN_COMMANDS.switchOrganization, startOrganizationChooser),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
       if (identityDialogOpen) {
         application.loop.endModal(Commands.cancel);
+        return;
+      }
+      if (organizationDialogOpen) {
+        cancelOrganizationWork();
         return;
       }
       const fallback = currentOperationFallback;
@@ -412,8 +588,19 @@ export async function runAdminApplication(
         setState({ kind: 'unauthenticated', server });
       }
     }),
-    application.onCommand(Commands.quit, () => currentController?.abort()),
+    application.onCommand(Commands.quit, () => {
+      cancelOrganizationWork();
+      currentController?.abort();
+    }),
   ];
+
+  const resizeApplication = application.loop.onResize;
+  application.loop.onResize = (size) => {
+    resizeApplication?.(size);
+    if (presentation.content.bounds.width < 32 || presentation.content.bounds.height < 8) {
+      cancelOrganizationWork();
+    }
+  };
 
   setState(initialState);
   /** Selects a first-run server or prepares the supplied server before verification. */
@@ -461,6 +648,7 @@ export async function runAdminApplication(
       const listener = (): void => {
         if (signalExitCode !== undefined) return;
         signalExitCode = exitCode;
+        cancelOrganizationWork();
         currentController?.abort();
         application.loop.emitCommand(Commands.quit, exitCode);
       };
@@ -473,6 +661,7 @@ export async function runAdminApplication(
   const finalize = async (): Promise<void> => {
     if (finalized) return;
     finalized = true;
+    cancelOrganizationWork();
     disposed = true;
     currentController?.abort();
     for (const [signal, listener] of signalListeners) signalSource.off(signal, listener);
@@ -485,9 +674,10 @@ export async function runAdminApplication(
     const result = await (options.applicationRunner?.(application) ??
       runNativeAdminApplication(application, caps, (exitCode) => {
         if (signalExitCode !== undefined) return;
-        signalExitCode = exitCode;
+        signalExitCode = normalizeExitCode(exitCode);
+        cancelOrganizationWork();
         currentController?.abort();
-        application.loop.emitCommand(Commands.quit, exitCode);
+        application.loop.emitCommand(Commands.quit, signalExitCode);
       }));
     return signalExitCode ?? normalizeExitCode(result);
   } catch {
