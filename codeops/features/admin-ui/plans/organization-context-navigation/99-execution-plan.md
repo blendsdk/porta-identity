@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:41
-> **Progress**: 9/31 tasks (29%)
+> **Last Updated**: 2026-08-28 12:46
+> **Progress**: 10/31 tasks (32%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -87,7 +87,7 @@ mapping, and green Phase 1 tests.
 **Reference**: [03-02](03-02-dialogs-and-presentation.md) · presentation/dialog portions of ST-11–ST-19 · AR-1–AR-3, AR-8
 
 - [x] 2.1.1 Split the mixed RD-01 application specifications while green according to the supersession inventory; retain every unaffected theme, server, authentication, warning, shortcut, lifecycle, and security assertion — `packages/cli/tests/admin/application.spec.test.ts` ✅ (completed: 2026-08-28 12:41; 9/9 specifications remain green)
-- [ ] 2.1.2 [spec-author] Add real JSVision dialog specification cases ST-12–ST-18 — `packages/cli/tests/admin/organization-dialogs.spec.test.ts`
+- [x] 2.1.2 [spec-author] Add real JSVision dialog specification cases ST-12–ST-18 — `packages/cli/tests/admin/organization-dialogs.spec.test.ts` ✅ (completed: 2026-08-28 12:46)
 - [ ] 2.1.3 [spec-author] Replace only RD-02-superseded presentation assertions and add menu, Who am I keyboard/modal/focus, and landing cases ST-11–ST-13, ST-17, and ST-19 — `packages/cli/tests/admin/application.spec.test.ts`
 - [ ] 2.1.4 Run the focused dialog/application specification suites and record the expected red result for new RD-02 behavior
 
