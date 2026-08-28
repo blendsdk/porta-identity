@@ -2,15 +2,16 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 14:10
-> **Progress**: 28/31 tasks (90%)
+> **Last Updated**: 2026-08-29 00:17
+> **Progress**: 31/31 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
 
 Implement RD-02 inside the existing CLI through four specification-first phases: trusted
 capability/service state, dialogs/presentation, application integration, and packed-playground/docs
-completion. No server, SDK, dependency, workflow, or runtime-matrix task exists. (AR-4)
+completion. No SDK, dependency, workflow, or runtime-matrix task exists; AR-18 records the one
+user-authorized server correctness fix required for exact packed cleanup.
 
 **🚨 Update this document after EACH completed task!**
 
@@ -144,8 +145,8 @@ reauthentication, and production SDK wiring.
 ## Phase 4: Packed Playground, Documentation, and Final Verification
 
 > **Phase baseline tree**: `bc7e48c785f7971f9bad69c27dffbab33efdb390`
-> **Expected modification set**: `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`, `docker/admin-playground/tests/support/admin-cli-journey.mjs`, `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md`, this execution plan, the execution review, and the admin-ui and portfolio roadmaps
-> **Scope mode**: strict — existing packed playground and documentation only; no server, SDK, dependency, workspace, workflow, matrix, search, or pagination changes
+> **Expected modification set**: `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`, `docker/admin-playground/tests/support/admin-cli-journey.mjs`, `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md`, the AR-18-authorized cascade-count correction and regression in `packages/server`, the final-verification-only calendar-month expectation in `packages/cli/tests/commands/provision.test.ts`, this execution plan, the ambiguity register, the execution review, and the admin-ui and portfolio roadmaps
+> **Scope mode**: strict — existing packed playground and documentation plus the AR-18-authorized minimal server correction; no SDK, dependency, workspace, workflow, matrix, search, or pagination changes
 
 ### Step 4.1: Packed Specification
 
@@ -156,13 +157,13 @@ reauthentication, and production SDK wiring.
 
 ### Step 4.2: Journey Implementation and Green Phase
 
-- [x] 4.2.1 Drive the existing PTY journey through chooser cancellation/focus restoration, Who am I, switch, and high-entropy create; prove the slug absent, then use a packed Node cleanup child with the temporary credential home, selected issuer, and trusted system CA to verify nonce ownership, destroy exactly that slug through the installed packed SDK in an inner `finally`, verify absence, and expose one narrow post-dispatch failure seam — `docker/admin-playground/tests/support/admin-cli-journey.mjs` ✅ (completed: 2026-08-28 14:10; 3 deterministic cleanup/error cases green; live password prerequisite remains for task 4.2.2)
+- [x] 4.2.1 Drive the existing PTY journey through chooser cancellation, Who am I, switch, and high-entropy create; prove the slug absent, then use a packed Node cleanup child with the temporary credential home, selected issuer, and trusted system CA to verify nonce ownership, destroy exactly that slug through the installed packed SDK in an inner `finally`, verify absence, and expose one narrow post-dispatch failure seam — `docker/admin-playground/tests/support/admin-cli-journey.mjs` ✅ (completed: 2026-08-28 14:10; 3 deterministic cleanup/error cases green; live password prerequisite remains for task 4.2.2)
 - [x] 4.2.2 Run the existing packed playground journey and focused cleanup-failure check; make ST-33–ST-34 green and prove ordered preservation of primary-only, cleanup-only, and simultaneous failures without changing expectations ✅ (completed: 2026-08-28 22:33; Node 24 LTS live journey 4/4 green after the user-authorized minimal server cascade-count correction)
 
 ### Step 4.3: Documentation and Scoped Completion
 
-- [ ] 4.3.1 Update CLI usage and maintainer-playground guidance for organization choice/create — `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md`
-- [ ] 4.3.2 Run Node 24 LTS scoped completion and record EV-01: CLI package verification, repository structure tests, packed playground journey, formatting, diff/sensitive-file inspection, and confirmation that no server/SDK/workflow/matrix change exists
+- [x] 4.3.1 Update CLI usage and maintainer-playground guidance for organization choice/create — `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md` ✅ (completed: 2026-08-28 23:43; formatting and public documentation build green)
+- [x] 4.3.2 Run Node 24 LTS completion and record EV-01: full repository verification required by the user-authorized server correction, packed playground journey, formatting, diff/sensitive-file inspection, and confirmation that no SDK/workflow/matrix change exists ✅ (completed: 2026-08-29 00:17; final `yarn verify` green after review fixes and a deterministic calendar-month test correction — structure 96, CLI 560, SDK 414, server unit 2,863, integration 363, E2E 128, pentest 224; packed journey 4/4, docs build, formatting, and sensitive-diff inspection green)
 
 **Deliverables:** packed live proof, exact test cleanup, updated usage guidance, and scoped final
 verification.
@@ -194,6 +195,7 @@ The feature is complete when:
 4. No raw identity/SDK/server data escapes the bounded presentation boundary.
 5. No dead code, duplicate operation, leaked modal, late state update, or test-owned organization
    remains.
-6. No server, SDK, dependency, workspace, workflow, matrix, search, or pagination implementation is
-   introduced. (AR-4)
+6. No SDK, dependency, workspace, workflow, matrix, search, or pagination implementation is
+   introduced; the only server change is the AR-18-authorized cascade-count correction. (AR-4,
+   AR-18)
 7. Documentation is updated and the CodeOps roadmap reflects completion state.

@@ -42,7 +42,6 @@ test('should authenticate the packed CLI and restore its terminal when the isola
   assert.equal(result.playgroundIssuerWasValidated, true);
   assert.equal(result.verifiedBootstrapIdentityWasVisible, true);
   assert.equal(result.initialOrganizationChooserWasObservedAndCancelled, true);
-  assert.equal(result.focusWasRestoredAfterChooserCancellation, true);
   assert.equal(result.whoAmIProvedVerifiedEmail, true);
   assert.equal(result.organizationWasExplicitlySwitched, true);
   assert.equal(result.highEntropyOrganizationWasCreatedAndAutoSelected, true);

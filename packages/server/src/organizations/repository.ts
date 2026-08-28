@@ -447,9 +447,10 @@ export async function slugExists(slug: string, excludeId?: string): Promise<bool
 /**
  * Hard-delete an organization from the database.
  *
- * PostgreSQL CASCADE foreign keys automatically delete all child entities:
- * applications, clients, users, roles, permissions, claim definitions,
- * user claim values, user roles, branding assets, and admin sessions.
+ * PostgreSQL CASCADE foreign keys automatically delete organization-owned
+ * entities such as clients, users, user claim values, user roles, branding
+ * assets, and admin sessions. Applications, roles, permissions, and claim
+ * definitions are global definitions and are not deleted.
  * Audit log entries have their organization_id set to NULL (ON DELETE SET NULL).
  *
  * The `AND is_super_admin = FALSE` clause is a database-level safety check —

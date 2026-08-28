@@ -81,12 +81,19 @@ porta admin --server https://identity.example.com
 
 The shell requires interactive stdin and stdout, so it cannot be combined with `--json` or
 `--force`. It uses the CLI's browser-based OIDC Authorization Code with PKCE flow, with the manual
-authorization URL and callback flow available when a browser cannot be opened. The shell displays
-the selected server, authentication state, and verified identity. Use `Ctrl-R` to reauthenticate;
-changing to another server requires explicit credential-replacement confirmation.
+authorization URL and callback flow available when a browser cannot be opened.
 
-This is the administration shell foundation, not a complete set of administration screens. Using
-`--insecure` disables TLS certificate validation and leaves a persistent warning in the shell.
+After authentication, choose an organization from the complete Organizations list; the shell never
+selects one automatically. The Organizations menu can switch context or create an organization
+from its name, optional slug, and optional default locale. A successfully created organization is
+selected immediately. The selection lasts only for the running shell and does not reauthenticate or
+grant additional access.
+
+The hamburger menu contains `Who am I…`, `Reauthenticate`, and `Quit`. `Who am I…` shows the
+verified identity and server details. Use `Ctrl-R` to reauthenticate; changing to another server
+requires explicit credential-replacement confirmation. Later administration data screens are not
+included yet. Using `--insecure` disables TLS certificate validation and leaves a persistent warning
+in the shell.
 
 ## Global Options
 

@@ -57,12 +57,18 @@ const client = createPortaClient({
     auth: createTokenAuth({ token: credentials.accessToken }),
   }),
 });
-const before = await client.organizations.listAll();
-const matches = before.filter((organization) => organization.slug === slug);
+let before = await client.organizations.listAll();
+let matches = before.filter((organization) => organization.slug === slug);
 if (action === 'assert-absent') {
   if (matches.length !== 0) throw new Error('Test organization slug is already present.');
   console.log(JSON.stringify({ absent: true }));
 } else {
+  const reconciliationDeadline = Date.now() + 5_000;
+  while (matches.length === 0 && Date.now() < reconciliationDeadline) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    before = await client.organizations.listAll();
+    matches = before.filter((organization) => organization.slug === slug);
+  }
   if (matches.length !== 1 || matches[0].name !== name) {
     throw new Error('Test organization ownership could not be proved.');
   }
@@ -389,10 +395,15 @@ async function runPackedAdmin(
     child.stdin.write(`${organization.name}\t${organization.slug}\t\t\r`);
     onCreateDispatch();
     offset = observeAfter();
+    const nonce = organization.slug.slice(-24);
+    // The fixed 80x24 PTY renders the selected name and slug on landing rows 6 and 7.
+    // Requiring both row updates avoids matching the same nonce while it is typed in the dialog.
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, organization.slug.slice(-24)),
+      () =>
+        includesAfter(offset, `\u001b[6;30H${nonce}`) &&
+        includesAfter(offset, `\u001b[7;20H-e2e-${nonce}`),
       'Created and selected organization',
     );
     await afterCreateDispatch?.();
@@ -402,13 +413,15 @@ async function runPackedAdmin(
     return {
       ...result,
       initialOrganizationChooserWasObservedAndCancelled: true,
-      focusWasRestoredAfterChooserCancellation: true,
       whoAmIProvedVerifiedEmail: true,
       organizationWasExplicitlySwitched: true,
       highEntropyOrganizationWasCreatedAndAutoSelected: true,
     };
   } finally {
-    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill('SIGKILL');
+      await captured.result;
+    }
   }
 }
 
@@ -505,7 +518,6 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
         credentials.userInfo?.email === email && admin.output.includes(email),
       initialOrganizationChooserWasObservedAndCancelled:
         admin.initialOrganizationChooserWasObservedAndCancelled,
-      focusWasRestoredAfterChooserCancellation: admin.focusWasRestoredAfterChooserCancellation,
       whoAmIProvedVerifiedEmail: admin.whoAmIProvedVerifiedEmail,
       organizationWasExplicitlySwitched: admin.organizationWasExplicitlySwitched,
       highEntropyOrganizationWasCreatedAndAutoSelected:

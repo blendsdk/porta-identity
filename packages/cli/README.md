@@ -236,9 +236,7 @@ porta login --server https://porta.example.com --no-browser
 
 ## Interactive Administration Shell
 
-`porta admin` opens the terminal administration shell for a Porta server. This milestone shows
-the selected server, authentication state, and verified identity; administration data screens are
-not included yet.
+`porta admin` opens the terminal administration shell for a Porta server.
 
 ```bash
 porta admin --server https://identity.example.com
@@ -246,9 +244,18 @@ porta admin --server https://identity.example.com
 
 The command requires interactive stdin and stdout. It rejects `--json` and `--force`. Login uses
 the same OIDC Authorization Code with PKCE flow as `porta login`: the CLI opens a browser when
-available and offers the manual authorization URL/callback flow when it cannot. After verification,
-the shell displays the server-bound identity. Use `Ctrl-R` to reauthenticate; replacing credentials
-for a different server requires explicit confirmation.
+available and offers the manual authorization URL/callback flow when it cannot.
+
+After verification, the organization chooser opens automatically without selecting an organization
+for you. Use the Organizations menu to switch context or create an organization from its name,
+optional slug, and optional default locale. Creation selects the returned organization immediately.
+The selected context is held only for the running shell and does not change authentication or grant
+permissions.
+
+The hamburger menu contains `Who am I…`, `Reauthenticate`, and `Quit`. `Who am I…` shows the
+server-bound verified identity. Use `Ctrl-R` to reauthenticate; replacing credentials for a
+different server requires explicit confirmation. Administration data screens beyond the current
+organization landing view are not included yet.
 
 Use `--insecure` only for deliberate local testing. The shell displays a persistent warning because
 that flag disables TLS certificate validation.

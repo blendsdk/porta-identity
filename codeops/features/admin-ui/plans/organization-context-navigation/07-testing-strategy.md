@@ -6,9 +6,10 @@
 ## Testing Overview
 
 The test suite extends the existing CLI admin specifications, implementation diagnostics, real
-JSVision frame-buffer tests, PTY coverage, and one packed playground journey. SDK and server code
-remain untouched. Specification expectations are written before each implementation phase and
-verified red before production code changes. (AR-4, AR-5, AR-9)
+JSVision frame-buffer tests, PTY coverage, and one packed playground journey. SDK code remains
+untouched; the only server change is the user-authorized cascade-count correction needed by exact
+packed cleanup. Specification expectations are written before each implementation phase and
+verified red before production code changes. (AR-4, AR-5, AR-9, AR-18)
 
 ### Coverage Goals
 
@@ -92,14 +93,14 @@ change when the new RD-02 specifications are written:
 
 | #     | Input / Scenario                                              | Expected Output / Behavior                                                                                                                                                                                                                                                                                                                                                                   | Source                            |
 | ----- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| ST-33 | Packed CLI authenticates against the running admin playground | Initial chooser is observed then cancelled; focus returns; Who am I proves the verified email; an organization is explicitly switched; a high-entropy organization is created and auto-selected; terminal restoration succeeds                                                                                                                                                               | RD-02 AC-10; AR-9                 |
+| ST-33 | Packed CLI authenticates against the running admin playground | Initial chooser is observed then cancelled; real-JSVision specifications cover focus restoration; Who am I proves the verified email; an organization is explicitly switched; landing-row evidence proves a high-entropy organization is created and auto-selected; terminal restoration succeeds                                                                                            | RD-02 AC-10; AR-9                 |
 | ST-34 | Packed journey completes or fails after create dispatch       | After proving the slug absent, an inner `finally` runs a packed Node cleanup child with the temporary credential home, selected issuer, and `NODE_USE_SYSTEM_CA=1`; it verifies nonce ownership, destroys only that slug through the installed packed SDK, verifies absence, preserves unrelated resources, and retains simultaneous journey/cleanup failures in an ordered `AggregateError` | 01-requirements Acceptance; AR-10 |
 
 ### Final Execution Evidence
 
-| #     | Evidence                                                                          | Expected result                                                                     | Source                   |
-| ----- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
-| EV-01 | Recorded phase/repository baseline, final diff, and structure tests are inspected | No server/SDK/dependency/workflow/matrix/search/pagination implementation was added | RD-02 Out of Scope; AR-4 |
+| #     | Evidence                                                                          | Expected result                                                                                                                                       | Source                          |
+| ----- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| EV-01 | Recorded phase/repository baseline, final diff, and structure tests are inspected | No SDK/dependency/workflow/matrix/search/pagination implementation was added; the only server change is the AR-18-authorized cascade-count correction | RD-02 Out of Scope; AR-4; AR-18 |
 
 ## Test Categories
 
@@ -147,15 +148,15 @@ edges. JSVision application tests use real widgets and frame buffers.
 
 ## Verification Checklist
 
-- [ ] Every ST case is implemented in a `*.spec.test.*` file before its production phase.
-- [ ] Existing mixed RD-01 application specifications are split while green; only assertions directly
+- [x] Every ST case is implemented in a `*.spec.test.*` file before its production phase.
+- [x] Existing mixed RD-01 application specifications are split while green; only assertions directly
       superseded by RD-02 are replaced, and all other theme/security/lifecycle behavior remains.
-- [ ] Each new spec suite is observed failing before implementation and passing afterward.
-- [ ] Implementation tests cover internal branches without changing specification expectations.
-- [ ] `yarn workspace @portaidentity/cli verify` passes on Node 24 LTS.
-- [ ] `yarn test:structure` passes on Node 24 LTS.
-- [ ] The existing packed playground journey passes and proves exact test-organization cleanup,
+- [x] Each new spec suite is observed failing before implementation and passing afterward.
+- [x] Implementation tests cover internal branches without changing specification expectations.
+- [x] `yarn workspace @portaidentity/cli verify` passes on Node 24 LTS.
+- [x] `yarn test:structure` passes on Node 24 LTS.
+- [x] The existing packed playground journey passes and proves exact test-organization cleanup,
       including primary-only, cleanup-only, and simultaneous-failure evidence.
-- [ ] EV-01 is recorded against the execution baseline rather than inferred by the packed runtime test.
-- [ ] SDK verification/compatibility remains unnecessary because SDK source/contracts are unchanged.
-- [ ] Full Porta/server verification remains unnecessary because server source is unchanged. (AR-5)
+- [x] EV-01 is recorded against the execution baseline rather than inferred by the packed runtime test.
+- [x] SDK verification/compatibility remains unnecessary because SDK source/contracts are unchanged.
+- [x] Full Porta/server verification passes because the authorized cascade-count correction changes server source. (AR-5, AR-18)

@@ -65,9 +65,10 @@ describe('parseDuration', () => {
 
   it('parses months', async () => {
     const parseDuration = await getDurationParser();
-    const now = new Date();
+    const expected = new Date();
+    expected.setMonth(expected.getMonth() + 6);
     const result = parseDuration('6m');
-    expect(result.getMonth()).toBe((now.getMonth() + 6) % 12);
+    expect(result.getMonth()).toBe(expected.getMonth());
   });
 
   it('parses years', async () => {
