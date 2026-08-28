@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 14:04
-> **Progress**: 27/31 tasks (87%)
+> **Last Updated**: 2026-08-28 14:10
+> **Progress**: 28/31 tasks (90%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -156,7 +156,7 @@ reauthentication, and production SDK wiring.
 
 ### Step 4.2: Journey Implementation and Green Phase
 
-- [ ] 4.2.1 Drive the existing PTY journey through chooser cancellation/focus restoration, Who am I, switch, and high-entropy create; prove the slug absent, then use a packed Node cleanup child with the temporary credential home, selected issuer, and trusted system CA to verify nonce ownership, destroy exactly that slug through the installed packed SDK in an inner `finally`, verify absence, and expose one narrow post-dispatch failure seam — `docker/admin-playground/tests/support/admin-cli-journey.mjs`
+- [x] 4.2.1 Drive the existing PTY journey through chooser cancellation/focus restoration, Who am I, switch, and high-entropy create; prove the slug absent, then use a packed Node cleanup child with the temporary credential home, selected issuer, and trusted system CA to verify nonce ownership, destroy exactly that slug through the installed packed SDK in an inner `finally`, verify absence, and expose one narrow post-dispatch failure seam — `docker/admin-playground/tests/support/admin-cli-journey.mjs` ✅ (completed: 2026-08-28 14:10; 3 deterministic cleanup/error cases green; live password prerequisite remains for task 4.2.2)
 - [ ] 4.2.2 Run the existing packed playground journey and focused cleanup-failure check; make ST-33–ST-34 green and prove ordered preservation of primary-only, cleanup-only, and simultaneous failures without changing expectations
 
 ### Step 4.3: Documentation and Scoped Completion
