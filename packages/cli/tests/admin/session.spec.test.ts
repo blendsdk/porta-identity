@@ -219,3 +219,108 @@ describe('stored CLI session verification', () => {
     });
   });
 });
+
+describe('live administration capabilities', () => {
+  it('should enable only organization reading for the exact read permission', async () => {
+    // An exact organization-read permission enables listing and switching without granting creation.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    expect(validateAdminCapabilities([], ['admin:org:read'])).toEqual({
+      canReadOrganizations: true,
+      canCreateOrganizations: false,
+    });
+  });
+
+  it('should enable only organization creation for the exact create permission', async () => {
+    // An exact organization-create permission must not implicitly grant organization reading or switching.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    expect(validateAdminCapabilities([], ['admin:org:create'])).toEqual({
+      canReadOrganizations: false,
+      canCreateOrganizations: true,
+    });
+  });
+
+  it.each([undefined, { unexpected: 'shape' }])(
+    'should grant both organization capabilities for a valid Porta administrator role',
+    async (permissions) => {
+      // A separately valid Porta administrator role grants both actions even when permissions are absent or malformed.
+      const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+      expect(validateAdminCapabilities(['porta-admin'], permissions)).toEqual({
+        canReadOrganizations: true,
+        canCreateOrganizations: true,
+      });
+    },
+  );
+
+  it('should preserve valid read capability when roles are malformed', async () => {
+    // A malformed roles value cannot cancel a separately valid organization-read permission.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    expect(validateAdminCapabilities({ unexpected: 'shape' }, ['admin:org:read'])).toEqual({
+      canReadOrganizations: true,
+      canCreateOrganizations: false,
+    });
+  });
+
+  it.each([
+    ['non-string role', [{ value: 'porta-admin' }], []],
+    ['non-string permission', [], [{ value: 'admin:org:create' }]],
+    ['overlong role', [`porta-admin${'x'.repeat(257)}`], []],
+    ['overlong permission', [], [`admin:org:create${'x'.repeat(257)}`]],
+    ['ASCII control in role', ['porta\u0000-admin'], []],
+    ['ASCII control in permission', [], ['admin:org:\u0000create']],
+    ['C1 control in role', ['porta\u0085-admin'], []],
+    ['C1 control in permission', [], ['admin:org:\u0085create']],
+  ])('should reject and discard a %s entry', async (_label, roles, permissions) => {
+    // Invalid authorization entries neither grant an action nor survive in the validated capability result.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    const capabilities = validateAdminCapabilities(roles, permissions);
+
+    expect(capabilities).toEqual({
+      canReadOrganizations: false,
+      canCreateOrganizations: false,
+    });
+    expect(JSON.stringify(capabilities)).not.toContain('admin:org');
+    expect(JSON.stringify(capabilities)).not.toContain('porta-admin');
+  });
+
+  it('should expose live capabilities without adding them to stored credentials', async () => {
+    // Live UserInfo supplies ephemeral capability booleans while persisted credentials keep only existing identity data.
+    const { verifyStoredSession } = await import('../../src/admin/session-service.js');
+    const storedBeforeVerification = structuredClone(credentials);
+
+    const result = await verifyStoredSession(
+      {
+        selectedServer: new URL(credentials.server),
+        credentials,
+        fetch: vi.fn().mockResolvedValue(
+          jsonResponse({
+            sub: 'subject-1',
+            email: 'verified@example.test',
+            name: 'Verified Admin',
+            permissions: ['admin:org:read'],
+          }),
+        ),
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toEqual({
+      status: 'authenticated',
+      identity: {
+        sub: 'subject-1',
+        email: 'verified@example.test',
+        name: 'Verified Admin',
+      },
+      capabilities: {
+        canReadOrganizations: true,
+        canCreateOrganizations: false,
+      },
+    });
+    expect(credentials).toEqual(storedBeforeVerification);
+    expect('capabilities' in credentials).toBe(false);
+  });
+});

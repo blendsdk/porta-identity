@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 11:54
-> **Progress**: 0/31 tasks (0%)
+> **Last Updated**: 2026-08-28 12:16
+> **Progress**: 1/31 tasks (3%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -46,13 +46,15 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 
 ## Phase 1: Capability and Organization Service Boundary
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start state)_
+> **Phase baseline tree**: `40119fe2136b2d214d9b57a71c0a7d0ae1886591`
+> **Expected modification set**: `packages/cli/src/admin/{state,organization-service,session-service}.ts`, `packages/cli/src/auth/{types,login-coordinator}.ts`, `packages/cli/tests/admin/{session,organization-service}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, this execution plan, and the admin-ui roadmap
+> **Scope mode**: strict — existing CLI only; no server, SDK, dependency, workflow, matrix, search, or pagination changes
 
 ### Step 1.1: Specification Tests
 
 **Reference**: [03-01](03-01-organization-state-and-service.md) · ST-01–ST-10 and service portions of ST-28–ST-30 · AR-1–AR-3, AR-6–AR-8
 
-- [ ] 1.1.1 [spec-author] Add capability/session specification cases ST-01–ST-05 — `packages/cli/tests/admin/session.spec.test.ts`
+- [x] 1.1.1 [spec-author] Add capability/session specification cases ST-01–ST-05 — `packages/cli/tests/admin/session.spec.test.ts` ✅ (completed: 2026-08-28 12:16)
 - [ ] 1.1.2 [spec-author] Add organization service cases ST-06–ST-10 plus sanitized reconciliation outcomes from ST-28–ST-30 — `packages/cli/tests/admin/organization-service.spec.test.ts`
 - [ ] 1.1.3 Run the two focused specification suites and record the expected red result before production changes
 
