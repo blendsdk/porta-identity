@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 14:03
-> **Progress**: 26/31 tasks (84%)
+> **Last Updated**: 2026-08-28 14:04
+> **Progress**: 27/31 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -152,7 +152,7 @@ reauthentication, and production SDK wiring.
 **Reference**: ST-33–ST-34 and EV-01 · AR-4, AR-5, AR-9, AR-10
 
 - [x] 4.1.1 [spec-author] Extend packed evidence expectations for chooser, Who am I identity, explicit switch, create-auto-select, exact cleanup, and restoration — `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs` ✅ (completed: 2026-08-28 14:03)
-- [ ] 4.1.2 Run the packed specification against the unchanged journey adapter and record the expected red result
+- [x] 4.1.2 Run the packed specification against the unchanged journey adapter and record the expected red result ✅ (completed: 2026-08-28 14:04; expected red: 4 failures — missing live password plus 3 missing cleanup helper cases)
 
 ### Step 4.2: Journey Implementation and Green Phase
 
