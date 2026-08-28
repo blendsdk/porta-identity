@@ -204,14 +204,17 @@ export function prepareAdminSession(
 }
 
 /** Returns true when every authorization entry is a bounded, control-free slug. */
-function isValidAuthorizationArray(value: unknown): value is readonly string[] {
+function isValidAuthorizationArray(
+  value: unknown,
+  maximumLength: number,
+): value is readonly string[] {
   return (
     Array.isArray(value) &&
     value.every(
       (entry) =>
         typeof entry === 'string' &&
         entry.length > 0 &&
-        entry.length <= 100 &&
+        entry.length <= maximumLength &&
         !containsTerminalControl(entry),
     )
   );
@@ -232,8 +235,8 @@ function isValidAuthorizationArray(value: unknown): value is readonly string[] {
  * ```
  */
 export function validateAdminCapabilities(roles: unknown, permissions: unknown): AdminCapabilities {
-  const validRoles = isValidAuthorizationArray(roles) ? roles : [];
-  const validPermissions = isValidAuthorizationArray(permissions) ? permissions : [];
+  const validRoles = isValidAuthorizationArray(roles, 100) ? roles : [];
+  const validPermissions = isValidAuthorizationArray(permissions, 150) ? permissions : [];
   const isLegacyAdministrator = validRoles.includes('porta-admin');
   return {
     canReadOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:read'),

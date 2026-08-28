@@ -33,6 +33,16 @@ describe('admin session implementation edges', () => {
     });
   });
 
+  it('accepts a valid permission beyond the shorter role-slug bound', () => {
+    const longPermission = `custom:${'a'.repeat(100)}:read`;
+
+    expect(longPermission.length).toBeGreaterThan(100);
+    expect(validateAdminCapabilities([], ['admin:org:read', longPermission])).toEqual({
+      canReadOrganizations: true,
+      canCreateOrganizations: false,
+    });
+  });
+
   it('derives live capabilities without mutating the credential snapshot', async () => {
     const snapshot = structuredClone(credentials);
     const result = await verifyStoredSession(

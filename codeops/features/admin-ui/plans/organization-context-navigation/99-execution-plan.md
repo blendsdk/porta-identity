@@ -47,7 +47,7 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 ## Phase 1: Capability and Organization Service Boundary
 
 > **Phase baseline tree**: `40119fe2136b2d214d9b57a71c0a7d0ae1886591`
-> **Expected modification set**: `packages/cli/src/admin/{state,organization-service,session-service}.ts`, `packages/cli/src/auth/{types,login-coordinator}.ts`, `packages/cli/tests/admin/{session,organization-service}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, this execution plan, and the admin-ui roadmap
+> **Expected modification set**: `packages/cli/src/admin/{state,organization-service,session-service}.ts`, `packages/cli/src/auth/{types,login-coordinator}.ts`, `packages/cli/tests/admin/{session,organization-service}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, the CLI test-inventory count in `repo-tests/monorepo/server-package.spec.test.mjs`, this execution plan, the execution review, and the admin-ui roadmap
 > **Scope mode**: strict — existing CLI only; no server, SDK, dependency, workflow, matrix, search, or pagination changes
 
 ### Step 1.1: Specification Tests
