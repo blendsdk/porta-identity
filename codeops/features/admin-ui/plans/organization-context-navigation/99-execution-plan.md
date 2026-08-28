@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 14:00
-> **Progress**: 25/31 tasks (81%)
+> **Last Updated**: 2026-08-28 14:03
+> **Progress**: 26/31 tasks (84%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -143,13 +143,15 @@ reauthentication, and production SDK wiring.
 
 ## Phase 4: Packed Playground, Documentation, and Final Verification
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start state)_
+> **Phase baseline tree**: `bc7e48c785f7971f9bad69c27dffbab33efdb390`
+> **Expected modification set**: `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`, `docker/admin-playground/tests/support/admin-cli-journey.mjs`, `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md`, this execution plan, the execution review, and the admin-ui and portfolio roadmaps
+> **Scope mode**: strict — existing packed playground and documentation only; no server, SDK, dependency, workspace, workflow, matrix, search, or pagination changes
 
 ### Step 4.1: Packed Specification
 
 **Reference**: ST-33–ST-34 and EV-01 · AR-4, AR-5, AR-9, AR-10
 
-- [ ] 4.1.1 [spec-author] Extend packed evidence expectations for chooser, Who am I identity, explicit switch, create-auto-select, exact cleanup, and restoration — `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`
+- [x] 4.1.1 [spec-author] Extend packed evidence expectations for chooser, Who am I identity, explicit switch, create-auto-select, exact cleanup, and restoration — `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs` ✅ (completed: 2026-08-28 14:03)
 - [ ] 4.1.2 Run the packed specification against the unchanged journey adapter and record the expected red result
 
 ### Step 4.2: Journey Implementation and Green Phase
