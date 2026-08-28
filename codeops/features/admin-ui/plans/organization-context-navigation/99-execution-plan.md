@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:20
-> **Progress**: 3/31 tasks (10%)
+> **Last Updated**: 2026-08-28 12:25
+> **Progress**: 4/31 tasks (13%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -60,7 +60,7 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 
 ### Step 1.2: Implementation and Green Phase
 
-- [ ] 1.2.1 Add documented capability/context/result types and the order-preserving validation/error wrapper — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/organization-service.ts`, `packages/cli/vitest.config.ts`
+- [x] 1.2.1 Add documented capability/context/result types and the order-preserving validation/error wrapper — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/organization-service.ts`, `packages/cli/vitest.config.ts` ✅ (completed: 2026-08-28 12:25)
 - [ ] 1.2.2 Carry ephemeral capabilities through live UserInfo verification/login without changing persisted credentials — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/auth/types.ts`, `packages/cli/src/auth/login-coordinator.ts`
 - [ ] 1.2.3 Run the Phase 1 capability, service, and reconciliation specifications and make the implementation green without changing expectations
 
