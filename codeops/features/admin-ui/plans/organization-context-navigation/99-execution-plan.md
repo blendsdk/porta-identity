@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:53
-> **Progress**: 12/31 tasks (39%)
+> **Last Updated**: 2026-08-28 12:58
+> **Progress**: 13/31 tasks (42%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -93,7 +93,7 @@ mapping, and green Phase 1 tests.
 
 ### Step 2.2: Implementation and Green Phase
 
-- [ ] 2.2.1 Implement Who am I, chooser, and create dialogs with real JSVision controls and bounded values — `packages/cli/src/admin/organization-dialogs.ts`, `packages/cli/vitest.config.ts`
+- [x] 2.2.1 Implement Who am I, chooser, and create dialogs with real JSVision controls and bounded values — `packages/cli/src/admin/organization-dialogs.ts`, `packages/cli/vitest.config.ts` ✅ (completed: 2026-08-28 12:58; 15/15 dialog specifications green; 7 later presentation specifications remain expected-red)
 - [ ] 2.2.2 Implement labelled global/Organizations menus, concise disabled reasons, minimal landing view, and default-theme responsive rendering — `packages/cli/src/admin/presentation.ts`
 - [ ] 2.2.3 Add dialog/menu exports needed by the application without creating a public package surface — `packages/cli/src/admin/index.ts`, `packages/cli/src/admin/application.ts`
 - [ ] 2.2.4 Run the Phase 2-owned portions of ST-11–ST-19 and make the implementation green without changing specification expectations
