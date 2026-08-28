@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-08-28
 
 ## High-Level Architecture
 
@@ -51,32 +51,41 @@ graph TB
 
 ### Core Runtime
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| HTTP Server | Koa 3.x | Request handling, middleware pipeline |
-| OIDC Engine | node-oidc-provider 9.x | OpenID Connect protocol implementation |
-| Database | PostgreSQL 16 (pg) | Persistent storage, long-lived OIDC artifacts |
-| Cache/Sessions | Redis 7 (ioredis) | Short-lived OIDC artifacts, tenant cache, rate limits |
-| Logger | pino | Structured logging (JSON in prod, pretty in dev) |
-| Config | zod | Environment validation with fail-fast semantics |
-| Signing | jose + crypto | ES256 (ECDSA P-256) token signing |
-| CLI | yargs | Admin command-line interface |
+| Component      | Technology             | Purpose                                               |
+| -------------- | ---------------------- | ----------------------------------------------------- |
+| HTTP Server    | Koa 3.x                | Request handling, middleware pipeline                 |
+| OIDC Engine    | node-oidc-provider 9.x | OpenID Connect protocol implementation                |
+| Database       | PostgreSQL 16 (pg)     | Persistent storage, long-lived OIDC artifacts         |
+| Cache/Sessions | Redis 7 (ioredis)      | Short-lived OIDC artifacts, tenant cache, rate limits |
+| Logger         | pino                   | Structured logging (JSON in prod, pretty in dev)      |
+| Config         | zod                    | Environment validation with fail-fast semantics       |
+| Signing        | jose + crypto          | ES256 (ECDSA P-256) token signing                     |
+| CLI            | yargs + JSVision       | Admin commands and embedded terminal application      |
+
+### Embedded Admin Application
+
+`porta admin` runs inside the existing CLI process from `packages/cli/src/admin/`. Live UserInfo
+is reduced to identity fields and fixed organization capability booleans; those capabilities
+control terminal affordances but never replace server authorization. Organization SDK responses
+cross a narrow service boundary that retains only validated `id`, `name`, `slug`, and `status`
+fields and maps remote failures to fixed local categories. The selected organization remains
+in-memory application context and does not change the authenticated server or credential profile.
 
 ### Domain Modules
 
 Porta follows a **modular domain architecture** where each business domain is encapsulated in its own directory under `packages/server/src/`:
 
-| Module | Directory | Responsibility |
-|--------|-----------|---------------|
-| Organizations | `packages/server/src/organizations/` | Tenant management, status lifecycle, branding |
-| Applications | `packages/server/src/applications/` | SaaS product definitions, module grouping |
-| Clients | `packages/server/src/clients/` | OIDC client registration, secret management |
-| Users | `packages/server/src/users/` | User accounts, passwords, status lifecycle |
-| Auth | `packages/server/src/auth/` | Authentication workflows, magic links, email, templates |
-| RBAC | `packages/server/src/rbac/` | Roles, permissions, user-role assignments |
-| Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values |
-| Two-Factor | `packages/server/src/two-factor/` | TOTP, email OTP, recovery codes |
-| CLI | `packages/server/src/cli/` | Admin CLI with dual-mode bootstrap |
+| Module        | Directory                            | Responsibility                                          |
+| ------------- | ------------------------------------ | ------------------------------------------------------- |
+| Organizations | `packages/server/src/organizations/` | Tenant management, status lifecycle, branding           |
+| Applications  | `packages/server/src/applications/`  | SaaS product definitions, module grouping               |
+| Clients       | `packages/server/src/clients/`       | OIDC client registration, secret management             |
+| Users         | `packages/server/src/users/`         | User accounts, passwords, status lifecycle              |
+| Auth          | `packages/server/src/auth/`          | Authentication workflows, magic links, email, templates |
+| RBAC          | `packages/server/src/rbac/`          | Roles, permissions, user-role assignments               |
+| Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values                    |
+| Two-Factor    | `packages/server/src/two-factor/`    | TOTP, email OTP, recovery codes                         |
+| CLI           | `packages/server/src/cli/`           | Admin CLI with dual-mode bootstrap                      |
 
 Each domain module follows a consistent internal structure:
 
@@ -143,23 +152,23 @@ graph TB
 
 ### Key Middleware Details
 
-| Middleware | File | Purpose |
-|-----------|------|---------|
-| Error Handler | `error-handler.ts` | Global try/catch, hides internal details for 5xx |
-| Request Logger | `request-logger.ts` | UUID request ID, logs method/url/status/duration |
-| Security Headers | `security-headers.ts` | CSP `default-src 'none'`, X-Frame-Options, HSTS, etc. |
-| Metrics | `metrics.ts` | Prometheus metrics at `GET /metrics` (optional) |
-| Root Page | `root-page.ts` | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
-| Health Check | `health.ts` | DB + Redis connectivity check at `/health` |
-| Readiness | `ready.ts` | Readiness probe for container orchestration |
-| Admin Auth | `admin-auth.ts` | JWT Bearer validation for `/api/admin/*` routes |
-| Admin CORS | `admin-cors.ts` | CORS handling for `/api/admin/*` (configurable origins) |
-| Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints |
-| Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes |
-| Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints |
-| Tenant Resolver | `tenant-resolver.ts` | Cache-first org lookup from URL slug |
-| Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post` |
-| OIDC CORS | `oidc-cors.ts` | CORS handling for OIDC endpoints |
+| Middleware         | File                    | Purpose                                                         |
+| ------------------ | ----------------------- | --------------------------------------------------------------- |
+| Error Handler      | `error-handler.ts`      | Global try/catch, hides internal details for 5xx                |
+| Request Logger     | `request-logger.ts`     | UUID request ID, logs method/url/status/duration                |
+| Security Headers   | `security-headers.ts`   | CSP `default-src 'none'`, X-Frame-Options, HSTS, etc.           |
+| Metrics            | `metrics.ts`            | Prometheus metrics at `GET /metrics` (optional)                 |
+| Root Page          | `root-page.ts`          | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
+| Health Check       | `health.ts`             | DB + Redis connectivity check at `/health`                      |
+| Readiness          | `ready.ts`              | Readiness probe for container orchestration                     |
+| Admin Auth         | `admin-auth.ts`         | JWT Bearer validation for `/api/admin/*` routes                 |
+| Admin CORS         | `admin-cors.ts`         | CORS handling for `/api/admin/*` (configurable origins)         |
+| Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints                           |
+| Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes                |
+| Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints                               |
+| Tenant Resolver    | `tenant-resolver.ts`    | Cache-first org lookup from URL slug                            |
+| Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post`                       |
+| OIDC CORS          | `oidc-cors.ts`          | CORS handling for OIDC endpoints                                |
 
 ## Multi-Tenancy Model
 
