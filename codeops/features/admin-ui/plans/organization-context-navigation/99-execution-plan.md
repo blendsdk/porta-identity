@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-08-28 13:31
-> **Progress**: 19/31 tasks (61%)
+> **Progress**: 20/31 tasks (65%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -121,7 +121,7 @@ green Phase 2 tests.
 **Reference**: [03-03](03-03-application-and-session-integration.md) · application-owned portions of ST-14, ST-17, ST-20–ST-32, and ST-35 · AR-3, AR-6–AR-8
 
 - [x] 3.1.1 [spec-author] Add no-request/gating/modal-ownership, initial-choice, switch/create, recovery, reauthentication, late-result, and lazy selected-server wiring cases — `packages/cli/tests/admin/application.organization.spec.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts` ✅ (completed: 2026-08-28 13:31; 63 retained/new specifications pass and 21 Phase 3 specifications are expected-red)
-- [ ] 3.1.2 Run the focused application/session/command specification suites and record the expected red result
+- [x] 3.1.2 Run the focused application/session/command specification suites and record the expected red result ✅ (completed: 2026-08-28 13:31; expected red: 21 Phase 3 failures and 63 passes)
 
 ### Step 3.2: Implementation and Green Phase
 
