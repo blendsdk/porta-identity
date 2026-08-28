@@ -165,6 +165,31 @@ describe('getCascadeCounts', () => {
       ['my-org-id'],
     );
   });
+
+  it('does not attribute global application definitions to one organization', async () => {
+    const mockQuery = mockPool([
+      {
+        applications: 0,
+        clients: 0,
+        users: 0,
+        roles: 0,
+        permissions: 0,
+        claim_definitions: 0,
+      },
+    ]);
+
+    await getCascadeCounts('my-org-id');
+
+    const sql = mockQuery.mock.calls[0][0];
+    expect(typeof sql).toBe('string');
+    if (typeof sql !== 'string') throw new TypeError('Expected a SQL query string.');
+    expect(sql).toContain('0::int AS applications');
+    expect(sql).toContain('0::int AS roles');
+    expect(sql).toContain('0::int AS permissions');
+    expect(sql).toContain('0::int AS claim_definitions');
+    expect(sql).not.toContain('applications WHERE organization_id');
+    expect(sql).not.toContain('JOIN applications');
+  });
 });
 
 // ============================================================================

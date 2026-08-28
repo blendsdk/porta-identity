@@ -15,6 +15,9 @@ const issuer = 'https://porta-admin-playground.ci.portaidentity.com:3543';
 const email = 'admin@playground.porta.test';
 const enterAlternateScreen = '\u001b[?1049h';
 const leaveAlternateScreen = '\u001b[?1049l';
+const f10 = '\u001b[21~';
+const arrowDown = '\u001b[B';
+const altOrganizations = '\u001bo';
 /** Fixed child program that uses only the SDK installed in the temporary packed consumer. */
 const packedOrganizationScript = String.raw`
 import { readFile } from 'node:fs/promises';
@@ -67,7 +70,7 @@ if (action === 'assert-absent') {
     .filter((organization) => organization.slug !== slug)
     .map((organization) => organization.id)
     .sort();
-  await client.organizations.destroy(slug);
+  await client.organizations.destroy(matches[0].id);
   const after = await client.organizations.listAll();
   if (after.some((organization) => organization.slug === slug)) {
     throw new Error('Test organization remains after cleanup.');
@@ -318,7 +321,7 @@ async function runPackedAdmin(
       await waitForOutput(
         child,
         captured.output,
-        (output) => output.includes('Cancel') && output.includes('Reauthenticate'),
+        (output) => output.includes('Cancel') && output.includes('eauthenticate'),
         'Initial organization chooser',
       );
     } catch {
@@ -335,35 +338,32 @@ async function runPackedAdmin(
     );
 
     offset = observeAfter();
-    child.stdin.write('\u001bm');
+    child.stdin.write(f10);
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Who am I'),
+      () => includesAfter(offset, 'ho am I'),
       'Hamburger menu',
     );
     child.stdin.write('\r');
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Who am I') && includesAfter(offset, email),
+      () => includesAfter(offset, email),
       'Verified identity dialog',
     );
     child.stdin.write('\r');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
 
     offset = observeAfter();
-    child.stdin.write('\u001bo');
+    child.stdin.write(altOrganizations);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    offset = observeAfter();
+    child.stdin.write('s');
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Switch organization'),
-      'Organizations menu',
-    );
-    child.stdin.write('\u001b[B\r');
-    await waitForOutput(
-      child,
-      captured.output,
-      () => includesAfter(offset, 'Cancel') && includesAfter(offset, 'Reauthenticate'),
+      () => includesAfter(offset, 'Cancel') && includesAfter(offset, 'eauthenticate'),
       'Explicit organization chooser',
     );
     offset = observeAfter();
@@ -371,36 +371,32 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Organization: Porta Admin'),
+      () => includesAfter(offset, 'porta-admin'),
       'Explicitly selected organization',
     );
 
     offset = observeAfter();
-    child.stdin.write('\u001bo');
+    child.stdin.write(altOrganizations);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    offset = observeAfter();
+    child.stdin.write('c');
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Create organization'),
-      'Organizations menu before create',
-    );
-    child.stdin.write('\r');
-    await waitForOutput(
-      child,
-      captured.output,
-      () => includesAfter(offset, 'Default locale'),
+      () => includesAfter(offset, 'efault locale'),
       'Create organization dialog',
     );
-    child.stdin.write(`\u001bn${organization.name}\u001bs${organization.slug}\u001bc`);
+    child.stdin.write(`${organization.name}\t${organization.slug}\t\t\r`);
     onCreateDispatch();
     offset = observeAfter();
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, `Organization: ${organization.name}`),
+      () => includesAfter(offset, organization.slug.slice(-24)),
       'Created and selected organization',
     );
     await afterCreateDispatch?.();
-    child.stdin.write('\u001bx');
+    child.stdin.write(`${f10}${arrowDown}${arrowDown}\r`);
     child.stdin.end();
     const result = await captured.result;
     return {

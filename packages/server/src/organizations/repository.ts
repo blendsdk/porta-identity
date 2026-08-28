@@ -471,9 +471,9 @@ export async function hardDeleteOrganization(id: string): Promise<boolean> {
  * Count all child entities that will be cascade-deleted with an organization.
  * Used for dry-run display and confirmation prompts.
  *
- * Runs all counts in a single query using scalar subqueries for efficiency.
- * Roles, permissions, and claim definitions are counted via their parent
- * application's organization_id join.
+ * Runs all counts in a single query using scalar subqueries. Applications,
+ * roles, permissions, and claim definitions are global definitions, so they
+ * are not deleted with one organization and their counts remain zero.
  *
  * @param orgId - Organization UUID
  * @returns Counts of each child entity type
@@ -489,18 +489,12 @@ export async function getCascadeCounts(orgId: string): Promise<{
   const pool = getPool();
   const result = await pool.query(
     `SELECT
-       (SELECT COUNT(*) FROM applications WHERE organization_id = $1)::int AS applications,
+       0::int AS applications,
        (SELECT COUNT(*) FROM clients WHERE organization_id = $1)::int AS clients,
        (SELECT COUNT(*) FROM users WHERE organization_id = $1)::int AS users,
-       (SELECT COUNT(*) FROM roles r
-        JOIN applications a ON r.application_id = a.id
-        WHERE a.organization_id = $1)::int AS roles,
-       (SELECT COUNT(*) FROM permissions p
-        JOIN applications a ON p.application_id = a.id
-        WHERE a.organization_id = $1)::int AS permissions,
-       (SELECT COUNT(*) FROM claim_definitions cd
-        JOIN applications a ON cd.application_id = a.id
-        WHERE a.organization_id = $1)::int AS claim_definitions`,
+       0::int AS roles,
+       0::int AS permissions,
+       0::int AS claim_definitions`,
     [orgId],
   );
   return result.rows[0];
