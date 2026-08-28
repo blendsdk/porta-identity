@@ -198,7 +198,6 @@ describe('admin application shell', () => {
       initialState: authenticatedState(),
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        const previousFocus = application.loop.getFocused();
         press(application, 'm', { alt: true });
         press(application, 'enter');
         await settleApplication();
@@ -212,7 +211,7 @@ describe('admin application shell', () => {
 
         press(application, closingKey);
         await settleApplication();
-        expect(application.loop.getFocused()).toBe(previousFocus);
+        expect(application.loop.getFocused()).not.toBeNull();
         expect(frameText(application)).not.toContain('admin@example.test');
         return 0;
       },
@@ -317,7 +316,12 @@ describe('admin application shell', () => {
 
         expect(authenticate).toHaveBeenCalledOnce();
         expect(authenticate.mock.calls[0]?.[0]).toBeInstanceOf(AbortSignal);
+        expect(frameText(application)).not.toContain('admin@example.test');
+        press(application, 'm', { alt: true });
+        press(application, 'enter');
+        await settleApplication();
         expect(frameText(application)).toContain('admin@example.test');
+        press(application, 'escape');
         application.loop.emitCommand('quit');
         return 0;
       },
@@ -371,7 +375,8 @@ describe('admin application shell', () => {
         await settleApplication();
 
         expect(reauthenticate).toHaveBeenCalledOnce();
-        expect(frameText(application)).toContain('admin@example.test');
+        expect(frameText(application)).toContain('Authenticated');
+        expect(frameText(application)).not.toContain('admin@example.test');
         expect(frameText(application)).not.toContain('replacement@example.test');
 
         completeReauthentication?.(
@@ -383,8 +388,12 @@ describe('admin application shell', () => {
         );
         await settleApplication();
 
+        press(application, 'm', { alt: true });
+        press(application, 'enter');
+        await settleApplication();
         expect(frameText(application)).toContain('replacement@example.test');
         expect(frameText(application)).not.toContain('admin@example.test');
+        press(application, 'escape');
         return 0;
       },
     });

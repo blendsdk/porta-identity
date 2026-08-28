@@ -6,14 +6,14 @@ import {
   View,
   grow,
   item,
-  menuBar,
+  MenuBar,
   spacer,
   statusItem,
   statusLine,
   stringWidth,
   subMenu,
 } from '@jsvision/ui';
-import type { DrawContext, MenuBar, Size2D, StatusLine } from '@jsvision/ui';
+import type { DispatchEvent, DrawContext, Size2D, StatusLine } from '@jsvision/ui';
 import { normalizeServerOrigin } from '../global-options.js';
 import { canRetryAdminState, type AdminConnectionState } from './state.js';
 
@@ -44,6 +44,19 @@ const FAILURE_LABELS = {
   'configuration-failure': 'The local configuration is invalid.',
   'storage-failure': 'Credentials could not be stored.',
 } as const;
+
+/** Menu bar that keeps Alt-M stable while displaying the literal hamburger label. */
+class AdminMenuBar extends MenuBar {
+  /** Opens the global menu on Alt-M and delegates every other event to JSVision. */
+  onEvent(event: DispatchEvent): void {
+    if (event.event.type === 'key' && event.event.alt && event.event.key.toLowerCase() === 'm') {
+      this.controller?.openTop(0);
+      event.handled = true;
+      return;
+    }
+    super.onEvent(event);
+  }
+}
 
 /** Presentation objects mounted into one JSVision application. */
 export interface AdminPresentation {
@@ -108,6 +121,30 @@ class AdminLandingView extends View {
     private readonly reportRecoverableGeometry: (recoverable: boolean) => void,
   ) {
     super();
+    this.focusable = true;
+  }
+
+  /** Keeps Enter authentication available without stealing Enter from an open menu. */
+  onEvent(event: DispatchEvent): void {
+    if (
+      event.event.type === 'key' &&
+      event.event.key === 'enter' &&
+      this.readState().kind === 'unauthenticated'
+    ) {
+      event.emit?.(ADMIN_COMMANDS.authenticate);
+      event.handled = true;
+      return;
+    }
+    if (
+      event.event.type === 'key' &&
+      event.event.key === 'escape' &&
+      (this.readState().kind === 'authenticating' || this.readState().kind === 'verifying')
+    ) {
+      event.emit?.(ADMIN_COMMANDS.cancel);
+      event.handled = true;
+      return;
+    }
+    super.onEvent(event);
   }
 
   /** Draws the responsive normal, compact, or resize-only presentation. */
@@ -152,7 +189,10 @@ class AdminLandingView extends View {
 
   /** Builds the bounded landing content used by small but recoverable terminals. */
   private compactLines(state: AdminConnectionState, maximumWidth: number): string[] {
-    const lines = ['Porta Admin', `Server: ${serverLabel(state)}`, `State: ${stateLabel(state)}`];
+    const lines =
+      state.kind === 'authenticated' && !state.organization
+        ? ['', '', '', '', '', `Server: ${serverLabel(state)}`, `State: ${stateLabel(state)}`]
+        : ['Porta Admin', `Server: ${serverLabel(state)}`, `State: ${stateLabel(state)}`];
     this.appendOrganization(lines, state, maximumWidth);
     if (this.insecure) lines.push('Warning: insecure TLS enabled.');
     lines.push(...this.actionLines(state));
@@ -206,12 +246,16 @@ export function createAdminPresentation(
   const belowRecoverable =
     viewport !== undefined && (viewport.width < COMPACT_WIDTH || viewport.height < COMPACT_HEIGHT);
   const fullMenuItems = () => {
+    // Runtime-injected initial state may predate capability claims; missing claims grant nothing.
     const capabilities =
       currentState.kind === 'authenticated'
-        ? currentState.capabilities
+        ? (currentState.capabilities ?? {
+            canReadOrganizations: false,
+            canCreateOrganizations: false,
+          })
         : { canReadOrganizations: false, canCreateOrganizations: false };
     return [
-      subMenu(utf8 ? '☰ ~M~enu' : '~M~enu', [
+      subMenu(utf8 ? '☰ Menu' : 'Menu', [
         item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),
         item('~R~eauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R'),
         item('~Q~uit', Commands.quit, 'Alt+X'),
@@ -238,7 +282,8 @@ export function createAdminPresentation(
     statusItem('~Ctrl-R~ Reauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R'),
   ];
   const quitStatusItems = () => [statusItem('~Alt-X~ Quit', Commands.quit, 'Alt+X')];
-  const menu = menuBar(belowRecoverable ? [] : fullMenuItems());
+  const menu = new AdminMenuBar();
+  menu.setItems(belowRecoverable ? [] : fullMenuItems());
   const status = statusLine(belowRecoverable ? quitStatusItems() : fullStatusItems());
   let geometryIsRecoverable = !belowRecoverable;
   const landing = new AdminLandingView(

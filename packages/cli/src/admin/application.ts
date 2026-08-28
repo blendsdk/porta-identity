@@ -12,6 +12,7 @@ import type {
 } from '@jsvision/ui';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
+import { showWhoAmIDialog } from './organization-dialogs.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
 import { canRetryAdminState, type AdminConnectionState } from './state.js';
 
@@ -186,19 +187,8 @@ async function runAbortableDialog<T>(
 /** Creates the modal login and first-run interactions over the application body. */
 function createAdminInteraction(
   application: Application,
-  presentation: ReturnType<typeof createAdminPresentation>,
+  dialogHost: ModalDialogHost,
 ): AdminApplicationInteraction {
-  const dialogHost: ModalDialogHost = {
-    i18n: application.i18n,
-    loop: application.loop,
-    desktop: {
-      addWindow: (window) => presentation.content.add(window),
-      removeWindow: (window) => presentation.content.remove(window),
-      get bounds() {
-        return presentation.content.bounds;
-      },
-    },
-  };
   const serverValidator: Validator = {
     isValidInput: (value) => value.length <= 2_048,
     isValid: (value) => {
@@ -260,6 +250,24 @@ function createAdminInteraction(
   };
 }
 
+/** Creates the shared modal surface over the administration landing view. */
+function createAdminDialogHost(
+  application: Application,
+  presentation: ReturnType<typeof createAdminPresentation>,
+): ModalDialogHost {
+  return {
+    i18n: application.i18n,
+    loop: application.loop,
+    desktop: {
+      addWindow: (window) => presentation.content.add(window),
+      removeWindow: (window) => presentation.content.remove(window),
+      get bounds() {
+        return presentation.content.bounds;
+      },
+    },
+  };
+}
+
 /** Starts one administration application and always releases its resources. */
 export async function runAdminApplication(
   options: AdminApplicationOptions,
@@ -268,12 +276,13 @@ export async function runAdminApplication(
   const initialState =
     options.initialState ??
     (server ? { kind: 'unauthenticated', server } : { kind: 'selecting-server' });
+  const caps = resolveCapabilities().profile;
   const presentation = createAdminPresentation(
     initialState,
     options.showInsecureWarning ?? options.insecure,
     options.viewport,
+    caps.unicode.utf8,
   );
-  const caps = resolveCapabilities().profile;
   const factory = options.applicationFactory ?? createApplication;
   const application = factory({
     content: presentation.content,
@@ -283,14 +292,13 @@ export async function runAdminApplication(
     systemClipboard: false,
     caps,
     keymap: createKeymap({
-      enter: ADMIN_COMMANDS.authenticate,
       'ctrl+t': ADMIN_COMMANDS.retry,
       'ctrl+r': ADMIN_COMMANDS.reauthenticate,
-      escape: ADMIN_COMMANDS.cancel,
       'alt+x': Commands.quit,
     }),
   });
-  const interaction = createAdminInteraction(application, presentation);
+  const dialogHost = createAdminDialogHost(application, presentation);
+  const interaction = createAdminInteraction(application, dialogHost);
 
   let disposed = false;
   let finalized = false;
@@ -308,6 +316,15 @@ export async function runAdminApplication(
     application.loop.enableCommand(
       ADMIN_COMMANDS.reauthenticate,
       state.kind === 'authenticated' || state.kind === 'unauthorized',
+    );
+    application.loop.enableCommand(ADMIN_COMMANDS.whoAmI, state.kind === 'authenticated');
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.createOrganization,
+      state.kind === 'authenticated' && state.capabilities.canCreateOrganizations,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.switchOrganization,
+      state.kind === 'authenticated' && state.capabilities.canReadOrganizations,
     );
     application.loop.enableCommand(ADMIN_COMMANDS.cancel, currentController !== undefined);
   };
@@ -360,6 +377,15 @@ export async function runAdminApplication(
     application.onCommand(ADMIN_COMMANDS.reauthenticate, () =>
       startOperation(session?.reauthenticate, true),
     ),
+    application.onCommand(ADMIN_COMMANDS.whoAmI, () => {
+      const state = presentation.getState();
+      if (state.kind !== 'authenticated' || currentController || disposed) return;
+      void showWhoAmIDialog(
+        dialogHost,
+        state,
+        options.showInsecureWarning ?? options.insecure,
+      ).catch(() => undefined);
+    }),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
       const fallback = currentOperationFallback;
       currentController?.abort();

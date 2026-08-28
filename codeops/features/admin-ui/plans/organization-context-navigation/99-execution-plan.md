@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:01
-> **Progress**: 14/31 tasks (45%)
+> **Last Updated**: 2026-08-28 13:08
+> **Progress**: 15/31 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -79,7 +79,7 @@ mapping, and green Phase 1 tests.
 ## Phase 2: Dialogs, Menus, and Landing Presentation
 
 > **Phase baseline tree**: `3ef4da31558b92a275804b0250f08ecb607af84b`
-> **Expected modification set**: `packages/cli/src/admin/{application,index,organization-dialogs,presentation,state}.ts`, `packages/cli/tests/admin/{application,organization-dialogs}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, this execution plan, and the execution review
+> **Expected modification set**: `packages/cli/src/admin/{application,index,organization-dialogs,presentation,state}.ts`, `packages/cli/tests/admin/{application,organization-dialogs}.{spec,impl}.test.ts`, `packages/cli/vitest.config.ts`, this execution plan, the ambiguity register, and the execution review
 > **Scope mode**: strict — existing JSVision application only; no new UI framework, dependency, workspace, workflow, or runtime matrix
 
 ### Step 2.1: Specification Tests
@@ -95,7 +95,7 @@ mapping, and green Phase 1 tests.
 
 - [x] 2.2.1 Implement Who am I, chooser, and create dialogs with real JSVision controls and bounded values — `packages/cli/src/admin/organization-dialogs.ts`, `packages/cli/vitest.config.ts` ✅ (completed: 2026-08-28 12:58; 15/15 dialog specifications green; 7 later presentation specifications remain expected-red)
 - [x] 2.2.2 Implement labelled global/Organizations menus, concise disabled reasons, minimal landing view, and default-theme responsive rendering — `packages/cli/src/admin/presentation.ts` ✅ (completed: 2026-08-28 13:01; mechanical state target correction: selected organization fields are owned by `state.ts`; typecheck and 4 presentation-owned specifications green)
-- [ ] 2.2.3 Add dialog/menu exports needed by the application without creating a public package surface — `packages/cli/src/admin/index.ts`, `packages/cli/src/admin/application.ts`
+- [x] 2.2.3 Add dialog/menu exports needed by the application without creating a public package surface — `packages/cli/src/admin/index.ts`, `packages/cli/src/admin/application.ts` ✅ (completed: 2026-08-28 13:08; 30/30 focused application and dialog specifications green)
 - [ ] 2.2.4 Run the Phase 2-owned portions of ST-11–ST-19 and make the implementation green without changing specification expectations
 
 ### Step 2.3: Implementation Tests and Verification

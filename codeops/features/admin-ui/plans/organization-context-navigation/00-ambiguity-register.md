@@ -1,7 +1,7 @@
 ## Ambiguity Register: Organization Context and Navigation Plan
 
-> **Status**: ✅ GATE PASSED — all 12 items resolved
-> **Last Updated**: 2026-08-28 12:43
+> **Status**: ✅ GATE PASSED — all 13 items resolved
+> **Last Updated**: 2026-08-28 13:06
 
 |   # | Category                     | Ambiguity / Gap                                                                                                                            | Options Presented                                                                                                                                                                                | User Decision                                                     | Status      |
 | --: | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------- |
@@ -17,6 +17,7 @@
 |  10 | Testing / destructive scope  | How does the packed create journey remove the organization it creates?                                                                     | Generate a high-entropy slug, prove it is test-owned, and use the installed packed SDK to destroy exactly that slug in an inner `finally` before playground teardown                             | User accepted the corrected minimal cleanup after preflight       | ✅ Resolved |
 |  11 | Testing (runtime)            | How should the older exact stored-session assertion represent newly required capabilities when `/me` contains no capability claims?        | A: require both booleans to be false / B: omit the capability object conditionally                                                                                                               | AI selected A under delegated auto-design authority               | ✅ Resolved |
 |  12 | Internal interface (runtime) | What is the smallest UI-only input for the organization chooser while application code retains network ownership?                          | A: capabilities plus an optional application-owned list promise / B: give the dialog the organization service                                                                                    | AI selected A under delegated auto-design authority               | ✅ Resolved |
+|  13 | Testing (runtime)            | How should retained authentication tests prove identity replacement after identity moves off the landing view?                             | A: inspect identity through the real Who am I dialog / B: retain identity text on the landing view                                                                                               | AI selected A under delegated auto-design authority               | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -65,3 +66,16 @@ operation lifecycle behavior. Confidence: High. Hardening: the interface follows
 `runAbortableDialog()` boundary and adds no layer or dependency. Policy version: 1. Root invocation
 ID: `ad-20260828-admin-ui-rd02`. Reopen trigger: JSVision gains a standard asynchronous chooser
 contract that already owns cancellation.
+
+**AR-13 (runtime):** Authority: AI — delegated by `--auto-design`. Eligibility: specification
+alignment inside the approved identity-dialog behavior. Objective: retain authentication and
+replacement evidence without leaking identity onto the organization landing view. Decision: the
+existing authentication tests inspect the verified identity through the real Who am I dialog after
+the operation completes. Evidence: the approved presentation contract moves identity entirely to
+Who am I, while the older assertions inspected the superseded summary. Rejected alternative:
+retaining identity on the landing view directly contradicts the approved presentation behavior.
+Strongest counterargument: direct landing assertions are shorter, but they test behavior that is no
+longer allowed. Confidence: High. Hardening: the corrected checks exercise the same user-visible
+dialog path as the navigation specifications and add no test seam. Policy version: 1. Root invocation
+ID: `ad-20260828-admin-ui-rd02`. Reopen trigger: identity is explicitly restored to the landing-view
+acceptance criteria.
