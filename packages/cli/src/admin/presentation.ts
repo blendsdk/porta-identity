@@ -1,9 +1,9 @@
 /** JSVision presentation for the embedded Porta administration shell. */
 
+import type { DispatchEvent, DrawContext, Size2D, StatusLine } from '@jsvision/ui';
 import {
   Commands,
   Group,
-  View,
   grow,
   item,
   MenuBar,
@@ -12,8 +12,8 @@ import {
   statusLine,
   stringWidth,
   subMenu,
+  View,
 } from '@jsvision/ui';
-import type { DispatchEvent, DrawContext, Size2D, StatusLine } from '@jsvision/ui';
 import { normalizeServerOrigin } from '../global-options.js';
 import { canRetryAdminState, type AdminConnectionState } from './state.js';
 
@@ -53,19 +53,6 @@ const ORGANIZATION_FAILURE_LABELS = {
   unavailable: 'Service unavailable',
   'invalid-response': 'Invalid server response',
 } as const;
-
-/** Menu bar that keeps Alt-M stable while displaying the literal hamburger label. */
-class AdminMenuBar extends MenuBar {
-  /** Opens the global menu on Alt-M and delegates every other event to JSVision. */
-  onEvent(event: DispatchEvent): void {
-    if (event.event.type === 'key' && event.event.alt && event.event.key.toLowerCase() === 'm') {
-      this.controller?.openTop(0);
-      event.handled = true;
-      return;
-    }
-    super.onEvent(event);
-  }
-}
 
 /** Presentation objects mounted into one JSVision application. */
 export interface AdminPresentation {
@@ -257,7 +244,7 @@ export function createAdminPresentation(
           })
         : { canReadOrganizations: false, canCreateOrganizations: false };
     return [
-      subMenu(utf8 ? '☰ Menu' : 'Menu', [
+      subMenu(utf8 ? '≡' : '[=]', [
         item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),
         item('~R~eauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R'),
         item('~Q~uit', Commands.quit, 'Alt+X'),
@@ -284,7 +271,7 @@ export function createAdminPresentation(
     statusItem('~Ctrl-R~ Reauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R'),
   ];
   const quitStatusItems = () => [statusItem('~Alt-X~ Quit', Commands.quit, 'Alt+X')];
-  const menu = new AdminMenuBar();
+  const menu = new MenuBar();
   menu.setItems(belowRecoverable ? [] : fullMenuItems());
   const status = statusLine(belowRecoverable ? quitStatusItems() : fullStatusItems());
   let geometryIsRecoverable = !belowRecoverable;

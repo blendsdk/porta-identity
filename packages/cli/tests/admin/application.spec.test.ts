@@ -110,7 +110,9 @@ describe('admin application shell', () => {
         expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.window.bg);
         expect(frame).toContain('https://porta.example.test');
         expect(frame).toContain('Authenticated');
-        expect(frame).toMatch(/shortcut|Alt\+|Ctrl\+/i);
+        press(application, 'f10');
+        await settleApplication();
+        expect(frameText(application)).toMatch(/Who am I(?:…|\.\.\.)/);
         return 0;
       },
     });
@@ -127,14 +129,16 @@ describe('admin application shell', () => {
       applicationRunner: async (application) => {
         const landing = frameText(application);
 
-        expect(landing).toContain('☰ Menu');
+        expect(landing.split('\n')[0]).toContain('≡');
+        expect(landing.split('\n')[0]).not.toContain('F10');
+        expect(landing).not.toContain('☰ Menu');
         expect(landing).toContain('Organizations');
         expect(landing).toContain('Choose or create an organization.');
         expect(landing).not.toContain('Verified Admin');
         expect(landing).not.toContain('admin@example.test');
         expect(landing).not.toMatch(/Applications|Clients|Users|Signing Keys|Dashboard|Metrics/);
 
-        press(application, 'm', { alt: true });
+        press(application, 'f10');
         await settleApplication();
         const menu = frameText(application);
         expect(menu).toMatch(/Who am I(?:…|\.\.\.)/);
@@ -145,8 +149,8 @@ describe('admin application shell', () => {
     });
   });
 
-  // Terminals without usable UTF-8 receive the plain ASCII top-level menu label.
-  it('should render an ASCII Menu label when UTF-8 is unavailable', async () => {
+  // Terminals without usable UTF-8 receive a compact ASCII hamburger approximation.
+  it('should render an ASCII hamburger label without the word Menu', async () => {
     terminalCapabilities.utf8 = false;
 
     await runAdminApplication({
@@ -158,8 +162,9 @@ describe('admin application shell', () => {
       applicationRunner: async (application) => {
         const frame = frameText(application);
 
-        expect(frame).toContain('Menu');
-        expect(frame).not.toContain('☰');
+        expect(frame.split('\n')[0]).toContain('[=]');
+        expect(frame.split('\n')[0]).not.toContain('Menu');
+        expect(frame).not.toContain('≡');
         expect(frame).toContain('Organizations');
         return 0;
       },
@@ -198,7 +203,7 @@ describe('admin application shell', () => {
       initialState: authenticatedState(),
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        press(application, 'm', { alt: true });
+        press(application, 'f10');
         press(application, 'enter');
         await settleApplication();
         const modal = frameText(application);
@@ -259,7 +264,7 @@ describe('admin application shell', () => {
       initialState: authenticatedState(),
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        press(application, 'm', { alt: true });
+        press(application, 'f10');
         await settleApplication();
         const frame = frameText(application);
         const plainAscii = frame.replace(/[^\x20-\x7e\n]/g, '');
@@ -311,13 +316,13 @@ describe('admin application shell', () => {
       applicationRunner: async (application) => {
         expect(frameText(application)).toContain('Authenticate');
 
-        application.loop.emitCommand('authenticate');
+        press(application, 'enter');
         await settleApplication();
 
         expect(authenticate).toHaveBeenCalledOnce();
         expect(authenticate.mock.calls[0]?.[0]).toBeInstanceOf(AbortSignal);
         expect(frameText(application)).not.toContain('admin@example.test');
-        press(application, 'm', { alt: true });
+        press(application, 'f10');
         press(application, 'enter');
         await settleApplication();
         expect(frameText(application)).toContain('admin@example.test');
@@ -388,7 +393,7 @@ describe('admin application shell', () => {
         );
         await settleApplication();
 
-        press(application, 'm', { alt: true });
+        press(application, 'f10');
         press(application, 'enter');
         await settleApplication();
         expect(frameText(application)).toContain('replacement@example.test');

@@ -148,6 +148,8 @@ export async function runAdminApplication(
     caps,
     keymap: applicationKeymap,
   });
+  // The landing view owns the clean-start Enter action, so it must receive focus before input begins.
+  application.loop.focusInto(presentation.content);
   const dialogSurface = createAdminDialogSurface(application, presentation);
   const dialogHost = dialogSurface.host;
   const interaction = createAdminInteraction(application, dialogHost);

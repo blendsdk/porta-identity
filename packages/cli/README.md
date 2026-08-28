@@ -252,7 +252,8 @@ optional slug, and optional default locale. Creation selects the returned organi
 The selected context is held only for the running shell and does not change authentication or grant
 permissions.
 
-The hamburger menu contains `Who am I…`, `Reauthenticate`, and `Quit`. `Who am I…` shows the
+Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
+`Who am I…` shows the
 server-bound verified identity. Use `Ctrl-R` to reauthenticate; replacing credentials for a
 different server requires explicit confirmation. Administration data screens beyond the current
 organization landing view are not included yet.

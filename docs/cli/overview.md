@@ -89,7 +89,8 @@ from its name, optional slug, and optional default locale. A successfully create
 selected immediately. The selection lasts only for the running shell and does not reauthenticate or
 grant additional access.
 
-The hamburger menu contains `Who am I…`, `Reauthenticate`, and `Quit`. `Who am I…` shows the
+Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
+`Who am I…` shows the
 verified identity and server details. Use `Ctrl-R` to reauthenticate; changing to another server
 requires explicit credential-replacement confirmation. Later administration data screens are not
 included yet. Using `--insecure` disables TLS certificate validation and leaves a persistent warning
