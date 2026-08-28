@@ -98,6 +98,10 @@ export type AdminConnectionState =
       readonly identity: VerifiedIdentity;
       /** Organization actions derived from the current live UserInfo response. */
       readonly capabilities: AdminCapabilities;
+      /** Organization currently selected for administration, when one has been chosen. */
+      readonly organization?: AdminOrganizationContext;
+      /** Most recent fixed organization-operation failure, when presentation is required. */
+      readonly organizationFailure?: AdminOrganizationFailureKind;
     }
   | {
       readonly kind: 'unauthorized';

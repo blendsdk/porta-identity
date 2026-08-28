@@ -10,6 +10,7 @@ import {
   spacer,
   statusItem,
   statusLine,
+  stringWidth,
   subMenu,
 } from '@jsvision/ui';
 import type { DrawContext, MenuBar, Size2D, StatusLine } from '@jsvision/ui';
@@ -21,10 +22,13 @@ export const ADMIN_COMMANDS = {
   authenticate: 'authenticate',
   retry: 'retry',
   reauthenticate: 'reauthenticate',
+  whoAmI: 'who-am-i',
+  createOrganization: 'create-organization',
+  switchOrganization: 'switch-organization',
   cancel: 'cancel',
 } as const;
 
-/** Minimum geometry that can display the full administration summary. */
+/** Minimum geometry that can display the full administration landing view. */
 const NORMAL_WIDTH = 64;
 const NORMAL_HEIGHT = 16;
 
@@ -45,7 +49,7 @@ const FAILURE_LABELS = {
 export interface AdminPresentation {
   /** Full-screen body mounted between the application chrome rows. */
   readonly content: Group;
-  /** Application and session menu bar. */
+  /** Global and organization menu bar. */
   readonly menu?: MenuBar;
   /** Keyboard shortcut bar. */
   readonly status: StatusLine;
@@ -55,17 +59,14 @@ export interface AdminPresentation {
   readonly getState: () => AdminConnectionState;
 }
 
-/** Removes terminal controls and bounds a live-verified display claim. */
-function safeText(value: string | undefined, fallback: string): string {
-  if (!value) return fallback;
+/** Clips a control-free value to the available terminal display width. */
+function clipText(value: string, maximumWidth: number): string {
   let result = '';
   for (const character of value) {
-    const codePoint = character.codePointAt(0) ?? 0;
-    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return fallback;
+    if (stringWidth(result + character) > maximumWidth) break;
     result += character;
-    if (result.length >= 80) break;
   }
-  return result || fallback;
+  return result;
 }
 
 /** Converts a state discriminator to a stable, readable label. */
@@ -99,8 +100,8 @@ function serverLabel(state: AdminConnectionState): string {
 }
 
 /** Renders the current state into the real JSVision frame buffer. */
-class AdminSummaryView extends View {
-  /** Creates a summary bound to one mutable application-owned state cell. */
+class AdminLandingView extends View {
+  /** Creates a landing view bound to one mutable application-owned state cell. */
   constructor(
     private readonly readState: () => AdminConnectionState,
     private readonly insecure: boolean,
@@ -125,39 +126,55 @@ class AdminSummaryView extends View {
 
     const state = this.readState();
     const compact = width < NORMAL_WIDTH || height < NORMAL_HEIGHT;
-    const lines = compact ? this.compactLines(state) : this.normalLines(state);
+    const availableWidth = Math.max(1, width - (compact ? 2 : 4));
+    const lines = compact
+      ? this.compactLines(state, availableWidth)
+      : this.normalLines(state, availableWidth);
     for (let index = 0; index < lines.length && index < height; index += 1) {
-      context.text(compact ? 1 : 2, index, lines[index] ?? '', bodyStyle);
+      context.text(compact ? 1 : 2, index, clipText(lines[index] ?? '', availableWidth), bodyStyle);
     }
   }
 
-  /** Builds the complete summary used by ordinary terminals. */
-  private normalLines(state: AdminConnectionState): string[] {
+  /** Builds the complete landing content used by ordinary terminals. */
+  private normalLines(state: AdminConnectionState, maximumWidth: number): string[] {
     const lines = [
       'Porta Administration',
       '',
       `Server: ${serverLabel(state)}`,
       `State: ${stateLabel(state)}`,
     ];
-    if (state.kind === 'authenticated' || state.kind === 'unauthorized') {
-      lines.push(`Identity: ${safeText(state.identity.name, 'Verified administrator')}`);
-      lines.push(`Email: ${safeText(state.identity.email, 'Not provided')}`);
-    }
+    this.appendOrganization(lines, state, maximumWidth);
     if (this.insecure) lines.push('Warning: insecure TLS verification is enabled.');
     lines.push('', ...this.actionLines(state));
     lines.push('Shortcuts: Alt-X Quit');
     return lines;
   }
 
-  /** Builds the bounded summary used by small but recoverable terminals. */
-  private compactLines(state: AdminConnectionState): string[] {
+  /** Builds the bounded landing content used by small but recoverable terminals. */
+  private compactLines(state: AdminConnectionState, maximumWidth: number): string[] {
     const lines = ['Porta Admin', `Server: ${serverLabel(state)}`, `State: ${stateLabel(state)}`];
-    if (state.kind === 'authenticated' || state.kind === 'unauthorized') {
-      lines.push(`Identity: ${safeText(state.identity.email, state.identity.sub)}`);
-    }
+    this.appendOrganization(lines, state, maximumWidth);
     if (this.insecure) lines.push('Warning: insecure TLS enabled.');
     lines.push(...this.actionLines(state));
     return lines;
+  }
+
+  /** Appends only the selected organization context, never identity or future modules. */
+  private appendOrganization(
+    lines: string[],
+    state: AdminConnectionState,
+    maximumWidth: number,
+  ): void {
+    if (state.kind !== 'authenticated') return;
+    if (!state.organization) {
+      lines.push('Choose or create an organization.');
+      return;
+    }
+    lines.push(
+      `Organization: ${clipText(state.organization.name, maximumWidth)}`,
+      `Slug: ${clipText(state.organization.slug, maximumWidth)}`,
+      `Status: ${state.organization.status}`,
+    );
   }
 
   /** Lists keyboard-complete actions appropriate to the current state. */
@@ -183,14 +200,38 @@ export function createAdminPresentation(
   initialState: AdminConnectionState,
   insecure: boolean,
   viewport?: Size2D,
+  utf8 = true,
 ): AdminPresentation {
   let currentState = initialState;
   const belowRecoverable =
     viewport !== undefined && (viewport.width < COMPACT_WIDTH || viewport.height < COMPACT_HEIGHT);
-  const fullMenuItems = () => [
-    subMenu('~A~pplication', [item('~Q~uit', Commands.quit, 'Alt+X')]),
-    subMenu('~S~ession', [item('~R~eauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R')]),
-  ];
+  const fullMenuItems = () => {
+    const capabilities =
+      currentState.kind === 'authenticated'
+        ? currentState.capabilities
+        : { canReadOrganizations: false, canCreateOrganizations: false };
+    return [
+      subMenu(utf8 ? '☰ ~M~enu' : '~M~enu', [
+        item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),
+        item('~R~eauthenticate', ADMIN_COMMANDS.reauthenticate, 'Ctrl+R'),
+        item('~Q~uit', Commands.quit, 'Alt+X'),
+      ]),
+      subMenu('~O~rganizations', [
+        item(
+          capabilities.canCreateOrganizations
+            ? '~C~reate organization…'
+            : 'Create organization… (requires organization create)',
+          ADMIN_COMMANDS.createOrganization,
+        ),
+        item(
+          capabilities.canReadOrganizations
+            ? '~S~witch organization…'
+            : 'Switch organization… (requires organization read)',
+          ADMIN_COMMANDS.switchOrganization,
+        ),
+      ]),
+    ];
+  };
   const fullStatusItems = () => [
     statusItem('~Alt-X~ Quit', Commands.quit, 'Alt+X'),
     spacer(),
@@ -200,7 +241,7 @@ export function createAdminPresentation(
   const menu = menuBar(belowRecoverable ? [] : fullMenuItems());
   const status = statusLine(belowRecoverable ? quitStatusItems() : fullStatusItems());
   let geometryIsRecoverable = !belowRecoverable;
-  const summary = new AdminSummaryView(
+  const landing = new AdminLandingView(
     () => currentState,
     insecure,
     (recoverable) => {
@@ -211,7 +252,7 @@ export function createAdminPresentation(
     },
   );
   const content = new Group();
-  content.add(grow(summary));
+  content.add(grow(landing));
 
   return {
     content,
@@ -219,7 +260,8 @@ export function createAdminPresentation(
     status,
     setState: (state) => {
       currentState = state;
-      summary.invalidate();
+      if (geometryIsRecoverable) menu.setItems(fullMenuItems());
+      landing.invalidate();
     },
     getState: () => currentState,
   };
