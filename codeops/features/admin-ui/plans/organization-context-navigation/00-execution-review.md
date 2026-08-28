@@ -1,7 +1,7 @@
 # Execution Review: Organization Context and Navigation
 
-> **Status**: Phases 1–2 passed
-> **Last Updated**: 2026-08-28 13:17
+> **Status**: Phases 1–2 passed; Phase 3 fixes pending re-review
+> **Last Updated**: 2026-08-28 13:57
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1
@@ -57,3 +57,31 @@ or critical finding remains.
 
 The reviewers confirmed that dialog, menu, landing, internal-export, and verification deliverables
 match the Phase 2 contract. Create and switch orchestration remains correctly deferred to Phase 3.
+
+## Phase 3
+
+**Baseline tree:** `e2f7b5a0364f9b42292003cbe43078ee00584659`
+
+**Verification before review:** Node 24.20.0 `yarn workspace @portaidentity/cli verify` passed with
+46 files and 557 tests.
+
+| Finding                                                                                | Severity | Ruling                                                                                | Status          |
+| -------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- | --------------- |
+| RV-001: resize cancelled only organization dialogs                                     | Major    | Close identity, organization, and authentication ownership before resize-only redraw  | Fix implemented |
+| RV-002: successful reconciliation did not clear indeterminate-create recovery          | Major    | Clear recovery after a validated reconciliation match and add a regression diagnostic | Fix implemented |
+| SA-001: replacement subjects could retain the previous subject's organization metadata | Major    | Preserve stale context only for the same verified subject                             | Fix implemented |
+
+### Delegated review resolutions
+
+- **Authority:** AI — delegated by `--auto-design`
+- **Eligibility:** cancellation, recovery-state, and principal-isolation corrections inside the approved workflow
+- **Objective:** preserve resize integrity, make a validated reload unlock Create, and prevent cross-principal context carryover
+- **Decision:** synchronously remove every active modal and abort authentication below the recovery threshold; clear create recovery on a reconciliation match; retain a prior projection after transient reconciliation failure only when the freshly verified subject is unchanged
+- **Evidence:** the independent correctness and security reviews reproduced each issue against the Phase 3 diff; focused regression tests failed before the fixes and passed afterward
+- **Rejected alternatives:** leave non-organization dialogs mounted, require an extra Switch after successful reconciliation, or show the prior subject's organization while a replacement subject cannot be reconciled
+- **Strongest counterargument:** preserving the old projection for every transient failure is visually stable, but it can misattribute tenant context to a different verified principal
+- **Confidence:** High
+- **Hardening:** independent correctness and security reviewers converged on the fixes; focused real-JSVision regressions cover modal redraw, recovery release, and subject replacement
+- **Policy version:** 1
+- **Root invocation ID:** `ad-20260828-admin-ui-rd02`
+- **Reopen trigger:** the application supports more than one concurrent modal owner or server reconciliation gains a subject-scoped response contract

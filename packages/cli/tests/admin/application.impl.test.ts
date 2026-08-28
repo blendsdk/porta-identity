@@ -37,6 +37,32 @@ async function settle(): Promise<void> {
   await Promise.resolve();
 }
 
+/** Flushes the longer dialog and service continuation chain. */
+async function settleWorkflow(): Promise<void> {
+  for (let index = 0; index < 12; index += 1) await Promise.resolve();
+}
+
+/** Sends one decoded key through the real application loop. */
+function press(
+  application: ReturnType<typeof createApplication>,
+  key: string,
+  modifiers: { readonly alt?: boolean } = {},
+): void {
+  application.loop.dispatch({
+    type: 'key',
+    key,
+    ctrl: false,
+    alt: modifiers.alt ?? false,
+    shift: false,
+    ...(key.length === 1 ? { codepoint: key.codePointAt(0) } : {}),
+  });
+}
+
+/** Types plain text into the focused JSVision input. */
+function typeText(application: ReturnType<typeof createApplication>, value: string): void {
+  for (const character of value) press(application, character);
+}
+
 describe('admin application implementation', () => {
   it('should return a server only for states that carry one', () => {
     expect(adminStateServer({ kind: 'selecting-server' })).toBeUndefined();
@@ -268,6 +294,125 @@ describe('admin application implementation', () => {
     expect(disposedApplication && frameText(disposedApplication)).not.toContain(
       'Late Organization',
     );
+  });
+
+  it('should remove identity and server-selection dialogs before resize-only redraw', async () => {
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: authenticatedState(),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        application.loop.emitCommand('who-am-i');
+        await settle();
+        expect(frameText(application)).toContain('admin@example.test');
+        application.loop.resize({ width: 24, height: 6 });
+        expect(frameText(application)).toContain('Terminal too small');
+        expect(frameText(application)).not.toContain('admin@example.test');
+        return 0;
+      },
+    });
+
+    await runAdminApplication({
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        expect(frameText(application)).toContain('Select Porta Server');
+        application.loop.resize({ width: 24, height: 6 });
+        expect(frameText(application)).toContain('Terminal too small');
+        expect(frameText(application)).not.toContain('Select Porta Server');
+        return 0;
+      },
+    });
+  });
+
+  it('should clear stale organization context when a replacement subject cannot reconcile', async () => {
+    const selected = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Previous Subject Organization',
+      slug: 'previous-subject-organization',
+      status: 'active' as const,
+    };
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: {
+        ...authenticatedState(),
+        capabilities: { canReadOrganizations: true, canCreateOrganizations: true },
+        organization: selected,
+      },
+      session: {
+        reauthenticate: vi.fn().mockResolvedValue({
+          kind: 'authenticated',
+          server,
+          identity: { sub: 'replacement-subject', email: 'replacement@example.test' },
+          capabilities: { canReadOrganizations: true, canCreateOrganizations: true },
+        }),
+        organizations: {
+          listAll: vi.fn(),
+          create: vi.fn(),
+          reconcile: vi.fn().mockResolvedValue({ kind: 'failure', failure: 'unavailable' }),
+        },
+      },
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        application.loop.emitCommand('reauthenticate');
+        await settleWorkflow();
+        expect(frameText(application)).toContain('Service unavailable');
+        expect(frameText(application)).not.toContain(selected.name);
+        return 0;
+      },
+    });
+  });
+
+  it('should clear create recovery after a successful same-subject reconciliation', async () => {
+    const selected = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Selected Organization',
+      slug: 'selected-organization',
+      status: 'active' as const,
+    };
+    const create = vi.fn().mockResolvedValue({ kind: 'failure', failure: 'unavailable' });
+    const reconcile = vi
+      .fn()
+      .mockResolvedValue({ kind: 'match', organization: { ...selected, name: 'Refreshed' } });
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: {
+        ...authenticatedState(),
+        capabilities: { canReadOrganizations: true, canCreateOrganizations: true },
+        organization: selected,
+      },
+      session: {
+        reauthenticate: vi.fn().mockResolvedValue({
+          ...authenticatedState(),
+          capabilities: { canReadOrganizations: true, canCreateOrganizations: true },
+        }),
+        organizations: { listAll: vi.fn(), create, reconcile },
+      },
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        application.loop.emitCommand('create-organization');
+        await settleWorkflow();
+        press(application, 'n', { alt: true });
+        typeText(application, 'Uncertain Create');
+        press(application, 'c', { alt: true });
+        await settleWorkflow();
+        expect(create).toHaveBeenCalledOnce();
+        expect(application.loop.isCommandEnabled('create-organization')).toBe(false);
+
+        application.loop.emitCommand('reauthenticate');
+        await settleWorkflow();
+        expect(reconcile).toHaveBeenCalledWith(selected.id);
+        expect(application.loop.isCommandEnabled('create-organization')).toBe(true);
+        return 0;
+      },
+    });
   });
 
   it('should strip terminal controls and bound verified display values', async () => {

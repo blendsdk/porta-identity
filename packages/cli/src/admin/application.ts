@@ -2,17 +2,16 @@
 
 import { resolveCapabilities } from '@jsvision/core';
 import type { Keymap } from '@jsvision/core';
-import { Commands, confirm, createApplication, createKeymap, inputBox, signal } from '@jsvision/ui';
-import type {
-  Application,
-  ApplicationOptions,
-  ModalDialogHost,
-  Size2D,
-  Validator,
-} from '@jsvision/ui';
+import { Commands, createApplication, createKeymap } from '@jsvision/ui';
+import type { Application, ApplicationOptions, Size2D } from '@jsvision/ui';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
-import { createAdminDialogSurface, runNativeAdminApplication } from './application-runtime.js';
+import {
+  createAdminDialogSurface,
+  createAdminInteraction,
+  runNativeAdminApplication,
+} from './application-runtime.js';
+import type { AdminApplicationInteraction } from './application-runtime.js';
 import {
   showCreateOrganizationDialog,
   showOrganizationChooser,
@@ -96,11 +95,7 @@ export interface AdminApplicationOptions {
   readonly platform?: NodeJS.Platform;
 }
 
-/** Dialog interactions owned by the live administration application. */
-export interface AdminApplicationInteraction extends LoginInteraction {
-  /** Asks for and validates the first Porta server origin. */
-  readonly selectServer: (signal: AbortSignal) => Promise<URL | undefined>;
-}
+export type { AdminApplicationInteraction } from './application-runtime.js';
 
 /** Signal-to-shell exit mappings used on supported POSIX hosts. */
 const POSIX_SIGNAL_CODES = {
@@ -112,93 +107,6 @@ const POSIX_SIGNAL_CODES = {
 /** Converts an arbitrary application result to a documented process outcome. */
 function normalizeExitCode(value: number): AdminExitCode {
   return value === 1 || value === 2 || value === 129 || value === 130 || value === 143 ? value : 0;
-}
-
-/** Converts a cancelled dialog into the same cancellation used by the login coordinator. */
-function cancelledInteraction(): DOMException {
-  return new DOMException('The operation was aborted', 'AbortError');
-}
-
-/** Closes an active modal promptly when its owning operation is cancelled. */
-async function runAbortableDialog<T>(
-  application: Application,
-  signal_: AbortSignal,
-  open: () => Promise<T>,
-): Promise<T> {
-  if (signal_.aborted) throw cancelledInteraction();
-  const abort = (): void => application.loop.endModal(Commands.cancel);
-  signal_.addEventListener('abort', abort, { once: true });
-  try {
-    return await open();
-  } finally {
-    signal_.removeEventListener('abort', abort);
-  }
-}
-
-/** Creates the modal login and first-run interactions over the application body. */
-function createAdminInteraction(
-  application: Application,
-  dialogHost: ModalDialogHost,
-): AdminApplicationInteraction {
-  const serverValidator: Validator = {
-    isValidInput: (value) => value.length <= 2_048,
-    isValid: (value) => {
-      try {
-        normalizeServerOrigin(value);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    error: 'Enter a valid HTTPS Porta server origin.',
-  };
-
-  return {
-    selectServer: async (operationSignal) => {
-      const value = signal('https://');
-      const selected = await runAbortableDialog(application, operationSignal, () =>
-        inputBox(dialogHost, {
-          title: 'Select Porta Server',
-          label: '~S~erver origin',
-          value,
-          validator: serverValidator,
-          placeholder: 'https://porta.example.com',
-        }),
-      );
-      return selected === null ? undefined : normalizeServerOrigin(selected);
-    },
-    presentAuthorizationUrl: async (url, operationSignal) => {
-      const value = signal(url.toString());
-      const acknowledged = await runAbortableDialog(application, operationSignal, () =>
-        inputBox(dialogHost, {
-          title: 'Open Authorization URL',
-          label: '~U~RL',
-          value,
-        }),
-      );
-      if (acknowledged === null) throw cancelledInteraction();
-    },
-    requestManualCallback: async (operationSignal) => {
-      const value = signal('');
-      const callback = await runAbortableDialog(application, operationSignal, () =>
-        inputBox(dialogHost, {
-          title: 'Complete Authentication',
-          label: '~C~allback URL',
-          value,
-          placeholder: 'Paste the complete callback URL',
-        }),
-      );
-      if (callback === null) throw cancelledInteraction();
-      return callback;
-    },
-    confirmCredentialReplacement: (currentServer, nextServer, operationSignal) =>
-      runAbortableDialog(application, operationSignal, () =>
-        confirm(
-          dialogHost,
-          `Replace credentials for ${currentServer.origin} with ${nextServer.origin}?`,
-        ),
-      ),
-  };
 }
 
 /** Starts one administration application and always releases its resources. */
@@ -311,6 +219,35 @@ export async function runAdminApplication(
     application.loop.endModal(Commands.cancel);
     dialogSurface.removeAll();
     setState(presentation.getState());
+  };
+
+  /** Closes the read-only identity dialog before a synchronous terminal redraw. */
+  const cancelIdentityDialog = (): void => {
+    if (!identityDialogOpen) return;
+    identityDialogOpen = false;
+    application.loop.endModal(Commands.cancel);
+    dialogSurface.removeAll();
+    setState(presentation.getState());
+  };
+
+  /** Aborts authentication and restores its safe fallback without leaving a mounted dialog. */
+  const cancelSessionOperation = (): void => {
+    if (!currentController) return;
+    const fallback = currentOperationFallback;
+    currentController.abort();
+    currentController = undefined;
+    currentOperationFallback = undefined;
+    dialogSurface.removeAll();
+    if (fallback) setState(fallback);
+    else if (server) setState({ kind: 'unauthenticated', server });
+    else setState(presentation.getState());
+  };
+
+  /** Cancels whichever single modal or operation currently owns the application surface. */
+  const cancelModalWork = (): void => {
+    cancelIdentityDialog();
+    cancelOrganizationWork();
+    cancelSessionOperation();
   };
 
   /** Enters the established unauthenticated state after a final organization 401. */
@@ -513,7 +450,11 @@ export async function runAdminApplication(
           return;
         }
 
-        const replacement = authenticatedState(state, previous.organization);
+        const sameSubject = state.identity.sub === previous.identity.sub;
+        const replacement = authenticatedState(
+          state,
+          sameSubject ? previous.organization : undefined,
+        );
         setState(replacement);
         const operations = session?.organizations;
         if (!operations) {
@@ -526,6 +467,7 @@ export async function runAdminApplication(
           createRecoveryRequired = false;
           setState({ kind: 'unauthenticated', server: operationServer });
         } else if (result.kind === 'match') {
+          createRecoveryRequired = false;
           setState(authenticatedState(state, result.organization));
         } else if (
           result.kind === 'absent' ||
@@ -535,7 +477,13 @@ export async function runAdminApplication(
           setState(state);
           openOrganizationChoice = true;
         } else {
-          setState(authenticatedState(state, previous.organization, result.failure));
+          setState(
+            authenticatedState(
+              state,
+              sameSubject ? previous.organization : undefined,
+              result.failure,
+            ),
+          );
         }
       })
       .catch(() => {
@@ -571,26 +519,17 @@ export async function runAdminApplication(
     application.onCommand(ADMIN_COMMANDS.switchOrganization, startOrganizationChooser),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
       if (identityDialogOpen) {
-        application.loop.endModal(Commands.cancel);
+        cancelIdentityDialog();
         return;
       }
       if (organizationDialogOpen) {
         cancelOrganizationWork();
         return;
       }
-      const fallback = currentOperationFallback;
-      currentController?.abort();
-      currentController = undefined;
-      currentOperationFallback = undefined;
-      if (fallback) {
-        setState(fallback);
-      } else if (server) {
-        setState({ kind: 'unauthenticated', server });
-      }
+      cancelSessionOperation();
     }),
     application.onCommand(Commands.quit, () => {
-      cancelOrganizationWork();
-      currentController?.abort();
+      cancelModalWork();
     }),
   ];
 
@@ -598,7 +537,7 @@ export async function runAdminApplication(
   application.loop.onResize = (size) => {
     resizeApplication?.(size);
     if (presentation.content.bounds.width < 32 || presentation.content.bounds.height < 8) {
-      cancelOrganizationWork();
+      cancelModalWork();
     }
   };
 
@@ -648,8 +587,7 @@ export async function runAdminApplication(
       const listener = (): void => {
         if (signalExitCode !== undefined) return;
         signalExitCode = exitCode;
-        cancelOrganizationWork();
-        currentController?.abort();
+        cancelModalWork();
         application.loop.emitCommand(Commands.quit, exitCode);
       };
       signalListeners.set(signal as NodeJS.Signals, listener);
@@ -661,9 +599,8 @@ export async function runAdminApplication(
   const finalize = async (): Promise<void> => {
     if (finalized) return;
     finalized = true;
-    cancelOrganizationWork();
+    cancelModalWork();
     disposed = true;
-    currentController?.abort();
     for (const [signal, listener] of signalListeners) signalSource.off(signal, listener);
     for (const unregister of unregisterCommands) unregister();
     const finalizer = options.applicationFinalizer ?? ((target) => target.loop.dispose());
@@ -675,8 +612,7 @@ export async function runAdminApplication(
       runNativeAdminApplication(application, caps, (exitCode) => {
         if (signalExitCode !== undefined) return;
         signalExitCode = normalizeExitCode(exitCode);
-        cancelOrganizationWork();
-        currentController?.abort();
+        cancelModalWork();
         application.loop.emitCommand(Commands.quit, signalExitCode);
       }));
     return signalExitCode ?? normalizeExitCode(result);

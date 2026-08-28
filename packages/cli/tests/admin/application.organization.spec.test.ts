@@ -422,15 +422,19 @@ describe('organization workflow ownership', () => {
       // Successful reauthentication refreshes, clears, or preserves selection according to the authoritative fixed outcome.
       const reconcile = vi.fn().mockResolvedValue(reconciliation);
       const listAll = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
-      const reauthenticate = vi
-        .fn()
-        .mockResolvedValue(
-          authenticatedState(
-            { sub: 'subject-2', name: 'Replacement Admin', email: 'new@example.test' },
-            undefined,
-            allOrganizationCapabilities,
-          ),
-        );
+      const preservesExistingSelection =
+        reconciliation.kind === 'failure' && reconciliation.failure !== 'unauthorized';
+      const reauthenticate = vi.fn().mockResolvedValue(
+        authenticatedState(
+          {
+            sub: preservesExistingSelection ? verifiedIdentity.sub : 'subject-2',
+            name: 'Replacement Admin',
+            email: 'new@example.test',
+          },
+          undefined,
+          allOrganizationCapabilities,
+        ),
+      );
 
       await runAdminApplication({
         server,

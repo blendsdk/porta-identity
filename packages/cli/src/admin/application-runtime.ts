@@ -2,9 +2,104 @@
 
 import { createHost, cursor } from '@jsvision/core';
 import type { CapabilityProfile } from '@jsvision/core';
-import { Commands } from '@jsvision/ui';
-import type { Application, ModalDialogHost } from '@jsvision/ui';
+import { Commands, confirm, inputBox, signal } from '@jsvision/ui';
+import type { Application, ModalDialogHost, Validator } from '@jsvision/ui';
+import type { LoginInteraction } from '../auth/login-coordinator.js';
+import { normalizeServerOrigin } from '../global-options.js';
 import type { createAdminPresentation } from './presentation.js';
+
+/** Dialog interactions owned by the live administration application. */
+export interface AdminApplicationInteraction extends LoginInteraction {
+  /** Asks for and validates the first Porta server origin. */
+  readonly selectServer: (signal: AbortSignal) => Promise<URL | undefined>;
+}
+
+/** Converts a cancelled dialog into the cancellation used by the login coordinator. */
+function cancelledInteraction(): DOMException {
+  return new DOMException('The operation was aborted', 'AbortError');
+}
+
+/** Closes an active modal promptly when its owning operation is cancelled. */
+async function runAbortableDialog<T>(
+  application: Application,
+  signal_: AbortSignal,
+  open: () => Promise<T>,
+): Promise<T> {
+  if (signal_.aborted) throw cancelledInteraction();
+  const abort = (): void => application.loop.endModal(Commands.cancel);
+  signal_.addEventListener('abort', abort, { once: true });
+  try {
+    return await open();
+  } finally {
+    signal_.removeEventListener('abort', abort);
+  }
+}
+
+/** Creates the modal login and first-run interactions over the application body. */
+export function createAdminInteraction(
+  application: Application,
+  dialogHost: ModalDialogHost,
+): AdminApplicationInteraction {
+  const serverValidator: Validator = {
+    isValidInput: (value) => value.length <= 2_048,
+    isValid: (value) => {
+      try {
+        normalizeServerOrigin(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    error: 'Enter a valid HTTPS Porta server origin.',
+  };
+
+  return {
+    selectServer: async (operationSignal) => {
+      const value = signal('https://');
+      const selected = await runAbortableDialog(application, operationSignal, () =>
+        inputBox(dialogHost, {
+          title: 'Select Porta Server',
+          label: '~S~erver origin',
+          value,
+          validator: serverValidator,
+          placeholder: 'https://porta.example.com',
+        }),
+      );
+      return selected === null ? undefined : normalizeServerOrigin(selected);
+    },
+    presentAuthorizationUrl: async (url, operationSignal) => {
+      const value = signal(url.toString());
+      const acknowledged = await runAbortableDialog(application, operationSignal, () =>
+        inputBox(dialogHost, {
+          title: 'Open Authorization URL',
+          label: '~U~RL',
+          value,
+        }),
+      );
+      if (acknowledged === null) throw cancelledInteraction();
+    },
+    requestManualCallback: async (operationSignal) => {
+      const value = signal('');
+      const callback = await runAbortableDialog(application, operationSignal, () =>
+        inputBox(dialogHost, {
+          title: 'Complete Authentication',
+          label: '~C~allback URL',
+          value,
+          placeholder: 'Paste the complete callback URL',
+        }),
+      );
+      if (callback === null) throw cancelledInteraction();
+      return callback;
+    },
+    confirmCredentialReplacement: (currentServer, nextServer, operationSignal) =>
+      runAbortableDialog(application, operationSignal, () =>
+        confirm(
+          dialogHost,
+          `Replace credentials for ${currentServer.origin} with ${nextServer.origin}?`,
+        ),
+      ),
+  };
+}
 
 /** Shared modal surface plus synchronous removal used during resize and shutdown. */
 export interface AdminDialogSurface {
