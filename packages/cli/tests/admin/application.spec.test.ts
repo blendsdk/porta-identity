@@ -38,8 +38,8 @@ function authenticatedState(identity = verifiedIdentity): AdminConnectionState {
 }
 
 describe('admin application shell', () => {
-  // A normal terminal shows the complete foundation shell and no invented administration module.
-  it('should render the authenticated foundation when the viewport is 80x24', async () => {
+  // The established shell keeps its theme, normalized server, state, and shortcut evidence.
+  it('should retain the authenticated foundation invariants at 80x24', async () => {
     await runAdminApplication({
       server,
       insecure: false,
@@ -52,15 +52,31 @@ describe('admin application shell', () => {
 
         expect(buffer.get(0, 1)?.bg).toBe(defaultTheme.window.bg);
         expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.window.bg);
+        expect(frame).toContain('https://porta.example.test');
+        expect(frame).toContain('Authenticated');
+        expect(frame).toMatch(/shortcut|Alt\+|Ctrl\+/i);
+        return 0;
+      },
+    });
+  });
+
+  // The pre-navigation shell keeps its replaceable menu and summary assertions isolated.
+  it('should render the pre-navigation menus and identity summary at 80x24', async () => {
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: authenticatedState(),
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        const frame = frameText(application);
+
         expect(frame).toContain('Application');
         expect(frame).toContain('Quit');
         expect(frame).toContain('Session');
         expect(frame).toContain('Reauthenticate');
-        expect(frame).toContain('https://porta.example.test');
-        expect(frame).toContain('Authenticated');
         expect(frame).toContain('Verified Admin');
         expect(frame).toContain('admin@example.test');
-        expect(frame).toMatch(/shortcut|Alt\+|Ctrl\+/i);
         expect(frame).not.toMatch(
           /Organizations|Applications|Clients|Users|Signing Keys|Audit Log|Dashboard|Metrics/,
         );
