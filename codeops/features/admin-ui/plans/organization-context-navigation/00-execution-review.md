@@ -1,7 +1,7 @@
 # Execution Review: Organization Context and Navigation
 
-> **Status**: Phase 1 correction pending re-review
-> **Last Updated**: 2026-08-28 12:34
+> **Status**: Phase 1 passed
+> **Last Updated**: 2026-08-28 12:38
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1
@@ -15,11 +15,11 @@ The review fix added one implementation diagnostic, bringing the CLI suite to 50
 repository's explicit physical-test inventory was advanced from 41 to 43 for the two planned Phase
 1 test files; no test was removed or excluded.
 
-| Finding                                                                         | Severity | Ruling                                                                        | Status                         |
-| ------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------- | ------------------------------ |
-| RV-001: permission claims incorrectly used the shorter 100-character role bound | Major    | Fix the role and permission bounds separately and add one boundary diagnostic | Fix applied; re-review pending |
-| RV-002: roadmap execution timestamp was stale                                   | Minor    | Update the existing roadmap timestamp                                         | Resolved                       |
-| Security review                                                                 | —        | No findings under the auth-protocol and tenant-isolation lenses               | Clean                          |
+| Finding                                                                         | Severity | Ruling                                                                        | Status                            |
+| ------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------- | --------------------------------- |
+| RV-001: permission claims incorrectly used the shorter 100-character role bound | Major    | Fix the role and permission bounds separately and add one boundary diagnostic | Resolved; bounded re-review clean |
+| RV-002: roadmap execution timestamp was stale                                   | Minor    | Update the existing roadmap timestamp                                         | Resolved                          |
+| Security review                                                                 | —        | No findings under the auth-protocol and tenant-isolation lenses               | Clean                             |
 
 ### RV-001 delegated resolution
 
@@ -35,3 +35,7 @@ repository's explicit physical-test inventory was advanced from 41 to 43 for the
 - **Policy version:** 1
 - **Root invocation ID:** `ad-20260828-admin-ui-rd02`
 - **Reopen trigger:** Porta changes either authoritative slug bound
+
+**Re-review:** Clean. The reviewer confirmed the separate bounds, the 101–150-character permission
+case, the two-file inventory adjustment, and the roadmap timestamp correction. No residual major
+or critical finding remains.
