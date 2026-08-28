@@ -220,6 +220,56 @@ describe('admin application implementation', () => {
     expect(finalizer).toHaveBeenCalledOnce();
   });
 
+  it('should unregister organization commands and quarantine a pending list during disposal', async () => {
+    let finishList: ((result: unknown) => void) | undefined;
+    const listAll = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finishList = resolve;
+        }),
+    );
+    let disposedApplication: ReturnType<typeof createApplication> | undefined;
+
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: {
+        ...authenticatedState(),
+        capabilities: { canReadOrganizations: true, canCreateOrganizations: false },
+      },
+      session: { organizations: { listAll, create: vi.fn(), reconcile: vi.fn() } },
+      applicationFactory: createApplication,
+      applicationFinalizer: (application) => application.loop.dispose(),
+      applicationRunner: async (application) => {
+        disposedApplication = application;
+        application.loop.emitCommand('switch-organization');
+        await settle();
+        expect(listAll).toHaveBeenCalledOnce();
+        return 0;
+      },
+    });
+
+    finishList?.({
+      kind: 'success',
+      value: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Late Organization',
+          slug: 'late-organization',
+          status: 'active',
+        },
+      ],
+    });
+    disposedApplication?.loop.emitCommand('switch-organization');
+    await settle();
+
+    expect(listAll).toHaveBeenCalledOnce();
+    expect(disposedApplication && frameText(disposedApplication)).not.toContain(
+      'Late Organization',
+    );
+  });
+
   it('should strip terminal controls and bound verified display values', async () => {
     const hostileName = `Admin\u001b[2J${'x'.repeat(200)}`;
 

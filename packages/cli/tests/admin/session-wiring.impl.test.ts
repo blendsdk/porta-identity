@@ -99,4 +99,18 @@ describe('admin session production wiring', () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it('should defer the organization domain until an operation requests it', async () => {
+    const listAll = vi.fn().mockResolvedValue([]);
+    const organizationDomain = vi.fn(() => ({ listAll, create: vi.fn() }));
+    const prepared = prepareAdminSession(server, interaction, organizationDomain);
+
+    expect(organizationDomain).not.toHaveBeenCalled();
+    await expect(prepared.session.organizations?.listAll()).resolves.toEqual({
+      kind: 'success',
+      value: [],
+    });
+    expect(organizationDomain).toHaveBeenCalledOnce();
+    expect(listAll).toHaveBeenCalledOnce();
+  });
 });

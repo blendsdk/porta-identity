@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:45
-> **Progress**: 23/31 tasks (74%)
+> **Last Updated**: 2026-08-28 13:47
+> **Progress**: 24/31 tasks (77%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -131,7 +131,7 @@ green Phase 2 tests.
 
 ### Step 3.3: Implementation Tests and Verification
 
-- [ ] 3.3.1 Add operation-generation, command-registration, resize, signal, disposal, and lazy-wiring diagnostics — `packages/cli/tests/admin/application.impl.test.ts`, `packages/cli/tests/admin/application.pty.impl.test.ts`, `packages/cli/tests/admin/session-wiring.impl.test.ts`
+- [x] 3.3.1 Add operation-generation, command-registration, resize, signal, disposal, and lazy-wiring diagnostics — `packages/cli/tests/admin/application.impl.test.ts`, `packages/cli/tests/admin/application.pty.impl.test.ts`, `packages/cli/tests/admin/session-wiring.impl.test.ts` ✅ (completed: 2026-08-28 13:47; lint, typecheck, and 18 focused implementation tests passed)
 - [ ] 3.3.2 Run the complete CLI package verification for the finished Phase 3 workflow
 
 **Deliverables:** complete in-memory organization workflow with deterministic cancellation,
