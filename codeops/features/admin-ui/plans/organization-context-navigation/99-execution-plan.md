@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 12:30
-> **Progress**: 6/31 tasks (19%)
+> **Last Updated**: 2026-08-28 12:31
+> **Progress**: 7/31 tasks (23%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -66,7 +66,7 @@ completion. No server, SDK, dependency, workflow, or runtime-matrix task exists.
 
 ### Step 1.3: Implementation Tests and Verification
 
-- [ ] 1.3.1 Add internal validation, typed-error, hostile-detail, and non-persistence coverage — `packages/cli/tests/admin/organization-service.impl.test.ts`, `packages/cli/tests/admin/session.impl.test.ts`
+- [x] 1.3.1 Add internal validation, typed-error, hostile-detail, and non-persistence coverage — `packages/cli/tests/admin/organization-service.impl.test.ts`, `packages/cli/tests/admin/session.impl.test.ts` ✅ (completed: 2026-08-28 12:31)
 - [ ] 1.3.2 Run the complete CLI package verification for the finished Phase 1 boundary
 
 **Deliverables:** trusted ephemeral capabilities, four-field organization projection, fixed failure

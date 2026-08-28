@@ -1,7 +1,11 @@
 /** Focused implementation edges for server-bound admin sessions. */
 
 import { describe, expect, it, vi } from 'vitest';
-import { fetchVerifiedUserInfo, verifyStoredSession } from '../../src/admin/session-service.js';
+import {
+  fetchVerifiedUserInfo,
+  validateAdminCapabilities,
+  verifyStoredSession,
+} from '../../src/admin/session-service.js';
 import { normalizeServerOrigin } from '../../src/global-options.js';
 
 const credentials = {
@@ -16,6 +20,46 @@ const credentials = {
 };
 
 describe('admin session implementation edges', () => {
+  it('treats malformed authorization arrays as least-privileged values', () => {
+    expect(validateAdminCapabilities(['porta-admin', 'bad\u0000role'], undefined)).toEqual({
+      canReadOrganizations: false,
+      canCreateOrganizations: false,
+    });
+    expect(
+      validateAdminCapabilities(['porta-user-admin'], ['admin:org:read', 'bad\u0085permission']),
+    ).toEqual({
+      canReadOrganizations: false,
+      canCreateOrganizations: false,
+    });
+  });
+
+  it('derives live capabilities without mutating the credential snapshot', async () => {
+    const snapshot = structuredClone(credentials);
+    const result = await verifyStoredSession(
+      {
+        selectedServer: new URL(credentials.server),
+        credentials,
+        fetch: vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              ...credentials.userInfo,
+              permissions: ['admin:org:create'],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: 'authenticated',
+      capabilities: { canReadOrganizations: false, canCreateOrganizations: true },
+    });
+    expect(credentials).toEqual(snapshot);
+    expect('capabilities' in credentials).toBe(false);
+  });
+
   it.each([
     'http://porta.example.test',
     'https://user:password@porta.example.test',
