@@ -124,6 +124,10 @@ describe('stored CLI session verification', () => {
         email: 'verified@example.test',
         name: 'Verified Admin',
       },
+      capabilities: {
+        canReadOrganizations: false,
+        canCreateOrganizations: false,
+      },
     });
   });
 

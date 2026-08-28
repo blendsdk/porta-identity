@@ -7,6 +7,7 @@ import { fetchIssuerJwks, verifyCliIdToken } from './id-token-verifier.js';
 import { fetchAdminMetadata } from './metadata.js';
 import { generateCodeChallenge, generateCodeVerifier, generateState } from './pkce.js';
 import { fetchVerifiedUserInfo } from '../admin/session-service.js';
+import type { AdminCapabilities } from '../admin/state.js';
 import type { AuthFlowResult, CliAuthOperationOptions, VerifiedIdentity } from './types.js';
 
 const AUTHORIZATION_SCOPES = 'openid profile email offline_access';
@@ -80,6 +81,8 @@ export interface VerifiedSession {
   readonly status: 'authenticated';
   /** Fully verified identity accepted from the ID token. */
   readonly identity: VerifiedIdentity;
+  /** Organization actions from live UserInfo, retained only in memory. */
+  readonly capabilities: AdminCapabilities;
   /** Credentials committed by the coordinator. */
   readonly credentials: AuthFlowResult;
 }
@@ -285,7 +288,7 @@ async function finishAuthentication(
     nonce: authorization.nonce,
     jwks,
   });
-  const identity = await fetchVerifiedUserInfo(
+  const profile = await fetchVerifiedUserInfo(
     {
       selectedServer: request.server,
       orgSlug: metadata.orgSlug,
@@ -294,6 +297,7 @@ async function finishAuthentication(
     },
     options,
   );
+  const { identity } = profile;
   const credentials: AuthFlowResult = {
     server,
     orgSlug: metadata.orgSlug,
@@ -325,5 +329,5 @@ async function finishAuthentication(
   } catch (error) {
     throw new CredentialPersistenceError(error);
   }
-  return { status: 'authenticated', identity, credentials };
+  return { status: 'authenticated', identity, capabilities: profile.capabilities, credentials };
 }

@@ -13,7 +13,7 @@ import { authenticateCliSession } from '../auth/login-coordinator.js';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { AdminApplicationSession } from './application.js';
-import type { AdminConnectionState } from './state.js';
+import type { AdminCapabilities, AdminConnectionState } from './state.js';
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -71,6 +71,16 @@ export interface AuthenticatedSession {
   readonly status: 'authenticated';
   /** Subject-matched, allowlisted live identity. */
   readonly identity: VerifiedIdentity;
+  /** Organization actions derived from the same live UserInfo response. */
+  readonly capabilities: AdminCapabilities;
+}
+
+/** Allowlisted identity and organization capabilities from one live UserInfo response. */
+export interface VerifiedAdminProfile {
+  /** Subject-matched identity fields safe for display and credential persistence. */
+  readonly identity: VerifiedIdentity;
+  /** Ephemeral organization actions used only by the running application. */
+  readonly capabilities: AdminCapabilities;
 }
 
 /** Observable result of stored-session verification. */
@@ -91,7 +101,12 @@ export interface PreparedAdminSession {
 /** Maps a live verification result to the application state model. */
 function toApplicationState(server: URL, result: SessionVerificationResult): AdminConnectionState {
   if (result.status === 'authenticated') {
-    return { kind: 'authenticated', server, identity: result.identity };
+    return {
+      kind: 'authenticated',
+      server,
+      identity: result.identity,
+      capabilities: result.capabilities,
+    };
   }
   return {
     kind: 'unauthenticated',
@@ -152,7 +167,12 @@ export function prepareAdminSession(
   const authenticate = async (signal: AbortSignal): Promise<AdminConnectionState> => {
     const result = await login(signal);
     if (result.status !== 'authenticated') return { kind: 'unauthenticated', server };
-    const state = { kind: 'authenticated', server, identity: result.identity } as const;
+    const state = {
+      kind: 'authenticated',
+      server,
+      identity: result.identity,
+      capabilities: result.capabilities,
+    } as const;
     return state;
   };
 
@@ -160,7 +180,12 @@ export function prepareAdminSession(
   const reauthenticate = async (signal: AbortSignal): Promise<AdminConnectionState | undefined> => {
     const result = await login(signal);
     return result.status === 'authenticated'
-      ? { kind: 'authenticated', server, identity: result.identity }
+      ? {
+          kind: 'authenticated',
+          server,
+          identity: result.identity,
+          capabilities: result.capabilities,
+        }
       : undefined;
   };
 
@@ -178,8 +203,53 @@ export function prepareAdminSession(
   };
 }
 
-/** Returns a safe subset of a subject-matched UserInfo response. */
-function validateUserInfo(value: unknown, originalSubject: string): VerifiedIdentity {
+/** Returns true when every authorization entry is a bounded, control-free slug. */
+function isValidAuthorizationArray(value: unknown): value is readonly string[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        typeof entry === 'string' &&
+        entry.length > 0 &&
+        entry.length <= 100 &&
+        !containsTerminalControl(entry),
+    )
+  );
+}
+
+/**
+ * Derives organization actions from untrusted live authorization claims.
+ *
+ * Roles and permissions are validated independently. A malformed claim cannot cancel a valid
+ * capability from the other claim, and no raw claim value is retained.
+ *
+ * @param roles - Untrusted UserInfo role claim.
+ * @param permissions - Untrusted UserInfo permission claim.
+ * @returns Two fixed capability booleans.
+ * @example
+ * ```ts
+ * const capabilities = validateAdminCapabilities([], ['admin:org:read']);
+ * ```
+ */
+export function validateAdminCapabilities(roles: unknown, permissions: unknown): AdminCapabilities {
+  const validRoles = isValidAuthorizationArray(roles) ? roles : [];
+  const validPermissions = isValidAuthorizationArray(permissions) ? permissions : [];
+  const isLegacyAdministrator = validRoles.includes('porta-admin');
+  return {
+    canReadOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:read'),
+    canCreateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:create'),
+  };
+}
+
+/**
+ * Returns a safe profile from a subject-matched UserInfo response.
+ *
+ * @param value - Untrusted decoded UserInfo response.
+ * @param originalSubject - Subject established by the verified login.
+ * @returns Allowlisted identity fields and fixed capability booleans.
+ * @throws A fixed authentication error when the subject is missing or does not match.
+ */
+function validateUserInfo(value: unknown, originalSubject: string): VerifiedAdminProfile {
   if (!value || typeof value !== 'object') throw new Error('Authentication failed');
   const candidate = value as Record<string, unknown>;
   const subject = safeDisplayClaim(candidate.sub);
@@ -187,17 +257,31 @@ function validateUserInfo(value: unknown, originalSubject: string): VerifiedIden
     throw new Error('Authentication failed');
   }
   return {
-    sub: subject,
-    email: safeDisplayClaim(candidate.email),
-    name: safeDisplayClaim(candidate.name),
+    identity: {
+      sub: subject,
+      email: safeDisplayClaim(candidate.email),
+      name: safeDisplayClaim(candidate.name),
+    },
+    capabilities: validateAdminCapabilities(candidate.roles, candidate.permissions),
   };
 }
 
-/** Fetches and validates live UserInfo with caller-owned cancellation. */
+/**
+ * Fetches and validates live UserInfo with caller-owned cancellation.
+ *
+ * @param request - Server-bound UserInfo request details.
+ * @param options - Caller-owned cancellation signal.
+ * @returns The subject-matched identity and ephemeral organization capabilities.
+ * @throws A fixed authentication error when the response is unavailable or invalid.
+ * @example
+ * ```ts
+ * const profile = await fetchVerifiedUserInfo(request, { signal });
+ * ```
+ */
 export async function fetchVerifiedUserInfo(
   request: VerifiedUserInfoRequest,
   options: CliAuthOperationOptions,
-): Promise<VerifiedIdentity> {
+): Promise<VerifiedAdminProfile> {
   const selected = normalizeServerOrigin(request.selectedServer);
   if (!/^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/.test(request.orgSlug)) {
     throw new Error('Authentication failed');
@@ -268,10 +352,8 @@ export async function verifyStoredSession(
   }
   if (!response.ok) return { status: 'unavailable' };
   try {
-    return {
-      status: 'authenticated',
-      identity: validateUserInfo(await response.json(), request.credentials.userInfo.sub),
-    };
+    const profile = validateUserInfo(await response.json(), request.credentials.userInfo.sub);
+    return { status: 'authenticated', ...profile };
   } catch {
     return { status: 'unauthenticated' };
   }

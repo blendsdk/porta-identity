@@ -96,6 +96,8 @@ export type AdminConnectionState =
       readonly kind: 'authenticated';
       readonly server: URL;
       readonly identity: VerifiedIdentity;
+      /** Organization actions derived from the current live UserInfo response. */
+      readonly capabilities: AdminCapabilities;
     }
   | {
       readonly kind: 'unauthorized';

@@ -1,7 +1,7 @@
 ## Ambiguity Register: Organization Context and Navigation Plan
 
-> **Status**: ✅ GATE PASSED — all 10 items resolved
-> **Last Updated**: 2026-08-28 11:54
+> **Status**: ✅ GATE PASSED — all 11 items resolved
+> **Last Updated**: 2026-08-28 12:27
 
 |   # | Category                    | Ambiguity / Gap                                                                                                                            | Options Presented                                                                                                                                                                                | User Decision                                                     | Status      |
 | --: | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------- |
@@ -15,6 +15,7 @@
 |   8 | Edge cases                  | How are cancellation, duplicate create, 401 replay, and indeterminate create handled?                                                      | Logical organization-operation cancellation quarantines late results; one SDK 401 refresh replay is allowed; duplicate activation and indeterminate retries are prohibited                       | Pre-resolved by accepted PF-004/PF-005 and RD-02 OC-10            | ✅ Resolved |
 |   9 | Testing                     | Where are new end-to-end observations added?                                                                                               | Extend the existing packed admin-playground journey; add no new harness, workflow, or matrix                                                                                                     | Pre-resolved by accepted PF-008 and RD-02 AC-10                   | ✅ Resolved |
 |  10 | Testing / destructive scope | How does the packed create journey remove the organization it creates?                                                                     | Generate a high-entropy slug, prove it is test-owned, and use the installed packed SDK to destroy exactly that slug in an inner `finally` before playground teardown                             | User accepted the corrected minimal cleanup after preflight       | ✅ Resolved |
+|  11 | Testing (runtime)           | How should the older exact stored-session assertion represent newly required capabilities when `/me` contains no capability claims?        | A: require both booleans to be false / B: omit the capability object conditionally                                                                                                               | AI selected A under delegated auto-design authority               | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -37,3 +38,16 @@ uses a packed Node child with the temporary credential/TLS boundary to delete it
 installed packed SDK in an inner `finally`, and verifies absence before playground teardown.
 Simultaneous journey and cleanup failures are preserved together. No SDK, server, or product CLI
 change is introduced. User approved the minimal correction on 2026-08-28.
+
+**AR-11 (runtime):** Authority: AI — delegated by `--auto-design`. Eligibility: specification
+alignment inside the approved ephemeral-capability behavior. Objective: keep one stable
+authenticated result shape while ensuring missing claims grant no action. Decision: the existing
+stored-session specification now requires both capability booleans to be false when `/me` omits
+roles and permissions. Evidence: the approved component contract says authenticated state carries
+capabilities and missing claims disable actions; the older exact assertion predated that field.
+Rejected alternative: conditionally omitting capabilities would complicate every consumer and
+contradict the stable state contract. Strongest counterargument: preserving the old exact shape
+would avoid one test edit, but only by making the new field inconsistent. Confidence: High.
+Hardening: direct comparison against RD-02 and the Phase 1 component contract converged on one
+viable shape. Policy version: 1. Root invocation ID: `ad-20260828-admin-ui-rd02`. Reopen trigger:
+the approved authenticated-state contract makes capabilities optional.
