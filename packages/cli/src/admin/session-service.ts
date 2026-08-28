@@ -13,7 +13,11 @@ import { authenticateCliSession } from '../auth/login-coordinator.js';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { AdminApplicationSession } from './application.js';
+import { createAdminOrganizationOperations } from './organization-service.js';
 import type { AdminCapabilities, AdminConnectionState } from './state.js';
+
+/** Lazy SDK organization-domain input retained until verified UI work requests it. */
+type AdminOrganizationDomainFactory = Parameters<typeof createAdminOrganizationOperations>[0];
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -119,6 +123,7 @@ function toApplicationState(server: URL, result: SessionVerificationResult): Adm
 export function prepareAdminSession(
   serverInput: URL,
   interaction: LoginInteraction,
+  organizationDomain?: AdminOrganizationDomainFactory,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -199,6 +204,9 @@ export function prepareAdminSession(
       authenticate,
       retry: verify,
       reauthenticate,
+      ...(organizationDomain
+        ? { organizations: createAdminOrganizationOperations(organizationDomain) }
+        : {}),
     },
   };
 }

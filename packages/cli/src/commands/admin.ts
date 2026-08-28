@@ -4,6 +4,7 @@ import type { CommandModule } from 'yargs';
 import { runAdminApplication } from '../admin/index.js';
 import type { AdminApplicationOptions, AdminExitCode } from '../admin/index.js';
 import { prepareAdminSession } from '../admin/session-service.js';
+import { createClient } from '../client-factory.js';
 import { normalizeServerOrigin, resolveServerUrl, type GlobalOptions } from '../global-options.js';
 
 /** Parsed arguments accepted by `porta admin`. */
@@ -40,10 +41,7 @@ const INSECURE_TLS_RUNTIME_WARNING =
  */
 async function withoutInsecureTlsRuntimeWarning<T>(operation: () => Promise<T>): Promise<T> {
   const originalEmitWarning = process.emitWarning;
-  const filteredEmitWarning = (
-    warning: string | Error,
-    ...metadata: readonly unknown[]
-  ): void => {
+  const filteredEmitWarning = (warning: string | Error, ...metadata: readonly unknown[]): void => {
     const message = typeof warning === 'string' ? warning : warning.message;
     if (message === INSECURE_TLS_RUNTIME_WARNING) return;
     Reflect.apply(originalEmitWarning, process, [warning, ...metadata]);
@@ -101,7 +99,15 @@ export async function runAdminCommand(
         insecure: arguments_.insecure,
         showInsecureWarning: arguments_.insecure,
         prepareSession: (selectedServer, interaction) =>
-          prepareAdminSession(selectedServer, interaction),
+          prepareAdminSession(
+            selectedServer,
+            interaction,
+            () =>
+              createClient({
+                ...arguments_,
+                server: selectedServer.origin,
+              }).organizations,
+          ),
       });
     return await (arguments_.insecure
       ? withoutInsecureTlsRuntimeWarning(runApplication)

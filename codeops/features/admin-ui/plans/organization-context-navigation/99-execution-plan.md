@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:43
-> **Progress**: 21/31 tasks (68%)
+> **Last Updated**: 2026-08-28 13:44
+> **Progress**: 22/31 tasks (71%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -126,7 +126,7 @@ green Phase 2 tests.
 ### Step 3.2: Implementation and Green Phase
 
 - [x] 3.2.1 Implement single-owner organization command orchestration, auto-choice, atomic switch/create, recovery gate, and reauthentication reconciliation — `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/application-runtime.ts`, `packages/cli/src/admin/presentation.ts` ✅ (completed: 2026-08-28 13:43; 37/37 focused application specifications green; mechanical target corrections: landing presentation owns the existing fixed organization-failure field, and the pre-existing native terminal adapter moved intact to keep the coordinator within its file limit)
-- [ ] 3.2.2 Add lazy authenticated organization-domain wiring while reusing `createClient()` unchanged — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts`
+- [x] 3.2.2 Add lazy authenticated organization-domain wiring while reusing `createClient()` unchanged — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts` ✅ (completed: 2026-08-28 13:44; typecheck, lint, and 50 focused command/session tests passed)
 - [ ] 3.2.3 Run the Phase 3-owned portions of ST-14, ST-17, ST-20–ST-32, and ST-35 and make the implementation green without changing specification expectations
 
 ### Step 3.3: Implementation Tests and Verification
