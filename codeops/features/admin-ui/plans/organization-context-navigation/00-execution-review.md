@@ -1,7 +1,7 @@
 # Execution Review: Organization Context and Navigation
 
-> **Status**: Phases 1–2 passed; Phase 3 fixes pending re-review
-> **Last Updated**: 2026-08-28 13:57
+> **Status**: Phases 1–3 passed
+> **Last Updated**: 2026-08-28 14:00
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1
@@ -65,11 +65,11 @@ match the Phase 2 contract. Create and switch orchestration remains correctly de
 **Verification before review:** Node 24.20.0 `yarn workspace @portaidentity/cli verify` passed with
 46 files and 557 tests.
 
-| Finding                                                                                | Severity | Ruling                                                                                | Status          |
-| -------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- | --------------- |
-| RV-001: resize cancelled only organization dialogs                                     | Major    | Close identity, organization, and authentication ownership before resize-only redraw  | Fix implemented |
-| RV-002: successful reconciliation did not clear indeterminate-create recovery          | Major    | Clear recovery after a validated reconciliation match and add a regression diagnostic | Fix implemented |
-| SA-001: replacement subjects could retain the previous subject's organization metadata | Major    | Preserve stale context only for the same verified subject                             | Fix implemented |
+| Finding                                                                                | Severity | Ruling                                                                                | Status   |
+| -------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- | -------- |
+| RV-001: resize cancelled only organization dialogs                                     | Major    | Close identity, organization, and authentication ownership before resize-only redraw  | Resolved |
+| RV-002: successful reconciliation did not clear indeterminate-create recovery          | Major    | Clear recovery after a validated reconciliation match and add a regression diagnostic | Resolved |
+| SA-001: replacement subjects could retain the previous subject's organization metadata | Major    | Preserve stale context only for the same verified subject                             | Resolved |
 
 ### Delegated review resolutions
 
@@ -85,3 +85,9 @@ match the Phase 2 contract. Create and switch orchestration remains correctly de
 - **Policy version:** 1
 - **Root invocation ID:** `ad-20260828-admin-ui-rd02`
 - **Reopen trigger:** the application supports more than one concurrent modal owner or server reconciliation gains a subject-scoped response contract
+
+**Re-review:** Clean. The correctness reviewer confirmed all modal/session owners close before the
+final resized frame and a validated reconciliation match clears Create recovery. The security
+auditor confirmed replacement subjects receive no prior organization context unless a validated
+match is returned, while same-subject transient preservation remains allowed. No new critical or
+major finding remains.

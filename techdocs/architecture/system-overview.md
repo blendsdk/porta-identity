@@ -72,6 +72,9 @@ fields and maps remote failures to fixed local categories. The selected organiza
 in-memory application context and does not change the authenticated server or credential profile.
 The application owns modal lifecycle and command routing, while focused JSVision dialogs render
 trusted identity details and bounded organization choice/create inputs using the default theme.
+Organization SDK access is constructed lazily only when verified organization work begins. Logical
+operation generations quarantine late list/create results, and reauthentication retains a selected
+organization after transient reconciliation failure only when the verified subject is unchanged.
 
 ### Domain Modules
 
