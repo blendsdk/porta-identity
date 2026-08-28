@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-28 13:16
-> **Progress**: 18/31 tasks (58%)
+> **Last Updated**: 2026-08-28 13:31
+> **Progress**: 19/31 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -112,13 +112,15 @@ green Phase 2 tests.
 
 ## Phase 3: Application Workflows and Production Wiring
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start state)_
+> **Phase baseline tree**: `e2f7b5a0364f9b42292003cbe43078ee00584659`
+> **Expected modification set**: `packages/cli/src/admin/{application,session-service}.ts`, `packages/cli/src/commands/admin.ts`, `packages/cli/tests/admin/{application,application.organization,application.pty,command,session,session-wiring}.{spec,impl}.test.ts`, the CLI test-inventory count in `repo-tests/monorepo/server-package.spec.test.mjs`, this execution plan, the ambiguity register, and the execution review
+> **Scope mode**: strict — approved in-memory organization workflow and lazy existing-SDK wiring only; no server, SDK, dependency, workflow, matrix, search, or pagination changes
 
 ### Step 3.1: Specification Tests
 
 **Reference**: [03-03](03-03-application-and-session-integration.md) · application-owned portions of ST-14, ST-17, ST-20–ST-32, and ST-35 · AR-3, AR-6–AR-8
 
-- [ ] 3.1.1 [spec-author] Add no-request/gating/modal-ownership, initial-choice, switch/create, recovery, reauthentication, late-result, and lazy selected-server wiring cases — `packages/cli/tests/admin/application.spec.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts`
+- [x] 3.1.1 [spec-author] Add no-request/gating/modal-ownership, initial-choice, switch/create, recovery, reauthentication, late-result, and lazy selected-server wiring cases — `packages/cli/tests/admin/application.organization.spec.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts` ✅ (completed: 2026-08-28 13:31; 63 retained/new specifications pass and 21 Phase 3 specifications are expected-red)
 - [ ] 3.1.2 Run the focused application/session/command specification suites and record the expected red result
 
 ### Step 3.2: Implementation and Green Phase

@@ -6,8 +6,13 @@ import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const clientFactory = vi.hoisted(() => ({ createClient: vi.fn() }));
+
 vi.mock('../../src/credential-store.js', () => ({
   loadCredentials: vi.fn(),
+}));
+vi.mock('../../src/client-factory.js', () => ({
+  createClient: clientFactory.createClient,
 }));
 
 import { loadCredentials } from '../../src/credential-store.js';
@@ -273,5 +278,33 @@ describe('admin command surface', () => {
     expect(normalizeServerOrigin('https://PORTA.example.test:443/')).toEqual(
       new URL('https://porta.example.test/'),
     );
+  });
+
+  it('should construct organization SDK access lazily against the normalized selected server', async () => {
+    // Command startup and verification do not create an SDK client; the first verified organization request binds the selected origin.
+    const { runAdminCommand } = await import('../../src/commands/admin.js');
+    const listAll = vi.fn().mockResolvedValue([]);
+    clientFactory.createClient.mockReturnValue({ organizations: { listAll, create: vi.fn() } });
+    const runApplication = vi.fn(async (options) => {
+      expect(clientFactory.createClient).not.toHaveBeenCalled();
+      const prepared = options.prepareSession(new URL('https://SELECTED.example.test:443/'), {
+        presentAuthorizationUrl: vi.fn(),
+        requestManualCallback: vi.fn(),
+        confirmCredentialReplacement: vi.fn(),
+      });
+
+      expect(clientFactory.createClient).not.toHaveBeenCalled();
+      await prepared.session.organizations.listAll();
+      expect(clientFactory.createClient).toHaveBeenCalledOnce();
+      expect(clientFactory.createClient).toHaveBeenCalledWith({
+        ...baseArguments,
+        server: 'https://selected.example.test',
+      });
+      expect(listAll).toHaveBeenCalledOnce();
+      return 0;
+    });
+    const dependencies = commandDependencies({ runApplication });
+
+    await expect(runAdminCommand(baseArguments, dependencies)).resolves.toBe(0);
   });
 });

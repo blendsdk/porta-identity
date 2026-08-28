@@ -328,3 +328,44 @@ describe('live administration capabilities', () => {
     expect('capabilities' in credentials).toBe(false);
   });
 });
+
+describe('organization request replay boundary', () => {
+  it('should publish one create result after one SDK-domain invocation', async () => {
+    // The SDK may transparently replay one definite 401, but the administration boundary receives one activation and publishes one result.
+    const { createAdminOrganizationOperations } =
+      await import('../../src/admin/organization-service.js');
+    const created = {
+      id: '88888888-8888-4888-8888-888888888888',
+      name: 'Created Organization',
+      slug: 'created-organization',
+      status: 'active',
+      isSuperAdmin: false,
+      brandingLogoUrl: null,
+      brandingFaviconUrl: null,
+      brandingPrimaryColor: null,
+      brandingCompanyName: null,
+      brandingCustomCss: null,
+      defaultLocale: 'en',
+      twoFactorPolicy: 'optional',
+      defaultLoginMethods: ['password'],
+      createdAt: '2026-08-28T10:00:00.000Z',
+      updatedAt: '2026-08-28T10:00:00.000Z',
+    };
+    const create = vi.fn().mockResolvedValue(created);
+    const operations = createAdminOrganizationOperations(() => ({
+      listAll: vi.fn(),
+      create,
+    }));
+
+    await expect(operations.create({ name: 'Created Organization' })).resolves.toEqual({
+      kind: 'success',
+      value: {
+        id: created.id,
+        name: created.name,
+        slug: created.slug,
+        status: created.status,
+      },
+    });
+    expect(create).toHaveBeenCalledOnce();
+  });
+});

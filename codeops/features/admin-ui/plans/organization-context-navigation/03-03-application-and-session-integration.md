@@ -24,6 +24,10 @@ current controller/generation guard for all modal operations. Authentication ret
 AbortSignal propagation; organization list/create use logical cancellation and reject late
 completion. (AR-8)
 
+Supply the operations as optional `organizations` on the existing `AdminApplicationSession`.
+Prepared production sessions and direct application tests use the same injection boundary. Tests
+drive the real exported dialogs rather than a separate dialog-choice seam. (AR-14)
+
 ## Implementation Details
 
 ### Production Wiring
